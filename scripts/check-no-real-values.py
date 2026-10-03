@@ -15,7 +15,7 @@ MADE_UP_ADDRESS = re.compile(r"^100\.64\.0\.\d{1,3}$")
 
 def tracked_files():
     listed = subprocess.run(["git", "ls-files"], capture_output=True, text=True, check=True).stdout
-    return [name for name in listed.splitlines() if not name.endswith((".png", ".jpg", ".ipa", ".json"))]
+    return [name for name in listed.splitlines() if not name.endswith((".png", ".jpg", ".ipa"))]
 
 
 def problems():
