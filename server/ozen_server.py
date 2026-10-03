@@ -14,7 +14,7 @@ phone can, and leaves room for what the phone can't afford.
 Protocol, version 1. Text frames are JSON, binary frames are audio.
   phone -> server
     {"type": "hello", "version": 1, "token": "...", "language": "he",
-     "vocabulary": ["Ruti", ...], "purpose": "check" | "captions",
+     "vocabulary": ["Ruti", ...], "purpose": "check" | "captions" | "report",
      "client": "Ozen 0.2.36 (36), iOS 18.2",
      "beam": 5}                               first frame, required; beam
                                               (1-10) is optional, the

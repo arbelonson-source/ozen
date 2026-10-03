@@ -117,7 +117,8 @@ the 2080 Ti that cut conversation mistakes from 8.9% to 8.3% for about 0.15 s
 more per finished line.
 
 Each connection is logged with what it was for (`check` when the phone only
-tests that the server is there, `captions` when it streams) and the app build
+tests that the server is there, `captions` when it streams, `report` when it
+sends a diagnostics report to keep in `reports/`) and the app build
 that made it, and ends with a summary: minutes of audio, lines written, and
 how long a finished line took. Measurements on the same card make live lines
 lag by many seconds, so run them only when the log shows no captions session.
