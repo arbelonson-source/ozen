@@ -125,6 +125,35 @@ lag by many seconds, so run them only when the log shows no captions session.
 The first start downloads the model (about 1.6 GB, 3 GB more for the full one). The pairing code goes
 into the phone: Settings, Engine, Home computer.
 
+### Starting with the computer
+
+The Windows setup registers a task that starts the server with Windows.
+On Linux, a systemd user service does the same. Save this as
+`~/.config/systemd/user/ozen-server.service` (leave out `--final-model` on
+a card under 8 GB):
+
+```ini
+[Unit]
+Description=Ozen home server
+
+[Service]
+ExecStart=%h/ozen-server/run.sh --final-model ivrit-ai/whisper-large-v3-ct2
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
+```
+
+```
+systemctl --user daemon-reload
+systemctl --user enable --now ozen-server
+sudo loginctl enable-linger "$USER"
+```
+
+The last line starts it at boot, before anyone signs in. Its log:
+`journalctl --user -u ozen-server`.
+
 ## Pairing the phone
 
 Both setup scripts end by making `pairing.html` next to the server: a QR code
