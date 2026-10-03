@@ -76,4 +76,24 @@ struct LiveAgreementTests {
         stabilizer.ingest(TranscriptToken(utteranceID: id, text: "I have an ointment at the doctor at ten.", isFinal: true, timestamp: 4))
         #expect(stabilizer.segments[0].text == "I have an ointment at the doctor at ten.")
     }
+
+    @Test("lines whose final never came are forgotten, and the line being written keeps its held words")
+    func abandonedLinesAreForgotten() {
+        var stabilizer = CaptionStabilizer()
+        let abandoned = UUID()
+        stabilizer.ingest(TranscriptToken(utteranceID: abandoned, text: "take two pills after the meal", isFinal: false, timestamp: 1))
+        stabilizer.ingest(TranscriptToken(utteranceID: abandoned, text: "take two pills after the meal today", isFinal: false, timestamp: 2))
+        for (offset, text) in ["good morning", "how are you", "fine thanks"].enumerated() {
+            stabilizer.ingest(TranscriptToken(utteranceID: UUID(), text: text, isFinal: false, timestamp: 3 + Double(offset)))
+        }
+
+        let id = UUID()
+        stabilizer.ingest(TranscriptToken(utteranceID: id, text: "I have an appointment at the", isFinal: false, timestamp: 6))
+        stabilizer.ingest(TranscriptToken(utteranceID: id, text: "I have an appointment at the doctor", isFinal: false, timestamp: 7))
+        let line = stabilizer.ingest(TranscriptToken(utteranceID: id, text: "I have an ointment at the doctor at ten", isFinal: false, timestamp: 8))
+        #expect(line.text == "I have an appointment at the doctor at ten")
+
+        let forgotten = stabilizer.ingest(TranscriptToken(utteranceID: abandoned, text: "take three pills after the meal today", isFinal: false, timestamp: 9))
+        #expect(forgotten.text == "take three pills after the meal today")
+    }
 }
