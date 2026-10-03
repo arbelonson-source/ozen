@@ -252,6 +252,13 @@ def check_translation_table(keys):
         if missing:
             shown = ", ".join(repr(key[:40]) for key in missing[:8])
             problems.append(f"{TRANSLATIONS_PATH}: {language} is missing {len(missing)} keys ({shown}{' ...' if len(missing) > 8 else ''})")
+        # A key no tr() call uses is never looked up: the sentence calling
+        # Ozen MIT-licensed stayed in every language after the app's own
+        # text moved to AGPL-3.0, and nothing said so.
+        stale = sorted(key for key in entries if key not in keys)
+        if stale:
+            shown = ", ".join(repr(key[:40]) for key in stale[:8])
+            problems.append(f"{TRANSLATIONS_PATH}: {language} has {len(stale)} keys no tr() call uses ({shown}{' ...' if len(stale) > 8 else ''})")
         for key, expected_numbers in keys.items():
             translation = entries.get(key)
             if translation is None:
