@@ -38,6 +38,21 @@ either unreliable with external microphones or too shallow to trust.
 - **Faster with a home computer.** Optionally, a PC with a graphics card
   writes the captions, faster and more accurately than the phone.
 
+## Gallery
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/gallery/captions.png" width="240" alt="The caption screen: large white captions on black, each line labelled with who said it; a line holding a phrase she asked to be told about is highlighted in yellow"><br><sub>Live captions, with who said each line. A phrase she asked to hear about lights up.</sub></td>
+    <td align="center" width="33%"><img src="docs/gallery/captions-light.png" width="240" alt="The same conversation in dark text on a light background"><br><sub>A light theme for daytime reading.</sub></td>
+    <td align="center" width="33%"><img src="docs/gallery/reply.png" width="240" alt="The reply screen: a typed sentence with a Play button and a list of quick phrases such as Could you say that again?"><br><sub>Type a reply and the phone says it aloud. Common phrases are one tap away.</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/gallery/big-letters.png" width="240" alt="The typed reply filling the screen in very large white letters, with Clear, Flip, Speak and Close buttons"><br><sub>Or show it full screen, in letters anyone across the table can read.</sub></td>
+    <td align="center"><img src="docs/gallery/settings.png" width="240" alt="Settings: a text size slider with a live preview sentence, colours, and plain switches such as Show speaker names"><br><sub>Settings in plain words, with a live preview of the text size.</sub></td>
+    <td align="center"><img src="docs/gallery/history.png" width="240" alt="History: saved conversations listed by time with their first line, a Starred lines entry, and a switch to stop saving"><br><sub>Past conversations are saved on the phone, and can be deleted any time.</sub></td>
+  </tr>
+</table>
+
 ## Why this exists
 
 Existing apps (evaluated: Nagish) had three concrete problems: inconsistent
