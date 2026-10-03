@@ -281,6 +281,25 @@ struct HomeServerEngineTests {
         #expect(HomeServerCheck(availability: noAddress, seconds: 0) == .notSetUp)
     }
 
+    @Test("a computer that turns the phone away for any reason but the code, or answers something else, is not answering; only a refused code needs a person")
+    func otherRefusalsAreNotACodeProblem() async {
+        for reply in [
+            #"{"type":"error","code":"bad_request","detail":"hello expected"}"#,
+            #"{"type":"error","code":"busy","detail":""}"#,
+            #"{"type":"text","utterance":0,"text":"שלום","final":false}"#,
+            #"{"type":"report_saved","name":"report.txt"}"#,
+            "not json",
+        ] {
+            let availability = await engine(ScriptedSocket(helloReply: reply)).checkAvailability(languageCode: "he")
+            #expect(HomeServerCheck(availability: availability, seconds: 0.1) == .unreachable, "\(reply)")
+            guard case .unavailable(let why) = availability else {
+                Issue.record("\(reply) was taken for a working computer")
+                continue
+            }
+            #expect(why.kind == .homeServerUnreachable, "\(reply)")
+        }
+    }
+
     @Test("a connection that stops answering pings is given up on within seconds, even in silence; one that answers is kept")
     func deadPathIsDropped() async throws {
         func run(answering: Bool) async throws -> (Error?, Int) {
