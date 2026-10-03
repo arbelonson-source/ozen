@@ -33,7 +33,8 @@ public enum CaptionLayout {
     }
 
     /// `readableText`, ready to draw: in a right-to-left language each
-    /// paragraph starts with an invisible right-to-left mark.
+    /// paragraph with a right-to-left letter in it starts with an invisible
+    /// right-to-left mark.
     ///
     /// A paragraph takes its reading direction from its first letter. "OK, az
     /// nitra'e machar" ("OK, see you tomorrow") starts with a Latin one, so it
@@ -53,8 +54,27 @@ public enum CaptionLayout {
         guard isRightToLeft(languageCode: languageCode) else { return text }
         return isolatingNumbers(text)
             .split(separator: "\n", omittingEmptySubsequences: false)
-            .map { rightToLeftMark + anchorTrailingPunctuation(String($0)) }
+            .map { paragraph in
+                // English said to her has no Hebrew to read from the right:
+                // forced right to left, "how did you sleep?" was drawn
+                // "?how did you sleep", its question mark at the start.
+                hasOnlyLeftToRightLetters(paragraph)
+                    ? String(paragraph)
+                    : rightToLeftMark + anchorTrailingPunctuation(String(paragraph))
+            }
             .joined(separator: "\n")
+    }
+
+    /// Whether `text` has letters and none of them is a right-to-left one.
+    /// A line of only digits and punctuation has none, and stays right to
+    /// left like the Hebrew around it.
+    static func hasOnlyLeftToRightLetters<S: StringProtocol>(_ text: S) -> Bool {
+        var hasLetter = false
+        for scalar in text.unicodeScalars where scalar.properties.isAlphabetic {
+            if isRightToLeftLetter(scalar) { return false }
+            hasLetter = true
+        }
+        return hasLetter
     }
 
     static let rightToLeftMark = "\u{200F}"

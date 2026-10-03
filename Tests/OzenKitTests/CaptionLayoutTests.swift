@@ -66,6 +66,19 @@ struct CaptionLayoutTests {
         #expect(CaptionLayout.directed("OK, see you tomorrow.", languageCode: "en") == "OK, see you tomorrow.")
     }
 
+    @Test("a paragraph without a Hebrew letter, English said to her, keeps its own left-to-right reading")
+    func englishParagraphsReadLeftToRight() {
+        let mark = "\u{200F}"
+        #expect(CaptionLayout.displayText("Good morning, how did you sleep?") == "Good morning, how did you sleep?")
+        #expect(CaptionLayout.directed("I can take you, no problem.") == "I can take you, no problem.")
+        #expect(CaptionLayout.directed("10:30?") == mark + "10:30?" + mark)
+        #expect(CaptionLayout.directed("OK, אז נתראה מחר.") == mark + "OK, אז נתראה מחר.")
+
+        let mixed = "אתמול הלכנו לשוק בבוקר מוקדם וקנינו ירקות טריים לכל השבוע. Pretty good, thanks, I have a doctor's appointment at ten."
+        let paragraphs = CaptionLayout.displayText(mixed).split(separator: "\n").map(String.init)
+        #expect(paragraphs == [mark + "אתמול הלכנו לשוק בבוקר מוקדם וקנינו ירקות טריים לכל השבוע.", "Pretty good, thanks, I have a doctor's appointment at ten."])
+    }
+
     @Test("which text would lay itself out left to right")
     func opensLeftToRight() {
         #expect(CaptionLayout.opensLeftToRight("OK, אז נתראה מחר"))
