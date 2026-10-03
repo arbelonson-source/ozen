@@ -189,4 +189,8 @@ It starts when you log in to Windows and stops when you log out.
 cd ~/ozen-server && venv/bin/python try_server.py ws://localhost:8765 "$(cat pairing-code)" some-hebrew-16k.wav
 ```
 
-prints each finished line and how long after it was said it arrived.
+plays the recording to the server in real time, the way the phone sends
+it, and prints each finished line and how long after it was said it
+arrived. Give it a text file with what is said in the recording as a
+fourth argument and it also prints the share of words it got wrong
+(punctuation doesn't count).

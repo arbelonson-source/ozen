@@ -1,12 +1,3 @@
-"""Plays a recording to a running ozen_server.py the way the phone would
-(in real time, 43 ms chunks) and reports what came back and how fast.
-
-    python try_server.py ws://localhost:8765 CODE speech.wav [reference.txt]
-
-For every finished line it prints how long after that line's last word
-was sent the final text arrived. This includes the 0.7 s of quiet
-the server waits for before it calls a line finished.
-"""
 import asyncio
 import json
 import re
@@ -19,14 +10,22 @@ import websockets
 
 RATE = 16_000
 CHUNK = 688
-
+USAGE = "usage: python try_server.py ws://localhost:8765 CODE speech.wav [reference.txt]"
 
 
 def normalized(text):
-    """Scored like the accuracy benches: punctuation, quotes and niqqud
-    aren't words, so "שוב." against "שוב" isn't a mistake."""
     text = re.sub("[\u0591-\u05c7]", "", text).replace("\u05be", " ").replace("-", " ")
     return " ".join(re.sub(r"[^\w\s]", " ", text).lower().split())
+
+
+def words_wrong(reference, hypothesis):
+    said, heard = normalized(reference).split(), normalized(hypothesis).split()
+    row = list(range(len(heard) + 1))
+    for i, word in enumerate(said, 1):
+        previous, row[0] = row[0], i
+        for j, other in enumerate(heard, 1):
+            previous, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, previous + (word != other))
+    return row[-1] / max(len(said), 1)
 
 async def main(url, token, wav, reference=None):
     audio, rate = sf.read(wav, dtype="float32")
@@ -75,10 +74,11 @@ async def main(url, token, wav, reference=None):
         print(f"finished line on screen after it was said: median {np.median(delays):.2f}s, worst {max(delays):.2f}s")
         print(f"first words of a line on screen: median {np.median(first_words):.2f}s behind the audio")
     if reference:
-        import jiwer
-        ref = open(reference, encoding="utf-8").read()
-        print(f"words wrong: {jiwer.wer(normalized(ref), normalized(' '.join(finals))) * 100:.1f}%")
+        with open(reference, encoding="utf-8") as f:
+            print(f"words wrong: {words_wrong(f.read(), ' '.join(finals)) * 100:.1f}%")
 
 
 if __name__ == "__main__":
-    asyncio.run(main(*sys.argv[1:5]))
+    if not 4 <= len(sys.argv) <= 5:
+        raise SystemExit(USAGE)
+    asyncio.run(main(*sys.argv[1:]))

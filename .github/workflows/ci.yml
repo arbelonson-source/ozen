@@ -51,7 +51,7 @@ jobs:
           python-version: "3.12"
       - name: Home server tests
         working-directory: server
-        run: pip install numpy qrcode && python -m unittest test_ozen_server test_pairing -v
+        run: pip install numpy qrcode && python -m unittest test_ozen_server test_pairing test_try_server -v
 
   app:
     name: Ozen app (iOS Simulator)
