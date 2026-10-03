@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import OzenKit
 
@@ -244,6 +245,47 @@ struct CloudCoverTests {
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .cloud })
         #expect(!captions.isCoveringForCloud)
         #expect(captions.coverReason == nil)
+    }
+
+    @Test("with talk that never goes quiet, only answers in a row bring the cloud back: every other one keeps the phone's model on")
+    func answeredChecksMustBeInARow() async throws {
+        let cloud = FakeEngine(kind: .cloud)
+        let phone = FakeEngine(kind: .whisperKit)
+        let captions = pipeline(cloud: cloud, phone: phone)
+        captions.cloudRecheckSeconds = 0.05
+        captions.homeServerSwitchBackQuietSeconds = 1000
+        captions.switchBackAfterAnsweredChecks = 2
+        await captions.start(settings: cloudSettings)
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .cloud })
+        cloud.endStream(throwing: EngineUnavailability(kind: .noInternet, detail: "connection lost"))
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .whisperKit })
+        var switchesBack = 0
+        captions.onEvent = { event in
+            if event.description == "the cloud answers again, switching back to it" { switchesBack += 1 }
+        }
+        cloud.duringPrepare = { [cloud] in
+            cloud.availability = cloud.availability == .available ? .unavailable(.noInternet, "flaky") : .available
+        }
+        let before = cloud.prepareCount
+        var spoken = 0
+        while cloud.prepareCount - before < 8, spoken < 200 {
+            phone.emit(TranscriptToken(utteranceID: UUID(), text: "הטלוויזיה מדברת \(spoken)", isFinal: true, timestamp: Date().timeIntervalSince1970))
+            spoken += 1
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(cloud.prepareCount - before >= 8)
+        #expect(switchesBack == 0)
+        #expect(captions.activeEngineKind == .whisperKit)
+
+        cloud.duringPrepare = nil
+        cloud.availability = .available
+        while captions.activeEngineKind == .whisperKit, spoken < 400 {
+            phone.emit(TranscriptToken(utteranceID: UUID(), text: "הטלוויזיה מדברת \(spoken)", isFinal: true, timestamp: Date().timeIntervalSince1970))
+            spoken += 1
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(captions.activeEngineKind == .cloud)
+        #expect(switchesBack == 1)
     }
 
     @Test("an alert word or a name added while the phone's model covers is still there after switching back")
