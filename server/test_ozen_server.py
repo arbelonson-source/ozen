@@ -4,6 +4,7 @@ import sys
 import time
 import types
 import unittest
+from unittest import mock
 
 import numpy as np
 
@@ -46,6 +47,45 @@ class Beam(unittest.TestCase):
         t._run(audio, "he", None, True)
         t._run(audio, "he", None, False, beam=2)
         self.assertEqual(t.model.beams, [2, 5, 1])
+
+
+def voice(*stretches):
+    """Silero's answer for a line: voice over these (start, seconds)."""
+    stamps = [{"start": int(start * S.RATE), "end": int((start + seconds) * S.RATE)} for start, seconds in stretches]
+    return mock.patch.object(S, "get_speech_timestamps", return_value=stamps)
+
+
+class VoiceGate(unittest.TestCase):
+    def line(self, seconds):
+        return np.zeros(int(seconds * S.RATE), dtype=np.float32)
+
+    def test_a_line_with_almost_no_voice_is_dropped(self):
+        with voice():
+            self.assertTrue(S.lacks_voice(self.line(10), 0.05))
+        with voice((4, 0.1)):
+            self.assertTrue(S.lacks_voice(self.line(10), 0.05))
+
+    def test_a_short_sentence_that_clatter_kept_open_for_half_a_minute_is_kept(self):
+        with voice((10, 0.15), (11, 0.15)):
+            self.assertFalse(S.lacks_voice(self.line(30), 0.05))
+
+    def test_a_one_word_answer_alone_on_its_line_is_kept(self):
+        with voice((0.4, 0.1)):
+            self.assertFalse(S.lacks_voice(self.line(1), 0.05))
+
+    def test_a_dropped_line_never_reaches_the_model_and_a_gate_of_zero_drops_nothing(self):
+        t = S.Transcriber.__new__(S.Transcriber)
+        t.model = t.final_model = Model()
+        t.beam, t.context = 5, 0
+        with voice() as detector:
+            t.speech_gate = 0.05
+            self.assertEqual(t._run(self.line(2), "he", None, True), ("", None, []))
+            self.assertEqual(t.model.beams, [])
+            detector.reset_mock()
+            t.speech_gate = 0.0
+            t._run(self.line(2), "he", None, True)
+            self.assertEqual(t.model.beams, [5])
+            detector.assert_not_called()
 
 
 class OddScores:
