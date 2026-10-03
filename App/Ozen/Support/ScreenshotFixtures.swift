@@ -26,6 +26,11 @@ enum ScreenshotFixtures {
         /// Captions set to come from a home computer, so Settings shows
         /// the home computer section and its setup guide row.
         case homeServer
+        /// The README's gallery: English buttons over English captions.
+        /// `english` keeps the Hebrew conversation, as an English-speaking
+        /// family member would see the app on her phone.
+        case galleryDark
+        case galleryLight
     }
 
     @MainActor
@@ -45,6 +50,11 @@ enum ScreenshotFixtures {
         }
 
         viewModel.completeOnboarding()
+        // The conversation is written with `tr`, so the language has to be
+        // set before it is seeded for its lines to come out in English.
+        if variant == .galleryDark || variant == .galleryLight {
+            viewModel.setAppLanguage(.english)
+        }
         let segments = viewModel.pipeline.seedForScreenshots()
         if let starred = segments.first {
             viewModel.toggleStar(starred)
@@ -89,6 +99,11 @@ enum ScreenshotFixtures {
             viewModel.quietHours = QuietHours(isEnabled: true, startHour: 22, endHour: 7)
         case .homeServer:
             viewModel.setAppLanguage(.hebrew)
+        case .galleryDark:
+            break
+        case .galleryLight:
+            viewModel.display.fontSize = 40
+            viewModel.display.theme = .light
         }
 
         return viewModel
