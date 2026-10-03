@@ -1306,6 +1306,52 @@ struct HomeServerCoverTests {
         #expect(server.prepareCount - before >= 3)
     }
 
+    @Test("those answered checks must come in a row: a computer that answers every other time keeps the phone's model on")
+    func answeredChecksMustBeInARow() async throws {
+        let server = FakeEngine(kind: .homeServer)
+        let phone = FakeEngine(kind: .whisperKit)
+        let captions = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { $0.engine == .homeServer ? server : phone },
+            embedder: FakeEmbedder(),
+            recovery: .disabled
+        )
+        captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerSwitchBackQuietSeconds = 1000
+        captions.switchBackAfterAnsweredChecks = 2
+        await captions.start(settings: serverSettings)
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .homeServer })
+        server.endStream(throwing: EngineUnavailability(kind: .homeServerUnreachable, detail: "connection lost"))
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .whisperKit })
+        var switchesBack = 0
+        captions.onEvent = { event in
+            if event.description == "the home computer answers again, switching back to it" { switchesBack += 1 }
+        }
+        server.duringPrepare = { [server] in
+            server.availability = server.availability == .available ? .unavailable(.homeServerUnreachable, "flaky") : .available
+        }
+        let before = server.prepareCount
+        var spoken = 0
+        while server.prepareCount - before < 8, spoken < 200 {
+            phone.emit(TranscriptToken(utteranceID: UUID(), text: "הטלוויזיה מדברת \(spoken)", isFinal: true, timestamp: Date().timeIntervalSince1970))
+            spoken += 1
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(server.prepareCount - before >= 8)
+        #expect(switchesBack == 0)
+        #expect(captions.activeEngineKind == .whisperKit)
+
+        server.duringPrepare = nil
+        server.availability = .available
+        while captions.activeEngineKind == .whisperKit, spoken < 400 {
+            phone.emit(TranscriptToken(utteranceID: UUID(), text: "הטלוויזיה מדברת \(spoken)", isFinal: true, timestamp: Date().timeIntervalSince1970))
+            spoken += 1
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(captions.activeEngineKind == .homeServer)
+        #expect(switchesBack == 1)
+    }
+
     @Test("pausing and resuming with her home-computer settings keeps the phone's model on while the computer is down")
     func resumeKeepsCover() async {
         let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, "test"))
