@@ -48,6 +48,38 @@ struct SessionJournalTests {
         #expect(kept.contains { $0.hasPrefix("PROBLEM MARKED") })
     }
 
+    @Test("caption lines a full phone is still holding back are taken out too, and never reach the file once it has room")
+    func removedCaptionLinesWaitingForRoomStayRemoved() throws {
+        let url = temporaryFile()
+        let folder = url.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: folder.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path) }
+        let journal = SessionJournal(fileURL: url)
+        let segments = ["תתקשרי לרופא", "מחר בעשר"].map {
+            TranscriptSegment(id: UUID(), text: $0, isCommitted: true, speakerClusterID: nil, startTimestamp: 0, lastUpdateTimestamp: 60)
+        }
+        journal.append("listening", at: 1_800_000_000)
+        for line in ProblemSnapshot.lines(settings: .default, activeEngine: nil, input: nil, stats: PipelineStats(), segments: segments, device: "-", utcOffsetSeconds: 0) {
+            journal.append(line, at: 1_800_000_010)
+        }
+        journal.append("stopped", at: 1_800_000_020)
+        #expect(journal.entries().contains { $0.text.contains("תתקשרי לרופא") })
+
+        journal.removeEntries(where: ProblemSnapshot.isCaptionLine)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+        journal.append("listening again", at: 1_800_000_030)
+        _ = journal.entries()
+
+        let kept = SessionJournal(fileURL: url).entries().map(\.text)
+        #expect(!kept.contains { $0.contains("תתקשרי לרופא") || $0.contains("מחר בעשר") })
+        #expect(kept.first == "listening")
+        #expect(kept.suffix(2) == ["stopped", "listening again"])
+        #expect(kept.contains { $0.hasPrefix("PROBLEM MARKED") })
+        let onDisk = try String(contentsOf: url, encoding: .utf8)
+        #expect(!onDisk.contains("תתקשרי לרופא"))
+    }
+
     @Test("lines from before a clock change keep the clock they were written at")
     func reportAcrossClockChange() {
         let journal = SessionJournal(fileURL: temporaryFile())
