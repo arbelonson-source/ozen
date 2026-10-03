@@ -3051,6 +3051,28 @@ struct CaptionPipelineDownloadNetworkTests {
         #expect(pipeline.phase.failure?.kind == .transcriptionStopped)
         #expect(engine.prepareCount == 1)
     }
+
+    @Test("a stop only a person can fix isn't tried again because the internet came back", arguments: [EngineUnavailability.Kind.homeServerRejected, .cloudKeyNeeded, .cloudOutOfCredit, .modelLoadFailed])
+    func personNeededIgnoresConnection(kind: EngineUnavailability.Kind) async {
+        let network = FakeNetworkMonitor(.offline)
+        let engine = FakeEngine(availability: .unavailable(kind, "needs a person"))
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { _ in engine },
+            embedder: FakeEmbedder(),
+            recovery: .disabled,
+            network: network
+        )
+        await pipeline.start(settings: settings())
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == kind)
+        #expect(engine.prepareCount == 1)
+
+        engine.availability = .available
+        network.change(to: .wifi)
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(engine.prepareCount == 1)
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == kind)
+    }
 }
 
 struct NaNEmbedder: SpeakerEmbedding {
