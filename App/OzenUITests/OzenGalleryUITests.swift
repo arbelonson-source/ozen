@@ -29,6 +29,17 @@ final class OzenGalleryUITests: XCTestCase {
     private func open(_ app: XCUIApplication, button: String, screen: String) {
         let element = app.descendants(matching: .any)[button]
         XCTAssertTrue(element.waitForExistence(timeout: 10), "\(button) never appeared")
+        let reveal = app.descendants(matching: .any)["showControlsButton"]
+        let window = app.windows.firstMatch.frame
+        var last = CGRect.null
+        for _ in 0..<40 {
+            if !element.isHittable, reveal.exists, reveal.isHittable { reveal.tap() }
+            let frame = element.frame
+            if element.isHittable, frame == last, frame.maxY <= window.maxY + 1 { break }
+            last = frame
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        XCTAssertTrue(element.isHittable, "\(button) never came on screen")
         element.tap()
         XCTAssertTrue(app.descendants(matching: .any)[screen].waitForExistence(timeout: 10), "\(screen) never appeared")
         Thread.sleep(forTimeInterval: 1)
