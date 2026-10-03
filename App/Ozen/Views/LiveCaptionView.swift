@@ -28,6 +28,7 @@ struct LiveCaptionView: View {
     @State private var controlsHidden = false
     @State private var lastTouchAt = Date().timeIntervalSince1970
     @State private var controlBarHeight: CGFloat = 96
+    @State private var statusWidth: CGFloat = .infinity
     /// How many lines there were when she scrolled up, so the way back down
     /// can say how many came since.
     @State private var lineCountWhenUnpinned = 0
@@ -1134,6 +1135,7 @@ struct LiveCaptionView: View {
                 micButton
                 statusControl
                     .frame(maxWidth: .infinity)
+                    .onGeometryChange(for: CGFloat.self) { proxy in proxy.size.width } action: { width in statusWidth = width }
                 typeToSpeakButton
                 if !viewModel.segments.isEmpty {
                     clearButton
@@ -1311,7 +1313,17 @@ struct LiveCaptionView: View {
     /// wide as the others: its title went missing beside the icon and even
     /// "tap to pause" was cut to a few letters. The icon then sits above
     /// the title, as on the other buttons, and every detail goes below.
-    private var statusIsNarrow: Bool { dynamicTypeSize >= .xxLarge }
+    ///
+    /// The same happened at the default size on iOS 26: the four other
+    /// buttons are 80 pt each with the glass style's padding, and on a
+    /// 402 pt iPhone the status button was left about 40 pt (the
+    /// 2026-09-29 screenshots show "Tap to p…" and no title, in Hebrew and
+    /// in English). Too narrow for its title, it takes the same layout.
+    private var statusIsNarrow: Bool { dynamicTypeSize >= .xxLarge || statusWidth < Self.statusWideMinimumWidth }
+
+    /// Room for the icon, a short title such as "Listening" and the gap
+    /// between them at the default text size.
+    private static let statusWideMinimumWidth: CGFloat = 100
 
     private var statusTitleLayout: AnyLayout {
         statusIsNarrow ? AnyLayout(VStackLayout(spacing: 2)) : AnyLayout(HStackLayout(spacing: 6))
