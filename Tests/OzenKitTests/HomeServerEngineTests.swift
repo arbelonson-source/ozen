@@ -281,6 +281,33 @@ struct HomeServerEngineTests {
         #expect(HomeServerCheck(availability: noAddress, seconds: 0) == .notSetUp)
     }
 
+    @Test("captions started with no code or no address end at once, saying which, without calling anyone")
+    func captionsWithoutPairingEndWithTheReason() async {
+        func firstError(token: String?, address: String) async -> (EngineUnavailability.Kind?, [String]) {
+            let socket = ScriptedSocket(helloReply: ready)
+            let (audio, feed) = AsyncStream<[Float]>.makeStream()
+            feed.yield([Float](repeating: 0.1, count: 1600))
+            feed.finish()
+            let tokens = engine(socket, address: address, token: token).stream(languageCode: "he", audio: audio)
+            var kind: EngineUnavailability.Kind?
+            do {
+                for try await _ in tokens {}
+            } catch {
+                kind = (error as? EngineUnavailability)?.kind
+            }
+            return (kind, await socket.sentTexts)
+        }
+        let (noCode, codeSent) = await firstError(token: nil, address: "10.0.0.5")
+        #expect(noCode == .homeServerRejected)
+        #expect(codeSent.isEmpty)
+        let (blankCode, blankSent) = await firstError(token: "", address: "10.0.0.5")
+        #expect(blankCode == .homeServerRejected)
+        #expect(blankSent.isEmpty)
+        let (noAddress, addressSent) = await firstError(token: "1234", address: "")
+        #expect(noAddress == .homeServerUnreachable)
+        #expect(addressSent.isEmpty)
+    }
+
     @Test("a computer that turns the phone away for any reason but the code, or answers something else, is not answering; only a refused code needs a person")
     func otherRefusalsAreNotACodeProblem() async {
         for reply in [
