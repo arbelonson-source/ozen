@@ -36,7 +36,7 @@ cat > "$home_dir/run.sh" <<EOF
 set -euo pipefail
 cd "$home_dir"
 if [[ $cpu == 0 ]]; then
-    export LD_LIBRARY_PATH="\$(venv/bin/python -c 'import os, nvidia.cublas.lib, nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + ":" + os.path.dirname(nvidia.cudnn.lib.__file__))'):\${LD_LIBRARY_PATH:-}"
+    export LD_LIBRARY_PATH="\$(venv/bin/python -c 'import nvidia.cublas.lib, nvidia.cudnn.lib; print(list(nvidia.cublas.lib.__path__)[0] + ":" + list(nvidia.cudnn.lib.__path__)[0])'):\${LD_LIBRARY_PATH:-}"
 fi
 export OZEN_TOKEN="\$(cat pairing-code)"
 while true; do
