@@ -232,6 +232,41 @@ struct HomeServerEngineTests {
         }
     }
 
+    @Test("unencrypted audio goes to this phone, the home network or the tailnet at the edges of each range, and nowhere just past them")
+    func homeRangesEndWhereTheyShould() {
+        for home in [
+            "ws://localhost:8765",
+            "ws://127.0.0.1:8765",
+            "ws://169.254.10.20:8765",
+            "ws://172.16.0.1:8765",
+            "ws://172.31.255.255:8765",
+            "ws://100.64.0.0:8765",
+            "ws://router.lan:8765",
+            "ws://pc.home.arpa:8765",
+            "ws://DESKTOP.LOCAL:8765",
+            "ws://[::1]:8765",
+            "ws://[fd7a:115c:a1e0::1]:8765",
+            "ws://[fe80::1]:8765",
+        ] {
+            #expect(HomeServerPairing(address: home, code: "abc") != nil, "\(home)")
+        }
+        for away in [
+            "ws://100.63.255.255:8765",
+            "ws://172.15.255.255:8765",
+            "ws://192.169.0.1:8765",
+            "ws://169.253.1.1:8765",
+            "ws://11.0.0.1:8765",
+            "ws://128.0.0.1:8765",
+            "ws://10.0.0.256:8765",
+            "ws://[2001:db8::1]:8765",
+            "ws://[::ffff:8.8.8.8]:8765",
+            "ws://local.example.com:8765",
+            "ws://desktop.local.example.com:8765",
+        ] {
+            #expect(HomeServerPairing(address: away, code: "abc") == nil, "\(away)")
+        }
+    }
+
     @Test("Test connection says connected with the time it took, a refused code, no answer, or nothing set up yet")
     func connectionCheck() async {
         let ok = await engine(ScriptedSocket(helloReply: ready)).checkAvailability(languageCode: "he")
