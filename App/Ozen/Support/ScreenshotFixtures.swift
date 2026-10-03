@@ -63,7 +63,10 @@ enum ScreenshotFixtures {
         if let starred = segments.first {
             viewModel.toggleStar(starred)
         }
-        if let first = segments.first {
+        // The gallery's conversation is saved by the app itself, as a live
+        // one is (the star above saves it): a copy saved here as well
+        // listed the same morning twice in History.
+        if let first = segments.first, variant != .galleryDark, variant != .galleryLight {
             let record = TranscriptSessionRecord.make(
                 from: segments,
                 speakerName: { [pipeline = viewModel.pipeline] in pipeline.displayName(for: $0) },
@@ -106,9 +109,9 @@ enum ScreenshotFixtures {
         case .galleryDark:
             break
         case .galleryLight:
-            // At 40 the conversation ran a line past the screen and its
-            // top sat under the clock.
-            viewModel.display.fontSize = 36
+            // At 40, and still at 36, the conversation ran past the screen
+            // and its top sat under the clock.
+            viewModel.display.fontSize = 32
             viewModel.display.theme = .light
         }
 
