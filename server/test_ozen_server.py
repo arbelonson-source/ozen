@@ -197,6 +197,46 @@ class WindowGPU(SlowGPU):
         return ("שלום" if final else "של"), 0.9, []
 
 
+class GateGPU(SlowGPU):
+    """Writes a line where there was a real stretch of voice, after a
+    while; a short click comes back empty at once, as the voice gate
+    returns it without the model."""
+
+    async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
+        voiced = np.count_nonzero(np.abs(audio) > 0.1) / S.RATE
+        if final and voiced < 0.5:
+            return "", None, []
+        await asyncio.sleep(0.2 if final else 0.01)
+        return "hello", 0.9, []
+
+
+class Summary(unittest.TestCase):
+    def play(self, pieces):
+        session = S.Session(Socket(), GateGPU(0.01), "he", [], live_interval=0.3)
+
+        async def feed():
+            worker = asyncio.create_task(session.run())
+            for seconds, level in pieces:
+                session.add_audio(pcm(seconds, level))
+                await asyncio.sleep(0.4 if level < 0.01 else 0.05)
+            session.finished = True
+            session.changed.set()
+            await asyncio.wait_for(worker, 5)
+
+        asyncio.run(feed())
+        return session.summary()
+
+    def test_lines_the_voice_gate_skipped_do_not_make_the_pass_look_fast(self):
+        summary = self.play([(1.5, 0.3), (1.6, 0.0005), (0.2, 0.3), (1.6, 0.0005), (0.2, 0.3), (1.6, 0.0005)])
+        self.assertIn("1 lines, 2 finished empty", summary)
+        median = float(summary.split("finished-line pass median ")[1].split(" s")[0])
+        self.assertGreaterEqual(median, 0.15, summary)
+
+    def test_a_session_of_only_noise_still_says_how_many_lines_came_back_empty(self):
+        summary = self.play([(0.2, 0.3), (1.6, 0.0005), (0.2, 0.3), (1.6, 0.0005)])
+        self.assertIn("no lines, 2 finished empty", summary)
+
+
 class LongLine(unittest.TestCase):
     def test_a_line_cut_for_length_stays_within_the_limit_after_a_slow_pass(self):
         gpu = WindowGPU(live_seconds=1.3)

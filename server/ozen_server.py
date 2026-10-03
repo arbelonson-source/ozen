@@ -424,9 +424,12 @@ class Session:
                 window.copy(), self.language, self.prompt(), final, self.hotwords(),
                 beam=self.beam)
             if final:
-                self.final_seconds.append(time.monotonic() - started)
+                # Only lines with words: a line the voice gate skipped
+                # comes back at once without the model, and in a noisy
+                # room those made a slow card's median read 0.00 s.
                 if text:
                     self.lines += 1
+                    self.final_seconds.append(time.monotonic() - started)
                 else:
                     self.empty_finals += 1
             # A pass this server dropped is still sent when the model wrote
@@ -454,7 +457,7 @@ class Session:
     def summary(self):
         minutes = (self.offset + len(self.buf)) / RATE / 60
         if not self.final_seconds:
-            return f"{minutes:.1f} min of audio, no lines"
+            return f"{minutes:.1f} min of audio, no lines, {self.empty_finals} finished empty"
         median = sorted(self.final_seconds)[len(self.final_seconds) // 2]
         lag = sorted(self.final_lag_seconds)[len(self.final_lag_seconds) // 2] if self.final_lag_seconds else 0.0
         return (f"{minutes:.1f} min of audio, {self.lines} lines, {self.empty_finals} finished empty, "
