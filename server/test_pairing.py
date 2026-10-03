@@ -81,6 +81,47 @@ class PairingPage(unittest.TestCase):
                 self.assertIn("example-code-123", f.read())
 
 
+class AddressChoice(unittest.TestCase):
+    def run_main(self, folder, extra, tailscale, lan):
+        code = os.path.join(folder, "pairing-code")
+        with open(code, "w", encoding="utf-8") as f:
+            f.write("example-code-123\n")
+        argv = ["pairing.py", "--code-file", code, "--out", os.path.join(folder, "pairing.html"), "--no-open"] + extra
+        out, err = io.StringIO(), io.StringIO()
+        asked = mock.Mock(return_value=tailscale)
+        with mock.patch("sys.argv", argv), mock.patch("sys.stdout", out), mock.patch("sys.stderr", err), \
+                mock.patch.object(pairing, "tailscale_address", asked), \
+                mock.patch.object(pairing, "lan_address", return_value=lan):
+            pairing.main()
+        return out.getvalue(), err.getvalue(), asked.called
+
+    def test_the_tailscale_address_is_used_when_there_is_one(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out, err, _ = self.run_main(folder, [], "wss://pc.tail0example.ts.net", "192.168.1.20")
+            self.assertIn("address=wss%3A%2F%2Fpc.tail0example.ts.net", out)
+            self.assertEqual(err, "")
+
+    def test_without_tailscale_the_home_address_is_used_and_said_to_work_at_home_only(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out, err, _ = self.run_main(folder, [], None, "192.168.1.20")
+            self.assertIn("address=192.168.1.20", out)
+            self.assertIn("home Wi-Fi only", err)
+
+    def test_with_no_address_at_all_it_stops_and_says_how_to_give_one(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaises(SystemExit) as stopped:
+                self.run_main(folder, [], None, None)
+            self.assertIn("--address", str(stopped.exception.code))
+            self.assertFalse(os.path.exists(os.path.join(folder, "pairing.html")))
+
+    def test_lan_asks_only_for_the_home_address(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out, err, asked_tailscale = self.run_main(folder, ["--lan"], "wss://pc.tail0example.ts.net", "192.168.1.20")
+            self.assertIn("address=192.168.1.20", out)
+            self.assertFalse(asked_tailscale)
+            self.assertEqual(err, "")
+
+
 class CodeFile(unittest.TestCase):
     def test_a_code_saved_again_by_notepad_loses_its_byte_order_mark(self):
         with tempfile.TemporaryDirectory() as folder:
