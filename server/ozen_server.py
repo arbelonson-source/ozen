@@ -472,6 +472,15 @@ REPORTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports"
 MAX_REPORT_CHARS = 1_000_000
 
 
+def report_order(name):
+    """Oldest first. By name alone, a second report in the same second
+    ("...-2.txt") came before the first ("....txt"), and "-10" before "-2",
+    so trimming to 50 threw away newer reports and kept older ones."""
+    parts = name[:-len(".txt")].split("-")
+    count = parts[2] if len(parts) > 2 else "1"
+    return parts[:2], int(count) if count.isdigit() else 0
+
+
 def save_report(text, client):
     """A diagnostics report the phone sent (Settings, Diagnostics), kept
     next to the server for whoever looks after the phone. Older ones stay;
@@ -492,7 +501,7 @@ def save_report(text, client):
               opener=lambda path, flags: os.open(path, flags, 0o600)) as f:
         f.write(f"from: {client or 'unknown app'}\n\n")
         f.write(text[:MAX_REPORT_CHARS])
-    reports = sorted(n for n in os.listdir(REPORTS_DIR) if n.endswith(".txt"))
+    reports = sorted((n for n in os.listdir(REPORTS_DIR) if n.endswith(".txt")), key=report_order)
     for old in reports[:-50]:
         os.remove(os.path.join(REPORTS_DIR, old))
     return name

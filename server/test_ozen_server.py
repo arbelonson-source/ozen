@@ -431,6 +431,21 @@ class Reports(unittest.TestCase):
             with open(os.path.join(reports, name), encoding="utf-8") as f:
                 self.assertIn("line one", f.read())
 
+    def test_reports_sent_in_the_same_second_are_all_kept_and_the_oldest_go_first(self):
+        import os
+        import tempfile
+        from unittest import mock
+        stamps = ["20261004-090000"] * 12 + [f"20261004-0901{i:02d}" for i in range(40)]
+        with tempfile.TemporaryDirectory() as folder:
+            reports = os.path.join(folder, "reports")
+            with mock.patch.object(S, "REPORTS_DIR", reports), mock.patch.object(S.time, "strftime", side_effect=stamps):
+                names = [S.save_report(f"report {i}", "Ozen 0.2") for i in range(len(stamps))]
+            self.assertEqual(len(set(names)), len(stamps))
+            self.assertEqual(names[:3], ["20261004-090000.txt", "20261004-090000-2.txt", "20261004-090000-3.txt"])
+            self.assertEqual(sorted(os.listdir(reports)), sorted(names[2:]))
+            with open(os.path.join(reports, names[11]), encoding="utf-8") as f:
+                self.assertIn("report 11", f.read())
+
 
 class NamesGPU(SlowGPU):
     """Stands in for the Transcriber a connection is handed: remembers the
