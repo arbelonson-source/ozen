@@ -1,8 +1,42 @@
-# Ozen ("ear" in Hebrew)
+<p align="center">
+  <img src="docs/assets/icon.png" width="112" alt="Ozen app icon: a yellow ear">
+</p>
 
-Live, on-device captions for conversation — built for a grandmother with
-hearing loss who found every existing transcription app either unreliable
-with external microphones or too shallow a feature to trust. Hebrew-first.
+<h1 align="center">Ozen</h1>
+
+<p align="center">
+  <strong>Live captions for conversation, for people with hearing loss.</strong><br>
+  On the phone, private, and built to be read all evening.
+</p>
+
+<p align="center">
+  <a href="https://github.com/arbelonson-source/ozen/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/arbelonson-source/ozen/ci.yml?branch=master&label=CI&logo=github"></a>
+  <a href="https://github.com/arbelonson-source/ozen/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/arbelonson-source/ozen?label=release&color=orange"></a>
+  <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-blue"></a>
+  <img alt="iOS 17 or later" src="https://img.shields.io/badge/iOS-17%2B-lightgrey?logo=apple">
+</p>
+<p align="center">
+  <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white">
+  <img alt="Over 1,000 tests" src="https://img.shields.io/badge/tests-1%2C000%2B-brightgreen">
+  <img alt="12 interface languages" src="https://img.shields.io/badge/languages-12-informational">
+  <img alt="No tracking, no account" src="https://img.shields.io/badge/tracking-none-success">
+</p>
+
+Ozen (the word means "ear") turns what the people around you say into
+large, steady captions on your phone, as they speak. It was built for one
+grandmother with hearing loss, who found every existing transcription app
+either unreliable with external microphones or too shallow to trust.
+
+- **Captions that hold still.** Words settle in place instead of jumping
+  around, and a name shows who is talking.
+- **Private by design.** No account and no company server: nothing leaves
+  the phone unless you choose to send it.
+- **Alerts she won't miss.** The doorbell, a smoke alarm or her own name
+  makes the phone buzz, even in a pocket; alarms flash the whole screen.
+- **Talk back.** Type a reply and the phone says it out loud, or shows it
+  in huge letters.
+- **Faster with a home computer.** Optionally, a PC with a graphics card
+  writes the captions, faster and more accurately than the phone.
 
 ## Why this exists
 
