@@ -1918,6 +1918,22 @@ struct CaptionPipelineAlertTests {
         #expect(await eventually { pipeline.keywordHits.count == 2 })
     }
 
+    @Test("an evening of name alerts keeps the newest 50, in order")
+    func keywordHitsAreCapped() async {
+        let engine = FakeEngine()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
+        var settings = AppSettings.default
+        settings.keywordAlerts = [KeywordAlert(phrase: "סבתא")]
+        await pipeline.start(settings: settings)
+
+        let ids = (0...50).map { _ in UUID() }
+        for (number, id) in ids.enumerated() {
+            engine.emit(token(id, "סבתא \(number)", final: true))
+        }
+        #expect(await eventually { pipeline.keywordHits.last?.segmentID == ids.last })
+        #expect(pipeline.keywordHits.map(\.segmentID) == Array(ids.dropFirst()))
+    }
+
     @Test("a word the finished text takes back no longer marks the line")
     func keywordTakenBack() async {
         let engine = FakeEngine()
