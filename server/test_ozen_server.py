@@ -73,6 +73,30 @@ class OddNumbers(unittest.TestCase):
         self.assertLess(parsed["segments"][1]["logprob"], -1.0)
 
 
+class MixedSegments:
+    def transcribe(self, audio, **kw):
+        return [
+            types.SimpleNamespace(text=" שלום", no_speech_prob=0.01, avg_logprob=-0.1, compression_ratio=1.2),
+            types.SimpleNamespace(text=" אחת שתיים אחת שתיים אחת שתיים אחת שתיים", no_speech_prob=0.0,
+                                  avg_logprob=-0.05, compression_ratio=2.9),
+            types.SimpleNamespace(text="‏ מה נשמע", no_speech_prob=0.02, avg_logprob=-0.3, compression_ratio=1.1),
+            types.SimpleNamespace(text="  ", no_speech_prob=0.0, avg_logprob=-0.2, compression_ratio=1.0),
+        ], None
+
+
+class PassText(unittest.TestCase):
+    def test_the_line_skips_a_repeated_segment_has_one_space_after_a_direction_mark_and_its_own_confidence(self):
+        import math
+        t = S.Transcriber.__new__(S.Transcriber)
+        t.model = t.final_model = MixedSegments()
+        t.beam, t.context, t.speech_gate = 5, 0, 0.0
+        text, confidence, pieces = t._run(np.zeros(1600, dtype=np.float32), "he", None, True)
+        self.assertEqual(text, "שלום מה נשמע")
+        self.assertAlmostEqual(confidence, math.exp(-0.2), places=6)
+        self.assertEqual([p["text"] for p in pieces], ["שלום", "אחת שתיים אחת שתיים אחת שתיים אחת שתיים", "מה נשמע"])
+        self.assertEqual(pieces[1]["compression"], 2.9)
+
+
 class BrokenGPU:
     def transcribe(self, audio, **kw):
         raise RuntimeError("CUDA error: an illegal memory access was encountered")

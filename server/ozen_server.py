@@ -291,7 +291,10 @@ class Transcriber:
                 continue
             if s.compression_ratio > 2.4:
                 continue
-            t = s.text.strip()
+            # The mark-free text the phone is sent: stripped of spaces only,
+            # "\u200f word" kept its space after the mark, and the line read
+            # "first  word" with two.
+            t = piece
             if t:
                 kept.append(t)
                 logprobs.append(s.avg_logprob)
