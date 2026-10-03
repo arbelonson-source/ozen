@@ -75,6 +75,15 @@ struct LocalizationTests {
         #expect(result == "7 of 7, slowest")
     }
 
+    @Test("a placeholder takes the longest number that has a value: %10 is the tenth with ten values, the first and a 0 with one")
+    func longestPlaceholderNumberWins() {
+        let ten = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+        #expect(tr("%10 ו-%1", "%10 and %1", args: ten, in: .english) == "ten and one")
+        #expect(tr("%10 דקות", "%10 minutes", args: ["2"], in: .english) == "20 minutes")
+        #expect(tr("%1%", "%1%", args: ["42"], in: .english) == "42%")
+        #expect(tr("%0 ו-%", "%0 and %", args: ["5"], in: .english) == "%0 and %")
+    }
+
     @Test("a test's own language doesn't leak to others")
     func overrideIsScoped() async {
         await Localization.$override.withValue(.english) {
