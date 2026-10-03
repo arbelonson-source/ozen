@@ -51,20 +51,28 @@ async def main(url, token, wav, reference=None):
             await ws.send(json.dumps({"type": "end"}))
 
         sender = asyncio.create_task(send())
-        seen = set()
+        seen, shown = set(), {}
         async for message in ws:
             msg = json.loads(message)
             if msg.get("type") != "text":
                 continue
             now = time.monotonic()
             lag = now - (start + msg.get("end_s", 0))
-            if msg["utterance"] not in seen:
-                seen.add(msg["utterance"])
+            number = msg["utterance"]
+            text = msg["text"].strip() or shown.get(number, "")
+            if msg["final"]:
+                shown.pop(number, None)
+            else:
+                shown[number] = text
+            if not text:
+                continue
+            if number not in seen:
+                seen.add(number)
                 first_words.append(lag)
             if msg["final"]:
-                finals.append(msg["text"])
+                finals.append(text)
                 delays.append(lag)
-                print(f"  [{len(finals):3d}] {lag:5.2f}s  {msg['text']}")
+                print(f"  [{len(finals):3d}] {lag:5.2f}s  {text}")
             else:
                 live += 1
         await sender

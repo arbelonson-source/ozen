@@ -16,9 +16,13 @@ sys.modules.setdefault("websockets", types.ModuleType("websockets"))
 import try_server as T
 
 
+def line(number, text, final=True):
+    return {"type": "text", "utterance": number, "final": final, "text": text, "end_s": 0}
+
+
 class Socket:
-    def __init__(self, lines):
-        self.lines = lines
+    def __init__(self, replies):
+        self.replies = replies
         self.sent = []
 
     async def __aenter__(self):
@@ -37,9 +41,19 @@ class Socket:
         return self.messages()
 
     async def messages(self):
-        for i, text in enumerate(self.lines):
+        for reply in self.replies:
             await asyncio.sleep(0)
-            yield json.dumps({"type": "text", "utterance": i, "final": True, "text": text, "end_s": 0})
+            yield json.dumps(reply)
+
+
+def run(replies, reference=None):
+    out = io.StringIO()
+    with mock.patch.dict(sys.modules, {"jiwer": None}), \
+            mock.patch.object(T.sf, "read", return_value=(np.zeros(1600, np.float32), 16000), create=True), \
+            mock.patch.object(T.websockets, "connect", return_value=Socket(replies), create=True), \
+            mock.patch("sys.stdout", out):
+        asyncio.run(T.main("ws://localhost:8765", "example-code-123", "speech.wav", reference))
+    return out.getvalue()
 
 
 class WordsWrong(unittest.TestCase):
@@ -57,14 +71,16 @@ class WordsWrong(unittest.TestCase):
             reference = os.path.join(folder, "said.txt")
             with open(reference, "w", encoding="utf-8") as f:
                 f.write("the doctor comes at ten\n")
-            out = io.StringIO()
-            socket = Socket(["the doctor comes", "at two"])
-            with mock.patch.dict(sys.modules, {"jiwer": None}), \
-                    mock.patch.object(T.sf, "read", return_value=(np.zeros(1600, np.float32), 16000), create=True), \
-                    mock.patch.object(T.websockets, "connect", return_value=socket, create=True), \
-                    mock.patch("sys.stdout", out):
-                asyncio.run(T.main("ws://localhost:8765", "example-code-123", "speech.wav", reference))
-            self.assertIn("words wrong: 20.0%", out.getvalue())
+            out = run([line(0, "the doctor comes"), line(1, "at two")], reference)
+            self.assertIn("words wrong: 20.0%", out)
+
+
+class Lines(unittest.TestCase):
+    def test_lines_are_counted_as_the_phone_shows_them(self):
+        out = run([line(0, "the doctor", final=False), line(0, ""), line(1, ""), line(2, " "), line(3, "at ten")])
+        self.assertIn("2 lines, 1 live updates", out)
+        self.assertIn("the doctor", out)
+        self.assertNotRegex(out, r"\[\s*\d+\]\s+\S+s\s*\n")
 
 
 if __name__ == "__main__":
