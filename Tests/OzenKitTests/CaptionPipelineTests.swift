@@ -2136,6 +2136,48 @@ struct CaptionPipelineAlertTests {
         #expect(await eventually { pipeline.soundAlerts.map(\.event.identifier) == ["telephone_bell_ringing"] })
     }
 
+    @Test("a second buzz while the first is still going ignores the late reports of both, not only the second")
+    func overlappingVibrationsExtendTheWindow() async {
+        let clock = TestClock()
+        let detector = FakeSoundDetector()
+        let (pipeline, audio, _) = makePipeline(soundDetector: detector, now: { clock.now })
+        await pipeline.start(settings: .default)
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        #expect(await eventually { detector.chunksSeen == 1 })
+
+        let vibration = AlertVibration.pattern(for: .critical)
+        let firstBuzz = clock.now
+        pipeline.ignoreSounds(whileVibrating: vibration)
+        clock.advance(vibration.totalSeconds / 2)
+        pipeline.ignoreSounds(whileVibrating: vibration)
+        // The classifier reports a little late: a reading of the first buzz
+        // arrives after the second began, and one of the second after the
+        // first one's own window would have closed.
+        detector.push(SoundObservation(identifier: "telephone_bell_ringing", confidence: 0.9, timestamp: firstBuzz + 0.1))
+        clock.advance(vibration.totalSeconds + 1)
+        detector.push(SoundObservation(identifier: "knock", confidence: 0.9, timestamp: clock.now))
+        detector.push(SoundObservation(identifier: "smoke_detector", confidence: 0.9, timestamp: clock.now))
+        #expect(await eventually { !pipeline.soundAlerts.isEmpty })
+        #expect(pipeline.soundAlerts.map(\.event.identifier) == ["smoke_detector"])
+    }
+
+    @Test("an evening of sound alerts keeps the newest 30, in order")
+    func soundAlertsAreCapped() async {
+        let detector = FakeSoundDetector()
+        let (pipeline, audio, _) = makePipeline(soundDetector: detector)
+        await pipeline.start(settings: .default)
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        #expect(await eventually { detector.chunksSeen == 1 })
+
+        let times = (0...30).map { 100 + Double($0) * (SoundEventPolicy.defaultCooldownSeconds + 5) }
+        for time in times {
+            detector.push(SoundObservation(identifier: "door_bell", confidence: 0.9, timestamp: time))
+        }
+        #expect(await eventually { pipeline.soundAlerts.last?.timestamp == times.last })
+        #expect(pipeline.soundAlerts.map(\.timestamp) == Array(times.dropFirst()))
+        #expect(pipeline.screenSoundAlert?.timestamp == times.last)
+    }
+
     @Test("sound preferences from settings are applied at start")
     func soundPreferencesApplied() async {
         let detector = FakeSoundDetector()
