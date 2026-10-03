@@ -408,5 +408,103 @@ class Reports(unittest.TestCase):
                 self.assertIn("line one", f.read())
 
 
+class NamesGPU(SlowGPU):
+    """Stands in for the Transcriber a connection is handed: remembers the
+    names each pass was primed with."""
+    name = "stand-in"
+    beam = 5
+
+    def __init__(self, fails=False):
+        super().__init__(live_seconds=0.05)
+        self.fails = fails
+        self.hotwords = []
+
+    @staticmethod
+    def count_tokens(text):
+        return len(text.split())
+
+    async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
+        if self.fails:
+            raise RuntimeError("CUDA error: an illegal memory access was encountered")
+        self.hotwords.append(hotwords)
+        return await super().transcribe(audio, language, prompt, final, hotwords, gate, beam)
+
+
+class PhoneSocket:
+    """A paired phone: the hello, then each message in turn; a number is a
+    pause of that many seconds before the next one."""
+    remote_address = ("192.168.1.20", 50000)
+
+    def __init__(self, hello, messages):
+        self.hello = json.dumps(hello)
+        self.messages = messages
+        self.sent = []
+        self.closed = None
+
+    async def recv(self):
+        return self.hello
+
+    async def send(self, text):
+        self.sent.append(text)
+
+    async def close(self, code=1000, reason=""):
+        self.closed = (code, reason)
+
+    async def _messages(self):
+        for message in self.messages:
+            if isinstance(message, float):
+                await asyncio.sleep(message)
+            else:
+                yield message
+
+    def __aiter__(self):
+        return self._messages()
+
+
+def speech_frames(seconds):
+    chunk = pcm(seconds, 0.3)
+    step = int(0.1 * S.RATE) * 2
+    return [chunk[i:i + step] for i in range(0, len(chunk), step)]
+
+
+class SessionAfterHello(unittest.TestCase):
+    def test_new_names_reach_the_next_pass_a_report_is_kept_junk_is_skipped_and_end_finishes_the_line(self):
+        import os
+        import tempfile
+        from unittest import mock
+        hello = {"type": "hello", "token": "example-code-123", "vocabulary": ["Ruti"], "client": "Ozen test"}
+        messages = ["not json", "[1, 2]", json.dumps({"type": "vocabulary", "terms": ["Dana", "Yossi"]}),
+                    *speech_frames(1.5),
+                    json.dumps({"type": "report", "text": "the diagnostics"}),
+                    json.dumps({"type": "end"})]
+        ws, gpu = PhoneSocket(hello, messages), NamesGPU()
+        with tempfile.TemporaryDirectory() as folder:
+            reports = os.path.join(folder, "reports")
+            with mock.patch.object(S, "REPORTS_DIR", reports), self.assertLogs(S.log, "INFO") as logged:
+                asyncio.run(asyncio.wait_for(S.handle(ws, gpu, "example-code-123", 1.0), 5))
+            frames = [json.loads(text) for text in ws.sent]
+            self.assertEqual(frames[0]["type"], "ready")
+            saved = [f["name"] for f in frames if f["type"] == "report_saved"]
+            self.assertEqual(len(saved), 1, frames)
+            with open(os.path.join(reports, saved[0]), encoding="utf-8") as f:
+                report = f.read()
+        self.assertIn("from: Ozen test", report)
+        self.assertIn("the diagnostics", report)
+        finals = [f for f in frames if f["type"] == "text" and f["final"]]
+        self.assertEqual([f["text"] for f in finals], ["שלום"])
+        self.assertEqual(gpu.hotwords[-1], "Dana, Yossi")
+        self.assertNotIn("Ruti", "".join(h or "" for h in gpu.hotwords))
+        self.assertIsNone(ws.closed)
+        self.assertTrue(any("1 lines" in line for line in logged.output), logged.output)
+
+    def test_a_pass_that_fails_closes_the_connection_so_the_phone_stops_waiting(self):
+        hello = {"type": "hello", "token": "example-code-123"}
+        ws = PhoneSocket(hello, [*speech_frames(1.5), 0.6])
+        with self.assertLogs(S.log, "ERROR") as logged:
+            asyncio.run(asyncio.wait_for(S.handle(ws, NamesGPU(fails=True), "example-code-123", 0.3), 5))
+        self.assertEqual(ws.closed, (1011, "transcription failed"))
+        self.assertTrue(any("CUDA error" in line for line in logged.output), logged.output)
+
+
 if __name__ == "__main__":
     unittest.main()
