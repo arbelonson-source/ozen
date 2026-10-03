@@ -54,6 +54,10 @@ enum ScreenshotFixtures {
         // set before it is seeded for its lines to come out in English.
         if variant == .galleryDark || variant == .galleryLight {
             viewModel.setAppLanguage(.english)
+            // History is kept on disk between launches, and each launch
+            // saves this conversation again: the gallery's history showed
+            // the same morning four times over.
+            try? viewModel.historyStore.deleteAll()
         }
         let segments = viewModel.pipeline.seedForScreenshots()
         if let starred = segments.first {
@@ -102,7 +106,9 @@ enum ScreenshotFixtures {
         case .galleryDark:
             break
         case .galleryLight:
-            viewModel.display.fontSize = 40
+            // At 40 the conversation ran a line past the screen and its
+            // top sat under the clock.
+            viewModel.display.fontSize = 36
             viewModel.display.theme = .light
         }
 
