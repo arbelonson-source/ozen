@@ -1243,9 +1243,15 @@ public final class LiveCaptionViewModel {
             return nil
         }
         let namesShown = settings.display.showSpeakerNames
-        return announcer.announcement(for: segments) { [pipeline] segment in
-            namesShown && segment.speakerClusterID != nil ? pipeline.displayName(for: segment) : nil
-        }
+        let marksUncertain = settings.display.markUncertainLines
+        let engine = settings.engine
+        return announcer.announcement(
+            for: segments,
+            speakerName: { [pipeline] segment in
+                namesShown && segment.speakerClusterID != nil ? pipeline.displayName(for: segment) : nil
+            },
+            isUncertain: { marksUncertain && CaptionConfidence.isUncertain($0, engine: engine) }
+        )
     }
 
     /// The saved conversation that was still going moments ago, offered on

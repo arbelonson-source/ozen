@@ -186,7 +186,8 @@ things, for Hebrew conversation, entirely on-device.
   last line that scrolled away. With VoiceOver on, each finished line is read
   out or sent to a braille display by itself, once (again only if a slow
   engine then corrects its words), with the speaker's name when the
-  speaker changes. Doorbell, alarm and name alerts are
+  speaker changes and, on a line with the question mark, "May not have
+  been heard correctly" first. Doorbell, alarm and name alerts are
   read out the moment they happen, and so are captions stopping because of
   a problem and coming back after one, saving failing and a microphone
   disconnecting.

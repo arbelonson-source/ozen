@@ -31,10 +31,12 @@ public struct CaptionAnnouncer: Sendable, Equatable {
 
     /// The text to announce for lines finished since the last call, or nil
     /// when there is nothing new. `speakerName` returns nil for lines whose
-    /// speaker shouldn't be named.
+    /// speaker shouldn't be named; `isUncertain` says which lines carry the
+    /// screen's question mark.
     public mutating func announcement(
         for segments: [TranscriptSegment],
-        speakerName: (TranscriptSegment) -> String?
+        speakerName: (TranscriptSegment) -> String?,
+        isUncertain: (TranscriptSegment) -> Bool = { _ in false }
     ) -> String? {
         forgetLinesNoLongerShown(segments)
         var parts: [String] = []
@@ -51,11 +53,12 @@ public struct CaptionAnnouncer: Sendable, Equatable {
             guard !text.isEmpty else { continue }
             let name = speakerName(segment)
             // After a quiet stretch the name comes again, as on screen.
+            var part = text
             if let name, name != lastSpeaker || CaptionLayout.startsAfterQuiet(segment, previous: lastLine) {
-                parts.append("\(name): \(text)")
-            } else {
-                parts.append(text)
+                part = "\(name): \(text)"
             }
+            if isUncertain(segment) { part = tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") + part }
+            parts.append(part)
             lastSpeaker = name
             lastLine = segment
         }
