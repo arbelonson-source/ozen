@@ -2091,11 +2091,12 @@ public final class CaptionPipeline {
     }
 
     /// Captions stopped because their engine can't run for now (the home
-    /// computer asleep, the cloud down, a model waiting for Wi-Fi) used to
-    /// take sound alerts down with them: the microphone stayed off until
-    /// captions came back, all night with the computer off, and nothing
-    /// said so. Until the next start it stays on for sounds alone. Not for
-    /// a microphone that failed, nor during a call, which has it.
+    /// computer asleep, the cloud down, a model download being retried)
+    /// used to take sound alerts down with them: the microphone stayed off
+    /// until captions came back, all night with the computer off, and
+    /// nothing said so. While a retry or the wait for the computer is lined
+    /// up it stays on for sounds alone. Not for a microphone that failed,
+    /// nor during a call, which has it.
     private func listenForSoundsMeanwhile(after failure: PipelineFailure) {
         stopListeningForSounds()
         guard failure.kind == .engineUnavailable, !systemInterrupted, !isRecordingVoice,
