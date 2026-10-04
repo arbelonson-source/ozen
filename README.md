@@ -1,13 +1,9 @@
-<p align="center">
-  <img src="docs/assets/icon.png" width="112" alt="Ozen app icon: a yellow ear">
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
+  <img alt="Ozen: live captions for conversation, for people with hearing loss" src="docs/assets/banner-light.svg" width="100%">
+</picture>
 
-<h1 align="center">Ozen</h1>
-
-<p align="center">
-  <strong>Live captions for conversation, for people with hearing loss.</strong><br>
-  On the phone, private, and built to be read all evening.
-</p>
+<p align="center"><strong>On the phone, private, and built to be read all evening.</strong></p>
 
 <p align="center">
   <a href="https://github.com/arbelonson-source/ozen/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/arbelonson-source/ozen/ci.yml?branch=master&label=CI&logo=github"></a>
@@ -20,12 +16,18 @@
   <img alt="Over 1,000 tests" src="https://img.shields.io/badge/tests-1%2C000%2B-brightgreen">
   <img alt="12 interface languages" src="https://img.shields.io/badge/languages-12-informational">
   <img alt="No tracking, no account" src="https://img.shields.io/badge/tracking-none-success">
+  <img alt="Works with VoiceOver" src="https://img.shields.io/badge/VoiceOver-ready-8A2BE2?logo=apple">
+  <img alt="Works offline once the model is on the phone" src="https://img.shields.io/badge/works-offline-success">
 </p>
 
 Ozen (the word means "ear") turns what the people around you say into
 large, steady captions on your phone, as they speak. It was built for one
 grandmother with hearing loss, who found every existing transcription app
 either unreliable with external microphones or too shallow to trust.
+
+<p align="center">
+  <img src="docs/assets/hero.png" width="720" alt="Three phones showing Ozen: captions on a light background, the same conversation on black with a phrase she asked to hear about highlighted in yellow, and a typed reply in very large letters">
+</p>
 
 - **Captions that hold still.** Words settle in place instead of jumping
   around, and a name shows who is talking.
@@ -37,6 +39,13 @@ either unreliable with external microphones or too shallow to trust.
   in huge letters.
 - **Faster with a home computer.** Optionally, a PC with a graphics card
   writes the captions, faster and more accurately than the phone.
+
+## How it works
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/how-it-works-dark.svg">
+  <img alt="How Ozen works: a microphone (the phone's own, AirPods, a USB-C or wired mic) feeds the phone, which skips sounds with no voice, writes the words with a speech model on the phone and tells voices apart, then shows big, steady captions with who is speaking, a buzz for her name and a flash for the smoke alarm. A home computer (faster and more accurate) and cloud captions (with your own key) are optional. Nothing leaves the phone unless you choose to send it." src="docs/assets/how-it-works-light.svg" width="100%">
+</picture>
 
 ## Gallery
 

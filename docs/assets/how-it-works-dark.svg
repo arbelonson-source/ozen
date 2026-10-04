@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="580" viewBox="0 20 1280 580" role="img" aria-label="How Ozen works: a microphone feeds the phone, which skips sounds with no voice, writes the words with an on-phone speech model and tells voices apart, then shows big steady captions with names and alerts. A home computer and cloud captions are optional.">
+  <rect y="20" width="1280" height="580" rx="24" fill="#0d1117"/>
+  <defs><marker id="head" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#ffc928"/></marker></defs>
+  <rect x="40" y="70" width="270" height="250" rx="22" fill="#152233" stroke="#2a3d55" stroke-width="2"/>
+  <g transform="translate(175,128)" fill="none" stroke="#ffc928" stroke-width="5" stroke-linecap="round">
+      <rect x="-16" y="-34" width="32" height="54" rx="16" fill="#ffc928" fill-opacity="0.18"/>
+      <path d="M-28 2 a28 28 0 0 0 56 0"/><line x1="0" y1="30" x2="0" y2="44"/><line x1="-16" y1="44" x2="16" y2="44"/></g>
+  <text x="175" y="230" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="23" font-weight="700" fill="#ffffff" text-anchor="middle">Microphone</text>
+  <text x="175" y="262" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="500" fill="#a9b7c8" text-anchor="middle">The phone's own, AirPods,</text>
+  <text x="175" y="286" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="500" fill="#a9b7c8" text-anchor="middle">a USB-C or wired mic</text>
+  <line x1="318" y1="195" x2="392" y2="195" stroke="#ffc928" stroke-width="4" stroke-linecap="round" marker-end="url(#head)"/>
+  <rect x="400" y="50" width="440" height="300" rx="22" fill="#152233" stroke="#2a3d55" stroke-width="2"/>
+  <g transform="translate(620,96) scale(0.82)" fill="none" stroke="#ffc928" stroke-width="4">
+      <rect x="-20" y="-32" width="40" height="64" rx="9" fill="#ffc928" fill-opacity="0.18"/><line x1="-6" y1="24" x2="6" y2="24" stroke-linecap="round"/></g>
+  <text x="620" y="152" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="23" font-weight="700" fill="#ffffff" text-anchor="middle">On the phone</text>
+  <rect x="424" y="172" width="392" height="46" rx="12" fill="#1d2f45"/>
+  <text x="442" y="193" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff" text-anchor="start">Skips sounds with no voice</text>
+  <text x="442" y="211" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14.5" font-weight="500" fill="#a9b7c8" text-anchor="start">a pot put down, a running tap</text>
+  <rect x="424" y="228" width="392" height="46" rx="12" fill="#1d2f45"/>
+  <text x="442" y="249" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff" text-anchor="start">Writes the words</text>
+  <text x="442" y="267" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14.5" font-weight="500" fill="#a9b7c8" text-anchor="start">with a speech model on the phone</text>
+  <rect x="424" y="284" width="392" height="46" rx="12" fill="#1d2f45"/>
+  <text x="442" y="305" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff" text-anchor="start">Tells voices apart</text>
+  <text x="442" y="323" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14.5" font-weight="500" fill="#a9b7c8" text-anchor="start">and listens for names and alarms</text>
+  <line x1="848" y1="195" x2="922" y2="195" stroke="#ffc928" stroke-width="4" stroke-linecap="round" marker-end="url(#head)"/>
+  <rect x="930" y="70" width="310" height="250" rx="22" fill="#152233" stroke="#2a3d55" stroke-width="2"/>
+  <g transform="translate(1085,128)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+      <rect x="-70" y="-40" width="140" height="80" rx="12" fill="#000" stroke="#2a3d55" stroke-width="2"/>
+      <circle cx="-48" cy="-20" r="4" fill="#c9a0ff"/><rect x="-38" y="-24" width="40" height="8" rx="4" fill="#c9a0ff"/>
+      <rect x="-50" y="-8" width="104" height="10" rx="5" fill="#ffffff"/>
+      <circle cx="-48" cy="14" r="4" fill="#5ab4f0"/><rect x="-38" y="10" width="56" height="8" rx="4" fill="#5ab4f0"/>
+      <rect x="-50" y="24" width="30" height="10" rx="5" fill="#ffc928"/><rect x="-16" y="24" width="64" height="10" rx="5" fill="#ffffff"/></g>
+  <text x="1085" y="222" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="23" font-weight="700" fill="#ffffff" text-anchor="middle">Big, steady captions</text>
+  <text x="1085" y="254" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="500" fill="#a9b7c8" text-anchor="middle">with who is speaking,</text>
+  <text x="1085" y="278" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="500" fill="#a9b7c8" text-anchor="middle">a buzz for her name, a flash</text>
+  <text x="1085" y="302" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="500" fill="#a9b7c8" text-anchor="middle">for the smoke alarm</text>
+  <line x1="560" y1="358" x2="505" y2="404" stroke="#a9b7c8" stroke-width="3" stroke-dasharray="7 7" stroke-linecap="round"/>
+  <line x1="680" y1="358" x2="735" y2="404" stroke="#a9b7c8" stroke-width="3" stroke-dasharray="7 7" stroke-linecap="round"/>
+  <rect x="400" y="410" width="210" height="140" rx="22" fill="#0f1a26" stroke="#2a3d55" stroke-width="2" stroke-dasharray="8 7"/>
+  <g transform="translate(505,452)" fill="none" stroke="#a9b7c8" stroke-width="3.5" stroke-linejoin="round">
+      <rect x="-22" y="-16" width="44" height="30" rx="4"/><line x1="0" y1="14" x2="0" y2="22"/><line x1="-12" y1="22" x2="12" y2="22" stroke-linecap="round"/></g>
+  <text x="505" y="500" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">Home computer</text>
+  <text x="505" y="522" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14.5" font-weight="500" fill="#a9b7c8" text-anchor="middle">optional, faster and</text>
+  <text x="505" y="541" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14.5" font-weight="500" fill="#a9b7c8" text-anchor="middle">more accurate</text>
+  <rect x="630" y="410" width="210" height="140" rx="22" fill="#0f1a26" stroke="#2a3d55" stroke-width="2" stroke-dasharray="8 7"/>
+  <g transform="translate(735,452)" fill="none" stroke="#a9b7c8" stroke-width="3.5" stroke-linejoin="round">
+      <path d="M-22 12 h42 a12 12 0 0 0 0 -24 a17 17 0 0 0 -32 -4 a12 12 0 0 0 -10 28 z"/></g>
+  <text x="735" y="500" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">Cloud captions</text>
+  <text x="735" y="522" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14.5" font-weight="500" fill="#a9b7c8" text-anchor="middle">optional, with</text>
+  <text x="735" y="541" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14.5" font-weight="500" fill="#a9b7c8" text-anchor="middle">your own key</text>
+  <text x="986" y="466" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="#ffffff" text-anchor="start">Nothing leaves the phone</text>
+  <text x="986" y="492" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="#ffffff" text-anchor="start">unless you choose</text>
+  <text x="986" y="518" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="#ffffff" text-anchor="start">to send it.</text>
+  <rect x="962" y="440" width="6" height="88" rx="3" fill="#ffc928"/>
+</svg>
