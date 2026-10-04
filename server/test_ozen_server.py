@@ -11,11 +11,14 @@ import numpy as np
 
 fake = types.ModuleType("faster_whisper")
 fake.WhisperModel = object
+fake_utils = types.ModuleType("faster_whisper.utils")
+fake_utils.download_model = lambda name, **kw: name
 fake_vad = types.ModuleType("faster_whisper.vad")
 fake_vad.VadOptions = lambda **kw: kw
 fake_vad.get_speech_timestamps = lambda *a, **kw: []
 sys.modules.setdefault("faster_whisper", fake)
 sys.modules.setdefault("faster_whisper.vad", fake_vad)
+sys.modules.setdefault("faster_whisper.utils", fake_utils)
 sys.modules.setdefault("websockets", types.ModuleType("websockets"))
 if not hasattr(sys.modules["websockets"], "ConnectionClosed"):
     sys.modules["websockets"].ConnectionClosed = type("ConnectionClosed", (Exception,), {})
@@ -141,6 +144,43 @@ class PassText(unittest.TestCase):
 class BrokenGPU:
     def transcribe(self, audio, **kw):
         raise RuntimeError("CUDA error: an illegal memory access was encountered")
+
+
+class ModelsFromDisk(unittest.TestCase):
+    """With the internet down and the home network up, asking the Hub
+    about a model already on disk took 135 s per model to give up."""
+
+    def test_a_downloaded_model_loads_without_asking_the_hub(self):
+        asked = []
+
+        def download(name, local_files_only=False):
+            asked.append((name, local_files_only))
+            if not local_files_only:
+                raise AssertionError("asked the network")
+            return f"/cache/{name}"
+
+        with mock.patch.object(S, "download_model", download):
+            self.assertEqual(S.model_path("ivrit-ai/whisper-large-v3-ct2"), "/cache/ivrit-ai/whisper-large-v3-ct2")
+        self.assertEqual(asked, [("ivrit-ai/whisper-large-v3-ct2", True)])
+
+    def test_a_model_not_downloaded_yet_is_fetched_as_before(self):
+        def download(name, local_files_only=False):
+            raise LookupError("not in the cache")
+
+        with mock.patch.object(S, "download_model", download):
+            self.assertEqual(S.model_path("ivrit-ai/whisper-large-v3-ct2"), "ivrit-ai/whisper-large-v3-ct2")
+
+    def test_both_models_load_from_disk(self):
+        loaded = []
+
+        class Recorder:
+            def __init__(self, path, device, compute_type):
+                loaded.append(path)
+
+        with mock.patch.object(S, "download_model", lambda name, local_files_only=False: f"/cache/{name}"), \
+                mock.patch.object(S, "WhisperModel", Recorder):
+            S.Transcriber("live", "cuda", "int8_float16", 5, 0, final_model="final")
+        self.assertEqual(loaded, ["/cache/live", "/cache/final"])
 
 
 class Restart(unittest.TestCase):

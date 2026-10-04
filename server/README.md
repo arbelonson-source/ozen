@@ -124,8 +124,13 @@ that made it, and ends with a summary: minutes of audio, lines written, and
 how long a finished line took. Measurements on the same card make live lines
 lag by many seconds, so run them only when the log shows no captions session.
 
-The first start downloads the model (about 1.6 GB, 3 GB more for the full one). The pairing code goes
-into the phone: Settings, Engine, Home computer.
+The first start downloads the model (about 1.6 GB, 3 GB more for the full one). After that
+it starts from the copy on disk without going online: with the internet down and the home
+network up, asking Hugging Face first kept it from starting for 4.5 minutes, now 2.5 seconds.
+A newer version of a model is not fetched by itself; deleting its `models--...` folder
+(under `C:\ozen\hf\hub` on Windows, `~/.cache/huggingface/hub` on Linux) gets the newest at
+the next start.
+The pairing code goes into the phone: Settings, Engine, Home computer.
 
 ### Starting with the computer
 

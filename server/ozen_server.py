@@ -51,6 +51,7 @@ import time
 import numpy as np
 import websockets
 from faster_whisper import WhisperModel
+from faster_whisper.utils import download_model
 from faster_whisper.vad import VadOptions, get_speech_timestamps
 
 RATE = 16_000
@@ -162,6 +163,18 @@ def voice_samples(audio):
     return sum(t["end"] - t["start"] for t in stamps)
 
 
+def model_path(name):
+    """Where a model already downloaded sits, so it loads without asking
+    the Hugging Face Hub for a newer one: with the internet down and the
+    home network up, that question took 135 s per model to give up, and
+    the phone waited for both. A model not downloaded yet (the first
+    start) or a folder named directly is left to faster-whisper as before."""
+    try:
+        return download_model(name, local_files_only=True)
+    except Exception:
+        return name
+
+
 def lacks_voice(audio, gate):
     """Under `gate` of the line is voice, and not even a short word's worth.
 
@@ -231,8 +244,8 @@ class Transcriber:
     def __init__(self, model, device, compute_type, beam, context, final_model=None, speech_gate=0.0):
         self.speech_gate = speech_gate
         self.name = model if not final_model else f"{model} + {final_model}"
-        self.model = WhisperModel(model, device=device, compute_type=compute_type)
-        self.final_model = WhisperModel(final_model, device=device, compute_type=compute_type) if final_model else self.model
+        self.model = WhisperModel(model_path(model), device=device, compute_type=compute_type)
+        self.final_model = WhisperModel(model_path(final_model), device=device, compute_type=compute_type) if final_model else self.model
         self.beam = beam
         self.context = context
         self.lock = asyncio.Lock()
