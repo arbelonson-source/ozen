@@ -902,6 +902,8 @@ struct HomeServerCoverTests {
     func soundsWhileWaiting() async {
         let (captions, server, _, audio, detector) = await waitingCaptions()
         #expect(await eventually { captions.stats.soundDetectionRunning })
+        // What keeps the app's battery warnings on while captions are down.
+        #expect(captions.isListeningForSoundsOnly)
         audio.push([Float](repeating: 0.1, count: 1_024))
         #expect(await eventually { detector.chunksSeen == 1 })
         detector.push(SoundObservation(identifier: "smoke_detector", confidence: 0.9, timestamp: 100))
@@ -909,6 +911,7 @@ struct HomeServerCoverTests {
 
         server.availability = .available
         #expect(await eventually { captions.phase == .listening })
+        #expect(!captions.isListeningForSoundsOnly)
         detector.push(SoundObservation(identifier: "door_bell", confidence: 0.9, timestamp: 200))
         #expect(await eventually { captions.soundAlerts.count == 2 })
 

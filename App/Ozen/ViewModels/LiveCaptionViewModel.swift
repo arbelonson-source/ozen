@@ -629,6 +629,7 @@ public final class LiveCaptionViewModel {
     public var availableInputs: [AudioInputDescriptor] { pipeline.availableInputs }
     public var selectedInputUID: String? { pipeline.selectedInputUID }
     public var isListening: Bool { pipeline.phase.isListening }
+    public var isListeningForSoundsOnly: Bool { pipeline.isListeningForSoundsOnly }
     public var inputLevel: Float { pipeline.inputLevel }
     public var stats: PipelineStats { pipeline.stats }
     /// For views that only need to hear of finished lines (see

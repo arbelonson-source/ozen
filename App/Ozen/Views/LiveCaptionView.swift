@@ -371,7 +371,9 @@ struct LiveCaptionView: View {
         .onChange(of: viewModel.segments.isEmpty) { _, _ in
             announceNewLines()
         }
-        .onChange(of: viewModel.isListening, initial: true) { _, listening in
+        // Also while captions wait to come back with the microphone on for
+        // sound alerts alone: a night of that runs the battery down too.
+        .onChange(of: viewModel.isListening || viewModel.isListeningForSoundsOnly, initial: true) { _, listening in
             battery.onWarning = { [viewModel] warning in
                 viewModel.batteryWarningRaised(warning)
             }

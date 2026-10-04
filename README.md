@@ -272,6 +272,8 @@ things, for Hebrew conversation, entirely on-device.
   listening drain the phone and nobody following a conversation watches
   the battery icon. With the phone in a pocket they arrive as a
   notification, since a phone that switches off takes the alerts with it.
+  They also come while captions wait to come back with the microphone on
+  for sound alerts.
 - **Warns before the install runs out.** Installed with a free Apple ID,
   the app stops opening after seven days without a word. It reads its own
   provisioning profile, says on the caption screen two days ahead when that

@@ -223,8 +223,9 @@ public final class CaptionPipeline {
     private var embeddingTask: Task<Void, Never>?
     private var soundTask: Task<Void, Never>?
     /// The microphone is on for sound alerts alone, while captions wait to
-    /// come back (see `listenForSoundsMeanwhile`).
-    private var listeningForSoundsOnly = false
+    /// come back (see `listenForSoundsMeanwhile`). The phone's battery runs
+    /// down then too, so its warnings stay on.
+    public private(set) var isListeningForSoundsOnly = false
     private var staleCommitTask: Task<Void, Never>?
     private var utteranceClusterAssignments: [UUID: Int] = [:]
     /// Decides whether an embedding window holds a voice at all. Silence
@@ -2104,7 +2105,7 @@ public final class CaptionPipeline {
         let run = runID
         let fan = AudioFanOut(source: source, count: 1)
         fanOut = fan
-        listeningForSoundsOnly = true
+        isListeningForSoundsOnly = true
         stats.soundDetectionRunning = true
         let observations = soundDetector.observations(audio: fan.outputs[0])
         soundTask = Task { [weak self] in
@@ -2118,8 +2119,8 @@ public final class CaptionPipeline {
     }
 
     private func stopListeningForSounds() {
-        guard listeningForSoundsOnly else { return }
-        listeningForSoundsOnly = false
+        guard isListeningForSoundsOnly else { return }
+        isListeningForSoundsOnly = false
         soundTask?.cancel()
         soundTask = nil
         fanOut?.cancel()
@@ -2226,7 +2227,7 @@ public final class CaptionPipeline {
         embeddingTask = nil
         soundTask?.cancel()
         soundTask = nil
-        listeningForSoundsOnly = false
+        isListeningForSoundsOnly = false
         staleCommitTask?.cancel()
         staleCommitTask = nil
         fanOut?.cancel()
