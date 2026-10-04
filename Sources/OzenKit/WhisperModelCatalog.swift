@@ -128,16 +128,21 @@ public enum WhisperModelCatalog {
             note: "Older mid-size model; Turbo is both better and faster.",
             isRecommended: false
         ),
+        // Decoded the way the app decodes, OpenAI's Large v3 got 20.4% of
+        // words wrong on lectures and 28.1% on read sentences (September
+        // 2026), and 16.6% on 839 broadcast clips (October): behind
+        // OpenAI's Turbo on lectures, ahead on the others, and behind
+        // ivrit.ai's Turbo (6.6%, 21.1%, 9.7%) on all three.
         WhisperModelOption(
             variant: "large-v3_947MB", displayName: "Large v3 (compressed)", sizeMB: 948,
-            hebrewQuality: 5, speed: 1,
-            note: "Best accuracy, but too slow to feel live on a phone.",
+            hebrewQuality: 4, speed: 1,
+            note: "Less accurate in Hebrew than Turbo Hebrew, and too slow to feel live on a phone.",
             isRecommended: false
         ),
         WhisperModelOption(
             variant: "large-v3", displayName: "Large v3", sizeMB: 3090,
-            hebrewQuality: 5, speed: 1,
-            note: "3 GB. Best accuracy, slowest; for reference only.",
+            hebrewQuality: 4, speed: 1,
+            note: "3 GB. Less accurate in Hebrew than Turbo Hebrew, and the slowest; for reference only.",
             isRecommended: false
         ),
     ]

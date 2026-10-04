@@ -228,8 +228,8 @@ struct ModelManagerView: View {
         case "large-v3-v20240930_626MB": return tr("עברית טובה בהרבה מ‑Small באותו גודל הורדה בערך. קצת יותר איטי בכל עדכון.", "Much better Hebrew than Small at roughly the same download size. A bit slower on each update.")
         case "large-v3-v20240930": return tr("Turbo בדיוק מלא. אותה רמת דיוק, הורדה גדולה יותר.", "Turbo at full precision. Same accuracy, a larger download.")
         case "medium": return tr("מודל ביניים ישן יותר; Turbo גם מדויק יותר וגם מהיר יותר.", "An older mid-size model; Turbo is both more accurate and faster.")
-        case "large-v3_947MB": return tr("הדיוק הגבוה ביותר, אבל איטי מדי כדי להרגיש \"חי\" בטלפון.", "The highest accuracy, but too slow to feel “live” on the phone.")
-        case "large-v3": return tr("3 GB. הכי מדויק, הכי איטי; להשוואה בלבד.", "3 GB. The most accurate, the slowest; for comparison only.")
+        case "large-v3_947MB": return tr("פחות מדויק בעברית מ‑Turbo Hebrew, ואיטי מדי כדי להרגיש \"חי\" בטלפון.", "Less accurate in Hebrew than Turbo Hebrew, and too slow to feel “live” on the phone.")
+        case "large-v3": return tr("3 GB. פחות מדויק בעברית מ‑Turbo Hebrew, והכי איטי; להשוואה בלבד.", "3 GB. Less accurate in Hebrew than Turbo Hebrew, and the slowest; for comparison only.")
         default: return option.note
         }
     }

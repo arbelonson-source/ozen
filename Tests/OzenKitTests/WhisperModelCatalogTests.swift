@@ -18,13 +18,19 @@ struct WhisperModelCatalogTests {
 
     @Test("the recommended model improves on the small ones, not on its equals or betters or on strangers")
     func recommendedImproves() {
-        for weaker in ["tiny", "base", "small_216MB", "small", "medium", "large-v3-v20240930_626MB", "large-v3-v20240930"] {
+        for weaker in ["tiny", "base", "small_216MB", "small", "medium", "large-v3-v20240930_626MB", "large-v3-v20240930", "large-v3_947MB", "large-v3"] {
             #expect(WhisperModelCatalog.recommendedImproves(on: weaker), "\(weaker)")
         }
-        for asGood in [WhisperModelCatalog.recommendedVariant, "large-v3_947MB", "large-v3"] {
-            #expect(!WhisperModelCatalog.recommendedImproves(on: asGood), "\(asGood)")
-        }
+        #expect(!WhisperModelCatalog.recommendedImproves(on: WhisperModelCatalog.recommendedVariant))
         #expect(!WhisperModelCatalog.recommendedImproves(on: "no-such-model"))
+    }
+
+    @Test("the recommended model is rated above every other for Hebrew, as it measured on every test set")
+    func recommendedRatedHighest() throws {
+        let recommended = try #require(WhisperModelCatalog.option(for: WhisperModelCatalog.recommendedVariant))
+        for option in WhisperModelCatalog.options where option.variant != recommended.variant {
+            #expect(option.hebrewQuality < recommended.hebrewQuality, "\(option.variant)")
+        }
     }
 
     @Test("exactly one option is recommended and variants are unique")
