@@ -58,7 +58,7 @@ struct NumberEmphasisTests {
         #expect(emphasized("בשעה 10:30, דקות ספורות") == ["10:30"])
         #expect(emphasized("פעם אחת ביום") == ["אחת"])
         #expect(NumberEmphasis.hasListableNumber("חצי כדור בערב"))
-        #expect(NumberEmphasis.hasListableNumber("שני ימים") == false)
+        #expect(NumberEmphasis.hasListableNumber("שני ימים"))
     }
 
     @Test("twice, two days, two weeks and the other words that are two by themselves stand out and are listed")
@@ -154,6 +154,16 @@ struct NumberEmphasisTests {
         #expect(NumberEmphasis.hasListableNumber("נתראה ביום שני") == false)
         #expect(NumberEmphasis.hasListableNumber("כל אחד לבד") == false)
         #expect(NumberEmphasis.hasListableNumber("") == false)
+    }
+
+    @Test("one or two as part of a time or an amount is listed: eleven, half past one, two pills")
+    func listableOnesAndTwos() {
+        #expect(NumberEmphasis.hasListableNumber("נתראה באחת עשרה בלילה"))
+        #expect(NumberEmphasis.hasListableNumber("התור באחת וחצי בצהריים"))
+        #expect(NumberEmphasis.hasListableNumber("לקחת שני כדורים"))
+        #expect(NumberEmphasis.hasListableNumber("עד אחת-עשרה בלילה"))
+        #expect(NumberEmphasis.hasListableNumber("נתראה ביום שני בבוקר") == false)
+        #expect(NumberEmphasis.hasListableNumber("אחת ולתמיד, רק פעם אחת") == false)
     }
 
     @Test("on by default, survives older settings files, and can be turned off")

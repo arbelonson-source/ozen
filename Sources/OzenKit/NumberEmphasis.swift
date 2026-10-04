@@ -146,6 +146,9 @@ public enum NumberEmphasis {
             let first = String(found.prefix(while: { !$0.isWhitespace }))
             // Only ever emphasized as "once a day" and the like.
             if onceWords.contains(first) { return true }
+            // One or two alone is mostly an idiom ("only once", "Monday");
+            // with more to it, it's a time or an amount ("eleven", "two pills").
+            if found.contains(where: { $0.isWhitespace || $0 == "-" }) { return true }
             guard let reading = numberReading(of: first) else { return false }
             return !onesWords.contains(reading.number) && !twoWords.contains(reading.number)
         }
