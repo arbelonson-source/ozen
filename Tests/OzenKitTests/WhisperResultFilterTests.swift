@@ -275,6 +275,31 @@ struct WhisperRepeatCollapseTests {
         let segment = WhisperSegmentSummary(text: "תבואי תבואי תבואי תבואי תבואי מחר", noSpeechProb: 0.01, avgLogprob: -0.2, compressionRatio: 1.5)
         #expect(filter.acceptedText(from: [segment]) == "תבואי תבואי תבואי מחר")
     }
+
+    @Test("a word called out four or five times and nothing else is shown cut to three, though the phone scores it past the loop line")
+    func calledOutWordKept() {
+        let filter = WhisperResultFilter()
+        // The phone's engine scores repetition over its token numbers, not
+        // the letters; these are that score for these exact lines. The
+        // last but one is a line from a broadcast, as transcribed by hand.
+        let called: [(said: String, ratio: Float, shown: String)] = [
+            ("די די די די", 2.46, "די די די"),
+            ("די, די, די, די!", 2.67, "די, די, די!"),
+            ("סבתא סבתא סבתא סבתא", 2.82, "סבתא סבתא סבתא"),
+            ("די די די די די", 3.08, "די די די"),
+            ("לא עדני עדני עדני עדני", 3.25, "לא עדני עדני עדני"),
+            ("זה מלא מלא מלא מלא", 2.57, "זה מלא מלא מלא"),
+        ]
+        for line in called {
+            let segment = WhisperSegmentSummary(text: line.said, noSpeechProb: 0.0, avgLogprob: -0.1, compressionRatio: line.ratio)
+            #expect(filter.acceptedText(from: [segment]) == line.shown, "\(line.said)")
+        }
+        // A word looped on and on scores far higher on the same scale.
+        for (copies, ratio) in [(8, Float(4.92)), (10, 7.06), (75, 39.1)] {
+            let loop = WhisperSegmentSummary(text: Array(repeating: "פאק", count: copies).joined(separator: " "), noSpeechProb: 0.0, avgLogprob: -0.1, compressionRatio: ratio)
+            #expect(!filter.accepts(loop), "\(copies) copies")
+        }
+    }
 }
 
 @Suite("A sentence said twice in one line")

@@ -10,8 +10,10 @@ public struct WhisperSegmentSummary: Sendable, Equatable {
     /// Mean log-probability of the emitted tokens; very negative means the
     /// model was guessing.
     public var avgLogprob: Float
-    /// gzip compression ratio of the text — high values mean repetitive output,
-    /// the signature of a decoding loop ("toda toda toda ...").
+    /// zlib compression ratio — high values mean repetitive output, the
+    /// signature of a decoding loop ("toda toda toda ..."). The home
+    /// computer measures it over the text; the phone's engine (WhisperKit)
+    /// over its token numbers, where the same short repeat scores higher.
     public var compressionRatio: Float
     /// The words of this segment the model was least sure of (see
     /// `UncertainWords`), when the caller worked them out.
@@ -326,9 +328,16 @@ public struct WhisperResultFilter: Sendable, Equatable {
         if segment.compressionRatio > compressionRatioThreshold {
             // Two or three copies of a sentence measured 2.5 to 3.6; the
             // loops Whisper wrote on household noise 11 to 25.
-            guard segment.compressionRatio <= 2 * compressionRatioThreshold,
-                  let sentence = Self.repeatedSentence(text), !isKnownHallucination(sentence)
-            else { return false }
+            guard segment.compressionRatio <= 2 * compressionRatioThreshold else { return false }
+            // "di di di di!" (enough!) and nothing else: the phone's engine
+            // scores repetition over its token numbers, where a word said
+            // four or five times on its own already measures 2.5 to 3.3
+            // (the computer, over the letters, 1.2 to 1.7), and the pass came
+            // back empty. Kept, it is cut to three like any repeat; a longer
+            // phrase over again, or "toda toda toda...", is still a loop.
+            let word = Self.normalize(once)
+            if once != text, word.split(separator: " ").count <= 2, !ambiguousHallucinations.contains(word) { return true }
+            guard let sentence = Self.repeatedSentence(text), !isKnownHallucination(sentence) else { return false }
         }
         return true
     }
