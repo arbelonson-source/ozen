@@ -304,7 +304,8 @@ Open a section for the details.
   hevanti), "Could you say that again?" (efshar lachzor al ze?), "Please speak
   closer to the phone" (dabru karov yoter la-telefon), which helps the
   captions most), and the phone
-  says it in Hebrew. The last typed sentence stays under the field, to say
+  says it aloud, in the voice of the language it is written in (Hebrew
+  letters get a Hebrew voice). The last typed sentence stays under the field, to say
   again when it wasn't caught or keep as a ready-made phrase in one tap.
   Captions pause while the phone
   talks, so it doesn't caption itself, and come back on their own. A
