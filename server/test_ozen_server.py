@@ -251,9 +251,18 @@ class GateGPU(SlowGPU):
         return "hello", 0.9, []
 
 
+class RepeatGPU(SlowGPU):
+    """Writes a sentence said twice: one segment this server drops for
+    its compression ratio, sent on for the phone to judge."""
+
+    async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
+        await asyncio.sleep(0.01)
+        return "", None, [{"text": "a b c d e. a b c d e.", "no_speech": 0.0, "logprob": -0.01, "compression": 2.9}]
+
+
 class Summary(unittest.TestCase):
-    def play(self, pieces):
-        session = S.Session(Socket(), GateGPU(0.01), "he", [], live_interval=0.3)
+    def play(self, pieces, gpu=None):
+        session = S.Session(Socket(), gpu or GateGPU(0.01), "he", [], live_interval=0.3)
 
         async def feed():
             worker = asyncio.create_task(session.run())
@@ -276,6 +285,10 @@ class Summary(unittest.TestCase):
     def test_a_session_of_only_noise_still_says_how_many_lines_came_back_empty(self):
         summary = self.play([(0.2, 0.3), (1.6, 0.0005), (0.2, 0.3), (1.6, 0.0005)])
         self.assertIn("no lines, 2 finished empty", summary)
+
+    def test_a_line_left_to_the_phone_is_not_counted_empty(self):
+        summary = self.play([(1.5, 0.3), (1.6, 0.0005)], gpu=RepeatGPU(0.01))
+        self.assertIn("no lines, 0 finished empty, 1 left to the phone's filter", summary)
 
 
 class LongLine(unittest.TestCase):

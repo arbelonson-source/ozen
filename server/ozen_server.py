@@ -340,6 +340,7 @@ class Session:
         self.changed = asyncio.Event()
         self.lines = 0
         self.empty_finals = 0
+        self.left_to_phone = 0
         self.final_seconds = []
         # How long after the pause ended each finished pass could start:
         # the audio that piled up past the pause while the GPU was busy.
@@ -440,6 +441,10 @@ class Session:
                 if text:
                     self.lines += 1
                     self.final_seconds.append(time.monotonic() - started)
+                elif pieces:
+                    # Words dropped here still go to the phone, which shows
+                    # a sentence said twice once: not an empty line.
+                    self.left_to_phone += 1
                 else:
                     self.empty_finals += 1
             # A pass this server dropped is still sent when the model wrote
@@ -467,11 +472,14 @@ class Session:
 
     def summary(self):
         minutes = (self.offset + len(self.buf)) / RATE / 60
+        empty = f"{self.empty_finals} finished empty"
+        if self.left_to_phone:
+            empty += f", {self.left_to_phone} left to the phone's filter"
         if not self.final_seconds:
-            return f"{minutes:.1f} min of audio, no lines, {self.empty_finals} finished empty"
+            return f"{minutes:.1f} min of audio, no lines, {empty}"
         median = sorted(self.final_seconds)[len(self.final_seconds) // 2]
         lag = sorted(self.final_lag_seconds)[len(self.final_lag_seconds) // 2] if self.final_lag_seconds else 0.0
-        return (f"{minutes:.1f} min of audio, {self.lines} lines, {self.empty_finals} finished empty, "
+        return (f"{minutes:.1f} min of audio, {self.lines} lines, {empty}, "
                 f"finished-line pass median {median:.2f} s, worst {max(self.final_seconds):.2f} s, "
                 f"wait after the pause median {lag:.2f} s")
 
