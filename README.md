@@ -130,10 +130,14 @@ things, for Hebrew conversation, entirely on-device.
   lose track of several people talking: each sentence goes to a speech
   model through [OpenRouter](https://openrouter.ai) with a key pasted into
   Settings (stored only in the phone's Keychain), together with the names
-  and important words lists so it can spell them. On Hebrew test recordings
-  the default cloud model got 24% of words wrong (the faster, cheaper one
-  29%) against 39% for Whisper large-v3 turbo and 60% for Whisper small,
-  and puts each change of speaker on its own line. A sentence is sent again
+  and important words lists so it can spell them. On twelve Hebrew test
+  recordings the default cloud model got 24% of words wrong (the faster,
+  cheaper one 29%) against 39% for OpenAI's Whisper large-v3 turbo and 60%
+  for Whisper small, and puts each change of speaker on its own line. The
+  phone's Hebrew-trained model was not in that test; on 60 other read
+  recordings it made a third fewer mistakes than OpenAI's turbo (21%
+  against 31%), so the cloud is no longer clearly the more accurate
+  choice. A sentence is sent again
   every few seconds while it is said, so the faster one costs about 15 cents
   per hour of speech, the default about twice that, and unbroken talk like
   the news up to three times as much; off Wi-Fi that is a few hundred MB of
