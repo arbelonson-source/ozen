@@ -116,7 +116,7 @@ things, for Hebrew conversation, entirely on-device.
   once it has been downloaded as a backup (Settings → Home computer →
   "Download a backup to the phone"; without it captions wait for the PC,
   start again within about 15 seconds of it answering, and the status line
-  offers the backup).
+  offers the backup; sound alerts keep listening meanwhile).
   See [Home computer requirements](#home-computer-requirements) and
   `server/README.md`.
 - **Optional cloud captions** for when the phone's models are too slow or
@@ -253,7 +253,10 @@ things, for Hebrew conversation, entirely on-device.
   three quick taps for her name. The banner and flash also show over
   whatever screen is open, such as the keyboard for typing a reply. A
   lesser sound heard meanwhile (a kettle during a smoke alarm) still buzzes
-  but doesn't take the alarm's banner or flash away.
+  but doesn't take the alarm's banner or flash away. While captions wait to
+  try again (the home computer asleep, the cloud out of reach, a model
+  waiting for Wi-Fi) the microphone stays on for sound alerts alone, so a
+  smoke alarm at night isn't missed because the computer was off.
 - **Alerts reach her with the screen off.** With the phone in a pocket or
   locked, a sound alert or her name becomes a phone notification (once per
   30 seconds per sound or word), so the doorbell isn't missed just because

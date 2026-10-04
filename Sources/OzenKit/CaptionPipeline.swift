@@ -222,6 +222,9 @@ public final class CaptionPipeline {
     private var streamTask: Task<Void, Never>?
     private var embeddingTask: Task<Void, Never>?
     private var soundTask: Task<Void, Never>?
+    /// The microphone is on for sound alerts alone, while captions wait to
+    /// come back (see `listenForSoundsMeanwhile`).
+    private var listeningForSoundsOnly = false
     private var staleCommitTask: Task<Void, Never>?
     private var utteranceClusterAssignments: [UUID: Int] = [:]
     /// Decides whether an embedding window holds a voice at all. Silence
@@ -364,6 +367,7 @@ public final class CaptionPipeline {
             phase = .idle
         }
         cancelScheduledRetry()
+        stopListeningForSounds()
         let run = UUID()
         runID = run
         activeSettings = settings
@@ -1237,6 +1241,7 @@ public final class CaptionPipeline {
         // the recording; it waits for the recording to end instead.
         isRecordingVoice = true
         defer { isRecordingVoice = false }
+        stopListeningForSounds()
         if let stream = await enrollmentCapture() {
             // A microphone that stops delivering would keep the recording
             // screen up for good, its cancel button disabled. Stopping
@@ -1262,6 +1267,8 @@ public final class CaptionPipeline {
         } else if let held = retryAfterRecording {
             retryAfterRecording = nil
             await retry(settings: held.settings)
+        } else if case .failed(let failure) = phase, retryToken != nil || homeServerRecheck != nil {
+            listenForSoundsMeanwhile(after: failure)
         }
         return collected
     }
@@ -2042,6 +2049,7 @@ public final class CaptionPipeline {
         systemInterrupted = active
         if active {
             cancelScheduledRetry()
+            stopListeningForSounds()
         } else if let failure = phase.failure {
             recovery.reset()
             scheduleAutoRecovery(for: failure)
@@ -2057,7 +2065,9 @@ public final class CaptionPipeline {
         guard !systemInterrupted else { return }
         guard let delay = recovery.nextDelay(for: failure) else {
             coverOnceRetriesRunOut(after: failure)
-            waitForHomeServer(after: failure)
+            if waitForHomeServer(after: failure) {
+                listenForSoundsMeanwhile(after: failure)
+            }
             return
         }
 
@@ -2076,6 +2086,46 @@ public final class CaptionPipeline {
             self.scheduledRetry = nil
             await self.retry()
         }
+        listenForSoundsMeanwhile(after: failure)
+    }
+
+    /// Captions stopped because their engine can't run for now (the home
+    /// computer asleep, the cloud down, a model waiting for Wi-Fi) used to
+    /// take sound alerts down with them: the microphone stayed off until
+    /// captions came back, all night with the computer off, and nothing
+    /// said so. Until the next start it stays on for sounds alone. Not for
+    /// a microphone that failed, nor during a call, which has it.
+    private func listenForSoundsMeanwhile(after failure: PipelineFailure) {
+        stopListeningForSounds()
+        guard failure.kind == .engineUnavailable, !systemInterrupted, !isRecordingVoice,
+              let soundDetector, soundPolicy.preferences.isEnabled,
+              let source = try? audio.startCapture()
+        else { return }
+        let run = runID
+        let fan = AudioFanOut(source: source, count: 1)
+        fanOut = fan
+        listeningForSoundsOnly = true
+        stats.soundDetectionRunning = true
+        let observations = soundDetector.observations(audio: fan.outputs[0])
+        soundTask = Task { [weak self] in
+            for await observation in observations {
+                guard let self, self.runID == run else { return }
+                self.handle(soundObservation: observation)
+            }
+            guard let self, self.runID == run else { return }
+            self.stats.soundDetectionRunning = false
+        }
+    }
+
+    private func stopListeningForSounds() {
+        guard listeningForSoundsOnly else { return }
+        listeningForSoundsOnly = false
+        soundTask?.cancel()
+        soundTask = nil
+        fanOut?.cancel()
+        fanOut = nil
+        audio.stopCapture()
+        stats.soundDetectionRunning = false
     }
 
     /// A cloud that stays busy or broken through every retry is covered
@@ -2097,10 +2147,11 @@ public final class CaptionPipeline {
     /// and coming back, started them again. Asks the computer every
     /// `homeServerWaitSeconds` and starts captions once it answers. A
     /// refused code needs a person, so it isn't asked again.
-    private func waitForHomeServer(after failure: PipelineFailure) {
+    @discardableResult
+    private func waitForHomeServer(after failure: PipelineFailure) -> Bool {
         guard failure.engineUnavailability?.kind == .homeServerUnreachable,
               activeSettings?.engine == .homeServer
-        else { return }
+        else { return false }
         homeServerRecheck?.cancel()
         // Once, not per check: a diagnostics report went from the last
         // quick retry straight to "answers again" a minute later, and a
@@ -2136,6 +2187,7 @@ public final class CaptionPipeline {
                 return
             }
         }
+        return true
     }
 
     /// The phone's backup can finish downloading while captions wait for
@@ -2174,6 +2226,7 @@ public final class CaptionPipeline {
         embeddingTask = nil
         soundTask?.cancel()
         soundTask = nil
+        listeningForSoundsOnly = false
         staleCommitTask?.cancel()
         staleCommitTask = nil
         fanOut?.cancel()

@@ -875,6 +875,102 @@ struct HomeServerCoverTests {
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .homeServer })
     }
 
+    /// Captions waiting for a computer that is off, with sound alerts as set.
+    private func waitingCaptions(soundAlerts: Bool = true) async -> (CaptionPipeline, FakeEngine, FakeEngine, FakeAudioCapturer, FakeSoundDetector) {
+        let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, "asleep"))
+        let phone = FakeEngine(kind: .whisperKit)
+        phone.pendingDownload = 819
+        let audio = FakeAudioCapturer()
+        let detector = FakeSoundDetector()
+        let captions = CaptionPipeline(
+            audio: audio,
+            engineFactory: { $0.engine == .homeServer ? server : phone },
+            embedder: FakeEmbedder(),
+            soundDetector: detector,
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+        )
+        captions.homeServerRecheckSeconds = 1000
+        captions.homeServerWaitSeconds = 0.05
+        var settings = serverSettings
+        settings.soundAlerts.isEnabled = soundAlerts
+        await captions.start(settings: settings)
+        #expect(await eventually { server.prepareCount >= 3 && captions.scheduledRetry == nil })
+        return (captions, server, phone, audio, detector)
+    }
+
+    @Test("while captions wait for the computer a smoke alarm still alerts, and captions take the microphone back once it answers")
+    func soundsWhileWaiting() async {
+        let (captions, server, _, audio, detector) = await waitingCaptions()
+        #expect(await eventually { captions.stats.soundDetectionRunning })
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        #expect(await eventually { detector.chunksSeen == 1 })
+        detector.push(SoundObservation(identifier: "smoke_detector", confidence: 0.9, timestamp: 100))
+        #expect(await eventually { captions.soundAlerts.count == 1 })
+
+        server.availability = .available
+        #expect(await eventually { captions.phase == .listening })
+        detector.push(SoundObservation(identifier: "door_bell", confidence: 0.9, timestamp: 200))
+        #expect(await eventually { captions.soundAlerts.count == 2 })
+
+        captions.stop()
+        #expect(!captions.stats.soundDetectionRunning)
+        #expect(audio.calls.last == "stopCapture")
+    }
+
+    @Test("a smoke alarm still alerts while captions wait for their next try")
+    func soundsWhileARetryIsScheduled() async {
+        let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, "asleep"))
+        let phone = FakeEngine(kind: .whisperKit)
+        phone.pendingDownload = 819
+        let detector = FakeSoundDetector()
+        let captions = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { $0.engine == .homeServer ? server : phone },
+            embedder: FakeEmbedder(),
+            soundDetector: detector,
+            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [])
+        )
+        await captions.start(settings: serverSettings)
+        #expect(await eventually { captions.scheduledRetry != nil && captions.stats.soundDetectionRunning })
+        detector.push(SoundObservation(identifier: "smoke_detector", confidence: 0.9, timestamp: 100))
+        #expect(await eventually { captions.soundAlerts.count == 1 })
+        captions.stop()
+    }
+
+    @Test("with sound alerts off, the microphone stays off while captions wait for the computer")
+    func noSoundsNoMicrophoneWhileWaiting() async {
+        let (captions, _, _, audio, _) = await waitingCaptions(soundAlerts: false)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(!captions.stats.soundDetectionRunning)
+        #expect(!audio.calls.contains("startCapture"))
+    }
+
+    @Test("a phone call during the wait takes the microphone from sound alerts, and they listen again after it")
+    func callDuringTheWait() async {
+        let (captions, _, _, audio, _) = await waitingCaptions()
+        #expect(await eventually { captions.stats.soundDetectionRunning })
+        captions.systemInterruptionChanged(active: true)
+        #expect(!captions.stats.soundDetectionRunning)
+        #expect(audio.calls.last == "stopCapture")
+        captions.systemInterruptionChanged(active: false)
+        #expect(await eventually { captions.stats.soundDetectionRunning })
+    }
+
+    @Test("a backup that takes over during the wait gets the microphone from sound alerts, never with two captures open")
+    func backupTakesTheMicrophoneFromSounds() async {
+        let (captions, _, phone, audio, detector) = await waitingCaptions()
+        #expect(await eventually { captions.stats.soundDetectionRunning })
+        phone.pendingDownload = nil
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .whisperKit })
+        var open = false
+        for call in audio.calls where call == "startCapture" || call == "stopCapture" {
+            #expect(!(open && call == "startCapture"), "\(audio.calls)")
+            open = call == "startCapture"
+        }
+        detector.push(SoundObservation(identifier: "door_bell", confidence: 0.9, timestamp: 100))
+        #expect(await eventually { captions.soundAlerts.count == 1 })
+    }
+
     @Test("a backup that finishes downloading while captions wait for the computer takes over, as its Settings row promises", .timeLimit(.minutes(1)))
     func backupReadyDuringTheWait() async {
         let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, "asleep"))
