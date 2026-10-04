@@ -164,7 +164,12 @@ address: `python pairing.py --address wss://<computer>.<tailnet>.ts.net`.
 
 ## Reaching it from the phone
 
-- **Same Wi-Fi:** the computer's address, for example `192.168.1.20`.
+- **Same Wi-Fi:** the computer's address, for example `192.168.1.20`. The
+  Windows setup lets the phone through the firewall; on Linux with a
+  firewall on (ufw is, on some distributions), let it in from the home
+  network: `sudo ufw allow from 192.168.1.0/24 to any port 8765 proto tcp`
+  (your network's own range in place of `192.168.1.0/24`). Tailscale
+  Funnel needs no rule: it reaches the server from the computer itself.
 - **From anywhere, no app on the phone:** Tailscale Funnel gives the
   server a public `wss://` address with a real certificate:
   `tailscale funnel --bg 8765` (on Windows, in the Windows command prompt;
