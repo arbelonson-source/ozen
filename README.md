@@ -85,7 +85,11 @@ things, for Hebrew conversation, entirely on-device.
   [Silero VAD](https://github.com/snakers4/silero-vad) in the CoreML
   conversion by [FluidAudio](https://huggingface.co/FluidInference/silero-vad-coreml) (MIT). On a LibriSpeech clustering test it separates a
   simulated four-person table correctly 96.8% of the time, against 45.8%
-  for the classic MFCC print it replaced.
+  for the classic MFCC print it replaced. A conversation is harder: on 18
+  put together from 16 Hebrew speakers' recordings, two to four people
+  each, the app's own speaker code labelled who said a sentence right 78%
+  of the time up close and 64% from across a room, and up close it showed
+  more voices than there were (two people came out as three to six).
 - **Two swappable on-device engines, plus the cloud** — [WhisperKit](https://github.com/argmaxinc/argmax-oss-swift)
   (Whisper via CoreML) and Apple's own on-device Speech framework — picked
   in Settings, since which one is actually better for Hebrew on a given
