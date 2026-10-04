@@ -46,7 +46,9 @@ public struct WhisperSegmentSummary: Sendable, Equatable {
 /// checks below that read it never fire, and what keeps an invented
 /// "thank you" off the screen is the voice check before the model hears a
 /// line (the computer's speech gate; on the phone, `VoiceEvidence`). The
-/// phone's own models were not measured.
+/// phone's engine never works it out: WhisperKit 1.1 reports 0 for every
+/// segment ("TODO: implement no speech prob" in its TextDecoder), so on
+/// the phone too they never fire.
 public struct WhisperResultFilter: Sendable, Equatable {
     public var noSpeechThreshold: Float
     public var logprobThreshold: Float
@@ -60,7 +62,8 @@ public struct WhisperResultFilter: Sendable, Equatable {
     public var ambiguousHallucinations: Set<String>
     /// Above this no-speech probability an ambiguous phrase is treated as
     /// invented. Real short speech sits far below it (and so does
-    /// everything the home computer's large models send, see above).
+    /// everything the home computer's large models and the phone's engine
+    /// send, see above).
     public var ambiguousNoSpeechThreshold: Float
     /// Below this mean log-probability an ambiguous phrase is treated as
     /// a guess.
