@@ -383,4 +383,33 @@ struct WhisperKitDecodeRoomTests {
     func promptUnderWhisperKitsOwnLimit() {
         #expect(WhisperKitDecodeRoom.maxPromptTokens <= 111)
     }
+
+    @Test("a live pass has room to spare for the most words real speech wrote in that much audio")
+    func livePassFitsRealSpeech() {
+        let fastest: [(seconds: Double, tokens: Int)] = [(0.6, 12), (1.2, 20), (1.8, 26), (2.4, 30), (3.0, 33), (4.8, 50)]
+        for pass in fastest {
+            let room = WhisperKitDecodeRoom.livePassTokens(seconds: pass.seconds)
+            #expect(room >= pass.tokens + 16, "\(pass.seconds) s")
+            #expect(!WhisperKitDecodeRoom.livePassRanOut(wordTokens: pass.tokens, seconds: pass.seconds))
+        }
+        for tenths in 6...280 {
+            let seconds = Double(tenths) / 10
+            #expect(Double(WhisperKitDecodeRoom.livePassTokens(seconds: seconds)) >= min(223, seconds * 17.4), "\(seconds) s")
+        }
+    }
+
+    @Test("a pass looping on a long sound in the first second stops long before the decoder's end, and is dropped")
+    func loopStopsEarly() {
+        let room = WhisperKitDecodeRoom.livePassTokens(seconds: 0.6)
+        #expect(room <= 32)
+        #expect(WhisperKitDecodeRoom.livePassTokens(seconds: 1.2) <= 48)
+        #expect(WhisperKitDecodeRoom.livePassRanOut(wordTokens: room, seconds: 0.6))
+        #expect(!WhisperKitDecodeRoom.livePassRanOut(wordTokens: room - 1, seconds: 0.6))
+    }
+
+    @Test("a long window keeps the whole decoder, so what stops it is the same as before")
+    func longWindowUncapped() {
+        #expect(WhisperKitDecodeRoom.livePassTokens(seconds: 28) == WhisperKitDecodeRoom.positions)
+        #expect(!WhisperKitDecodeRoom.livePassRanOut(wordTokens: 218, seconds: 28))
+    }
 }

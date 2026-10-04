@@ -415,6 +415,10 @@ public actor WhisperKitEngine: TranscriptionEngine {
 
             var options = isFinal ? finalPass : livePass
             options.promptTokens = prompt
+            let windowSeconds = Double(window.count) / sampleRate
+            if !isFinal {
+                options.sampleLength = WhisperKitDecodeRoom.livePassTokens(seconds: windowSeconds)
+            }
             // A voice across the room reaches the model quiet; brought up to
             // a common level it made fewer mistakes (speaker across the room
             // 51.3 -> 49.6% of words wrong, 8 dB quieter 86.5 -> 84.9%) and
@@ -456,12 +460,20 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     temperature: $0.temperature
                 )
             }
+            // A live pass that used all its room was looping on one sound
+            // (see `WhisperKitDecodeRoom.livePassTokens`).
+            let ranOut = !isFinal && specialTokenBegin.map { begin in
+                WhisperKitDecodeRoom.livePassRanOut(
+                    wordTokens: results.flatMap(\.segments).flatMap(\.tokens).filter { $0 < begin }.count,
+                    seconds: windowSeconds
+                )
+            } == true
             // Confidence has to describe exactly the text being shown, not
             // the whole pass -- a rejected hallucination segment can have a
             // confident logprob of its own and skew the mean either way for
             // content that never reaches the screen.
-            let acceptedSegments = filter.accepted(from: summaries, echo: echoDetector)
-            let text = filter.acceptedText(from: summaries, echo: echoDetector)
+            let acceptedSegments = ranOut ? [] : filter.accepted(from: summaries, echo: echoDetector)
+            let text = ranOut ? "" : filter.acceptedText(from: summaries, echo: echoDetector)
             let confidence = CaptionConfidence.whisperConfidence(of: acceptedSegments)
             tally.recordSegments(seen: summaries.count, accepted: acceptedSegments.count)
             if isFinal { tally.recordFinalPass(cameBackEmpty: text.isEmpty) }

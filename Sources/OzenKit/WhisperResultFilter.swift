@@ -68,6 +68,25 @@ public enum WhisperKitDecodeRoom {
         let opening = 4 + (promptTokens > 0 ? promptTokens + 1 : 0)
         return min(cap, Double(positions - opening) / tokensPerSecond)
     }
+
+    /// How many words a pass over a line still being said may write. On
+    /// 839 recordings through ivrit.ai's Turbo, 11 of 3,117 such passes
+    /// looped on a drawn-out sound (an "ehhh" written as one letter over
+    /// and over) and ran to the decoder's end, 224 tokens: the filter
+    /// throws the pass away, but the phone had spent a whole decode on it
+    /// and waits twice as long again before the next. Real speech, there
+    /// and in 3,485 more passes over 82 windows of up to 27 s, never wrote
+    /// more than 12 tokens in 0.6 s, 20 in 1.2 s or 50 in 4.8 s (17.4 a
+    /// second at the 99.9th percentile), so a pass that fills this much
+    /// room is a loop, and the screen keeps what it had. The pass that
+    /// ends the line keeps the whole decoder.
+    public static func livePassTokens(seconds: Double) -> Int {
+        min(positions, Int((seconds * 20).rounded(.up)) + 16)
+    }
+
+    public static func livePassRanOut(wordTokens: Int, seconds: Double) -> Bool {
+        wordTokens >= livePassTokens(seconds: seconds)
+    }
 }
 
 /// Whisper is famous for hallucinating on silence and background noise:
