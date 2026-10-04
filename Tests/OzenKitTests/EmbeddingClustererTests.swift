@@ -329,4 +329,29 @@ struct EmbeddingClustererDoubtfulTests {
         #expect(clusterer.assign(embedding: doubtful) == first)
         #expect(clusterer.clusters.count == 1)
     }
+
+    @Test("a window well short of every voice still waits for a second one")
+    func farWindowWaits() {
+        var clusterer = EmbeddingClusterer(similarityThreshold: 0.45)
+        let first = clusterer.assign(embedding: [1, 0, 0])
+        // A voice close to the phone scores this low often enough that
+        // opening a speaker on it at once showed people who weren't there.
+        #expect(clusterer.assign(embedding: vector(cosine: 0.15)) == first)
+        #expect(clusterer.clusters.count == 1)
+        #expect(clusterer.assign(embedding: vector(cosine: 0.15)) != first)
+    }
+
+    @Test("a loud window counts no more than a quiet one in a voice's average")
+    func loudnessCarriesNoWeight() {
+        var clusterer = EmbeddingClusterer(similarityThreshold: 0.45)
+        _ = clusterer.assign(embedding: [20, 0, 0])
+        _ = clusterer.assign(embedding: [0.6, 0.8, 0])
+        #expect(cosineSimilarity(clusterer.clusters[0].centroid, [0.8, 0.4, 0]) > 0.9999)
+
+        var enrolled = EmbeddingClusterer(similarityThreshold: 0.45)
+        _ = enrolled.enroll(name: "סבתא", embedding: [20, 0, 0])
+        _ = enrolled.assign(embedding: [0.6, 0.8, 0])
+        let weight = Float(EmbeddingClusterer.enrollmentWeight)
+        #expect(abs(enrolled.clusters[0].centroid[0] - (weight + 0.6) / (weight + 1)) < 0.0001)
+    }
 }

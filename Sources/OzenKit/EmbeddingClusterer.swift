@@ -31,7 +31,12 @@ public struct EmbeddingClusterer: Sendable {
     /// and used to open a "new speaker" every time it did (twelve of them
     /// from one person). A doubtful window is held, counted with the nearest
     /// voice, and only opens a speaker if the very next window agrees with it.
-    public var newSpeakerMargin: Float = 0.25
+    /// At 0.25, a voice close to the phone still scored under it often
+    /// enough to open speakers who weren't there; at 0.40, across 36 recorded
+    /// conversations, a speaker more than the truth fell from 1.7 to 1.4 per
+    /// conversation up close and from 0.34 to 0.12 across a room, with
+    /// labels right at least as often.
+    public var newSpeakerMargin: Float = 0.40
     /// A doubtful window waiting for the next one to agree with it.
     private var doubtful: [Float]?
     private var nextID = 0
@@ -67,7 +72,7 @@ public struct EmbeddingClusterer: Sendable {
     /// enough. Returns the cluster id.
     @discardableResult
     public mutating func assign(embedding: [Float]) -> Int {
-        let id = match(embedding: embedding)
+        let id = match(embedding: Self.direction(of: embedding))
         windowsHeard += 1
         lastHeard[id] = windowsHeard
         retireOldestIfCrowded(keeping: id)
@@ -134,7 +139,17 @@ public struct EmbeddingClusterer: Sendable {
     /// first live window move the profile halfway.
     @discardableResult
     public mutating func enroll(name: String, embedding: [Float], weight: Int = EmbeddingClusterer.enrollmentWeight) -> Int {
-        openCluster(with: embedding, name: name, sampleCount: max(1, weight))
+        openCluster(with: Self.direction(of: embedding), name: name, sampleCount: max(1, weight))
+    }
+
+    /// A voice print scaled to length 1. Cosine similarity ignores length,
+    /// but the running average doesn't: the length varied from 16 to 29
+    /// within one recorded conversation, and the longest prints pulled a
+    /// voice toward themselves.
+    static func direction(of embedding: [Float]) -> [Float] {
+        let length = embedding.reduce(0) { $0 + $1 * $1 }.squareRoot()
+        guard length > 0, length.isFinite else { return embedding }
+        return embedding.map { $0 / length }
     }
 
     public static let enrollmentWeight = 6
