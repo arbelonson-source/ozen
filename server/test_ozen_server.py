@@ -303,6 +303,30 @@ class LongLine(unittest.TestCase):
         self.assertEqual(sum(finals), session.offset)
 
 
+class BuriedPause(unittest.TestCase):
+    def test_a_pause_the_next_sentence_followed_before_a_slow_pass_ended_still_ends_the_line(self):
+        gpu = WindowGPU(live_seconds=1.5)
+        session = S.Session(Socket(), gpu, "he", [], live_interval=0.3)
+
+        async def feed():
+            worker = asyncio.create_task(session.run())
+            for seconds, level in ((0.6, 0.0005), (1.5, 0.3), (1.0, 0.0005), (1.5, 0.3), (1.6, 0.0005)):
+                chunk = pcm(seconds, level)
+                step = int(0.1 * S.RATE) * 2
+                for i in range(0, len(chunk), step):
+                    session.add_audio(chunk[i:i + step])
+                    await asyncio.sleep(0.1)
+            session.finished = True
+            session.changed.set()
+            await asyncio.wait_for(worker, 10)
+
+        asyncio.run(feed())
+        finals = [n / S.RATE for n, final in gpu.passes if final]
+        self.assertEqual(len(finals), 2, gpu.passes)
+        self.assertTrue(2.1 <= finals[0] <= 3.1, finals)
+        self.assertGreaterEqual(finals[1], 1.5, finals)
+
+
 class RepeatGPU(SlowGPU):
     """Every pass comes back as a sentence written twice, which this server
     drops for its compression and the phone keeps (WhisperResultFilter)."""

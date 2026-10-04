@@ -329,6 +329,9 @@ class Session:
         self.buf = np.zeros(0, dtype=np.float32)
         self.offset = 0
         self.last_speech_end = None
+        # Where speech stopped for a pause before more of it came, in case
+        # the loop was busy with a pass all through the pause.
+        self.pauses = []
         self.finished = False
         self.samples_at_last_pass = 0
         self.speech_end_at_last_pass = None
@@ -354,6 +357,8 @@ class Session:
         for i in range(0, len(chunk), step):
             piece = chunk[i:i + step]
             if self.detector.is_speech(piece):
+                if self.last_speech_end is not None and start + i - self.last_speech_end >= int(self.pause * RATE):
+                    self.pauses.append(self.last_speech_end)
                 self.last_speech_end = start + i + len(piece)
         self.changed.set()
 
@@ -389,7 +394,12 @@ class Session:
                     return
                 await self._wait()
                 continue
-            pause_reached = total - end_speech >= pause
+            # A pass slower than the pause (a busy or small card) used to
+            # find the next sentence already started, and ran the two
+            # together into one line until the length limit cut it,
+            # sometimes inside a word.
+            line_end = self.pauses[0] if self.pauses else end_speech
+            pause_reached = bool(self.pauses) or total - end_speech >= pause
             too_long = total >= max_s
             final = pause_reached or too_long or self.finished
             # Once the voice stops, another live pass reads the same words
@@ -403,7 +413,7 @@ class Session:
             if not final:
                 window = self.buf[:total]
             else:
-                end = min(total, end_speech + pad)
+                end = min(total, line_end + pad)
                 # A slow pass can leave more than the longest line waiting,
                 # even past a pause or the end: cut near the limit, not near
                 # the end of that backlog, or Whisper gets more than its
@@ -418,7 +428,7 @@ class Session:
             self.samples_at_last_pass = total
             self.speech_end_at_last_pass = end_speech
             if final and pause_reached:
-                self.final_lag_seconds.append(max(0, total - end_speech - pause) / R)
+                self.final_lag_seconds.append(max(0, total - line_end - pause) / R)
             started = time.monotonic()
             text, confidence, pieces = await self.t.transcribe(
                 window.copy(), self.language, self.prompt(), final, self.hotwords(),
@@ -448,6 +458,7 @@ class Session:
                 self.offset += used
                 if self.last_speech_end is not None:
                     self.last_speech_end = self.last_speech_end - used if self.last_speech_end > used else None
+                self.pauses = [at - used for at in self.pauses if at > used]
                 self.utterance += 1
                 self.samples_at_last_pass = 0
                 self.speech_end_at_last_pass = None
