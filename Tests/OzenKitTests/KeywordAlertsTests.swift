@@ -273,6 +273,27 @@ struct KeywordAlertMatcherTests {
         #expect(hits("רון", "רון הגיע") == 1)
     }
 
+    @Test("names that real speech hid in everyday words: Avi in 'pains of', Leah in 'full', Beni in 'buildings of', Miriam after 'the'")
+    func namesHiddenInRealSpeech() {
+        func hits(_ name: String, _ caption: String) -> Int {
+            KeywordAlertMatcher(alerts: [KeywordAlert(phrase: name)]).matches(in: caption).count
+        }
+        // Lines the home computer wrote from broadcast and lecture speech.
+        #expect(hits("אבי", "באמת חוויה טראומטית של כאבי תופת כאן") == 0)
+        #expect(hits("אבי", "יש לה כאבי ראש וכאבי גב") == 0)
+        #expect(hits("לאה", "או לא לעבוד משרה מלאה, להכניס פחות.") == 0)
+        #expect(hits("לאה", "הכוס שמלאה במים, ומלאה עד הסוף") == 0)
+        #expect(hits("בני", "נזכיר את מבני השיעור ומבני הציבור") == 0)
+        #expect(hits("מרים", "המרים, שקיבלה תשובה") == 0)
+        #expect(hits("מרים", "והמרים מהמשקל, שהמרים") == 0)
+        // Said to or about them, they still buzz.
+        #expect(hits("אבי", "אבי, בוא לאכול") == 1)
+        #expect(hits("אבי", "תתקשרו לאבי") == 1)
+        #expect(hits("לאה", "אמא ולאה באו") == 1)
+        #expect(hits("בני", "תגידו לבני שהגענו") == 1)
+        #expect(hits("מרים", "מרים, את שומעת?") == 1)
+    }
+
     @Test("the suggested words 'medicine' and 'doctor' also fire on their plural and feminine forms, with a prefix too")
     func suggestedWordsMatchTheirForms() {
         func hits(_ word: String, _ caption: String) -> Int {
