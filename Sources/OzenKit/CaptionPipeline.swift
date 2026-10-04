@@ -37,7 +37,9 @@ public final class CaptionPipeline {
     /// Lines finished since launch, as `stats.segmentsCommitted`, but
     /// observed on its own: `stats` changes with every chunk of audio, and
     /// a caption screen that read it to hear of finished lines was drawn
-    /// again ten or more times a second, silence included.
+    /// again ten or more times a second, silence included. It also moves
+    /// when a line finished on the stale-commit guess finishes again (see
+    /// `noteFinished`), which `segmentsCommitted` counts once.
     public private(set) var committedLineCount = 0
     /// When listening last began, as `stats.sessionStartedAt`, observed on
     /// its own for the same reason.
@@ -1417,8 +1419,9 @@ public final class CaptionPipeline {
     public func commitStaleSegments(now override: TimeInterval? = nil) {
         let committed = stabilizer.commitStale(now: override ?? now())
         for segment in committed {
+            let previously = segments.last { $0.id == segment.id }
             upsert(segment)
-            countCommittedLine()
+            noteFinished(segment, previously: previously)
         }
         if !committed.isEmpty {
             stats.hasOpenLine = stabilizer.hasOpenLine
@@ -1478,9 +1481,9 @@ public final class CaptionPipeline {
     /// Commits the line already shown for `id`, if any, as it stands.
     private func commitWithoutNewWords(_ id: UUID) {
         guard let segment = stabilizer.commit(id: id) else { return }
-        let wasCommitted = segments.last { $0.id == segment.id }?.isCommitted ?? false
+        let previously = segments.last { $0.id == segment.id }
         upsert(segment)
-        if !wasCommitted { countCommittedLine() }
+        noteFinished(segment, previously: previously)
         stats.hasOpenLine = stabilizer.hasOpenLine
     }
 
@@ -1556,11 +1559,9 @@ public final class CaptionPipeline {
                 utteranceClusterAssignments[token.utteranceID] = recent.id
             }
         }
-        let wasCommitted = stabilizer.segments.last(where: { $0.id == token.utteranceID })?.isCommitted ?? false
+        let previously = stabilizer.segments.last { $0.id == token.utteranceID }
         let segment = stabilizer.ingest(enriched)
-        if segment.isCommitted && !wasCommitted {
-            countCommittedLine()
-        }
+        noteFinished(segment, previously: previously)
         upsert(segment)
         stats.hasOpenLine = stabilizer.hasOpenLine
         scanForKeywords(in: segment)
@@ -1640,9 +1641,21 @@ public final class CaptionPipeline {
         }
     }
 
-    private func countCommittedLine() {
-        stats.segmentsCommitted += 1
-        committedLineCount += 1
+    /// Counts a line the first time it finishes. One finished on the guess
+    /// that the engine went quiet (`CaptionStabilizer.commitStale`) can
+    /// finish again, by the engine's own late final or after reopening:
+    /// still one line, but its words may have changed since VoiceOver read
+    /// them out, so `committedLineCount` moves for `CaptionAnnouncer` to
+    /// look at it again. That used to wait for the next line to finish.
+    private func noteFinished(_ segment: TranscriptSegment, previously: TranscriptSegment?) {
+        guard segment.isCommitted else { return }
+        if let previously, previously.isCommitted, previously.isSettled || !segment.isSettled { return }
+        if let previously, previously.isCommitted || previously.isProvisionalCommit {
+            committedLineCount += 1
+        } else {
+            stats.segmentsCommitted += 1
+            committedLineCount += 1
+        }
     }
 
     private func upsert(_ segment: TranscriptSegment) {
@@ -2245,9 +2258,9 @@ public final class CaptionPipeline {
         let finished = stabilizer.commitAll()
         guard !finished.isEmpty else { return }
         for segment in finished {
-            let wasCommitted = segments.last { $0.id == segment.id }?.isCommitted ?? false
+            let previously = segments.last { $0.id == segment.id }
             upsert(segment)
-            if !wasCommitted { countCommittedLine() }
+            noteFinished(segment, previously: previously)
         }
         stats.hasOpenLine = false
     }

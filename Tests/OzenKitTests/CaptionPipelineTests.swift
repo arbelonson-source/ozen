@@ -641,6 +641,43 @@ struct CaptionPipelineTokenTests {
         #expect(pipeline.stats.segmentsCommitted == 1)
     }
 
+    @Test("a slow engine's final after the safety net closed its line wakes VoiceOver again, yet the line is counted once")
+    func lateFinalAfterTheSafetyNet() async {
+        let engine = FakeEngine()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine], now: { 1_000 })
+        await pipeline.start(settings: .default)
+        let wait = CaptionStabilizer.defaultSilenceCommitThreshold + 0.5
+
+        // The final comes straight after the guess, with a word changed:
+        // VoiceOver read the guess, so it has to hear of the correction
+        // now, not with whatever line finishes next.
+        let corrected = UUID()
+        engine.emit(token(corrected, "מה שלו", at: 1_000))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        pipeline.commitStaleSegments(now: 1_000 + wait)
+        #expect(pipeline.committedLineCount == 1)
+        engine.emit(token(corrected, "מה שלומך?", final: true, at: 1_008))
+        #expect(await eventually { pipeline.segments.first?.isSettled == true })
+        #expect(pipeline.committedLineCount == 2)
+        #expect(pipeline.stats.segmentsCommitted == 1)
+
+        // Reopened by a live pass, closed by the safety net again, then
+        // finished: still one line.
+        let reopened = UUID()
+        engine.emit(token(reopened, "ביום", at: 1_010))
+        #expect(await eventually { pipeline.segments.count == 2 })
+        pipeline.commitStaleSegments(now: 1_010 + wait)
+        engine.emit(token(reopened, "ביום שלישי", at: 1_018))
+        #expect(await eventually { pipeline.segments.last?.text == "ביום שלישי" })
+        #expect(pipeline.segments.last?.isCommitted == false)
+        pipeline.commitStaleSegments(now: 1_018 + wait)
+        #expect(pipeline.committedLineCount == 4)
+        engine.emit(token(reopened, "ביום שלישי בבוקר", final: true, at: 1_026))
+        #expect(await eventually { pipeline.segments.last?.isSettled == true })
+        #expect(pipeline.committedLineCount == 5)
+        #expect(pipeline.stats.segmentsCommitted == 2)
+    }
+
     @Test("a slow embedding names the line that was being said, not one that started meanwhile")
     func slowEmbeddingKeepsItsLine() async {
         let engine = FakeEngine()
