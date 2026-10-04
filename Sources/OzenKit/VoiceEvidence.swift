@@ -38,6 +38,13 @@ public struct VoiceEvidence {
         return overlapping.contains { $0.voiced == nil } ? nil : false
     }
 
+    public func voicedChunks(inFirst count: Int) -> Int? {
+        let end = start + count
+        let overlapping = chunks.filter { $0.end > start && $0.end - Self.chunkSamples < end }
+        guard !overlapping.isEmpty, !overlapping.contains(where: { $0.voiced == nil }) else { return nil }
+        return overlapping.filter { $0.voiced == true }.count
+    }
+
     public mutating func drop(prefix count: Int) {
         start += count
         chunks.removeAll { $0.end <= start }

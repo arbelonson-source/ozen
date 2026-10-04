@@ -413,3 +413,32 @@ struct WhisperKitDecodeRoomTests {
         #expect(!WhisperKitDecodeRoom.livePassRanOut(wordTokens: 218, seconds: 28))
     }
 }
+
+@Suite("A thank-you on its own needs more than a moment of voice")
+struct UnvoicedPhraseTests {
+    let filter = WhisperResultFilter()
+
+    @Test("a lone thank-you heard in one voiced chunk is dropped; in two it is shown")
+    func loneThanks() {
+        #expect(filter.isUnvoicedPhrase("תודה רבה.", voicedChunks: 1))
+        #expect(filter.isUnvoicedPhrase("\u{202B}תודה", voicedChunks: 0))
+        #expect(!filter.isUnvoicedPhrase("תודה רבה", voicedChunks: 2))
+    }
+
+    @Test("a thank-you inside a longer line, or any other short word, is never touched")
+    func otherLines() {
+        #expect(!filter.isUnvoicedPhrase("תודה רבה, סבתא", voicedChunks: 1))
+        #expect(!filter.isUnvoicedPhrase("כן", voicedChunks: 1))
+        #expect(!filter.isUnvoicedPhrase("", voicedChunks: 0))
+    }
+
+    @Test("without a count (no voice model, or captions stopping) nothing is dropped")
+    func unknownCount() {
+        #expect(!filter.isUnvoicedPhrase("תודה רבה", voicedChunks: nil))
+    }
+
+    @Test("the phrase said twice over is still the phrase")
+    func repeated() {
+        #expect(filter.isUnvoicedPhrase("תודה תודה", voicedChunks: 1))
+    }
+}

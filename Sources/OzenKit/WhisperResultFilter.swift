@@ -106,7 +106,8 @@ public enum WhisperKitDecodeRoom {
 /// kitchen noise; and they write a confident "toda raba" on faint hiss. For its lines the
 /// checks below that read it never fire, and what keeps an invented
 /// "thank you" off the screen is the voice check before the model hears a
-/// line (the computer's speech gate; on the phone, `VoiceEvidence`). The
+/// line (the computer's speech gate; on the phone, `VoiceEvidence`, and
+/// for a lone thank-you, how much voice it held, `isUnvoicedPhrase`). The
 /// phone's engine never works it out: WhisperKit 1.1 reports 0 for every
 /// segment ("TODO: implement no speech prob" in its TextDecoder), so on
 /// the phone too they never fire.
@@ -117,8 +118,9 @@ public struct WhisperResultFilter: Sendable, Equatable {
     public var knownHallucinations: Set<String>
     /// Phrases Whisper invents on noise that people also genuinely say in
     /// conversation ("toda", "toda raba" — "thanks", "thank you very much").
-    /// Dropped only when the segment's own statistics look like noise, never
-    /// when the model heard them clearly: missing a real "thank you" is its own
+    /// Dropped only when the segment's own statistics look like noise, or
+    /// the voice model heard too little voice under it (`isUnvoicedPhrase`),
+    /// never just for being the phrase: missing a real "thank you" is its own
     /// kind of wrong.
     public var ambiguousHallucinations: Set<String>
     /// Above this no-speech probability an ambiguous phrase is treated as
@@ -129,6 +131,8 @@ public struct WhisperResultFilter: Sendable, Equatable {
     /// Below this mean log-probability an ambiguous phrase is treated as
     /// a guess.
     public var ambiguousLogprobThreshold: Float
+    /// See `isUnvoicedPhrase`.
+    public var minimumPhraseVoicedChunks = 2
     /// Openings of the credit lines Whisper invents on silence, which come with
     /// an arbitrary name attached ("ktuviot al yedei <name>" — "captions by
     /// <name>"), so an exact-phrase list can't catch them.
@@ -241,6 +245,23 @@ public struct WhisperResultFilter: Sendable, Equatable {
             .filter { !$0.isEmpty }
             .joined(separator: " ")
         return Self.collapsingRepeats(joined)
+    }
+
+    /// Whether `text` is nothing but one of the ambiguous phrases, heard
+    /// in fewer than `minimumPhraseVoicedChunks` of the voice model's
+    /// 0.256 s chunks. Household noise that gets past the voice check
+    /// comes back as a "toda raba" scored like a real one: 35 real
+    /// thank-yous (five cut from broadcast lines, each clean and at 10 to
+    /// 0 dB of kitchen and living-room noise) averaged -0.07 or better,
+    /// nowhere near `ambiguousLogprobThreshold`. The voice check is what
+    /// tells them apart. Through the phone's gate, 45 minutes of kitchen,
+    /// living-room and laundry noise (three microphones in each room) gave
+    /// 7 lines that came back as a thank-you, 5 of them with one voiced
+    /// chunk; the real ones (0.35 to 0.42 s) had two or more in 312 of 320
+    /// placements across the chunk grid. Without a count nothing is dropped.
+    public func isUnvoicedPhrase(_ text: String, voicedChunks: Int?) -> Bool {
+        guard let voicedChunks, voicedChunks < minimumPhraseVoicedChunks else { return false }
+        return ambiguousHallucinations.contains(Self.normalize(Self.collapsingRepeats(text, maxRepeats: 1)))
     }
 
     /// The subset of `segments` that survive into `acceptedText`, for a

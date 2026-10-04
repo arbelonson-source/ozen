@@ -468,12 +468,19 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     seconds: windowSeconds
                 )
             } == true
+            // A thank-you alone in a moment of voice is most likely
+            // household noise (see `WhisperResultFilter.isUnvoicedPhrase`).
+            // When captions stop, the last chunk may not be scored yet.
+            let dropped = ranOut || filter.isUnvoicedPhrase(
+                filter.acceptedText(from: summaries, echo: echoDetector),
+                voicedChunks: status.finished ? nil : intake.voicedChunks(upTo: end)
+            )
             // Confidence has to describe exactly the text being shown, not
             // the whole pass -- a rejected hallucination segment can have a
             // confident logprob of its own and skew the mean either way for
             // content that never reaches the screen.
-            let acceptedSegments = ranOut ? [] : filter.accepted(from: summaries, echo: echoDetector)
-            let text = ranOut ? "" : filter.acceptedText(from: summaries, echo: echoDetector)
+            let acceptedSegments = dropped ? [] : filter.accepted(from: summaries, echo: echoDetector)
+            let text = dropped ? "" : filter.acceptedText(from: summaries, echo: echoDetector)
             let confidence = CaptionConfidence.whisperConfidence(of: acceptedSegments)
             tally.recordSegments(seen: summaries.count, accepted: acceptedSegments.count)
             if isFinal { tally.recordFinalPass(cameBackEmpty: text.isEmpty) }
@@ -656,6 +663,12 @@ private final class AudioIntake: @unchecked Sendable {
     /// that isn't known.
     func hasVoice(upTo end: Int) -> Bool? {
         lock.withLock { evidence?.hasVoice(inFirst: end) }
+    }
+
+    /// How many of the first `end` samples' chunks had a voice in them;
+    /// nil when that isn't known.
+    func voicedChunks(upTo end: Int) -> Int? {
+        lock.withLock { evidence?.voicedChunks(inFirst: end) }
     }
 
     func markFinished() {

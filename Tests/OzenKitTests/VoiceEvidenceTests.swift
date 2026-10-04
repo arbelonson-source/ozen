@@ -54,6 +54,28 @@ struct VoiceEvidenceTests {
         #expect(evidence.hasVoice(inFirst: chunk * 2) == false)
     }
 
+    @Test("counts the voiced chunks in a stretch, following the caller's drops")
+    func countsVoicedChunks() {
+        var evidence = VoiceEvidence(score: Recorder([0.1, 0.9, 0.8, 0.1]).score)
+        evidence.append([Float](repeating: 0.01, count: chunk * 4))
+        #expect(evidence.voicedChunks(inFirst: chunk * 4) == 2)
+        #expect(evidence.voicedChunks(inFirst: chunk * 2) == 1)
+        #expect(evidence.voicedChunks(inFirst: chunk) == 0)
+        evidence.drop(prefix: chunk * 2)
+        #expect(evidence.voicedChunks(inFirst: chunk * 2) == 1)
+    }
+
+    @Test("a chunk the scorer couldn't read, or none scored yet, leaves the count unknown")
+    func countUnknown() {
+        var broken = VoiceEvidence(score: Recorder([0.9, nil]).score)
+        broken.append([Float](repeating: 0.01, count: chunk * 2))
+        #expect(broken.voicedChunks(inFirst: chunk * 2) == nil)
+
+        var fresh = VoiceEvidence(score: Recorder([]).score)
+        fresh.append([Float](repeating: 0.01, count: chunk - 1))
+        #expect(fresh.voicedChunks(inFirst: chunk - 1) == nil)
+    }
+
     @Test("follows the caller dropping the start of its buffer")
     func drop() {
         let recorder = Recorder([0.9, 0.1, 0.1])
