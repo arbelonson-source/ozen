@@ -431,6 +431,20 @@ struct TranscriptHistoryTests {
         #expect(text == "שיחה מתאריך 01.01.1970\n\n[01:01:01] סבתא: שלום\n[01:01:05] מה נשמע")
     }
 
+    @Test("shared text warns on a line the screen marked unsure, unless the marks are turned off")
+    func exportTextWarnsOnUnsureLines() {
+        var unsure = segment(text: "שני כדורים בעשר וחצי", speakerName: "רופא", startTimestamp: 3_661)
+        unsure.confidence = 0.7
+        var sure = segment(text: "ולחזור בעוד חודש", speakerName: nil, startTimestamp: 3_665)
+        sure.confidence = 0.97
+        let session = record(startedAt: 3_661, segments: [unsure, sure])
+        let offset: (TimeInterval) -> Int = { _ in 0 }
+        #expect(TranscriptHistoryStore.exportText(session, utcOffsetAt: offset, marksUncertain: true)
+            == "שיחה מתאריך 01.01.1970\n\n[01:01:01] ייתכן שלא נשמע נכון. רופא: שני כדורים בעשר וחצי\n[01:01:05] ולחזור בעוד חודש")
+        #expect(TranscriptHistoryStore.exportText(session, utcOffsetAt: offset, marksUncertain: false)
+            == "שיחה מתאריך 01.01.1970\n\n[01:01:01] רופא: שני כדורים בעשר וחצי\n[01:01:05] ולחזור בעוד חודש")
+    }
+
     @Test("shared text drops 'Unknown speaker' in any language but keeps real and numbered names")
     func exportTextDropsUnknownSpeaker() {
         let session = record(startedAt: 3_661, segments: [

@@ -835,7 +835,8 @@ public struct TranscriptHistoryStore: Sendable {
 
     /// As above, with the offset looked up per timestamp: a summer
     /// conversation shared in winter keeps the clock times it was said at.
-    public static func exportText(_ record: TranscriptSessionRecord, utcOffsetAt offset: (TimeInterval) -> Int) -> String {
+    /// With `marksUncertain`, a line the engine was unsure of says so.
+    public static func exportText(_ record: TranscriptSessionRecord, utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool = false) -> String {
         let formatted = record.segments
             .map { segment in
                 let time = formattedClockTime(segment.startTimestamp, utcOffsetSeconds: offset(segment.startTimestamp))
@@ -843,13 +844,17 @@ public struct TranscriptHistoryStore: Sendable {
                 // As on the caption screen: pasted into a chat, "050 123
                 // 4567" in a Hebrew line would read "4567 123 050".
                 let said = CaptionLayout.isolatingNumbers(segment.text)
+                // The question mark the screen showed, in words: whoever
+                // reads "two pills at ten thirty" in a chat should know too.
+                let unsure = marksUncertain && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, engine: record.engine)
+                let warning = unsure ? tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") : ""
                 let line: String
                 // "Unknown speaker:" on every unrecognised line says nothing;
                 // numbered voices ("Speaker 2") still tell turns apart.
                 if let name = segment.speakerName, !name.isEmpty, !TranscriptSessionSummary.isUnknownSpeakerLabel(name) {
-                    line = "\(star)[\(time)] \(name): \(said)"
+                    line = "\(star)[\(time)] \(warning)\(name): \(said)"
                 } else {
-                    line = "\(star)[\(time)] \(said)"
+                    line = "\(star)[\(time)] \(warning)\(said)"
                 }
                 // Pasted into a chat, a line opening with an English word
                 // would be laid out left to right and read out of order.
