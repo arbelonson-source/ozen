@@ -7,8 +7,8 @@ public struct WhisperSegmentSummary: Sendable, Equatable {
     public var text: String
     /// Probability the model assigns to "this window contains no speech".
     public var noSpeechProb: Float
-    /// Mean log-probability of the emitted tokens; very negative means the
-    /// model was guessing.
+    /// Mean log-probability of the emitted tokens, as `averageLogprob`
+    /// works it out; very negative means the model was guessing.
     public var avgLogprob: Float
     /// zlib compression ratio — high values mean repetitive output, the
     /// signature of a decoding loop ("toda toda toda ..."). The home
@@ -25,6 +25,20 @@ public struct WhisperSegmentSummary: Sendable, Equatable {
         self.avgLogprob = avgLogprob
         self.compressionRatio = compressionRatio
         self.uncertainWords = uncertainWords
+    }
+
+    /// The words' token scores summed, over their count plus one for the
+    /// end of text: the reference Whisper's average, and the home
+    /// computer's, on which every cutoff here and the unsure mark's were
+    /// measured. WhisperKit 1.1's own also counts the four tokens that open
+    /// every line and the end at a perfect 0, which lifted a misheard short
+    /// line from 0.43 to 0.60 and kept the question mark off it: of 839
+    /// broadcast lines through Turbo, 10 of the 21 marked lost the mark,
+    /// 9 of them with a word wrong. The end's own score, which WhisperKit
+    /// doesn't keep, counts as 0.
+    public static func averageLogprob(wordTokenLogprobs: [Float]) -> Float? {
+        guard !wordTokenLogprobs.isEmpty else { return nil }
+        return wordTokenLogprobs.reduce(0, +) / Float(wordTokenLogprobs.count + 1)
     }
 }
 

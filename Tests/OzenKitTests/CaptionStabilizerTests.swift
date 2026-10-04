@@ -228,6 +228,21 @@ struct CaptionConfidenceTests {
         #expect(CaptionConfidence.isUncertain(confidence: 0.45, isCommitted: true, text: "שתיים", engine: .appleSpeech) == false)
     }
 
+    @Test("the phone's score for a line is averaged as the cutoffs were measured: over its words' tokens and the end, not the four that open every line")
+    func phoneScoreOnTheMeasuredScale() throws {
+        // "hey oho" for "ah ho", a broadcast line Turbo got wrong: five
+        // tokens, 0.43 on the home computer's scale.
+        let tokens: [Float] = [-1.0, -1.2, -0.9, -1.1, -0.86]
+        let average = try #require(WhisperSegmentSummary.averageLogprob(wordTokenLogprobs: tokens))
+        #expect(abs(exp(average) - 0.43) < 0.005)
+        #expect(CaptionConfidence.isUncertain(confidence: exp(average), isCommitted: true, text: "היי אוהו", engine: .whisperKit))
+        // WhisperKit's own average also counts the line's start, language,
+        // task and no-timestamps tokens and its end at 0: 0.60, unmarked.
+        let whisperKits = exp(tokens.reduce(0, +) / Float(tokens.count + 5))
+        #expect(CaptionConfidence.isUncertain(confidence: whisperKits, isCommitted: true, text: "היי אוהו", engine: .whisperKit) == false)
+        #expect(WhisperSegmentSummary.averageLogprob(wordTokenLogprobs: []) == nil)
+    }
+
     @Test("confidence is saved with the line, and older saved lines have none")
     func savedWithHistory() throws {
         let live = TranscriptSegment(id: UUID(), text: "אולי", isCommitted: true, speakerClusterID: nil, startTimestamp: 0, lastUpdateTimestamp: 0, confidence: 0.25)

@@ -39,12 +39,14 @@ public struct TranscriptSegment: Identifiable, Sendable, Equatable {
 /// about tells her when it's worth asking again.
 public enum CaptionConfidence {
     /// Whisper's score, on the phone or the home computer, is e^(mean
-    /// log-probability), and it sits near 1. On 368 lecture lines, clean
-    /// and in living-room and kitchen noise, ivrit.ai's large model and its
-    /// Turbo scored a median 0.96-0.97 and almost never under 0.4, even on
-    /// lines they got wrong; under 0.8 were 20 of the 2,208, every one of
-    /// them misheard (October 2026). OpenAI's Small scores lower all round:
-    /// 0.8 marks 29% of its lines, four in five of them wrong.
+    /// log-probability), averaged the same way on both
+    /// (`WhisperSegmentSummary.averageLogprob`), and it sits near 1. On 368
+    /// lecture lines, clean and in living-room and kitchen noise, ivrit.ai's
+    /// large model and its Turbo scored a median 0.96-0.97 and almost never
+    /// under 0.4, even on lines they got wrong; under 0.8 were 20 of the
+    /// 2,208, every one of them misheard (October 2026). OpenAI's Small
+    /// scores lower all round: 0.8 marks 29% of its lines, four in five of
+    /// them wrong.
     public static let whisperUncertainBelow: Float = 0.8
     /// A line of a few words is averaged over a handful of tokens, so one
     /// doubtful one (an exclamation mark for a full stop) pulls a right

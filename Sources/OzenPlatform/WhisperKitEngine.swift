@@ -444,11 +444,12 @@ public actor WhisperKitEngine: TranscriptionEngine {
             // Only on the pass that stays: a line still being written
             // changes its mind about words as well as about itself.
             let wordTokenizer = isFinal ? pipe.tokenizer : nil
+            let specialTokenBegin = pipe.tokenizer?.specialTokens.specialTokenBegin
             let summaries = results.flatMap(\.segments).map {
                 WhisperSegmentSummary(
                     text: $0.text,
                     noSpeechProb: $0.noSpeechProb,
-                    avgLogprob: $0.avgLogprob,
+                    avgLogprob: Self.averageLogprob(of: $0, specialTokenBegin: specialTokenBegin) ?? $0.avgLogprob,
                     compressionRatio: $0.compressionRatio,
                     uncertainWords: Self.uncertainWords(in: $0, tokenizer: wordTokenizer)
                 )
@@ -586,6 +587,16 @@ public actor WhisperKitEngine: TranscriptionEngine {
             next = end
         }
         return UncertainWords.pick(words: split.words, logprobs: perWord)
+    }
+
+    /// The segment's score on the scale its cutoffs were measured on (see
+    /// `WhisperSegmentSummary.averageLogprob`), not WhisperKit's own.
+    private static func averageLogprob(of segment: TranscriptionSegment, specialTokenBegin: Int?) -> Float? {
+        guard let specialTokenBegin else { return nil }
+        let logprobs = zip(segment.tokens, segment.tokenLogProbs).compactMap { token, scores in
+            token < specialTokenBegin ? scores[token] : nil
+        }
+        return WhisperSegmentSummary.averageLogprob(wordTokenLogprobs: logprobs)
     }
 
     /// Whisper reports mean token log-probability; e^x of that is a
