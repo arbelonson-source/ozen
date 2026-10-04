@@ -34,6 +34,16 @@ public struct WhisperSegmentSummary: Sendable, Equatable {
 /// same three statistical checks the reference Whisper implementation uses
 /// to decide a window is junk, plus a short list of phrases the model is
 /// known to invent on silence in Hebrew and English.
+///
+/// On the home computer (faster-whisper 1.2 on CTranslate2 4.8, October
+/// 2026) the large-v3 models, ivrit.ai's Turbo and large and OpenAI's
+/// Turbo, report a no-speech probability of exactly 0 on everything, pure
+/// silence included, where OpenAI's Small gives 0.78 on kitchen noise; and
+/// they write a confident "toda raba" on faint hiss. For its lines the
+/// checks below that read it never fire, and what keeps an invented
+/// "thank you" off the screen is the voice check before the model hears a
+/// line (the computer's speech gate; on the phone, `VoiceEvidence`). The
+/// phone's own models were not measured.
 public struct WhisperResultFilter: Sendable, Equatable {
     public var noSpeechThreshold: Float
     public var logprobThreshold: Float
@@ -46,7 +56,8 @@ public struct WhisperResultFilter: Sendable, Equatable {
     /// kind of wrong.
     public var ambiguousHallucinations: Set<String>
     /// Above this no-speech probability an ambiguous phrase is treated as
-    /// invented. Real short speech sits far below it.
+    /// invented. Real short speech sits far below it (and so does
+    /// everything the home computer's large models send, see above).
     public var ambiguousNoSpeechThreshold: Float
     /// Below this mean log-probability an ambiguous phrase is treated as
     /// a guess.
