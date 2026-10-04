@@ -184,11 +184,17 @@ public actor HomeServerEngine: TranscriptionEngine {
             self.markEndSent()
         }
         let heartbeat = Task {
+            var nextCheck = Duration.seconds(self.pingSeconds)
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(self.pingSeconds))
+                try? await Task.sleep(for: nextCheck)
                 if Task.isCancelled { return }
+                nextCheck = .seconds(self.pingSeconds)
                 switch self.heartbeatStep() {
-                case .wait:
+                case .wait(let overdueIn):
+                    // Checked again when the answer is overdue, not a whole
+                    // ping later: that made 8 s mean 10, and 15 for a
+                    // computer that hung just after answering.
+                    nextCheck = min(nextCheck, overdueIn)
                     continue
                 case .lost:
                     await socket.close()
@@ -344,12 +350,13 @@ public actor HomeServerEngine: TranscriptionEngine {
             pingSentAt = now
             return .ping
         }
-        guard now - sent >= .seconds(pongSeconds) else { return .wait }
+        let overdueIn = Duration.seconds(pongSeconds) - sent.duration(to: now)
+        guard overdueIn <= .zero else { return .wait(overdueIn) }
         pongLost = true
         return .lost
     }
 
-    private enum HeartbeatStep { case ping, wait, lost }
+    private enum HeartbeatStep { case ping, wait(Duration), lost }
 
     private func notePong() {
         pingSentAt = nil

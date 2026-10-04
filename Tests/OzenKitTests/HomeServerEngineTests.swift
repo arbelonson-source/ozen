@@ -359,6 +359,26 @@ struct HomeServerEngineTests {
         #expect(alivePings >= 10)
     }
 
+    @Test("an unanswered ping gives the connection up once its answer is overdue, not at the next ping after that")
+    func overduePongEndsOnTime() async throws {
+        let socket = ScriptedSocket(helloReply: ready)
+        await socket.setAnswersPings(false)
+        // A ping every 1 s, overdue after 1.1 s: given up at about 2.1 s,
+        // where waiting for the next ping's turn made it 3 s.
+        let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: 1, pingSeconds: 1, pongSeconds: 1.1)
+        let (audio, feed) = AsyncStream<[Float]>.makeStream()
+        defer { feed.finish() }
+        let started = ContinuousClock.now
+        do {
+            for try await _ in server.stream(languageCode: "he", audio: audio) {}
+            Issue.record("the connection was kept")
+        } catch {
+            #expect((error as? EngineUnavailability)?.kind == .homeServerUnreachable)
+        }
+        let elapsed = ContinuousClock.now - started
+        #expect(elapsed >= .seconds(2.1) && elapsed < .seconds(2.6), "\(elapsed)")
+    }
+
     @Test("a pairing link that lost its slashes on the way is still recognised as one, so the phone can say it's damaged")
     func damagedPairingLink() throws {
         #expect(HomeServerPairing.isPairingLink(try #require(URL(string: "ozen://pair?address=wss://x.net&code=abc"))))
