@@ -100,7 +100,10 @@ things, for Hebrew conversation, entirely on-device.
   Hebrew (Apache-2.0), converted to WhisperKit's format and compressed to
   8 bits (819 MB). On 90 Hebrew test clips it got 6.6% of words wrong on
   lecture speech and 21% on read sentences, against 9.7% and 31% for
-  OpenAI's Turbo and 27% and 48% for Small. Nobody publishes it in
+  OpenAI's Turbo and 27% and 48% for Small, all measured before
+  conversion. When the 8-bit model was first released, a check on a Mac
+  found it wrote the same words as the full one on five clips, but for
+  gigahertz run together and one verb form. Nobody publishes it in
   WhisperKit's format, so it is downloaded from the releases of the
   public `ozen-models` repository (`scripts/model-release/`) and compiled
   on the phone.
