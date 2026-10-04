@@ -216,13 +216,20 @@ public enum HebrewText {
     /// `normalize`, but cut at the first diminutive marker instead of
     /// dropping it, so "סבתא'לה" produces "סבתא" (the stem alone, with
     /// whatever nickname ending followed the marker discarded) rather than
-    /// the un-tellable-apart "סבתאלה". Nil when `word` carries no such
-    /// marker at all.
-    static func diminutiveCore(_ word: String) -> String? {
-        guard let markerIndex = word.unicodeScalars.firstIndex(where: diminutiveMarkers.contains) else {
-            return nil
+    /// the un-tellable-apart "סבתאלה". Empty when `word` carries no such
+    /// marker at all. The same ending is as often written with the mark
+    /// after its lamed ("סבתאל'ה"), so a lamed right before a mark that
+    /// only "ה" follows also gives the stem without it; the stem with it
+    /// stays, for a name that ends in lamed ("מיכל'ה").
+    static func diminutiveCores(_ word: String) -> [String] {
+        let scalars = word.unicodeScalars
+        guard let markerIndex = scalars.firstIndex(where: diminutiveMarkers.contains) else {
+            return []
         }
-        return normalize(String(String.UnicodeScalarView(word.unicodeScalars[..<markerIndex])))
+        let core = normalize(String(String.UnicodeScalarView(scalars[..<markerIndex])))
+        let ending = normalize(String(String.UnicodeScalarView(scalars[scalars.index(after: markerIndex)...])))
+        guard ending == "ה", core.count > 2, core.hasSuffix("ל") else { return [core] }
+        return [core, String(core.dropLast())]
     }
 
     /// A short, closed list of affectionate nicknames and alternate
@@ -278,13 +285,13 @@ public enum HebrewText {
 
     /// True if `normalizedWord` is a recognized affectionate form of
     /// `stem`: `stem` itself, `rawWord` with a diminutive marker glued onto
-    /// it (see `diminutiveCore`), or one of `affectionateVariants`' fixed
+    /// it (see `diminutiveCores`), or one of `affectionateVariants`' fixed
     /// alternate spellings/nicknames for `stem`. `rawWord` is the same
     /// caption word before `normalize` stripped the marker that
     /// distinguishes a nickname ending from a real suffix change.
     public static func isAffectionateVariant(rawWord: String, normalizedWord: String, of stem: String) -> Bool {
         if normalizedWord == stem { return true }
-        if diminutiveCore(rawWord) == stem { return true }
+        if diminutiveCores(rawWord).contains(stem) { return true }
         return alternateForms(of: stem).contains(normalizedWord)
     }
 
@@ -293,8 +300,9 @@ public enum HebrewText {
     /// one of the attached prepositions ("le-savta'le", "to grandma'le").
     public static func stripAttachedPrefixOrVariant(rawWord: String, normalizedWord: String, leaving stem: String) -> Bool {
         if stripAttachedPrefix(from: normalizedWord, leaving: stem) { return true }
-        if let core = diminutiveCore(rawWord) {
-            return stripAttachedPrefix(from: core, leaving: stem)
+        let cores = diminutiveCores(rawWord)
+        if !cores.isEmpty {
+            return cores.contains { stripAttachedPrefix(from: $0, leaving: stem) }
         }
         let variants = alternateForms(of: stem)
         return variants.contains(normalizedWord)

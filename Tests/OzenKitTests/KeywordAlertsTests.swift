@@ -102,6 +102,17 @@ struct KeywordAlertMatcherTests {
         #expect(matches[0].matchedText == "לסבתא'לה")
     }
 
+    @Test("the nickname ending written with its mark after the lamed matches too, and a name ending in lamed keeps its own")
+    func nicknameMarkAfterLamedMatches() {
+        let savta = KeywordAlertMatcher(alerts: [alert("סבתא")])
+        #expect(savta.matches(in: "היום סבתאל'ה הגיעה").map(\.matchedText) == ["סבתאל'ה"])
+        #expect(savta.matches(in: "דיברתי לסבתאל׳ה אתמול").map(\.matchedText) == ["לסבתאל׳ה"])
+        #expect(KeywordAlertMatcher(alerts: [alert("אמא")]).matches(in: "אמאל'ה, בואי").count == 1)
+        let michal = KeywordAlertMatcher(alerts: [alert("מיכל")])
+        #expect(michal.matches(in: "מיכל'ה הגיעה").count == 1)
+        #expect(savta.matches(in: "סבתאל'ים הגיעו").isEmpty)
+    }
+
     @Test("a genuine suffix change is still not a match, unlike a marked nickname ending")
     func suffixChangeStillDoesNotMatchNicknameRule() {
         let matcher = KeywordAlertMatcher(alerts: [alert("סבתא")])
