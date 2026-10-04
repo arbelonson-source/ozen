@@ -98,7 +98,7 @@ things, for Hebrew conversation, entirely on-device.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/accuracy-dark.svg">
-  <img alt="Words written wrong, lower is better, on the same 90 test clips measured before the phone's 8-bit compression: on lecture speech ivrit.ai Turbo (recommended, on the phone) 6.6%, OpenAI Turbo 9.7%, OpenAI Small 27%; on read sentences 21%, 31% and 48%." src="docs/assets/accuracy-light.svg" width="100%">
+  <img alt="Words written wrong, lower is better, on the same 30 recorded university lecture clips, measured before the phone's 8-bit compression: ivrit.ai Turbo (recommended, on the phone) 6.6%, OpenAI Turbo 9.7%, OpenAI Small 27%." src="docs/assets/accuracy-light.svg" width="100%">
 </picture>
 
 ### Everything it does
