@@ -46,26 +46,38 @@ public enum CaptionConfidence {
     /// them misheard (October 2026). OpenAI's Small scores lower all round:
     /// 0.8 marks 29% of its lines, four in five of them wrong.
     public static let whisperUncertainBelow: Float = 0.8
+    /// A line of a few words is averaged over a handful of tokens, so one
+    /// doubtful one (an exclamation mark for a full stop) pulls a right
+    /// answer down. On 145 broadcast lines of 1-3 words (KAN), 0.8 marked 7
+    /// of the 108 the large model got right ("yes, why not?", "two"); under
+    /// 0.6 were 6 lines from both models, all misheard, and the lecture's
+    /// short lines under it were too. With both cutoffs, 52 of 3,884
+    /// lecture and broadcast lines were marked, and 50 of those had a word
+    /// wrong.
+    public static let whisperShortLineUncertainBelow: Float = 0.6
+    public static let shortLineWords = 3
     /// Apple's recognizer averages its words' 0...1 scores. Not measured
     /// against Hebrew it got wrong.
     public static let appleUncertainBelow: Float = 0.4
 
-    public static func uncertainBelow(for engine: TranscriptionEngineKind) -> Float {
+    public static func uncertainBelow(for engine: TranscriptionEngineKind, words: Int) -> Float {
         switch engine {
         case .appleSpeech: return appleUncertainBelow
-        case .whisperKit, .homeServer, .cloud: return whisperUncertainBelow
+        case .whisperKit, .homeServer, .cloud:
+            return words <= shortLineWords ? whisperShortLineUncertainBelow : whisperUncertainBelow
         }
     }
 
     public static func isUncertain(_ segment: TranscriptSegment, engine: TranscriptionEngineKind) -> Bool {
-        isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, engine: engine)
+        isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: engine)
     }
 
     /// Only finished lines: a line still being written changes its mind.
     /// Exactly 0 means "no score" (Apple reports that on partial results).
-    public static func isUncertain(confidence: Float?, isCommitted: Bool, engine: TranscriptionEngineKind) -> Bool {
+    public static func isUncertain(confidence: Float?, isCommitted: Bool, text: String, engine: TranscriptionEngineKind) -> Bool {
         guard isCommitted, let confidence, confidence > 0 else { return false }
-        return confidence < uncertainBelow(for: engine)
+        let words = WhisperResultFilter.normalize(text).split(separator: " ").count
+        return confidence < uncertainBelow(for: engine, words: words)
     }
 }
 

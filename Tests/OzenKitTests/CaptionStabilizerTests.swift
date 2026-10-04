@@ -177,29 +177,55 @@ struct CaptionConfidenceTests {
 
     @Test("only finished lines with a real low score are marked unsure")
     func uncertaintyRule() {
+        let line = "נפגשים מחר בבוקר אצל הרופא"
         for engine in TranscriptionEngineKind.allCases {
-            #expect(CaptionConfidence.isUncertain(confidence: 0.3, isCommitted: true, engine: engine))
-            #expect(CaptionConfidence.isUncertain(confidence: 0.3, isCommitted: false, engine: engine) == false)
-            #expect(CaptionConfidence.isUncertain(confidence: 0.97, isCommitted: true, engine: engine) == false)
-            #expect(CaptionConfidence.isUncertain(confidence: 0, isCommitted: true, engine: engine) == false)
-            #expect(CaptionConfidence.isUncertain(confidence: nil, isCommitted: true, engine: engine) == false)
+            #expect(CaptionConfidence.isUncertain(confidence: 0.3, isCommitted: true, text: line, engine: engine))
+            #expect(CaptionConfidence.isUncertain(confidence: 0.3, isCommitted: false, text: line, engine: engine) == false)
+            #expect(CaptionConfidence.isUncertain(confidence: 0.97, isCommitted: true, text: line, engine: engine) == false)
+            #expect(CaptionConfidence.isUncertain(confidence: 0, isCommitted: true, text: line, engine: engine) == false)
+            #expect(CaptionConfidence.isUncertain(confidence: nil, isCommitted: true, text: line, engine: engine) == false)
         }
-        #expect(CaptionConfidence.isUncertain(confidence: 0.4, isCommitted: true, engine: .appleSpeech) == false)
+        #expect(CaptionConfidence.isUncertain(confidence: 0.4, isCommitted: true, text: line, engine: .appleSpeech) == false)
     }
 
     @Test("Whisper's misheard lines get the mark: they score far above Apple's cutoff")
     func whisperScaleIsItsOwn() {
         // Lines ivrit.ai's models got wrong, on the phone (Turbo) and on the
         // home computer (large), with their scores: e^(mean log-probability).
-        let misheard: [Float] = [0.689, 0.745, 0.746, 0.652, 0.679, 0.799]
-        for score in misheard {
-            #expect(CaptionConfidence.isUncertain(confidence: score, isCommitted: true, engine: .whisperKit))
-            #expect(CaptionConfidence.isUncertain(confidence: score, isCommitted: true, engine: .homeServer))
-            #expect(CaptionConfidence.isUncertain(confidence: score, isCommitted: true, engine: .appleSpeech) == false)
+        let misheard: [(String, Float)] = [
+            ("היי, טוב לי להיות עודכם שוב.", 0.689),
+            ("חברת החמישית, כמה היו?", 0.746),
+            ("חברת החמישית, כמה היו?", 0.736),
+            ("ועוד חמישית כמה היו?", 0.679),
+        ]
+        for (text, score) in misheard {
+            #expect(CaptionConfidence.isUncertain(confidence: score, isCommitted: true, text: text, engine: .whisperKit))
+            #expect(CaptionConfidence.isUncertain(confidence: score, isCommitted: true, text: text, engine: .homeServer))
+            #expect(CaptionConfidence.isUncertain(confidence: score, isCommitted: true, text: text, engine: .appleSpeech) == false)
         }
         // Their median line, nearly always right, stays unmarked.
-        #expect(CaptionConfidence.isUncertain(confidence: 0.97, isCommitted: true, engine: .homeServer) == false)
-        #expect(CaptionConfidence.isUncertain(confidence: 0.9, isCommitted: true, engine: .whisperKit) == false)
+        let line = "כי למידה מורכבת מביצוע של רוטינות"
+        #expect(CaptionConfidence.isUncertain(confidence: 0.97, isCommitted: true, text: line, engine: .homeServer) == false)
+        #expect(CaptionConfidence.isUncertain(confidence: 0.9, isCommitted: true, text: line, engine: .whisperKit) == false)
+    }
+
+    @Test("a short answer needs a lower Whisper score to be marked: one doubtful token weighs more among a few")
+    func shortLinesNeedALowerScore() {
+        // Short lines from broadcast speech that the large model got right,
+        // and ones it got wrong, with their scores.
+        let right: [(String, Float)] = [("כן, למה לא?", 0.737), ("שתיים", 0.741), ("סבבה, יאללה", 0.698), ("יאללה! אוקיי", 0.702), ("אפשר ביס?", 0.683)]
+        let wrong: [(String, Float)] = [("יואו!", 0.464), ("הייו!", 0.498), ("ריח אין.", 0.547), ("תגיד מה זה?", 0.583)]
+        for engine in [TranscriptionEngineKind.whisperKit, .homeServer] {
+            for (text, score) in right {
+                #expect(CaptionConfidence.isUncertain(confidence: score, isCommitted: true, text: text, engine: engine) == false)
+            }
+            for (text, score) in wrong {
+                #expect(CaptionConfidence.isUncertain(confidence: score, isCommitted: true, text: text, engine: engine))
+            }
+        }
+        // Apple's cutoff is the same for any length.
+        #expect(CaptionConfidence.isUncertain(confidence: 0.39, isCommitted: true, text: "שתיים", engine: .appleSpeech))
+        #expect(CaptionConfidence.isUncertain(confidence: 0.45, isCommitted: true, text: "שתיים", engine: .appleSpeech) == false)
     }
 
     @Test("confidence is saved with the line, and older saved lines have none")

@@ -177,7 +177,7 @@ public struct StarredLine: Sendable, Equatable, Identifiable {
     public var id: UUID { segment.id }
     /// Whether the line carried the question mark on screen.
     public var isUncertain: Bool {
-        CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, engine: engine)
+        CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: engine)
     }
 
     public init(sessionID: UUID, sessionStartedAt: TimeInterval, segment: SavedSegment, sessionTitle: String? = nil, engine: TranscriptionEngineKind = .whisperKit) {
@@ -854,7 +854,7 @@ public struct TranscriptHistoryStore: Sendable {
                 let said = CaptionLayout.isolatingNumbers(segment.text)
                 // The question mark the screen showed, in words: whoever
                 // reads "two pills at ten thirty" in a chat should know too.
-                let unsure = marksUncertain && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, engine: record.engine)
+                let unsure = marksUncertain && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: record.engine)
                 let warning = unsure ? tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") : ""
                 let line: String
                 // "Unknown speaker:" on every unrecognised line says nothing;
