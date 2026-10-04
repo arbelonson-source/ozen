@@ -73,36 +73,44 @@ things, for Hebrew conversation, entirely on-device.
 
 ## What it does
 
+<table>
+  <tr>
+    <td width="33%" valign="top"><img src="docs/assets/icons/captions.svg" width="44" alt=""><br><b>Live, steady captions</b><br>Words appear as they're said and settle in place once they're stable.</td>
+    <td width="33%" valign="top"><img src="docs/assets/icons/text.svg" width="44" alt=""><br><b>Made for reading all evening</b><br>Text from 20 to 64 pt, three colour schemes, and numbers that stand out.</td>
+    <td width="33%" valign="top"><img src="docs/assets/icons/people.svg" width="44" alt=""><br><b>Who said what</b><br>Voices are told apart on the phone, and named once you record them.</td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top"><img src="docs/assets/icons/mic.svg" width="44" alt=""><br><b>Any microphone</b><br>The phone's own, Bluetooth, wired or USB-C, picked up again when it reconnects.</td>
+    <td width="33%" valign="top"><img src="docs/assets/icons/bell.svg" width="44" alt=""><br><b>Sounds she can't hear</b><br>Her name, the doorbell or a smoke alarm buzz the phone; alarms flash the screen.</td>
+    <td width="33%" valign="top"><img src="docs/assets/icons/lock.svg" width="44" alt=""><br><b>On the lock screen</b><br>The newest two lines, readable without unlocking the phone.</td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top"><img src="docs/assets/icons/reply.svg" width="44" alt=""><br><b>Replies, aloud or huge</b><br>Type a reply and the phone says it aloud, or shows it in huge letters.</td>
+    <td width="33%" valign="top"><img src="docs/assets/icons/star.svg" width="44" alt=""><br><b>History and stars</b><br>Saved, searchable conversations, with the important lines starred.</td>
+    <td width="33%" valign="top"><img src="docs/assets/icons/shield.svg" width="44" alt=""><br><b>Stays on the phone</b><br>No account and no company server: nothing leaves the phone unless you choose to send it.</td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top"><img src="docs/assets/icons/recover.svg" width="44" alt=""><br><b>Recovers by itself</b><br>A dropped recognizer, a failed audio session or a stalled download is retried, and the status line says so.</td>
+    <td width="33%" valign="top"><img src="docs/assets/icons/computer.svg" width="44" alt=""><br><b>Home computer, optional</b><br>A PC with an NVIDIA card can write the captions instead, paired with a QR code.</td>
+    <td width="33%" valign="top"><img src="docs/assets/icons/globe.svg" width="44" alt=""><br><b>Twelve languages</b><br>The app follows the phone's language, or the one picked in Settings.</td>
+  </tr>
+</table>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/accuracy-dark.svg">
+  <img alt="Words written wrong, lower is better, on the same 90 test clips measured before the phone's 8-bit compression: on lecture speech ivrit.ai Turbo (recommended, on the phone) 6.6%, OpenAI Turbo 9.7%, OpenAI Small 27%; on read sentences 21%, 31% and 48%." src="docs/assets/accuracy-light.svg" width="100%">
+</picture>
+
+### Everything it does
+
+Open a section for the details.
+
+<details>
+<summary><img src="docs/assets/icons/captions.svg" width="24" align="absmiddle" alt=""> <b>Captions</b>: live text that holds still, the speech models, the display</summary>
+
 - **Live captions, not batch transcription.** Partial text updates
   continuously as speech happens; text only locks in (stops changing) once
   it's actually stable — see `CaptionStabilizer`.
-- **Explicit microphone selection**, including external Bluetooth/wired/
-  USB-C inputs, with automatic recovery when a preferred input reconnects
-  mid-conversation.
-- **Speaker detection**, always on, with optional voice enrollment so a
-  person's turns are labeled by name. Several 30-second recordings of one
-  person, made in different places and saved under the same name, work
-  better than one long one: on 16 Hebrew speakers in groups of four, three
-  short separate recordings named the right person 84% of the time against
-  64% for one 30-second recording, and past about a minute of recording,
-  length alone stopped helping. Unnamed voices are numbered from
-  1 in each conversation, so a phone listening all week doesn't reach
-  "speaker 140". Voices are told apart by [WeSpeaker CAM++](https://huggingface.co/Wespeaker/wespeaker-voxceleb-campplus-LM),
-  a small (7.3M-parameter) neural speaker-embedding model run entirely
-  on-device via CoreML. Lines with no voice in them (a pot put down,
-  a running tap) are skipped before Whisper sees them, using
-  [Silero VAD](https://github.com/snakers4/silero-vad) in the CoreML
-  conversion by [FluidAudio](https://huggingface.co/FluidInference/silero-vad-coreml) (MIT). On a LibriSpeech clustering test it separates a
-  simulated four-person table correctly 96.8% of the time, against 45.8%
-  for the classic MFCC print it replaced. A conversation is harder: on 18
-  put together from 16 Hebrew speakers' recordings, two to four people
-  each, the app's own speaker code labelled who said a sentence right 79%
-  of the time up close and 64% from across a room, and up close it showed
-  more voices than there were (two people came out as three to six).
-- **Two swappable on-device engines, plus the cloud** — [WhisperKit](https://github.com/argmaxinc/argmax-oss-swift)
-  (Whisper via CoreML) and Apple's own on-device Speech framework — picked
-  in Settings, since which one is actually better for Hebrew on a given
-  device is an open, testable question rather than an assumption.
 - **A Whisper trained on Hebrew.** The recommended model is
   [ivrit.ai's](https://huggingface.co/ivrit-ai/whisper-large-v3-turbo)
   continued training of Whisper large-v3-turbo on about 5,000 hours of
@@ -116,69 +124,10 @@ things, for Hebrew conversation, entirely on-device.
   WhisperKit's format, so it is downloaded from the releases of the
   public `ozen-models` repository (`scripts/model-release/`) and compiled
   on the phone.
-- **Your own computer as the recognizer (optional).** A Windows or Linux
-  PC with an NVIDIA graphics card, at home, writes the captions instead
-  of the phone: the phone sends its microphone to the PC and gets the
-  words back, on the home Wi‑Fi or from anywhere with internet (through
-  an encrypted `wss://` address). The PC runs the full-size Hebrew Whisper (ivrit.ai's large-v3,
-  1.55 billion parameters, 16-bit) with beam search for each finished
-  sentence, and the faster Turbo for the live words: 8.3% of words wrong
-  on Hebrew conversation, against 8.9% for the phone's model, and 22%
-  against 25% when the speaker sits across the room. Words appear about
-  0.2 s after they are said; a finished sentence settles about 0.9 s after
-  the speaker stops (on an RTX 2080 Ti). Setup is one double-click
-  (`Ozen-Home-Setup.cmd` from the latest release) and pairing is a QR
-  code; if the PC can't be reached, the phone's own model carries on,
-  once it has been downloaded as a backup (Settings → Home computer →
-  "Download a backup to the phone"; without it captions wait for the PC,
-  start again within about 15 seconds of it answering, and the status line
-  offers the backup; sound alerts keep listening meanwhile).
-  See [Home computer requirements](#home-computer-requirements) and
-  `server/README.md`.
-- **Optional cloud captions** for when the phone's models are too slow or
-  lose track of several people talking: each sentence goes to a speech
-  model through [OpenRouter](https://openrouter.ai) with a key pasted into
-  Settings (stored only in the phone's Keychain), together with the names
-  and important words lists so it can spell them. On twelve Hebrew test
-  recordings the default cloud model got 24% of words wrong (the faster,
-  cheaper one 29%) against 39% for OpenAI's Whisper large-v3 turbo and 60%
-  for Whisper small, and puts each change of speaker on its own line. The
-  phone's Hebrew-trained model was not in that test; on 60 other read
-  recordings it made a third fewer mistakes than OpenAI's turbo (21%
-  against 31%), so the cloud is no longer clearly the more accurate
-  choice. A sentence is sent again
-  every few seconds while it is said, so the faster one costs about 15 cents
-  per hour of speech, the default about twice that, and unbroken talk like
-  the news up to three times as much; off Wi-Fi that is a few hundred MB of
-  mobile data an hour, up to about 1 GB. See `CloudSpeech`. If the key
-  stops working, the credit runs out or the internet goes, a Whisper
-  model already on the phone takes over and the status line says so
-  (`CloudCover`); captions don't stop for a billing problem.
-- **Twelve interface languages** (Hebrew, English, Arabic, Russian,
-  Amharic, French, Spanish, Ukrainian, German, Portuguese, Simplified
-  Chinese, Hindi), following the phone's language or a choice in Settings.
-  Every piece of text is written as `tr(hebrew, english)`, with every other
-  language drawn from a translation table keyed by the English text
-  (`scripts/check-translations.py` checks both); Hebrew and Arabic read
-  right to left, and caption lines stay right to left for Hebrew speech
-  either way.
-- **Bottom buttons that get out of the way**: while captions follow the
-  newest line on their own, the buttons slide away after a few seconds so
-  they never cover it; a touch brings them back.
-- **Nothing leaves the phone unless you choose to send it.** No account,
-  no company server. The exceptions are all explicit and off by default:
-  your own home computer, cloud captions above, and a switch to let
-  Apple's recognizer use Apple's servers when iOS has no on-device Hebrew
-  model. Saved conversations and settings (names, voice prints) are part
-  of the phone's own iCloud or computer backup when that is on, like any
-  app's; the sound clips, the diagnostics journal and the models are kept
-  out of it.
-- **A status control that always says what's happening** — asking for the
-  microphone, downloading the model (with a percentage and the time left
-  at its current pace), loading it,
-  listening, paused, or exactly what failed and what to do about it
-  (retry, open Settings, switch engine). First-launch model download is the
-  slowest thing the app ever does and is never silent.
+- **Two swappable on-device engines, plus the cloud** — [WhisperKit](https://github.com/argmaxinc/argmax-oss-swift)
+  (Whisper via CoreML) and Apple's own on-device Speech framework — picked
+  in Settings, since which one is actually better for Hebrew on a given
+  device is an open, testable question rather than an assumption.
 - **Whisper model manager**: ten models from 76 MB to 3 GB with honest
   Hebrew-quality and speed ratings, download progress, disk usage, and
   delete. "Turbo Hebrew (ivrit.ai)" is the recommended pick and what a
@@ -211,6 +160,48 @@ things, for Hebrew conversation, entirely on-device.
   read out the moment they happen, and so are captions stopping because of
   a problem and coming back after one, saving failing and a microphone
   disconnecting.
+- **Keeps its cool.** Whisper refreshes the in-progress line less often
+  when the phone runs hot or Low Power Mode is on, instead of throttling
+  and falling behind; the careful end-of-sentence pass is never skipped.
+
+</details>
+
+<details>
+<summary><img src="docs/assets/icons/mic.svg" width="24" align="absmiddle" alt=""> <b>Voices and microphones</b>: any microphone, who is speaking, the names to listen for</summary>
+
+- **Explicit microphone selection**, including external Bluetooth/wired/
+  USB-C inputs, with automatic recovery when a preferred input reconnects
+  mid-conversation.
+- **Speaker detection**, always on, with optional voice enrollment so a
+  person's turns are labeled by name. Several 30-second recordings of one
+  person, made in different places and saved under the same name, work
+  better than one long one: on 16 Hebrew speakers in groups of four, three
+  short separate recordings named the right person 84% of the time against
+  64% for one 30-second recording, and past about a minute of recording,
+  length alone stopped helping. Unnamed voices are numbered from
+  1 in each conversation, so a phone listening all week doesn't reach
+  "speaker 140". Voices are told apart by [WeSpeaker CAM++](https://huggingface.co/Wespeaker/wespeaker-voxceleb-campplus-LM),
+  a small (7.3M-parameter) neural speaker-embedding model run entirely
+  on-device via CoreML. Lines with no voice in them (a pot put down,
+  a running tap) are skipped before Whisper sees them, using
+  [Silero VAD](https://github.com/snakers4/silero-vad) in the CoreML
+  conversion by [FluidAudio](https://huggingface.co/FluidInference/silero-vad-coreml) (MIT). On a LibriSpeech clustering test it separates a
+  simulated four-person table correctly 96.8% of the time, against 45.8%
+  for the classic MFCC print it replaced. A conversation is harder: on 18
+  put together from 16 Hebrew speakers' recordings, two to four people
+  each, the app's own speaker code labelled who said a sentence right 79%
+  of the time up close and 64% from across a room, and up close it showed
+  more voices than there were (two people came out as three to six).
+- **Saved speakers can be renamed**, and the new name follows onto lines
+  already on screen, into the names list and into every saved
+  conversation, so fixing a misspelled name also fixes last week's
+  conversations and a search for the new name finds them.
+- **Names and words list.** Family names, the doctor, the medicines.
+  Both engines are primed with the list (Apple's recognizer via
+  contextual strings, Whisper via a decoder prompt; on a long list,
+  Whisper gets the first two dozen or so names, so put the important ones
+  first), edits apply from the next sentence, and Whisper output that is
+  just the list read back is dropped.
 - **Robust audio**: a live level meter per microphone, automatic recovery
   from phone-call interruptions and route changes (AirPods in/out, USB mic
   unplugged), Whisper-hallucination filtering on silence, no model runs on
@@ -218,47 +209,12 @@ things, for Hebrew conversation, entirely on-device.
   into silence before anything hears them, so one bad moment can't leave
   the speech detector deaf or a voice print unmatchable, and the
   diagnostics report counts them.
-- **Recovers by itself.** A recognizer that drops out mid-conversation,
-  an audio session that fails, or a model download that hit a dead Wi-Fi
-  is retried automatically with growing delays, and the status line says
-  so. Failures only a person can fix (a denied permission) never are.
-  Retries wait out a phone call instead of burning attempts during it.
-  A microphone that silently stops delivering audio (a Bluetooth hearing
-  aid reconnecting, say) is noticed within seconds and restarted, instead
-  of the screen saying "listening" over captions that never come.
-- **Downloads that can't get stuck.** A cut-off model download is told
-  apart from a whole model and simply continues from where it stopped,
-  instead of failing to load on every launch.
-- **Downloads that don't eat the data plan.** On cellular or in Low Data
-  Mode a model waits for Wi-Fi, says how big it is, and starts by itself
-  when Wi-Fi arrives. "Download now" asks first; a setting allows it
-  always.
-- **Downloads that fit.** Free space is checked before a model download
-  starts, with room left for the first load. A phone that's too full says
-  how much to free (or to pick a smaller model), is never retried on a
-  timer, and starts the download by itself when she comes back to the app
-  with enough room. The model list marks the models that won't fit, and
-  they can't be picked over the one that works. Switching to a model that
-  still has to download while captions run asks first, since captions
-  stop until it arrives.
-- **Type to speak.** The other half of a conversation: type a reply, or
-  tap one of the ready-made phrases ("Wait, I didn't catch that" (rega, lo
-  hevanti), "Could you say that again?" (efshar lachzor al ze?), "Please speak
-  closer to the phone" (dabru karov yoter la-telefon), which helps the
-  captions most), and the phone
-  says it in Hebrew. The last typed sentence stays under the field, to say
-  again when it wasn't caught or keep as a ready-made phrase in one tap.
-  Captions pause while the phone
-  talks, so it doesn't caption itself, and come back on their own. A
-  full-screen pad in huge letters lets someone type to her where captions
-  can't keep up, or turns what she typed upside down for the person facing
-  her to read. Siri opens it straight away with "kitvu li be-Ozen" ("write to me in Ozen") in Hebrew or "Big text in Ozen" in English, and so can the Action button.
-- **Names and words list.** Family names, the doctor, the medicines.
-  Both engines are primed with the list (Apple's recognizer via
-  contextual strings, Whisper via a decoder prompt; on a long list,
-  Whisper gets the first two dozen or so names, so put the important ones
-  first), edits apply from the next sentence, and Whisper output that is
-  just the list read back is dropped.
+
+</details>
+
+<details>
+<summary><img src="docs/assets/icons/bell.svg" width="24" align="absmiddle" alt=""> <b>Alerts</b>: her name, the doorbell, a smoke alarm, the battery</summary>
+
 - **Keyword alerts.** Her name, or any word she picks, buzzes the phone
   and highlights the line, matching through Hebrew's attached prefixes
   ("ve-le-Ruti" still matches "Ruti"), without firing a short name on the
@@ -301,15 +257,71 @@ things, for Hebrew conversation, entirely on-device.
   notification, since a phone that switches off takes the alerts with it.
   They also come while captions wait to come back with the microphone on
   for sound alerts.
-- **Warns before the install runs out.** Installed with a free Apple ID,
-  the app stops opening after seven days without a word. It reads its own
-  provisioning profile, says on the caption screen two days ahead when that
-  will happen ("Ozen will stop opening tomorrow at 07:24" (Ozen tafsik
-  lehipatach machar be-sha'a 07:24)), and sends a reminder
-  notification the day before, in daytime.
-- **Keeps its cool.** Whisper refreshes the in-progress line less often
-  when the phone runs hot or Low Power Mode is on, instead of throttling
-  and falling behind; the careful end-of-sentence pass is never skipped.
+
+</details>
+
+<details>
+<summary><img src="docs/assets/icons/lock.svg" width="24" align="absmiddle" alt=""> <b>Lock screen and coming back</b>: the lock screen, what she missed, nothing lost</summary>
+
+- **Captions on the lock screen.** While captions run, the newest two
+  lines show on the lock screen as a Live Activity (the Dynamic Island
+  shows the newest one when it is opened), each saying who is talking when
+  speaker names are on and the voice is known, so the last sentence can
+  be read without unlocking the phone. A call or a failure keeps it there
+  and says why the lines stopped; if iOS closes the app it says the lines
+  aren't updating rather than showing an old sentence as new, and after a
+  quiet minute it says how long ago the last line was said. A line from
+  before five quiet minutes never sits above a new one. Settings can
+  turn it off, since anyone looking at the phone can read it.
+- **Picks up where she stopped reading.** Captions carry on with the phone
+  locked or another app open; coming back, a line across the captions marks
+  where the ones she missed begin, with how many there are, and a button at
+  the top jumps up to it ("What was said meanwhile" (ma she-ne'emar
+  beinta'yim)). Being away less than 15 seconds, or missing a single line,
+  doesn't move the mark.
+  After five minutes or more with nothing said, the time the talking
+  started again is drawn between the lines, so an old sentence isn't read
+  as the one just before.
+- **Bottom buttons that get out of the way**: while captions follow the
+  newest line on their own, the buttons slide away after a few seconds so
+  they never cover it; a touch brings them back.
+- **Nothing lost when iOS closes the app.** A speech model is one of the
+  biggest things in a phone's memory, so iOS may end the app in the
+  background mid-conversation. Coming back, the empty screen offers the
+  conversation from a few minutes ago, one tap away. When iOS warns it is
+  short of memory and captions are off, the app lets go of the loaded
+  model first, so it is less likely to be the app iOS ends.
+
+</details>
+
+<details>
+<summary><img src="docs/assets/icons/reply.svg" width="24" align="absmiddle" alt=""> <b>Talking back</b>: typed replies said aloud or shown huge, Siri, Control Center</summary>
+
+- **Type to speak.** The other half of a conversation: type a reply, or
+  tap one of the ready-made phrases ("Wait, I didn't catch that" (rega, lo
+  hevanti), "Could you say that again?" (efshar lachzor al ze?), "Please speak
+  closer to the phone" (dabru karov yoter la-telefon), which helps the
+  captions most), and the phone
+  says it in Hebrew. The last typed sentence stays under the field, to say
+  again when it wasn't caught or keep as a ready-made phrase in one tap.
+  Captions pause while the phone
+  talks, so it doesn't caption itself, and come back on their own. A
+  full-screen pad in huge letters lets someone type to her where captions
+  can't keep up, or turns what she typed upside down for the person facing
+  her to read. Siri opens it straight away with "kitvu li be-Ozen" ("write to me in Ozen") in Hebrew or "Big text in Ozen" in English, and so can the Action button.
+- **Siri and Shortcuts.** "Hey Siri, start captions in Ozen" (hey Siri,
+  hatchel ktuviyot be-Ozen), "Stop captions" (atzor ktuviyot),
+  and, to have the phone say something aloud, "tagid be-Ozen" in Hebrew or "Say with Ozen" in English; Siri then asks what to say.
+  Each also in the feminine (hatchili, itzri, tagidi).
+- **A start button in Control Center** (iOS 18): "Start captions" (hatchalat
+  ktuviyot) opens Ozen and starts listening in one press. It can also
+  replace the flashlight or camera button at the bottom of the lock screen.
+
+</details>
+
+<details>
+<summary><img src="docs/assets/icons/star.svg" width="24" align="absmiddle" alt=""> <b>History</b>: saved, searchable conversations and starred lines</summary>
+
 - **Conversation history.** Conversations are saved as they happen,
   searchable (every word typed has to be in the conversation, in any order
   and on any line, and opening a result jumps to where they were said),
@@ -335,31 +347,6 @@ things, for Hebrew conversation, entirely on-device.
   are always kept, and a change that would delete something asks first.
   If the phone fills up and saving starts failing, the caption screen says
   so, instead of conversations quietly going unsaved.
-- **Nothing lost when iOS closes the app.** A speech model is one of the
-  biggest things in a phone's memory, so iOS may end the app in the
-  background mid-conversation. Coming back, the empty screen offers the
-  conversation from a few minutes ago, one tap away. When iOS warns it is
-  short of memory and captions are off, the app lets go of the loaded
-  model first, so it is less likely to be the app iOS ends.
-- **Captions on the lock screen.** While captions run, the newest two
-  lines show on the lock screen as a Live Activity (the Dynamic Island
-  shows the newest one when it is opened), each saying who is talking when
-  speaker names are on and the voice is known, so the last sentence can
-  be read without unlocking the phone. A call or a failure keeps it there
-  and says why the lines stopped; if iOS closes the app it says the lines
-  aren't updating rather than showing an old sentence as new, and after a
-  quiet minute it says how long ago the last line was said. A line from
-  before five quiet minutes never sits above a new one. Settings can
-  turn it off, since anyone looking at the phone can read it.
-- **Picks up where she stopped reading.** Captions carry on with the phone
-  locked or another app open; coming back, a line across the captions marks
-  where the ones she missed begin, with how many there are, and a button at
-  the top jumps up to it ("What was said meanwhile" (ma she-ne'emar
-  beinta'yim)). Being away less than 15 seconds, or missing a single line,
-  doesn't move the mark.
-  After five minutes or more with nothing said, the time the talking
-  started again is drawn between the lines, so an old sentence isn't read
-  as the one just before.
 - **Star what matters.** Hold a caption line to mark it as important
   (what the doctor said about the pills), copy it, or say who is talking.
   Stars are saved with the conversation, counted in the history list,
@@ -368,10 +355,105 @@ things, for Hebrew conversation, entirely on-device.
   question mark on any the engine was unsure of, and can be shared as
   text. A search result opens at the lines it found,
   highlighted.
-- **Saved speakers can be renamed**, and the new name follows onto lines
-  already on screen, into the names list and into every saved
-  conversation, so fixing a misspelled name also fixes last week's
-  conversations and a search for the new name finds them.
+
+</details>
+
+<details>
+<summary><img src="docs/assets/icons/shield.svg" width="24" align="absmiddle" alt=""> <b>Privacy, the home computer and the cloud</b>: what leaves the phone, and only when you choose</summary>
+
+- **Nothing leaves the phone unless you choose to send it.** No account,
+  no company server. The exceptions are all explicit and off by default:
+  your own home computer, cloud captions above, and a switch to let
+  Apple's recognizer use Apple's servers when iOS has no on-device Hebrew
+  model. Saved conversations and settings (names, voice prints) are part
+  of the phone's own iCloud or computer backup when that is on, like any
+  app's; the sound clips, the diagnostics journal and the models are kept
+  out of it.
+- **Your own computer as the recognizer (optional).** A Windows or Linux
+  PC with an NVIDIA graphics card, at home, writes the captions instead
+  of the phone: the phone sends its microphone to the PC and gets the
+  words back, on the home Wi‑Fi or from anywhere with internet (through
+  an encrypted `wss://` address). The PC runs the full-size Hebrew Whisper (ivrit.ai's large-v3,
+  1.55 billion parameters, 16-bit) with beam search for each finished
+  sentence, and the faster Turbo for the live words: 8.3% of words wrong
+  on Hebrew conversation, against 8.9% for the phone's model, and 22%
+  against 25% when the speaker sits across the room. Words appear about
+  0.2 s after they are said; a finished sentence settles about 0.9 s after
+  the speaker stops (on an RTX 2080 Ti). Setup is one double-click
+  (`Ozen-Home-Setup.cmd` from the latest release) and pairing is a QR
+  code; if the PC can't be reached, the phone's own model carries on,
+  once it has been downloaded as a backup (Settings → Home computer →
+  "Download a backup to the phone"; without it captions wait for the PC,
+  start again within about 15 seconds of it answering, and the status line
+  offers the backup; sound alerts keep listening meanwhile).
+  See [Home computer requirements](#home-computer-requirements) and
+  `server/README.md`.
+- **Optional cloud captions** for when the phone's models are too slow or
+  lose track of several people talking: each sentence goes to a speech
+  model through [OpenRouter](https://openrouter.ai) with a key pasted into
+  Settings (stored only in the phone's Keychain), together with the names
+  and important words lists so it can spell them. On twelve Hebrew test
+  recordings the default cloud model got 24% of words wrong (the faster,
+  cheaper one 29%) against 39% for OpenAI's Whisper large-v3 turbo and 60%
+  for Whisper small, and puts each change of speaker on its own line. The
+  phone's Hebrew-trained model was not in that test; on 60 other read
+  recordings it made a third fewer mistakes than OpenAI's turbo (21%
+  against 31%), so the cloud is no longer clearly the more accurate
+  choice. A sentence is sent again
+  every few seconds while it is said, so the faster one costs about 15 cents
+  per hour of speech, the default about twice that, and unbroken talk like
+  the news up to three times as much; off Wi-Fi that is a few hundred MB of
+  mobile data an hour, up to about 1 GB. See `CloudSpeech`. If the key
+  stops working, the credit runs out or the internet goes, a Whisper
+  model already on the phone takes over and the status line says so
+  (`CloudCover`); captions don't stop for a billing problem.
+
+</details>
+
+<details>
+<summary><img src="docs/assets/icons/recover.svg" width="24" align="absmiddle" alt=""> <b>Reliability</b>: recovery, downloads, the status line, the seven-day install</summary>
+
+- **Recovers by itself.** A recognizer that drops out mid-conversation,
+  an audio session that fails, or a model download that hit a dead Wi-Fi
+  is retried automatically with growing delays, and the status line says
+  so. Failures only a person can fix (a denied permission) never are.
+  Retries wait out a phone call instead of burning attempts during it.
+  A microphone that silently stops delivering audio (a Bluetooth hearing
+  aid reconnecting, say) is noticed within seconds and restarted, instead
+  of the screen saying "listening" over captions that never come.
+- **A status control that always says what's happening** — asking for the
+  microphone, downloading the model (with a percentage and the time left
+  at its current pace), loading it,
+  listening, paused, or exactly what failed and what to do about it
+  (retry, open Settings, switch engine). First-launch model download is the
+  slowest thing the app ever does and is never silent.
+- **Downloads that can't get stuck.** A cut-off model download is told
+  apart from a whole model and simply continues from where it stopped,
+  instead of failing to load on every launch.
+- **Downloads that don't eat the data plan.** On cellular or in Low Data
+  Mode a model waits for Wi-Fi, says how big it is, and starts by itself
+  when Wi-Fi arrives. "Download now" asks first; a setting allows it
+  always.
+- **Downloads that fit.** Free space is checked before a model download
+  starts, with room left for the first load. A phone that's too full says
+  how much to free (or to pick a smaller model), is never retried on a
+  timer, and starts the download by itself when she comes back to the app
+  with enough room. The model list marks the models that won't fit, and
+  they can't be picked over the one that works. Switching to a model that
+  still has to download while captions run asks first, since captions
+  stop until it arrives.
+- **Warns before the install runs out.** Installed with a free Apple ID,
+  the app stops opening after seven days without a word. It reads its own
+  provisioning profile, says on the caption screen two days ahead when that
+  will happen ("Ozen will stop opening tomorrow at 07:24" (Ozen tafsik
+  lehipatach machar be-sha'a 07:24)), and sends a reminder
+  notification the day before, in daytime.
+
+</details>
+
+<details>
+<summary><img src="docs/assets/icons/help.svg" width="24" align="absmiddle" alt=""> <b>Setup and help</b>: the first launch, twelve languages, diagnostics</summary>
+
 - **First-launch walkthrough** in large type that explains the engines and
   the one-time model download before it happens, asks for the
   microphone with a reason, and asks for her name (with "Grandma" (savta) one tap
@@ -379,18 +461,21 @@ things, for Hebrew conversation, entirely on-device.
   waiting for someone to find it in Settings. A phone set up before that
   page existed gets the same question as a card on the empty caption
   screen, until a word is added or it's turned down.
-- **Siri and Shortcuts.** "Hey Siri, start captions in Ozen" (hey Siri,
-  hatchel ktuviyot be-Ozen), "Stop captions" (atzor ktuviyot),
-  and, to have the phone say something aloud, "tagid be-Ozen" in Hebrew or "Say with Ozen" in English; Siri then asks what to say.
-  Each also in the feminine (hatchili, itzri, tagidi).
-- **A start button in Control Center** (iOS 18): "Start captions" (hatchalat
-  ktuviyot) opens Ozen and starts listening in one press. It can also
-  replace the flashlight or camera button at the bottom of the lock screen.
+- **Twelve interface languages** (Hebrew, English, Arabic, Russian,
+  Amharic, French, Spanish, Ukrainian, German, Portuguese, Simplified
+  Chinese, Hindi), following the phone's language or a choice in Settings.
+  Every piece of text is written as `tr(hebrew, english)`, with every other
+  language drawn from a translation table keyed by the English text
+  (`scripts/check-translations.py` checks both); Hebrew and Arabic read
+  right to left, and caption lines stay right to left for Hebrew speech
+  either way.
 - **Diagnostics screen** with every pipeline counter (audio chunks, tokens,
   caption lag, restarts, speaker clusters), free space, memory use, a
   timeline of the last failures, retries, microphone stalls, phone calls
   and low-memory warnings with clock times, and one-tap copy of all of it
   for asking for help.
+
+</details>
 
 ## Home computer requirements
 
@@ -418,6 +503,14 @@ Measured on rented cards (2026-09-27, the server's exact work on the same
 100 Hebrew sentences: the full model with beam 5 for each finished
 sentence, Turbo for live words; every card wrote the same text):
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/home-speed-dark.svg">
+  <img alt="Home computer speed by graphics card, seconds per finished sentence and per live pass on the same 100 sentences: RTX 4090 0.33 and 0.12; RTX 3090 0.52 and 0.22; RTX 4060 Ti 0.69 and 0.27; RTX 3060 12 GB 0.77 and 0.34; RTX 2080 Ti (Linux) 0.79 and 0.27; RTX 3070 0.93 and 0.42; RTX 2080 Ti (Windows) 1.02 and 0.23." src="docs/assets/home-speed-light.svg" width="100%">
+</picture>
+
+<details>
+<summary>The same numbers as a table</summary>
+
 | Card | Finished sentence | Live words |
 |---|---|---|
 | RTX 4090 | 0.33 s | 0.12 s |
@@ -427,6 +520,8 @@ sentence, Turbo for live words; every card wrote the same text):
 | RTX 2080 Ti (Linux) | 0.79 s | 0.27 s |
 | RTX 3070 | 0.93 s | 0.42 s |
 | RTX 2080 Ti (Windows) | 1.02 s | 0.23 s |
+
+</details>
 
 The two 2080 Ti rows are different computers, so the gap between them is a
 hint that Windows adds overhead to beam search, not a clean measurement.
@@ -524,11 +619,31 @@ How to donate:
 3. Scan the QR code with the wallet, or copy the address and paste it.
 4. Before sending, check that the first and last few characters of the address match.
 
-| Coin | Address | QR |
-|---|---|---|
-| Bitcoin (BTC) | `bc1qk5aym0mch042200s2wrc366r3hsxxmgc9nu7tm` | <img src="docs/support/bitcoin.png" width="140" alt="Bitcoin QR code"> |
-| Ethereum (ETH, plus USDC and USDT on the Ethereum network only) | `0x0Ea2210fcB0BbF2C3202d9663dB762F1f51b1BBC` | <img src="docs/support/ethereum.png" width="140" alt="Ethereum QR code"> |
-| Monero (XMR) | `46otohcpNKQfFi9F21ZHTcSiNVrLMw4yMS1SFM5hbDfu5LZCzLGkEZ2Vx4YD5kwK3nKUG6GjMf37z7i6sFQR2NEC1W9ubhb` | <img src="docs/support/monero.png" width="140" alt="Monero QR code"> |
+<table>
+  <tr>
+    <td align="center" valign="top" width="33%"><img src="docs/support/bitcoin.png" width="140" alt="Bitcoin QR code"><br><b>Bitcoin (BTC)</b></td>
+    <td align="center" valign="top" width="33%"><img src="docs/support/ethereum.png" width="140" alt="Ethereum QR code"><br><b>Ethereum (ETH)</b><br><sub>plus USDC and USDT on the Ethereum network only</sub></td>
+    <td align="center" valign="top" width="33%"><img src="docs/support/monero.png" width="140" alt="Monero QR code"><br><b>Monero (XMR)</b></td>
+  </tr>
+</table>
+
+Bitcoin (BTC)
+
+```
+bc1qk5aym0mch042200s2wrc366r3hsxxmgc9nu7tm
+```
+
+Ethereum (ETH, plus USDC and USDT on the Ethereum network only)
+
+```
+0x0Ea2210fcB0BbF2C3202d9663dB762F1f51b1BBC
+```
+
+Monero (XMR)
+
+```
+46otohcpNKQfFi9F21ZHTcSiNVrLMw4yMS1SFM5hbDfu5LZCzLGkEZ2Vx4YD5kwK3nKUG6GjMf37z7i6sFQR2NEC1W9ubhb
+```
 
 The same addresses and codes are in the app under Settings, About, Support Ozen.
 
@@ -542,4 +657,4 @@ other people must pass on the full source code under the same license. Code
 taken from an earlier version before 2026-09-28 was under MIT; everything from
 then on is AGPL-3.0.
 
-Made by Arbel.
+<p align="center"><img src="docs/assets/icon.png" width="44" alt=""><br>Made by Arbel.</p>
