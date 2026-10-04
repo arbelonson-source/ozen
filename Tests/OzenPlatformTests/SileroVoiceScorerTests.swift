@@ -31,6 +31,23 @@ struct SileroVoiceScorerTests {
         #expect(result.voiced >= 4)
     }
 
+    @Test("scores a chunk as its eight frames together, the way the voice-gate measurements assume")
+    func chunkScoreCombinesFrames() throws {
+        let scorer = try #require(SileroVoiceScorer())
+        var scores: [Float] = []
+        var evidence = VoiceEvidence { input in
+            let score = scorer.score(input)
+            if let score { scores.append(score) }
+            return score
+        }
+        evidence.append(try SpeakerFixtureLoading.readSamples(named: "speakerB_clip1.wav"))
+        let measured: [Float] = [0.0859, 0.0576, 1, 1, 1, 1, 1]
+        #expect(scores.count == measured.count)
+        for (score, expected) in zip(scores, measured) {
+            #expect(abs(score - expected) < 0.01)
+        }
+    }
+
     @Test("hears none in hiss, hum or silence")
     func noise() throws {
         var state: UInt64 = 3
