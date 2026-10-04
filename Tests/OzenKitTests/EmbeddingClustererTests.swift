@@ -341,6 +341,15 @@ struct EmbeddingClustererDoubtfulTests {
         #expect(clusterer.assign(embedding: vector(cosine: 0.15)) != first)
     }
 
+    @Test("a window well short of a known person opens a speaker at once instead of taking their name")
+    func farFromANamedVoiceIsImmediate() {
+        var clusterer = EmbeddingClusterer(similarityThreshold: 0.45)
+        let grandma = clusterer.enroll(name: "סבתא", embedding: [1, 0, 0])
+        let stranger = clusterer.assign(embedding: vector(cosine: 0.15))
+        #expect(stranger != grandma)
+        #expect(clusterer.displayName(forClusterID: stranger) == "דובר 1")
+    }
+
     @Test("a loud window counts no more than a quiet one in a voice's average")
     func loudnessCarriesNoWeight() {
         var clusterer = EmbeddingClusterer(similarityThreshold: 0.45)

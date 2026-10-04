@@ -37,6 +37,12 @@ public struct EmbeddingClusterer: Sendable {
     /// conversation up close and from 0.34 to 0.12 across a room, with
     /// labels right at least as often.
     public var newSpeakerMargin: Float = 0.40
+    /// The same, when the nearest voice is a known person. A doubtful window
+    /// counted with them shows their name, not just a number: at 0.40 here
+    /// too, in 600 simulated families (four people enrolled, two guests, 60
+    /// lines each), a guest's line carried a family name 24.9% of the time
+    /// instead of 22.9%.
+    public var namedSpeakerMargin: Float = 0.25
     /// A doubtful window waiting for the next one to agree with it.
     private var doubtful: [Float]?
     private var nextID = 0
@@ -110,7 +116,8 @@ public struct EmbeddingClusterer: Sendable {
             return clusters[bestIndex].id
         }
         // Clearly nobody heard so far.
-        if bestSimilarity < similarityThreshold - newSpeakerMargin {
+        let margin = clusters[bestIndex].name == nil ? newSpeakerMargin : namedSpeakerMargin
+        if bestSimilarity < similarityThreshold - margin {
             doubtful = nil
             return openCluster(with: embedding, name: nil)
         }
