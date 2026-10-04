@@ -243,6 +243,21 @@ struct CaptionConfidenceTests {
         #expect(WhisperSegmentSummary.averageLogprob(wordTokenLogprobs: []) == nil)
     }
 
+    @Test("a line the phone's engine had to decode again at a raised temperature is shown as unsure, however sure its retry reads")
+    func retriedLineIsUnsure() throws {
+        let words = "פגשתי מהרופא שתביא לי את הטלפון"
+        let plain = WhisperSegmentSummary(text: words, noSpeechProb: 0, avgLogprob: log(0.95), compressionRatio: 1.2)
+        var retried = plain
+        retried.temperature = 0.2
+        let sure = try #require(CaptionConfidence.whisperConfidence(of: [plain]))
+        #expect(abs(sure - 0.95) < 0.001)
+        #expect(CaptionConfidence.isUncertain(confidence: sure, isCommitted: true, text: words, engine: .whisperKit) == false)
+        let doubtful = try #require(CaptionConfidence.whisperConfidence(of: [plain, retried]))
+        #expect(CaptionConfidence.isUncertain(confidence: doubtful, isCommitted: true, text: words, engine: .whisperKit))
+        #expect(CaptionConfidence.isUncertain(confidence: doubtful, isCommitted: true, text: "כן", engine: .whisperKit))
+        #expect(CaptionConfidence.whisperConfidence(of: []) == nil)
+    }
+
     @Test("confidence is saved with the line, and older saved lines have none")
     func savedWithHistory() throws {
         let live = TranscriptSegment(id: UUID(), text: "אולי", isCommitted: true, speakerClusterID: nil, startTimestamp: 0, lastUpdateTimestamp: 0, confidence: 0.25)

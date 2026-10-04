@@ -452,7 +452,8 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     noSpeechProb: $0.noSpeechProb,
                     avgLogprob: Self.averageLogprob(of: $0, specialTokenBegin: specialTokenBegin) ?? $0.avgLogprob,
                     compressionRatio: $0.compressionRatio,
-                    uncertainWords: Self.uncertainWords(in: $0, tokenizer: wordTokenizer)
+                    uncertainWords: Self.uncertainWords(in: $0, tokenizer: wordTokenizer),
+                    temperature: $0.temperature
                 )
             }
             // Confidence has to describe exactly the text being shown, not
@@ -461,7 +462,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
             // content that never reaches the screen.
             let acceptedSegments = filter.accepted(from: summaries, echo: echoDetector)
             let text = filter.acceptedText(from: summaries, echo: echoDetector)
-            let confidence = Self.confidence(from: acceptedSegments.map(\.avgLogprob))
+            let confidence = CaptionConfidence.whisperConfidence(of: acceptedSegments)
             tally.recordSegments(seen: summaries.count, accepted: acceptedSegments.count)
             if isFinal { tally.recordFinalPass(cameBackEmpty: text.isEmpty) }
 
@@ -598,14 +599,6 @@ public actor WhisperKitEngine: TranscriptionEngine {
             token < specialTokenBegin ? scores[token] : nil
         }
         return WhisperSegmentSummary.averageLogprob(wordTokenLogprobs: logprobs)
-    }
-
-    /// Whisper reports mean token log-probability; e^x of that is a
-    /// reasonable 0…1 confidence for the UI.
-    private static func confidence(from logprobs: [Float]) -> Float? {
-        guard !logprobs.isEmpty else { return nil }
-        let mean = logprobs.reduce(0, +) / Float(logprobs.count)
-        return min(max(exp(mean), 0), 1)
     }
 
     enum EngineError: Error {

@@ -61,6 +61,23 @@ public enum CaptionConfidence {
     /// Apple's recognizer averages its words' 0...1 scores. Not measured
     /// against Hebrew it got wrong.
     public static let appleUncertainBelow: Float = 0.4
+    /// The score of a line the phone's engine had to decode again at a
+    /// raised temperature. WhisperKit retries a finished line when the
+    /// plain decode fails the model's own checks (mostly a first token it
+    /// was under 22% sure of), and scores the retry from the sharpened
+    /// odds, so it reads near 1 and never got the mark. Of 839 broadcast
+    /// lines through ivrit.ai's Turbo, the 10 that would have been retried
+    /// all had a word wrong, and none of them was under the cutoffs.
+    public static let retriedLine: Float = 0.5
+
+    /// e^(mean of the segments' average log-probability), held to
+    /// `retriedLine` when any of them is a retry.
+    public static func whisperConfidence(of segments: [WhisperSegmentSummary]) -> Float? {
+        guard !segments.isEmpty else { return nil }
+        let mean = segments.map(\.avgLogprob).reduce(0, +) / Float(segments.count)
+        let score = min(max(exp(mean), 0), 1)
+        return segments.contains { $0.temperature > 0 } ? min(score, retriedLine) : score
+    }
 
     public static func uncertainBelow(for engine: TranscriptionEngineKind, words: Int) -> Float {
         switch engine {

@@ -18,13 +18,17 @@ public struct WhisperSegmentSummary: Sendable, Equatable {
     /// The words of this segment the model was least sure of (see
     /// `UncertainWords`), when the caller worked them out.
     public var uncertainWords: [String]
+    /// Above 0 when the plain decode failed the model's own checks and this
+    /// is a retry with sharpened odds (see `CaptionConfidence.retriedLine`).
+    public var temperature: Float
 
-    public init(text: String, noSpeechProb: Float, avgLogprob: Float, compressionRatio: Float, uncertainWords: [String] = []) {
+    public init(text: String, noSpeechProb: Float, avgLogprob: Float, compressionRatio: Float, uncertainWords: [String] = [], temperature: Float = 0) {
         self.text = text
         self.noSpeechProb = noSpeechProb
         self.avgLogprob = avgLogprob
         self.compressionRatio = compressionRatio
         self.uncertainWords = uncertainWords
+        self.temperature = temperature
     }
 
     /// The words' token scores summed, over their count plus one for the
