@@ -289,9 +289,10 @@ Open a section for the details.
 - **Nothing lost when iOS closes the app.** A speech model is one of the
   biggest things in a phone's memory, so iOS may end the app in the
   background mid-conversation. Coming back, the empty screen offers the
-  conversation from a few minutes ago, one tap away. When iOS warns it is
-  short of memory and captions are off, the app lets go of the loaded
-  model first, so it is less likely to be the app iOS ends.
+  conversation if it was still going in the last 20 minutes, one tap
+  away. When iOS warns it is short of memory and captions are off, the
+  app lets go of the loaded model first, so it is less likely to be the
+  app iOS ends.
 
 </details>
 
