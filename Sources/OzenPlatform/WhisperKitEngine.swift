@@ -37,9 +37,6 @@ public actor WhisperKitEngine: TranscriptionEngine {
     /// Rebuilt with the vocabulary; catches the prompt coming back as a
     /// caption on a quiet window.
     private var echoDetector: PromptEchoDetector?
-    /// Whisper's prompt budget is half its 448-token context; stay well
-    /// under so the audio's own tokens never get squeezed.
-    private let maxPromptTokens = 120
 
     // How often the live preview re-runs is decided per pass by
     // `InferenceCadence` (0.6 s on a cool phone, slower when hot, in Low
@@ -62,7 +59,8 @@ public actor WhisperKitEngine: TranscriptionEngine {
     /// next sentence is already in the buffer when speech is detected.
     private let leadingKeepSeconds = 0.5
     /// Whisper's window is 30 s; finalize before that so the model never
-    /// sees a truncated utterance.
+    /// sees a truncated utterance. Sooner when the line's words would not
+    /// fit after the names (`WhisperKitDecodeRoom`).
     private let maxUtteranceSeconds = 28.0
     /// How far back from the end a line that ran too long looks for a
     /// quiet moment to be cut at (`UtteranceCut`), and the stretch it
@@ -312,7 +310,6 @@ public actor WhisperKitEngine: TranscriptionEngine {
         let pauseSamples = Int(pauseSeconds * sampleRate)
         let padSamples = Int(trailingPadSeconds * sampleRate)
         let keepSamples = Int(leadingKeepSeconds * sampleRate)
-        let maxSamples = Int(maxUtteranceSeconds * sampleRate)
         let longCutLookBack = Int(longCutLookBackSeconds * sampleRate)
         let longCutFrame = Int(longCutFrameSeconds * sampleRate)
         var lastLivePassSeconds: Double?
@@ -342,6 +339,10 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 continue
             }
 
+            // The longer the names list, the less room is left for the
+            // line's own words (`WhisperKitDecodeRoom`).
+            let prompt = promptTokens(using: pipe)
+            let maxSamples = Int(WhisperKitDecodeRoom.longestLineSeconds(promptTokens: prompt?.count ?? 0, upTo: maxUtteranceSeconds) * sampleRate)
             let pauseReached = total - speechEnd >= pauseSamples
             let tooLong = total >= maxSamples
             let isFinal = pauseReached || tooLong || status.finished
@@ -413,7 +414,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
             }
 
             var options = isFinal ? finalPass : livePass
-            options.promptTokens = promptTokens(using: pipe)
+            options.promptTokens = prompt
             // A voice across the room reaches the model quiet; brought up to
             // a common level it made fewer mistakes (speaker across the room
             // 51.3 -> 49.6% of words wrong, 8 dB quieter 86.5 -> 84.9%) and
@@ -524,7 +525,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
         let tokens = Array(
             tokenizer.encode(text: " " + text)
                 .filter { $0 < specialTokenBegin }
-                .prefix(maxPromptTokens)
+                .prefix(WhisperKitDecodeRoom.maxPromptTokens)
         )
         promptCache = (vocabulary, tokens)
         return tokens.isEmpty ? nil : tokens

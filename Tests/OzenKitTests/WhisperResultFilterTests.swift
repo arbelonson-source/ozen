@@ -357,3 +357,30 @@ struct WhisperRepeatedSentenceTests {
         #expect(filter.acceptedText(from: [segment(cave, compression: 1.5)]) == cave)
     }
 }
+
+@Suite("Room for a line on the phone's engine")
+struct WhisperKitDecodeRoomTests {
+    @Test("the longest line leaves room for its words after the names, at the fastest rate real speech needed")
+    func longestLineFits() {
+        let fastestTokensPerSecond = 8.3
+        for prompt in 0...WhisperKitDecodeRoom.maxPromptTokens {
+            let seconds = WhisperKitDecodeRoom.longestLineSeconds(promptTokens: prompt, upTo: 28)
+            let opening = 4 + (prompt > 0 ? prompt + 1 : 0)
+            #expect(Double(opening) + seconds * fastestTokensPerSecond <= 223, "\(prompt) prompt tokens")
+        }
+    }
+
+    @Test("with no names a line runs about as long as before; a full list shortens it, never past the cap")
+    func shorterWithMoreNames() {
+        let none = WhisperKitDecodeRoom.longestLineSeconds(promptTokens: 0, upTo: 28)
+        let full = WhisperKitDecodeRoom.longestLineSeconds(promptTokens: WhisperKitDecodeRoom.maxPromptTokens, upTo: 28)
+        #expect(none > 25 && none <= 28)
+        #expect(full > 15 && full < none)
+        #expect(WhisperKitDecodeRoom.longestLineSeconds(promptTokens: 0, upTo: 20) == 20)
+    }
+
+    @Test("the names are cut before WhisperKit would cut them from the front, where the most important are")
+    func promptUnderWhisperKitsOwnLimit() {
+        #expect(WhisperKitDecodeRoom.maxPromptTokens <= 111)
+    }
+}

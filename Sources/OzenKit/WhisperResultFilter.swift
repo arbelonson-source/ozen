@@ -42,6 +42,30 @@ public struct WhisperSegmentSummary: Sendable, Equatable {
     }
 }
 
+/// How much a line the phone's engine can write out whole. WhisperKit 1.1
+/// decodes in 224 token positions (its `Constants.maxTokenContext`, half
+/// of Whisper's 448) and stops at 223: the four that open a line, the
+/// names prompt with its marker, then the words; what it hasn't written
+/// by then is skipped with the rest of the window. Real long lines needed
+/// up to 8.3 tokens a second (123 broadcast lines of 22-27 s through
+/// ivrit.ai's Turbo, median 6.2), so with 60 tokens of names 86 of them
+/// would have lost their end, and with WhisperKit's most, every one.
+/// A line is cut short enough to fit instead, at a breath
+/// (`UtteranceCut`), and nothing is lost.
+public enum WhisperKitDecodeRoom {
+    public static let positions = 223
+    public static let tokensPerSecond = 8.5
+    /// WhisperKit keeps the last 111 tokens of a longer prompt, which
+    /// would drop the names listed first; cut here, from the end, instead.
+    /// Each token of names takes 0.12 s off the longest line.
+    public static let maxPromptTokens = 80
+
+    public static func longestLineSeconds(promptTokens: Int, upTo cap: Double) -> Double {
+        let opening = 4 + (promptTokens > 0 ? promptTokens + 1 : 0)
+        return min(cap, Double(positions - opening) / tokensPerSecond)
+    }
+}
+
 /// Whisper is famous for hallucinating on silence and background noise:
 /// given a quiet room it will happily emit "toda raba" ("thanks"), "ktuviot
 /// al yedei ..." ("captions by ..."), or "Subtitles by the Amara.org
