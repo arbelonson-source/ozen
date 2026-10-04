@@ -111,6 +111,13 @@ struct NumberEmphasisTests {
         #expect(NumberEmphasis.hasListableNumber("פעם הייתי שם") == false)
     }
 
+    @Test("today, this week and this year after an amount are not its unit; after a half or a quarter they are")
+    func thisPeriodIsNotAUnit() {
+        #expect(emphasized("לחץ הדם 120/80 היום") == ["120/80"])
+        #expect(emphasized("קיבלתי שלושה השבוע ו-200 השנה") == ["שלושה", "200"])
+        #expect(emphasized("חצי היום ורבע השנה") == ["חצי היום", "ורבע השנה"])
+    }
+
     @Test("nobody, everybody and at once are not a count of one; once is")
     func notACount() {
         #expect(emphasized("אף אחד לא בא, כל אחד לבד, הכול בבת אחת") == [])

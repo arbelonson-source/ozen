@@ -28,6 +28,7 @@ public enum NumberEmphasis {
             // "at 10:30, pills").
             var end = found.upperBound
             var last = position
+            var afterFraction = word.core.flatMap(numberReading).map { fractionWords.contains($0.number) } ?? false
             var endsWord = found.upperBound == word.text.endIndex && !isImmediatelyFollowedByComma(end, in: text)
             // Spoken numbers above ten are compound words: teens ("chamesh
             // esreh" — "fifteen"), tens and units ("esrim u-shlosha" —
@@ -42,11 +43,12 @@ public enum NumberEmphasis {
                 endsWord = end == words[last].text.endIndex && !isImmediatelyFollowedByComma(end, in: text)
             }
             while endsWord, last + 1 < words.count,
-                  let joined = joinedWord(words[last + 1], allowingFraction: last == position) {
+                  let joined = joinedWord(words[last + 1], allowingFraction: last == position, afterFraction: afterFraction) {
                 last += 1
                 end = joined.range.upperBound
                 endsWord = end == words[last].text.endIndex && !isImmediatelyFollowedByComma(end, in: text)
                 guard joined.isFraction else { break }
+                afterFraction = true
             }
             result.append(found.lowerBound..<end)
             lastJoined = last
@@ -58,13 +60,16 @@ public enum NumberEmphasis {
     /// — "half the cup"), or right after a count, "riv'ei" ("quarters of"),
     /// which a unit may follow in turn. On its own "riv'ei" is no amount:
     /// "riv'ei ha-yare'ach" are the moon's quarters.
-    private static func joinedWord(_ word: Word, allowingFraction: Bool) -> (range: Range<String.Index>, isFraction: Bool)? {
+    private static func joinedWord(_ word: Word, allowingFraction: Bool, afterFraction: Bool) -> (range: Range<String.Index>, isFraction: Bool)? {
         // The shekel sign is a unit with no letters in it, so it has no
         // `core` at all: it needs its own check rather than the
         // letters-only `units` lookup below.
         if word.text == "₪" { return (word.text.startIndex..<word.text.endIndex, false) }
         guard let range = word.coreRange, let core = word.core else { return nil }
         if allowingFraction, fractionsOf.contains(core) { return (range, true) }
+        // After a count "ha-yom" is "today" ("120/80 ha-yom"), as "ha-shavua"
+        // is "this week": only a part of it is "the day" ("chatzi ha-yom").
+        if thisPeriodWords.contains(core), !afterFraction { return nil }
         let withoutArticle = core.hasPrefix("ה") && core.count > 2 ? String(core.dropFirst()) : core
         guard units.contains(core) || units.contains(withoutArticle) || units.contains(core.lowercased()) else { return nil }
         return (range, false)
@@ -261,6 +266,8 @@ public enum NumberEmphasis {
     ]
 
     static let fractionsOf: Set<String> = ["רבעי"]
+    static let fractionWords: Set<String> = ["חצי", "רבע", "שליש", "שלישים"]
+    static let thisPeriodWords: Set<String> = ["היום", "השבוע", "החודש", "השנה"]
 
     static let onceWords: Set<String> = ["פעם", "ופעם"]
     static let periodWords: Set<String> = [
