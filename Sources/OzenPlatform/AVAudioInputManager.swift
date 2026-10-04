@@ -330,9 +330,11 @@ public final class AVAudioInputManager: AudioCapturing {
             preferredUID: preferredInputUID,
             // What the system records from now, as the policy expects. The
             // last selection here is nothing at launch and the old input
-            // after a route change: a USB-C or Roger microphone that iOS
-            // had moved to was put back on the phone's own microphone.
-            currentUID: inputInUse ?? selectedInputUID
+            // after a route change: as current, a USB-C or Roger microphone
+            // that iOS had moved to was put back on the phone's own one.
+            // As previous it is what a headset nobody picked hands back to.
+            currentUID: inputInUse ?? selectedInputUID,
+            previousUID: selectedInputUID
         )
         guard let resolved, let port = session.availableInputs?.first(where: { $0.uid == resolved }) else {
             selectedInputUID = resolved

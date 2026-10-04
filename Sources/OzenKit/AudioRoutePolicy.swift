@@ -53,6 +53,7 @@ public enum AudioRoutePolicy {
     ///   - preferredUID: the input the user explicitly chose, if any
     ///     (persisted in `AppSettings`).
     ///   - currentUID: whatever the system currently has active, if known.
+    ///   - previousUID: what Ozen was recording from before that, if known.
     /// - Returns: the UID Ozen should select, or nil if nothing is
     ///   available at all.
     ///
@@ -70,10 +71,15 @@ public enum AudioRoutePolicy {
     /// it are far worse than from the phone on the table. A headset is
     /// only recorded from when it was picked, or when nothing else is here.
     /// A hearing aid's microphone sits on the same ear, so the same rule.
+    /// One that took over from a microphone near the talker (a USB-C
+    /// lavalier, a Roger) gives the recording back to it, not to the phone:
+    /// a hearing aid dropping in and out at the edge of its range moved
+    /// captions off the better microphone each time.
     public static func resolveSelection(
         available: [AudioInputDescriptor],
         preferredUID: String?,
-        currentUID: String?
+        currentUID: String?,
+        previousUID: String? = nil
     ) -> String? {
         if let preferredUID, available.contains(where: { $0.uid == preferredUID }) {
             return preferredUID
@@ -81,6 +87,10 @@ public enum AudioRoutePolicy {
         let current = currentUID.flatMap { uid in available.first { $0.uid == uid } }
         if let current, !current.portType.isOnTheListenersEar {
             return current.uid
+        }
+        if let previous = previousUID.flatMap({ uid in available.first { $0.uid == uid } }),
+           !previous.portType.isOnTheListenersEar {
+            return previous.uid
         }
         let fallback = available.first { $0.portType == .builtInMic }
             ?? available.first { !$0.portType.isOnTheListenersEar }

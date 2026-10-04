@@ -65,6 +65,29 @@ struct AudioRoutePolicyTests {
         #expect(besideWiredMic == lavalier.uid)
     }
 
+    @Test("a headset or hearing aid nobody picked, taking over from a microphone near the talker, gives the recording back to that microphone")
+    func unchosenHeadsetGivesBackTheMicItTookOver() {
+        let roger = AudioInputDescriptor(uid: "roger-1", portName: "Roger On", portType: .remoteMic)
+        let hearingAid = AudioInputDescriptor(uid: "hearing-aid", portName: "Phonak Audéo", portType: .hearingAid)
+        let fromLavalier = AudioRoutePolicy.resolveSelection(
+            available: [builtIn, airpods, lavalier],
+            preferredUID: nil,
+            currentUID: airpods.uid,
+            previousUID: lavalier.uid
+        )
+        #expect(fromLavalier == lavalier.uid)
+        let fromRoger = AudioRoutePolicy.resolveSelection(
+            available: [builtIn, roger, hearingAid],
+            preferredUID: nil,
+            currentUID: hearingAid.uid,
+            previousUID: roger.uid
+        )
+        #expect(fromRoger == roger.uid)
+        // Unplugged meanwhile, or itself an ear device: the phone's own.
+        #expect(AudioRoutePolicy.resolveSelection(available: [builtIn, airpods], preferredUID: nil, currentUID: airpods.uid, previousUID: lavalier.uid) == builtIn.uid)
+        #expect(AudioRoutePolicy.resolveSelection(available: [builtIn, airpods, hearingAid], preferredUID: nil, currentUID: airpods.uid, previousUID: hearingAid.uid) == builtIn.uid)
+    }
+
     @Test("a hearing aid nobody chose gives way to the phone's microphone, like a headset; chosen, it stays")
     func unchosenHearingAidGivesWay() {
         let hearingAid = AudioInputDescriptor(uid: "hearing-aid", portName: "Phonak Audéo", portType: .hearingAid)
