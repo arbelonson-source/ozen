@@ -136,6 +136,12 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
     /// Megabytes `prepare` would still download; nil when the model is there.
     var pendingDownload: Int?
     private(set) var prepareCount = 0
+    /// Preparations parked at `prepareGate` right now. A test waiting for
+    /// one to be held waits on this, not on `prepareCount`: a preparation
+    /// that starts between installing the gate and reading the count is
+    /// counted and then held, and the count never moves again.
+    var heldPrepares: Int { lock.withLock { held } }
+    private var held = 0
     private let lock = NSLock()
     private var tokenContinuation: AsyncThrowingStream<TranscriptToken, Error>.Continuation?
     private(set) var chunksSeen = 0
@@ -158,7 +164,11 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
         progress: @escaping @Sendable (EnginePreparationProgress) -> Void
     ) async -> EngineAvailability {
         lock.withLock { prepareCount += 1 }
-        await prepareGate?.wait()
+        if let prepareGate {
+            lock.withLock { held += 1 }
+            await prepareGate.wait()
+            lock.withLock { held -= 1 }
+        }
         for update in progressUpdates {
             progress(update)
             await Task.yield()

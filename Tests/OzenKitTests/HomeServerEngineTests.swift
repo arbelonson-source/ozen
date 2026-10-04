@@ -911,8 +911,7 @@ struct HomeServerCoverTests {
         #expect(await eventually { server.prepareCount >= 2 && captions.scheduledRetry == nil })
         let gate = PrepareGate()
         server.prepareGate = gate
-        let asked = server.prepareCount
-        #expect(await eventually { server.prepareCount > asked })
+        #expect(await eventually { server.heldPrepares > 0 })
 
         await captions.setVocabulary(["Dvora"])
         phone.pendingDownload = nil
