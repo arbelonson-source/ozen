@@ -244,8 +244,11 @@ public struct WhisperResultFilter: Sendable, Equatable {
         let sentence = tokens[..<best.size].joined(separator: " ")
         // Two copies of two copies is a loop of four, and a "sentence"
         // that is itself a word or short phrase over again is a loop cut
-        // in half ("pak pak pak..." on dripping water).
-        guard collapsingRepeats(sentence, maxRepeats: 1) == sentence,
+        // in half ("pak pak pak..." on dripping water). One that only
+        // doubles a word of its own ("lat lat", slowly; "ken ken", yes)
+        // is still a sentence: refusing any doubled word dropped the line.
+        let unlooped = collapsingRepeats(sentence, maxRepeats: 1).split(whereSeparator: { $0.isWhitespace })
+        guard unlooped.count >= minimumWords,
               repeatedSentence(sentence, minimumWords: minimumWords, minimumSimilarity: minimumSimilarity) == nil
         else { return nil }
         return sentence

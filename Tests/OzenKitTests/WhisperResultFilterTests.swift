@@ -302,6 +302,19 @@ struct WhisperRepeatedSentenceTests {
         #expect(filter.acceptedText(from: [segment("\(cave) \(cave) \(cave)", compression: 4.1)]) == cave)
     }
 
+    @Test("a sentence said again that doubles a word itself, as 'slowly, slowly' and 'yes, yes' do, is kept once")
+    func repeatWithADoubledWordKeptOnce() {
+        // Compression ratios measured with zlib on these exact strings.
+        let slowly = "סבתא, תלכי לאט לאט כשאת יורדת במדרגות כי הן עדיין רטובות מהגשם."
+        let twice = segment("\(slowly) \(slowly)", compression: 2.55)
+        #expect(filter.accepts(twice))
+        #expect(filter.acceptedText(from: [twice]) == slowly)
+        let yes = "כן כן, התור לרופא המשפחה נקבע ליום שלישי הבא בעשר וחצי בבוקר."
+        #expect(filter.acceptedText(from: [segment("\(yes) \(yes)", compression: 2.46)]) == yes)
+        let wait = "רגע רגע, התור לרופא הוא ביום שלישי בבוקר."
+        #expect(filter.acceptedText(from: [segment("\(wait) \(wait) \(wait)", compression: 3.07)]) == wait)
+    }
+
     @Test("a loop of four or more copies, a short phrase looped, or repetitive text that is not copies is still dropped")
     func loopsStillDropped() {
         #expect(!filter.accepts(segment(Array(repeating: cave, count: 4).joined(separator: " "), compression: 5.4)))
