@@ -91,6 +91,12 @@ the same.
   it. Touch the screen, or the small arrow at the bottom, to bring them back.
   To keep them always: Settings → Display → hide the buttons while captions
   run, off.
+- **The orange microphone dot stays on while captions are stopped.** When
+  captions can't run for now (the home computer is off or asleep, the
+  cloud is out of reach) and are waiting to try again, the microphone stays
+  on for sound alerts alone, so a doorbell or smoke alarm still alerts.
+  Nothing is captioned or sent anywhere meanwhile. Stopping captions turns
+  the microphone off.
 - **The app is in English (or Hebrew) and should be the other.** Settings →
   App language. "Same as the phone" follows the iPhone's own language.
 - **All settings went back to the start.** The settings file couldn't be
