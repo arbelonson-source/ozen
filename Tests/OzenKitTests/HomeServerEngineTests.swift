@@ -956,6 +956,20 @@ struct HomeServerCoverTests {
         #expect(await eventually { captions.stats.soundDetectionRunning })
     }
 
+    @Test("a voice sample recorded during the wait has the microphone to itself, and sound alerts listen again after it", .timeLimit(.minutes(1)))
+    func voiceSampleDuringTheWait() async {
+        let (captions, _, _, audio, _) = await waitingCaptions()
+        #expect(await eventually { captions.stats.soundDetectionRunning })
+        let startsBefore = audio.calls.filter { $0 == "startCapture" }.count
+        let recording = Task { @MainActor in await captions.captureEnrollmentSamples(seconds: 0.5) }
+        #expect(await eventually { audio.calls.filter { $0 == "startCapture" }.count == startsBefore + 1 })
+        #expect(!captions.stats.soundDetectionRunning)
+        audio.push([Float](repeating: 0.1, count: 8_000))
+        #expect(await recording.value.count == 8_000)
+        #expect(captions.phase.failure != nil)
+        #expect(captions.stats.soundDetectionRunning)
+    }
+
     @Test("a backup that takes over during the wait gets the microphone from sound alerts, never with two captures open")
     func backupTakesTheMicrophoneFromSounds() async {
         let (captions, _, phone, audio, detector) = await waitingCaptions()
