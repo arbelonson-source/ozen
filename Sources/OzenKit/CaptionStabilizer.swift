@@ -38,21 +38,34 @@ public struct TranscriptSegment: Identifiable, Sendable, Equatable {
 /// strange one. A small mark on the lines the engine itself was unsure
 /// about tells her when it's worth asking again.
 public enum CaptionConfidence {
-    /// Whisper's confidence is the exponent of its average log-probability,
-    /// so 0.4 is an average log-probability of about -0.9: the range where
-    /// its output is often wrong. Apple's recognizer reports on the same
-    /// 0...1 scale.
-    public static let uncertainBelow: Float = 0.4
+    /// Whisper's score, on the phone or the home computer, is e^(mean
+    /// log-probability), and it sits near 1. On 368 lecture lines, clean
+    /// and in living-room and kitchen noise, ivrit.ai's large model and its
+    /// Turbo scored a median 0.96-0.97 and almost never under 0.4, even on
+    /// lines they got wrong; under 0.8 were 20 of the 2,208, every one of
+    /// them misheard (October 2026). OpenAI's Small scores lower all round:
+    /// 0.8 marks 29% of its lines, four in five of them wrong.
+    public static let whisperUncertainBelow: Float = 0.8
+    /// Apple's recognizer averages its words' 0...1 scores. Not measured
+    /// against Hebrew it got wrong.
+    public static let appleUncertainBelow: Float = 0.4
 
-    public static func isUncertain(_ segment: TranscriptSegment) -> Bool {
-        isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted)
+    public static func uncertainBelow(for engine: TranscriptionEngineKind) -> Float {
+        switch engine {
+        case .appleSpeech: return appleUncertainBelow
+        case .whisperKit, .homeServer, .cloud: return whisperUncertainBelow
+        }
+    }
+
+    public static func isUncertain(_ segment: TranscriptSegment, engine: TranscriptionEngineKind) -> Bool {
+        isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, engine: engine)
     }
 
     /// Only finished lines: a line still being written changes its mind.
     /// Exactly 0 means "no score" (Apple reports that on partial results).
-    public static func isUncertain(confidence: Float?, isCommitted: Bool) -> Bool {
+    public static func isUncertain(confidence: Float?, isCommitted: Bool, engine: TranscriptionEngineKind) -> Bool {
         guard isCommitted, let confidence, confidence > 0 else { return false }
-        return confidence < uncertainBelow
+        return confidence < uncertainBelow(for: engine)
     }
 }
 

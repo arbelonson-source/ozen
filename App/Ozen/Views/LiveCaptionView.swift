@@ -604,7 +604,7 @@ struct LiveCaptionView: View {
             theme: theme,
             isKeywordHit: viewModel.keywordHitSegmentIDs.contains(segment.id),
             isStarred: viewModel.starredSegmentIDs.contains(segment.id),
-            isUncertain: viewModel.display.markUncertainLines && CaptionConfidence.isUncertain(segment),
+            isUncertain: viewModel.display.markUncertainLines && CaptionConfidence.isUncertain(segment, engine: viewModel.settings.engine),
             marksUncertainWords: viewModel.display.markUncertainLines
         )
         .id(segment.id)

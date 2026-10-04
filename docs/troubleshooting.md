@@ -197,6 +197,8 @@ the same.
   Try the phone's own microphone to confirm.
 - **A small question mark next to a line.** The engine wasn't sure it heard
   that line right. Holding the line offers to ask the speaker to repeat it.
+  On many lines, the phone is on a weaker model such as Small, which
+  mishears far more often than "Turbo Hebrew (ivrit.ai)".
 - **No phone notifications when the screen is off.** In Settings → Alerts (hatra'ot),
   "Alert on phone when the screen is off" has to be on; under it, a red
   warning shows if notifications are blocked for Ozen in iOS, with a button

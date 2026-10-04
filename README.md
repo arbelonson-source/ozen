@@ -169,7 +169,9 @@ things, for Hebrew conversation, entirely on-device.
   the captions to change it), white-on-black / yellow-on-black /
   black-on-white, bold, speaker names on/off (shown once at the start of
   each person's turn, like a chat), a small question mark on lines the
-  engine itself was unsure of (so she knows when to ask again), numbers
+  engine itself was unsure of (so she knows when to ask again; with
+  ivrit.ai's models about one line in a hundred, and in tests every one
+  of them was misheard), numbers
   (the time of an appointment, how many pills, a phone number) in a
   heavier weight and a second colour, whether written in digits or in
   words ("and six" (u-ve-shesh), "three pills" (shlosha kadurim), "twice"

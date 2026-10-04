@@ -177,12 +177,29 @@ struct CaptionConfidenceTests {
 
     @Test("only finished lines with a real low score are marked unsure")
     func uncertaintyRule() {
-        #expect(CaptionConfidence.isUncertain(confidence: 0.3, isCommitted: true))
-        #expect(CaptionConfidence.isUncertain(confidence: 0.3, isCommitted: false) == false)
-        #expect(CaptionConfidence.isUncertain(confidence: 0.8, isCommitted: true) == false)
-        #expect(CaptionConfidence.isUncertain(confidence: 0.4, isCommitted: true) == false)
-        #expect(CaptionConfidence.isUncertain(confidence: 0, isCommitted: true) == false)
-        #expect(CaptionConfidence.isUncertain(confidence: nil, isCommitted: true) == false)
+        for engine in TranscriptionEngineKind.allCases {
+            #expect(CaptionConfidence.isUncertain(confidence: 0.3, isCommitted: true, engine: engine))
+            #expect(CaptionConfidence.isUncertain(confidence: 0.3, isCommitted: false, engine: engine) == false)
+            #expect(CaptionConfidence.isUncertain(confidence: 0.97, isCommitted: true, engine: engine) == false)
+            #expect(CaptionConfidence.isUncertain(confidence: 0, isCommitted: true, engine: engine) == false)
+            #expect(CaptionConfidence.isUncertain(confidence: nil, isCommitted: true, engine: engine) == false)
+        }
+        #expect(CaptionConfidence.isUncertain(confidence: 0.4, isCommitted: true, engine: .appleSpeech) == false)
+    }
+
+    @Test("Whisper's misheard lines get the mark: they score far above Apple's cutoff")
+    func whisperScaleIsItsOwn() {
+        // Lines ivrit.ai's models got wrong, on the phone (Turbo) and on the
+        // home computer (large), with their scores: e^(mean log-probability).
+        let misheard: [Float] = [0.689, 0.745, 0.746, 0.652, 0.679, 0.799]
+        for score in misheard {
+            #expect(CaptionConfidence.isUncertain(confidence: score, isCommitted: true, engine: .whisperKit))
+            #expect(CaptionConfidence.isUncertain(confidence: score, isCommitted: true, engine: .homeServer))
+            #expect(CaptionConfidence.isUncertain(confidence: score, isCommitted: true, engine: .appleSpeech) == false)
+        }
+        // Their median line, nearly always right, stays unmarked.
+        #expect(CaptionConfidence.isUncertain(confidence: 0.97, isCommitted: true, engine: .homeServer) == false)
+        #expect(CaptionConfidence.isUncertain(confidence: 0.9, isCommitted: true, engine: .whisperKit) == false)
     }
 
     @Test("confidence is saved with the line, and older saved lines have none")

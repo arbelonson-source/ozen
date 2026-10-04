@@ -9,8 +9,8 @@ import Foundation
 /// can be put on the word itself.
 public enum UncertainWords {
     /// A word counts as doubtful when the model's average probability for
-    /// its pieces is under this. Stricter than the line's 0.4
-    /// (`CaptionConfidence.uncertainBelow`): one word's score swings far
+    /// its pieces is under this. Stricter than the line's 0.8
+    /// (`CaptionConfidence.whisperUncertainBelow`): one word's score swings far
     /// more than a line's average, and the first piece of any word is often
     /// a toss-up between good candidates.
     public static let uncertainBelow: Float = 0.25

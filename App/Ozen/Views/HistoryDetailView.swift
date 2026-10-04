@@ -87,6 +87,7 @@ struct HistoryDetailView: View {
                             previous: index > 0 ? record.segments[index - 1] : nil,
                             showsTime: timeMarks.contains(segment.id),
                             markUncertain: viewModel.display.markUncertainLines,
+                            engine: record.engine,
                             fontSize: viewModel.display.fontSize,
                             emphasizeNumbers: viewModel.display.emphasizeNumbers,
                             isMatch: isMatch
@@ -436,6 +437,7 @@ private struct SavedLineRow: View {
     let previous: SavedSegment?
     let showsTime: Bool
     let markUncertain: Bool
+    let engine: TranscriptionEngineKind
     let fontSize: Double
     let emphasizeNumbers: Bool
     let isMatch: Bool
@@ -486,7 +488,7 @@ private struct SavedLineRow: View {
     }
 
     private var isUncertain: Bool {
-        markUncertain && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted)
+        markUncertain && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, engine: engine)
     }
 
     private var timeText: String {
