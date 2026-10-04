@@ -168,11 +168,16 @@ def model_path(name):
     the Hugging Face Hub for a newer one: with the internet down and the
     home network up, that question took 135 s per model to give up, and
     the phone waited for both. A model not downloaded yet (the first
-    start) or a folder named directly is left to faster-whisper as before."""
+    start) or a folder named directly is left to faster-whisper as before,
+    and so is a first download cut off before its weights arrived: the Hub
+    library hands back that folder too, and loading it failed at every
+    start instead of finishing the download."""
     try:
-        return download_model(name, local_files_only=True)
+        path = download_model(name, local_files_only=True)
     except Exception:
         return name
+    needed = ("model.bin", "config.json", "tokenizer.json")
+    return path if all(os.path.isfile(os.path.join(path, part)) for part in needed) else name
 
 
 def lacks_voice(audio, gate):

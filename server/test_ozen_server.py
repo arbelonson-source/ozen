@@ -1,7 +1,10 @@
 import asyncio
 import json
 import logging
+import os
+import shutil
 import sys
+import tempfile
 import time
 import types
 import unittest
@@ -150,17 +153,25 @@ class ModelsFromDisk(unittest.TestCase):
     """With the internet down and the home network up, asking the Hub
     about a model already on disk took 135 s per model to give up."""
 
+    def folder(self, *files):
+        path = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, path)
+        for name in files:
+            open(os.path.join(path, name), "w").close()
+        return path
+
     def test_a_downloaded_model_loads_without_asking_the_hub(self):
+        complete = self.folder("model.bin", "config.json", "tokenizer.json", "vocabulary.json")
         asked = []
 
         def download(name, local_files_only=False):
             asked.append((name, local_files_only))
             if not local_files_only:
                 raise AssertionError("asked the network")
-            return f"/cache/{name}"
+            return complete
 
         with mock.patch.object(S, "download_model", download):
-            self.assertEqual(S.model_path("ivrit-ai/whisper-large-v3-ct2"), "/cache/ivrit-ai/whisper-large-v3-ct2")
+            self.assertEqual(S.model_path("ivrit-ai/whisper-large-v3-ct2"), complete)
         self.assertEqual(asked, [("ivrit-ai/whisper-large-v3-ct2", True)])
 
     def test_a_model_not_downloaded_yet_is_fetched_as_before(self):
@@ -170,17 +181,25 @@ class ModelsFromDisk(unittest.TestCase):
         with mock.patch.object(S, "download_model", download):
             self.assertEqual(S.model_path("ivrit-ai/whisper-large-v3-ct2"), "ivrit-ai/whisper-large-v3-ct2")
 
+    def test_a_first_download_cut_off_before_the_weights_is_fetched_again(self):
+        # The Hub library hands back the folder of a download stopped part
+        # way; loading it failed at every start, never finishing it.
+        cut_off = self.folder("config.json", "tokenizer.json")
+        with mock.patch.object(S, "download_model", lambda name, local_files_only=False: cut_off):
+            self.assertEqual(S.model_path("ivrit-ai/whisper-large-v3-ct2"), "ivrit-ai/whisper-large-v3-ct2")
+
     def test_both_models_load_from_disk(self):
+        live, final = self.folder("model.bin", "config.json", "tokenizer.json"), self.folder("model.bin", "config.json", "tokenizer.json")
         loaded = []
 
         class Recorder:
             def __init__(self, path, device, compute_type):
                 loaded.append(path)
 
-        with mock.patch.object(S, "download_model", lambda name, local_files_only=False: f"/cache/{name}"), \
+        with mock.patch.object(S, "download_model", lambda name, local_files_only=False: {"live": live, "final": final}[name]), \
                 mock.patch.object(S, "WhisperModel", Recorder):
             S.Transcriber("live", "cuda", "int8_float16", 5, 0, final_model="final")
-        self.assertEqual(loaded, ["/cache/live", "/cache/final"])
+        self.assertEqual(loaded, [live, final])
 
 
 class Restart(unittest.TestCase):
