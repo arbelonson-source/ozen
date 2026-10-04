@@ -134,6 +134,11 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
                     "אין אינטרנט, והתמלול בענן צריך אותו. פתחו את אוזן ונסו שוב, או בקשו ממי שהתקין את הטלפון לעבור לזיהוי הדיבור שבטלפון.",
                     "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition."
                 )
+            case (_, .homeServerUnreachable?):
+                return tr(
+                    "אין תשובה מהמחשב. בדקו שהוא דלוק, ער (לא במצב שינה) ומחובר לאינטרנט.",
+                    "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet."
+                )
             default:
                 return tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
             }

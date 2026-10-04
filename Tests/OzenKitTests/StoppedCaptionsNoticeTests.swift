@@ -110,6 +110,7 @@ struct StoppedCaptionsNoticeTests {
         let cloudKey = StoppedCaptionsNotice.content(for: .failed(engineFailure(.cloudKeyNeeded))).body
         let cloudCredit = StoppedCaptionsNotice.content(for: .failed(engineFailure(.cloudOutOfCredit))).body
         let offline = StoppedCaptionsNotice.content(for: .failed(engineFailure(.noInternet))).body
+        let computer = StoppedCaptionsNotice.content(for: .failed(engineFailure(.homeServerUnreachable))).body
 
         #expect(callEnded.contains("אחרי השיחה"))
         #expect(permission == speechPermission)
@@ -119,7 +120,10 @@ struct StoppedCaptionsNoticeTests {
         #expect(cloudKey == cloudCredit)
         #expect(offline.contains("אינטרנט"))
         #expect(offline.contains("זיהוי הדיבור שבטלפון") && !offline.contains("Whisper"))
-        #expect(Set([callEnded, permission, storage, noMic, other, cloudKey, offline]).count == 7)
+        // Opening the app doesn't wake the computer; captions come back by
+        // themselves once it answers.
+        #expect(computer.contains("אין תשובה מהמחשב"))
+        #expect(Set([callEnded, permission, storage, noMic, other, cloudKey, offline, computer]).count == 8)
     }
 
     @Test("the message is in English when the app is")
@@ -130,6 +134,8 @@ struct StoppedCaptionsNoticeTests {
             #expect(content.body.contains("After the call"))
             let permission = StoppedCaptionsNotice.content(for: .failed(PipelineFailure(kind: .microphonePermissionDenied, detail: ""))).body
             #expect(permission.contains("permission"))
+            let computer = StoppedCaptionsNotice.content(for: .failed(engineFailure(.homeServerUnreachable))).body
+            #expect(computer.hasPrefix("No answer from the computer"))
         }
     }
 }
