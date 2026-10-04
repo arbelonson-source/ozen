@@ -274,6 +274,39 @@ struct TranscriptHistoryTests {
         #expect(store.search("וכדורים").count == 1)
     }
 
+    @Test("a word finds its plural and its 'of' form, and a plural finds the word, though the ending changes")
+    func searchFindsNumberForms() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+
+        // Lines as the home computer wrote them from broadcast speech.
+        let medicines = record(startedAt: 100, segments: [segment(text: "לקחת את התרופות שלך?")])
+        let dinner = record(startedAt: 200, segments: [segment(text: "אחרי ארוחת הערב")])
+        let places = record(startedAt: 300, segments: [segment(text: "יש הרבה מקומות כאלה")])
+        let medicine = record(startedAt: 400, segments: [segment(text: "הרופא נתן תרופה חדשה")])
+        let child = record(startedAt: 500, segments: [segment(text: "הילד חזר מבית הספר")])
+        let time = record(startedAt: 600, segments: [segment(text: "אין לי זמן עכשיו")])
+        for saved in [medicines, dinner, places, medicine, child, time] {
+            try store.save(saved)
+        }
+
+        #expect(Set(store.search("תרופה").map(\.id)) == [medicines.id, medicine.id])
+        #expect(Set(store.search("תרופות").map(\.id)) == [medicines.id, medicine.id])
+        #expect(store.search("ארוחה").map(\.id) == [dinner.id])
+        #expect(store.search("מקום").map(\.id) == [places.id])
+        #expect(store.search("ילדים").map(\.id) == [child.id])
+        #expect(store.search("זמנים").map(\.id) == [time.id])
+        #expect(store.search("התרופה").count == 2)
+        #expect(TranscriptHistoryStore.SearchWord("ילדים").forms == ["ילדים", "ילד"])
+
+        let loaded = try #require(store.load(id: medicines.id))
+        #expect(TranscriptHistoryStore.matchingSegmentIDs(in: loaded, query: "תרופה") == loaded.segments.map(\.id))
+        // A word of two letters is left alone: "ben" (son) is inside too many others.
+        try store.save(record(startedAt: 700, segments: [segment(text: "שלושה בנים")]))
+        #expect(store.search("בן").isEmpty)
+    }
+
     @Test("dictation punctuation and Hebrew quotes around a search query don't stop it matching")
     func searchIgnoresDictationPunctuation() throws {
         let dir = makeTempDirectory()

@@ -574,6 +574,17 @@ public struct TranscriptHistoryStore: Sendable {
     /// naturally do) also finds a bare "rofe". Only stripped when three
     /// letters or more remain underneath, so a short name is not cut down
     /// to something found everywhere.
+    ///
+    /// Each of those is also looked for with the other number's ending,
+    /// which changes the word's last letter so "contains" can't reach it:
+    /// "trufa" (medicine) finds "trufot" and "trufat" (medicine of), "makom"
+    /// (place) finds "mekomot", and the other way round, "yeladim"
+    /// (children) finds "yeled" and "zmanim" (times) finds "zman". Run
+    /// over 4,635 broadcast and lecture lines, a singular from an everyday
+    /// list found 102 more of them, about nine in ten the same word ("zman"
+    /// also finds "muzmanim", invited); a plural finds the singular and
+    /// words on the same letters ("she'elot", questions, also finds
+    /// "sha'alti", I asked). A word of two letters is left as it is.
     struct SearchWord {
         let forms: [String]
 
@@ -591,7 +602,37 @@ public struct TranscriptHistoryStore: Sendable {
                 guard stem.count >= 3, !forms.contains(stem) else { continue }
                 forms.append(stem)
             }
+            for form in forms {
+                for other in Self.numberForms(of: form) where !forms.contains(other) {
+                    forms.append(other)
+                }
+            }
             self.forms = forms
+        }
+
+        static let finalForms: [Character: Character] = Dictionary(uniqueKeysWithValues: HebrewText.finalLetters.map { ($1, $0) })
+
+        static func numberForms(of word: String) -> [String] {
+            guard word.count >= 3, let last = word.last else { return [] }
+            var forms: [String] = []
+            if last == "ה", word.count >= 4 {
+                let stem = String(word.dropLast())
+                forms += [stem + "ות", stem + "ת"]
+            }
+            if let ordinary = HebrewText.finalLetters[last], !word.hasSuffix("ים") {
+                let stem = String(word.dropLast()) + String(ordinary)
+                forms += [stem + "ים", stem + "ות"]
+            }
+            for ending in ["ות", "ים"] where word.hasSuffix(ending) && word.count >= 5 {
+                let stem = String(word.dropLast(2))
+                if ending == "ות" { forms.append(stem + "ה") }
+                if let stemLast = stem.last, let final = finalForms[stemLast] {
+                    forms.append(String(stem.dropLast()) + String(final))
+                } else {
+                    forms.append(stem)
+                }
+            }
+            return forms
         }
 
         func found(in text: String) -> Bool {

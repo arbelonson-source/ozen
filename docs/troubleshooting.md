@@ -249,7 +249,9 @@ the same.
   conversation.** Every word typed has to appear in it somewhere, so fewer
   words find more: "doctor" (rofe) rather than "what the doctor said about
   the pills". Parts of words count ("rofe" also finds "la-rofe", "to the
-  doctor", and "ha-rofe", "the doctor", finds both), and a speaker's name or the conversation's own name can be
+  doctor", and "ha-rofe", "the doctor", finds both), a word finds its
+  plural and the other way round ("trufa", medicine, finds "trufot",
+  medicines), and a speaker's name or the conversation's own name can be
   searched too. A conversation that captioned a word wrongly can only be
   found by what is actually written; the day headings (Today, Yesterday, a
   weekday) are the other way in.
