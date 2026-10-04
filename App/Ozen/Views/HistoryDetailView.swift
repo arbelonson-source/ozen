@@ -52,7 +52,11 @@ struct HistoryDetailView: View {
                 Button {
                     withAnimation(reduceMotion ? nil : .default) { proxy.scrollTo(segment.id, anchor: .center) }
                 } label: {
-                    NumberLineLabel(segment: segment)
+                    NumberLineLabel(
+                        segment: segment,
+                        isUncertain: viewModel.display.markUncertainLines
+                            && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, engine: record.engine)
+                    )
                 }
                 .accessibilityHint(tr("מעבר לשורה בשיחה", "Jump to this line in the conversation"))
                 .contextMenu { copyButton(segment.text) }
@@ -351,6 +355,7 @@ struct HistoryDetailView: View {
 /// with its numbers standing out. "3 pills" means more with "the doctor" on it.
 private struct NumberLineLabel: View {
     let segment: SavedSegment
+    let isUncertain: Bool
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     // The emphasized numbers grow with the .body text around them. Fixed
@@ -366,15 +371,23 @@ private struct NumberLineLabel: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
-            Text(
-                caption: CaptionLayout.directed(segment.text),
-                emphasizingNumbers: true,
-                size: numberSize,
-                numberColor: nil
-            )
-            .font(.body)
-            .foregroundStyle(.primary)
-            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 6 : 4)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                // "10:30" or "11:30": where the doubt matters most.
+                if isUncertain {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. "))
+                }
+                Text(
+                    caption: CaptionLayout.directed(segment.text),
+                    emphasizingNumbers: true,
+                    size: numberSize,
+                    numberColor: nil
+                )
+                .font(.body)
+                .foregroundStyle(.primary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 6 : 4)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
