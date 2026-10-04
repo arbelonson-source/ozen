@@ -124,6 +124,23 @@ struct NumberEmphasisTests {
         #expect(emphasized("רק פעם אחת ביום") == ["אחת"])
     }
 
+    @Test("everybody and nobody after 'that', one of the doctors, and on the one or the other hand are not counts")
+    func idiomsFromRealSpeech() {
+        // Lines the home computer wrote from broadcast and lecture speech.
+        #expect(emphasized("אני מבקש שכל אחד מכם יקשיב") == [])
+        #expect(emphasized("וכדי שלאף אחד לא יהיה ספק") == [])
+        #expect(emphasized("היה לאחר ביקור אצל אחד הרופאים.") == [])
+        #expect(emphasized("אחת הבעיות העיקריות של החילונים") == [])
+        #expect(emphasized("הוא הפך אותה לאחת הקלפטוקרטיות המושחתות") == [])
+        #expect(emphasized("מצד אחד להסתכל על זה, ומצד שני, זה לא רע.") == [])
+        // Still counts and times.
+        #expect(emphasized("שכל שלושה ילדים יקבלו כדור אחד") == ["שלושה", "אחד"])
+        #expect(emphasized("באחת בלילה ההר הפסיק לרקוד.") == ["באחת"])
+        #expect(emphasized("אחד, הרופאים אמרו, זה מספיק") == ["אחד"])
+        #expect(emphasized("בשעה אחת הילדים יוצאים") == ["אחת"])
+        #expect(emphasized("קיבלתי שני כדורים בצד אחד") == ["שני כדורים", "אחד"])
+    }
+
     @Test("each other, the other one and the second are not counts; Monday and the two of them are")
     func otherOne() {
         #expect(emphasized("הם עוזרים אחד לשני, אחת את השנייה") == [])

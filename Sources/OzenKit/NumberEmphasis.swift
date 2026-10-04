@@ -100,12 +100,24 @@ public enum NumberEmphasis {
         guard let coreRange = word.coreRange, let core = word.core, let reading = numberReading(of: core) else { return nil }
         let previous = position > 0 ? words[position - 1].core : nil
         let following = words[(position + 1)...].prefix(3).compactMap(\.core)
+        if let previous, onHandWords.contains(previous), onesWords.contains(reading.number) || twoWords.contains(reading.number) {
+            // "mi-tzad echad ... mi-tzad sheni": "on the one hand ... on the other".
+            return nil
+        }
         if onesWords.contains(reading.number) {
-            // "af echad" ("nobody") and "kol echad" ("everybody"), and "echad
-            // et ha-sheni" ("each other", lit. "one to the other"): none of
+            // "af echad" ("nobody") and "kol echad" ("everybody"), also after
+            // "she-" ("she-kol echad" — "that everybody"), and "echad et
+            // ha-sheni" ("each other", lit. "one to the other"): none of
             // them a count of one.
-            if let previous, notACountBefore.contains(previous) { return nil }
+            if let previous, isNotACountBefore(previous) { return nil }
             if following.contains(where: otherOneWords.contains) { return nil }
+            // "echad ha-rof'im" ("one of the doctors"): one of a group. After
+            // an hour it is still the time ("be-sha'a achat ha-yeladim").
+            if word.text.base[coreRange.upperBound...].first?.isWhitespace == true, position + 1 < words.count,
+               let next = words[position + 1].core, isDefinitePlural(next),
+               !(previous.map(isHour) ?? false) {
+                return nil
+            }
         }
         if twoWords.contains(reading.number) {
             // "ha-sheni" ("the other one" / "the second") is never a count of
@@ -280,6 +292,19 @@ public enum NumberEmphasis {
     static let onesWords: Set<String> = ["אחד", "אחת"]
     static let twoWords: Set<String> = ["שני", "שתי"]
     static let notACountBefore: Set<String> = ["אף", "ואף", "באף", "לאף", "כל", "וכל", "לכל", "בכל", "מכל", "בבת"]
+    static let onHandWords: Set<String> = ["מצד", "ומצד"]
+
+    private static func isNotACountBefore(_ word: String) -> Bool {
+        notACountBefore.contains(word) || ["ש", "וש", "כש"].contains { word.hasPrefix($0) && notACountBefore.contains(String(word.dropFirst($0.count))) }
+    }
+
+    private static func isDefinitePlural(_ word: String) -> Bool {
+        word.hasPrefix("ה") && word.count >= 5 && (word.hasSuffix("ים") || word.hasSuffix("ות"))
+    }
+
+    private static func isHour(_ word: String) -> Bool {
+        word == "שעה" || (word.count > 3 && word.dropFirst() == "שעה")
+    }
     /// The second half of "each other": "echad le-sheni", "achat me-hashniya".
     static let otherOneWords: Set<String> = [
         "השני", "לשני", "מהשני", "בשני", "והשני",
