@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import sys
 import time
 import types
@@ -479,6 +480,21 @@ class PromptBudget(unittest.TestCase):
         session = S.Session(Socket(), SlowGPU(0.1), "he", [], live_interval=0.3)
         self.assertIsNone(session.prompt())
         self.assertIsNone(session.hotwords())
+
+
+class Logging(unittest.TestCase):
+    def test_the_log_keeps_the_servers_lines_but_not_one_per_model_pass(self):
+        root, library = logging.getLogger(), logging.getLogger("faster_whisper")
+        levels = root.level, library.level
+        try:
+            with mock.patch.object(S.logging, "basicConfig", side_effect=lambda **kw: root.setLevel(kw["level"])):
+                S.setup_logging()
+            self.assertTrue(S.log.isEnabledFor(logging.INFO))
+            self.assertFalse(library.isEnabledFor(logging.INFO))
+            self.assertTrue(library.isEnabledFor(logging.WARNING))
+        finally:
+            root.setLevel(levels[0])
+            library.setLevel(levels[1])
 
 
 class Reports(unittest.TestCase):

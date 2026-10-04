@@ -484,6 +484,15 @@ def report_order(name):
     return parts[:2], int(count) if count.isdigit() else 0
 
 
+def setup_logging():
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+    # faster-whisper logs every pass ("Processing audio with duration ..."),
+    # several a second while captions run: 94% of the lines in a night's
+    # log, and on Windows server.log is only trimmed when the server starts.
+    # Its warnings still show.
+    logging.getLogger("faster_whisper").setLevel(logging.WARNING)
+
+
 def save_report(text, client):
     """A diagnostics report the phone sent (Settings, Diagnostics), kept
     next to the server for whoever looks after the phone. Older ones stay;
@@ -627,7 +636,7 @@ async def main():
     token = pairing_code(os.environ.get("OZEN_TOKEN", ""))
     if not token:
         raise SystemExit("set OZEN_TOKEN to the pairing code the phone will send")
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+    setup_logging()
     try:
         transcriber = Transcriber(args.model, args.device, args.compute_type, args.beam, args.context, args.final_model or None,
                                   args.speech_gate)
