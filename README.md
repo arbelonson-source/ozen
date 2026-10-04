@@ -254,7 +254,9 @@ things, for Hebrew conversation, entirely on-device.
   and highlights the line, matching through Hebrew's attached prefixes
   ("ve-le-Ruti" still matches "Ruti"), without firing a short name on the
   everyday word it hides in ("Li" stays quiet on "sheli", mine; "Ben" on
-  "lavan", white; "Sarah" on "kshera", kosher; "Leah" on "mele'ah", full). The suggested "medicine" and "doctor" also match
+  "lavan", white; "Sarah" on "kshera", kosher; "Leah" on "mele'ah", full),
+  nor on a word still being said ("Tal" stays quiet on "ha-tel..." until it
+  turns out to be "ha-telefon", the phone). The suggested "medicine" and "doctor" also match
   "the medicines" and a woman doctor. Said over and over at the table, it
   buzzes at most once every 15 seconds, while every line it's in stays
   highlighted.

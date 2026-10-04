@@ -2010,6 +2010,33 @@ struct CaptionPipelineAlertTests {
         #expect(pipeline.keywordHitSegmentIDs.isEmpty)
     }
 
+    @Test("a live guess cut off half way through a word sets off no alert; the finished line decides")
+    func cutOffLiveWordNoAlert() async {
+        let engine = FakeEngine()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
+        var settings = AppSettings.default
+        settings.keywordAlerts = [KeywordAlert(phrase: "טל")]
+        await pipeline.start(settings: settings)
+        let phone = UUID()
+
+        engine.emit(token(phone, "כדי שכשנלחץ על הטל..."))
+        #expect(await eventually { pipeline.segments.first?.text == "כדי שכשנלחץ על הטל..." })
+        #expect(pipeline.keywordHits.isEmpty)
+        #expect(pipeline.keywordHitSegmentIDs.isEmpty)
+        engine.emit(token(phone, "כדי שכשנלחץ על הטלפון, אז הוא זז.", final: true))
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        #expect(pipeline.keywordHits.isEmpty)
+
+        // Her name as the last word of a line still calls her once it's finished.
+        let call = UUID()
+        engine.emit(token(call, "בוא הנה טל..."))
+        #expect(await eventually { pipeline.segments.last?.text == "בוא הנה טל..." })
+        #expect(pipeline.keywordHits.isEmpty)
+        engine.emit(token(call, "בוא הנה טל...", final: true))
+        #expect(await eventually { pipeline.keywordHits.count == 1 })
+        #expect(pipeline.keywordHits.first?.segmentID == call)
+    }
+
     @Test("a word a live guess dropped and the finished text brought back marks the line again, without a second alert")
     func keywordBackInFinalText() async {
         let engine = FakeEngine()

@@ -294,6 +294,21 @@ struct KeywordAlertMatcherTests {
         #expect(hits("מרים", "מרים, את שומעת?") == 1)
     }
 
+    @Test("a word a live pass cut off half way is not taken for a name")
+    func cutOffWordIsNoName() {
+        let matcher = KeywordAlertMatcher(alerts: [KeywordAlert(phrase: "טל"), KeywordAlert(phrase: "סבתא")])
+        // Turbo Hebrew on a broadcast clip, one pass before it heard the
+        // whole of "the phone" (ha-telefon).
+        #expect(matcher.matches(inLiveText: "כדי שכשנלחץ על הטל...").isEmpty)
+        #expect(matcher.matches(inLiveText: "על הטל…").isEmpty)
+        #expect(matcher.matches(inLiveText: "על הטל ...").isEmpty)
+        // Everything before the cut is still heard at once.
+        #expect(matcher.matches(inLiveText: "סבתא, תראי את הטל...").map(\.phrase) == ["סבתא"])
+        #expect(matcher.matches(inLiveText: "בוא הנה טל").map(\.phrase) == ["טל"])
+        // A finished line is read whole, its last word included.
+        #expect(matcher.matches(in: "בוא הנה טל...").map(\.phrase) == ["טל"])
+    }
+
     @Test("the suggested words 'medicine' and 'doctor' also fire on their plural and feminine forms, with a prefix too")
     func suggestedWordsMatchTheirForms() {
         func hits(_ word: String, _ caption: String) -> Int {

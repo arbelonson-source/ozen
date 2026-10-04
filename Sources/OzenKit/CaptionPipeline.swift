@@ -910,7 +910,7 @@ public final class CaptionPipeline {
     }
 
     private func scanForKeywords(in segment: TranscriptSegment) {
-        let matches = keywordMatcher.matches(in: segment.text)
+        let matches = segment.isCommitted ? keywordMatcher.matches(in: segment.text) : keywordMatcher.matches(inLiveText: segment.text)
         guard !matches.isEmpty else {
             // The finished text can take back a word a live guess had: the
             // line's bell and highlight follow what the line says now.

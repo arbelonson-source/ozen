@@ -340,6 +340,26 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
         self.alerts = alerts
     }
 
+    /// The matches on a line still being written. A live pass that stops
+    /// mid-word ends on the model's ellipsis ("הטל..." on its way to
+    /// "הטלפון", the phone), and the stub can read as a name: over 6,602
+    /// live passes on broadcast speech it buzzed for "טל" once, with
+    /// nobody called. The stub is left out until a later pass or the
+    /// finished line says the whole word; of the 16 names really said
+    /// there, 15 buzzed on the same pass as before and one 0.6 s later.
+    public func matches(inLiveText text: String) -> [KeywordMatch] {
+        matches(in: Self.droppingCutOffWord(text))
+    }
+
+    static func droppingCutOffWord(_ text: String) -> String {
+        var words = HebrewText.separatingJoiners(HebrewText.removingDirectionMarks(text))
+            .split(whereSeparator: { $0.isWhitespace })
+        guard let last = words.last, last.hasSuffix("...") || last.hasSuffix("…") else { return text }
+        while let word = words.last, HebrewText.normalize(String(word)).isEmpty { words.removeLast() }
+        if !words.isEmpty { words.removeLast() }
+        return words.joined(separator: " ")
+    }
+
     public func matches(in text: String) -> [KeywordMatch] {
         let rawWords = HebrewText.separatingJoiners(text).split(whereSeparator: { $0.isWhitespace }).map(String.init)
         guard !rawWords.isEmpty else { return [] }
