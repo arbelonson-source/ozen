@@ -2102,6 +2102,10 @@ public final class CaptionPipeline {
               activeSettings?.engine == .homeServer
         else { return }
         homeServerRecheck?.cancel()
+        // Once, not per check: a diagnostics report went from the last
+        // quick retry straight to "answers again" a minute later, and a
+        // computer that never answered left no sign the phone was waiting.
+        logEvent(.note("waiting for the home computer, asking it every \(String(format: "%g", homeServerWaitSeconds)) s"))
         homeServerRecheck = Task { [weak self] in
             while !Task.isCancelled {
                 guard let seconds = self?.homeServerWaitSeconds else { return }

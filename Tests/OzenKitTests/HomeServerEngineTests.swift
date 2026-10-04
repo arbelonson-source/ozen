@@ -840,8 +840,13 @@ struct HomeServerCoverTests {
         #expect(captions.homeServerWaitSeconds * 4 <= captions.homeServerRecheckSeconds)
         captions.homeServerRecheckSeconds = 1000
         captions.homeServerWaitSeconds = 0.05
+        var notes: [String] = []
+        captions.onEvent = { event in notes.append(event.description) }
         await captions.start(settings: serverSettings)
         #expect(await eventually { server.prepareCount >= 2 && captions.scheduledRetry == nil })
+        let waitStarted = server.prepareCount
+        #expect(await eventually { server.prepareCount >= waitStarted + 3 })
+        #expect(notes.filter { $0.hasPrefix("waiting for the home computer") } == ["waiting for the home computer, asking it every 0.05 s"])
 
         server.availability = .available
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .homeServer })
