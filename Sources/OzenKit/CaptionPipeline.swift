@@ -97,6 +97,13 @@ public final class CaptionPipeline {
     /// dropped connection kept a phone that is never stopped on its own
     /// model for good.
     public var homeServerRecheckSeconds: Double = 60
+    /// With no backup on the phone, captions stop when the home computer
+    /// can't be reached, and once the quick retries run out it is asked
+    /// this often. Shorter than the switch-back minute: here nothing is
+    /// being captioned meanwhile, and a computer that woke up just after a
+    /// check left her without captions for most of a minute more (44 s in
+    /// a drill with the real server). A check is one connection attempt.
+    public var homeServerWaitSeconds: Double = 15
     /// While the phone covers for the cloud after losing the internet, how
     /// often to look whether it can be reached again. Without it, a single
     /// dropped connection kept a phone that is never stopped on its own
@@ -2088,7 +2095,7 @@ public final class CaptionPipeline {
     /// computer left captions stopped once the quick retries ran out, even
     /// after it woke up: only a tap, or the phone's own network dropping
     /// and coming back, started them again. Asks the computer every
-    /// `homeServerRecheckSeconds` and starts captions once it answers. A
+    /// `homeServerWaitSeconds` and starts captions once it answers. A
     /// refused code needs a person, so it isn't asked again.
     private func waitForHomeServer(after failure: PipelineFailure) {
         guard failure.engineUnavailability?.kind == .homeServerUnreachable,
@@ -2097,7 +2104,7 @@ public final class CaptionPipeline {
         homeServerRecheck?.cancel()
         homeServerRecheck = Task { [weak self] in
             while !Task.isCancelled {
-                guard let seconds = self?.homeServerRecheckSeconds else { return }
+                guard let seconds = self?.homeServerWaitSeconds else { return }
                 try? await Task.sleep(for: .seconds(seconds))
                 guard !Task.isCancelled, let self, case .failed(let current) = self.phase, current == failure else { return }
                 // Read again on every pass: a backup model picked, a name

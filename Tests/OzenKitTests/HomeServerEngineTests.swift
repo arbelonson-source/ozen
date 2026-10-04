@@ -791,6 +791,7 @@ struct HomeServerCoverTests {
             recovery: .disabled
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         captions.homeServerSwitchBackQuietSeconds = 0
         await captions.start(settings: serverSettings)
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .homeServer })
@@ -813,6 +814,7 @@ struct HomeServerCoverTests {
             recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         await captions.start(settings: serverSettings)
         #expect(await eventually { server.prepareCount >= 2 && captions.scheduledRetry == nil })
         try? await Task.sleep(for: .milliseconds(100))
@@ -822,6 +824,27 @@ struct HomeServerCoverTests {
         server.availability = .available
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .homeServer })
         #expect(!captions.isCoveringForCloud)
+    }
+
+    @Test("stopped captions ask the computer sooner than covered ones look to switch back: nothing is captioned meanwhile")
+    func stoppedCaptionsAskSooner() async {
+        let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, "asleep"))
+        let phone = FakeEngine(kind: .whisperKit)
+        phone.pendingDownload = 819
+        let captions = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { $0.engine == .homeServer ? server : phone },
+            embedder: FakeEmbedder(),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+        )
+        #expect(captions.homeServerWaitSeconds * 4 <= captions.homeServerRecheckSeconds)
+        captions.homeServerRecheckSeconds = 1000
+        captions.homeServerWaitSeconds = 0.05
+        await captions.start(settings: serverSettings)
+        #expect(await eventually { server.prepareCount >= 2 && captions.scheduledRetry == nil })
+
+        server.availability = .available
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .homeServer })
     }
 
     @Test("a backup that finishes downloading while captions wait for the computer takes over, as its Settings row promises", .timeLimit(.minutes(1)))
@@ -836,6 +859,7 @@ struct HomeServerCoverTests {
             recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         await captions.start(settings: serverSettings)
         #expect(await eventually { server.prepareCount >= 2 && captions.scheduledRetry == nil })
         try? await Task.sleep(for: .milliseconds(100))
@@ -862,6 +886,7 @@ struct HomeServerCoverTests {
             recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         await captions.start(settings: serverSettings)
         #expect(await eventually { server.prepareCount >= 2 && captions.scheduledRetry == nil })
         try? await Task.sleep(for: .milliseconds(100))
@@ -885,6 +910,7 @@ struct HomeServerCoverTests {
             recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         await captions.start(settings: serverSettings)
         #expect(await eventually { server.prepareCount >= 2 && captions.scheduledRetry == nil })
         try? await Task.sleep(for: .milliseconds(100))
@@ -907,6 +933,7 @@ struct HomeServerCoverTests {
             recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         await captions.start(settings: serverSettings)
         #expect(await eventually { server.prepareCount >= 2 && captions.scheduledRetry == nil })
         let gate = PrepareGate()
@@ -932,6 +959,7 @@ struct HomeServerCoverTests {
             recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         await captions.start(settings: serverSettings)
         #expect(await eventually { server.prepareCount >= 2 && captions.scheduledRetry == nil })
 
@@ -958,6 +986,7 @@ struct HomeServerCoverTests {
             recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         await captions.start(settings: serverSettings)
         #expect(await eventually { server.prepareCount >= 2 && captions.scheduledRetry == nil })
 
@@ -983,6 +1012,7 @@ struct HomeServerCoverTests {
             recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         await captions.start(settings: serverSettings)
         #expect(await eventually { server.prepareCount >= 2 && captions.scheduledRetry == nil })
         try? await Task.sleep(for: .milliseconds(100))
@@ -1011,6 +1041,7 @@ struct HomeServerCoverTests {
             recovery: AutoRecoveryPolicy(glitchDelays: [0.2], downloadDelays: [])
         )
         captions.homeServerRecheckSeconds = 60
+        captions.homeServerWaitSeconds = 60
         await captions.start(settings: serverSettings)
         #expect(await eventually { captions.scheduledRetry != nil })
 
@@ -1047,6 +1078,7 @@ struct HomeServerCoverTests {
             recovery: .disabled
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         await captions.start(settings: serverSettings)
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .whisperKit })
         #expect(await eventually { server.prepareCount >= 3 })
@@ -1099,6 +1131,7 @@ struct HomeServerCoverTests {
             recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         await captions.start(settings: serverSettings)
         #expect(await eventually { captions.phase.failure != nil && captions.scheduledRetry == nil })
         try? await Task.sleep(for: .milliseconds(150))
@@ -1118,6 +1151,7 @@ struct HomeServerCoverTests {
             recovery: .disabled
         )
         captions.homeServerRecheckSeconds = 0.3
+        captions.homeServerWaitSeconds = 0.3
         captions.homeServerSwitchBackQuietSeconds = 0
         await captions.start(settings: serverSettings)
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .homeServer })
@@ -1144,6 +1178,7 @@ struct HomeServerCoverTests {
             recovery: .disabled
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         captions.homeServerSwitchBackQuietSeconds = 1
         captions.switchBackAfterAnsweredChecks = 1000
         await captions.start(settings: serverSettings)
@@ -1178,6 +1213,7 @@ struct HomeServerCoverTests {
             recovery: .disabled
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         captions.homeServerSwitchBackQuietSeconds = 0
         await captions.start(settings: serverSettings)
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .homeServer })
@@ -1207,6 +1243,7 @@ struct HomeServerCoverTests {
             recovery: .disabled
         )
         captions.homeServerRecheckSeconds = 2
+        captions.homeServerWaitSeconds = 2
         captions.homeServerSwitchBackQuietSeconds = 1000
         captions.switchBackAfterAnsweredChecks = 1
         await captions.start(settings: serverSettings)
@@ -1251,6 +1288,7 @@ struct HomeServerCoverTests {
             recovery: .disabled
         )
         captions.homeServerRecheckSeconds = 0.2
+        captions.homeServerWaitSeconds = 0.2
         captions.homeServerSwitchBackQuietSeconds = 1000
         captions.switchBackAfterAnsweredChecks = 1
         captions.switchBackBreathWaitSeconds = 0.3
@@ -1288,6 +1326,7 @@ struct HomeServerCoverTests {
             recovery: .disabled
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         captions.homeServerSwitchBackQuietSeconds = 1000
         captions.switchBackAfterAnsweredChecks = 3
         await captions.start(settings: serverSettings)
@@ -1316,6 +1355,7 @@ struct HomeServerCoverTests {
             recovery: .disabled
         )
         captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
         captions.homeServerSwitchBackQuietSeconds = 1000
         captions.switchBackAfterAnsweredChecks = 2
         await captions.start(settings: serverSettings)
@@ -1393,6 +1433,7 @@ struct HomeServerCoverTests {
         // runner's scheduling delay: at 0.02 s the switch back could
         // happen between two polls, and the test missed the phone's turn.
         captions.homeServerRecheckSeconds = 0.1
+        captions.homeServerWaitSeconds = 0.1
         captions.homeServerSwitchBackQuietSeconds = 0
         await captions.start(settings: serverSettings)
         // The wait is set just after the switch to the phone; read it once
@@ -1422,6 +1463,7 @@ struct HomeServerCoverTests {
                 recovery: .disabled
             )
             captions.homeServerRecheckSeconds = 0.05
+            captions.homeServerWaitSeconds = 0.05
             captions.homeServerSwitchBackQuietSeconds = 0
             await captions.start(settings: serverSettings)
             #expect(await eventually { captions.phase == .listening && captions.isCoveringForCloud })

@@ -5,8 +5,8 @@ a computer with an NVIDIA graphics card, and captions the phone's microphone
 over the network. The phone can keep its own model as a fallback: once it
 is downloaded (Settings → Home computer → "Download a backup to the
 phone"), captions carry on from the phone by themselves when this server
-can't be reached. Without it they wait, and start again about a minute
-after the server answers.
+can't be reached. Without it they wait, and start again within about 15
+seconds of the server answering.
 
 Measured on an RTX 2080 Ti: the first words of a line appear about a quarter
 of a second behind the speaker, and the finished line is on the phone about
