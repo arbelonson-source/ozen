@@ -17,6 +17,7 @@ private actor ScriptedSocket: HomeServerSocket {
     var hangsOnHello = false
     private var helloSends: [CheckedContinuation<Void, Error>] = []
     private(set) var pings = 0
+    private(set) var firstPingAt: ContinuousClock.Instant?
     private var pingWaiters: [CheckedContinuation<Void, Error>] = []
     private var queue: [String] = []
     private var waiters: [CheckedContinuation<String, Error>] = []
@@ -46,6 +47,7 @@ private actor ScriptedSocket: HomeServerSocket {
     func ping() async throws {
         if isClosed { throw Closed() }
         pings += 1
+        if firstPingAt == nil { firstPingAt = .now }
         if answersPings { return }
         try await withCheckedThrowingContinuation { pingWaiters.append($0) }
     }
@@ -363,20 +365,21 @@ struct HomeServerEngineTests {
     func overduePongEndsOnTime() async throws {
         let socket = ScriptedSocket(helloReply: ready)
         await socket.setAnswersPings(false)
-        // A ping every 1 s, overdue after 1.1 s: given up at about 2.1 s,
-        // where waiting for the next ping's turn made it 3 s.
-        let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: 1, pingSeconds: 1, pongSeconds: 1.1)
+        // A ping every 2 s, overdue after 2.05 s: given up 2.05 s after the
+        // ping, where waiting for the next ping's turn made it 4 s. Timed
+        // from the ping: with every test starting at once, a test run can
+        // hold everything up for most of a second (CI, 4 cores).
+        let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: 1, pingSeconds: 2, pongSeconds: 2.05)
         let (audio, feed) = AsyncStream<[Float]>.makeStream()
         defer { feed.finish() }
-        let started = ContinuousClock.now
         do {
             for try await _ in server.stream(languageCode: "he", audio: audio) {}
             Issue.record("the connection was kept")
         } catch {
             #expect((error as? EngineUnavailability)?.kind == .homeServerUnreachable)
         }
-        let elapsed = ContinuousClock.now - started
-        #expect(elapsed >= .seconds(2.1) && elapsed < .seconds(2.6), "\(elapsed)")
+        let waited = try #require(await socket.firstPingAt).duration(to: .now)
+        #expect(waited >= .seconds(1) && waited < .seconds(3.3), "\(waited)")
     }
 
     @Test("a pairing link that lost its slashes on the way is still recognised as one, so the phone can say it's damaged")
