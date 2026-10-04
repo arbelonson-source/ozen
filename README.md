@@ -342,8 +342,9 @@ things, for Hebrew conversation, entirely on-device.
   (what the doctor said about the pills), copy it, or say who is talking.
   Stars are saved with the conversation, counted in the history list,
   marked in shared text, and one button steps through them later. One
-  list gathers every starred line from every conversation, and can be
-  shared as text. A search result opens at the lines it found,
+  list gathers every starred line from every conversation, with the
+  question mark on any the engine was unsure of, and can be shared as
+  text. A search result opens at the lines it found,
   highlighted.
 - **Saved speakers can be renamed**, and the new name follows onto lines
   already on screen, into the names list and into every saved

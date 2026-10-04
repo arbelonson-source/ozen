@@ -41,13 +41,20 @@ struct StarredLinesView: View {
                                                     .foregroundStyle(SpeakerColor.color(forClusterID: line.segment.speakerClusterID, speakerName: name, on: colorScheme))
                                             }
                                         }
-                                        Text(
-                                            caption: CaptionLayout.displayText(line.segment.text),
-                                            emphasizingNumbers: viewModel.display.emphasizeNumbers,
-                                            size: max(17, viewModel.display.fontSize * 0.7),
-                                            numberColor: nil
-                                        )
-                                            .font(.system(size: max(17, viewModel.display.fontSize * 0.7)))
+                                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                            if viewModel.display.markUncertainLines && line.isUncertain {
+                                                Image(systemName: "questionmark.circle")
+                                                    .foregroundStyle(.secondary)
+                                                    .accessibilityLabel(tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. "))
+                                            }
+                                            Text(
+                                                caption: CaptionLayout.displayText(line.segment.text),
+                                                emphasizingNumbers: viewModel.display.emphasizeNumbers,
+                                                size: max(17, viewModel.display.fontSize * 0.7),
+                                                numberColor: nil
+                                            )
+                                                .font(.system(size: max(17, viewModel.display.fontSize * 0.7)))
+                                        }
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .environment(\.layoutDirection, .rightToLeft)
@@ -69,7 +76,11 @@ struct StarredLinesView: View {
             if !lines.isEmpty {
                 ToolbarItem(placement: .primaryAction) {
                     ShareLink(
-                        item: TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt: { TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: $0)) }),
+                        item: TranscriptHistoryStore.exportStarredText(
+                            lines,
+                            utcOffsetAt: { TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: $0)) },
+                            marksUncertain: viewModel.display.markUncertainLines
+                        ),
                         subject: Text(tr("שורות מסומנות מאוזן", "Starred lines from Ozen"))
                     ) {
                         Label(tr("שיתוף", "Share"), systemImage: "square.and.arrow.up")

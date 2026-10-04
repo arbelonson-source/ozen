@@ -1048,6 +1048,23 @@ struct TranscriptHistoryAllStarredTests {
         #expect(starred.first?.sessionStartedAt == 900)
     }
 
+    @Test("a starred line is judged unsure by the engine its conversation was recorded with")
+    func starredUnsureByEngine() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-unsure-stars-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        var doubtful = line("שני כדורים בעשר וחצי", starred: true)
+        doubtful.confidence = 0.7
+        var clear = line("ולחזור בעוד חודש", starred: true)
+        clear.confidence = 0.97
+        try store.save(TranscriptSessionRecord(startedAt: 900, engine: .homeServer, modelVariant: nil, inputName: nil, segments: [doubtful, clear]))
+        try store.save(TranscriptSessionRecord(startedAt: 100, engine: .appleSpeech, modelVariant: nil, inputName: nil, segments: [doubtful]))
+
+        let starred = store.starredLines()
+        #expect(starred.map(\.engine) == [.homeServer, .homeServer, .appleSpeech])
+        #expect(starred.map(\.isUncertain) == [true, false, false])
+    }
+
     @Test("no stars anywhere gives an empty list")
     func none() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-no-stars-\(UUID())")
@@ -1074,6 +1091,18 @@ struct TranscriptHistoryStarredExportTests {
         ]
         let text = TranscriptHistoryStore.exportStarredText(lines)
         #expect(text == "14.09.2026\n[09:05:00] ד״ר כהן: כדור בבוקר\n[09:06:05] ושניים בערב\n\n28.02.2025\n[23:30:00] התור ביום שלישי")
+    }
+
+    @Test("a starred line the screen marked unsure says so when shared, unless the marks are turned off")
+    func exportWarnsOnUnsure() {
+        // 2026-09-14 09:05:00 UTC.
+        let september: TimeInterval = 1_789_376_700
+        var doubtful = SavedSegment(id: UUID(), text: "שני כדורים בעשר וחצי", speakerName: "ד״ר כהן", speakerClusterID: 0, startTimestamp: september, isCommitted: true, isStarred: true)
+        doubtful.confidence = 0.7
+        let lines = [StarredLine(sessionID: UUID(), sessionStartedAt: september, segment: doubtful, engine: .whisperKit)]
+        let offset: (TimeInterval) -> Int = { _ in 0 }
+        #expect(TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt: offset, marksUncertain: true) == "14.09.2026\n[09:05:00] ייתכן שלא נשמע נכון. ד״ר כהן: שני כדורים בעשר וחצי")
+        #expect(TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt: offset, marksUncertain: false) == "14.09.2026\n[09:05:00] ד״ר כהן: שני כדורים בעשר וחצי")
     }
 
     @Test("two named conversations on one day are headed by their names")

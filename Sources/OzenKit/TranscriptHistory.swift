@@ -171,13 +171,21 @@ public struct StarredLine: Sendable, Equatable, Identifiable {
     public let segment: SavedSegment
     /// The conversation's name, if it was given one.
     public let sessionTitle: String?
+    /// What the conversation was recorded with: the line's score is on
+    /// that engine's scale.
+    public let engine: TranscriptionEngineKind
     public var id: UUID { segment.id }
+    /// Whether the line carried the question mark on screen.
+    public var isUncertain: Bool {
+        CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, engine: engine)
+    }
 
-    public init(sessionID: UUID, sessionStartedAt: TimeInterval, segment: SavedSegment, sessionTitle: String? = nil) {
+    public init(sessionID: UUID, sessionStartedAt: TimeInterval, segment: SavedSegment, sessionTitle: String? = nil, engine: TranscriptionEngineKind = .whisperKit) {
         self.sessionID = sessionID
         self.sessionStartedAt = sessionStartedAt
         self.segment = segment
         self.sessionTitle = sessionTitle
+        self.engine = engine
     }
 }
 
@@ -712,7 +720,7 @@ public struct TranscriptHistoryStore: Sendable {
             .flatMap { record in
                 record.segments
                     .filter(\.isStarred)
-                    .map { StarredLine(sessionID: record.id, sessionStartedAt: record.startedAt, segment: $0, sessionTitle: record.title) }
+                    .map { StarredLine(sessionID: record.id, sessionStartedAt: record.startedAt, segment: $0, sessionTitle: record.title, engine: record.engine) }
             }
     }
 
@@ -884,12 +892,13 @@ public struct TranscriptHistoryStore: Sendable {
     /// Starred lines as plain text for sharing: one block per
     /// conversation, headed by its date, then each line with its time and
     /// who said it. Dates are computed by hand for the same reason as the
-    /// clock times: identical output on the phone and in tests.
+    /// clock times: identical output on the phone and in tests. With
+    /// `marksUncertain`, a line the engine was unsure of says so.
     public static func exportStarredText(_ lines: [StarredLine], utcOffsetSeconds: Int = 0) -> String {
         exportStarredText(lines, utcOffsetAt: { _ in utcOffsetSeconds })
     }
 
-    public static func exportStarredText(_ lines: [StarredLine], utcOffsetAt offset: (TimeInterval) -> Int) -> String {
+    public static func exportStarredText(_ lines: [StarredLine], utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool = false) -> String {
         var blocks: [String] = []
         var currentSession: UUID?
         var block: [String] = []
@@ -903,11 +912,12 @@ public struct TranscriptHistoryStore: Sendable {
             }
             let time = formattedClockTime(line.segment.startTimestamp, utcOffsetSeconds: offset(line.segment.startTimestamp))
             let said = CaptionLayout.isolatingNumbers(line.segment.text)
+            let warning = marksUncertain && line.isUncertain ? tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") : ""
             let text: String
             if let name = line.segment.speakerName, !name.isEmpty, !TranscriptSessionSummary.isGenericLabel(name) {
-                text = "[\(time)] \(name): \(said)"
+                text = "[\(time)] \(warning)\(name): \(said)"
             } else {
-                text = "[\(time)] \(said)"
+                text = "[\(time)] \(warning)\(said)"
             }
             // As in `exportText`: read in order when pasted into a chat.
             block.append(CaptionLayout.opensLeftToRight(text) ? CaptionLayout.rightToLeftMark + text : text)
