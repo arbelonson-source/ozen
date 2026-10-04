@@ -328,7 +328,11 @@ public final class AVAudioInputManager: AudioCapturing {
         let resolved = AudioRoutePolicy.resolveSelection(
             available: availableInputs,
             preferredUID: preferredInputUID,
-            currentUID: selectedInputUID
+            // What the system records from now, as the policy expects. The
+            // last selection here is nothing at launch and the old input
+            // after a route change: a USB-C or Roger microphone that iOS
+            // had moved to was put back on the phone's own microphone.
+            currentUID: inputInUse ?? selectedInputUID
         )
         guard let resolved, let port = session.availableInputs?.first(where: { $0.uid == resolved }) else {
             selectedInputUID = resolved
