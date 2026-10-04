@@ -255,6 +255,24 @@ struct KeywordAlertMatcherTests {
         #expect(hits("גיל", "תביאו לגיל ולמיכל") == 0)
     }
 
+    @Test("Sarah, Hana, David and Ron don't fire on job, kosher, the minister, camp, the uncle or Sharon; called by name they still do")
+    func commonNamesSkipEverydayWords() {
+        func hits(_ name: String, _ caption: String) -> Int {
+            KeywordAlertMatcher(alerts: [KeywordAlert(phrase: name)]).matches(in: caption).count
+        }
+        #expect(hits("שרה", "היא מצאה משרה חדשה") == 0)
+        #expect(hits("שרה", "המסעדה כשרה") == 0)
+        #expect(hits("שרה", "השרה אמרה היום") == 0)
+        #expect(hits("חנה", "מחנה קיץ בגליל") == 0)
+        #expect(hits("דוד", "הדוד שלי בא") == 0)
+        #expect(hits("רון", "שרון הגיעה") == 0)
+        #expect(hits("שרה", "שרה, בואי לאכול") == 1)
+        #expect(hits("שרה", "תגידו לשרה") == 1)
+        #expect(hits("חנה", "אמא וחנה באו") == 1)
+        #expect(hits("דוד", "תביאו לדוד") == 1)
+        #expect(hits("רון", "רון הגיע") == 1)
+    }
+
     @Test("the suggested words 'medicine' and 'doctor' also fire on their plural and feminine forms, with a prefix too")
     func suggestedWordsMatchTheirForms() {
         func hits(_ word: String, _ caption: String) -> Int {
