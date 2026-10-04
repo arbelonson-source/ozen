@@ -37,9 +37,10 @@ public struct WhisperSegmentSummary: Sendable, Equatable {
 ///
 /// On the home computer (faster-whisper 1.2 on CTranslate2 4.8, October
 /// 2026) the large-v3 models, ivrit.ai's Turbo and large and OpenAI's
-/// Turbo, report a no-speech probability of exactly 0 on everything, pure
-/// silence included, where OpenAI's Small gives 0.78 on kitchen noise; and
-/// they write a confident "toda raba" on faint hiss. For its lines the
+/// Turbo, put the no-speech probability at about 0.0001 on everything,
+/// pure silence included (ivrit.ai's large is 99.9% sure silence is
+/// Hebrew), where OpenAI's Small gives 0.87 on silence and 0.78 on
+/// kitchen noise; and they write a confident "toda raba" on faint hiss. For its lines the
 /// checks below that read it never fire, and what keeps an invented
 /// "thank you" off the screen is the voice check before the model hears a
 /// line (the computer's speech gate; on the phone, `VoiceEvidence`). The
