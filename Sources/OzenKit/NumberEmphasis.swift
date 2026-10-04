@@ -89,6 +89,9 @@ public enum NumberEmphasis {
             }
             return firstDigit..<end
         }
+        if let coreRange = word.coreRange, let core = word.core, isOncePerPeriod(core, at: position, in: words) {
+            return coreRange
+        }
         guard let coreRange = word.coreRange, let core = word.core, let reading = numberReading(of: core) else { return nil }
         let previous = position > 0 ? words[position - 1].core : nil
         let following = words[(position + 1)...].prefix(3).compactMap(\.core)
@@ -111,6 +114,20 @@ public enum NumberEmphasis {
         return coreRange
     }
 
+    /// "pa'am be-yom" ("once a day"), "pa'am be-shlosha yamim" ("once every
+    /// three days"): how often a pill is taken, which "pa'amayim" ("twice")
+    /// already stood out for. On its own "pa'am" is mostly another word:
+    /// "af pa'am" ("never"), "od pa'am ba-boker" ("again in the morning"),
+    /// "pa'am hayiti" ("I once was").
+    private static func isOncePerPeriod(_ core: String, at position: Int, in words: [Word]) -> Bool {
+        guard onceWords.contains(core), position + 1 < words.count, let next = words[position + 1].core,
+              next.hasPrefix("ב"), next.count > 2
+        else { return false }
+        if position > 0, let previous = words[position - 1].core, notACountBefore.contains(previous) { return false }
+        let period = String(next.dropFirst())
+        return periodWords.contains(period) || numberWords.contains(period)
+    }
+
     /// Whether a line is worth listing under "numbers said" in a saved
     /// conversation: it has digits, or a counting word beyond one and two.
     /// Those two are mostly idioms ("pa'am achat" — "once", "be-yom sheni" —
@@ -121,7 +138,10 @@ public enum NumberEmphasis {
             let found = text[range]
             if found.contains(where: \.isNumber) { return true }
             // The number is the first word; a unit may follow it.
-            guard let reading = numberReading(of: String(found.prefix(while: { !$0.isWhitespace }))) else { return false }
+            let first = String(found.prefix(while: { !$0.isWhitespace }))
+            // Only ever emphasized as "once a day" and the like.
+            if onceWords.contains(first) { return true }
+            guard let reading = numberReading(of: first) else { return false }
             return !onesWords.contains(reading.number) && !twoWords.contains(reading.number)
         }
     }
@@ -241,6 +261,11 @@ public enum NumberEmphasis {
     ]
 
     static let fractionsOf: Set<String> = ["רבעי"]
+
+    static let onceWords: Set<String> = ["פעם", "ופעם"]
+    static let periodWords: Set<String> = [
+        "יום", "שבוע", "חודש", "שנה", "שעה", "יומיים", "שבועיים", "חודשיים", "שנתיים", "שעתיים",
+    ]
 
     static let onesWords: Set<String> = ["אחד", "אחת"]
     static let twoWords: Set<String> = ["שני", "שתי"]

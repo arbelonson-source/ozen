@@ -101,6 +101,16 @@ struct NumberEmphasisTests {
         #expect(emphasized("שלושת, רבעי כוס") == ["שלושת"])
     }
 
+    @Test("once a day, a week or every few days stands out and is listed, like twice; never, again and once upon a time don't")
+    func onceAPeriod() {
+        #expect(emphasized("כדור פעם ביום, אחרי האוכל") == ["פעם"])
+        #expect(emphasized("ביקורת פעם בשבוע ופעם בחודש בדיקת דם") == ["פעם", "ופעם"])
+        #expect(emphasized("זריקה פעם בשלושה ימים") == ["פעם", "בשלושה ימים"])
+        #expect(emphasized("אף פעם ביום כזה, עוד פעם בבוקר, פעם הייתי שם") == [])
+        #expect(NumberEmphasis.hasListableNumber("כדור פעם ביום"))
+        #expect(NumberEmphasis.hasListableNumber("פעם הייתי שם") == false)
+    }
+
     @Test("nobody, everybody and at once are not a count of one; once is")
     func notACount() {
         #expect(emphasized("אף אחד לא בא, כל אחד לבד, הכול בבת אחת") == [])
