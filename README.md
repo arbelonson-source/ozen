@@ -199,7 +199,8 @@ Open a section for the details.
 - **Names and words list.** Family names, the doctor, the medicines.
   Both engines are primed with the list (Apple's recognizer via
   contextual strings, Whisper via a decoder prompt; on a long list,
-  Whisper gets the first two dozen or so names, so put the important ones
+  Whisper on the phone gets only the start of it, about 20 first names or
+  a dozen full names and medicines, so put the important ones
   first), edits apply from the next sentence, and Whisper output that is
   just the list read back is dropped.
 - **Robust audio**: a live level meter per microphone, automatic recovery
