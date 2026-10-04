@@ -1371,7 +1371,9 @@ struct HomeServerCoverTests {
         captions.onEvent = { event in
             if event.description == "the home computer answers again, switching back to it" { switchesBack += 1 }
         }
+        let flaky = TestSwitch(true)
         server.duringPrepare = { [server] in
+            guard flaky.isOn else { return }
             server.availability = server.availability == .available ? .unavailable(.homeServerUnreachable, "flaky") : .available
         }
         let before = server.prepareCount
@@ -1385,7 +1387,7 @@ struct HomeServerCoverTests {
         #expect(switchesBack == 0)
         #expect(captions.activeEngineKind == .whisperKit)
 
-        server.duringPrepare = nil
+        flaky.isOn = false
         server.availability = .available
         while captions.activeEngineKind == .whisperKit, spoken < 400 {
             phone.emit(TranscriptToken(utteranceID: UUID(), text: "הטלוויזיה מדברת \(spoken)", isFinal: true, timestamp: Date().timeIntervalSince1970))

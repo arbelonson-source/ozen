@@ -117,6 +117,18 @@ actor PrepareGate {
     }
 }
 
+/// A switch a test turns off on the main actor and a fake's main-actor
+/// hook reads: a hook already in flight when the test moves on sees the
+/// change, where swapping the hook itself out would not stop it.
+@MainActor
+final class TestSwitch {
+    var isOn: Bool
+
+    init(_ isOn: Bool) {
+        self.isOn = isOn
+    }
+}
+
 /// Scripted engine: the test hands it an availability answer, optional
 /// progress updates to emit during `prepare`, and a channel to push tokens
 /// through. Also records how many times it was constructed via the factory
