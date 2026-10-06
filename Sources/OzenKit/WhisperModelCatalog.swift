@@ -163,6 +163,15 @@ public enum WhisperModelCatalog {
     /// speech and 48% on read sentences, OpenAI's Turbo 10% and 31%, and
     /// ivrit.ai's Hebrew-trained Turbo 7% and 21%, so nobody should end up
     /// on a weaker one without choosing it.
+    /// The order the model screen shows them in: the recommended model
+    /// first, then the rest as above. In size order it came fifth; at the
+    /// largest text size each row is about a screen tall, so reaching it
+    /// meant scrolling past Tiny and three other weak ones first. The
+    /// order never depends on what is selected, so a row never moves from
+    /// under her finger when she picks it.
+    public static let listed: [WhisperModelOption] =
+        options.filter(\.isRecommended) + options.filter { !$0.isRecommended }
+
     public static let defaultVariant = recommendedVariant
     public static let recommendedVariant = "ivrit-large-v3-turbo-8bit"
 

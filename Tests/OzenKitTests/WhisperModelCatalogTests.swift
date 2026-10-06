@@ -76,6 +76,13 @@ struct WhisperModelCatalogTests {
         #expect(ivrit.remainingInstallMegabytes(onDiskBytes: 5_000 * megabyte) == 1)
     }
 
+    @Test("the model screen lists the recommended model first and every other in the catalog's order")
+    func listedOrder() {
+        let listed = WhisperModelCatalog.listed.map(\.variant)
+        #expect(listed.first == WhisperModelCatalog.recommendedVariant)
+        #expect(Array(listed.dropFirst()) == WhisperModelCatalog.options.map(\.variant).filter { $0 != WhisperModelCatalog.recommendedVariant })
+    }
+
     @Test("with the whole download on the phone, only the compile's room and none of the download is left")
     func wholeDownloadOnDisk() throws {
         let ivrit = try #require(WhisperModelCatalog.option(for: "ivrit-large-v3-turbo-8bit"))

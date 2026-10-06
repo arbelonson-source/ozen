@@ -29,7 +29,7 @@ struct ModelManagerView: View {
     var body: some View {
         List {
             Section {
-                ForEach(WhisperModelCatalog.options) { option in
+                ForEach(WhisperModelCatalog.listed) { option in
                     row(for: option)
                 }
             } header: {
