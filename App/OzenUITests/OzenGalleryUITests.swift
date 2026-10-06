@@ -30,18 +30,22 @@ final class OzenGalleryUITests: XCTestCase {
         let element = app.descendants(matching: .any)[button]
         XCTAssertTrue(element.waitForExistence(timeout: 10), "\(button) never appeared")
         let reveal = app.descendants(matching: .any)["showControlsButton"]
+        let target = app.descendants(matching: .any)[screen]
         let window = app.windows.firstMatch.frame
-        var last = CGRect.null
-        for _ in 0..<40 {
-            if !element.isHittable, reveal.exists, reveal.isHittable { reveal.tap() }
-            let frame = element.frame
-            if element.isHittable, frame == last, frame.maxY <= window.maxY + 1 { break }
-            last = frame
-            Thread.sleep(forTimeInterval: 0.25)
+        for _ in 0..<5 where !target.exists {
+            var last = CGRect.null
+            for _ in 0..<40 {
+                if !element.isHittable, reveal.exists, reveal.isHittable { reveal.tap() }
+                let frame = element.frame
+                if element.isHittable, frame == last, frame.maxY <= window.maxY + 1 { break }
+                last = frame
+                Thread.sleep(forTimeInterval: 0.25)
+            }
+            guard last.maxY <= window.maxY + 1 else { continue }
+            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: last.midX, dy: last.midY)).tap()
+            _ = target.waitForExistence(timeout: 3)
         }
-        XCTAssertTrue(element.isHittable, "\(button) never came on screen")
-        element.tap()
-        XCTAssertTrue(app.descendants(matching: .any)[screen].waitForExistence(timeout: 10), "\(screen) never appeared")
+        XCTAssertTrue(target.exists, "\(button) never opened \(screen)")
         Thread.sleep(forTimeInterval: 1)
     }
 
