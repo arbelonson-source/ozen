@@ -33,11 +33,12 @@ venv/bin/python -u train_encoder.py \
            "hf/datasets--ivrit-ai--whisper-training/snapshots/*/data/train-*.parquet" \
            "hf/datasets--ivrit-ai--crowd-transcribe-v5/snapshots/*/data/train-*.parquet" \
     --base hf/models--ivrit-ai--whisper-large-v3-turbo/snapshots/<hash> \
-    --rirs rirs/RIRS_NOISES --out runs/a1 --batch 32 --steps 8000 --save-every 2000 --checkpointing
+    --rirs rirs/RIRS_NOISES --out runs/a1 --batch 32 --workers 12 --steps 8000 --save-every 2000 --checkpointing
 ./score.sh runs/a1/step-2000 a1-2000
 venv/bin/python compare.py base a1-2000
 ```
 
 `@3` after a pattern means its files are read three times as often. The
 first run used one RTX PRO 6000 (96 GB): batch 32 in bfloat16 with
-gradient checkpointing took about 31 GB and heard about 18 clips a second.
+gradient checkpointing took about 31 GB and heard about 16 clips a second
+(15.4-15.8 over the first 1,950 steps).
