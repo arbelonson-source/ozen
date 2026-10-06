@@ -103,9 +103,8 @@ public actor WhisperKitEngine: TranscriptionEngine {
     public func pendingDownloadMegabytes() async -> Int? {
         if pipe != nil { return nil }
         guard store.installedFolder(for: modelVariant) == nil else { return nil }
-        guard let total = WhisperModelCatalog.option(for: modelVariant)?.sizeMB else { return 0 }
-        let onDiskMegabytes = Int(store.sizeOnDisk(of: modelVariant) / 1_048_576)
-        return max(total - onDiskMegabytes, 1)
+        guard let option = WhisperModelCatalog.option(for: modelVariant) else { return 0 }
+        return option.remainingDownloadMegabytes(onDiskBytes: store.sizeOnDisk(of: modelVariant))
     }
 
     public func pendingInstallMegabytes() async -> Int? {

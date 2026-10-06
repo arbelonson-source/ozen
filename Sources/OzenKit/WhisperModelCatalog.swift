@@ -60,8 +60,19 @@ public struct WhisperModelOption: Sendable, Equatable, Identifiable {
     /// Room still needed to finish installing with `onDiskBytes` of it
     /// already in the model's folder: a download cut off part way resumes,
     /// so only the rest has to fit.
+    ///
+    /// Megabytes here are a million bytes, as in `sizeMB` and as iPhone
+    /// Storage shows them. Counted in 1,048,576-byte ones, the whole Hebrew
+    /// model on the phone still left 38 MB "to download", and freeing the
+    /// room the app asked for left her about 5% short.
     public func remainingInstallMegabytes(onDiskBytes: Int64) -> Int {
-        max(installMegabytes - Int(onDiskBytes / 1_048_576), 1)
+        max(installMegabytes - Int(onDiskBytes / StorageSpaceGate.bytesPerMegabyte), 1)
+    }
+
+    /// What is left to download with `onDiskBytes` already in the model's
+    /// folder; never below 1, which would read as "size unknown".
+    public func remainingDownloadMegabytes(onDiskBytes: Int64) -> Int {
+        max(sizeMB - Int(onDiskBytes / StorageSpaceGate.bytesPerMegabyte), 1)
     }
 
     /// Not an exact byte count — a human-scale label for the picker.

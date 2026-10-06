@@ -4,7 +4,7 @@ import Testing
 
 @Suite("Storage space gate")
 struct StorageSpaceGateTests {
-    private let megabyte: Int64 = 1_048_576
+    private let megabyte: Int64 = 1_000_000
 
     @Test("enough room, counting the space the first load needs, means no shortfall")
     func enoughRoom() {
@@ -21,6 +21,13 @@ struct StorageSpaceGateTests {
         #expect(StorageSpaceGate.shortfallMegabytes(downloadMegabytes: 626, availableBytes: (required - 100) * megabyte + 1) == 100)
         #expect(StorageSpaceGate.shortfallMegabytes(downloadMegabytes: 626, availableBytes: required * megabyte - 1) == 1)
         #expect(StorageSpaceGate.shortfallMegabytes(downloadMegabytes: 626, availableBytes: 0) == Int(required))
+    }
+
+    @Test("freeing up what it asks for, in megabytes as iPhone Storage counts them, is enough")
+    func freeingWhatItAsksIsEnough() throws {
+        let available: Int64 = 1_200_000_000
+        let asked = try #require(StorageSpaceGate.shortfallMegabytes(downloadMegabytes: 1_638, availableBytes: available))
+        #expect(StorageSpaceGate.shortfallMegabytes(downloadMegabytes: 1_638, availableBytes: available + Int64(asked) * 1_000_000) == nil)
     }
 
     @Test("a download that already fits on the phone still needs room left over")

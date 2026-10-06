@@ -3299,13 +3299,13 @@ final class FakeStorage: @unchecked Sendable {
     private var bytes: Int64?
 
     init(megabytes: Int64?) {
-        bytes = megabytes.map { $0 * 1_048_576 }
+        bytes = megabytes.map { $0 * 1_000_000 }
     }
 
     func set(megabytes: Int64?) {
         lock.lock()
         defer { lock.unlock() }
-        bytes = megabytes.map { $0 * 1_048_576 }
+        bytes = megabytes.map { $0 * 1_000_000 }
     }
 
     func available() -> Int64? {

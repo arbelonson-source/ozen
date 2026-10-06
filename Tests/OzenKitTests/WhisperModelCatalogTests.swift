@@ -70,10 +70,19 @@ struct WhisperModelCatalogTests {
     @Test("an interrupted install only needs room for the part not yet on the phone")
     func remainingInstallRoom() throws {
         let ivrit = try #require(WhisperModelCatalog.option(for: "ivrit-large-v3-turbo-8bit"))
-        let megabyte: Int64 = 1_048_576
+        let megabyte: Int64 = 1_000_000
         #expect(ivrit.remainingInstallMegabytes(onDiskBytes: 0) == 819 * 2)
         #expect(ivrit.remainingInstallMegabytes(onDiskBytes: 819 * megabyte) == 819)
         #expect(ivrit.remainingInstallMegabytes(onDiskBytes: 5_000 * megabyte) == 1)
+    }
+
+    @Test("with the whole download on the phone, only the compile's room and none of the download is left")
+    func wholeDownloadOnDisk() throws {
+        let ivrit = try #require(WhisperModelCatalog.option(for: "ivrit-large-v3-turbo-8bit"))
+        let releaseBytes: Int64 = 818_952_412
+        #expect(abs(ivrit.remainingInstallMegabytes(onDiskBytes: releaseBytes) - ivrit.sizeMB) <= 1)
+        #expect(ivrit.remainingDownloadMegabytes(onDiskBytes: releaseBytes) == 1)
+        #expect(ivrit.remainingDownloadMegabytes(onDiskBytes: 0) == 819)
     }
 
     @Test("size labels switch to GB at a thousand megabytes")

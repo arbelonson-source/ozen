@@ -44,5 +44,5 @@ public enum StorageSpaceGate {
 
     /// `NSFileWriteOutOfSpaceError`.
     static let outOfSpaceCocoaCode = 640
-    static let bytesPerMegabyte: Int64 = 1_048_576
+    public static let bytesPerMegabyte: Int64 = 1_000_000
 }
