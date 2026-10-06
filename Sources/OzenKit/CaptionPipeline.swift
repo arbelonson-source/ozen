@@ -120,6 +120,15 @@ public final class CaptionPipeline {
     /// How long the phone's model may load, when it is not a first set-up,
     /// before the screen says it can take a few minutes.
     public var slowLoadSeconds: Double = 15
+    /// How long a download may send no progress before its time left is
+    /// taken off the screen: at least this long, and `downloadQuietGaps`
+    /// times its usual gap between reports, so a slow connection that
+    /// reports every 20 seconds doesn't make it flicker. At the end of the
+    /// recommended model's download the files are checked and compiled
+    /// with no progress for a minute or more, and the last estimate, "less
+    /// than a minute left", stayed on screen all that time.
+    public var downloadQuietSeconds: Double = 30
+    public var downloadQuietGaps: Double = 3
     /// After this many checks in a row found it back, switch at the next
     /// finished line even without a quiet moment: a TV or a lively table
     /// may never go quiet for long, and every minute on the phone's own
@@ -178,6 +187,7 @@ public final class CaptionPipeline {
     /// When the preparation progress on screen was last replaced.
     @ObservationIgnored private var progressShownAt: TimeInterval = -.infinity
     @ObservationIgnored private var downloadEstimator = DownloadEstimator()
+    @ObservationIgnored private var downloadQuiet: Task<Void, Never>?
     /// Called for every new sound alert the screen takes up, e.g. to post a
     /// notification while the app isn't on screen: not for a weaker label
     /// of the same reading, so a smoke alarm also scored as an alarm clock
@@ -429,6 +439,7 @@ public final class CaptionPipeline {
         phase = .preparingEngine(EnginePreparationProgress(stage: .checkingSupport))
         // A download that failed earlier and is starting again is timed afresh.
         downloadEstimator.reset()
+        downloadQuiet?.cancel()
         downloadSecondsRemaining = nil
         let allowCellular = settings.allowCellularModelDownload || cellularDownloadApproved
         if let megabytes = await engine.pendingDownloadMegabytes() {
@@ -1695,6 +1706,7 @@ public final class CaptionPipeline {
     }
 
     private func trackDownload(_ progress: EnginePreparationProgress, at time: TimeInterval) {
+        downloadQuiet?.cancel()
         guard progress.stage == .downloadingModel, let fraction = progress.fraction else {
             downloadEstimator.reset()
             downloadSecondsRemaining = nil
@@ -1702,6 +1714,13 @@ public final class CaptionPipeline {
         }
         downloadEstimator.record(fraction: fraction, at: time)
         downloadSecondsRemaining = downloadEstimator.secondsRemaining()
+        guard downloadSecondsRemaining != nil else { return }
+        let quiet = downloadEstimator.quietLimit(floor: downloadQuietSeconds, gaps: downloadQuietGaps)
+        downloadQuiet = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(quiet))
+            guard !Task.isCancelled else { return }
+            self?.downloadSecondsRemaining = nil
+        }
     }
 
     private func cachedEngine(for settings: AppSettings) -> any TranscriptionEngine {

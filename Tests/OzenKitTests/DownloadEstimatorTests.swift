@@ -74,6 +74,23 @@ struct DownloadEstimatorTests {
         #expect(abs(left - 425) < 5)
     }
 
+    @Test("silence counts as news only when it is much longer than the usual gap between reports")
+    func quietLimit() {
+        var estimator = DownloadEstimator()
+        #expect(estimator.quietLimit(floor: 30, gaps: 3) == 30)
+        for second in stride(from: 0, through: 60, by: 20) {
+            estimator.record(fraction: Double(second) / 1_000, at: Double(second))
+        }
+        #expect(estimator.quietLimit(floor: 30, gaps: 3) == 60)
+        #expect(estimator.quietLimit(floor: 90, gaps: 3) == 90)
+
+        var quick = DownloadEstimator()
+        for second in 0...10 {
+            quick.record(fraction: Double(second) / 100, at: Double(second))
+        }
+        #expect(quick.quietLimit(floor: 30, gaps: 3) == 30)
+    }
+
     @Test("a download that starts over starts the estimate over")
     func restart() {
         var estimator = DownloadEstimator()
@@ -102,6 +119,61 @@ struct CaptionPipelineDownloadEstimateTests {
     private final class Engines: @unchecked Sendable {
         var current: FakeEngine
         init(_ engine: FakeEngine) { current = engine }
+    }
+
+    @Test("the time left goes away when progress stops coming, as while the model is set up at the end", .timeLimit(.minutes(1)))
+    func quietDropsTimeLeft() async {
+        let engine = FakeEngine(progressUpdates: [0.1, 0.2, 0.3, 0.4].map {
+            EnginePreparationProgress(stage: .downloadingModel, fraction: $0)
+        })
+        let gate = PrepareGate()
+        engine.afterProgressGate = gate
+        let clock = Clock()
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { _ in engine },
+            embedder: FakeEmbedder(),
+            recovery: .disabled,
+            audioWatchdog: .disabled,
+            now: { clock.tick() }
+        )
+        pipeline.downloadQuietSeconds = 0.3
+        pipeline.downloadQuietGaps = 0
+        let start = Task { await pipeline.start(settings: .default) }
+        #expect(await eventually { pipeline.downloadSecondsRemaining != nil })
+        #expect(await eventually(within: .seconds(5)) { pipeline.downloadSecondsRemaining == nil })
+        await gate.open()
+        await start.value
+    }
+
+    @Test("a download that keeps reporting keeps its time left", .timeLimit(.minutes(1)))
+    func reportingKeepsTimeLeft() async {
+        let updates = (1...40).map { EnginePreparationProgress(stage: .downloadingModel, fraction: Double($0) / 100) }
+        let engine = FakeEngine(progressUpdates: updates)
+        engine.progressSpacing = .milliseconds(50)
+        let gate = PrepareGate()
+        engine.afterProgressGate = gate
+        let clock = Clock()
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { _ in engine },
+            embedder: FakeEmbedder(),
+            recovery: .disabled,
+            audioWatchdog: .disabled,
+            now: { clock.tick() }
+        )
+        pipeline.downloadQuietSeconds = 1.5
+        pipeline.downloadQuietGaps = 0
+        let start = Task { await pipeline.start(settings: .default) }
+        #expect(await eventually { pipeline.downloadSecondsRemaining != nil })
+        var dropped = false
+        while pipeline.phase != .preparingEngine(updates[updates.count - 1]) {
+            if pipeline.downloadSecondsRemaining == nil { dropped = true }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(!dropped)
+        await gate.open()
+        await start.value
     }
 
     @Test("a model download reports how long it has left, and a new start times it afresh")

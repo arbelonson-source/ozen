@@ -35,6 +35,11 @@ public struct DownloadEstimator: Sendable, Equatable {
         return (1 - last.fraction) / (progress / span)
     }
 
+    public func quietLimit(floor: TimeInterval, gaps: Double) -> TimeInterval {
+        guard samples.count > 1, let first = samples.first, let last = samples.last else { return floor }
+        return max(floor, gaps * (last.time - first.time) / Double(samples.count - 1))
+    }
+
     public mutating func reset() {
         samples.removeAll()
     }

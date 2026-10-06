@@ -145,6 +145,8 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
     /// the pipeline from outside.
     var prepareGate: PrepareGate?
     var afterProgressGate: PrepareGate?
+    /// Waits this long between progress reports, as a real download does.
+    var progressSpacing: Duration?
     /// Megabytes `prepare` would still download; nil when the model is there.
     var pendingDownload: Int?
     private(set) var prepareCount = 0
@@ -183,7 +185,11 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
         }
         for update in progressUpdates {
             progress(update)
-            await Task.yield()
+            if let progressSpacing {
+                try? await Task.sleep(for: progressSpacing)
+            } else {
+                await Task.yield()
+            }
         }
         await afterProgressGate?.wait()
         if let duringPrepare {
