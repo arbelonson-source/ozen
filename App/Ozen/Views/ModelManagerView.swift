@@ -104,6 +104,15 @@ struct ModelManagerView: View {
             : AnyLayout(HStackLayout(spacing: 6))
     }
 
+    // At the largest text sizes the name, the "recommended" badge and the
+    // checkmark shared one line, and both texts broke mid-word ("Tur-bo
+    // He-bre w"); the badge goes under the name instead.
+    private var nameLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(spacing: 8))
+    }
+
     private func row(for option: WhisperModelOption) -> some View {
         let isSelected = option.variant == viewModel.settings.whisperModelVariant
         let isInstalled = installed.contains(option.variant)
@@ -123,14 +132,16 @@ struct ModelManagerView: View {
         } label: {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
-                    Text(option.displayName)
-                        .font(.body.weight(isSelected ? .semibold : .regular))
-                    if option.isRecommended {
-                        Text(tr("מומלץ לעברית", "Recommended for Hebrew"))
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.accentColor.opacity(0.18), in: Capsule())
+                    nameLayout {
+                        Text(option.displayName)
+                            .font(.body.weight(isSelected ? .semibold : .regular))
+                        if option.isRecommended {
+                            Text(tr("מומלץ לעברית", "Recommended for Hebrew"))
+                                .font(.caption2.weight(.semibold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.accentColor.opacity(0.18), in: Capsule())
+                        }
                     }
                     Spacer()
                     if isSelected {
