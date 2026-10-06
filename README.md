@@ -623,7 +623,7 @@ portable ones, has about 1,300).
 The app has been installed and run on a real iPhone 15 Pro Max (iOS 18)
 and an iPad (iPadOS 27). Actual Hebrew
 transcription quality, external-mic behaviour and speaker separation in a
-real room are being verified by hand — see the design doc's checklist.
+real room are being verified by hand — see the design doc's [checklist](docs/superpowers/specs/2026-09-13-ozen-live-captions-design.md#testing-strategy).
 A version of the speech model trained to hear across a noisy room has
 been training since 6 October 2026; see
 [Training](#training-a-model-that-hears-across-the-room).

@@ -30,6 +30,7 @@ def norm(t):
 
 model_path, label = sys.argv[1], sys.argv[2]
 limit = int(os.environ.get("EXAM_LIMIT", "0"))
+beam = int(os.environ.get("EXAM_BEAM", "1"))
 items = json.load(open(f"{HERE}/exam/exam.json", encoding="utf-8"))
 if limit:
     keep = {i["key"].split("/")[0] for i in items if i["source"] != "noise"}
@@ -44,7 +45,7 @@ for n, it in enumerate(items):
     x = audio[it["key"].replace("/", "|")].astype(np.float32) / 32767
     ctranslate2.set_random_seed(zlib.crc32(it["key"].encode()))
     segs, _ = model.transcribe(
-        speech_gain(x), language="he", task="transcribe", beam_size=1,
+        speech_gain(x), language="he", task="transcribe", beam_size=beam,
         temperature=[0.0, 0.2, 0.4], condition_on_previous_text=False, without_timestamps=True,
         vad_filter=False, compression_ratio_threshold=2.4, log_prob_threshold=-1.0,
     )
