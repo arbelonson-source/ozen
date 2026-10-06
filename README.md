@@ -18,6 +18,7 @@
   <img alt="No tracking, no account" src="https://img.shields.io/badge/tracking-none-success">
   <img alt="Works with VoiceOver" src="https://img.shields.io/badge/VoiceOver-ready-8A2BE2?logo=apple">
   <img alt="Works offline once the model is on the phone" src="https://img.shields.io/badge/works-offline-success">
+  <a href="#training-a-model-that-hears-across-the-room"><img alt="Model training: underway" src="https://img.shields.io/badge/model%20training-underway-ffc928"></a>
 </p>
 
 Ozen (the word means "ear") turns what the people around you say into
@@ -480,6 +481,48 @@ Open a section for the details.
 
 </details>
 
+## Training a model that hears across the room
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/training-dark.svg">
+  <img alt="Training underway since 6 October 2026. Words written wrong today on a fixed exam, the score a new model must beat: news clean 8.7%, across a room 16.4%, far away in a noisy room 29.9%, kitchen noise 10.6%, a TV talking over it 15.3%. Only the listening half learns, on 265,000 hand-checked Hebrew clips through 60,000 simulated rooms; 8,000 steps, about 4 hours on a rented RTX PRO 6000 at $1.99 an hour, about $8." src="docs/assets/training-light.svg" width="100%">
+</picture>
+
+The phone's model, ivrit.ai's Whisper Turbo, hears well up close: on the
+exam below it gets about 9% of words wrong in clean news speech. Far away
+in a noisy room that rises to about 30%. Since 6 October 2026 it has been
+trained further to hear through rooms and noise:
+
+- **Only the listening half learns.** Whisper has two halves: an encoder
+  that listens and a decoder that writes. The decoder stays exactly as
+  ivrit.ai trained it, so punctuation, names and style can't drift; the
+  encoder, 637M of the model's 809M weights, learns.
+- **Hand-checked Hebrew, heard in rooms.** 265,000 clips that people
+  transcribed and checked, from ivrit.ai's crowd-transcribe-v5,
+  whisper-training and crowd-recital sets. Each time a clip is used it is
+  heard clean (30% of the time), from across one of OpenSLR's 60,000
+  simulated rooms with noise (35%), under household noise or hiss (21%),
+  or under another voice (14%).
+- **A fixed exam it never trains on.** 400 KAN news clips and 300 FLEURS
+  read sentences, each heard clean, through a real recorded room with its
+  real noise at 15 and 5 dB, under real kitchen and washing-machine noise,
+  and under a TV voice, plus 60 pieces of noise alone. The exam's rooms,
+  noises and voice are recordings training never uses. It decodes the way
+  the home server does, with a fixed seed per clip, so a model always gets
+  the same score.
+- **It ships only if it clearly wins.** A new model replaces the current
+  one only if it does clearly better far away and in noise, no worse up
+  close, and keeps at least as much punctuation (93% of read sentences
+  today).
+- **What it costs.** One RTX PRO 6000 with 96 GB, rented on Xesktop at
+  $1.99 an hour and paid from free GPU credit GarageFarm gave the project.
+  This run is 8,000 steps, about 4 hours and $8; setting up the machine
+  and downloading 33 GB of speech took about $2.50 more. $210 of the
+  credit is set aside for training.
+
+The scripts are in `training/`. This section gets the results when the
+run finishes.
+
 ## Home computer requirements
 
 Only for the optional home computer; the phone works on its own.
@@ -549,6 +592,7 @@ App/OzenWidget/         Widget extension: lock screen captions, Control Center b
 App/Shared/             Code compiled into both the app and the widget extension
 project.yml             XcodeGen config — run `xcodegen generate` to get Ozen.xcodeproj
 docs/superpowers/specs/ Design doc with the full rationale and open questions
+training/               Training the speech model to hear across a room, and its exam
 ```
 
 ## Building
@@ -608,6 +652,9 @@ The app has been installed and run on a real iPhone 15 Pro Max (iOS 18)
 and an iPad (iPadOS 27). Actual Hebrew
 transcription quality, external-mic behaviour and speaker separation in a
 real room are being verified by hand — see the design doc's checklist.
+A version of the speech model trained to hear across a noisy room has
+been training since 6 October 2026; see
+[Training](#training-a-model-that-hears-across-the-room).
 
 ## Support Ozen
 

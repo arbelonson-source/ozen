@@ -1,0 +1,9 @@
+venv/
+exam/
+results/
+models/
+runs/
+hf/
+rirs/
+logs/
+__pycache__/
