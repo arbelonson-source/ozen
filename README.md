@@ -485,43 +485,15 @@ Open a section for the details.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/training-dark.svg">
-  <img alt="Training underway since 6 October 2026. Words written wrong today on a fixed exam, the score a new model must beat: news clean 8.7%, across a room 16.4%, far away in a noisy room 29.9%, kitchen noise 10.6%, a TV talking over it 15.3%. Only the listening half learns, on 265,000 hand-checked Hebrew clips through 60,000 simulated rooms; 8,000 steps, about 4 hours on a rented RTX PRO 6000 at $1.99 an hour, about $8." src="docs/assets/training-light.svg" width="100%">
+  <img alt="Training underway since 6 October 2026: Ozen's speech model is learning to hear better from across a room and through noise, and the models will keep improving over time. It trains on 265,000 hand-checked Hebrew clips heard through 60,000 simulated rooms; a new version ships only when it beats the current one on a fixed exam; $1.99 an hour on a rented RTX PRO 6000, paid from donated GPU credit." src="docs/assets/training-light.svg" width="100%">
 </picture>
 
-The phone's model, ivrit.ai's Whisper Turbo, hears well up close: on the
-exam below it gets about 9% of words wrong in clean news speech. Far away
-in a noisy room that rises to about 30%. Since 6 October 2026 it has been
-trained further to hear through rooms and noise:
-
-- **Only the listening half learns.** Whisper has two halves: an encoder
-  that listens and a decoder that writes. The decoder stays exactly as
-  ivrit.ai trained it, so punctuation, names and style can't drift; the
-  encoder, 637M of the model's 809M weights, learns.
-- **Hand-checked Hebrew, heard in rooms.** 265,000 clips that people
-  transcribed and checked, from ivrit.ai's crowd-transcribe-v5,
-  whisper-training and crowd-recital sets. Each time a clip is used it is
-  heard clean (30% of the time), from across one of OpenSLR's 60,000
-  simulated rooms with noise (35%), under household noise or hiss (21%),
-  or under another voice (14%).
-- **A fixed exam it never trains on.** 400 KAN news clips and 300 FLEURS
-  read sentences, each heard clean, through a real recorded room with its
-  real noise at 15 and 5 dB, under real kitchen and washing-machine noise,
-  and under a TV voice, plus 60 pieces of noise alone. The exam's rooms,
-  noises and voice are recordings training never uses. It decodes the way
-  the home server does, with a fixed seed per clip, so a model always gets
-  the same score.
-- **It ships only if it clearly wins.** A new model replaces the current
-  one only if it does clearly better far away and in noise, no worse up
-  close, and keeps at least as much punctuation (93% of read sentences
-  today).
-- **What it costs.** One RTX PRO 6000 with 96 GB, rented on Xesktop at
-  $1.99 an hour and paid from free GPU credit GarageFarm gave the project.
-  This run is 8,000 steps, about 4 hours and $8; setting up the machine
-  and downloading 33 GB of speech took about $2.50 more. $210 of the
-  credit is set aside for training.
-
-The scripts are in `training/`. This section gets the results when the
-run finishes.
+We're training Ozen's speech model to hear better from across a room and
+through household noise, and the models will keep improving over time.
+Each new version sits the same fixed listening exam and replaces the
+current one only when it does better. Training runs on a rented RTX PRO
+6000 at $1.99 an hour, paid from free GPU credit GarageFarm gave the
+project. The scripts are in `training/`.
 
 ## Home computer requirements
 
