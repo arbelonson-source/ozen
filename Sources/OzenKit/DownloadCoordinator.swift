@@ -28,6 +28,12 @@ public actor DownloadCoordinator {
     public func run(for url: URL, _ operation: @escaping @Sendable () async throws -> URL) async throws -> URL {
         try await run(for: url, progress: { _ in }) { _ in try await operation() }
     }
+
+    public func cancel(for url: URL) async {
+        guard let running = inFlight[url] else { return }
+        running.task.cancel()
+        _ = await running.task.result
+    }
 }
 
 final class ProgressFanOut: @unchecked Sendable {

@@ -193,4 +193,38 @@ struct DownloadCoordinatorTests {
         #expect(first.values == [0.4, 0.9])
         #expect(joined.values == [0.4, 0.9])
     }
+
+    @Test("a download left running after its captions stopped is stopped for good before a delete goes ahead", .timeLimit(.minutes(1)))
+    func cancelWaitsForTheEnd() async throws {
+        let coordinator = DownloadCoordinator()
+        let url = URL(fileURLWithPath: "/tmp/ozen-test/model-cancel")
+        let started = Counter()
+        let ended = Counter()
+
+        let captions = Task {
+            try await coordinator.run(for: url) {
+                await started.increment()
+                while !Task.isCancelled { await Task.yield() }
+                // Closing the file it was writing takes a moment, and
+                // cancelling doesn't hurry it.
+                await withCheckedContinuation { done in
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) { done.resume() }
+                }
+                await ended.increment()
+                throw CancellationError()
+            }
+        }
+        await started.waitUntilAtLeast(1)
+        captions.cancel()
+
+        await coordinator.cancel(for: url)
+        #expect(await ended.value == 1)
+        await #expect(throws: CancellationError.self) { try await captions.value }
+        #expect(try await coordinator.run(for: url) { url } == url)
+    }
+
+    @Test("stopping a download that isn't running does nothing")
+    func cancelNothing() async {
+        await DownloadCoordinator().cancel(for: URL(fileURLWithPath: "/tmp/ozen-test/model-idle"))
+    }
 }

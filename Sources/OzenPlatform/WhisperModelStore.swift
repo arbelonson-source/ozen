@@ -132,7 +132,12 @@ public struct WhisperModelStore: Sendable {
         ModelDiskSpace.bytes(in: modelsRoot)
     }
 
-    public func delete(variant: String) throws {
+    /// Deletes a model's files, first stopping a download still writing
+    /// them. A download goes on after the captions that started it stop,
+    /// so starting them again can join it; deleted under it, the model's
+    /// folder came back with the files it fetched next.
+    public func delete(variant: String) async throws {
+        await DownloadCoordinator.shared.cancel(for: folder(for: variant))
         try ModelDiskSpace.delete(folder(for: variant), partialFolder: partialFolder(for: variant))
     }
 

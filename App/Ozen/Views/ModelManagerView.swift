@@ -248,12 +248,14 @@ struct ModelManagerView: View {
     }
 
     private func delete(_ option: WhisperModelOption) {
-        do {
-            try store.delete(variant: option.variant)
-        } catch {
-            deleteError = error.localizedDescription
+        Task {
+            do {
+                try await store.delete(variant: option.variant)
+            } catch {
+                deleteError = error.localizedDescription
+            }
+            refresh()
         }
-        refresh()
     }
 
     static func format(bytes: Int64) -> String {
