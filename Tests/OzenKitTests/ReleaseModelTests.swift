@@ -236,6 +236,27 @@ struct ReleaseModelDownloaderTests {
         #expect(try Data(contentsOf: wrong) == config)
     }
 
+    @Test("a Wi-Fi sign-in page answering for every file costs one attempt, not one per file")
+    func signInPage() async throws {
+        let (files, assets) = release()
+        let page = Data("<p>sign in</p>".utf8)
+        var portalAssets = assets.mapValues { _ in page }
+        portalAssets[ReleaseModelManifest.assetName] = manifestData(files)
+        let folder = temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        await #expect(throws: ReleaseModelDownloader.Failure.self) {
+            try await ReleaseModelDownloader(fetcher: FakeReleaseFetcher(assets: portalAssets)).download(tag: "m1", into: folder) { _ in }
+        }
+        for file in files {
+            #expect(!FileManager.default.fileExists(atPath: folder.appendingPathComponent(file.path).path))
+        }
+
+        _ = try await ReleaseModelDownloader(fetcher: FakeReleaseFetcher(assets: assets)).download(tag: "m1", into: folder) { _ in }
+        #expect(try Data(contentsOf: folder.appendingPathComponent("config.json")) == config)
+        #expect(try Data(contentsOf: folder.appendingPathComponent(files[0].path)) == weights)
+    }
+
     @Test("a manifest that can't be trusted stops the download before any file is written")
     func badManifest() async throws {
         let fetcher = FakeReleaseFetcher(assets: ["manifest.json": Data("not json".utf8)])

@@ -183,13 +183,18 @@ public struct ReleaseModelDownloader: Sendable {
             }
         }
 
+        // Every bad file goes, not just the first: one left behind would be
+        // resumed on the next attempt, its real tail stacked on the bad head.
+        var mismatched: [String] = []
         for file in manifest.files {
             let url = folder.appendingPathComponent(file.path)
             guard Self.fileSize(url) == file.size, try fetcher.sha256(of: url).lowercased() == file.sha256.lowercased() else {
                 try? fileManager.removeItem(at: url)
-                throw Failure.checksumMismatch(path: file.path)
+                mismatched.append(file.path)
+                continue
             }
         }
+        if let first = mismatched.first { throw Failure.checksumMismatch(path: first) }
         progress(1)
         return manifest
     }
