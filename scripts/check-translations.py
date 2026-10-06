@@ -321,6 +321,30 @@ def check_permission_prompts():
     return problems
 
 
+def check_system_wording():
+    """Controls that bring their own words show them in the phone's
+    language, not the one picked in Ozen: SwiftUI's EditButton, and a
+    confirmation dialog with no cancel button of its own (iOS adds one)."""
+    problems = []
+    for path in sorted(p for root in ROOTS for p in Path(root).rglob("*.swift")):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for number, line in enumerate(lines, 1):
+            if "EditButton()" in line:
+                problems.append(f"{path}:{number}: EditButton() reads in the phone's language; use a tr() Edit/Done button")
+            if ".confirmationDialog(" not in line:
+                continue
+            base = len(line) - len(line.lstrip())
+            block = [line]
+            for later in lines[number:]:
+                indent = len(later) - len(later.lstrip())
+                if later.strip() and (indent < base or (indent == base and later.lstrip().startswith("."))):
+                    break
+                block.append(later)
+            if not any("role: .cancel" in l for l in block):
+                problems.append(f"{path}:{number}: confirmation dialog without a tr() cancel button; iOS adds one in the phone's language")
+    return problems
+
+
 def main():
     list_untranslated = "--untranslated" in sys.argv
     skip_table = "--no-table" in sys.argv
@@ -341,6 +365,7 @@ def main():
         all_problems += check_translation_table(keys)
         all_problems += check_system_strings()
         all_problems += check_permission_prompts()
+        all_problems += check_system_wording()
     for problem in all_problems:
         print(problem)
     sys.exit(1 if all_problems else 0)

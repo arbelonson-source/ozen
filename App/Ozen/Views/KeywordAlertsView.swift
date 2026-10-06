@@ -127,6 +127,7 @@ struct KeywordAlertsView: View {
                 if let alert = pendingDelete { viewModel.removeKeywordAlert(id: alert.id) }
                 pendingDelete = nil
             }
+            Button(tr("ביטול", "Cancel"), role: .cancel) {}
         } message: {
             Text(tr("הטלפון יפסיק להתריע כשהמילה נאמרת.", "The phone will stop alerting when this word is said."))
         }

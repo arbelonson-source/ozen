@@ -5,6 +5,7 @@ struct VocabularyView: View {
     @Bindable var viewModel: LiveCaptionViewModel
     @State private var newTerm = ""
     @FocusState private var editing: Bool
+    @State private var editMode = EditMode.inactive
 
     var body: some View {
         List {
@@ -77,12 +78,15 @@ struct VocabularyView: View {
                 Text(tr("השינויים נכנסים לתוקף מהמשפט הבא, בלי להפעיל מחדש.", "Changes take effect from the next sentence, without restarting."))
             }
         }
+        .environment(\.editMode, $editMode)
         .accessibilityIdentifier("vocabularyScreen")
         .navigationTitle(tr("שמות ומילים", "Names and words"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                EditButton()
+                Button(editMode.isEditing ? tr("סיום", "Done") : tr("עריכה", "Edit")) {
+                    withAnimation { editMode = editMode.isEditing ? .inactive : .active }
+                }
             }
         }
         .onAppear { editing = viewModel.vocabulary.isEmpty }

@@ -251,6 +251,7 @@ private struct QuickPhrasesEditor: View {
                 Button(tr("לשחזר", "Restore"), role: .destructive) {
                     viewModel.resetQuickPhrases()
                 }
+                Button(tr("ביטול", "Cancel"), role: .cancel) {}
             } message: {
                 Text(tr("המשפטים שנוספו או שונו יימחקו.", "Phrases that were added or changed will be deleted."))
             }

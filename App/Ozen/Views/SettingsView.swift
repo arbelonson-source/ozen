@@ -334,6 +334,7 @@ struct SettingsView: View {
                         hasCloudKey = false
                         Task { await viewModel.cloudKeyChanged() }
                     }
+                    Button(tr("ביטול", "Cancel"), role: .cancel) {}
                 } message: {
                     Text(tr("בלי המפתח הכתוביות לא יגיעו מהענן, עד שיכניסו אותו שוב.", "Without the key, captions can’t come from the cloud until it’s entered again."))
                 }
@@ -473,6 +474,7 @@ struct SettingsView: View {
                         forgetHomeServerCheck()
                         Task { await viewModel.homeServerCodeChanged() }
                     }
+                    Button(tr("ביטול", "Cancel"), role: .cancel) {}
                 } message: {
                     Text(tr("הכתוביות יחזרו לזיהוי הדיבור בטלפון, עד שיסרקו שוב את קוד ה‑QR של המחשב.", "Captions go back to the phone’s speech recognition until the computer’s QR code is scanned again."))
                 }
@@ -1056,6 +1058,7 @@ struct SettingsView: View {
                 Button(tr("להציג", "Show it")) {
                     viewModel.showOnboardingAgain()
                 }
+                Button(tr("ביטול", "Cancel"), role: .cancel) {}
             } message: {
                 Text(tr("הכתוביות ייעצרו עד סוף ההסבר.", "Captions stop until the walkthrough ends."))
             }
