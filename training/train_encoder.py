@@ -152,8 +152,11 @@ class Collate:
     def __call__(self, batch):
         feats, texts = zip(*batch)
         feats = torch.from_numpy(np.stack(feats))
-        labels = self.proc.tokenizer([" " + t for t in texts], return_tensors="pt", padding=True).input_ids
-        labels = labels.masked_fill(labels == self.proc.tokenizer.pad_token_id, -100)
+        enc = self.proc.tokenizer([" " + t for t in texts], return_tensors="pt", padding=True)
+        # Whisper pads with its end-of-text token, so masking the padding by
+        # value hid the real end of every sentence as well: the model was
+        # never taught to stop, and run a1 looped ("zeh... zeh... zeh...").
+        labels = enc.input_ids.masked_fill(enc.attention_mask.ne(1), -100)
         if (labels[:, 0] == self.start).all():
             labels = labels[:, 1:]
         return feats, labels[:, :440]
