@@ -154,6 +154,33 @@ final class OzenScreenshotUITests: XCTestCase {
         }
     }
 
+    /// This simulator's own language is English and the fixture sets Ozen
+    /// to Hebrew, as on a phone set to English with Ozen chosen in Hebrew.
+    /// A sheet took the phone's direction, not Ozen's: Settings came out
+    /// left to right, its Hebrew headings and labels against the left edge,
+    /// while the caption screen behind it read right to left.
+    func testHebrewSettingsReadRightToLeft() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault"]
+        app.launch()
+
+        let settingsButton = app.descendants(matching: .any)["settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "settings direction: the button to open it never appeared")
+        settingsButton.tap()
+        let screen = app.descendants(matching: .any)["settingsScreen"]
+        XCTAssertTrue(screen.waitForExistence(timeout: 10), "settings direction: the screen never appeared")
+
+        // A row's own element spans the whole row, centred whichever way it
+        // reads; the switch inside it doesn't. Without one, the row is
+        // measured and the check fails rather than passing by accident.
+        let row = app.switches.firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "settings direction: no switch appeared")
+        capture(app, name: "hebrew-settings-direction")
+        let knob = row.switches.firstMatch.exists ? row.switches.firstMatch : row
+        let width = app.windows.firstMatch.frame.width
+        XCTAssertLessThan(knob.frame.midX, width / 2, "settings direction: a switch sits on the right, so Settings is laid out left to right")
+    }
+
     /// Settings is a long Form with over a dozen sections -- rows pairing a
     /// label with a value, a segmented picker, sliders -- none of it ever
     /// seen at the largest accessibility text size before.

@@ -5,6 +5,18 @@ import OzenKit
 import OzenPlatform
 import Foundation
 
+extension View {
+    /// Lays the view out in `language`'s direction. A sheet doesn't take
+    /// it from the screen that opens it but from the phone's own language:
+    /// on a phone set to English with Ozen in Hebrew, Settings and every
+    /// other sheet came out left to right, Hebrew against the left edge,
+    /// over a caption screen that read right to left. So every presented
+    /// screen sets it again (`alertOverlay(for:)` does for most).
+    func readingDirection(of language: UILanguage) -> some View {
+        environment(\.layoutDirection, language.isRightToLeft ? .rightToLeft : .leftToRight)
+    }
+}
+
 @main
 struct OzenApp: App {
     @State private var viewModel: LiveCaptionViewModel
@@ -137,7 +149,7 @@ struct OzenApp: App {
             // the right edge: text and a row's icon go on `.leading`, never
             // `.trailing`, and so follow the language. Caption lines are
             // right to left in both (see `CaptionRow`).
-            .environment(\.layoutDirection, viewModel.uiLanguage.isRightToLeft ? .rightToLeft : .leftToRight)
+            .readingDirection(of: viewModel.uiLanguage)
             // Every word on screen is picked when it's drawn: a new
             // language draws everything again.
             .id(viewModel.uiLanguage)

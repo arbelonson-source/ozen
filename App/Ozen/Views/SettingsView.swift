@@ -109,6 +109,7 @@ struct SettingsView: View {
             .sheet(isPresented: $showingEnrollment) {
                 SpeakerEnrollmentView(viewModel: viewModel)
                     .pageSized()
+                    .readingDirection(of: viewModel.uiLanguage)
             }
             .fileImporter(isPresented: $showingRecordingImporter, allowedContentTypes: [.audio], allowsMultipleSelection: true) { picked in
                 guard case .success(let urls) = picked, !urls.isEmpty else { return }

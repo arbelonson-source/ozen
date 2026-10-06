@@ -65,5 +65,6 @@ private struct AlertOverlay: ViewModifier {
 extension View {
     func alertOverlay(for viewModel: LiveCaptionViewModel) -> some View {
         modifier(AlertOverlay(viewModel: viewModel))
+            .readingDirection(of: viewModel.uiLanguage)
     }
 }
