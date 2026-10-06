@@ -85,6 +85,10 @@ public actor WhisperKitEngine: TranscriptionEngine {
         cellularDownloadAllowed = allowed
     }
 
+    public func cancelDownload() async {
+        await store.cancelDownload(variant: modelVariant)
+    }
+
     public func setVocabulary(_ terms: [String]) async {
         vocabulary = terms
         let detector = PromptEchoDetector(terms: terms)

@@ -234,6 +234,12 @@ public protocol TranscriptionEngine: Sendable {
     /// Wi-Fi drops. Engines that download nothing ignore it.
     func setCellularDownloadAllowed(_ allowed: Bool) async
 
+    /// Stops a model download `prepare` has running, if any, so that a
+    /// preparation nobody wants any more ends soon instead of finishing
+    /// the download first. A model already loading is left to finish.
+    /// Engines that download nothing ignore it.
+    func cancelDownload() async
+
     /// Names and words to bias recognition towards (see `VocabularyHints`).
     /// Called before every `stream` and again whenever the user edits the
     /// list mid-conversation; engines that can't use hints ignore it.
@@ -255,6 +261,8 @@ public extension TranscriptionEngine {
     func pendingInstallMegabytes() async -> Int? { await pendingDownloadMegabytes() }
 
     func setCellularDownloadAllowed(_ allowed: Bool) async {}
+
+    func cancelDownload() async {}
 
     /// `prepare` without caring about progress — for callers (and tests)
     /// that only want the yes/no answer.

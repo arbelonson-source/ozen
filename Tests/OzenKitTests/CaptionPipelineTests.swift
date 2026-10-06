@@ -192,10 +192,24 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
             }
         }
         await afterProgressGate?.wait()
+        if lock.withLock({ () -> Bool in defer { cancelPending = false }; return cancelPending }) {
+            return .unavailable(.modelDownloadFailed, "cancelled")
+        }
         if let duringPrepare {
             await MainActor.run { duringPrepare() }
         }
         return availability
+    }
+
+    private(set) var downloadCancels = 0
+    private var cancelPending = false
+
+    func cancelDownload() async {
+        lock.withLock {
+            downloadCancels += 1
+            cancelPending = true
+        }
+        await afterProgressGate?.open()
     }
 
     private(set) var pendingDownloadChecks = 0
@@ -1490,6 +1504,53 @@ struct CaptionPipelineLifecycleTests {
         await second.value
         #expect(seenWhileWaiting == .preparingEngine(download))
         #expect(slow.prepareCount == 2)
+        #expect(pipeline.phase == .listening)
+    }
+
+    @Test("choosing another model while one downloads stops that download instead of waiting it out", .timeLimit(.minutes(1)))
+    func modelSwitchStopsAbandonedDownload() async {
+        let downloading = EnginePreparationProgress(stage: .downloadingModel, fraction: 0.2, detail: "big")
+        let big = FakeEngine(progressUpdates: [downloading])
+        let rest = PrepareGate()
+        big.afterProgressGate = rest
+        let small = FakeEngine()
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { $0.whisperModelVariant == "big" ? big : small },
+            embedder: FakeEmbedder(),
+            recovery: .disabled
+        )
+        var bigSettings = AppSettings.default
+        bigSettings.whisperModelVariant = "big"
+        var smallSettings = AppSettings.default
+        smallSettings.whisperModelVariant = "small"
+
+        let first = Task { await pipeline.start(settings: bigSettings) }
+        while pipeline.phase != .preparingEngine(downloading) { await Task.yield() }
+        await pipeline.restart(settings: smallSettings)
+        await first.value
+        #expect(big.downloadCancels == 1)
+        #expect(small.prepareCount == 1)
+        #expect(pipeline.phase == .listening)
+    }
+
+    @Test("a restart on the same model while it downloads waits for that download and leaves it going", .timeLimit(.minutes(1)))
+    func sameModelRestartKeepsDownload() async {
+        let downloading = EnginePreparationProgress(stage: .downloadingModel, fraction: 0.2, detail: "big")
+        let big = FakeEngine(progressUpdates: [downloading])
+        let rest = PrepareGate()
+        big.afterProgressGate = rest
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: big])
+
+        let first = Task { await pipeline.start(settings: .default) }
+        while pipeline.phase != .preparingEngine(downloading) { await Task.yield() }
+        let second = Task { await pipeline.restart(settings: .default) }
+        for _ in 0..<50 { await Task.yield() }
+        #expect(big.downloadCancels == 0)
+        await rest.open()
+        await first.value
+        await second.value
+        #expect(big.downloadCancels == 0)
         #expect(pipeline.phase == .listening)
     }
 

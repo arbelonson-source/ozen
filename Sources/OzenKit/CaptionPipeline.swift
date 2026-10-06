@@ -273,6 +273,8 @@ public final class CaptionPipeline {
     /// stuck download took), and a stop in the meantime is kept: the
     /// waiting start gives up instead of starting captions she stopped.
     private var isPreparingEngine = false
+    /// The model the phone is preparing, and its engine, while it does.
+    private var preparing: (variant: String, engine: any TranscriptionEngine)?
     private var preparationWaiters: [CheckedContinuation<Void, Never>] = []
     /// The newest start waiting on an abandoned load. Two model switches in
     /// a row both waited, and the older one, a model she had already
@@ -370,6 +372,15 @@ public final class CaptionPipeline {
             waitingShown = waiting
             phase = .preparingEngine(waiting)
             let slowWait = Task { [weak self] in await self?.sayWaitIsSlow(mine) }
+            // A download of a model no longer chosen held this start up for
+            // as long as it had left, minutes on a slow connection, before
+            // the new choice even began. A download holds no model in
+            // memory, so it is stopped; a model already loading is still
+            // waited for.
+            if let preparing, preparing.variant != settings.whisperModelVariant {
+                let abandoned = preparing.engine
+                Task { await abandoned.cancelDownload() }
+            }
             while isPreparingEngine {
                 await withCheckedContinuation { preparationWaiters.append($0) }
             }
@@ -494,7 +505,10 @@ public final class CaptionPipeline {
         let earlySource = isCoveringForCloud ? try? audio.startCapture() : nil
         earlyCaptureRun = earlySource == nil ? nil : run
         let loadsModelOnPhone = settings.engine == .whisperKit
-        if loadsModelOnPhone { isPreparingEngine = true }
+        if loadsModelOnPhone {
+            isPreparingEngine = true
+            preparing = (settings.whisperModelVariant, engine)
+        }
         let slowLoad = loadsModelOnPhone ? Task { [weak self] in await self?.sayLoadIsSlow(run: run) } : nil
         // Checked above only as the download starts: without this, a
         // download that began on Wi-Fi went on over the phone plan when
@@ -527,6 +541,7 @@ public final class CaptionPipeline {
         slowLoad?.cancel()
         if loadsModelOnPhone {
             isPreparingEngine = false
+            preparing = nil
             let waiting = preparationWaiters
             preparationWaiters = []
             waiting.forEach { $0.resume() }
