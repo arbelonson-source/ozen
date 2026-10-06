@@ -147,6 +147,12 @@ public struct WhisperModelStore: Sendable {
         await DownloadCoordinator.shared.cancel(for: folder(for: variant))
     }
 
+    /// How far a download of `variant` running anywhere in the app has got,
+    /// or nil when none is.
+    public func downloadProgress(variant: String) async -> Double? {
+        await DownloadCoordinator.shared.progress(for: folder(for: variant))
+    }
+
     /// Downloads (or resumes) a model, reporting 0…1 progress, and returns
     /// the folder to load from. Routed through `DownloadCoordinator` so two
     /// calls for the same variant, from two different `WhisperModelStore`

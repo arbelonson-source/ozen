@@ -223,6 +223,33 @@ struct DownloadCoordinatorTests {
         #expect(try await coordinator.run(for: url) { url } == url)
     }
 
+    @Test("a download's progress can be read while it runs, and nothing once it has ended")
+    func progressWhileRunning() async throws {
+        let coordinator = DownloadCoordinator()
+        let url = URL(fileURLWithPath: "/tmp/ozen-test/model-progress-read")
+        let steps = Counter()
+        let first = Gate()
+        let second = Gate()
+        #expect(await coordinator.progress(for: url) == nil)
+
+        async let done: URL = coordinator.run(for: url, progress: { _ in }) { report in
+            await steps.increment()
+            await first.wait()
+            report(0.4)
+            await steps.increment()
+            await second.wait()
+            return url
+        }
+        await steps.waitUntilAtLeast(1)
+        #expect(await coordinator.progress(for: url) == 0)
+        await first.open()
+        await steps.waitUntilAtLeast(2)
+        #expect(await coordinator.progress(for: url) == 0.4)
+        await second.open()
+        _ = try await done
+        #expect(await coordinator.progress(for: url) == nil)
+    }
+
     @Test("stopping a download that isn't running does nothing")
     func cancelNothing() async {
         await DownloadCoordinator().cancel(for: URL(fileURLWithPath: "/tmp/ozen-test/model-idle"))

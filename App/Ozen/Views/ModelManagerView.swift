@@ -21,6 +21,8 @@ struct ModelManagerView: View {
     /// until it has arrived, which can be minutes, so that is asked first.
     @State private var pendingSwitch: WhisperModelOption?
     @State private var deleteError: String?
+    /// Downloads going on with no captions running, by variant.
+    @State private var backgroundProgress: [String: Double] = [:]
 
     private let store = WhisperModelStore()
 
@@ -40,6 +42,7 @@ struct ModelManagerView: View {
         .navigationTitle(tr("מודל Whisper", "Whisper model"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: refresh)
+        .task { await followBackgroundDownloads() }
         .onChange(of: viewModel.phase.step) { _, _ in refresh() }
         .onChange(of: viewModel.backupModelProgress == nil) { _, _ in refresh() }
         .confirmationDialog(
@@ -180,7 +183,7 @@ struct ModelManagerView: View {
 
                 if let progress = downloadProgress {
                     ProgressView(value: progress)
-                    if let seconds = viewModel.pipeline.downloadSecondsRemaining {
+                    if viewModel.phase.preparationProgress?.detail == option.variant, let seconds = viewModel.pipeline.downloadSecondsRemaining {
                         Text(PhasePresentation.remainingText(seconds: seconds))
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -214,7 +217,7 @@ struct ModelManagerView: View {
         guard let progress = viewModel.phase.preparationProgress,
               progress.stage == .downloadingModel,
               progress.detail == option.variant
-        else { return nil }
+        else { return backgroundProgress[option.variant] }
         return progress.fraction ?? 0
     }
 
@@ -240,11 +243,31 @@ struct ModelManagerView: View {
         // expected to be incomplete and already shows its progress.
         let downloading = viewModel.phase.preparationProgress.flatMap { $0.stage == .downloadingModel ? $0.detail : nil }
         partial = Set(WhisperModelCatalog.options.map(\.variant).filter { variant in
-            variant != downloading && store.state(of: variant) == .partial
+            variant != downloading && backgroundProgress[variant] == nil && store.state(of: variant) == .partial
         })
         sizesOnDisk = Dictionary(uniqueKeysWithValues: installed.union(partial).map { ($0, store.sizeOnDisk(of: $0)) })
         totalOnDisk = store.totalSizeOnDisk()
         freeBytes = DeviceStorage.availableBytes()
+    }
+
+    /// A download goes on after the captions that started it stop, so
+    /// starting them again can join it. Its row said "Download
+    /// interrupted" all the while; it shows its progress instead.
+    private func followBackgroundDownloads() async {
+        while !Task.isCancelled {
+            var running: [String: Double] = [:]
+            for option in WhisperModelCatalog.options {
+                if let fraction = await store.downloadProgress(variant: option.variant) {
+                    running[option.variant] = fraction
+                }
+            }
+            if running != backgroundProgress {
+                let changed = Set(running.keys) != Set(backgroundProgress.keys)
+                backgroundProgress = running
+                if changed { refresh() }
+            }
+            try? await Task.sleep(for: .seconds(1))
+        }
     }
 
     private func delete(_ option: WhisperModelOption) {

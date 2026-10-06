@@ -29,6 +29,11 @@ public actor DownloadCoordinator {
         try await run(for: url, progress: { _ in }) { _ in try await operation() }
     }
 
+    public func progress(for url: URL) -> Double? {
+        guard let running = inFlight[url] else { return nil }
+        return running.listeners.current ?? 0
+    }
+
     public func cancel(for url: URL) async {
         guard let running = inFlight[url] else { return }
         running.task.cancel()
@@ -44,6 +49,8 @@ final class ProgressFanOut: @unchecked Sendable {
     init(_ first: @escaping @Sendable (Double) -> Void) {
         listeners = [first]
     }
+
+    var current: Double? { lock.withLock { latest } }
 
     func add(_ listener: @escaping @Sendable (Double) -> Void) {
         let current = lock.withLock { () -> Double? in
