@@ -158,13 +158,21 @@ public struct WhisperModelStore: Sendable {
         let folder: URL
         switch WhisperModelCatalog.option(for: variant)?.source ?? .whisperKitHub {
         case .whisperKitHub:
+            // The hub counts every file of a model as an equal share, its
+            // 243-byte ones and the weights holding 59-79% of the bytes
+            // alike: the bar raced through the small files and crawled
+            // through the big one, and the time left said "about 45
+            // minutes" for a five-minute download, then "less than a
+            // minute" with three to go. The bytes on disk are shown instead.
+            let meter = HubDownloadMeter(modelsRoot: modelsRoot, variant: variant)
             folder = try await WhisperKit.download(
                 variant: variant,
                 downloadBase: downloadBase,
                 useBackgroundSession: false,
                 from: Self.repository,
                 progressCallback: { downloadProgress in
-                    progress(downloadProgress.fractionCompleted)
+                    let reported = downloadProgress.fractionCompleted
+                    progress(meter?.fraction(reported: reported) ?? reported)
                 }
             )
         case .ozenRelease(let tag):
