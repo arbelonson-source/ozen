@@ -9,7 +9,7 @@ Find the words she reads to you below.
 Settings → Diagnostics (avchun) → **Send the report** (shlichat ha-doch). It opens the share sheet, so
 it can go straight to WhatsApp. The report ends with a timeline of what
 happened to the captions, with clock times ("microphone stopped delivering
-audio", "failed: …", "retry 1 in 2s", "listening"), so "it stopped at lunch"
+audio", "failed: …", "retry 1 in 1s", "listening"), so "it stopped at lunch"
 can be read off it. Nothing in it is what was said, with one exception:
 **Mark a problem** (in the same screen) adds the last few caption lines
 around the moment it was tapped, so the wrong words can be seen; the screen
@@ -29,7 +29,7 @@ computer backup when that is on.
 | She reads | What it means | What to do |
 | --- | --- | --- |
 | "Listening" (makshiv) | Captions are running. | Nothing. If no words appear, check the microphone (below). |
-| "Listening · Cloud captions aren't available, carrying on with the phone's own" (makshiv · ha-ktuviyot ba-anan lo zminot, mamshich im ha-zihuy she-ba-telefon) | Cloud captions lost their key, credit or internet, and a Whisper model already on the phone took over. Captions keep coming, a little less accurate. | Nothing urgent. After a lost connection or a cloud outage, captions go back to the cloud by themselves once it answers again (checked every minute, between sentences). A key or credit problem needs fixing in Settings; the cloud is then tried again the next time captions start (after Stop, or reopening the app). A pause and resume stays on the phone's model. |
+| "Listening · Cloud captions aren't available, carrying on with the phone's own" (makshiv · ha-ktuviyot ba-anan lo zminot, mamshich im ha-zihuy she-ba-telefon) | Cloud captions lost their key, credit or internet, and a Whisper model already on the phone took over. Captions keep coming, a little less accurate. | Nothing urgent. After a lost connection or a cloud outage, captions go back to the cloud by themselves once it answers again (checked every minute, between sentences; if it keeps dropping again soon after, less and less often, up to every 16 minutes). A key or credit problem needs fixing in Settings; the cloud is then tried again the next time captions start (after Stop, or reopening the app). A pause and resume stays on the phone's model. |
 | "Paused" (mushhe) | Paused by a tap. | Tap it to continue. |
 | "The phone is talking" (ha-telefon medaber) | The phone is saying a typed reply aloud; captions pause so they don't caption it. | Nothing. They continue by themselves when it finishes. Tapping it stops the phone talking. |
 | "Captions are off" (ha-ktuviyot kvuyot) | Stopped (for example by Siri). | Tap it to start. |
@@ -37,7 +37,7 @@ computer backup when that is on.
 | "Downloading the language model · N%" (morid et model ha-safa · N%) | First-time download of the speech model. | Keep the app open (the screen stays on by itself) until it finishes. |
 | "Waiting for Wi-Fi to download the language model" (mamtin le-Wi-Fi kdei lehorid et model ha-safa) | The model still has to download and the phone is on cellular data or Low Data Mode. | Connect to Wi-Fi and it starts by itself, or tap to download over cellular. |
 | "Not enough free space on the phone" (ein maspik makom panuy ba-telefon) | Not enough room for the model. It says how much to free. | Free space (Settings → General → iPhone Storage), then open Ozen again and it starts by itself. Or tap to pick a smaller model, or switch to Apple's engine, which needs no download. |
-| "Downloading the model failed" (horadat ha-model nichshela) | The download failed, usually a dead connection. | It retries by itself for a while. Check the internet, then tap to try again. |
+| "Downloading the model failed" (horadat ha-model nichshela) | The download failed, usually a dead connection. | It retries by itself for about 20 minutes, less and less often. Check the internet, then tap to try again. |
 | "Loading the model failed" (te'inat ha-model nichshela) | The model is on the phone but didn't load. | Tap to try again. If it keeps failing, pick a smaller model in Settings. |
 | "Setting the model up for this phone" (matim et ha-model la-telefon ha-ze) | The first time a model loads on this phone, iOS prepares it for the phone's chip. It takes a few minutes, once per model and again after each iOS update (iOS throws the prepared copy away), and the very first model also needs the internet once. This is also what the home computer's backup does the first time it takes over. | Keep the app open and wait; it doesn't happen again for this model until iOS is next updated. |
 | "Still loading the model" (adayin to'en et ha-model) | A model that loaded quickly before is taking long this time, usually because iOS threw away the copy it had prepared for the phone to free space, or the app was reinstalled, so it is being prepared again. | Keep the app open and wait; it can take a few minutes. |
