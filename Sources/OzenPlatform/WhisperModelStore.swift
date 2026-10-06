@@ -38,10 +38,20 @@ public struct WhisperModelStore: Sendable {
         modelsRoot.appendingPathComponent(WhisperModelCatalog.folderName(for: variant), isDirectory: true)
     }
 
+    /// Where the hub keeps the file of `variant` it is still downloading.
+    /// It sits under a hidden folder, so without this a cut-off download's
+    /// partial file (often the 300-600 MB encoder weights) was left out of
+    /// the sizes on the model screen and survived deleting the model.
+    public func partialFolder(for variant: String) -> URL {
+        ModelDiskSpace.partialFolder(modelsRoot: modelsRoot, folderName: WhisperModelCatalog.folderName(for: variant))
+    }
+
     /// See `ModelFolderInspector` for what "complete" means and why the
-    /// bundle directories alone don't prove it.
+    /// bundle directories alone don't prove it. A download cut off before
+    /// its first file finished has no folder yet, only a partial file, and
+    /// counts as interrupted so the model screen can offer to delete it.
     public func state(of variant: String) -> ModelFolderState {
-        ModelFolderInspector.state(of: folder(for: variant))
+        ModelDiskSpace.state(of: folder(for: variant), partialFolder: partialFolder(for: variant))
     }
 
     /// The folder for `variant` if a usable model is on disk. A cut-off
@@ -115,17 +125,15 @@ public struct WhisperModelStore: Sendable {
     }
 
     public func sizeOnDisk(of variant: String) -> Int64 {
-        Self.directorySize(folder(for: variant))
+        ModelDiskSpace.size(of: folder(for: variant), partialFolder: partialFolder(for: variant))
     }
 
     public func totalSizeOnDisk() -> Int64 {
-        Self.directorySize(modelsRoot)
+        ModelDiskSpace.bytes(in: modelsRoot)
     }
 
     public func delete(variant: String) throws {
-        let folder = folder(for: variant)
-        guard FileManager.default.fileExists(atPath: folder.path) else { return }
-        try FileManager.default.removeItem(at: folder)
+        try ModelDiskSpace.delete(folder(for: variant), partialFolder: partialFolder(for: variant))
     }
 
     /// Downloads (or resumes) a model, reporting 0…1 progress, and returns
@@ -224,21 +232,5 @@ public struct WhisperModelStore: Sendable {
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
         try base.setResourceValues(values)
-    }
-
-    private static func directorySize(_ url: URL) -> Int64 {
-        guard let enumerator = FileManager.default.enumerator(
-            at: url,
-            includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey],
-            options: [.skipsHiddenFiles]
-        ) else { return 0 }
-        var total: Int64 = 0
-        for case let file as URL in enumerator {
-            guard let values = try? file.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
-                  values.isRegularFile == true
-            else { continue }
-            total += Int64(values.fileSize ?? 0)
-        }
-        return total
     }
 }

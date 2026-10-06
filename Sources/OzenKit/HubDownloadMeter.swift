@@ -17,9 +17,7 @@ public final class HubDownloadMeter: @unchecked Sendable {
         guard let option = WhisperModelCatalog.option(for: variant), option.source == .whisperKitHub else { return nil }
         self.init(
             folder: modelsRoot.appendingPathComponent(option.folderName, isDirectory: true),
-            partialFolder: modelsRoot
-                .appendingPathComponent(".cache/huggingface/download", isDirectory: true)
-                .appendingPathComponent(option.folderName, isDirectory: true),
+            partialFolder: ModelDiskSpace.partialFolder(modelsRoot: modelsRoot, folderName: option.folderName),
             totalBytes: Int64(option.sizeMB) * 1_000_000
         )
     }
@@ -29,23 +27,12 @@ public final class HubDownloadMeter: @unchecked Sendable {
             lock.withLock { shown = 1 }
             return 1
         }
-        let finished = Self.bytes(in: folder) { _ in true }
-        let arriving = Self.bytes(in: partialFolder) { $0.hasSuffix(".incomplete") }
+        let finished = ModelDiskSpace.bytes(in: folder)
+        let arriving = ModelDiskSpace.bytes(in: partialFolder) { $0.hasSuffix(".incomplete") }
         let measured = min(Double(finished + arriving) / Double(max(totalBytes, 1)), 0.99)
         return lock.withLock {
             shown = max(shown, measured)
             return shown
         }
-    }
-
-    static func bytes(in folder: URL, counting: (String) -> Bool) -> Int64 {
-        let keys: [URLResourceKey] = [.fileSizeKey, .isRegularFileKey]
-        guard let files = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: keys) else { return 0 }
-        var total: Int64 = 0
-        for case let file as URL in files where counting(file.lastPathComponent) {
-            guard let values = try? file.resourceValues(forKeys: Set(keys)), values.isRegularFile == true else { continue }
-            total += Int64(values.fileSize ?? 0)
-        }
-        return total
     }
 }
