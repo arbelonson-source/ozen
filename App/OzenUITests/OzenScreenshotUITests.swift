@@ -208,7 +208,9 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(screen.waitForExistence(timeout: 10), "settings: the screen never appeared")
         capture(app, name: "settings-accessibility-text-page1")
 
-        for index in 2...11 {
+        // To the end of Settings: eleven pages stopped at the alerts, and
+        // the rows below them were never seen at this size.
+        for index in 2...30 {
             app.swipeUp()
             capture(app, name: "settings-accessibility-text-page\(index)")
         }

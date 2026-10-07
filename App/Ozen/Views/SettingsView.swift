@@ -63,6 +63,28 @@ struct SettingsView: View {
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
             : AnyLayout(HStackLayout())
     }
+
+    /// A row that opens a screen, with its current value. At the largest
+    /// text sizes the label and a long value side by side both broke
+    /// mid-word (the sound alerts row, in Hebrew); there the value goes
+    /// under the label.
+    @ViewBuilder
+    private func summaryRow<Title: View>(value: String, @ViewBuilder title: () -> Title) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 4) {
+                title()
+                Text(value)
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            LabeledContent {
+                Text(value)
+                    .foregroundStyle(.secondary)
+            } label: {
+                title()
+            }
+        }
+    }
     @Environment(\.scenePhase) private var scenePhase
 
     private static var voiceSample: String { tr("שלום, זה קול הטלפון. ככה אני נשמע.", "Hello, this is the phone's voice. This is how I sound.") }
@@ -240,9 +262,8 @@ struct SettingsView: View {
             NavigationLink {
                 ModelManagerView(viewModel: viewModel)
             } label: {
-                LabeledContent(tr("מודל", "Model")) {
-                    Text(currentModelLabel)
-                        .foregroundStyle(.secondary)
+                summaryRow(value: currentModelLabel) {
+                    Text(tr("מודל", "Model"))
                 }
             }
             .accessibilityElement(children: .combine)
@@ -719,10 +740,7 @@ struct SettingsView: View {
             NavigationLink {
                 SoundAlertsView(viewModel: viewModel)
             } label: {
-                LabeledContent {
-                    Text(viewModel.soundAlertPreferences.isEnabled ? SoundAlertsView.floorName(viewModel.soundAlertPreferences.minimumImportance) : tr("כבוי", "Off"))
-                        .foregroundStyle(.secondary)
-                } label: {
+                summaryRow(value: viewModel.soundAlertPreferences.isEnabled ? SoundAlertsView.floorName(viewModel.soundAlertPreferences.minimumImportance) : tr("כבוי", "Off")) {
                     Label(tr("צלילים בבית", "Sounds at home"), systemImage: "bell.badge")
                 }
             }
