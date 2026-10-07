@@ -249,6 +249,39 @@ final class OzenScreenshotUITests: XCTestCase {
         }
     }
 
+    /// The walkthrough and Settings in Hebrew at the phone's default text
+    /// size. Every other Hebrew page here is taken at the largest
+    /// accessibility size, and the English walk at this size found the
+    /// setup page's last line under the page dots (#208).
+    func testHebrewDefaultSize() throws {
+        let walkthrough = XCUIApplication()
+        walkthrough.launchArguments = ["-uiTestScreenshots", "onboarding"]
+        walkthrough.launch()
+        XCTAssertTrue(walkthrough.descendants(matching: .any)["onboardingScreen"].waitForExistence(timeout: 10), "hebrew default: the walkthrough never appeared")
+        capture(walkthrough, name: "hebrew-walkthrough-page1")
+        let next = walkthrough.descendants(matching: .any)["onboardingNextButton"]
+        for page in 2...6 {
+            XCTAssertTrue(next.waitForExistence(timeout: 10), "hebrew default: no Next button on page \(page - 1)")
+            next.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+            capture(walkthrough, name: "hebrew-walkthrough-page\(page)")
+        }
+        walkthrough.terminate()
+
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault"]
+        app.launch()
+        let settingsButton = app.descendants(matching: .any)["settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "hebrew default: the settings button never appeared")
+        settingsButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "hebrew default: settings never appeared")
+        capture(app, name: "hebrew-settings-page1")
+        for index in 2...10 {
+            app.swipeUp()
+            capture(app, name: "hebrew-settings-page\(index)")
+        }
+    }
+
     /// The screens behind Settings' rows and the microphone button, in
     /// English, the same way `testSecondaryScreensAccessibilityText`
     /// walks them in Hebrew.
