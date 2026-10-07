@@ -471,7 +471,12 @@ final class OzenScreenshotUITests: XCTestCase {
         // the theoretical risk here is far lower than the rating dots
         // case actually was.
         openSettingsRow(app, rowIdentifier: "keywordAlertsRow", screenIdentifier: "keywordAlertsScreen", captureName: "keyword-alerts-accessibility-text")
-        openSettingsRow(app, rowIdentifier: "soundAlertsRow", screenIdentifier: "soundAlertsScreen", captureName: "sound-alerts-accessibility-text")
+        openSettingsRow(app, rowIdentifier: "soundAlertsRow", screenIdentifier: "soundAlertsScreen", captureName: "sound-alerts-accessibility-text") {
+            // A menu here showed only the start and end of the chosen
+            // choice at this size; like the colors in Settings, each choice
+            // gets a row of its own.
+            XCTAssertTrue(app.descendants(matching: .any)["רק חירום"].exists, "sound alerts: the alert-for choices aren't rows of their own at the largest text size")
+        }
 
         // notifyWhenInBackground is seeded on in ScreenshotFixtures, so
         // this inline toggle (unlike the rows above) is already visible
@@ -584,7 +589,7 @@ final class OzenScreenshotUITests: XCTestCase {
 
     /// Taps a Settings row by its own accessibility identifier, scrolling
     /// down until it exists first (see `scrollDownUntilVisible`).
-    private func openSettingsRow(_ app: XCUIApplication, rowIdentifier: String, screenIdentifier: String, captureName: String, maxSwipes: Int = 15, back backTitle: String = "הגדרות") {
+    private func openSettingsRow(_ app: XCUIApplication, rowIdentifier: String, screenIdentifier: String, captureName: String, maxSwipes: Int = 15, back backTitle: String = "הגדרות", whileOpen: (() -> Void)? = nil) {
         let row = scrollDownUntilVisible(app, identifier: rowIdentifier, maxSwipes: maxSwipes)
         if !row.exists { capture(app, name: "debug-\(rowIdentifier)-not-found") }
         XCTAssertTrue(row.exists, "secondary screens: \(rowIdentifier) never appeared")
@@ -606,6 +611,7 @@ final class OzenScreenshotUITests: XCTestCase {
             XCTFail("secondary screens: \(screenIdentifier) never appeared")
         }
         capture(app, name: captureName)
+        whileOpen?()
         let back = app.navigationBars.buttons[backTitle]
         XCTAssertTrue(back.waitForExistence(timeout: 10), "secondary screens: no way back from \(screenIdentifier)")
         back.tap()

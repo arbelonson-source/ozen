@@ -6,6 +6,24 @@ import OzenKit
 /// doesn't actually know is shown greyed out rather than promised.
 struct SoundAlertsView: View {
     @Bindable var viewModel: LiveCaptionViewModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// A menu shows the chosen choice beside its label, and at the largest
+    /// text sizes only its first and last letters fit. There, as with the
+    /// colors in Settings, each choice is a row of its own with a checkmark.
+    @ViewBuilder
+    private var floorPicker: some View {
+        let picker = Picker(tr("להתריע על", "Alert for"), selection: $viewModel.soundAlertPreferences.minimumImportance) {
+            ForEach(SoundEvent.Importance.allCases.reversed(), id: \.self) { importance in
+                Text(Self.floorName(importance)).tag(importance)
+            }
+        }
+        if dynamicTypeSize.isAccessibilitySize {
+            picker.pickerStyle(.inline)
+        } else {
+            picker
+        }
+    }
 
     private var grouped: [(SoundEvent.Importance, [SoundEvent])] {
         SoundEvent.Importance.allCases.reversed().compactMap { importance in
@@ -18,12 +36,8 @@ struct SoundAlertsView: View {
         List {
             Section {
                 Toggle(tr("התראות על צלילים", "Sound alerts"), isOn: $viewModel.soundAlertPreferences.isEnabled)
-                Picker(tr("להתריע על", "Alert for"), selection: $viewModel.soundAlertPreferences.minimumImportance) {
-                    ForEach(SoundEvent.Importance.allCases.reversed(), id: \.self) { importance in
-                        Text(Self.floorName(importance)).tag(importance)
-                    }
-                }
-                .disabled(!viewModel.soundAlertPreferences.isEnabled)
+                floorPicker
+                    .disabled(!viewModel.soundAlertPreferences.isEnabled)
             } footer: {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(tr("הזיהוי נעשה בטלפון בלבד, על אותו אודיו שמשמש לכתוביות. אותו צליל לא יופיע שוב במשך 20 שניות.", "Detection happens only on the phone, using the same audio as the captions. The same sound won’t appear again for 20 seconds."))
