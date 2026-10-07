@@ -152,7 +152,8 @@ Open a section for the details.
   broken into short paragraphs at sentence ends, screen stays awake while
   listening (and locks as usual after a quarter hour with nothing said, while
   captions and alerts carry on), auto-scroll that stops when you scroll up to re-read (with a
-  "back to latest" pill that counts the lines said meanwhile). The screen keeps
+  "To the last line" (la-shura ha-achrona) pill that turns into a count of
+  the lines said meanwhile, like "3 new lines"). The screen keeps
   the newest 300 lines; above them a note opens the saved conversation at the
   last line that scrolled away. With VoiceOver on, each finished line is read
   out or sent to a braille display by itself, once (again only if a slow
