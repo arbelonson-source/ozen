@@ -19,6 +19,7 @@ struct OnboardingView: View {
     @State private var showsModelChoice = false
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private static let pageCount = 6
 
@@ -216,12 +217,15 @@ struct OnboardingView: View {
                         requesting = false
                     }
                 } label: {
-                    Label(tr("לאשר את המיקרופון", "Approve the microphone"), systemImage: "mic.fill")
+                    approveMicrophoneLabel
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity)
                 }
                 .ozenGlassButton(prominent: true)
+                // Three lines tall at the largest sizes, a capsule is a
+                // circle, and it cut the corners off the words in it.
+                .buttonBorderShape(dynamicTypeSize.isAccessibilitySize ? .roundedRectangle(radius: 24) : .automatic)
                 .controlSize(.large)
                 .disabled(requesting)
             }
@@ -233,6 +237,23 @@ struct OnboardingView: View {
         .task(id: scenePhase) {
             guard scenePhase == .active, microphone == .denied else { return }
             microphone = await viewModel.requestMicrophonePermission()
+        }
+    }
+
+    /// At the largest sizes on a 375-point phone, the microphone icon beside
+    /// the words left the last word too little room and it broke before its
+    /// last letter; there the icon goes above them.
+    @ViewBuilder
+    private var approveMicrophoneLabel: some View {
+        let title = tr("לאשר את המיקרופון", "Approve the microphone")
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 6) {
+                Image(systemName: "mic.fill")
+                    .accessibilityHidden(true)
+                Text(title)
+            }
+        } else {
+            Label(title, systemImage: "mic.fill")
         }
     }
 
