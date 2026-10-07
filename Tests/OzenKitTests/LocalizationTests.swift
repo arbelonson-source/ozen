@@ -240,4 +240,18 @@ struct LocalizationTests {
         #expect(UILanguage.chineseSimplified.nativeName == "简体中文")
         #expect(UILanguage.hindi.nativeName == "हिन्दी")
     }
+
+    @Test("Portuguese is European throughout, like the voice that reads it out")
+    func portugueseIsEuropean() {
+        #expect(UILanguage.portuguese.speechVoiceCode == "pt-PT")
+        let table = TranslationTable.shared.table(for: .portuguese)
+        #expect(!table.isEmpty)
+        let brazilian: Set<String> = ["você", "vocês", "celular", "tela", "arquivo", "usuário", "baixar", "contato", "registrar"]
+        for (english, portuguese) in table {
+            let words = Set(portuguese.lowercased().split { !$0.isLetter }.map(String.init))
+            for word in words.intersection(brazilian) {
+                Issue.record("Brazilian '\(word)' in the Portuguese for: \(english)")
+            }
+        }
+    }
 }
