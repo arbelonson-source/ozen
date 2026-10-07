@@ -686,7 +686,11 @@ struct SettingsView: View {
             Toggle(tr("טקסט מודגש", "Bold text"), isOn: $viewModel.display.boldText)
             Toggle(tr("להציג שמות דוברים", "Show speaker names"), isOn: $viewModel.display.showSpeakerNames)
             Toggle(tr("המסך לא נכבה בזמן האזנה", "Screen doesn’t turn off while listening"), isOn: $viewModel.display.keepScreenAwake)
-            Toggle(tr("להסתיר את הכפתורים כשהכתוביות רצות", "Hide the buttons while captions are running"), isOn: $viewModel.display.autoHideControls)
+            // The Hebrew says "while listening", as the row above does: in
+            // "while captions are running", "while the captions" is one
+            // ten-letter Hebrew word, and it broke before its last letter
+            // beside the switch at the largest sizes on a 375-point phone.
+            Toggle(tr("להסתיר את הכפתורים בזמן האזנה", "Hide the buttons while captions are running"), isOn: $viewModel.display.autoHideControls)
             Toggle(tr("סימן שאלה ליד שורות שהמנוע לא בטוח בהן, ונקודות מתחת למילים שבספק", "Question mark next to lines the engine isn’t sure about, and dots under the doubtful words"), isOn: $viewModel.display.markUncertainLines)
             Toggle(tr("מספרים בולטים (שעות, כמויות, טלפונים)", "Bold numbers (times, amounts, phone numbers)"), isOn: $viewModel.display.emphasizeNumbers)
             Toggle(tr("כתוביות גם במסך הנעילה", "Captions on the lock screen too"), isOn: $viewModel.display.lockScreenCaptions)
