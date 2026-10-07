@@ -1012,7 +1012,13 @@ struct SettingsView: View {
 
     private var siriSection: some View {
         Section {
-            SiriTipView(intent: StartCaptionsIntent())
+            // iOS words its tip in Siri's own language, which Ozen can't
+            // read: in an English Ozen the test phone's tip still said the
+            // Hebrew command, even with every phrase translated. The lines
+            // below say the same in Ozen's language.
+            if viewModel.uiLanguage == .hebrew {
+                SiriTipView(intent: StartCaptionsIntent())
+            }
             VStack(alignment: .leading, spacing: 6) {
                 Text(tr("״היי סירי, התחל כתוביות באוזן״", "Hey Siri, start captions in Ozen"))
                 Text(tr("״היי סירי, עצור כתוביות באוזן״", "Hey Siri, stop captions in Ozen"))
