@@ -36,6 +36,7 @@ struct OzenApp: App {
         // The unit tests run inside this app and expect the Hebrew words,
         // whatever language the test phone is set to.
         if !Self.isRunningTests {
+            viewModel.writesSystemLanguage = true
             viewModel.applyAppLanguage()
         }
         _viewModel = State(initialValue: viewModel)

@@ -662,11 +662,21 @@ public final class LiveCaptionViewModel {
     /// "like the phone" worked out from the phone's languages.
     public private(set) var uiLanguage: UILanguage = Localization.language
 
+    /// Whether the language setting is also handed to iOS, for the words
+    /// it draws itself (a swipe's "Delete", "Cancel" beside the search
+    /// field): on a phone in Hebrew they stayed Hebrew in an English Ozen.
+    /// iOS reads it at launch. Off for screenshots and tests, where each
+    /// launch would leave its language to the next.
+    public var writesSystemLanguage = false
+
     /// Puts the language setting into effect. Called at launch, when the
     /// setting changes and when the app comes back (the phone's language
     /// may have changed meanwhile).
-    public func applyAppLanguage(preferredLanguages: [String] = Locale.preferredLanguages) {
-        let language = settings.appLanguage.resolved(preferredLanguages: preferredLanguages)
+    public func applyAppLanguage(preferredLanguages: [String]? = nil) {
+        if writesSystemLanguage {
+            SystemLanguage.apply(settings.appLanguage, to: .standard)
+        }
+        let language = settings.appLanguage.resolved(preferredLanguages: preferredLanguages ?? Locale.preferredLanguages)
         Localization.language = language
         guard uiLanguage != language else { return }
         uiLanguage = language
