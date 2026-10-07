@@ -525,6 +525,9 @@ final class OzenScreenshotUITests: XCTestCase {
         if !backFromConversation.waitForExistence(timeout: 3), conversationRow.exists { conversationRow.tap() }
         XCTAssertTrue(backFromConversation.waitForExistence(timeout: 10), "secondary screens: the conversation never opened")
         capture(app, name: "conversation-accessibility-text")
+        // At this size the summary's rows start at the bottom edge.
+        app.swipeUp()
+        capture(app, name: "conversation-accessibility-text-summary")
         backFromConversation.tap()
         let backToSettingsFromHistory = app.navigationBars.buttons["הגדרות"]
         XCTAssertTrue(backToSettingsFromHistory.waitForExistence(timeout: 10), "secondary screens: no way back from history")
