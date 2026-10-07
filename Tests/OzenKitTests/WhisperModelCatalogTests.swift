@@ -94,7 +94,7 @@ struct WhisperModelCatalogTests {
 
     @Test("size labels switch to GB at a thousand megabytes")
     func sizeLabels() {
-        #expect(WhisperModelCatalog.option(for: "small")?.sizeLabel == "486 MB")
-        #expect(WhisperModelCatalog.option(for: "large-v3")?.sizeLabel == "3.1 GB")
+        #expect(WhisperModelCatalog.option(for: "small")?.sizeLabel == "486\u{00A0}MB")
+        #expect(WhisperModelCatalog.option(for: "large-v3")?.sizeLabel == "3.1\u{00A0}GB")
     }
 }

@@ -78,8 +78,8 @@ public struct WhisperModelOption: Sendable, Equatable, Identifiable {
     /// Not an exact byte count — a human-scale label for the picker.
     public var sizeLabel: String {
         sizeMB >= 1000
-            ? String(format: "%.1f GB", Double(sizeMB) / 1000)
-            : "\(sizeMB) MB"
+            ? String(format: "%.1f\u{00A0}GB", Double(sizeMB) / 1000)
+            : "\(sizeMB)\u{00A0}MB"
     }
 }
 

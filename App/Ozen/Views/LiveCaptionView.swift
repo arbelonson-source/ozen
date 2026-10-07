@@ -1419,7 +1419,7 @@ struct LiveCaptionView: View {
 
     private var cellularDownloadMessage: String {
         let megabytes = viewModel.phase.failure?.engineUnavailability?.downloadMegabytes ?? 0
-        let size = megabytes > 0 ? "\(megabytes) MB" : tr("כמה מאות MB", "A few hundred MB")
+        let size = megabytes > 0 ? "\(megabytes)\u{00A0}MB" : tr("כמה מאות MB", "A few hundred MB")
         return tr("המודל שוקל %1. בחבילת גלישה זה יכול לעלות כסף או לגמור את נפח הגלישה. ב-Wi-Fi ההורדה תתחיל לבד.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", args: ["\(size)"])
     }
 

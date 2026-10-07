@@ -255,7 +255,7 @@ struct PhasePresentation {
                 action: .retry
             )
         case .waitingForWiFi:
-            let size = engineFailure?.downloadMegabytes.flatMap { $0 > 0 ? "\($0) MB" : nil }
+            let size = engineFailure?.downloadMegabytes.flatMap { $0 > 0 ? "\($0)\u{00A0}MB" : nil }
             self.init(
                 title: tr("ממתין ל-Wi-Fi כדי להוריד את מודל השפה", "Waiting for Wi‑Fi to download the language model"),
                 detail: [size, tr("יורד לבד כשיהיה Wi-Fi · הקישו להורדה עכשיו", "Downloads on its own once there’s Wi‑Fi · Tap to download now")].compactMap { $0 }.joined(separator: " · "),
@@ -343,8 +343,8 @@ struct PhasePresentation {
     }
 
     static func sizeText(megabytes: Int) -> String {
-        guard megabytes >= 1_000 else { return "\(megabytes) MB" }
+        guard megabytes >= 1_000 else { return "\(megabytes)\u{00A0}MB" }
         let tenths = (megabytes + 99) / 100
-        return "\(tenths / 10).\(tenths % 10) GB"
+        return "\(tenths / 10).\(tenths % 10)\u{00A0}GB"
     }
 }

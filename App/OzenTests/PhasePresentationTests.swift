@@ -33,7 +33,7 @@ struct PhasePresentationTests {
             interruptedBySystem: false
         )
         #expect(presentation.action == .confirmCellularDownload)
-        #expect(presentation.detail?.contains("626 MB") == true)
+        #expect(presentation.detail?.contains("626\u{00A0}MB") == true)
         #expect(presentation.isBusy == false)
     }
 
@@ -55,7 +55,7 @@ struct PhasePresentationTests {
             interruptedBySystem: false
         )
         #expect(presentation.action == .openEngineSettings)
-        #expect(presentation.detail?.contains("1.3 GB") == true)
+        #expect(presentation.detail?.contains("1.3\u{00A0}GB") == true)
         #expect(presentation.tint == .red)
     }
 
@@ -149,12 +149,12 @@ struct PhasePresentationTests {
 
     @Test("sizes read as MB below a gigabyte and as GB with one decimal above")
     func sizeText() {
-        #expect(PhasePresentation.sizeText(megabytes: 450) == "450 MB")
-        #expect(PhasePresentation.sizeText(megabytes: 999) == "999 MB")
-        #expect(PhasePresentation.sizeText(megabytes: 1_000) == "1.0 GB")
-        #expect(PhasePresentation.sizeText(megabytes: 1_300) == "1.3 GB")
+        #expect(PhasePresentation.sizeText(megabytes: 450) == "450\u{00A0}MB")
+        #expect(PhasePresentation.sizeText(megabytes: 999) == "999\u{00A0}MB")
+        #expect(PhasePresentation.sizeText(megabytes: 1_000) == "1.0\u{00A0}GB")
+        #expect(PhasePresentation.sizeText(megabytes: 1_300) == "1.3\u{00A0}GB")
         // Rounded up: freeing 1.3 GB would leave it a megabyte short.
-        #expect(PhasePresentation.sizeText(megabytes: 1_301) == "1.4 GB")
+        #expect(PhasePresentation.sizeText(megabytes: 1_301) == "1.4\u{00A0}GB")
     }
 
     @Test("a phone call outranks every other state, and a tap tries to take the microphone back right now")
