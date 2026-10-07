@@ -358,6 +358,12 @@ private struct OnboardingPage<Content: View>: View {
     // as the body content keeps the fade a full line tall at every size.
     @ScaledMetric(relativeTo: .title3) private var bottomFade: CGFloat = 40
     @ScaledMetric(relativeTo: .title3) private var bottomPadding: CGFloat = 48
+    /// The dots sit 13 to 39 points above the page's bottom edge at every
+    /// text size (measured on the English walkthrough at the default size,
+    /// ui-screenshots 37568634144). The fade alone is still nearly clear
+    /// there, and the setup page's last line showed straight through
+    /// them, so the dots get a solid strip of their own under the fade.
+    private static var dotsClearance: CGFloat { 46 }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -371,10 +377,14 @@ private struct OnboardingPage<Content: View>: View {
             // scrolled text to the background colour first instead,
             // the same fix that worked for the caption screen's status
             // bar collision.
-            LinearGradient(colors: [Color(.systemBackground).opacity(0), Color(.systemBackground)], startPoint: .top, endPoint: .bottom)
-                .frame(height: bottomFade)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+            VStack(spacing: 0) {
+                LinearGradient(colors: [Color(.systemBackground).opacity(0), Color(.systemBackground)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: bottomFade)
+                Color(.systemBackground)
+                    .frame(height: Self.dotsClearance)
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
         }
     }
 
@@ -399,7 +409,7 @@ private struct OnboardingPage<Content: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 28)
-        .padding(.bottom, bottomPadding)
+        .padding(.bottom, bottomPadding + Self.dotsClearance)
     }
 }
 
