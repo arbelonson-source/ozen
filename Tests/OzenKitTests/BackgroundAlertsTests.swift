@@ -125,6 +125,8 @@ struct BackgroundAlertPolicyTests {
 
             let hitContent = policy.notification(for: hit("grandma"), lineText: "grandma", appIsActive: false, now: 100)
             #expect(hitContent?.title == "Said: grandma")
+            let suggested = policy.notification(for: hit("סבתא"), lineText: "סבתא", appIsActive: false, now: 200)
+            #expect(suggested?.title == "Said: Grandma")
 
             #expect(BackgroundAlertPolicy.testNotification.title == "Test: doorbell")
         }

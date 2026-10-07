@@ -369,8 +369,8 @@ struct KeywordHitPill: View {
     // aren't tracked by gender.
     private var text: String {
         guard let speakerName else {
-            return tr("נאמר: %1", "Said: %1", args: ["\(hit.match.matchedText)"])
+            return tr("נאמר: %1", "Said: %1", args: ["\(AlertSuggestions.said(hit.match, in: Localization.language))"])
         }
-        return tr("%1 — נאמר: %2", "%1 said: %2", args: ["\(speakerName)", "\(hit.match.matchedText)"])
+        return tr("%1 — נאמר: %2", "%1 said: %2", args: ["\(speakerName)", "\(AlertSuggestions.said(hit.match, in: Localization.language))"])
     }
 }

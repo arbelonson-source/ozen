@@ -54,7 +54,7 @@ struct NameAlertForm: View {
     }
 
     private var addedText: String {
-        tr("הטלפון ירטוט על: ", "The phone will vibrate for: ") + viewModel.settings.keywordAlerts.filter(\.isEnabled).map(\.phrase).joined(separator: ", ")
+        tr("הטלפון ירטוט על: ", "The phone will vibrate for: ") + viewModel.settings.keywordAlerts.filter(\.isEnabled).map { AlertSuggestions.shown($0.phrase, in: viewModel.uiLanguage) }.joined(separator: ", ")
     }
 
     private func suggestionButton(_ word: String) -> some View {

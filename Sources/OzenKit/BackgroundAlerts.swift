@@ -76,7 +76,7 @@ public struct BackgroundAlertPolicy: Sendable, Equatable {
         guard shouldNotify(key: key, appIsActive: appIsActive, now: now) else { return nil }
         return AlertNotificationContent(
             identifier: key,
-            title: tr("נאמר: %1", "Said: %1", args: ["\(hit.match.phrase)"]),
+            title: tr("נאמר: %1", "Said: %1", args: ["\(AlertSuggestions.shown(hit.match.phrase, in: Localization.language))"]),
             // On the lock screen too, a line opening with an English word
             // would otherwise read out of order, and a phone number said in
             // it would read from its last group ("4567 123 050").

@@ -328,7 +328,7 @@ struct LiveCaptionView: View {
                 withAnimation { visibleKeywordHit = hit }
             }
             vibrate(.keyword)
-            announceAlert(tr("נאמר: %1", "Said: %1", args: ["\(hit.match.phrase)"]))
+            announceAlert(tr("נאמר: %1", "Said: %1", args: ["\(AlertSuggestions.shown(hit.match.phrase, in: Localization.language))"]))
         }
         .task(id: visibleKeywordHit?.id) {
             guard let hit = visibleKeywordHit else { return }

@@ -41,7 +41,7 @@ struct KeywordAlertsView: View {
                     .accessibilityLabel(Text(listed == nil ? tr("הוספה", "Add") : tr("הפעלה", "Turn on")))
                 }
                 if let listed {
-                    Text(listed.isEnabled ? tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", args: ["\(listed.phrase)"]) : tr("\"%1\" כבר ברשימה, במצב כבוי. הקישו על הפלוס כדי להפעיל מחדש.", "“%1” is already in the list, turned off. Tap the plus to turn it back on.", args: ["\(listed.phrase)"]))
+                    Text(listed.isEnabled ? tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", args: ["\(shown(listed.phrase))"]) : tr("\"%1\" כבר ברשימה, במצב כבוי. הקישו על הפלוס כדי להפעיל מחדש.", "“%1” is already in the list, turned off. Tap the plus to turn it back on.", args: ["\(shown(listed.phrase))"]))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -65,7 +65,7 @@ struct KeywordAlertsView: View {
                         set: { viewModel.setKeywordAlert(id: alert.id, enabled: $0) }
                     )) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(alert.phrase)
+                            Text(shown(alert.phrase))
                                 .foregroundStyle(alert.isEnabled ? .primary : .secondary)
                             // Added before the screen said so: it has never buzzed.
                             if HebrewText.isInOtherLetters(alert.phrase, captionLanguage: viewModel.settings.languageCode) {
@@ -99,7 +99,7 @@ struct KeywordAlertsView: View {
                     ForEach(viewModel.keywordHits.suffix(10).reversed()) { hit in
                         recentHitLayout {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(hit.match.matchedText)
+                                Text(AlertSuggestions.said(hit.match, in: viewModel.uiLanguage))
                                 if let name = viewModel.speakerName(for: hit) {
                                     Text(name)
                                         .font(.caption)
@@ -119,7 +119,7 @@ struct KeywordAlertsView: View {
         .accessibilityIdentifier("keywordAlertsScreen")
         .navigationTitle(tr("מילים חשובות", "Important words"))
         .confirmationDialog(
-            tr("למחוק את \"%1\"?", "Delete “%1”?", args: ["\(pendingDelete?.phrase ?? "")"]),
+            tr("למחוק את \"%1\"?", "Delete “%1”?", args: ["\(shown(pendingDelete?.phrase ?? ""))"]),
             isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
             titleVisibility: .visible
         ) {
@@ -156,6 +156,10 @@ struct KeywordAlertsView: View {
             return !viewModel.keywordAlerts.contains { HebrewText.normalize($0.phrase) == normalized }
         }
         return Array(candidates.prefix(8))
+    }
+
+    private func shown(_ phrase: String) -> String {
+        AlertSuggestions.shown(phrase, in: viewModel.uiLanguage)
     }
 
     private var otherLettersNote: String {
