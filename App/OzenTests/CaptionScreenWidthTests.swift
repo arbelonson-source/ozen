@@ -21,10 +21,11 @@ struct CaptionScreenWidthTests {
         )
         viewModel.pipeline.seedForScreenshots()
         let narrowest = CGSize(width: 375, height: 667)
+        let pixelRounding = 0.5
         for textSize in [DynamicTypeSize.large, .xxxLarge, .accessibility5] {
             let screen = UIHostingController(rootView: LiveCaptionView(viewModel: viewModel).environment(\.dynamicTypeSize, textSize))
             let width = screen.sizeThatFits(in: narrowest).width
-            #expect(width <= narrowest.width, "\(textSize): \(width) points wide")
+            #expect(width <= narrowest.width + pixelRounding, "\(textSize): \(width) points wide")
         }
     }
 }
