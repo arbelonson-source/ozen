@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 /// Launches the real app with a canned conversation (see
@@ -600,10 +601,23 @@ final class OzenScreenshotUITests: XCTestCase {
         let element = app.descendants(matching: type)[identifier]
         var attempts = 0
         while !(element.exists && element.isHittable), attempts < maxSwipes {
-            app.swipeUp()
+            swipeUpAlongTheEdge(app)
             attempts += 1
         }
         return element
+    }
+
+    /// `swipeUp()` starts in the middle of the screen. On a 375-point
+    /// iPhone 13 mini at the largest text size that was the speech rate
+    /// slider's knob, which took every one of 40 swipes and Settings never
+    /// moved (#258). A phone's edge, outside the rows, holds no control. On
+    /// an iPad a sheet is a card in the middle with the dimmed screen
+    /// around it, so there the swipe stays in the middle.
+    private func swipeUpAlongTheEdge(_ app: XCUIApplication) {
+        let x = UIDevice.current.userInterfaceIdiom == .pad ? 0.5 : 0.02
+        let from = app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.8))
+        let to = app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.2))
+        from.press(forDuration: 0, thenDragTo: to, withVelocity: .fast, thenHoldForDuration: 0)
     }
 
     private func bringOffBottomEdge(_ app: XCUIApplication, _ element: XCUIElement) {
