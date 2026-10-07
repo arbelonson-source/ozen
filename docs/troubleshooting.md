@@ -99,6 +99,9 @@ the same.
   the microphone off.
 - **The app is in English (or Hebrew) and should be the other.** Settings →
   App language. "Same as the phone" follows the iPhone's own language.
+  Ozen's own words change at once; the few buttons the iPhone draws itself
+  inside Ozen (Delete on a swipe, Cancel beside the search field) follow
+  the next time Ozen is opened.
 - **All settings went back to the start.** The settings file couldn't be
   read. The damaged file is kept next to it as `ozen-settings.damaged.json`;
   send the diagnostics report and say so.
