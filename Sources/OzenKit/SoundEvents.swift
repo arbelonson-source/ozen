@@ -116,6 +116,13 @@ public enum SoundEventCatalog {
         "beep", "knock", "microwave_oven", "vacuum_cleaner",
     ]
 
+    /// One entry per sound, for the Settings list: two labels for one
+    /// sound are switched together, and in Hebrew they read the same, so
+    /// they were two identical rows. The first label stands for both.
+    public static var listed: [SoundEvent] {
+        events.filter { $0.identifier == $0.cooldownKey }
+    }
+
     public static func event(for identifier: String) -> SoundEvent? {
         events.first { $0.identifier == identifier }
     }

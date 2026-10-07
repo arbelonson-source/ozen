@@ -27,7 +27,7 @@ struct SoundAlertsView: View {
 
     private var grouped: [(SoundEvent.Importance, [SoundEvent])] {
         SoundEvent.Importance.allCases.reversed().compactMap { importance in
-            let events = SoundEventCatalog.events.filter { $0.importance == importance }
+            let events = SoundEventCatalog.listed.filter { $0.importance == importance }
             return events.isEmpty ? nil : (importance, events)
         }
     }
@@ -52,7 +52,7 @@ struct SoundAlertsView: View {
                     ForEach(events) { event in
                         SoundEventRow(
                             event: event,
-                            isSupported: viewModel.isSoundEventSupported(event.identifier),
+                            isSupported: SoundEventCatalog.sameSound(as: event.identifier).contains { viewModel.isSoundEventSupported($0) },
                             isOn: Binding(
                                 get: { !viewModel.soundAlertPreferences.isMuted(event.identifier) },
                                 set: { viewModel.setSoundEvent(event.identifier, muted: !$0) }

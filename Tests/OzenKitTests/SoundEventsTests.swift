@@ -122,6 +122,21 @@ struct SoundEventsTests {
         #expect(bell.bannerSeconds == 8)
     }
 
+    @Test("Settings lists each sound once, so no section shows the same name twice in any language")
+    func listedOncePerSound() {
+        let listed = SoundEventCatalog.listed
+        #expect(Set(listed.map(\.cooldownKey)).count == listed.count)
+        #expect(Set(listed.map(\.cooldownKey)) == Set(SoundEventCatalog.events.map(\.cooldownKey)))
+        for language in UILanguage.allCases {
+            Localization.$override.withValue(language) {
+                for importance in SoundEvent.Importance.allCases {
+                    let names = SoundEventCatalog.listed.filter { $0.importance == importance }.map(\.name)
+                    #expect(Set(names).count == names.count, "\(language) \(importance): \(names)")
+                }
+            }
+        }
+    }
+
     @Test("two labels for one sound share a cooldown in English too, where their names differ")
     func sameSoundInEnglish() {
         Localization.$override.withValue(.english) {
