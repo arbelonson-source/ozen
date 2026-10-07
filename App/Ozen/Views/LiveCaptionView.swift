@@ -1138,6 +1138,9 @@ struct LiveCaptionView: View {
                 statusControl
                     .frame(maxWidth: .infinity)
                     .onGeometryChange(for: CGFloat.self) { proxy in proxy.size.width } action: { width in statusWidth = width }
+                    // The buttons are measured first and the status button
+                    // takes what is left, its icon at least.
+                    .layoutPriority(-1)
                 typeToSpeakButton
                 if !viewModel.segments.isEmpty {
                     clearButton
@@ -1151,6 +1154,11 @@ struct LiveCaptionView: View {
         // took the captions with it: both edges of every line were cut
         // off. The bar stops growing at the largest ordinary size; a long
         // press still shows a button's name in large type.
+        // The same happened at the default size on a 375-point iPhone (13
+        // mini, SE): four buttons 56 points wide plus the glass style's
+        // padding, the gaps and the bar's own margins came to more than
+        // the screen, and every caption line lost its edges. The buttons
+        // now narrow down to `buttonMinimumWidth` before that happens.
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .padding(.horizontal, 16)
         .padding(.top, 12)
@@ -1172,7 +1180,7 @@ struct LiveCaptionView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(width: 56)
+            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56)
         }
         .ozenGlassButton()
         .accessibilityLabel(tr("בחירת מיקרופון", "Choose microphone"))
@@ -1202,7 +1210,7 @@ struct LiveCaptionView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(width: 56)
+            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56)
         }
         .ozenGlassButton()
         .accessibilityLabel(viewModel.isSpeaking ? tr("עצירת הדיבור", "Stop speaking") : tr("להגיד משהו בקול", "Say something out loud"))
@@ -1230,7 +1238,7 @@ struct LiveCaptionView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(width: 56)
+            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56)
         }
         .ozenGlassButton()
         .accessibilityLabel(tr("ניקוי הכתוביות מהמסך", "Clear the captions from the screen"))
@@ -1250,7 +1258,7 @@ struct LiveCaptionView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(width: 56)
+            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56)
         }
         .ozenGlassButton()
         .accessibilityLabel(tr("הגדרות", "Settings"))
@@ -1326,6 +1334,12 @@ struct LiveCaptionView: View {
     /// Room for the icon, a short title such as "Listening" and the gap
     /// between them at the default text size.
     private static let statusWideMinimumWidth: CGFloat = 100
+
+    /// How narrow a bar button's icon and name may get, before the glass
+    /// style's padding: room for the widest icon, the keyboard, at the
+    /// default text size. Four of them, the status icon and the gaps then
+    /// fit a 375-point phone with room to spare.
+    private static let buttonMinimumWidth: CGFloat = 32
 
     private var statusTitleLayout: AnyLayout {
         statusIsNarrow ? AnyLayout(VStackLayout(spacing: 2)) : AnyLayout(HStackLayout(spacing: 6))
