@@ -62,25 +62,11 @@ enum ScreenshotFixtures {
         // both her Hebrew name and the gallery's English one.
         try? viewModel.historyStore.deleteAll()
         let segments = viewModel.pipeline.seedForScreenshots()
+        // The star saves the conversation, as it does a live one; a copy
+        // saved here as well listed the same morning twice in History and
+        // its starred line twice in Starred lines.
         if let starred = segments.first {
             viewModel.toggleStar(starred)
-        }
-        // The gallery's conversation is saved by the app itself, as a live
-        // one is (the star above saves it): a copy saved here as well
-        // listed the same morning twice in History.
-        if let first = segments.first, variant != .galleryDark, variant != .galleryLight {
-            let record = TranscriptSessionRecord.make(
-                from: segments,
-                speakerName: { [pipeline = viewModel.pipeline] in pipeline.displayName(for: $0) },
-                id: UUID(),
-                startedAt: first.startTimestamp,
-                endedAt: segments.last?.lastUpdateTimestamp,
-                engine: .whisperKit,
-                modelVariant: viewModel.settings.whisperModelVariant,
-                inputName: nil,
-                starred: [first.id]
-            )
-            _ = try? viewModel.historyStore.save(record)
         }
         viewModel.addKeywordAlert(phrase: tr("שני כדורים", "two pills"))
         viewModel.addVocabularyTerm(tr("דנה אברהמי", "Dana Abrahami"))
