@@ -2456,7 +2456,7 @@ struct CaptionPipelineVocabularyTests {
         await pipeline.start(settings: settings)
         let callsAfterStart = log.calls
         pipeline.setKeywordAlerts([KeywordAlert(phrase: "סבתא")])
-        try await Task.sleep(for: .milliseconds(50))
+        #expect(await eventually { engine.vocabularySeen.count == 2 })
         #expect(engine.vocabularySeen == [["רותי"], ["רותי", "סבתא"]])
         #expect(pipeline.phase.isListening)
         #expect(log.calls == callsAfterStart)
