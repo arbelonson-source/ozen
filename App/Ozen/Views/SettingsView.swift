@@ -1068,7 +1068,7 @@ struct SettingsView: View {
             if #available(iOS 18.0, *) {
                 // The Control Center button (StartCaptionsControl) is only
                 // found by someone who knows to look for it.
-                Text(tr("הפקודות עובדות גם מהמסך הנעול, וגם באוטומציות של אפליקציית קיצורי דרך. יש גם כפתור ״התחלת כתוביות״ למרכז הבקרה או לתחתית המסך הנעול, במקום הפנס או המצלמה: לחיצה ארוכה על מקום ריק במרכז הבקרה, ואז חיפוש ״Ozen״.", "The commands also work from the lock screen, and in automations in the Shortcuts app. There’s also a “Start Captions” button for Control Center or the bottom of the lock screen, instead of the flashlight or camera: long-press an empty spot in Control Center, then search for “Ozen”."))
+                Text(tr("הפקודות עובדות גם מהמסך הנעול, וגם באוטומציות של אפליקציית קיצורי דרך. יש גם כפתור ״התחלת כתוביות״ למרכז הבקרה או לתחתית המסך הנעול, במקום הפנס או המצלמה: לחיצה ארוכה על מקום ריק במרכז הבקרה, ואז חיפוש ״Ozen״.", "The commands also work from the lock screen, and in automations in the Shortcuts app. There’s also a “Start captions” button for Control Center or the bottom of the lock screen, instead of the flashlight or camera: long-press an empty spot in Control Center, then search for “Ozen”."))
             } else {
                 Text(tr("הפקודות עובדות גם מהמסך הנעול, וגם באוטומציות של אפליקציית קיצורי דרך.", "The commands also work from the lock screen, and in automations in the Shortcuts app."))
             }

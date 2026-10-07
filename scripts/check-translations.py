@@ -366,6 +366,37 @@ def check_system_wording():
     return problems
 
 
+CATALOG_CODES = {
+    "arabic": "ar", "russian": "ru", "amharic": "am", "french": "fr", "spanish": "es",
+    "ukrainian": "uk", "german": "de", "portuguese": "pt-PT", "chineseSimplified": "zh-Hans", "hindi": "hi",
+}
+
+
+def check_system_names_in_help(keys):
+    """Help that names a button iOS draws from the string catalog (the
+    Control Center button) must call it what iOS calls it, in every
+    language: there the button reads "Iniciar legendas", so Portuguese
+    help can't send her looking for "Começar Legendas"."""
+    catalog = json.loads(SYSTEM_CATALOG.read_text(encoding="utf-8"))["strings"]
+    table = json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))
+    problems = []
+    for entry in catalog.values():
+        names = {code: unit["stringUnit"]["value"] for code, unit in entry.get("localizations", {}).items()}
+        english = names.get("en", "")
+        if len(english.split()) < 2:
+            continue
+        for key in keys:
+            quoted = re.findall(r"“([^”]+)”", key)
+            if english.lower() not in (q.lower() for q in quoted):
+                continue
+            if english not in quoted:
+                problems.append(f"tr English {key[:60]!r}...: names {english!r} with other capitals")
+            for language, code in CATALOG_CODES.items():
+                if names.get(code) and names[code] not in table.get(language, {}).get(key, ""):
+                    problems.append(f"{TRANSLATIONS_PATH}: {language} for {key[:50]!r}... doesn't name {names[code]!r}, the button's name there")
+    return problems
+
+
 def main():
     list_untranslated = "--untranslated" in sys.argv
     skip_table = "--no-table" in sys.argv
@@ -388,6 +419,7 @@ def main():
         all_problems += check_siri_phrases()
         all_problems += check_permission_prompts()
         all_problems += check_system_wording()
+        all_problems += check_system_names_in_help(keys)
     for problem in all_problems:
         print(problem)
     sys.exit(1 if all_problems else 0)
