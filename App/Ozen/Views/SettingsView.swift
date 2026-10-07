@@ -599,19 +599,37 @@ struct SettingsView: View {
         )
     }
 
+    /// At the largest text sizes the label beside a menu left room for the
+    /// chosen language's first and last letters only. There the label
+    /// moves to the section's title and the row is the language alone;
+    /// thirteen choices as rows of their own, like the colors, would add
+    /// two screens of scrolling.
     private var languageSection: some View {
         Section {
-            Picker(tr("שפת האפליקציה", "App language"), selection: appLanguageBinding) {
-                Text(tr("כמו בטלפון", "Same as the phone")).tag(AppLanguage.system)
-                // Every other language by its own name, not by Hebrew or
-                // English about it: a reader picks "العربية" by recognizing
-                // it. Same order as the cases are declared in.
-                ForEach(AppLanguage.allCases.filter { $0 != .system }, id: \.self) { language in
-                    Text(language.resolved(preferredLanguages: []).nativeName).tag(language)
-                }
+            if dynamicTypeSize.isAccessibilitySize {
+                languagePicker
+                    .labelsHidden()
+            } else {
+                languagePicker
+            }
+        } header: {
+            if dynamicTypeSize.isAccessibilitySize {
+                Text(tr("שפת האפליקציה", "App language"))
             }
         } footer: {
             Text(tr("השפה של הכפתורים וההגדרות. הכתוביות נשארות בשפה שמדברים בה.", "The language of the buttons and settings. Captions stay in the language people speak."))
+        }
+    }
+
+    private var languagePicker: some View {
+        Picker(tr("שפת האפליקציה", "App language"), selection: appLanguageBinding) {
+            Text(tr("כמו בטלפון", "Same as the phone")).tag(AppLanguage.system)
+            // Every other language by its own name, not by Hebrew or
+            // English about it: a reader picks "العربية" by recognizing
+            // it. Same order as the cases are declared in.
+            ForEach(AppLanguage.allCases.filter { $0 != .system }, id: \.self) { language in
+                Text(language.resolved(preferredLanguages: []).nativeName).tag(language)
+            }
         }
     }
 
