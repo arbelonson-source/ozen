@@ -43,6 +43,37 @@ struct UncertainWordsTests {
         #expect(UncertainWords.ranges(in: text, words: []).isEmpty)
     }
 
+    @Test("a word guessed at in one place and known in another is marked only where it was guessed")
+    func onlyTheDoubtfulCopy() {
+        let text = "I know what I said, I think"
+        let words = UncertainWords.pick(
+            words: [" I", " know", " what", " I", " said,", " I", " think"],
+            logprobs: [[sure], [sure], [sure], [unsure], [sure], [sure], [sure]]
+        )
+        let marked = UncertainWords.ranges(in: text, words: words).map { text.distance(from: text.startIndex, to: $0.lowerBound) }
+        #expect(marked == [12])
+        #expect(UncertainWords.spoken(in: text, words: words) == ["I"])
+    }
+
+    @Test("a line made of several passes keeps each copy's mark in order")
+    func copiesAcrossPasses() {
+        let text = "I know I said I would"
+        let first = UncertainWords.pick(words: [" I", " know", " I", " said"], logprobs: [[sure], [sure], [unsure], [sure]])
+        let second = UncertainWords.pick(words: [" I", " would"], logprobs: [[unsure], [sure]])
+        let marked = UncertainWords.ranges(in: text, words: first + second).map { text.distance(from: text.startIndex, to: $0.lowerBound) }
+        #expect(marked == [7, 14])
+    }
+
+    @Test("a word guessed at every time it was said is marked every time")
+    func everyCopyDoubtful() {
+        let text = "no no, it was fine"
+        let words = UncertainWords.pick(
+            words: [" no", " no,", " it", " was", " fine"],
+            logprobs: [[unsure], [unsure], [sure], [sure], [sure]]
+        )
+        #expect(UncertainWords.ranges(in: text, words: words).map { String(text[$0]) } == ["no", "no,"])
+    }
+
     @Test("a line that reached the screen carries its doubtful words, and a later pass replaces them")
     func throughTheStabilizer() {
         var stabilizer = CaptionStabilizer()
