@@ -85,7 +85,7 @@ public struct EnergyVoiceDetector: Sendable {
     private var recentSamples = 0
 
     /// The line for cutting what goes to Whisper, a fifth lower than the
-    /// default (6.9 dB over the noise floor, 4.1 dB when it holds still).
+    /// default (6.0 dB over the noise floor, 4.1 dB when it holds still).
     /// Measured on the owner's desktop with the voice check on: a speaker
     /// across the room 51.3 -> 48.3% of words wrong, the same speaker
     /// quieter 86.5 -> 77.5%, conversation and lectures unchanged (8.9%,
