@@ -70,6 +70,23 @@ struct HistoryRetentionTests {
         #expect(store.search("שלום").count == 5)
     }
 
+    @Test("picking a shorter time counts what it would delete from every saved conversation, and doesn't know while that list isn't loaded")
+    func expiringCount() {
+        let summaries = [
+            conversation(startedDaysAgo: 40, endedDaysAgo: 40),
+            conversation(startedDaysAgo: 3, endedDaysAgo: 3),
+            conversation(startedDaysAgo: 40, endedDaysAgo: 40, starred: true),
+            conversation(startedDaysAgo: 40, endedDaysAgo: 40, title: "יום הולדת"),
+            conversation(startedDaysAgo: 400, endedDaysAgo: nil),
+        ].map(TranscriptSessionSummary.init(summarizing:))
+
+        #expect(HistoryRetention.month.expiringCount(in: summaries, now: now) == 2)
+        #expect(HistoryRetention.year.expiringCount(in: summaries, now: now) == 1)
+        #expect(HistoryRetention.week.expiringCount(in: [], now: now) == 0)
+        #expect(HistoryRetention.week.expiringCount(in: nil, now: now) == nil)
+        #expect(HistoryRetention.forever.expiringCount(in: nil, now: now) == 0)
+    }
+
     @Test("the conversation still on screen is never deleted")
     func protectsLiveConversation() throws {
         let (store, dir) = makeStore()

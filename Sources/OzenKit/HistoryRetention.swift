@@ -28,6 +28,15 @@ public enum HistoryRetention: String, Sendable, Codable, CaseIterable, Equatable
         days.map { now - TimeInterval($0) * 86_400 }
     }
 
+    /// How many of `conversations` (every saved one) this choice would
+    /// delete right away; nil while that list isn't known yet, as when
+    /// History has only just opened, so the choice asks first instead of
+    /// counting nothing and deleting without a word.
+    public func expiringCount(in conversations: [TranscriptSessionSummary]?, now: TimeInterval) -> Int? {
+        guard let cutoff = cutoff(now: now) else { return 0 }
+        return conversations?.filter { $0.lastActiveAt < cutoff && !$0.isKeptByChoice }.count
+    }
+
     /// A settings file from a newer build may name a choice this one
     /// doesn't know; keeping everything is the safe reading of that.
     public init(from decoder: any Decoder) throws {

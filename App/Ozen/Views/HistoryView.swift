@@ -8,6 +8,9 @@ struct HistoryView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var query = ""
     @State private var sessions: [TranscriptSessionSummary] = []
+    /// Whether `sessions` holds every saved conversation: not before the
+    /// first load, nor while it holds a search's results.
+    @State private var sessionsAreEveryConversation = false
     @State private var totalSize: Int64 = 0
     @State private var confirmingDeleteAll = false
     /// A shorter keep-for choice that would delete conversations already
@@ -255,7 +258,7 @@ struct HistoryView: View {
             }
         }
         .confirmationDialog(
-            Self.expiryWarning(count: pendingRetention.map { expiredCount(under: $0) } ?? 0),
+            Self.expiryWarning(count: pendingRetention.flatMap { expiredCount(under: $0) } ?? 0),
             isPresented: Binding(get: { pendingRetention != nil }, set: { if !$0 { pendingRetention = nil } }),
             titleVisibility: .visible
         ) {
@@ -305,7 +308,7 @@ struct HistoryView: View {
         Binding(
             get: { viewModel.historyRetention },
             set: { choice in
-                if expiredCount(under: choice) > 0 {
+                if expiredCount(under: choice) != 0 {
                     pendingRetention = choice
                 } else {
                     apply(choice)
@@ -314,9 +317,8 @@ struct HistoryView: View {
         )
     }
 
-    private func expiredCount(under retention: HistoryRetention) -> Int {
-        guard let cutoff = retention.cutoff(now: Date().timeIntervalSince1970) else { return 0 }
-        return sessions.filter { $0.lastActiveAt < cutoff && !$0.isKeptByChoice }.count
+    private func expiredCount(under retention: HistoryRetention) -> Int? {
+        retention.expiringCount(in: sessionsAreEveryConversation ? sessions : nil, now: Date().timeIntervalSince1970)
     }
 
     private func apply(_ retention: HistoryRetention) {
@@ -358,6 +360,7 @@ struct HistoryView: View {
         // A newer search may have finished first; only the current one wins.
         guard text == query else { return }
         sessions = found
+        sessionsAreEveryConversation = text.isEmpty
         totalSize = size
         // A filter for someone whose only conversation(s) were just
         // deleted would otherwise keep filtering everything out forever,
