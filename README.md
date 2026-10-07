@@ -137,7 +137,8 @@ Open a section for the details.
   download.
 - **Display built for reading all evening**: text size 20–64 pt (pinch
   the captions to change it), white-on-black / yellow-on-black /
-  black-on-white, bold, speaker names on/off (shown once at the start of
+  black-on-white, or following the phone's own light/dark setting, bold,
+  speaker names on/off (shown once at the start of
   each person's turn, like a chat), a small question mark on lines the
   engine itself was unsure of (so she knows when to ask again; with
   ivrit.ai's models one or two lines in a hundred, and in tests 50 of
