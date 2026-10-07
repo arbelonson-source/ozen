@@ -1338,3 +1338,28 @@ struct ConversationLengthTests {
         #expect(summary.durationSeconds == nil)
     }
 }
+
+@Suite("A saved conversation's details line")
+struct TranscriptSourceLineTests {
+    private func record(_ engine: TranscriptionEngineKind, model: String?, input: String? = "iPhone Microphone") -> TranscriptSessionRecord {
+        TranscriptSessionRecord(startedAt: 0, engine: engine, modelVariant: model, inputName: input, segments: [])
+    }
+
+    @Test("names the model as the model screen does, not by its download id")
+    func whisperModelByName() {
+        #expect(record(.whisperKit, model: "ivrit-large-v3-turbo-8bit").sourceLine(in: .hebrew) == "Whisper (במכשיר) · Turbo Hebrew (ivrit.ai) · iPhone Microphone")
+        #expect(record(.whisperKit, model: "some-future-model").sourceLine(in: .english) == "Whisper (on device) · some-future-model · iPhone Microphone")
+    }
+
+    @Test("the home computer's placeholder model, which only repeated the engine in English, is left out")
+    func homeServerOnce() {
+        #expect(record(.homeServer, model: "home server").sourceLine(in: .hebrew) == "המחשב בבית · iPhone Microphone")
+    }
+
+    @Test("cloud models read as Settings names them; missing parts are skipped")
+    func cloudAndMissing() {
+        #expect(record(.cloud, model: CloudSpeech.fastModel, input: nil).sourceLine(in: .english) == "Cloud transcription (OpenRouter) · Gemini Flash Lite")
+        #expect(record(.cloud, model: CloudSpeech.accurateModel, input: nil).sourceLine(in: .english) == "Cloud transcription (OpenRouter) · Gemini Flash")
+        #expect(record(.appleSpeech, model: nil, input: nil).sourceLine(in: .english) == "Apple's speech recognition")
+    }
+}

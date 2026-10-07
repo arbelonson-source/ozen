@@ -110,7 +110,7 @@ struct HistoryDetailView: View {
                 } header: {
                     Text(HistoryDays.heading(startedAt: record.startedAt))
                 } footer: {
-                    Text(Self.sourceLine(for: record))
+                    Text(record.sourceLine)
                 }
             }
             .task {
@@ -154,12 +154,6 @@ struct HistoryDetailView: View {
         } label: {
             Label(tr("העתקה", "Copy"), systemImage: "doc.on.doc")
         }
-    }
-
-    private static func sourceLine(for record: TranscriptSessionRecord) -> String {
-        [record.engine.displayName, record.modelVariant, record.inputName]
-            .compactMap { $0 }
-            .joined(separator: " · ")
     }
 
     private var nextMatchTitle: String {

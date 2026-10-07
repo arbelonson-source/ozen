@@ -165,6 +165,36 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
 }
 
 /// One line marked as important, with the conversation it came from.
+public extension TranscriptSessionRecord {
+    /// The details line under a saved conversation: what wrote it, and
+    /// through which microphone. The record keeps the technical model id
+    /// (`AppSettings.modelDescription`, which Diagnostics also reads); here
+    /// a Whisper id becomes the name the model screen shows, and the home
+    /// computer's placeholder, which only repeated the engine in English,
+    /// is left out.
+    var sourceLine: String { sourceLine(in: Localization.language) }
+
+    func sourceLine(in language: UILanguage) -> String {
+        [engine.displayName(in: language), modelName, inputName]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+    }
+
+    private var modelName: String? {
+        guard let modelVariant else { return nil }
+        switch engine {
+        case .whisperKit: return WhisperModelCatalog.option(for: modelVariant)?.displayName ?? modelVariant
+        case .cloud:
+            switch modelVariant {
+            case CloudSpeech.fastModel: return "Gemini Flash Lite"
+            case CloudSpeech.accurateModel: return "Gemini Flash"
+            default: return modelVariant
+            }
+        case .homeServer, .appleSpeech: return nil
+        }
+    }
+}
+
 public struct StarredLine: Sendable, Equatable, Identifiable {
     public let sessionID: UUID
     public let sessionStartedAt: TimeInterval
