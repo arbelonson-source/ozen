@@ -225,10 +225,21 @@ public func tr(_ hebrew: String, _ english: String) -> String {
 
 public func tr(_ hebrew: String, _ english: String, in language: UILanguage) -> String {
     switch language {
-    case .hebrew: return hebrew
+    case .hebrew: return readingInOrder(hebrew, in: language)
     case .english: return english
-    default: return TranslationTable.shared.lookup(english, language: language) ?? english
+    default: return readingInOrder(TranslationTable.shared.lookup(english, language: language) ?? english, in: language)
     }
+}
+
+/// iOS lays a line out in the direction of its first letter, so a Hebrew
+/// or Arabic line opening with "VoiceOver", "Turbo" or "812 MB" came out
+/// left to right: the English word sat at the far left, the last thing a
+/// right-to-left reader reaches. A right-to-left mark in front keeps it
+/// right to left, as `CaptionLayout` does for caption lines.
+private func readingInOrder(_ text: String, in language: UILanguage) -> String {
+    guard language.isRightToLeft, !text.hasPrefix("\u{200E}"), !text.hasPrefix(CaptionLayout.rightToLeftMark),
+          CaptionLayout.opensLeftToRight(text) else { return text }
+    return CaptionLayout.rightToLeftMark + text
 }
 
 /// For a string built from `\(...)` interpolation, which can't be looked up
@@ -249,7 +260,7 @@ public func tr(_ hebrewTemplate: String, _ englishTemplate: String, args: [Strin
     case .english: template = englishTemplate
     default: template = TranslationTable.shared.lookup(englishTemplate, language: language) ?? englishTemplate
     }
-    return substitutingPlaceholders(in: template, with: args)
+    return readingInOrder(substitutingPlaceholders(in: template, with: args), in: language)
 }
 
 /// Replaces `%1`, `%2`... with `args[0]`, `args[1]`... in one pass from

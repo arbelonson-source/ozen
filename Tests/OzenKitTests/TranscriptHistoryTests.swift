@@ -1347,7 +1347,7 @@ struct TranscriptSourceLineTests {
 
     @Test("names the model as the model screen does, not by its download id")
     func whisperModelByName() {
-        #expect(record(.whisperKit, model: "ivrit-large-v3-turbo-8bit").sourceLine(in: .hebrew) == "Whisper (במכשיר) · Turbo Hebrew (ivrit.ai) · iPhone Microphone")
+        #expect(record(.whisperKit, model: "ivrit-large-v3-turbo-8bit").sourceLine(in: .hebrew) == "\u{200F}Whisper (במכשיר) · Turbo Hebrew (ivrit.ai) · iPhone Microphone")
         #expect(record(.whisperKit, model: "some-future-model").sourceLine(in: .english) == "Whisper (on device) · some-future-model · iPhone Microphone")
     }
 

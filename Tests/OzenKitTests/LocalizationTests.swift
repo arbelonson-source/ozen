@@ -113,6 +113,25 @@ struct LocalizationTests {
         }
     }
 
+    // iOS sets a line's direction by its first letter. Settings showed
+    // "VoiceOver מקריא שורות חדשות" with VoiceOver at the far left, the
+    // last word a Hebrew reader reaches (ui-screenshots 37580885361).
+    @Test("a right-to-left line that opens with an English word or a size stays right to left, so it reads in order")
+    func rightToLeftLineOpeningInLatin() {
+        let mark = "\u{200F}"
+        #expect(tr("VoiceOver מקריא שורות חדשות", "VoiceOver reads new lines aloud", in: .hebrew) == mark + "VoiceOver מקריא שורות חדשות")
+        #expect(tr("%1 בשימוש", "%1 in use", args: ["812 MB"], in: .hebrew) == mark + "812 MB בשימוש")
+        #expect(tr("%1 לא זמין", "%1 isn't available", args: [TranscriptionEngineKind.whisperKit.displayName(in: .hebrew)], in: .hebrew) == mark + "Whisper (במכשיר) לא זמין")
+        #expect(TranscriptionEngineKind.whisperKit.displayName(in: .arabic) == mark + "Whisper (على الجهاز)")
+        #expect(tr(mark + "VoiceOver", "VoiceOver", in: .hebrew) == mark + "VoiceOver")
+        #expect(tr("%1 מתוך %2", "%1 of %2", args: ["3", "5"], in: .hebrew) == "3 מתוך 5")
+        #expect(tr("עוד %1", "%1 more", args: ["1.9 GB"], in: .hebrew) == "עוד 1.9 GB")
+        for language in UILanguage.allCases where !language.isRightToLeft {
+            #expect(!tr("VoiceOver מקריא שורות חדשות", "VoiceOver reads new lines aloud", in: language).hasPrefix(mark), "\(language)")
+            #expect(!tr("%1 בשימוש", "%1 in use", args: ["812 MB"], in: language).hasPrefix(mark), "\(language)")
+        }
+    }
+
     @Test("the voice follows the letters, and the app's language when there are none")
     func speakingVoice() {
         #expect(UILanguage.forSpeaking("שלום, thanks", otherwise: .english) == .hebrew)
