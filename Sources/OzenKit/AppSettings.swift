@@ -403,7 +403,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         languageCode: "he",
         preferredInputUID: nil,
         speakerProfiles: [],
-        creditLine: "Made by Arbel"
+        creditLine: "Arbel"
     )
 
     private enum CodingKeys: String, CodingKey {

@@ -10,8 +10,19 @@ struct AppSettingsTests {
         let settings = AppSettings.default
         #expect(settings.engine == .whisperKit)
         #expect(settings.languageCode == "he")
-        #expect(settings.creditLine == "Made by Arbel")
+        #expect(settings.creditLine == "Arbel")
         #expect(settings.speakerProfiles.isEmpty)
+    }
+
+    // Settings shows it beside its own "Made by" label: the row read
+    // "Made by  Made by Arbel", and in Hebrew kept the English words.
+    @Test("the credit line is the name alone, without the words its Settings label already says")
+    func creditLineIsTheName() {
+        for language in UILanguage.allCases {
+            let label = tr("נוצר על ידי", "Made by", in: language)
+            #expect(!AppSettings.default.creditLine.localizedCaseInsensitiveContains(label), "\(language)")
+        }
+        #expect(!AppSettings.default.creditLine.localizedCaseInsensitiveContains("made by"))
     }
 
     @Test("settings round-trip through JSON without losing data")
@@ -21,7 +32,7 @@ struct AppSettingsTests {
             languageCode: "he",
             preferredInputUID: "airpods-123",
             speakerProfiles: [SpeakerProfile(name: "סבתא", embedding: [0.1, 0.2, 0.3])],
-            creditLine: "Made by Arbel"
+            creditLine: "Arbel"
         )
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
@@ -41,7 +52,7 @@ struct AppSettingsTests {
                 SpeakerProfile(name: "current", embedding: Array(oldPrint.dropFirst())),
                 SpeakerProfile(name: "other", embedding: other),
             ],
-            creditLine: "Made by Arbel"
+            creditLine: "Arbel"
         )
         let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(saved))
         #expect(decoded.speakerProfiles.map(\.embedding) == [Array(oldPrint.dropFirst()), Array(oldPrint.dropFirst()), other])
@@ -143,7 +154,7 @@ struct AppSettingsTests {
         #expect(decoded.hasCompletedOnboarding == false)
         #expect(decoded.notifyWhenInBackground == true)
         // The credit line is owned by the build, not the file.
-        #expect(decoded.creditLine == "Made by Arbel")
+        #expect(decoded.creditLine == "Arbel")
     }
 
     @Test("an empty JSON object decodes to the defaults")
