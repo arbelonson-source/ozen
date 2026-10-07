@@ -132,6 +132,12 @@ struct BigTextView: View {
         }
         .labelStyle(.titleAndIcon)
         .font(.headline)
+        // Each name is one word in every language. On a 375-point phone
+        // at the largest sizes the Hebrew "Speak" broke before its last
+        // letter beside its icon; a word shrinks a little instead, as on
+        // the caption bar.
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
         .buttonStyle(.bordered)
         .controlSize(.large)
         .tint(theme.chrome)
