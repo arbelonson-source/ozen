@@ -293,9 +293,7 @@ struct ModelManagerView: View {
     }
 
     static func format(bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: bytes)
+        ByteSize.text(bytes)
     }
 }
 
