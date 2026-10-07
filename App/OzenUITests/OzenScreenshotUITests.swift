@@ -478,6 +478,13 @@ final class OzenScreenshotUITests: XCTestCase {
             // choice at this size; like the colors in Settings, each choice
             // gets a row of its own.
             XCTAssertTrue(app.descendants(matching: .any)["רק חירום"].exists, "sound alerts: the alert-for choices aren't rows of their own at the largest text size")
+            // A sound the classifier knows by two labels is one switch; it
+            // was listed once per label, two identical rows in Hebrew. The
+            // second label sits right after the first in the catalog.
+            let shout = scrollDownUntilVisible(app, identifier: "soundRow-shout", maxSwipes: 40)
+            XCTAssertTrue(shout.exists, "sound alerts: the shout row never appeared")
+            capture(app, name: "sound-alerts-important-accessibility-text")
+            XCTAssertFalse(app.descendants(matching: .any)["soundRow-yell"].exists, "sound alerts: one sound is listed twice")
         }
 
         // notifyWhenInBackground is seeded on in ScreenshotFixtures, so

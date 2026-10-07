@@ -183,6 +183,7 @@ private struct SoundEventRow: View {
             }
             .disabled(!isSupported)
             .foregroundStyle(isSupported ? .primary : .secondary)
+            .accessibilityIdentifier("soundRow-\(event.identifier)")
 
             // Offered after a near miss, and kept while it is on: a sound
             // marked sensitive stops being a near miss, and if the lower
