@@ -11,12 +11,16 @@ public enum TranscriptionEngineKind: String, Codable, Sendable, CaseIterable {
     /// The family's own GPU computer (see `HomeServer`).
     case homeServer
 
-    public var displayName: String {
+    /// The name Settings gives it, in the app's language: a saved
+    /// conversation's details showed "Home server" under Hebrew captions.
+    public var displayName: String { displayName(in: Localization.language) }
+
+    public func displayName(in language: UILanguage) -> String {
         switch self {
-        case .whisperKit: return "Whisper (on-device)"
-        case .appleSpeech: return "Apple Speech"
-        case .cloud: return "Cloud (OpenRouter)"
-        case .homeServer: return "Home server"
+        case .whisperKit: return tr("Whisper (במכשיר)", "Whisper (on device)", in: language)
+        case .appleSpeech: return tr("זיהוי הדיבור של אפל", "Apple's speech recognition", in: language)
+        case .cloud: return tr("תמלול בענן \u{2066}(OpenRouter)\u{2069}", "Cloud transcription (OpenRouter)", in: language)
+        case .homeServer: return tr("המחשב בבית", "Home computer", in: language)
         }
     }
 }

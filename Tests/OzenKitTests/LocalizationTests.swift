@@ -4,6 +4,16 @@ import Testing
 
 @Suite("Localization")
 struct LocalizationTests {
+    @Test("an engine's name reads in the app's language, as Settings names it, wherever a saved conversation shows it")
+    func engineNames() {
+        #expect(TranscriptionEngineKind.homeServer.displayName(in: .hebrew) == "המחשב בבית")
+        #expect(TranscriptionEngineKind.whisperKit.displayName(in: .english) == "Whisper (on device)")
+        #expect(TranscriptionEngineKind.appleSpeech.displayName(in: .russian) == "Распознавание речи Apple")
+        for kind in TranscriptionEngineKind.allCases {
+            #expect(kind.displayName(in: .hebrew) != kind.displayName(in: .english), "\(kind)")
+        }
+    }
+
     @Test("the phone's preferred languages resolve to the first one that's supported; Hebrew is the fallback")
     func resolution() {
         #expect(AppLanguage.system.resolved(preferredLanguages: ["he-IL", "en-US"]) == .hebrew)

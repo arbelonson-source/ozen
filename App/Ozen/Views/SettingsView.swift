@@ -221,12 +221,7 @@ struct SettingsView: View {
     }
 
     private func engineName(_ kind: TranscriptionEngineKind) -> String {
-        switch kind {
-        case .whisperKit: return tr("Whisper (במכשיר)", "Whisper (on device)")
-        case .appleSpeech: return tr("זיהוי הדיבור של אפל", "Apple's speech recognition")
-        case .cloud: return tr("תמלול בענן \u{2066}(OpenRouter)\u{2069}", "Cloud transcription (OpenRouter)")
-        case .homeServer: return tr("המחשב בבית", "Home computer")
-        }
+        kind.displayName
     }
 
     private func engineSummary(_ kind: TranscriptionEngineKind) -> String {
