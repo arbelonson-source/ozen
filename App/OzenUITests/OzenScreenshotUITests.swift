@@ -106,8 +106,19 @@ final class OzenScreenshotUITests: XCTestCase {
         for identifier in ["settingsButton", "micPickerButton", "transcriptScroll"] {
             let element = app.descendants(matching: .any)[identifier].firstMatch
             XCTAssertTrue(element.exists, "caption screen: \(identifier) is missing")
-            let frame = element.frame
-            XCTAssertTrue(frame.minX >= screen.minX - 1 && frame.maxX <= screen.maxX + 1 && frame.minY >= screen.minY - 1 && frame.maxY <= screen.maxY + 1, "caption screen: \(identifier) runs off the screen at this text size (\(frame) in \(screen))")
+            let onScreen = { (frame: CGRect) in
+                frame.minX >= screen.minX - 1 && frame.maxX <= screen.maxX + 1 && frame.minY >= screen.minY - 1 && frame.maxY <= screen.maxY + 1
+            }
+            // The picture above takes long enough for the bar's five idle
+            // seconds to run out, and a hiding bar slides its buttons below
+            // the edge: bring it back before deciding one doesn't fit.
+            var frame = element.frame
+            for _ in 0..<12 where !onScreen(frame) {
+                if reveal.exists, reveal.isHittable { reveal.tap() }
+                Thread.sleep(forTimeInterval: 0.25)
+                frame = element.frame
+            }
+            XCTAssertTrue(onScreen(frame), "caption screen: \(identifier) runs off the screen at this text size (\(frame) in \(screen))")
         }
     }
 
