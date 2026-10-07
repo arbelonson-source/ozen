@@ -121,7 +121,11 @@ jobs:
         if: failure()
         run: |
           if [ -f xcodebuild-raw.log ]; then
-            grep -nE "error:|failed|✘|recorded an issue|Fatal error|crashed|Terminating app|Restarting after unexpected exit|Test session results" xcodebuild-raw.log | head -80 || true
+            # The failing test first: iOS's own voice-asset lookups also
+            # say "failed" and once filled all 80 lines before it.
+            grep -nE "recorded an issue|✘ Test|Fatal error|crashed|Terminating app|Restarting after unexpected exit" xcodebuild-raw.log | head -40 || true
+            echo "----- other errors -----"
+            grep -nE "error:|failed|Test session results" xcodebuild-raw.log | grep -vE "\] \[(catalog|asset)\]|passed after|started\.$" | head -60 || true
             echo "----- last 80 lines -----"
             tail -n 80 xcodebuild-raw.log
           fi
