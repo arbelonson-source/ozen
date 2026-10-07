@@ -149,6 +149,19 @@ class BrokenGPU:
         raise RuntimeError("CUDA error: an illegal memory access was encountered")
 
 
+class NowAndThenGPU:
+    """Every other pass fails, the rest finish."""
+
+    def __init__(self):
+        self.passes = 0
+
+    def transcribe(self, audio, **kw):
+        self.passes += 1
+        if self.passes % 2:
+            raise RuntimeError("CUDA error: out of memory")
+        return iter([]), None
+
+
 class ModelsFromDisk(unittest.TestCase):
     """With the internet down and the home network up, asking the Hub
     about a model already on disk took 135 s per model to give up."""
@@ -227,6 +240,30 @@ class Restart(unittest.TestCase):
         finally:
             S.lacks_voice, S.os._exit, S.logging.shutdown = real_gate, real_exit, real_shutdown
         self.assertEqual(exits, [3])
+
+    def test_a_pass_that_fails_now_and_then_does_not_restart_the_server(self):
+        t = S.Transcriber.__new__(S.Transcriber)
+        t.model = t.final_model = NowAndThenGPU()
+        t.beam, t.context, t.speech_gate = 5, 0, 0.0
+        t.failures, t.failures_before_exit = 0, 3
+        exits = []
+        speech = np.full(1600, 0.1, dtype=np.float32)
+        real_exit, real_shutdown = S.os._exit, S.logging.shutdown
+        S.os._exit = exits.append
+        S.logging.shutdown = lambda: None
+        try:
+            async def evening():
+                t.lock = asyncio.Lock()
+                for _ in range(6):
+                    try:
+                        await t.transcribe(speech, "he", None, True)
+                    except RuntimeError:
+                        pass
+            asyncio.run(evening())
+        finally:
+            S.os._exit, S.logging.shutdown = real_exit, real_shutdown
+        self.assertEqual(exits, [])
+        self.assertEqual(t.failures, 0)
 
 
 class SlowGPU:
