@@ -134,6 +134,42 @@ struct ConversationStatsTests {
         #expect(ConversationStats.compute(from: record).hebrewSummary == "12 דקות · שני דוברים · 3 מילים")
     }
 
+    private func countPhrases() -> [String] {
+        let counts = [0, 1, 2, 3, 5, 11, 21, 100]
+        return [20.0, 60, 125, 3_600, 5_400].map(ConversationStats.minutesText) + counts.flatMap { count in
+            [
+                ConversationStats.speakersText(count),
+                ConversationStats.linesText(count),
+                ConversationStats.linesText(count, adjective: (singular: "חדשה", plural: "חדשות"), englishAdjective: "new"),
+                ConversationStats.wordsText(count),
+                ConversationStats.secondsText(count),
+                ConversationStats.aboutMinutesLeftText(count),
+                ConversationStats.oldConversationsDeletedText(count),
+                HebrewTime.minutesAgo(count),
+            ]
+        }
+    }
+
+    @Test("in Hebrew, no count phrase borrows an English word")
+    func hebrewCountsHaveNoEnglish() {
+        Localization.$override.withValue(.hebrew) {
+            for phrase in countPhrases() {
+                #expect(!phrase.unicodeScalars.contains { $0.isASCII && $0.properties.isAlphabetic }, "\(phrase)")
+            }
+        }
+    }
+
+    @Test("in every other language, no count phrase has a Hebrew word in it")
+    func otherLanguagesCountsHaveNoHebrew() {
+        for language in UILanguage.allCases where language != .hebrew {
+            Localization.$override.withValue(language) {
+                for phrase in countPhrases() {
+                    #expect(!phrase.unicodeScalars.contains { (0x0590...0x05FF).contains($0.value) }, "\(language): \(phrase)")
+                }
+            }
+        }
+    }
+
     @Test("English wording for minutes, speakers, words and lines")
     func englishWording() {
         Localization.$override.withValue(.english) {
