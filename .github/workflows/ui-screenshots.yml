@@ -10,6 +10,7 @@ on:
         options:
           - iPhone
           - iPad
+          - iPhone 13 mini
 
 jobs:
   screenshots:
@@ -17,6 +18,22 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+
+      - name: Use the newest Xcode 26, as the release build does
+        # The runner's default Xcode is 16.x: its screenshots showed the
+        # iOS 18 look, without the glass buttons every iOS 26 phone has,
+        # and a bar too wide for a 375-point phone on iOS 26 (#251) never
+        # appeared in them.
+        run: |
+          set -euo pipefail
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
+          if [ -z "$XCODE" ]; then
+            echo "No Xcode 26 on this runner" >&2
+            ls -d /Applications/Xcode*.app >&2 || true
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -28,6 +45,16 @@ jobs:
         id: sim
         run: |
           FAMILY="${{ inputs.device_family || 'iPhone' }}"
+          if [ "$FAMILY" = "iPhone 13 mini" ]; then
+            # The narrowest phones iOS 26 runs on (375 points: 12 and 13
+            # mini, SE) are not among the runner's ready-made simulators.
+            RUNTIME=$(xcrun simctl list runtimes available -j \
+              | jq -r '[.runtimes[] | select(.name | startswith("iOS"))] | last | .identifier')
+            UDID=$(xcrun simctl create "iPhone 13 mini" com.apple.CoreSimulator.SimDeviceType.iPhone-13-mini "$RUNTIME")
+            echo "Using simulator: iPhone 13 mini on $RUNTIME ($UDID)"
+            echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           DEVICE=$(xcrun simctl list devices available -j \
             | jq -r --arg family "$FAMILY" '.devices | to_entries[] | .value[] | select(.name | test($family)) | "\(.udid) \(.name)"' \
             | head -n1)
