@@ -515,6 +515,17 @@ final class OzenScreenshotUITests: XCTestCase {
         let backToHistory = app.navigationBars.buttons["היסטוריה"]
         XCTAssertTrue(backToHistory.waitForExistence(timeout: 10), "secondary screens: no way back from starred lines")
         backToHistory.tap()
+        // One saved conversation: its summary (speaking pace, the longest
+        // turn) is label-and-value rows, never seen at this size before.
+        let conversationRow = scrollDownUntilVisible(app, identifier: "conversationRow")
+        XCTAssertTrue(conversationRow.exists, "secondary screens: the seeded conversation has no row in history")
+        bringOffBottomEdge(app, conversationRow)
+        conversationRow.tap()
+        let backFromConversation = app.navigationBars.buttons["היסטוריה"]
+        if !backFromConversation.waitForExistence(timeout: 3), conversationRow.exists { conversationRow.tap() }
+        XCTAssertTrue(backFromConversation.waitForExistence(timeout: 10), "secondary screens: the conversation never opened")
+        capture(app, name: "conversation-accessibility-text")
+        backFromConversation.tap()
         let backToSettingsFromHistory = app.navigationBars.buttons["הגדרות"]
         XCTAssertTrue(backToSettingsFromHistory.waitForExistence(timeout: 10), "secondary screens: no way back from history")
         backToSettingsFromHistory.tap()

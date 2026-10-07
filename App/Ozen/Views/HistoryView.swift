@@ -189,6 +189,7 @@ struct HistoryView: View {
         } label: {
             SessionRow(session: session, isSearchResult: !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
+        .accessibilityIdentifier("conversationRow")
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             // No destructive role: that role animates the row away
             // before the question is even answered.
