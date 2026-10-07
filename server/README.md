@@ -130,7 +130,7 @@ network up, asking Hugging Face first kept it from starting for 4.5 minutes, now
 A newer version of a model is not fetched by itself; deleting its `models--...` folder
 (under `C:\ozen\hf\hub` on Windows, `~/.cache/huggingface/hub` on Linux) gets the newest at
 the next start.
-The pairing code goes into the phone: Settings, Engine, Home computer.
+The pairing code goes into the phone: Settings, Transcription engine, Home computer.
 
 ### Starting with the computer
 

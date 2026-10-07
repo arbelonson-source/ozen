@@ -6,12 +6,12 @@ Find the words she reads to you below.
 
 ## First: send the report
 
-Settings → Diagnostics (avchun) → **Send the report** (shlichat ha-doch). It opens the share sheet, so
+Settings → Diagnostics (avchun) → **Send report** (shlichat ha-doch). It opens the share sheet, so
 it can go straight to WhatsApp. The report ends with a timeline of what
 happened to the captions, with clock times ("microphone stopped delivering
 audio", "failed: …", "retry 1 in 1s", "listening"), so "it stopped at lunch"
 can be read off it. Nothing in it is what was said, with one exception:
-**Mark a problem** (in the same screen) adds the last few caption lines
+**Mark a problem now** (in the same screen) adds the last few caption lines
 around the moment it was tapped, so the wrong words can be seen; the screen
 says so. It also keeps the last 30 seconds of sound on the phone (only while
 saving conversations is on, never in a backup); Diagnostics lists these
@@ -89,8 +89,8 @@ the same.
 - **The buttons at the bottom disappeared.** While captions run and follow
   the newest line, they slide away after a few seconds so they don't cover
   it. Touch the screen, or the small arrow at the bottom, to bring them back.
-  To keep them always: Settings → Display → hide the buttons while captions
-  run, off.
+  To keep them always: Settings → Display → "Hide the buttons while
+  captions are running" (lehastir et ha-kaftorim) off.
 - **The orange microphone dot stays on while captions are stopped.** When
   captions can't run for now (the home computer is off or asleep, the
   cloud is out of reach) and are waiting to try again, the microphone stays
@@ -163,7 +163,7 @@ the same.
   "Bold numbers" (misparim boltim) turns it off.
 - **One person gets two speaker numbers, or two people share one.** Voices
   are told apart by how they sound, which is rough: expect a wrong label now
-  and then, more often in a noisy room. Settings → Behaviour (hitnahagut) →
+  and then, more often in a noisy room. Settings → Behavior (hitnahagut) →
   "Speaker separation sensitivity" (regishut hafradat dovrim) adjusts it:
   towards "More merging" (me'ached yoter) if the same person keeps getting a
   new number, towards "More separating" (mafrid yoter) if two people are
