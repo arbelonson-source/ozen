@@ -28,13 +28,14 @@ public struct SoundNearMisses: Sendable, Equatable {
               observation.confidence.isFinite,
               let event = SoundEventCatalog.event(for: observation.identifier)
         else { return }
-        // By the catalog's display name, not the raw identifier: two
-        // classifier labels the catalog shows as the exact same sound
-        // (see SoundEventPolicy.evaluate, which merges its own cooldown
-        // the same way) must merge here too, or a faint ring the
-        // classifier flips between the two labels on shows up as two
-        // separate near-misses instead of one.
-        if let index = entries.firstIndex(where: { SoundEventCatalog.event(for: $0.identifier)?.name == event.name }) {
+        // By the catalog's pairing (`cooldownKey`), not the raw identifier:
+        // two classifier labels for one sound must merge, or a faint ring
+        // the classifier flips between the two labels on shows up as two
+        // near-misses instead of one. Not by the shown name either, which
+        // depends on the language: in Russian a scream and a yell are both
+        // "Крик", and a faint yell landed on the scream's emergency row.
+        // SoundEventPolicy merges its cooldown by the same key.
+        if let index = entries.firstIndex(where: { SoundEventCatalog.event(for: $0.identifier)?.cooldownKey == event.cooldownKey }) {
             entries[index].bestConfidence = max(entries[index].bestConfidence, observation.confidence)
             entries[index].lastHeardAt = max(entries[index].lastHeardAt, observation.timestamp)
         } else {
@@ -51,9 +52,9 @@ public struct SoundNearMisses: Sendable, Equatable {
     }
 
     /// The near-miss for `event`, merged the same way `record` merges two
-    /// classifier labels the catalog shows as one sound.
+    /// classifier labels the catalog pairs as one sound.
     public func entry(for event: SoundEvent) -> Entry? {
-        entries.first { SoundEventCatalog.event(for: $0.identifier)?.name == event.name }
+        entries.first { SoundEventCatalog.event(for: $0.identifier)?.cooldownKey == event.cooldownKey }
     }
 
     /// "door_bell 45% 17:02:10, knock 38% 16:40:05", or nil when there are none.

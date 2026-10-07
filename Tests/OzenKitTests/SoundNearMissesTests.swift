@@ -33,6 +33,27 @@ struct SoundNearMissesTests {
         #expect(misses.entries.first?.lastHeardAt == 101)
     }
 
+    @Test("merging follows the catalog's pairs whatever the app's language, not the translated names")
+    func mergingIgnoresLanguage() throws {
+        for language in UILanguage.allCases {
+            try Localization.$override.withValue(language) {
+                var misses = SoundNearMisses()
+                misses.record(heard("boiling", 0.40, at: 100), alertConfidence: 0.6)
+                misses.record(heard("whistling", 0.45, at: 101), alertConfidence: 0.6)
+                #expect(misses.entries.count == 1, "\(language)")
+                let kettle = try #require(SoundEventCatalog.event(for: "whistling"))
+                #expect(misses.entry(for: kettle)?.bestConfidence == 0.45, "\(language)")
+
+                // In Russian a scream and a yell are both "Крик": a faint
+                // yell must not show on the emergency row for a scream.
+                misses.record(heard("yell", 0.50, at: 102), alertConfidence: 0.6)
+                let scream = try #require(SoundEventCatalog.event(for: "screaming"))
+                #expect(misses.entry(for: scream) == nil, "\(language)")
+                #expect(misses.entries.count == 2, "\(language)")
+            }
+        }
+    }
+
     @Test("looks an entry up by event, merging the same synonym identifiers record() does")
     func entryLookupMergesSynonyms() throws {
         var misses = SoundNearMisses()
