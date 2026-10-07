@@ -254,4 +254,13 @@ struct LocalizationTests {
             }
         }
     }
+
+    @Test("Spanish calls the home computer the same thing on every screen")
+    func spanishComputerOneWord() {
+        let table = TranslationTable.shared.table(for: .spanish)
+        #expect(table.values.contains { $0.contains("computadora") })
+        for (english, spanish) in table where spanish.lowercased().contains("ordenador") {
+            Issue.record("'ordenador' in the Spanish for: \(english)")
+        }
+    }
 }
