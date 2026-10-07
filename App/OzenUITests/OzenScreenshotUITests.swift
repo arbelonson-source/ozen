@@ -249,6 +249,43 @@ final class OzenScreenshotUITests: XCTestCase {
         }
     }
 
+    /// The screens behind Settings' rows and the microphone button, in
+    /// English, the same way `testSecondaryScreensAccessibilityText`
+    /// walks them in Hebrew.
+    func testEnglishSecondaryScreens() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "galleryDark"]
+        app.launch()
+        let settingsButton = app.descendants(matching: .any)["settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "english: the settings button never appeared")
+        settingsButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "english: settings never appeared")
+
+        openSettingsRow(app, rowIdentifier: "modelManagerRow", screenIdentifier: "modelManagerScreen", captureName: "english-model-manager", back: "Settings")
+        openSettingsRow(app, rowIdentifier: "vocabularyRow", screenIdentifier: "vocabularyScreen", captureName: "english-vocabulary", back: "Settings")
+
+        let addSpeaker = scrollDownUntilVisible(app, identifier: "addSpeakerButton")
+        XCTAssertTrue(addSpeaker.exists, "english: the add-speaker button never appeared")
+        bringOffBottomEdge(app, addSpeaker)
+        addSpeaker.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["speakerEnrollmentScreen"].waitForExistence(timeout: 10), "english: speaker enrollment never appeared")
+        capture(app, name: "english-speaker-enrollment")
+        app.buttons["Cancel"].tap()
+
+        openSettingsRow(app, rowIdentifier: "diagnosticsRow", screenIdentifier: "diagnosticsScreen", captureName: "english-diagnostics", back: "Settings")
+        app.buttons["Close"].firstMatch.tap()
+
+        let revealControls = app.descendants(matching: .any)["showControlsButton"]
+        if revealControls.waitForExistence(timeout: 2) {
+            revealControls.tap()
+        }
+        let micPickerButton = app.descendants(matching: .any)["micPickerButton"]
+        XCTAssertTrue(micPickerButton.waitForExistence(timeout: 10), "english: the mic picker button never appeared")
+        micPickerButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["micPickerScreen"].waitForExistence(timeout: 10), "english: mic picker never appeared")
+        capture(app, name: "english-mic-picker")
+    }
+
     /// The steppers quiet hours reveals once enabled, at this text size --
     /// seeded on at launch (see ScreenshotFixtures.Variant.quietHoursEnabled)
     /// rather than flipped live by the test, since tapping the toggle
