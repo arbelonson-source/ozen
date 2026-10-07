@@ -501,6 +501,9 @@ final class OzenScreenshotUITests: XCTestCase {
         let historyScreen = app.descendants(matching: .any)["historyScreen"]
         if !historyScreen.waitForExistence(timeout: 3), historyRow.exists { historyRow.tap() }
         XCTAssertTrue(historyScreen.waitForExistence(timeout: 10), "secondary screens: history never appeared")
+        // The capture below comes after scrolling to the starred row, past
+        // the saving switch and the automatic deletion choice at the top.
+        capture(app, name: "history-top-accessibility-text")
         let starredRow = scrollDownUntilVisible(app, identifier: "starredLinesRow")
         XCTAssertTrue(starredRow.exists, "secondary screens: the seeded conversation never reached history")
         capture(app, name: "history-accessibility-text")
