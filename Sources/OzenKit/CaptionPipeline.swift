@@ -691,7 +691,7 @@ public final class CaptionPipeline {
     /// instead would lose the conversation already on screen. Only while
     /// captions are running does it stay.
     public func handleMemoryWarning(footprintBytes: Int64? = nil) {
-        logEvent(.memoryWarning(footprintMegabytes: footprintBytes.map { Int($0 / 1_048_576) }))
+        logEvent(.memoryWarning(footprintMegabytes: footprintBytes.map { Int($0 / StorageSpaceGate.bytesPerMegabyte) }))
         switch phase {
         case .idle, .paused:
             engineCache.removeAll()

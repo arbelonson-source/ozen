@@ -315,7 +315,7 @@ public final class LiveCaptionViewModel {
 
     private static var deviceStateText: String {
         let process = ProcessInfo.processInfo
-        let memory = DeviceMemory.footprintBytes().map { " memory \($0 / 1_048_576)MB" } ?? ""
+        let memory = DeviceMemory.footprintBytes().map { " memory \($0 / StorageSpaceGate.bytesPerMegabyte)MB" } ?? ""
         return "thermal \(process.thermalState.rawValue) low power \(process.isLowPowerModeEnabled)\(memory)"
     }
 

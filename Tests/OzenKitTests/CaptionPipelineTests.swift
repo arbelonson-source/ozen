@@ -1239,13 +1239,25 @@ struct CaptionPipelineLifecycleTests {
         )
         await pipeline.start(settings: .default)
         pipeline.stop()
-        pipeline.handleMemoryWarning(footprintBytes: 812 * 1_048_576)
+        pipeline.handleMemoryWarning(footprintBytes: 812_000_000)
         #expect(await eventually { built.aliveCount == 0 })
         #expect(pipeline.eventLog.events.last?.kind == .memoryWarning(footprintMegabytes: 812))
 
         await pipeline.start(settings: .default)
         #expect(built.count == 2)
         #expect(pipeline.phase == .listening)
+    }
+
+    @Test("the memory warning counts a megabyte as a million bytes, like the report's memory line beside it")
+    func memoryWarningMegabytes() {
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { FakeEngine(kind: $0.engine) },
+            embedder: FakeEmbedder(),
+            recovery: .disabled
+        )
+        pipeline.handleMemoryWarning(footprintBytes: 851_443_712)
+        #expect(pipeline.eventLog.events.last?.kind == .memoryWarning(footprintMegabytes: 851))
     }
 
     @Test("a memory warning while captions run keeps the engine, so pausing right after is instant")
