@@ -226,7 +226,7 @@ public func tr(_ hebrew: String, _ english: String) -> String {
 public func tr(_ hebrew: String, _ english: String, in language: UILanguage) -> String {
     switch language {
     case .hebrew: return readingInOrder(hebrew, in: language)
-    case .english: return english
+    case .english: return readingInOrder(english, in: language)
     default: return readingInOrder(TranslationTable.shared.lookup(english, language: language) ?? english, in: language)
     }
 }
@@ -234,12 +234,19 @@ public func tr(_ hebrew: String, _ english: String, in language: UILanguage) -> 
 /// iOS lays a line out in the direction of its first letter, so a Hebrew
 /// or Arabic line opening with "VoiceOver", "Turbo" or "812 MB" came out
 /// left to right: the English word sat at the far left, the last thing a
-/// right-to-left reader reaches. A right-to-left mark in front keeps it
-/// right to left, as `CaptionLayout` does for caption lines.
+/// right-to-left reader reaches. English opening with a Hebrew name
+/// ("סבתא said: two pills") was turned around the same way. A direction
+/// mark in front keeps the line in its language's direction, as
+/// `CaptionLayout` does for caption lines.
 private func readingInOrder(_ text: String, in language: UILanguage) -> String {
-    guard language.isRightToLeft, !text.hasPrefix("\u{200E}"), !text.hasPrefix(CaptionLayout.rightToLeftMark),
-          CaptionLayout.opensLeftToRight(text) else { return text }
-    return CaptionLayout.rightToLeftMark + text
+    let leftToRightMark = "\u{200E}"
+    guard !text.hasPrefix(leftToRightMark), !text.hasPrefix(CaptionLayout.rightToLeftMark) else { return text }
+    let opensLeftToRight = CaptionLayout.opensLeftToRight(text)
+    if language.isRightToLeft {
+        return opensLeftToRight ? CaptionLayout.rightToLeftMark + text : text
+    }
+    let hasLetter = text.unicodeScalars.contains { $0.properties.isAlphabetic }
+    return hasLetter && !opensLeftToRight ? leftToRightMark + text : text
 }
 
 /// For a string built from `\(...)` interpolation, which can't be looked up

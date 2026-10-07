@@ -132,6 +132,18 @@ struct LocalizationTests {
         }
     }
 
+    @Test("a left-to-right line that opens with a Hebrew name or word stays left to right, so its English reads in order")
+    func leftToRightLineOpeningInHebrew() {
+        let mark = "\u{200E}"
+        #expect(tr("%1 — נאמר: %2", "%1 said: %2", args: ["סבתא", "two pills"], in: .english) == mark + "סבתא said: two pills")
+        #expect(tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", args: ["דנה אברהמי"], in: .english) == mark + "“דנה אברהמי” is already in the list.")
+        #expect(tr("%1 (%2 הקלטות)", "%1 (%2 recordings)", args: ["סבתא", "2"], in: .russian).hasPrefix(mark))
+        #expect(tr(mark + "%1", mark + "%1", args: ["סבתא"], in: .english) == mark + "סבתא")
+        #expect(tr("%1 — נאמר: %2", "%1 said: %2", args: ["Dana", "two pills"], in: .english) == "Dana said: two pills")
+        #expect(tr("%1 — נאמר: %2", "%1 said: %2", args: ["סבתא", "שני כדורים"], in: .hebrew) == "סבתא — נאמר: שני כדורים")
+        #expect(tr("%1 מתוך %2", "%1 of %2", args: ["3", "5"], in: .english) == "3 of 5")
+    }
+
     @Test("the voice follows the letters, and the app's language when there are none")
     func speakingVoice() {
         #expect(UILanguage.forSpeaking("שלום, thanks", otherwise: .english) == .hebrew)
