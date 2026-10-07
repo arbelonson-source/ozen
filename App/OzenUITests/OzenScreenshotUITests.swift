@@ -481,9 +481,9 @@ final class OzenScreenshotUITests: XCTestCase {
             // A sound the classifier knows by two labels is one switch; it
             // was listed once per label, two identical rows in Hebrew. The
             // second label sits right after the first in the catalog.
-            let shout = scrollDownUntilVisible(app, identifier: "soundRow-shout", maxSwipes: 40)
+            let shout = self.scrollDownUntilVisible(app, identifier: "soundRow-shout", maxSwipes: 40)
             XCTAssertTrue(shout.exists, "sound alerts: the shout row never appeared")
-            capture(app, name: "sound-alerts-important-accessibility-text")
+            self.capture(app, name: "sound-alerts-important-accessibility-text")
             XCTAssertFalse(app.descendants(matching: .any)["soundRow-yell"].exists, "sound alerts: one sound is listed twice")
         }
 
