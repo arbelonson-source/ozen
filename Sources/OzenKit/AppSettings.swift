@@ -116,6 +116,14 @@ public struct DisplayPreferences: Codable, Sendable, Equatable {
         return min(max((base * scale).rounded(), minimumFontSize), maximumFontSize)
     }
 
+    /// A line in History or Starred lines: seven tenths of the captions,
+    /// but never below the phone's body text (17 points until she raises
+    /// it in iOS). Held at 17 instead, at the largest iOS text sizes the
+    /// time and name above each line came out bigger than the line itself.
+    public static func savedLineSize(captionSize: Double, bodySize: Double) -> Double {
+        max(bodySize, captionSize * 0.7)
+    }
+
     private enum CodingKeys: String, CodingKey {
         case fontSize, theme, boldText, showSpeakerNames, keepScreenAwake, markUncertainLines, announceNewLines, emphasizeNumbers
         case lockScreenCaptions, autoHideControls

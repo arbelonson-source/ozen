@@ -232,6 +232,14 @@ struct AppSettingsTests {
         #expect(DisplayPreferences.fontSize(30, scaledBy: 0) == 30)
         #expect(DisplayPreferences.fontSize(30, scaledBy: .nan) == 30)
     }
+
+    @Test("a saved line is never smaller than the phone's own body text, nor than seven tenths of the captions")
+    func savedLineSize() {
+        #expect(DisplayPreferences.savedLineSize(captionSize: 30, bodySize: 17) == 21)
+        #expect(DisplayPreferences.savedLineSize(captionSize: 20, bodySize: 17) == 17)
+        #expect(DisplayPreferences.savedLineSize(captionSize: 30, bodySize: 53) == 53)
+        #expect(DisplayPreferences.savedLineSize(captionSize: 64, bodySize: 23) == 64 * 0.7)
+    }
 }
 
 @Suite("AppSettings on a fresh install")

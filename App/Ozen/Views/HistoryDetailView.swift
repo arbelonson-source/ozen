@@ -458,6 +458,9 @@ private struct SavedLineRow: View {
     let fontSize: Double
     let emphasizeNumbers: Bool
     let isMatch: Bool
+    @ScaledMetric(relativeTo: .body) private var bodySize: Double = 17
+
+    private var lineSize: Double { DisplayPreferences.savedLineSize(captionSize: fontSize, bodySize: bodySize) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -483,11 +486,11 @@ private struct SavedLineRow: View {
                 Text(
                     caption: CaptionLayout.displayText(segment.text),
                     emphasizingNumbers: emphasizeNumbers,
-                    size: max(17, fontSize * 0.7),
+                    size: lineSize,
                     numberColor: nil,
                     linkingPhoneNumbers: true
                 )
-                    .font(.system(size: max(17, fontSize * 0.7)))
+                    .font(.system(size: lineSize))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

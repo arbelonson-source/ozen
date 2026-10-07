@@ -11,6 +11,9 @@ struct StarredLinesView: View {
     let onHistoryChanged: () -> Void
     @State private var lines: [StarredLine] = []
     @State private var hasLoaded = false
+    @ScaledMetric(relativeTo: .body) private var bodySize: Double = 17
+
+    private var lineSize: Double { DisplayPreferences.savedLineSize(captionSize: viewModel.display.fontSize, bodySize: bodySize) }
 
     var body: some View {
         Group {
@@ -50,10 +53,10 @@ struct StarredLinesView: View {
                                             Text(
                                                 caption: CaptionLayout.displayText(line.segment.text),
                                                 emphasizingNumbers: viewModel.display.emphasizeNumbers,
-                                                size: max(17, viewModel.display.fontSize * 0.7),
+                                                size: lineSize,
                                                 numberColor: nil
                                             )
-                                                .font(.system(size: max(17, viewModel.display.fontSize * 0.7)))
+                                                .font(.system(size: lineSize))
                                         }
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
