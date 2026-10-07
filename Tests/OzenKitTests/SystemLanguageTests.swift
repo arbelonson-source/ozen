@@ -28,16 +28,17 @@ struct SystemLanguageTests {
         let suite = "ozen-system-language-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
+        let stored = { defaults.persistentDomain(forName: suite)?[SystemLanguage.key] as? [String] }
 
         SystemLanguage.apply(.english, to: defaults)
-        #expect(defaults.stringArray(forKey: SystemLanguage.key) == ["en"])
+        #expect(stored() == ["en"])
         SystemLanguage.apply(.hebrew, to: defaults)
-        #expect(defaults.stringArray(forKey: SystemLanguage.key) == ["he"])
+        #expect(stored() == ["he"])
         SystemLanguage.apply(.system, to: defaults)
-        #expect(defaults.stringArray(forKey: SystemLanguage.key) == nil)
+        #expect(stored() == nil)
 
         defaults.set(["fr"], forKey: SystemLanguage.key)
         SystemLanguage.apply(.system, to: defaults)
-        #expect(defaults.stringArray(forKey: SystemLanguage.key) == ["fr"])
+        #expect(stored() == ["fr"])
     }
 }
