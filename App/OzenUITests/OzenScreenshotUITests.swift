@@ -214,6 +214,41 @@ final class OzenScreenshotUITests: XCTestCase {
         }
     }
 
+    /// Ozen in English throughout, page by page: the gallery's fixture
+    /// (English words over an English conversation, names and alert
+    /// words), so any Hebrew left on these pages is the app's own. Asked
+    /// for on 2026-10-07: no Hebrew in any other language.
+    func testEnglishThroughout() throws {
+        let walkthrough = XCUIApplication()
+        walkthrough.launchArguments = ["-uiTestScreenshots", "onboardingEnglish"]
+        walkthrough.launch()
+        XCTAssertTrue(walkthrough.descendants(matching: .any)["onboardingScreen"].waitForExistence(timeout: 10), "english: the walkthrough never appeared")
+        capture(walkthrough, name: "english-walkthrough-page1")
+        let next = walkthrough.descendants(matching: .any)["onboardingNextButton"]
+        for page in 2...6 {
+            XCTAssertTrue(next.waitForExistence(timeout: 10), "english: no Next button on page \(page - 1)")
+            next.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+            capture(walkthrough, name: "english-walkthrough-page\(page)")
+        }
+        walkthrough.terminate()
+
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "galleryDark"]
+        app.launch()
+        let settingsButton = app.descendants(matching: .any)["settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "english: the settings button never appeared")
+        settingsButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "english: settings never appeared")
+        capture(app, name: "english-settings-page1")
+        openSettingsRow(app, rowIdentifier: "keywordAlertsRow", screenIdentifier: "keywordAlertsScreen", captureName: "english-keyword-alerts", back: "Settings")
+        openSettingsRow(app, rowIdentifier: "soundAlertsRow", screenIdentifier: "soundAlertsScreen", captureName: "english-sound-alerts", back: "Settings")
+        for index in 2...10 {
+            app.swipeUp()
+            capture(app, name: "english-settings-page\(index)")
+        }
+    }
+
     /// The steppers quiet hours reveals once enabled, at this text size --
     /// seeded on at launch (see ScreenshotFixtures.Variant.quietHoursEnabled)
     /// rather than flipped live by the test, since tapping the toggle
@@ -479,7 +514,7 @@ final class OzenScreenshotUITests: XCTestCase {
 
     /// Taps a Settings row by its own accessibility identifier, scrolling
     /// down until it exists first (see `scrollDownUntilVisible`).
-    private func openSettingsRow(_ app: XCUIApplication, rowIdentifier: String, screenIdentifier: String, captureName: String, maxSwipes: Int = 15) {
+    private func openSettingsRow(_ app: XCUIApplication, rowIdentifier: String, screenIdentifier: String, captureName: String, maxSwipes: Int = 15, back backTitle: String = "הגדרות") {
         let row = scrollDownUntilVisible(app, identifier: rowIdentifier, maxSwipes: maxSwipes)
         if !row.exists { capture(app, name: "debug-\(rowIdentifier)-not-found") }
         XCTAssertTrue(row.exists, "secondary screens: \(rowIdentifier) never appeared")
@@ -501,7 +536,7 @@ final class OzenScreenshotUITests: XCTestCase {
             XCTFail("secondary screens: \(screenIdentifier) never appeared")
         }
         capture(app, name: captureName)
-        let back = app.navigationBars.buttons["הגדרות"]
+        let back = app.navigationBars.buttons[backTitle]
         XCTAssertTrue(back.waitForExistence(timeout: 10), "secondary screens: no way back from \(screenIdentifier)")
         back.tap()
     }

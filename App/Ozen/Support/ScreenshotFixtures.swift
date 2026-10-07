@@ -20,6 +20,8 @@ enum ScreenshotFixtures {
         /// Onboarding itself, never completed: the one screen every
         /// install passes through before any of the others exist.
         case onboarding
+        /// The same walkthrough with Ozen set to English.
+        case onboardingEnglish
         /// Quiet hours already on, so the toggle's revealed steppers can
         /// be screenshotted without a UI test having to flip it live.
         case quietHoursEnabled
@@ -44,8 +46,8 @@ enum ScreenshotFixtures {
         }
         let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: url))
 
-        guard variant != .onboarding else {
-            viewModel.setAppLanguage(.hebrew)
+        guard variant != .onboarding, variant != .onboardingEnglish else {
+            viewModel.setAppLanguage(variant == .onboarding ? .hebrew : .english)
             return viewModel
         }
 
@@ -87,7 +89,7 @@ enum ScreenshotFixtures {
             viewModel.display.theme = .light
         case .english:
             viewModel.setAppLanguage(.english)
-        case .onboarding:
+        case .onboarding, .onboardingEnglish:
             break
         case .quietHoursEnabled:
             viewModel.setAppLanguage(.hebrew)
