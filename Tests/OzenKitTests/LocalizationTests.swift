@@ -255,12 +255,19 @@ struct LocalizationTests {
         }
     }
 
-    @Test("Spanish calls the home computer the same thing on every screen")
-    func spanishComputerOneWord() {
-        let table = TranslationTable.shared.table(for: .spanish)
-        #expect(table.values.contains { $0.contains("computadora") })
-        for (english, spanish) in table where spanish.lowercased().contains("ordenador") {
-            Issue.record("'ordenador' in the Spanish for: \(english)")
+    @Test("each language calls the home computer the same thing on every screen")
+    func computerOneWordPerLanguage() {
+        let words: [(UILanguage, used: String, not: String)] = [
+            (.spanish, "computadora", "ordenador"),
+            (.arabic, "كمبيوتر", "حاسوب"),
+            (.amharic, "ኮምፒዩተ", "ኮምፒውተ"),
+        ]
+        for (language, used, not) in words {
+            let table = TranslationTable.shared.table(for: language)
+            #expect(table.values.contains { $0.contains(used) }, "\(language)")
+            for (english, text) in table where text.lowercased().contains(not) {
+                Issue.record("\(language): '\(not)' in the line for: \(english)")
+            }
         }
     }
 }
