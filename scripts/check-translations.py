@@ -301,6 +301,27 @@ def check_system_strings():
     return problems
 
 
+SHORTCUTS_FILE = Path("App/Ozen/OzenIntents.swift")
+SHORTCUTS_CATALOG = Path("App/Ozen/AppShortcuts.xcstrings")
+
+
+def check_siri_phrases():
+    """The first phrase of each Siri command is the one iOS shows in
+    Settings' Siri tip, whatever the phone's language: unless the catalog
+    has it in every language, an English phone was told to say the
+    Hebrew one."""
+    catalog = json.loads(SHORTCUTS_CATALOG.read_text(encoding="utf-8"))["strings"]
+    problems = []
+    source = SHORTCUTS_FILE.read_text(encoding="utf-8")
+    for match in re.finditer(r'phrases: \[\s*"([^"]*)"', source):
+        key = re.sub(r"\\\(\.(\w+)\)", r"${\1}", match.group(1))
+        missing = [l for l in SYSTEM_LANGUAGES if l not in catalog.get(key, {}).get("localizations", {})]
+        if missing:
+            number = source.count("\n", 0, match.start(1)) + 1
+            problems.append(f"{SHORTCUTS_FILE}:{number}: first phrase {key!r} missing from {SHORTCUTS_CATALOG} in {', '.join(missing)}")
+    return problems
+
+
 def check_permission_prompts():
     """iOS's own permission prompts and the languages the app declares:
     each *UsageDescription in project.yml needs every language in
@@ -364,6 +385,7 @@ def main():
     if not skip_table:
         all_problems += check_translation_table(keys)
         all_problems += check_system_strings()
+        all_problems += check_siri_phrases()
         all_problems += check_permission_prompts()
         all_problems += check_system_wording()
     for problem in all_problems:

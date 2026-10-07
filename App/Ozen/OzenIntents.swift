@@ -65,7 +65,6 @@ struct OzenShortcuts: AppShortcutsProvider {
                 "תתחיל כתוביות ב\(.applicationName)",
                 "התחילי כתוביות ב\(.applicationName)",
                 "תתחילי כתוביות ב\(.applicationName)",
-                "Start captions in \(.applicationName)",
             ],
             shortTitle: "התחלת כתוביות",
             systemImageName: "captions.bubble"
@@ -77,7 +76,6 @@ struct OzenShortcuts: AppShortcutsProvider {
                 "תעצור כתוביות ב\(.applicationName)",
                 "עצרי כתוביות ב\(.applicationName)",
                 "תעצרי כתוביות ב\(.applicationName)",
-                "Stop captions in \(.applicationName)",
             ],
             shortTitle: "עצירת כתוביות",
             systemImageName: "stop.circle"
@@ -87,7 +85,6 @@ struct OzenShortcuts: AppShortcutsProvider {
             phrases: [
                 "תגיד ב\(.applicationName)",
                 "תגידי ב\(.applicationName)",
-                "Say with \(.applicationName)",
             ],
             shortTitle: "להגיד משהו",
             systemImageName: "speaker.wave.2"
@@ -96,7 +93,6 @@ struct OzenShortcuts: AppShortcutsProvider {
             intent: ShowBigTextIntent(),
             phrases: [
                 "כתבו לי ב\(.applicationName)",
-                "Big text in \(.applicationName)",
             ],
             shortTitle: "כתבו לי",
             systemImageName: "textformat.size.larger"

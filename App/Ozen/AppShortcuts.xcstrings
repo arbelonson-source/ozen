@@ -1,7 +1,7 @@
 {
   "sourceLanguage": "he",
   "strings": {
-    "Big text in ${applicationName}": {
+    "כתבו לי ב${applicationName}": {
       "localizations": {
         "am": {
           "stringUnit": {
@@ -71,7 +71,7 @@
         }
       }
     },
-    "Say with ${applicationName}": {
+    "תגיד ב${applicationName}": {
       "localizations": {
         "am": {
           "stringUnit": {
@@ -141,7 +141,7 @@
         }
       }
     },
-    "Start captions in ${applicationName}": {
+    "התחל כתוביות ב${applicationName}": {
       "localizations": {
         "am": {
           "stringUnit": {
@@ -211,7 +211,7 @@
         }
       }
     },
-    "Stop captions in ${applicationName}": {
+    "עצור כתוביות ב${applicationName}": {
       "localizations": {
         "am": {
           "stringUnit": {
