@@ -54,11 +54,13 @@ enum ScreenshotFixtures {
         // set before it is seeded for its lines to come out in English.
         if variant == .galleryDark || variant == .galleryLight {
             viewModel.setAppLanguage(.english)
-            // History is kept on disk between launches, and each launch
-            // saves this conversation again: the gallery's history showed
-            // the same morning four times over.
-            try? viewModel.historyStore.deleteAll()
         }
+        // History is kept on disk between launches, and each launch saves
+        // this conversation again: the gallery's history showed the same
+        // morning four times over, and the Hebrew screenshots taken after
+        // it listed one conversation three times, with the speaker under
+        // both her Hebrew name and the gallery's English one.
+        try? viewModel.historyStore.deleteAll()
         let segments = viewModel.pipeline.seedForScreenshots()
         if let starred = segments.first {
             viewModel.toggleStar(starred)
