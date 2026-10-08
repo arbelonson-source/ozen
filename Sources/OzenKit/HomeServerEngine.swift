@@ -32,6 +32,8 @@ public actor HomeServerEngine: TranscriptionEngine {
     private var echo: PromptEchoDetector?
     private let filter = WhisperResultFilter()
     private var liveSocket: (any HomeServerSocket)?
+    /// Which run `liveSocket` belongs to, so only that run unhooks it.
+    private var liveSocketRun: UUID?
     private var verified: (url: URL, token: String)?
     /// The last time the computer answered anything. An approval older
     /// than `approvalSeconds` is checked again: trusted the next morning,
@@ -157,7 +159,9 @@ public actor HomeServerEngine: TranscriptionEngine {
             continuation.finish(throwing: error as? EngineUnavailability ?? .homeServerUnreachable("\(error)"))
             return
         }
+        let run = UUID()
         liveSocket = socket
+        liveSocketRun = run
         lastHeardAt = .now
         // A name added while the hello waited for its answer found no live
         // socket to send on; the server would keep the old list all session.
@@ -216,7 +220,7 @@ public actor HomeServerEngine: TranscriptionEngine {
         // doesn't notice cancellation: without the close the connection
         // (and this loop) would stay open for as long as the server did.
         await withTaskCancellationHandler {
-            await receive(from: socket, continuation: continuation)
+            await receive(from: socket, run: run, continuation: continuation)
         } onCancel: {
             Task { await socket.close() }
         }
@@ -224,6 +228,7 @@ public actor HomeServerEngine: TranscriptionEngine {
 
     private func receive(
         from socket: any HomeServerSocket,
+        run: UUID,
         continuation: AsyncThrowingStream<TranscriptToken, Error>.Continuation
     ) async {
         var ids: [Int: UUID] = [:]
@@ -236,7 +241,13 @@ public actor HomeServerEngine: TranscriptionEngine {
             do {
                 frame = try await socket.receive()
             } catch {
-                liveSocket = nil
+                // Only its own: an old run whose connection closed late
+                // unhooked the new run's, and names added after that never
+                // reached the computer.
+                if liveSocketRun == run {
+                    liveSocket = nil
+                    liveSocketRun = nil
+                }
                 await socket.close()
                 // A line still showing a live guess never gets its final
                 // pass now: the rest of that sentence is lost, so it is
