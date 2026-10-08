@@ -110,11 +110,17 @@ public enum HebrewText {
     /// gone, punctuation and symbols gone, case folded, whitespace
     /// collapsed to single spaces. Mirrors `WhisperResultFilter.normalize`
     /// with the added niqqud pass Hebrew needs.
+    ///
+    /// Other invisible characters go too: a zero-width space, joiner or
+    /// soft hyphen pasted along with a name from a web page or a contact,
+    /// and emoji variation selectors, made the word a different string.
     public static func normalize(_ text: String) -> String {
         let withoutNiqqud = stripNiqqud(separatingJoiners(removingDirectionMarks(text)))
         let stripped = withoutNiqqud.unicodeScalars.filter { scalar in
             !CharacterSet.punctuationCharacters.contains(scalar)
                 && !CharacterSet.symbols.contains(scalar)
+                && scalar.properties.generalCategory != .format
+                && !scalar.properties.isVariationSelector
         }
         return String(String.UnicodeScalarView(stripped))
             .lowercased()

@@ -29,6 +29,15 @@ struct KeywordAlertMatcherTests {
         }
     }
 
+    @Test("a name pasted with an invisible character, or heard with one glued on, is still found")
+    func invisibleCharactersAroundTheName() {
+        for mark in ["\u{200B}", "\u{FEFF}", "\u{2060}", "\u{00AD}", "\u{200C}", "\u{200D}", "\u{FE0F}"] {
+            let label = "U+\(String(mark.unicodeScalars.first!.value, radix: 16))"
+            #expect(KeywordAlertMatcher(alerts: [alert("סבתא" + mark)]).matches(in: "בואי סבתא").count == 1, "phrase \(label)")
+            #expect(KeywordAlertMatcher(alerts: [alert("סבתא")]).matches(in: "בואי " + mark + "סבתא" + mark).count == 1, "caption \(label)")
+        }
+    }
+
     @Test("every single-letter attached prefix matches the stem")
     func everySingleLetterPrefixMatches() {
         let matcher = KeywordAlertMatcher(alerts: [alert("סבתא")])
