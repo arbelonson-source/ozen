@@ -84,7 +84,12 @@ final class OzenScreenshotUITests: XCTestCase {
         // A hidden bar's buttons still exist, just off screen: wait until
         // one can be tapped, so the picture and the checks see it shown.
         XCTAssertTrue(settings.waitForExistence(timeout: 5), "caption screen: the control bar never showed")
-        for _ in 0..<20 where !settings.isHittable {
+        // A `where` clause here only skipped the wait: all 20 checks still
+        // ran once the bar was up, and on the iPad run (37703744124) they
+        // took long enough for its five idle seconds to hide it again
+        // before the check below. Stop at the first hittable one.
+        for _ in 0..<20 {
+            if settings.isHittable { break }
             if reveal.exists, reveal.isHittable { reveal.tap() }
             Thread.sleep(forTimeInterval: 0.25)
         }
