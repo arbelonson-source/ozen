@@ -67,6 +67,42 @@ final class OzenScreenshotUITests: XCTestCase {
         try run(variant: "english", name: "english")
     }
 
+    /// A phone turned on its side was never in a screenshot (#261). On a
+    /// 375-point iPhone 13 mini that leaves the captions and the bar 375
+    /// points of height between them, at the largest text size too.
+    func testCaptionScreenLandscape() throws {
+        let sizes: [(category: String?, name: String)] = [
+            (nil, "landscape"),
+            ("UICTContentSizeCategoryAccessibilityXXXL", "landscape-accessibility-text"),
+        ]
+        for size in sizes {
+            let app = XCUIApplication()
+            app.launchArguments = ["-uiTestScreenshots", "hebrewDefault"] + (size.category.map { ["-UIPreferredContentSizeCategoryName", $0] } ?? [])
+            app.launch()
+            XCUIDevice.shared.orientation = .landscapeLeft
+
+            let transcript = app.descendants(matching: .any)["transcriptScroll"]
+            XCTAssertTrue(transcript.waitForExistence(timeout: 10), "\(size.name): the transcript never appeared")
+            let settings = app.descendants(matching: .any)["settingsButton"]
+            let reveal = app.descendants(matching: .any)["showControlsButton"]
+            for _ in 0..<20 {
+                if settings.isHittable { break }
+                if reveal.exists, reveal.isHittable { reveal.tap() }
+                Thread.sleep(forTimeInterval: 0.25)
+            }
+            // The turn and the bar sliding up both animate.
+            Thread.sleep(forTimeInterval: 0.5)
+            capture(app, name: "\(size.name)-controls-visible")
+            let screen = app.windows.firstMatch.frame.insetBy(dx: -1, dy: -1)
+            for identifier in ["settingsButton", "micPickerButton", "transcriptScroll"] {
+                let frame = app.descendants(matching: .any)[identifier].firstMatch.frame
+                XCTAssertTrue(screen.contains(frame), "\(size.name): \(identifier) runs off the screen (\(frame) in \(screen))")
+            }
+            XCUIDevice.shared.orientation = .portrait
+            app.terminate()
+        }
+    }
+
     /// The caption screen's own control bar at the largest system text
     /// size: every other screen was checked this way, not the one she
     /// spends her time on.
