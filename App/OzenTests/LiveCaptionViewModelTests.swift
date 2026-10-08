@@ -844,22 +844,6 @@ struct LiveCaptionViewModelSpeechTests {
         #expect(viewModel.captionsHeldForSpeech == false)
     }
 
-    @Test("a call that cuts a phrase short keeps captions paused through the call, and they come back when it ends")
-    func callCutsPhraseShort() async {
-        let (viewModel, synthesizer) = makeViewModel()
-        await viewModel.start()
-        viewModel.speak("כן")
-        synthesizer.startNext()
-        viewModel.systemInterruptionChanged(began: true)
-        synthesizer.deliverCallbacks()
-        try? await Task.sleep(for: .seconds(SpeechPauseCoordinator.settleSeconds + 0.25))
-        #expect(viewModel.phase == .paused, "captions came back during the call")
-
-        viewModel.systemInterruptionChanged(began: false)
-        await eventually { viewModel.phase.isListening }
-        #expect(viewModel.phase.isListening)
-    }
-
     @Test("\"start captions\" from Siri while the phone talks waits for it, instead of captioning the phone's voice")
     func startFromSiriWhileSpeaking() async {
         let (viewModel, synthesizer) = makeViewModel()
@@ -969,11 +953,15 @@ struct LiveCaptionViewModelSpeechTests {
 
         viewModel.systemInterruptionChanged(began: true)
         #expect(synthesizer.isBusy == false)
-        // The call holds the microphone: the try to bring captions back
-        // is refused, and nothing is retried while the call goes on.
+        // The call holds the microphone. Captions used to ask for it once
+        // the voice stopped, and showed a failure for the rest of the call
+        // when it was refused; they wait the call out now, asking nothing.
         audio.prepareError = TestError()
+        let sessionsBefore = audio.calls.filter { $0 == "prepareSession" }.count
         synthesizer.deliverCallbacks()
-        #expect(await eventually { viewModel.phase.failure != nil })
+        try? await Task.sleep(for: .seconds(SpeechPauseCoordinator.settleSeconds + 0.25))
+        #expect(viewModel.phase == .paused)
+        #expect(audio.calls.filter { $0 == "prepareSession" }.count == sessionsBefore)
         #expect(viewModel.pipeline.scheduledRetry == nil)
 
         audio.prepareError = nil
