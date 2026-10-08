@@ -24,6 +24,19 @@ struct SessionJournalTests {
         #expect(second.entries()[1].at == 1_800_000_065.5)
     }
 
+    @Test("a line cut off when the app was killed mid-write doesn't swallow the next run's first line")
+    func survivesATornLastLine() throws {
+        let url = temporaryFile()
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("1800000000.00\tlistening\n1800000001.00\tmicrophone sto".utf8).write(to: url)
+
+        let journal = SessionJournal(fileURL: url)
+        journal.append("app started", at: 1_800_000_100)
+
+        #expect(journal.entries().map(\.text) == ["listening", "microphone sto", "app started"])
+        #expect(journal.entries().last?.at == 1_800_000_100)
+    }
+
     @Test("the caption lines a marked problem kept can be taken out, and everything else stays")
     func removesSpokenLines() {
         let url = temporaryFile()

@@ -132,11 +132,18 @@ public final class SessionJournal: @unchecked Sendable {
             _ = manager.createFile(atPath: fileURL.path, contents: nil, attributes: privateFileAttributes)
             excludeFromBackup(fileURL)
         }
-        guard let handle = try? FileHandle(forWritingTo: fileURL) else { return false }
+        guard let handle = try? FileHandle(forUpdating: fileURL) else { return false }
         defer { try? handle.close() }
         guard let end = try? handle.seekToEnd() else { return false }
-        let data = Data(line.utf8)
-        guard (try? handle.write(contentsOf: data)) != nil else { return false }
+        var data = Data(line.utf8)
+        // A last line cut off by the app being killed or the disk filling
+        // mid-write has no newline: the next line was glued onto it, and
+        // the two read back as one garbled entry.
+        if end > 0, (try? handle.seek(toOffset: end - 1)) != nil,
+           let last = try? handle.read(upToCount: 1), last != Data("\n".utf8) {
+            data.insert(UInt8(ascii: "\n"), at: 0)
+        }
+        guard (try? handle.seekToEnd()) != nil, (try? handle.write(contentsOf: data)) != nil else { return false }
         // Checked against the size after this write, not before: a
         // buffered flush can write many lines at once, and a batch alone
         // can carry the file past the limit in a single call.
