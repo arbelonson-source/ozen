@@ -134,12 +134,18 @@ final class OzenScreenshotUITests: XCTestCase {
         // ran once the bar was up, and on the iPad run (37703744124) they
         // took long enough for its five idle seconds to hide it again
         // before the check below. Stop at the first hittable one.
+        //
+        // And keep that answer instead of asking again: on the iPhone 13
+        // mini run (37723032549) the bar shown at launch was hittable in
+        // the loop and, its five seconds up, hidden 1.1 s later when the
+        // check asked again. The waits below bring a hidden bar back.
+        var cameOnScreen = false
         for _ in 0..<20 {
-            if settings.isHittable { break }
+            if settings.isHittable { cameOnScreen = true; break }
             if reveal.exists, reveal.isHittable { reveal.tap() }
             Thread.sleep(forTimeInterval: 0.25)
         }
-        XCTAssertTrue(settings.isHittable, "caption screen: the control bar never came on screen")
+        XCTAssertTrue(cameOnScreen, "caption screen: the control bar never came on screen")
         let screen = app.windows.firstMatch.frame
         // Hittable already while the bar is still sliding up: measured then,
         // its buttons sat below the screen's edge. Wait until it stops.
