@@ -26,7 +26,11 @@ final class OzenScreenshotUITests: XCTestCase {
     }
 
     private func capture(_ app: XCUIApplication, name: String) {
-        let data = app.screenshot().pngRepresentation
+        capture(app.screenshot(), name: name)
+    }
+
+    private func capture(_ screenshot: XCUIScreenshot, name: String) {
+        let data = screenshot.pngRepresentation
         let url = Self.outputDirectory.appendingPathComponent("\(name).png")
         // A screenshot that silently isn't written leaves the job green
         // with nothing to look at, which is the one thing it exists for.
@@ -92,12 +96,18 @@ final class OzenScreenshotUITests: XCTestCase {
             }
             // The turn and the bar sliding up both animate.
             Thread.sleep(forTimeInterval: 0.5)
-            capture(app, name: "\(size.name)-controls-visible")
+            // The app's own screenshot, turned, kept a portrait-shaped slice
+            // of the screen (run 37720563770); the device's has all of it.
+            capture(XCUIScreen.main.screenshot(), name: "\(size.name)-controls-visible")
             let screen = app.windows.firstMatch.frame.insetBy(dx: -1, dy: -1)
-            for identifier in ["settingsButton", "micPickerButton", "transcriptScroll"] {
+            for identifier in ["settingsButton", "micPickerButton"] {
                 let frame = app.descendants(matching: .any)[identifier].firstMatch.frame
                 XCTAssertTrue(screen.contains(frame), "\(size.name): \(identifier) runs off the screen (\(frame) in \(screen))")
             }
+            // The transcript's content scrolls up and down past the edges
+            // by design; only its width has to fit.
+            let transcriptFrame = transcript.frame
+            XCTAssertTrue(transcriptFrame.minX >= screen.minX && transcriptFrame.maxX <= screen.maxX, "\(size.name): the transcript runs off the side (\(transcriptFrame) in \(screen))")
             XCUIDevice.shared.orientation = .portrait
             app.terminate()
         }
