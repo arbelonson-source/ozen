@@ -844,6 +844,22 @@ struct LiveCaptionViewModelSpeechTests {
         #expect(viewModel.captionsHeldForSpeech == false)
     }
 
+    @Test("a call that cuts a phrase short keeps captions paused through the call, and they come back when it ends")
+    func callCutsPhraseShort() async {
+        let (viewModel, synthesizer) = makeViewModel()
+        await viewModel.start()
+        viewModel.speak("כן")
+        synthesizer.startNext()
+        viewModel.systemInterruptionChanged(began: true)
+        synthesizer.deliverCallbacks()
+        try? await Task.sleep(for: .seconds(SpeechPauseCoordinator.settleSeconds + 0.25))
+        #expect(viewModel.phase == .paused, "captions came back during the call")
+
+        viewModel.systemInterruptionChanged(began: false)
+        await eventually { viewModel.phase.isListening }
+        #expect(viewModel.phase.isListening)
+    }
+
     @Test("\"start captions\" from Siri while the phone talks waits for it, instead of captioning the phone's voice")
     func startFromSiriWhileSpeaking() async {
         let (viewModel, synthesizer) = makeViewModel()

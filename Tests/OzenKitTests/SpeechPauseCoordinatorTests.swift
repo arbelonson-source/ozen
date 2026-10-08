@@ -15,6 +15,32 @@ struct SpeechPauseCoordinatorTests {
         #expect(coordinator.isHoldingCaptions == false)
     }
 
+    @Test("a phrase a phone call cut short keeps captions held through the call, and they return when it ends")
+    func callCutsThePhraseShort() {
+        var coordinator = SpeechPauseCoordinator()
+        _ = coordinator.willSpeak(captionsListening: true)
+        let generation = coordinator.speechWentQuiet()
+        let resumeMidCall = coordinator.shouldResume(generation: generation ?? -1, synthesizerBusy: false, captionsPaused: true, duringCall: true)
+        #expect(resumeMidCall == false)
+        #expect(coordinator.isHoldingCaptions)
+        let resumeAtEnd = coordinator.callEnded(captionsPaused: true)
+        #expect(resumeAtEnd)
+        #expect(coordinator.isHoldingCaptions == false)
+        let resumeAgain = coordinator.callEnded(captionsPaused: true)
+        #expect(resumeAgain == false)
+    }
+
+    @Test("captions taken in hand during the call stay as she left them when it ends")
+    func callEndAfterUserChoice() {
+        var coordinator = SpeechPauseCoordinator()
+        _ = coordinator.willSpeak(captionsListening: true)
+        let generation = coordinator.speechWentQuiet()
+        _ = coordinator.shouldResume(generation: generation ?? -1, synthesizerBusy: false, captionsPaused: true, duringCall: true)
+        coordinator.userTookControl()
+        let resume = coordinator.callEnded(captionsPaused: true)
+        #expect(resume == false)
+    }
+
     @Test("a second phrase tapped mid-speech keeps captions paused until the second one ends")
     func secondPhraseDuringFirst() {
         var coordinator = SpeechPauseCoordinator()

@@ -449,6 +449,16 @@ public final class LiveCaptionViewModel {
             reclaimAfterCallTask = nil
         }
         pipeline.systemInterruptionChanged(active: began)
+        // Captions held for a phrase the call cut short waited it out
+        // (resuming mid-call asked for the microphone the call held), and
+        // come back now, as the phrase's end would have brought them.
+        if !began, speechPause.callEnded(captionsPaused: pipeline.phase == .paused) {
+            Task { [weak self] in
+                guard let self else { return }
+                await self.pipeline.resume(settings: self.settings)
+                self.historySessionDidChangePhase()
+            }
+        }
         checkCaptionsStillRunning()
         refreshLockScreen()
     }
@@ -1554,7 +1564,8 @@ public final class LiveCaptionViewModel {
             let resume = self.speechPause.shouldResume(
                 generation: generation,
                 synthesizerBusy: self.synthesizer?.isBusy ?? false,
-                captionsPaused: self.pipeline.phase == .paused
+                captionsPaused: self.pipeline.phase == .paused,
+                duringCall: self.isInterruptedBySystem
             )
             guard resume else { return }
             await self.pipeline.resume(settings: self.settings)

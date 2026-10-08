@@ -85,9 +85,20 @@ public struct SpeechPauseCoordinator: Sendable, Equatable {
         isHoldingCaptions ? generation : nil
     }
 
-    /// After the settle delay. True means: resume captions now.
-    public mutating func shouldResume(generation checked: Int, synthesizerBusy: Bool, captionsPaused: Bool) -> Bool {
-        guard isHoldingCaptions, checked == generation, !synthesizerBusy else { return false }
+    /// After the settle delay. True means: resume captions now. Not during
+    /// a phone call: the call stops the phrase, and resuming then asked for
+    /// the microphone the call holds. The hold stays, and `callEnded`
+    /// brings captions back.
+    public mutating func shouldResume(generation checked: Int, synthesizerBusy: Bool, captionsPaused: Bool, duringCall: Bool = false) -> Bool {
+        guard isHoldingCaptions, checked == generation, !synthesizerBusy, !duringCall else { return false }
+        isHoldingCaptions = false
+        return captionsPaused
+    }
+
+    /// The call that cut a phrase short is over. True means: resume
+    /// captions now, as the phrase's end would have.
+    public mutating func callEnded(captionsPaused: Bool) -> Bool {
+        guard isHoldingCaptions else { return false }
         isHoldingCaptions = false
         return captionsPaused
     }
