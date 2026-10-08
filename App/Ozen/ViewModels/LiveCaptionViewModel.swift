@@ -37,6 +37,9 @@ public final class LiveCaptionViewModel {
     var awayCatchUp = AwayCatchUp()
     @ObservationIgnored private var keywordAttention = KeywordAttentionPolicy()
     @ObservationIgnored private var handledKeywordHitIDs: Set<UUID> = []
+    /// Alerts whose word went out as a notification since the app last
+    /// left the screen.
+    @ObservationIgnored private var keywordsNotifiedWhileAway: Set<UUID> = []
     /// Kept here, not in the caption screen: switching the app's language
     /// rebuilds that screen, and a flag of its own would take the next
     /// Siri request (or nothing at all) for the launch again, restarting
@@ -387,6 +390,7 @@ public final class LiveCaptionViewModel {
         isAppActive = isActive
         let now = Date().timeIntervalSince1970
         if isActive {
+            keywordsNotifiedWhileAway.removeAll()
             awayCatchUp.screenReturned(at: now)
             // Coming back from installing or removing the Hebrew voice in
             // iOS Settings: without this, hasHebrewVoice stays whatever it
@@ -610,14 +614,19 @@ public final class LiveCaptionViewModel {
         let now = Date().timeIntervalSince1970
         let utcOffsetSeconds = TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: now))
         for hit in hits {
-            // Heard while the app was away: it was a notification (unless
-            // quiet hours held it), and coming back must not buzz or show
-            // its pill as if the name had just been said.
-            if !isAppActive { handledKeywordHitIDs.insert(hit.id) }
             if let content = backgroundAlerts.notification(
                 for: hit, lineText: segment.text, appIsActive: isAppActive, now: now, utcOffsetSeconds: utcOffsetSeconds
             ) {
                 postNotification?(content)
+                if !isAppActive { keywordsNotifiedWhileAway.insert(hit.match.alertID) }
+            }
+            // Heard while the app was away, its word a notification since
+            // she left: coming back must not buzz or show its pill as if the
+            // name had just been said. One that never went out (alerts with
+            // the screen off turned off, quiet hours) is still news to her,
+            // and was marked handled all the same: nothing told her at all.
+            if !isAppActive, keywordsNotifiedWhileAway.contains(hit.match.alertID) {
+                handledKeywordHitIDs.insert(hit.id)
             }
         }
     }

@@ -1156,6 +1156,46 @@ struct LiveCaptionViewModelBackgroundAlertTests {
         #expect(viewModel.claimAttentionForNewKeywordHits() != nil)
     }
 
+    @Test("a name heard while the app was away that sent no notification (alerts with the screen off turned off) is shown on return")
+    func awayKeywordWithoutNotificationShownOnReturn() async {
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        var posted: [AlertNotificationContent] = []
+        let store = SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-away-unsent-\(UUID()).json"))
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: pipeline, postNotification: { posted.append($0) })
+        viewModel.addKeywordAlert(phrase: "סבתא")
+        viewModel.notifyWhenInBackground = false
+        await viewModel.start()
+
+        viewModel.sceneActivityChanged(isActive: false)
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "סבתא, את ערה?", isFinal: true, timestamp: Date().timeIntervalSince1970))
+        #expect(await eventually { viewModel.keywordHits.count == 1 })
+        viewModel.sceneActivityChanged(isActive: true)
+
+        #expect(posted.isEmpty)
+        #expect(viewModel.claimAttentionForNewKeywordHits() != nil)
+    }
+
+    @Test("a name said again while away, inside the notification's cooldown, doesn't buzz again on return")
+    func awayKeywordRepeatedInsideCooldownNotReplayed() async {
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        var posted: [AlertNotificationContent] = []
+        let store = SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-away-twice-\(UUID()).json"))
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: pipeline, postNotification: { posted.append($0) })
+        viewModel.addKeywordAlert(phrase: "סבתא")
+        await viewModel.start()
+
+        viewModel.sceneActivityChanged(isActive: false)
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "סבתא, את ערה?", isFinal: true, timestamp: Date().timeIntervalSince1970))
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "סבתא, בואי לאכול", isFinal: true, timestamp: Date().timeIntervalSince1970))
+        #expect(await eventually { viewModel.keywordHits.count == 2 })
+        viewModel.sceneActivityChanged(isActive: true)
+
+        #expect(posted.count == 1)
+        #expect(viewModel.claimAttentionForNewKeywordHits() == nil)
+    }
+
     @Test("lines said while the app was away are marked from the first of them; clearing removes the mark")
     func awayLinesMarked() async {
         let engine = FakeEngine()
