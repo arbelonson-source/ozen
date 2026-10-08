@@ -132,6 +132,8 @@ struct KeywordAlertMatcherTests {
     func curatedNicknameMatches() {
         let matcher = KeywordAlertMatcher(alerts: [alert("סבתא")])
         #expect(matcher.matches(in: "היי סבתוש מה נשמע").count == 1)
+        #expect(matcher.matches(in: "'סבתוש' הגיעה").count == 1)
+        #expect(matcher.matches(in: "'סבתא'לה' הגיעה").count == 1)
     }
 
     @Test("a curated nickname behind an attached prefix still matches")

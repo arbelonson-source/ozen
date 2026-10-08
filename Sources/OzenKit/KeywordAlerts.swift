@@ -241,7 +241,9 @@ public enum HebrewText {
     /// stays, for a name that ends in lamed ("מיכל'ה").
     static func diminutiveCores(_ word: String) -> [String] {
         let scalars = word.unicodeScalars
-        guard let markerIndex = scalars.firstIndex(where: diminutiveMarkers.contains) else {
+        // A mark opening the word is a quote around it ('savta'le'), not
+        // the one before a nickname ending.
+        guard let markerIndex = scalars.indices.dropFirst().first(where: { diminutiveMarkers.contains(scalars[$0]) }) else {
             return []
         }
         let core = normalize(String(String.UnicodeScalarView(scalars[..<markerIndex])))
@@ -318,10 +320,9 @@ public enum HebrewText {
     /// one of the attached prepositions ("le-savta'le", "to grandma'le").
     public static func stripAttachedPrefixOrVariant(rawWord: String, normalizedWord: String, leaving stem: String) -> Bool {
         if stripAttachedPrefix(from: normalizedWord, leaving: stem) { return true }
-        let cores = diminutiveCores(rawWord)
-        if !cores.isEmpty {
-            return cores.contains { stripAttachedPrefix(from: $0, leaving: stem) }
-        }
+        // A word with a mark in it can still be a listed nickname: the
+        // closing quote of a quoted 'savtush' stopped it being looked up.
+        if diminutiveCores(rawWord).contains(where: { stripAttachedPrefix(from: $0, leaving: stem) }) { return true }
         let variants = alternateForms(of: stem)
         return variants.contains(normalizedWord)
             || variants.contains { stripAttachedPrefix(from: normalizedWord, leaving: $0) }
