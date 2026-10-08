@@ -375,7 +375,9 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
         var sequence = 0
         for alert in alerts where alert.isEnabled {
             let phraseWords = HebrewText.words(alert.phrase)
-            guard !phraseWords.isEmpty, phraseWords.count <= normalizedWords.count else { continue }
+            // No skipping a line with fewer words than the phrase: a name
+            // saved as two words can be the whole line written as one.
+            guard !phraseWords.isEmpty else { continue }
 
             for start in 0..<normalizedWords.count {
                 guard HebrewText.stripAttachedPrefixOrVariant(

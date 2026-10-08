@@ -335,6 +335,9 @@ struct KeywordAlertMatcherTests {
         #expect(hits("בן ציון", "תגידו לבנציון") == 1)
         #expect(hits("בן ציון", "בן ציון הגיע") == 1)
         #expect(hits("בנציון", "בנציון הגיע") == 1)
+        // Called on its own, a line of one word, shorter than the name saved as two.
+        #expect(hits("בן ציון", "בנציון!") == 1)
+        #expect(hits("בן-ציון", "בנציון") == 1)
         #expect(hits("בן", "בנציון הגיע") == 0)
         #expect(hits("ציון", "בנציון הגיע") == 0)
         #expect(hits("בן ציון", "בנציונה הגיעה") == 0)
