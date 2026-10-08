@@ -95,8 +95,13 @@ public struct EmbeddingClusterer: Sendable {
         retired.append(oldest)
         if retired.count > Self.retiredLimit {
             let overflow = retired.count - Self.retiredLimit
-            for evicted in retired.prefix(overflow) { usedNumbers.remove(evicted.number) }
+            let evicted = Set(retired.prefix(overflow).map(\.number))
             retired.removeFirst(overflow)
+            // Free a number only once nothing shows it: a voice from an
+            // earlier conversation ageing out shares its number with one
+            // numbered from 1 again since, maybe still talking.
+            let shown = Set((clusters + retired).filter { $0.name == nil }.map(\.number))
+            usedNumbers.subtract(evicted.subtracting(shown))
         }
     }
 

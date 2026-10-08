@@ -363,4 +363,26 @@ struct EmbeddingClustererDoubtfulTests {
         let weight = Float(EmbeddingClusterer.enrollmentWeight)
         #expect(abs(enrolled.clusters[0].centroid[0] - (weight + 0.6) / (weight + 1)) < 0.0001)
     }
+
+    @Test("two voices on screen never share a speaker number after an old conversation ages out")
+    func numbersStayUniqueAfterOldConversationEvicted() {
+        func oneHot(_ index: Int) -> [Float] {
+            var v = [Float](repeating: 0, count: 400)
+            v[index] = 1
+            return v
+        }
+        var clusterer = EmbeddingClusterer(similarityThreshold: 0.75)
+        _ = clusterer.assign(embedding: oneHot(0))
+        clusterer.startNewConversation()
+        let steady = clusterer.assign(embedding: oneHot(1))
+        var duplicated: [Int] = []
+        for k in 2..<400 {
+            _ = clusterer.assign(embedding: oneHot(k))
+            _ = clusterer.assign(embedding: oneHot(1))
+            let numbers = clusterer.clusters.filter { $0.name == nil }.map(\.number)
+            if Set(numbers).count != numbers.count { duplicated = numbers.sorted(); break }
+        }
+        #expect(clusterer.clusters.contains { $0.id == steady })
+        #expect(duplicated.isEmpty, "duplicate speaker numbers on screen: \(duplicated)")
+    }
 }
