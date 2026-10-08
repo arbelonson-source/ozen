@@ -21,7 +21,9 @@ public actor DownloadCoordinator {
         let listeners = ProgressFanOut(progress)
         let task = Task { try await operation { listeners.report($0) } }
         inFlight[url] = (task, listeners)
-        defer { inFlight[url] = nil }
+        // Only its own entry: a stopped download ends after `cancel` has
+        // already let a new one take its place.
+        defer { if inFlight[url]?.task == task { inFlight[url] = nil } }
         return try await task.value
     }
 
@@ -36,6 +38,10 @@ public actor DownloadCoordinator {
 
     public func cancel(for url: URL) async {
         guard let running = inFlight[url] else { return }
+        // Forgotten at once: a download asked for again right after this
+        // (the model deleted and fetched anew) joined the stopped one until
+        // its caller got round to clearing it, and failed with it.
+        inFlight[url] = nil
         running.task.cancel()
         _ = await running.task.result
     }

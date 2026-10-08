@@ -223,6 +223,59 @@ struct DownloadCoordinatorTests {
         #expect(try await coordinator.run(for: url) { url } == url)
     }
 
+    @Test("a download asked for again right after one was stopped (the model deleted and fetched anew) runs on its own", .timeLimit(.minutes(1)))
+    func runRightAfterCancel() async throws {
+        let url = URL(fileURLWithPath: "/tmp/ozen-test/model-again")
+        var joinedTheStoppedOne = 0
+        for _ in 0..<100 {
+            let coordinator = DownloadCoordinator()
+            let started = Counter()
+            let stopped = Task {
+                try await coordinator.run(for: url) {
+                    await started.increment()
+                    while !Task.isCancelled { await Task.yield() }
+                    throw CancellationError()
+                }
+            }
+            await started.waitUntilAtLeast(1)
+            await coordinator.cancel(for: url)
+            do { _ = try await coordinator.run(for: url) { url } } catch { joinedTheStoppedOne += 1 }
+            _ = try? await stopped.value
+        }
+        #expect(joinedTheStoppedOne == 0, "joined the stopped download \(joinedTheStoppedOne) times in 100")
+    }
+
+    @Test("the stopped download ending late doesn't forget the one that replaced it", .timeLimit(.minutes(1)))
+    func lateEndKeepsTheReplacement() async throws {
+        let url = URL(fileURLWithPath: "/tmp/ozen-test/model-replaced")
+        var forgotten = 0
+        for _ in 0..<100 {
+            let coordinator = DownloadCoordinator()
+            let started = Counter()
+            let replacement = Gate()
+            let stopped = Task {
+                try await coordinator.run(for: url) {
+                    await started.increment()
+                    while !Task.isCancelled { await Task.yield() }
+                    throw CancellationError()
+                }
+            }
+            await started.waitUntilAtLeast(1)
+            await coordinator.cancel(for: url)
+            async let fresh: URL = coordinator.run(for: url) {
+                await started.increment()
+                await replacement.wait()
+                return url
+            }
+            await started.waitUntilAtLeast(2)
+            _ = try? await stopped.value
+            if await coordinator.progress(for: url) == nil { forgotten += 1 }
+            await replacement.open()
+            _ = try await fresh
+        }
+        #expect(forgotten == 0, "the running download was forgotten \(forgotten) times in 100")
+    }
+
     @Test("a download's progress can be read while it runs, and nothing once it has ended")
     func progressWhileRunning() async throws {
         let coordinator = DownloadCoordinator()
