@@ -2039,6 +2039,31 @@ struct LiveCaptionViewModelHistoryRetentionTests {
         #expect(await viewModel.deleteExpiredHistory(now: now + 60 * day) == 1)
     }
 
+    @Test("with captions running on screen for days, an autosave still lets old conversations expire")
+    func expiresWhileTheAppStaysOpen() async throws {
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-retention-open-\(UUID())", isDirectory: true)
+        let history = TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        let settingsStore = SettingsStore(fileURL: directory.appendingPathComponent("settings.json"))
+        let viewModel = LiveCaptionViewModel(settingsStore: settingsStore, pipeline: pipeline, historyStore: history)
+        viewModel.historyRetention = .month
+        let day: TimeInterval = 86_400
+        let now = Date().timeIntervalSince1970
+        let old = TranscriptSessionRecord(
+            id: UUID(), startedAt: now - 40 * day, endedAt: now - 40 * day, engine: .whisperKit, modelVariant: nil, inputName: nil,
+            segments: [SavedSegment(id: UUID(), text: "מזמן", speakerName: nil, speakerClusterID: nil, startTimestamp: now - 40 * day, isCommitted: true)]
+        )
+        try history.save(old)
+
+        await viewModel.start()
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "היום", isFinal: true, timestamp: now))
+        await eventually { !viewModel.segments.isEmpty }
+        viewModel.persistHistory(ended: false, inBackground: true)
+
+        #expect(await eventually { !history.listSummaries().contains { $0.id == old.id } })
+    }
+
     @Test("a name given to the conversation still going sticks, even before its first autosave")
     func nameBeforeFirstSave() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-rename-\(UUID())", isDirectory: true)

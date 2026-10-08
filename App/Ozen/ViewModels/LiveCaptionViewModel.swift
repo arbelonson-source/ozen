@@ -408,11 +408,7 @@ public final class LiveCaptionViewModel {
         // After a phone call iOS may never say the interruption ended.
         // Back on screen, try to take the microphone back: if that works
         // the call is over, and captions (and automatic recovery) resume.
-        // The phone may stay on the nightstand with the app open for days;
-        // old conversations still expire on schedule.
-        if isActive, Date().timeIntervalSince1970 - lastRetentionCheck > Self.retentionCheckIntervalSeconds {
-            Task { await deleteExpiredHistory() }
-        }
+        if isActive { deleteExpiredHistoryIfDue() }
         if isActive, isInterruptedBySystem, let reclaimAudioSession {
             Task {
                 if await reclaimAudioSession(), isInterruptedBySystem {
@@ -1323,6 +1319,17 @@ public final class LiveCaptionViewModel {
         openedHistoryIDs.remove(id)
     }
 
+    /// The phone may stay on the nightstand with the app open for days, and
+    /// while captions run the screen never sleeps: coming back to the app
+    /// alone never came, and old conversations outlived their setting. So
+    /// a save checks too, at most every `retentionCheckIntervalSeconds`.
+    private func deleteExpiredHistoryIfDue() {
+        let now = Date().timeIntervalSince1970
+        guard now - lastRetentionCheck > Self.retentionCheckIntervalSeconds else { return }
+        lastRetentionCheck = now
+        Task { await deleteExpiredHistory(now: now) }
+    }
+
     /// Deletes saved conversations the retention setting says have expired,
     /// off the main thread and after any save in flight. The conversations
     /// still on screen are never touched. Returns how many were deleted.
@@ -1843,6 +1850,7 @@ public final class LiveCaptionViewModel {
             inputName: selectedInput?.portName,
             starred: starredSegmentIDs
         )
+        defer { deleteExpiredHistoryIfDue() }
         if inBackground {
             saveInBackground(record)
         } else {
