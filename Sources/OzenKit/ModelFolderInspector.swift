@@ -60,7 +60,10 @@ public enum ModelFolderInspector {
             let weights = bundle.appendingPathComponent("weights", isDirectory: true)
             var weightsIsDirectory: ObjCBool = false
             if fileManager.fileExists(atPath: weights.path, isDirectory: &weightsIsDirectory), weightsIsDirectory.boolValue {
-                return fileManager.fileExists(atPath: weights.appendingPathComponent("weight.bin").path)
+                // There and empty is cut off too: the model then failed to
+                // load at every launch.
+                let size = (try? fileManager.attributesOfItem(atPath: weights.appendingPathComponent("weight.bin").path)[.size] as? NSNumber)?.int64Value
+                return (size ?? 0) > 0
             }
             return true
         }

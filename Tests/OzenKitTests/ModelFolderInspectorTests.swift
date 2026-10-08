@@ -42,6 +42,14 @@ struct ModelFolderInspectorTests {
         #expect(ModelFolderInspector.state(of: folder) == .partial)
     }
 
+    @Test("an empty weights file is a cut-off download too")
+    func weightsEmpty() throws {
+        let folder = try makeFolder()
+        try writeWholeModel(in: folder)
+        try Data().write(to: folder.appendingPathComponent("TextDecoder.mlmodelc/weights/weight.bin"))
+        #expect(ModelFolderInspector.state(of: folder) == .partial)
+    }
+
     @Test("a bundle directory holding only its first file is partial")
     func bundleJustStarted() throws {
         let folder = try makeFolder()
