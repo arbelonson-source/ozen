@@ -303,9 +303,11 @@ struct ScreenWordingTests {
         #expect(steps.allSatisfy { !$0.text.isEmpty })
         #expect(steps[0].text.contains("NVIDIA") && steps[0].text.contains("6 ג׳יגה"))
         // Latin glued to Hebrew came out in the wrong order on screen
-        // ("6GB" read as "6 עםGB"); the English menu name is kept whole.
+        // ("6GB" read as "6 עםGB"); the English menu name is kept whole,
+        // and on one line: wrapped inside the Hebrew sentence, its last
+        // word landed alone at the start of the next line.
         #expect(!steps[0].text.contains("GB"))
-        #expect(steps[3].text.contains("\u{2068}Ozen - pair a phone\u{2069}"))
+        #expect(steps[3].text.contains("\u{2068}Ozen\u{00A0}-\u{00A0}pair\u{00A0}a\u{00A0}phone\u{2069}"))
     }
 
     @Test("with saving switched off, the note under the switch does not say conversations are saved")
