@@ -774,5 +774,33 @@ class SessionAfterHello(unittest.TestCase):
         self.assertTrue(any("CUDA error" in line for line in logged.output), logged.output)
 
 
+class BadFramesFromPairedPhone(unittest.TestCase):
+    def run_session(self, messages):
+        hello = {"type": "hello", "token": "example-code-123"}
+        ws = PhoneSocket(hello, messages)
+        with self.assertLogs(S.log, "INFO") as logged:
+            asyncio.run(asyncio.wait_for(S.handle(ws, NamesGPU(), "example-code-123", 0.3), 5))
+        return ws, [json.loads(t) for t in ws.sent], logged.output
+
+    def test_an_audio_frame_cut_mid_sample_does_not_end_the_session(self):
+        ws, frames, log_lines = self.run_session([b"\x01", *speech_frames(1.5), json.dumps({"type": "end"})])
+        self.assertFalse(any("ended with" in line for line in log_lines), log_lines)
+        self.assertEqual([f["text"] for f in frames if f["type"] == "text" and f["final"]], ["שלום"])
+
+    def test_a_report_with_half_a_character_pair_is_still_saved(self):
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as folder:
+            reports = os.path.join(folder, "reports")
+            with mock.patch.object(S, "REPORTS_DIR", reports):
+                ws, frames, log_lines = self.run_session([json.dumps({"type": "report", "text": "a\ud800b"}),
+                                                          json.dumps({"type": "end"})])
+                saved = [f["name"] for f in frames if f["type"] == "report_saved"]
+                kept = {n: open(os.path.join(reports, n), encoding="utf-8").read() for n in os.listdir(reports)}
+        self.assertFalse(any("ended with" in line for line in log_lines), log_lines)
+        self.assertEqual(list(kept), saved)
+        self.assertEqual([text.endswith("\n\na?b") for text in kept.values()], [True])
+
+
 if __name__ == "__main__":
     unittest.main()

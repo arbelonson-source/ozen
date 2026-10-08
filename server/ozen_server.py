@@ -365,6 +365,9 @@ class Session:
         self.final_lag_seconds = []
 
     def add_audio(self, pcm16: bytes):
+        # A frame cut mid-sample (the phone always sends whole ones) loses
+        # its odd byte, not the whole session.
+        pcm16 = pcm16[:len(pcm16) - len(pcm16) % 2]
         chunk = np.frombuffer(pcm16, dtype="<i2").astype(np.float32) / 32768.0
         if self.enhancer is not None:
             chunk = self.enhancer.process(chunk)
@@ -546,10 +549,14 @@ def save_report(text, client):
     while os.path.exists(os.path.join(REPORTS_DIR, name)):
         n += 1
         name = f"{stamp}-{n}.txt"
+    # JSON can carry half of a character pair, which UTF-8 can't store: it
+    # failed the write with the file already open, leaving just the header
+    # and ending the session. It is kept as a "?" instead.
+    report = f"from: {client or 'unknown app'}\n\n{text[:MAX_REPORT_CHARS]}"
+    report = report.encode("utf-8", "replace").decode("utf-8")
     with open(os.path.join(REPORTS_DIR, name), "w", encoding="utf-8",
               opener=lambda path, flags: os.open(path, flags, 0o600)) as f:
-        f.write(f"from: {client or 'unknown app'}\n\n")
-        f.write(text[:MAX_REPORT_CHARS])
+        f.write(report)
     reports = sorted((n for n in os.listdir(REPORTS_DIR) if n.endswith(".txt")), key=report_order)
     for old in reports[:-50]:
         os.remove(os.path.join(REPORTS_DIR, old))
