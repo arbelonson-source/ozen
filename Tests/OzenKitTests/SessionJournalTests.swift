@@ -11,17 +11,20 @@ struct SessionJournalTests {
     }
 
     @Test("what one run of the app wrote is there for the next one to read")
-    func survivesRelaunch() {
+    func survivesRelaunch() throws {
         let url = temporaryFile()
         let first = SessionJournal(fileURL: url)
         first.append("listening", at: 1_800_000_000)
         first.append("microphone stopped delivering audio", at: 1_800_000_065.5)
+        _ = first.entries()
 
         let second = SessionJournal(fileURL: url)
         second.append("app started", at: 1_800_000_100)
 
         #expect(second.entries().map(\.text) == ["listening", "microphone stopped delivering audio", "app started"])
         #expect(second.entries()[1].at == 1_800_000_065.5)
+        let written = try String(decoding: Data(contentsOf: url), as: UTF8.self)
+        #expect(written == "1800000000.00\tlistening\n1800000065.50\tmicrophone stopped delivering audio\n1800000100.00\tapp started\n")
     }
 
     @Test("a line cut off when the app was killed mid-write doesn't swallow the next run's first line")
