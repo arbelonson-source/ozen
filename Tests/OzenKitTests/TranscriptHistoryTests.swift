@@ -202,11 +202,13 @@ struct TranscriptHistoryTests {
         #expect(store.search("unknown").isEmpty)
         #expect(store.search("רותי").map(\.id) == [saved.id])
 
-        let older = dir.appendingPathComponent(TranscriptHistoryStore.summariesFolderName)
-            .appendingPathComponent("\(saved.id.uuidString).search-v1.txt")
-        try Data("שלום".utf8).write(to: older)
+        let older = ["v1", "v2"].map {
+            dir.appendingPathComponent(TranscriptHistoryStore.summariesFolderName)
+                .appendingPathComponent("\(saved.id.uuidString).search-\($0).txt")
+        }
+        for url in older { try Data("שלום".utf8).write(to: url) }
         try store.delete(id: saved.id)
-        #expect(!FileManager.default.fileExists(atPath: older.path))
+        #expect(older.allSatisfy { !FileManager.default.fileExists(atPath: $0.path) })
     }
 
     @Test("search is case-insensitive over segment text")
@@ -318,6 +320,25 @@ struct TranscriptHistoryTests {
 
         #expect(store.search("כדורים?").count == 1)
         #expect(store.search("״רופא״").count == 1)
+    }
+
+    @Test("a number is found typed without the marks it was saved with: an amount, a phone number, a time")
+    func searchFindsNumbersWithoutTheirMarks() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+
+        try store.save(record(startedAt: 100, segments: [segment(text: "זה עולה 2,500 שקל")]))
+        try store.save(record(startedAt: 200, segments: [segment(text: "תתקשרי אליו ל-050-1234567")]))
+        try store.save(record(startedAt: 300, segments: [segment(text: "התור הוא בשעה 10:30")]))
+
+        #expect(store.search("2500").count == 1)
+        #expect(store.search("2,500").count == 1)
+        #expect(store.search("0501234567").count == 1)
+        #expect(store.search("050-1234567").count == 1)
+        #expect(store.search("10:30").count == 1)
+        #expect(store.search("1030").count == 1)
+        #expect(store.search("2501").isEmpty)
     }
 
     @Test("a search result's preview shows the line that matched, not always the conversation's first line")
@@ -857,7 +878,7 @@ struct TranscriptHistorySearchCacheTests {
     }
 
     private func searchFile(_ dir: URL, _ id: UUID) -> URL {
-        dir.appendingPathComponent(TranscriptHistoryStore.summariesFolderName).appendingPathComponent("\(id.uuidString).search-v2.txt")
+        dir.appendingPathComponent(TranscriptHistoryStore.summariesFolderName).appendingPathComponent("\(id.uuidString).search-v3.txt")
     }
 
     private func setModified(_ url: URL, _ date: Date) throws {
@@ -1222,7 +1243,7 @@ struct TranscriptHistoryTitleTests {
         #expect(store.search("רופא").map(\.id) == [id])
         #expect(store.search("סבתא").isEmpty)
         let remade = try FileManager.default.contentsOfDirectory(atPath: prepared.path)
-        #expect(remade.contains { $0.hasSuffix(".search-v2.txt") })
+        #expect(remade.contains { $0.hasSuffix(".search-v3.txt") })
         #expect(store.search("רופא").map(\.id) == [id])
     }
 

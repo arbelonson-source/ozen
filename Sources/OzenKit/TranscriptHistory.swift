@@ -412,13 +412,13 @@ public struct TranscriptHistoryStore: Sendable {
     /// finding the old files and rebuilds them. (v1 also held "speaker 2"
     /// and "unknown speaker" labels.)
     private func searchTextURL(forRecordFile url: URL) -> URL {
-        summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-v2.txt")
+        summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-v3.txt")
     }
 
     /// Search files of earlier formats hold the conversation's words too,
     /// so deleting it deletes them.
     private func olderSearchTextURLs(forRecordFile url: URL) -> [URL] {
-        [summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-v1.txt")]
+        ["v1", "v2"].map { summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-\($0).txt") }
     }
 
     /// Saves a session, overwriting any earlier save with the same id —
@@ -575,13 +575,30 @@ public struct TranscriptHistoryStore: Sendable {
     /// rather than deleted outright, so dictation punctuation ("כדורים?")
     /// or Hebrew gershayim quotes ("״רופא״") glued onto a word by voice
     /// dictation or typing don't stop it matching the bare word.
+    ///
+    /// A mark between two digits is dropped instead, so an amount, a phone
+    /// number or a time saved as "2,500", "050-1234567" or "10:30" is
+    /// found by "2500", "0501234567" or "1030" too, not split in two.
     private static func normalizedForSearch(_ text: String) -> String {
-        let separated = HebrewText.separatingJoiners(text.replacingOccurrences(of: "\n", with: " "))
+        let separated = HebrewText.separatingJoiners(joiningDigitGroups(text.replacingOccurrences(of: "\n", with: " ")))
         let withoutNiqqud = strippingNiqqud(separated)
         let withoutPunctuation = withoutNiqqud.unicodeScalars.map { scalar -> Unicode.Scalar in
             (CharacterSet.punctuationCharacters.contains(scalar) || CharacterSet.symbols.contains(scalar)) ? " " : scalar
         }
         return String(String.UnicodeScalarView(withoutPunctuation)).lowercased()
+    }
+
+    private static func joiningDigitGroups(_ text: String) -> String {
+        let scalars = Array(text.unicodeScalars)
+        var kept = String.UnicodeScalarView()
+        for (index, scalar) in scalars.enumerated() {
+            let betweenDigits = index > 0 && index + 1 < scalars.count
+                && CharacterSet.decimalDigits.contains(scalars[index - 1])
+                && CharacterSet.decimalDigits.contains(scalars[index + 1])
+            if betweenDigits && CharacterSet.punctuationCharacters.contains(scalar) { continue }
+            kept.append(scalar)
+        }
+        return String(kept)
     }
 
     /// The words of a search, compared the way saved text is: without
