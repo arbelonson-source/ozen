@@ -2062,11 +2062,13 @@ public final class CaptionPipeline {
     /// waiting out the retry timer. So do captions from the cloud or the
     /// home computer that stopped when the internet went: the timer gives
     /// up after about half a minute, and a router takes longer to restart.
+    /// Not during a phone call, which holds the microphone: the call's end
+    /// starts a fresh set of attempts instead.
     private func networkConditionsChanged(_ conditions: NetworkConditions) {
         let allowCellular = (activeSettings?.allowCellularModelDownload ?? false) || cellularDownloadApproved
         let previous = lastNetwork
         lastNetwork = conditions
-        guard networkRetryTask == nil, let kind = phase.failure?.engineUnavailability?.kind else { return }
+        guard networkRetryTask == nil, !systemInterrupted, let kind = phase.failure?.engineUnavailability?.kind else { return }
         let returned: Bool
         switch kind {
         case .waitingForWiFi, .modelDownloadFailed:

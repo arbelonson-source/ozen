@@ -3202,6 +3202,30 @@ struct CaptionPipelineDownloadNetworkTests {
         #expect(engine.prepareCount == 2)
     }
 
+    @Test("captions that stopped for want of the internet wait out a phone call before the connection brings them back", arguments: [EngineUnavailability.Kind.noInternet, .homeServerUnreachable])
+    func connectionReturnsDuringCall(kind: EngineUnavailability.Kind) async {
+        let network = FakeNetworkMonitor(.offline)
+        let engine = FakeEngine(availability: .unavailable(kind, "offline"))
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { _ in engine },
+            embedder: FakeEmbedder(),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []),
+            network: network
+        )
+        pipeline.systemInterruptionChanged(active: true)
+        await pipeline.start(settings: settings())
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == kind)
+
+        engine.availability = .available
+        network.change(to: .wifi)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(engine.prepareCount == 1, "the connection coming back took the microphone during the call")
+
+        pipeline.systemInterruptionChanged(active: false)
+        #expect(await eventually { pipeline.phase.isListening })
+    }
+
     @Test("a connection change doesn't touch captions that are running or failed for other reasons")
     func unrelatedFailuresIgnored() async {
         let network = FakeNetworkMonitor(.offline)
