@@ -297,6 +297,7 @@ public final class CaptionPipeline {
     /// settings it was asked with; it runs when the recording ends.
     private struct HeldRetry { let settings: AppSettings? }
     private var retryAfterRecording: HeldRetry?
+    private var restartAfterRecording: AppSettings?
     private let network: (any NetworkMonitoring)?
     /// The person said this session's model may download over cellular.
     private var cellularDownloadApproved = false
@@ -674,6 +675,10 @@ public final class CaptionPipeline {
         cloudRecheck?.cancel()
         cloudRecheck = nil
         cancelScheduledRetry()
+        // Stopped by hand: nothing held for a voice sample's end may start
+        // captions again.
+        retryAfterRecording = nil
+        restartAfterRecording = nil
         recovery.reset()
         listeningSince = nil
         microphoneDrop.dismiss()
@@ -761,6 +766,13 @@ public final class CaptionPipeline {
     /// language changed. The transcript is kept; a switch mid-conversation
     /// shouldn't wipe what was already read.
     public func restart(settings: AppSettings) async {
+        // A voice sample holds the microphone: tearing the session down cut
+        // it short, and `start` then refused to run, leaving captions idle
+        // with nothing to bring them back. The restart waits for it.
+        guard !isRecordingVoice else {
+            restartAfterRecording = settings
+            return
+        }
         cancelScheduledRetry()
         recovery.reset()
         tearDownSession()
@@ -1291,7 +1303,11 @@ public final class CaptionPipeline {
         }
 
         isRecordingVoice = false
-        if wasRunning {
+        if let settings = restartAfterRecording {
+            restartAfterRecording = nil
+            retryAfterRecording = nil
+            await restart(settings: settings)
+        } else if wasRunning {
             await resume()
         } else if let held = retryAfterRecording {
             retryAfterRecording = nil

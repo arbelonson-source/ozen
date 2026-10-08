@@ -1919,6 +1919,42 @@ struct CaptionPipelineEnrollmentTests {
         #expect(await eventually { pipeline.phase == .listening })
     }
 
+    @Test("a restart asked for while a voice sample records waits for it, then runs with the new settings", .timeLimit(.minutes(1)))
+    func restartDuringEnrollmentWaits() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        #expect(pipeline.phase == .listening)
+        let recording = Task { @MainActor in
+            await pipeline.captureEnrollmentSamples(seconds: 0.5)
+        }
+        #expect(await eventually { pipeline.isRecordingVoice })
+
+        var changed = AppSettings.default
+        changed.whisperModelVariant = "changed-while-recording"
+        await pipeline.restart(settings: changed)
+        audio.push([Float](repeating: 0.1, count: 8_000))
+
+        #expect(await recording.value.count == 8_000)
+        #expect(await eventually { pipeline.phase == .listening }, "phase=\(pipeline.phase)")
+        #expect(pipeline.activeSettings?.whisperModelVariant == "changed-while-recording")
+    }
+
+    @Test("captions stopped by hand while a restart waits for a voice sample stay stopped", .timeLimit(.minutes(1)))
+    func stopDropsRestartHeldForEnrollment() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        let recording = Task { @MainActor in
+            await pipeline.captureEnrollmentSamples(seconds: 0.5)
+        }
+        #expect(await eventually { pipeline.isRecordingVoice })
+        await pipeline.restart(settings: .default)
+        pipeline.stop()
+        audio.push([Float](repeating: 0.1, count: 8_000))
+        _ = await recording.value
+
+        #expect(pipeline.phase == .idle)
+    }
+
     @Test("enrollment while idle leaves the pipeline idle afterwards")
     func enrollmentFromIdle() async {
         let (pipeline, audio, _) = makePipeline()
