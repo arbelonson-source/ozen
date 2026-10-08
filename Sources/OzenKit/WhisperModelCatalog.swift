@@ -113,11 +113,23 @@ public enum WhisperModelCatalog {
             note: "Quick to download and responsive. Understandable Hebrew, with mistakes.",
             isRecommended: false
         ),
+        // ivrit.ai's Turbo with its encoder trained further on speech from
+        // across a room, in noise and over a TV (October 2026, run a3):
+        // 20.1% of words wrong on those recordings against 23.1% for
+        // ivrit.ai's own, and 13.3% against 13.1% up close.
+        WhisperModelOption(
+            variant: "ozen-turbo-hebrew-a3-8bit", displayName: "Turbo Hebrew, noise-trained (Ozen)", sizeMB: 819,
+            hebrewQuality: 5, speed: 3,
+            note: "Turbo Hebrew trained further by Ozen on speech from across a room, in noise and over a TV: about a tenth fewer wrong words there, the same up close. As quick, the same download.",
+            isRecommended: true,
+            source: .ozenRelease(tag: "model-ozen-turbo-hebrew-a3-8bit-1"),
+            folderName: "ozen_whisper-large-v3-turbo-hebrew-a3_8bit"
+        ),
         WhisperModelOption(
             variant: "ivrit-large-v3-turbo-8bit", displayName: "Turbo Hebrew (ivrit.ai)", sizeMB: 819,
             hebrewQuality: 5, speed: 3,
             note: "Turbo trained on 5,000 hours of Hebrew by ivrit.ai: a third fewer wrong words than Turbo on test recordings. As quick, a bigger download.",
-            isRecommended: true,
+            isRecommended: false,
             source: .ozenRelease(tag: "model-ivrit-large-v3-turbo-8bit-1"),
             folderName: "ivrit-ai_whisper-large-v3-turbo_8bit"
         ),
@@ -173,7 +185,7 @@ public enum WhisperModelCatalog {
         options.filter(\.isRecommended) + options.filter { !$0.isRecommended }
 
     public static let defaultVariant = recommendedVariant
-    public static let recommendedVariant = "ivrit-large-v3-turbo-8bit"
+    public static let recommendedVariant = "ozen-turbo-hebrew-a3-8bit"
 
     public static func option(for variant: String) -> WhisperModelOption? {
         options.first { $0.variant == variant }

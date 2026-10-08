@@ -13,7 +13,7 @@ struct WhisperModelCatalogTests {
     @Test("a fresh install gets the recommended model, not Small")
     func freshInstallGetsRecommended() {
         #expect(WhisperModelCatalog.defaultVariant == WhisperModelCatalog.recommendedVariant)
-        #expect(AppSettings.default.whisperModelVariant == "ivrit-large-v3-turbo-8bit")
+        #expect(AppSettings.default.whisperModelVariant == "ozen-turbo-hebrew-a3-8bit")
     }
 
     @Test("the recommended model improves on the small ones, not on its equals or betters or on strangers")
@@ -22,14 +22,21 @@ struct WhisperModelCatalogTests {
             #expect(WhisperModelCatalog.recommendedImproves(on: weaker), "\(weaker)")
         }
         #expect(!WhisperModelCatalog.recommendedImproves(on: WhisperModelCatalog.recommendedVariant))
+        // What it was trained from: better in noise, level up close, so no
+        // "this model gets many words wrong" on a phone that runs it.
+        #expect(!WhisperModelCatalog.recommendedImproves(on: "ivrit-large-v3-turbo-8bit"))
         #expect(!WhisperModelCatalog.recommendedImproves(on: "no-such-model"))
     }
 
-    @Test("the recommended model is rated above every other for Hebrew, as it measured on every test set")
+    @Test("no model is rated above the recommended one for Hebrew, and the only one rated level is the model it was trained from")
     func recommendedRatedHighest() throws {
         let recommended = try #require(WhisperModelCatalog.option(for: WhisperModelCatalog.recommendedVariant))
         for option in WhisperModelCatalog.options where option.variant != recommended.variant {
-            #expect(option.hebrewQuality < recommended.hebrewQuality, "\(option.variant)")
+            if option.variant == "ivrit-large-v3-turbo-8bit" {
+                #expect(option.hebrewQuality == recommended.hebrewQuality)
+            } else {
+                #expect(option.hebrewQuality < recommended.hebrewQuality, "\(option.variant)")
+            }
         }
     }
 
@@ -56,7 +63,10 @@ struct WhisperModelCatalogTests {
         #expect(WhisperModelCatalog.folderName(for: "small") == "openai_whisper-small")
         #expect(WhisperModelCatalog.folderName(for: "ivrit-large-v3-turbo-8bit") == "ivrit-ai_whisper-large-v3-turbo_8bit")
         #expect(WhisperModelCatalog.variant(fromFolderName: "ivrit-ai_whisper-large-v3-turbo_8bit") == "ivrit-large-v3-turbo-8bit")
-        #expect(WhisperModelCatalog.option(for: WhisperModelCatalog.recommendedVariant)?.source == .ozenRelease(tag: "model-ivrit-large-v3-turbo-8bit-1"))
+        #expect(WhisperModelCatalog.option(for: "ivrit-large-v3-turbo-8bit")?.source == .ozenRelease(tag: "model-ivrit-large-v3-turbo-8bit-1"))
+        #expect(WhisperModelCatalog.option(for: WhisperModelCatalog.recommendedVariant)?.source == .ozenRelease(tag: "model-ozen-turbo-hebrew-a3-8bit-1"))
+        #expect(WhisperModelCatalog.folderName(for: "ozen-turbo-hebrew-a3-8bit") == "ozen_whisper-large-v3-turbo-hebrew-a3_8bit")
+        #expect(WhisperModelCatalog.variant(fromFolderName: "ozen_whisper-large-v3-turbo-hebrew-a3_8bit") == "ozen-turbo-hebrew-a3-8bit")
         #expect(WhisperModelCatalog.variant(fromFolderName: "openai_whisper-large-v3-v20240930_626MB") == "large-v3-v20240930_626MB")
         #expect(WhisperModelCatalog.variant(fromFolderName: "distil-whisper_distil-large-v3") == nil)
     }
@@ -65,6 +75,7 @@ struct WhisperModelCatalogTests {
     func installRoom() {
         #expect(WhisperModelCatalog.option(for: "small")?.installMegabytes == 486)
         #expect(WhisperModelCatalog.option(for: "ivrit-large-v3-turbo-8bit")?.installMegabytes == 819 * 2)
+        #expect(WhisperModelCatalog.option(for: "ozen-turbo-hebrew-a3-8bit")?.installMegabytes == 819 * 2)
     }
 
     @Test("an interrupted install only needs room for the part not yet on the phone")

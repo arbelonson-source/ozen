@@ -99,7 +99,7 @@ things, for Hebrew conversation, entirely on-device.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/accuracy-dark.svg">
-  <img alt="Words written wrong, lower is better, on the same 30 recorded university lecture clips, measured before the phone's 8-bit compression: ivrit.ai Turbo (recommended, on the phone) 6.6%, OpenAI Turbo 9.7%, OpenAI Small 27%." src="docs/assets/accuracy-light.svg" width="100%">
+  <img alt="Words written wrong, lower is better, on the same 30 recorded university lecture clips, measured before the phone's 8-bit compression: ivrit.ai Turbo (what the recommended model builds on) 6.6%, OpenAI Turbo 9.7%, OpenAI Small 27%." src="docs/assets/accuracy-light.svg" width="100%">
 </picture>
 
 ### Everything it does
@@ -112,16 +112,23 @@ Open a section for the details.
 - **Live captions, not batch transcription.** Partial text updates
   continuously as speech happens; text only locks in (stops changing) once
   it's actually stable — see `CaptionStabilizer`.
-- **A Whisper trained on Hebrew.** The recommended model is
+- **A Whisper trained on Hebrew, then on the room.** The recommended
+  model starts from
   [ivrit.ai's](https://huggingface.co/ivrit-ai/whisper-large-v3-turbo)
   continued training of Whisper large-v3-turbo on about 5,000 hours of
-  Hebrew (Apache-2.0), converted to WhisperKit's format and compressed to
-  8 bits (819 MB). On 90 Hebrew test clips it got 6.6% of words wrong on
-  lecture speech and 21% on read sentences, against 9.7% and 31% for
-  OpenAI's Turbo and 27% and 48% for Small, all measured before
-  conversion. On five clips checked on a Mac, the 8-bit model phones
-  download wrote the same words as the full one, but for gigahertz run
-  together and one verb form. Nobody publishes it in
+  Hebrew (Apache-2.0). On 90 Hebrew test clips that model got 6.6% of
+  words wrong on lecture speech and 21% on read sentences, against 9.7%
+  and 31% for OpenAI's Turbo and 27% and 48% for Small, all measured
+  before conversion. Ozen then trained its listening half further on
+  Hebrew played through real rooms, in household noise and beside a
+  talking TV (October 2026). On 700 test sentences heard that way it
+  gets 20.1% of words wrong where ivrit.ai's gets 23.1%; on clean speech
+  13.3% against 13.1%, and on lectures, read sentences and WhatsApp
+  voice notes the two are within half a point (also measured before
+  conversion). It is converted to WhisperKit's format and compressed to
+  8 bits (819 MB); compressed the same way, ivrit.ai's model wrote the
+  same words as the full one on five clips checked on a Mac, but for
+  gigahertz run together and one verb form. Nobody publishes these in
   WhisperKit's format, so it is downloaded from the releases of the
   public `ozen-models` repository (`scripts/model-release/`) and compiled
   on the phone.
@@ -129,12 +136,14 @@ Open a section for the details.
   (Whisper via CoreML) and Apple's own on-device Speech framework — picked
   in Settings, since which one is actually better for Hebrew on a given
   device is an open, testable question rather than an assumption.
-- **Whisper model manager**: ten models from 76 MB to 3 GB with honest
+- **Whisper model manager**: eleven models from 76 MB to 3 GB with honest
   Hebrew-quality and speed ratings, download progress, disk usage, and
-  delete. "Turbo Hebrew (ivrit.ai)" is the recommended pick and what a
-  fresh install gets; a phone set up when Small or OpenAI's Turbo was the
-  default is offered the switch on the caption screen, one tap and one
-  download.
+  delete. "Turbo Hebrew, noise-trained (Ozen)" is the recommended pick and
+  what a fresh install gets; a phone set up when Small or OpenAI's Turbo
+  was the default is offered the switch on the caption screen, one tap
+  and one download. One on ivrit.ai's Turbo keeps it until switched in
+  the list: the step is real in noise but level up close, too small to
+  interrupt the captions for.
 - **Display built for reading all evening**: text size 20–64 pt (pinch
   the captions to change it), white-on-black / yellow-on-black /
   black-on-white, or following the phone's own light/dark setting, bold,
@@ -142,7 +151,9 @@ Open a section for the details.
   each person's turn, like a chat), a small question mark on lines the
   engine itself was unsure of (so she knows when to ask again; with
   ivrit.ai's models one or two lines in a hundred, and in tests 50 of
-  52 marked lines had a word wrong), numbers
+  52 marked lines had a word wrong; Ozen's noise-trained model is a
+  little surer of itself: of 3,500 test lines, near and far, it marked
+  215 (ivrit.ai's, 297) and 214 of them had a word wrong), numbers
   (the time of an appointment, how many pills, a phone number) in a
   heavier weight and a second colour, whether written in digits or in
   words ("and six" (u-ve-shesh), "three pills" (shlosha kadurim), "twice"

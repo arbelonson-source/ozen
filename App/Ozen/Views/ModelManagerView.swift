@@ -238,6 +238,7 @@ struct ModelManagerView: View {
         case "base": return tr("מהיר מאוד, עדיין חלש בעברית.", "Very fast, still weak at Hebrew.")
         case "small_216MB": return tr("חצי מההורדה של Small עם כמעט אותן תוצאות.", "Half the download of Small with nearly the same results.")
         case "small": return tr("הורדה קצרה ותגובה מהירה. עברית מובנת, עם טעויות.", "A short download and a quick response. Hebrew is understandable, with mistakes.")
+        case "ozen-turbo-hebrew-a3-8bit": return tr("Turbo Hebrew שאוזן אימנה עוד על דיבור מקצה החדר, ברעש וליד טלוויזיה: בערך עשירית פחות מילים שגויות שם, ואותו דבר מקרוב. מהיר באותה מידה, אותה הורדה.", "Turbo Hebrew trained further by Ozen on speech from across a room, in noise and over a TV: about a tenth fewer wrong words there, the same up close. As quick, the same download.")
         case "ivrit-large-v3-turbo-8bit": return tr("Turbo שאומן על כ-5,000 שעות של עברית על ידי ivrit.ai: שליש פחות מילים שגויות מ-Turbo בהקלטות בדיקה. מהיר באותה מידה, הורדה גדולה יותר.", "Turbo trained on about 5,000 hours of Hebrew by ivrit.ai: a third fewer wrong words than Turbo on test recordings. As quick, a bigger download.")
         case "large-v3-v20240930_626MB": return tr("עברית טובה בהרבה מ‑Small באותו גודל הורדה בערך. קצת יותר איטי בכל עדכון.", "Much better Hebrew than Small at roughly the same download size. A bit slower on each update.")
         case "large-v3-v20240930": return tr("Turbo בדיוק מלא. אותה רמת דיוק, הורדה גדולה יותר.", "Turbo at full precision. Same accuracy, a larger download.")
