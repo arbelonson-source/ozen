@@ -28,7 +28,9 @@ public enum UILanguage: String, Codable, Sendable, CaseIterable {
             values.contains { value in ranges.contains { $0.contains(value) } }
         }
         if has(0x0590...0x05FF) { return .hebrew }
-        if has(0x0600...0x06FF, 0x0750...0x077F, 0xFB50...0xFDFF, 0xFE70...0xFEFF) { return .arabic }
+        // Not U+FEFF at the end of that block: an invisible byte order
+        // mark pasted along with a time is no Arabic letter.
+        if has(0x0600...0x06FF, 0x0750...0x077F, 0xFB50...0xFDFF, 0xFE70...0xFEFC) { return .arabic }
         if has(0x1200...0x139F, 0x2D80...0x2DDF) { return .amharic }
         if has(0x0900...0x097F) { return .hindi }
         if has(0x3400...0x4DBF, 0x4E00...0x9FFF) { return .chineseSimplified }
@@ -36,7 +38,13 @@ public enum UILanguage: String, Codable, Sendable, CaseIterable {
             if fallback == .ukrainian || text.contains(where: { "іїєґІЇЄҐ".contains($0) }) { return .ukrainian }
             return .russian
         }
-        if values.contains(where: { (0x41...0x5A).contains($0) || (0x61...0x7A).contains($0) || (0xC0...0x24F).contains($0) }) {
+        // Letters only: × and ÷ sit among the accented Latin letters, and
+        // read "3 × 4" in English to a Hebrew speaker.
+        if text.unicodeScalars.contains(where: { scalar in
+            let value = scalar.value
+            return (0x41...0x5A).contains(value) || (0x61...0x7A).contains(value)
+                || ((0xC0...0x24F).contains(value) && scalar.properties.isAlphabetic)
+        }) {
             return fallback.writesInLatinLetters ? fallback : .english
         }
         return fallback
