@@ -2047,6 +2047,7 @@ struct LiveCaptionViewModelHistoryRetentionTests {
         let history = TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
         let settingsStore = SettingsStore(fileURL: directory.appendingPathComponent("settings.json"))
         let viewModel = LiveCaptionViewModel(settingsStore: settingsStore, pipeline: pipeline, historyStore: history)
+        await viewModel.finishLaunchHousekeeping()
         viewModel.historyRetention = .month
         let day: TimeInterval = 86_400
         let now = Date().timeIntervalSince1970
@@ -2060,7 +2061,11 @@ struct LiveCaptionViewModelHistoryRetentionTests {
         engine.emit(TranscriptToken(utteranceID: UUID(), text: "היום", isFinal: true, timestamp: now))
         await eventually { !viewModel.segments.isEmpty }
         viewModel.persistHistory(ended: false, inBackground: true)
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(history.listSummaries().contains { $0.id == old.id }, "the last check was moments ago: not due yet")
 
+        viewModel.retentionNow = { now + 7 * 60 * 60 }
+        viewModel.persistHistory(ended: false, inBackground: true)
         #expect(await eventually { !history.listSummaries().contains { $0.id == old.id } })
     }
 

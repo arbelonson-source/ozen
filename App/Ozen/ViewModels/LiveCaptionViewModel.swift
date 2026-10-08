@@ -108,6 +108,8 @@ public final class LiveCaptionViewModel {
     /// Whether captions were listening the last time history looked.
     @ObservationIgnored private var historySawListening = false
     private var lastRetentionCheck: TimeInterval = 0
+    /// The clock the retention check reads; a test moves it on hours.
+    @ObservationIgnored var retentionNow: () -> TimeInterval = { Date().timeIntervalSince1970 }
     private var launchHousekeeping: Task<Void, Never>?
     private var soundIdentifiersLoad: Task<Void, Never>?
     @ObservationIgnored private var announcer = CaptionAnnouncer()
@@ -1324,7 +1326,7 @@ public final class LiveCaptionViewModel {
     /// alone never came, and old conversations outlived their setting. So
     /// a save checks too, at most every `retentionCheckIntervalSeconds`.
     private func deleteExpiredHistoryIfDue() {
-        let now = Date().timeIntervalSince1970
+        let now = retentionNow()
         guard now - lastRetentionCheck > Self.retentionCheckIntervalSeconds else { return }
         lastRetentionCheck = now
         Task { await deleteExpiredHistory(now: now) }
