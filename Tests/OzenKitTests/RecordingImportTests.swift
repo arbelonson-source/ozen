@@ -17,6 +17,16 @@ struct RecordingImportTests {
         #expect(RecordingImport.personName(fromFileName: "Bat_Sheva 1.m4a") == "Bat Sheva")
     }
 
+    @Test("a date or several numbers after the name all come off")
+    func datedNames() {
+        #expect(RecordingImport.personName(fromFileName: "Dana 2024-05-03.m4a") == "Dana")
+        #expect(RecordingImport.personName(fromFileName: "Dana 03.05.2024.m4a") == "Dana")
+        #expect(RecordingImport.personName(fromFileName: "Dana_2024_05.m4a") == "Dana")
+        #expect(RecordingImport.personName(fromFileName: "דנה 05-03.m4a") == "דנה")
+        #expect(RecordingImport.personName(fromFileName: "Dana 2024-05-03 (2).m4a") == "Dana")
+        #expect(RecordingImport.personName(fromFileName: "Dana 1234567890123456789012345678901234x.m4a") == "Dana 1234567890123456789012345678901234x")
+    }
+
     @Test("a file named only by a number gives no name")
     func numberOnly() {
         #expect(RecordingImport.personName(fromFileName: "12.m4a") == nil)
