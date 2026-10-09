@@ -99,6 +99,13 @@ struct StoppedCaptionsNoticeTests {
         }
     }
 
+    @Test("the notice breaks through Focus: captions stopping in a pocket is something to know now")
+    func urgent() {
+        #expect(StoppedCaptionsNotice.content(for: .callEnded).isUrgent)
+        #expect(StoppedCaptionsNotice.content(for: .failed(glitch)).isUrgent)
+        #expect(StoppedCaptionsNotice.content(for: .failed(glitch)).threadIdentifier == "status")
+    }
+
     @Test("the message says what she can do about it")
     func wording() {
         let callEnded = StoppedCaptionsNotice.content(for: .callEnded).body

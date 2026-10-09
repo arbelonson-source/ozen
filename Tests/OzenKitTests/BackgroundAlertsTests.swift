@@ -29,6 +29,8 @@ struct BackgroundAlertPolicyTests {
         let siren = policy.notification(for: sound("civil_defense_siren"), appIsActive: false, now: 0)
         #expect(siren?.isUrgent == true)
         #expect(siren?.threadIdentifier == "sounds")
+        let sample = BackgroundAlertPolicy.testNotification
+        #expect(sample.isUrgent == false && sample.threadIdentifier == bell?.threadIdentifier)
     }
 
     @Test("the same sound or word notifies once per cooldown, different ones independently")
