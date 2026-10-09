@@ -305,6 +305,22 @@ struct BetterModelOfferTests {
         #expect(settings.offersBetterModel(at: start.addingTimeInterval(61 * day)))
     }
 
+    @Test("the count of \"Not now\" survives a relaunch, so the next one still waits two weeks")
+    func declinesSurviveRelaunch() throws {
+        let day = 86_400.0
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        var settings = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"hasCompletedOnboarding":true,"whisperModelVariant":"small"}"#.utf8))
+        settings.snoozeBetterModelOffer(from: start)
+
+        var relaunched = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
+        #expect(relaunched.betterModelOfferDeclines == 1)
+        relaunched.snoozeBetterModelOffer(from: start)
+        #expect(relaunched.offersBetterModel(at: start.addingTimeInterval(13 * day)) == false)
+
+        let damaged = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"hasCompletedOnboarding":true,"whisperModelVariant":"small","betterModelOfferDeclines":-4}"#.utf8))
+        #expect(damaged.betterModelOfferDeclines == 0)
+    }
+
     @Test("a phone that turned the offer down for good in an older build is asked once more")
     func oldDismissal() throws {
         let old = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"hasCompletedOnboarding":true,"whisperModelVariant":"small","betterModelOfferDismissed":true}"#.utf8))

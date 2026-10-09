@@ -29,6 +29,15 @@ struct CaptionAnnouncerTests {
         #expect(announcer.announcement(for: [finished, open], speakerName: { _ in nil }) == "שלום מה שלומך")
     }
 
+    @Test("more new lines at once than the few rechecked ones are all read out")
+    func burstIsReadWhole() {
+        var announcer = CaptionAnnouncer()
+        let earlier = [line("one"), line("two")]
+        announcer.skipLinesSoFar(earlier)
+        let burst = (1...12).map { line("line \($0)") }
+        #expect(announcer.announcement(for: earlier + burst, speakerName: { _ in nil }) == burst.map(\.text).joined(separator: "\n"))
+    }
+
     @Test("a line the engine was unsure of is read out with the warning the screen reader gives it")
     func unsureLineSaysSo() {
         var announcer = CaptionAnnouncer()
