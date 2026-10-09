@@ -50,6 +50,16 @@ struct ModelDiskSpaceTests {
         #expect(ModelDiskSpace.state(of: folder, partialFolder: partial) == .verified)
     }
 
+    @Test("a download cut off while the last bundle's weights were arriving shows as interrupted, not installed")
+    func cutOffLate() throws {
+        for bundle in ModelFolderInspector.requiredBundles {
+            try write(1, to: "\(bundle)/coremldata.bin", in: folder)
+        }
+        #expect(ModelDiskSpace.state(of: folder, partialFolder: partial) == .unverified)
+        try write(300, to: "TextDecoder.mlmodelc/weights/weight.bin.0a1b.incomplete", in: partial)
+        #expect(ModelDiskSpace.state(of: folder, partialFolder: partial) == .partial)
+    }
+
     @Test("a model's size counts the file still arriving")
     func sizeCountsArriving() throws {
         try write(300, to: "AudioEncoder.mlmodelc/coremldata.bin", in: folder)

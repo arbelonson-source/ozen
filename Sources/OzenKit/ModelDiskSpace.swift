@@ -9,7 +9,8 @@ public enum ModelDiskSpace {
 
     public static func state(of folder: URL, partialFolder: URL, fileManager: FileManager = .default) -> ModelFolderState {
         let state = ModelFolderInspector.state(of: folder, fileManager: fileManager)
-        return state == .missing && bytes(in: partialFolder, counting: { $0.hasSuffix(".incomplete") }) > 0 ? .partial : state
+        guard state == .missing || state == .unverified else { return state }
+        return bytes(in: partialFolder, counting: { $0.hasSuffix(".incomplete") }) > 0 ? .partial : state
     }
 
     public static func size(of folder: URL, partialFolder: URL) -> Int64 {
