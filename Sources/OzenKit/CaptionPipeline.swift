@@ -1631,6 +1631,7 @@ public final class CaptionPipeline {
                 utteranceClusterAssignments[token.utteranceID] = recent.id
             }
         }
+        enriched.scoredBy = activeSettings.map { CaptionConfidence.Scorer(engine: $0.engine, model: $0.whisperModelVariant) }
         let previously = stabilizer.segments.last { $0.id == token.utteranceID }
         let segment = stabilizer.ingest(enriched)
         noteFinished(segment, previously: previously)

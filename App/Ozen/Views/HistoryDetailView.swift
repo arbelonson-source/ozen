@@ -55,7 +55,7 @@ struct HistoryDetailView: View {
                     NumberLineLabel(
                         segment: segment,
                         isUncertain: viewModel.display.markUncertainLines
-                            && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: record.engine, model: record.modelVariant)
+                            && CaptionConfidence.isUncertain(segment, engine: record.engine, model: record.modelVariant)
                     )
                 }
                 .accessibilityHint(tr("מעבר לשורה בשיחה", "Jump to this line in the conversation"))
@@ -504,7 +504,7 @@ private struct SavedLineRow: View {
     }
 
     private var isUncertain: Bool {
-        markUncertain && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: engine, model: model)
+        markUncertain && CaptionConfidence.isUncertain(segment, engine: engine, model: model)
     }
 
     private var timeText: String {

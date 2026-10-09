@@ -47,6 +47,8 @@ public struct TranscriptToken: Sendable, Equatable {
     /// The words the engine was least sure of, when it can tell one word
     /// from another (see `UncertainWords`). Empty means nothing to mark.
     public var uncertainWords: [String]
+    /// Set by the pipeline, which knows which engine and model are running.
+    public var scoredBy: CaptionConfidence.Scorer? = nil
 
     public init(
         utteranceID: UUID,

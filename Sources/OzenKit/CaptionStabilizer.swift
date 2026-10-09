@@ -30,6 +30,10 @@ public struct TranscriptSegment: Identifiable, Sendable, Equatable {
     /// `UncertainWords`): at the doctor's it matters whether the doubt is
     /// about "10:30" or about "thank you".
     public var uncertainWords: [String] = []
+    /// Who gave `confidence`: a line is judged on its writer's scale, so a
+    /// switch to another model, or the phone's own covering for the home
+    /// computer, doesn't re-judge the lines written before it.
+    public var scoredBy: CaptionConfidence.Scorer? = nil
 }
 
 /// When a caption line should say "this may not be what was said".
@@ -38,6 +42,18 @@ public struct TranscriptSegment: Identifiable, Sendable, Equatable {
 /// strange one. A small mark on the lines the engine itself was unsure
 /// about tells her when it's worth asking again.
 public enum CaptionConfidence {
+    /// The engine, and for the phone's own Whisper the model, whose scale a
+    /// line's confidence is on.
+    public struct Scorer: Codable, Sendable, Equatable {
+        public var engine: TranscriptionEngineKind
+        public var model: String?
+
+        public init(engine: TranscriptionEngineKind, model: String? = nil) {
+            self.engine = engine
+            self.model = engine == .whisperKit ? model : nil
+        }
+    }
+
     /// Whisper's score, on the phone or the home computer, is e^(mean
     /// log-probability), averaged the same way on both
     /// (`WhisperSegmentSummary.averageLogprob`), and it sits near 1. On 368
@@ -106,8 +122,16 @@ public enum CaptionConfidence {
         }
     }
 
+    /// `engine` and `model` stand in for a line from before lines kept
+    /// their own `scoredBy`.
     public static func isUncertain(_ segment: TranscriptSegment, engine: TranscriptionEngineKind, model: String? = nil) -> Bool {
-        isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: engine, model: model)
+        isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text,
+                    engine: segment.scoredBy?.engine ?? engine, model: segment.scoredBy.map(\.model) ?? model)
+    }
+
+    public static func isUncertain(_ segment: SavedSegment, engine: TranscriptionEngineKind, model: String? = nil) -> Bool {
+        isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text,
+                    engine: segment.scoredBy?.engine ?? engine, model: segment.scoredBy.map(\.model) ?? model)
     }
 
     /// Only finished lines: a line still being written changes its mind.
@@ -222,6 +246,7 @@ public struct CaptionStabilizer: Sendable {
             segments[index].lastUpdateTimestamp = token.timestamp
             if let confidence = token.confidence {
                 segments[index].confidence = confidence
+                segments[index].scoredBy = token.scoredBy
             }
             // Each update describes its own text: the doubts of the pass
             // before don't carry over to words that may have changed.
@@ -245,7 +270,8 @@ public struct CaptionStabilizer: Sendable {
             startTimestamp: token.timestamp,
             lastUpdateTimestamp: token.timestamp,
             confidence: token.confidence,
-            uncertainWords: token.uncertainWords
+            uncertainWords: token.uncertainWords,
+            scoredBy: token.confidence == nil ? nil : token.scoredBy
         )
         segments.append(segment)
         if !segment.isCommitted {

@@ -1136,6 +1136,27 @@ struct TranscriptHistoryAllStarredTests {
         #expect(TranscriptHistoryStore.exportText(a3Record, utcOffsetAt: { _ in 0 }, marksUncertain: true).contains("ייתכן שלא נשמע נכון."))
     }
 
+    @Test("a conversation that switched models judges each saved line by the model that wrote it; an older line by the conversation's")
+    func unsureByLineScorer() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-unsure-line-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        let a3 = "ozen-turbo-hebrew-a3-8bit"
+        var before = line("שני כדורים בעשר וחצי", starred: true)
+        before.confidence = 0.82
+        before.scoredBy = CaptionConfidence.Scorer(engine: .whisperKit, model: "ivrit-large-v3-turbo-8bit")
+        var unstamped = line("שני כדורים בעשר וחצי", starred: true)
+        unstamped.confidence = 0.82
+        let record = TranscriptSessionRecord(startedAt: 900, engine: .whisperKit, modelVariant: a3, inputName: nil, segments: [before, unstamped])
+        try store.save(record)
+
+        let loaded = try #require(store.load(id: record.id))
+        #expect(loaded.segments.map(\.scoredBy) == [before.scoredBy, nil])
+        #expect(store.starredLines().map(\.isUncertain) == [false, true])
+        let exported = TranscriptHistoryStore.exportText(loaded, utcOffsetAt: { _ in 0 }, marksUncertain: true)
+        #expect(exported.components(separatedBy: "ייתכן שלא נשמע נכון.").count == 2)
+    }
+
     @Test("no stars anywhere gives an empty list")
     func none() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-no-stars-\(UUID())")

@@ -2323,6 +2323,33 @@ struct CaptionPipelineAlertTests {
         #expect(pipeline.bannerSecondsLeft(for: siren) == 0)
     }
 
+    @Test("a line keeps the scale of the model that wrote it: switching to the noise-trained model doesn't re-judge the lines before")
+    func lineKeepsItsScorer() async throws {
+        let engine = FakeEngine()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
+        let a3 = "ozen-turbo-hebrew-a3-8bit"
+        let line = "נפגשים מחר בבוקר אצל הרופא"
+        var ivrit = AppSettings.default
+        ivrit.whisperModelVariant = "ivrit-large-v3-turbo-8bit"
+        var noiseTrained = ivrit
+        noiseTrained.whisperModelVariant = a3
+
+        await pipeline.start(settings: ivrit)
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: line, isFinal: true, timestamp: 100, confidence: 0.82))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        await pipeline.restart(settings: noiseTrained)
+        #expect(await eventually { pipeline.phase.isListening })
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: line, isFinal: true, timestamp: 110, confidence: 0.82))
+        #expect(await eventually { pipeline.segments.count == 2 })
+
+        #expect(CaptionConfidence.isUncertain(pipeline.segments[0], engine: .whisperKit, model: a3) == false)
+        #expect(CaptionConfidence.isUncertain(pipeline.segments[1], engine: .whisperKit, model: a3))
+        #expect(pipeline.segments.map(\.scoredBy) == [
+            CaptionConfidence.Scorer(engine: .whisperKit, model: "ivrit-large-v3-turbo-8bit"),
+            CaptionConfidence.Scorer(engine: .whisperKit, model: a3),
+        ])
+    }
+
     @Test("a lesser sound heard during a siren's banner still buzzes and is read out, but the siren keeps the banner and the rest of its time")
     func lesserSoundLeavesTheBanner() async throws {
         let clock = TestClock()

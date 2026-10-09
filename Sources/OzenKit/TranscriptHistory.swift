@@ -22,6 +22,9 @@ public struct SavedSegment: Codable, Sendable, Equatable, Identifiable {
     public var confidence: Float? {
         didSet { if let confidence, !confidence.isFinite { self.confidence = nil } }
     }
+    /// See `TranscriptSegment.scoredBy`. Lines saved before it existed are
+    /// judged by the conversation's engine and model.
+    public var scoredBy: CaptionConfidence.Scorer?
 
     public init(
         id: UUID,
@@ -31,7 +34,8 @@ public struct SavedSegment: Codable, Sendable, Equatable, Identifiable {
         startTimestamp: TimeInterval,
         isCommitted: Bool,
         isStarred: Bool = false,
-        confidence: Float? = nil
+        confidence: Float? = nil,
+        scoredBy: CaptionConfidence.Scorer? = nil
     ) {
         self.id = id
         self.text = text
@@ -41,10 +45,11 @@ public struct SavedSegment: Codable, Sendable, Equatable, Identifiable {
         self.isCommitted = isCommitted
         self.isStarred = isStarred
         self.confidence = confidence.flatMap { $0.isFinite ? $0 : nil }
+        self.scoredBy = scoredBy
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, text, speakerName, speakerClusterID, startTimestamp, isCommitted, isStarred, confidence
+        case id, text, speakerName, speakerClusterID, startTimestamp, isCommitted, isStarred, confidence, scoredBy
     }
 
     /// Lines saved before stars existed load as not starred.
@@ -58,6 +63,7 @@ public struct SavedSegment: Codable, Sendable, Equatable, Identifiable {
         isCommitted = try container.decode(Bool.self, forKey: .isCommitted)
         isStarred = try container.decodeIfPresent(Bool.self, forKey: .isStarred) ?? false
         confidence = try container.decodeIfPresent(Float.self, forKey: .confidence)
+        scoredBy = try? container.decodeIfPresent(CaptionConfidence.Scorer.self, forKey: .scoredBy)
     }
 }
 
@@ -126,7 +132,8 @@ public struct TranscriptSessionRecord: Codable, Sendable, Equatable, Identifiabl
                 startTimestamp: segment.startTimestamp,
                 isCommitted: segment.isCommitted,
                 isStarred: starred.contains(segment.id),
-                confidence: segment.confidence
+                confidence: segment.confidence,
+                scoredBy: segment.scoredBy
             )
         }
         return TranscriptSessionRecord(
@@ -209,7 +216,7 @@ public struct StarredLine: Sendable, Equatable, Identifiable {
     public var id: UUID { segment.id }
     /// Whether the line carried the question mark on screen.
     public var isUncertain: Bool {
-        CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: engine, model: model)
+        CaptionConfidence.isUncertain(segment, engine: engine, model: model)
     }
 
     public init(sessionID: UUID, sessionStartedAt: TimeInterval, segment: SavedSegment, sessionTitle: String? = nil, engine: TranscriptionEngineKind = .whisperKit, model: String? = nil) {
@@ -945,7 +952,7 @@ public struct TranscriptHistoryStore: Sendable {
                 let said = CaptionLayout.isolatingNumbers(segment.text)
                 // The question mark the screen showed, in words: whoever
                 // reads "two pills at ten thirty" in a chat should know too.
-                let unsure = marksUncertain && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: record.engine, model: record.modelVariant)
+                let unsure = marksUncertain && CaptionConfidence.isUncertain(segment, engine: record.engine, model: record.modelVariant)
                 let warning = unsure ? tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") : ""
                 let line: String
                 // "Unknown speaker:" on every unrecognised line says nothing;
