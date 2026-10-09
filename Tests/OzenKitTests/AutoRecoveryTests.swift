@@ -308,6 +308,44 @@ struct CaptionPipelineRecoveryTests {
         #expect(await eventually { pipeline.phase.isListening })
     }
 
+    @Test("a phone call holds off the retry that was lined up: captions don't start during the call", .timeLimit(.minutes(1)))
+    func phoneCallHoldsTheLinedUpRetry() async throws {
+        let engine = FakeEngine()
+        let pipeline = makeRecoveringPipeline(
+            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: []), clock: TestClock()
+        )
+        await pipeline.start(settings: .default)
+        engine.endStream(throwing: TestError())
+        #expect(await eventually { pipeline.scheduledRetry != nil })
+        let prepares = engine.prepareCount
+
+        pipeline.systemInterruptionChanged(active: true)
+        #expect(pipeline.scheduledRetry == nil)
+        try await Task.sleep(for: .seconds(0.8))
+        #expect(pipeline.phase.failure != nil)
+        #expect(engine.prepareCount == prepares)
+    }
+
+    @Test("the end of a phone call gives captions stopped before it a fresh set of attempts")
+    func phoneCallEndGivesFreshAttempts() async {
+        let engine = FakeEngine()
+        let pipeline = makeRecoveringPipeline(
+            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []), clock: TestClock()
+        )
+        await pipeline.start(settings: .default)
+        engine.endStream(throwing: TestError())
+        #expect(await eventually { pipeline.phase.failure != nil })
+        #expect(await eventually { pipeline.phase.isListening && pipeline.scheduledRetry == nil })
+        engine.endStream(throwing: TestError())
+        #expect(await eventually { pipeline.phase.failure != nil })
+        #expect(pipeline.scheduledRetry == nil)
+
+        pipeline.systemInterruptionChanged(active: true)
+        pipeline.systemInterruptionChanged(active: false)
+        #expect(pipeline.scheduledRetry != nil)
+        #expect(await eventually { pipeline.phase.isListening })
+    }
+
     @Test("failing again right after a recovery does not get a fresh set of attempts")
     func quickRefailExhausts() async {
         let engine = FakeEngine()
