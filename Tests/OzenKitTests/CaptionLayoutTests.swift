@@ -27,6 +27,15 @@ struct CaptionLayoutTests {
         #expect(readable.hasPrefix("כן. בטח. למה לא?\n"))
     }
 
+    @Test("a paragraph is filled right up to the limit, and never a character past it")
+    func paragraphLimitIsExact() {
+        func sentence(_ length: Int) -> String { String(repeating: "מ", count: length - 1) + "." }
+        #expect(CaptionLayout.readableText([sentence(10), sentence(9), sentence(10)].joined(separator: " "), paragraphCharacters: 20)
+            == sentence(10) + " " + sentence(9) + "\n" + sentence(10))
+        #expect(CaptionLayout.readableText(sentence(10) + " " + sentence(10), paragraphCharacters: 20)
+            == sentence(10) + "\n" + sentence(10))
+    }
+
     @Test("decimals, abbreviations with gershayim, and quotes after the stop don't split wrongly")
     func noFalseSplits() {
         #expect(CaptionLayout.splitSentences("הוא לקח 3.5 כדורים של ד״ר כהן.") == ["הוא לקח 3.5 כדורים של ד״ר כהן."])
