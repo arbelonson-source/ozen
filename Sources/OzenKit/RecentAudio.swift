@@ -68,7 +68,9 @@ public struct ProblemAudioStore: Sendable {
         } catch {
             return nil
         }
-        for old in clips().dropFirst(keep) {
+        // Never the clip just written: names follow the local clock, and one
+        // set back (daylight saving ending, a flight west) names it oldest.
+        for old in clips().filter({ $0.lastPathComponent != url.lastPathComponent }).dropFirst(max(keep - 1, 0)) {
             try? FileManager.default.removeItem(at: old)
         }
         return url

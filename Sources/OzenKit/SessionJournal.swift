@@ -52,6 +52,7 @@ public final class SessionJournal: @unchecked Sendable {
     public func append(_ text: String, at time: TimeInterval) {
         let singleLine = text
             .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
             .replacingOccurrences(of: "\t", with: " ")
         let clipped = singleLine.count > Self.textLimit ? String(singleLine.prefix(Self.textLimit)) + "…" : singleLine
         let line = "\(String(format: "%.2f", time))\t\(clipped)\n"

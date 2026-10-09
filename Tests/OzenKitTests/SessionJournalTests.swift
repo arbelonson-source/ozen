@@ -40,6 +40,14 @@ struct SessionJournalTests {
         #expect(journal.entries().last?.at == 1_800_000_100)
     }
 
+    @Test("a caption ending in a carriage return doesn't swallow the line after it")
+    func carriageReturnKeepsLinesApart() {
+        let journal = SessionJournal(fileURL: temporaryFile())
+        journal.append("  line (final, sure -, 10:00:00): hello\r", at: 1_800_000_000)
+        journal.append("  sound saved: problem-x.wav", at: 1_800_000_001)
+        #expect(journal.entries().map(\.text) == ["  line (final, sure -, 10:00:00): hello ", "  sound saved: problem-x.wav"])
+    }
+
     @Test("the caption lines a marked problem kept can be taken out, and everything else stays")
     func removesSpokenLines() {
         let url = temporaryFile()

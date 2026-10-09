@@ -54,6 +54,19 @@ struct RecentAudioTests {
         #expect(store.clips().count == 1)
     }
 
+    @Test("the clip just saved stays even when the clock went back since the last one")
+    func justSavedClipSurvivesAClockSetBack() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-problem-audio-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ProblemAudioStore(directory: directory, keep: 2)
+        let start = 1_792_879_800.0
+        _ = store.save([0.1], sampleRate: 16_000, at: Date(timeIntervalSince1970: start))
+        _ = store.save([0.1], sampleRate: 16_000, at: Date(timeIntervalSince1970: start + 300))
+        let afterClockChange = try #require(store.save([0.1], sampleRate: 16_000, at: Date(timeIntervalSince1970: start - 2_400)))
+        #expect(FileManager.default.fileExists(atPath: afterClockChange.path))
+        #expect(store.clips().count == 2)
+    }
+
     @Test("deleting everything removes every clip")
     func deleteAll() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-problem-audio-\(UUID())")
