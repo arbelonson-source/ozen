@@ -1,4 +1,5 @@
 import io
+import ipaddress
 import json
 import os
 import runpy
@@ -31,10 +32,20 @@ class TailscaleAddress(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             fake = os.path.join(folder, "tailscale")
             with open(fake, "w", encoding="utf-8") as f:
-                f.write("#!/bin/sh\necho '{\"Self\": {\"DNSName\": \"desktop.tail0example.ts.net.\"}}'\n")
+                answer = json.dumps({"Self": {"DNSName": "desktop.tail0example.ts.net."}})
+                f.write(f"#!/bin/sh\n[ \"$*\" = \"status --json\" ] && echo '{answer}'\n")
             os.chmod(fake, 0o755)
             with mock.patch.dict("os.environ", {"PATH": folder}):
                 self.assertEqual(pairing.tailscale_address(), "wss://desktop.tail0example.ts.net")
+
+    def test_the_full_path_follows_where_windows_keeps_its_programs(self):
+        import importlib
+        try:
+            with mock.patch.dict("os.environ", {"ProgramFiles": "D:\\Apps"}):
+                importlib.reload(pairing)
+                self.assertEqual(pairing.TAILSCALE_PATHS[1], os.path.join("D:\\Apps", "Tailscale", "tailscale.exe"))
+        finally:
+            importlib.reload(pairing)
 
     def test_no_tailscale_anywhere_gives_no_address(self):
         def run(command, **_):
@@ -67,10 +78,11 @@ class LanAddress(unittest.TestCase):
         with mock.patch.object(pairing.socket, "socket", Probe):
             return pairing.lan_address(), probes
 
-    def test_the_home_address_is_the_one_the_computer_reaches_out_from_and_the_probe_is_closed(self):
+    def test_the_home_address_is_the_one_a_probe_to_a_documentation_address_leaves_from(self):
         address, probes = self.find()
         self.assertEqual(address, "192.168.1.20")
         self.assertTrue(probes[0].closed)
+        self.assertIn(ipaddress.ip_address(probes[0].peer[0]), ipaddress.ip_network("192.0.2.0/24"))
 
     def test_no_network_gives_no_address_and_still_closes_the_probe(self):
         address, probes = self.find(reachable=False)
