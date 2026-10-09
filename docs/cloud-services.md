@@ -7,8 +7,8 @@ ours, and each service's key stays in the phone's Keychain. If the key stops
 working, the credit runs out or the internet goes, a Whisper model already on
 the phone takes over and the status line says so.
 
-Today Ozen offers Soniox, Deepgram and OpenRouter (which passes the audio on
-to a Google Gemini model). OpenAI, Gemini directly from Google, Groq,
+Today Ozen offers Soniox, Deepgram, OpenAI, Groq and OpenRouter (which
+passes the audio on to a Google Gemini model). Gemini directly from Google,
 ElevenLabs, Speechmatics and AssemblyAI are planned.
 
 ## Which one should I use?
@@ -20,6 +20,10 @@ ElevenLabs, Speechmatics and AssemblyAI are planned.
 - Deepgram, to try cloud captions for free: a new account gets $200 of free
   credit with no card, which is many months of captions. It is the second
   most accurate cloud service on the same test, ahead of OpenAI's models.
+- OpenAI or Groq, for Amharic, which neither Soniox nor Deepgram has, or
+  for anyone who already has one of their keys. Groq is the cheaper of the
+  two and has a free plan, but its words only appear once each sentence is
+  finished.
 - OpenRouter stays for anyone who already has a key.
 
 For Hebrew, the phone's own Hebrew model is about as accurate as Soniox on
@@ -42,15 +46,18 @@ it costs its list price for every hour of captions, quiet moments included.
 The other services get a request per sentence, sent only while someone
 speaks, but each sentence is sent again every couple of seconds while it is
 being said so the words appear as they are spoken: an hour of speech costs
-about two and a half times their list price.
+about two and a half times their list price. Groq is the exception: it
+counts every request as at least ten seconds, so Ozen sends it each sentence
+once, when it ends, which comes to about two and a half times its list price
+too, with no words until the sentence is finished.
 
 | Service | In Ozen | Hebrew, podcasts | Hebrew, voice notes | List price per hour | Free to start |
 |---|---|---|---|---|---|
 | Soniox (stt-rt-v5) | yes | 4.8% | 9.0% | $0.12 | not stated |
 | Deepgram (Nova-3) | yes | 6.7% | 12.0% | $0.26 | $200, no card |
 | OpenRouter (Google Gemini) | yes | not tested | not tested | see openrouter.ai | no |
-| OpenAI (gpt-4o-transcribe) | planned | 7.3% | 12.6% | $0.36 | no |
-| Groq (Whisper large-v3) | planned | 9.8% | 13.2% | $0.11 | free tier |
+| OpenAI (gpt-4o-transcribe) | yes | 7.3% | 12.6% | $0.36 | no |
+| Groq (Whisper large-v3) | yes | 9.8% | 13.2% | $0.11 | free tier |
 | ElevenLabs (Scribe v1) | planned | 20.0% | 26.4% | $0.22 | free plan |
 | The phone's own model (ivrit.ai Turbo) | built in | 5.3% | 7.1% | free | - |
 
@@ -65,6 +72,8 @@ Of Ozen's twelve caption languages:
 - Soniox writes eleven, all but Amharic.
 - Deepgram writes eleven. Chinese goes to its older Nova-2 model, the only
   one of Deepgram's with Chinese. Amharic it does not have.
+- OpenAI and Groq are sent all twelve, Amharic too; their accuracy outside
+  Hebrew was not measured here.
 - OpenRouter is sent all twelve; Gemini's accuracy outside Hebrew was not
   measured here.
 
@@ -91,6 +100,22 @@ carries on.
 2. In the Deepgram console, create an API key.
 3. In Ozen, pick Deepgram as the service, paste the key and save it.
 
+### OpenAI
+
+1. Sign in at [platform.openai.com](https://platform.openai.com) and add
+   credit under Billing.
+2. Create a key on the [API keys page](https://platform.openai.com/api-keys).
+3. In Ozen, pick OpenAI as the service, paste the key and save it.
+
+### Groq
+
+1. Sign in at [console.groq.com](https://console.groq.com).
+2. Create a key on the [API keys page](https://console.groq.com/keys).
+3. In Ozen, pick Groq as the service, paste the key and save it.
+
+Groq's free plan has usage limits; past them, the phone's own model carries
+on for a while.
+
 ### OpenRouter
 
 1. Sign in at [openrouter.ai](https://openrouter.ai) and add some credit.
@@ -109,9 +134,14 @@ key again.
 - Deepgram: audio is sent only while someone is speaking, with the lists.
   Every request from Ozen tells Deepgram not to use the audio to improve its
   models (`mip_opt_out`).
+- OpenAI: audio is sent only while someone is speaking, with the names
+  that fit Whisper's prompt (about the first twenty). OpenAI's terms apply.
+- Groq: each sentence is sent once, when it ends, with the same names.
+  Groq's terms apply. Off Wi-Fi this uses about 150 MB of mobile data an
+  hour of speech.
 - OpenRouter: audio is sent only while someone is speaking, with the lists,
   and passed on to Google; OpenRouter's and Google's terms apply.
 
-Off Wi-Fi, Deepgram and OpenRouter use a few hundred MB of mobile data an
-hour of speech, up to about 1 GB, because each sentence is sent several
-times.
+Off Wi-Fi, Deepgram, OpenAI and OpenRouter use a few hundred MB of mobile
+data an hour of speech, up to about 1 GB, because each sentence is sent
+several times.

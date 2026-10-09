@@ -192,6 +192,49 @@ struct CloudSpeechEngineTests {
         #expect(sent.headers["Authorization"] == "Token dg-test")
     }
 
+    @Test("Groq gets each sentence once, when it ends, since it bills a request as at least ten seconds; OpenAI gets the live guesses as the others do")
+    func groqWaitsForTheEnd() async throws {
+        let answer = FakeCloudHTTP.Answer.status(200, #"{"text":"שלום לכולם"}"#)
+        let groqHTTP = FakeCloudHTTP(answers: [answer])
+        let openAIHTTP = FakeCloudHTTP(answers: [answer])
+        let groq = CloudSpeechEngine(provider: .groq, http: groqHTTP, failedSegmentPauseSeconds: 0.001, apiKey: { "gsk-test" })
+        let openAI = CloudSpeechEngine(provider: .openAI, http: openAIHTTP, failedSegmentPauseSeconds: 0.001, apiKey: { "sk-test" })
+        let (groqAudio, groqInput) = AsyncStream<[Float]>.makeStream()
+        let (openAIAudio, openAIInput) = AsyncStream<[Float]>.makeStream()
+        let groqTokens = groq.stream(languageCode: "he", audio: groqAudio)
+        let openAITokens = openAI.stream(languageCode: "he", audio: openAIAudio)
+        let groqHeard = Task {
+            var received: [TranscriptToken] = []
+            for try await token in groqTokens { received.append(token) }
+            return received
+        }
+        let openAIHeard = Task {
+            var received: [TranscriptToken] = []
+            for try await token in openAITokens { received.append(token) }
+            return received
+        }
+        for chunk in speech(seconds: 3) {
+            groqInput.yield(chunk)
+            openAIInput.yield(chunk)
+        }
+        #expect(await eventually { openAIHTTP.transcriptionRequests.count == 1 })
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(groqHTTP.transcriptionRequests.isEmpty)
+        for chunk in silence(seconds: 1) {
+            groqInput.yield(chunk)
+            openAIInput.yield(chunk)
+        }
+        groqInput.finish()
+        openAIInput.finish()
+        let fromGroq = try await groqHeard.value
+        _ = try await openAIHeard.value
+        #expect(fromGroq.map(\.text) == ["שלום לכולם"] && fromGroq.allSatisfy { $0.isFinal })
+        #expect(groqHTTP.transcriptionRequests.count == 1)
+        #expect(groqHTTP.transcriptionRequests.first?.url.host == "api.groq.com")
+        #expect(openAIHTTP.transcriptionRequests.count == 2)
+        #expect(openAIHTTP.transcriptionRequests.last?.headers["Authorization"] == "Bearer sk-test")
+    }
+
     @Test("a quiet room sends nothing and shows nothing")
     func silenceOnly() async throws {
         let http = FakeCloudHTTP(answers: [.text("תודה")])

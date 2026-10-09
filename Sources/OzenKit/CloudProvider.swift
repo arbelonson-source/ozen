@@ -1,31 +1,33 @@
 import Foundation
 
 public enum CloudProvider: String, Codable, Sendable, CaseIterable {
-    case openRouter
-    case deepgram
     case soniox
+    case deepgram
+    case openAI
+    case groq
+    case openRouter
 
     public var name: String {
         switch self {
-        case .openRouter: "OpenRouter"
-        case .deepgram: "Deepgram"
         case .soniox: "Soniox"
+        case .deepgram: "Deepgram"
+        case .openAI: "OpenAI"
+        case .groq: "Groq"
+        case .openRouter: "OpenRouter"
         }
     }
 
     public var models: [String] {
-        switch self {
-        case .openRouter: CloudSpeech.models
-        case .deepgram: [DeepgramSpeech.model]
-        case .soniox: [SonioxSpeech.model]
-        }
+        self == .openRouter ? CloudSpeech.models : [defaultModel]
     }
 
     public var defaultModel: String {
         switch self {
-        case .openRouter: CloudSpeech.accurateModel
-        case .deepgram: DeepgramSpeech.model
         case .soniox: SonioxSpeech.model
+        case .deepgram: DeepgramSpeech.model
+        case .openAI: OpenAICompatibleSpeech.openAI.model
+        case .groq: OpenAICompatibleSpeech.groq.model
+        case .openRouter: CloudSpeech.accurateModel
         }
     }
 
@@ -35,14 +37,18 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
 
     public func covers(languageCode: String) -> Bool {
         switch self {
-        case .openRouter: true
-        case .deepgram: DeepgramSpeech.languages.contains(languageCode)
         case .soniox: SonioxSpeech.languages.contains(languageCode)
+        case .deepgram: DeepgramSpeech.languages.contains(languageCode)
+        case .openAI, .groq, .openRouter: true
         }
     }
 
     public var streams: Bool {
         self == .soniox
+    }
+
+    public var livePasses: Bool {
+        self != .groq
     }
 
     public func engine(
@@ -53,46 +59,49 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
     ) -> any TranscriptionEngine {
         switch self {
         case .soniox: SonioxEngine(http: http, connector: connector, apiKey: apiKey)
-        case .openRouter, .deepgram: CloudSpeechEngine(provider: self, model: model, http: http, apiKey: apiKey)
+        case .deepgram, .openAI, .groq, .openRouter: CloudSpeechEngine(provider: self, model: model, http: http, apiKey: apiKey)
         }
     }
 
     public func transcriptionRequest(model: String, apiKey: String, wav: Data, languageCode: String, vocabulary: [String]) -> CloudHTTPRequest? {
         switch self {
-        case .openRouter: CloudSpeech.completionRequest(model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
-        case .deepgram: DeepgramSpeech.request(model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
         case .soniox: nil
+        case .deepgram: DeepgramSpeech.request(model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
+        case .openAI: OpenAICompatibleSpeech.request(OpenAICompatibleSpeech.openAI, model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
+        case .groq: OpenAICompatibleSpeech.request(OpenAICompatibleSpeech.groq, model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
+        case .openRouter: CloudSpeech.completionRequest(model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
         }
     }
 
     public func transcript(from response: CloudHTTPResponse) throws(CloudSpeechError) -> String {
         switch self {
-        case .openRouter: try CloudSpeech.transcript(from: response)
-        case .deepgram: try DeepgramSpeech.transcript(from: response)
         case .soniox: throw .badReply
+        case .deepgram: try DeepgramSpeech.transcript(from: response)
+        case .openAI, .groq: try OpenAICompatibleSpeech.transcript(from: response)
+        case .openRouter: try CloudSpeech.transcript(from: response)
         }
     }
 
     public func failure(from response: CloudHTTPResponse) -> CloudSpeechError {
         switch self {
-        case .openRouter: CloudSpeech.failure(from: response)
-        case .deepgram: DeepgramSpeech.failure(from: response)
         case .soniox: SonioxSpeech.failure(from: response)
+        case .deepgram: DeepgramSpeech.failure(from: response)
+        case .openAI, .groq: OpenAICompatibleSpeech.failure(from: response)
+        case .openRouter: CloudSpeech.failure(from: response)
         }
     }
 
     public func keyCheckRequest(apiKey: String) -> CloudHTTPRequest {
         switch self {
-        case .openRouter: CloudSpeech.keyCheckRequest(apiKey: apiKey)
-        case .deepgram: DeepgramSpeech.keyCheckRequest(apiKey: apiKey)
         case .soniox: SonioxSpeech.keyCheckRequest(apiKey: apiKey)
+        case .deepgram: DeepgramSpeech.keyCheckRequest(apiKey: apiKey)
+        case .openAI: OpenAICompatibleSpeech.keyCheckRequest(OpenAICompatibleSpeech.openAI, apiKey: apiKey)
+        case .groq: OpenAICompatibleSpeech.keyCheckRequest(OpenAICompatibleSpeech.groq, apiKey: apiKey)
+        case .openRouter: CloudSpeech.keyCheckRequest(apiKey: apiKey)
         }
     }
 
     public func hasCreditLeft(keyCheck response: CloudHTTPResponse) -> Bool {
-        switch self {
-        case .openRouter: CloudSpeech.hasCreditLeft(keyCheck: response)
-        case .deepgram, .soniox: true
-        }
+        self == .openRouter ? CloudSpeech.hasCreditLeft(keyCheck: response) : true
     }
 }

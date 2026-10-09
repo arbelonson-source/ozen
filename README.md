@@ -411,7 +411,8 @@ Open a section for the details.
   lose track of several people talking: what is said goes to the cloud
   speech service chosen in Settings, [Soniox](https://soniox.com) (which
   writes the words as they are said, over one open connection),
-  [Deepgram](https://deepgram.com) or a Google model through
+  [Deepgram](https://deepgram.com), [OpenAI](https://openai.com),
+  [Groq](https://groq.com) or a Google model through
   [OpenRouter](https://openrouter.ai) (more are being added), with your own
   key pasted into Settings (stored only in the phone's Keychain, one per
   service), together with the names and important words lists so it can

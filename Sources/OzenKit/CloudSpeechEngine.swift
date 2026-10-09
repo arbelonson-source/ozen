@@ -184,9 +184,12 @@ public actor CloudSpeechEngine: TranscriptionEngine {
             let tooLong = total >= maxSamples
             let isFinal = pauseReached || tooLong || status.finished
             // Never more often than a request takes, or they would pile up
-            // behind each other on a slow connection.
+            // behind each other on a slow connection. Not at all for a
+            // service that bills each request as ten seconds or more
+            // (`CloudProvider.livePasses`): a guess every two seconds would
+            // cost several times the sentence itself.
             let liveSamples = Int(max(Self.livePassSeconds, lastLivePassSeconds) * rate)
-            if !isFinal && total - samplesAtLastPass < liveSamples {
+            if !isFinal && (!provider.livePasses || total - samplesAtLastPass < liveSamples) {
                 try await Task.sleep(for: .milliseconds(50))
                 continue
             }
