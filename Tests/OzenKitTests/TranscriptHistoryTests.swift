@@ -331,7 +331,9 @@ struct TranscriptHistoryTests {
         try store.save(record(startedAt: 100, segments: [segment(text: "זה עולה 2,500 שקל")]))
         try store.save(record(startedAt: 200, segments: [segment(text: "תתקשרי אליו ל-050-1234567")]))
         try store.save(record(startedAt: 300, segments: [segment(text: "התור הוא בשעה 10:30")]))
+        try store.save(record(startedAt: 400, segments: [segment(text: "5:30 בבוקר, לא לשכוח")]))
 
+        #expect(store.search("530").count == 1)
         #expect(store.search("2500").count == 1)
         #expect(store.search("2,500").count == 1)
         #expect(store.search("0501234567").count == 1)
