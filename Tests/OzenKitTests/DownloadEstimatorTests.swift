@@ -92,12 +92,26 @@ struct DownloadEstimatorTests {
     }
 
     @Test("a download that starts over starts the estimate over")
-    func restart() {
+    func restart() throws {
         var estimator = DownloadEstimator()
         estimator.record(fraction: 0.5, at: 0)
         estimator.record(fraction: 0.6, at: 10)
         estimator.record(fraction: 0.0, at: 11)
         estimator.record(fraction: 0.01, at: 13)
+        #expect(estimator.secondsRemaining() == nil)
+        // The new download's own pace, not the old one's higher readings.
+        estimator.record(fraction: 0.11, at: 23)
+        let left = try #require(estimator.secondsRemaining())
+        #expect(abs(left - 89) < 0.5)
+    }
+
+    @Test("reset forgets the pace, so a new download is timed afresh")
+    func resetForgets() {
+        var estimator = DownloadEstimator()
+        estimator.record(fraction: 0.1, at: 0)
+        estimator.record(fraction: 0.2, at: 10)
+        #expect(estimator.secondsRemaining() != nil)
+        estimator.reset()
         #expect(estimator.secondsRemaining() == nil)
     }
 }
