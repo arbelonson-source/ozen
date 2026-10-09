@@ -1276,6 +1276,15 @@ class Reports(unittest.TestCase):
         finally:
             os.umask(previous)
 
+    def test_a_report_over_a_million_characters_is_kept_cut_to_the_first_million(self):
+        with tempfile.TemporaryDirectory() as folder:
+            reports = os.path.join(folder, "reports")
+            with mock.patch.object(S, "REPORTS_DIR", reports):
+                name = S.save_report("x" * 1_000_005, "Ozen 0.2")
+            with open(os.path.join(reports, name), encoding="utf-8") as f:
+                body = f.read().split("\n\n", 1)[1]
+        self.assertEqual(len(body), 1_000_000)
+
     def test_a_reports_folder_an_older_server_left_open_is_closed(self):
         import os
         import tempfile
