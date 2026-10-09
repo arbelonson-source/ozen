@@ -405,6 +405,8 @@ struct HomeServerEngineTests {
     func pcm() {
         let bytes = [UInt8](HomeServer.pcm16([0, 1, -1, 2, .nan]))
         #expect(bytes == [0, 0, 0xFF, 0x7F, 0x01, 0x80, 0xFF, 0x7F, 0, 0])
+        // Below -1 too: unclipped, -2 would not fit in 16 bits and stop the app.
+        #expect([UInt8](HomeServer.pcm16([-2])) == [0x01, 0x80])
     }
 
     @Test("a server that stays connected but never answers speech is given up on, so the phone's own model can take over; silence alone never is")
