@@ -170,6 +170,7 @@ public enum NumberEmphasis {
         let text: Substring
         /// The letters, without punctuation, quotes or direction marks.
         let coreRange: Range<String.Index>?
+        /// Those letters without vowel points, as the word lists have them.
         let core: String?
     }
 
@@ -185,7 +186,7 @@ public enum NumberEmphasis {
                     let first = slice.firstIndex(where: \.isLetter)
                     let last = slice.lastIndex(where: \.isLetter)
                     let core = first.flatMap { first in last.map { first..<slice.index(after: $0) } }
-                    words.append(Word(text: slice, coreRange: core, core: core.map { String(slice[$0]) }))
+                    words.append(Word(text: slice, coreRange: core, core: core.map { HebrewText.stripNiqqud(String(slice[$0])) }))
                     start = nil
                 }
             } else if start == nil {

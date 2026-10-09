@@ -37,6 +37,12 @@ struct NumberEmphasisTests {
         #expect(emphasized("\u{200F}\"לשניים\"") == ["לשניים"])
     }
 
+    @Test("a number word with vowel points stands out like the plain one, unit and all")
+    func pointedWords() {
+        #expect(emphasized("קחי שָׁלוֹשׁ כדורים") == ["שָׁלוֹשׁ כדורים"])
+        #expect(emphasized("בְּשֵׁשׁ בערב") == ["בְּשֵׁשׁ"])
+    }
+
     @Test("compound teens, tens-and-units, hundreds and time expressions chain into one span")
     func compoundNumbers() {
         #expect(emphasized("לקחת עשרים ושלושה כדורים") == ["עשרים ושלושה כדורים"])
