@@ -611,6 +611,18 @@ class Detector(unittest.TestCase):
             detector.swing = swing
             self.assertAlmostEqual(detector._ratio_now(), ratio, places=6, msg=swing)
 
+    def test_the_floor_follows_the_quietest_moment_of_the_last_three_seconds_even_a_single_one(self):
+        detector = S.EnergyVoiceDetector()
+        for index in range(90):
+            detector.is_speech(tone(0.0007 if index % 30 == 0 else 0.01, 1600))
+        self.assertLess(detector.floor, float(np.sqrt(np.mean(np.square(tone(0.0007, 1600))))) + 1e-9)
+
+    def test_the_swing_is_measured_from_the_quietest_chunk_to_the_fifth_quietest(self):
+        detector = S.EnergyVoiceDetector()
+        for index in range(30):
+            detector.is_speech(tone(0.001 if index < 6 else 0.01, 1600))
+        self.assertAlmostEqual(detector.swing, 2.0 + (20.0 - 2.0) * 0.02, places=6)
+
     def test_an_empty_piece_of_audio_is_not_speech(self):
         self.assertFalse(S.EnergyVoiceDetector().is_speech(np.zeros(0, dtype=np.float32)))
 
@@ -783,6 +795,10 @@ class SpeechGain(unittest.TestCase):
     def test_speech_from_across_the_room_is_brought_up_to_a_level_a_16_bit_file_keeps(self):
         peak = np.abs(S.speech_gain(slow_wave(0.01))).max()
         self.assertTrue(0.45 < peak <= 0.55, peak)
+
+    def test_a_voice_just_under_the_level_gets_the_small_lift_it_needs(self):
+        peak = np.abs(S.speech_gain(slow_wave(0.4))).max()
+        self.assertTrue(0.48 < peak <= 0.52, peak)
 
     def test_speech_that_is_already_loud_is_left_as_it_is(self):
         loud = slow_wave(0.8)
