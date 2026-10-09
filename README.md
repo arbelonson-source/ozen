@@ -689,6 +689,19 @@ Monero (XMR)
 
 The same addresses and codes are in the app under Settings, About, Support Ozen.
 
+## Supporters
+
+These companies gave or offered Ozen free plans or credits. Thank you.
+
+- AI code reviews provided by [CodeAnt](https://codeant.ai)
+- Security scanning by [Snyk](https://snyk.io)
+- Audio processing support from [LALAL.AI](https://www.lalal.ai)
+- GPU training credits provided by [GarageFarm.NET](https://www.garagefarm.net)
+- Voice AI credits from [Retell AI](https://www.retellai.com)
+- Audio processing support from [Auphonic](https://auphonic.com)
+- Database tooling support from [Prisma](https://www.prisma.io) (credit offered)
+- GraphQL engine support from [Hasura](https://hasura.io) (credit offered)
+
 ## License
 
 GNU Affero General Public License v3.0 — see [LICENSE](LICENSE).
