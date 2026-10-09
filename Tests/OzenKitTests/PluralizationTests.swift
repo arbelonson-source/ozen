@@ -279,6 +279,28 @@ struct PluralizationTests {
         }
     }
 
+    @Test("under half a minute is \"less than a minute\" in each of the other ten languages, and a minute is counted")
+    func underAMinute() {
+        let expected: [UILanguage: (under: String, one: String)] = [
+            .russian: ("меньше минуты", "1 минута"),
+            .ukrainian: ("менше хвилини", "1 хвилина"),
+            .arabic: ("أقل من دقيقة", "دقيقة"),
+            .french: ("moins d'une minute", "1 minute"),
+            .spanish: ("menos de un minuto", "1 minuto"),
+            .german: ("weniger als eine Minute", "1 Minute"),
+            .portuguese: ("menos de um minuto", "1 minuto"),
+            .hindi: ("एक मिनट से कम", "1 मिनट"),
+            .amharic: ("ከአንድ ደቂቃ በታች", "1 ደቂቃ"),
+            .chineseSimplified: ("不到一分钟", "1 分钟"),
+        ]
+        for (language, text) in expected {
+            Localization.$override.withValue(language) {
+                #expect(ConversationStats.minutesText(20) == text.under, "\(language)")
+                #expect(ConversationStats.minutesText(60) == text.one, "\(language)")
+            }
+        }
+    }
+
     @Test("Arabic \"ago\" takes the dual after its preposition, and the numeral only from three on")
     func arabicAgoForms() {
         let expected: [(Int, String)] = [
