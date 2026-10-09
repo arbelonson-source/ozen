@@ -173,9 +173,30 @@ struct EnergyVoiceDetectorTests {
     func floorFallsFast() {
         var detector = EnergyVoiceDetector(initialNoiseFloor: 0.02)
         for _ in 0..<20 {
-            detector.isSpeech([Float](repeating: 0, count: 1_024))
+            detector.isSpeech(tone(amplitude: 0.0002))
         }
         #expect(detector.noiseFloor < 0.001)
+    }
+
+    @Test("a dropout of digital silence, empty or zeroed buffers, says nothing about the room: a hum stays a hum after it")
+    func digitalSilenceLeavesTheFloor() {
+        var detector = EnergyVoiceDetector()
+        let hum = tone(amplitude: 0.007)
+        for _ in 0..<235 { detector.isSpeech(hum) }
+        let settled = detector.isSpeech(hum)
+        #expect(!settled)
+        let floor = detector.noiseFloor
+        // A Bluetooth dropout, an empty buffer, and a glitch passed on as
+        // silence by AudioFanOut.
+        for _ in 0..<8 { detector.isSpeech([Float](repeating: 0, count: 1_024)) }
+        for _ in 0..<30 { detector.isSpeech([]) }
+        for _ in 0..<3 { detector.isSpeech(AudioFanOut.withoutGlitches([Float](repeating: .nan, count: 1_024))) }
+        #expect(detector.noiseFloor == floor)
+        var humAsSpeech = 0
+        for _ in 0..<50 where detector.isSpeech(hum) { humAsSpeech += 1 }
+        #expect(humAsSpeech == 0)
+        let voice = detector.isSpeech(tone(amplitude: 0.05))
+        #expect(voice)
     }
 
     @Test("rms and meter level behave at the edges")

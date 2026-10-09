@@ -356,6 +356,22 @@ class RepeatGPU(SlowGPU):
         return "", None, [{"text": "a b c d e. a b c d e.", "no_speech": 0.0, "logprob": -0.01, "compression": 2.9}]
 
 
+class DigitalSilence(unittest.TestCase):
+    def test_a_dropout_of_zeros_leaves_a_hum_a_hum(self):
+        detector = S.EnergyVoiceDetector()
+        hum = 0.007 * np.sin(np.arange(1024) * 0.3)
+        for _ in range(235):
+            detector.is_speech(hum)
+        floor = detector.floor
+        for _ in range(8):
+            detector.is_speech(np.zeros(1024))
+        for _ in range(30):
+            detector.is_speech(np.zeros(0))
+        self.assertEqual(detector.floor, floor)
+        self.assertEqual(sum(detector.is_speech(hum) for _ in range(50)), 0)
+        self.assertTrue(detector.is_speech(0.05 * np.sin(np.arange(1024) * 0.3)))
+
+
 class Summary(unittest.TestCase):
     def play(self, pieces, gpu=None):
         session = S.Session(Socket(), gpu or GateGPU(0.01), "he", [], live_interval=0.3)

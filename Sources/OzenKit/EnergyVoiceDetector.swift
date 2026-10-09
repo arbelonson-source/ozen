@@ -151,6 +151,12 @@ public struct EnergyVoiceDetector: Sendable {
             return false
         }
         lastLevel = level
+        // Digital silence, a buffer of zeros or none at all, is a dropout
+        // (a Bluetooth hiccup, a glitch AudioFanOut passed on as silence),
+        // not the room going quiet. Taken as the room, it pulled the floor
+        // down and held the recent window at zero, and the hum that came
+        // back counted as speech for seconds.
+        guard level >= Self.digitalSilence else { return false }
         followQuietestRecentLevel(level, samples: samples.count)
         let speech = level > threshold
         if !speech {
@@ -186,6 +192,10 @@ public struct EnergyVoiceDetector: Sendable {
         guard quietest > noiseFloor else { return }
         noiseFloor = min(noiseFloor + (quietest - noiseFloor) * recentMinimumRiseRate, maximumNoiseFloor)
     }
+
+    /// Below any microphone's own hiss, and below what 16-bit audio can
+    /// even carry (about 1e-5): no sound arrived at all.
+    static let digitalSilence: Float = 1e-6
 
     public static func rms(_ samples: [Float]) -> Float {
         guard !samples.isEmpty else { return 0 }

@@ -79,6 +79,7 @@ class EnergyVoiceDetector:
         self.swing = 2.0
         self.recent = []
         self.recent_samples = 0
+        self.digital_silence = 1e-6
 
     def _ratio_now(self):
         steady = 20 * math.log10(self.steady_ratio)
@@ -91,7 +92,9 @@ class EnergyVoiceDetector:
 
     def is_speech(self, chunk):
         level = float(np.sqrt(np.mean(np.square(chunk)))) if len(chunk) else 0.0
-        if not math.isfinite(level):
+        # Digital silence is a dropout, not the room going quiet; see the
+        # Swift original.
+        if not math.isfinite(level) or level < self.digital_silence:
             return False
         self._follow_recent(level, len(chunk))
         speech = level > self.threshold()
