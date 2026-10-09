@@ -42,6 +42,18 @@ struct ProblemSnapshotTests {
         #expect(lines.last == "  line (final, sure -, 03:04:00): line 4")
     }
 
+    @Test("the phone's own model covering for the cloud is the model named")
+    func modelOfTheRunningEngine() {
+        var settings = AppSettings.default
+        settings.engine = .cloud
+        settings.cloudModel = "cloud-model-x"
+        settings.whisperModelVariant = "small"
+        let lines = ProblemSnapshot.lines(
+            settings: settings, activeEngine: .whisperKit, input: nil, stats: PipelineStats(), segments: [], device: "-", utcOffsetSeconds: 0
+        )
+        #expect(lines[0] == "PROBLEM MARKED: engine whisperKit model small lang he microphone -")
+    }
+
     @Test("with nothing running and nothing said there is still a line to find")
     func empty() {
         let lines = ProblemSnapshot.lines(settings: .default, activeEngine: nil, input: nil, stats: PipelineStats(), segments: [], device: "-", utcOffsetSeconds: 0)

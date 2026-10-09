@@ -469,6 +469,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// The model behind the engine in use, for saved conversations and
     /// diagnostics: the Whisper size or the cloud model. Apple's has none.
     public var modelDescription: String? {
+        modelDescription(for: engine)
+    }
+
+    /// The model `engine` runs with these settings, which need not be the
+    /// chosen engine: the phone's own Whisper covers for the cloud.
+    public func modelDescription(for engine: TranscriptionEngineKind) -> String? {
         switch engine {
         case .whisperKit: return whisperModelVariant
         case .cloud: return cloudModel

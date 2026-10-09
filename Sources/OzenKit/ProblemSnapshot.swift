@@ -19,7 +19,7 @@ public enum ProblemSnapshot {
     ) -> [String] {
         let engine = activeEngine ?? settings.engine
         var lines = [
-            "PROBLEM MARKED: engine \(engine.rawValue) model \(settings.modelDescription ?? "-") lang \(settings.languageCode) microphone \(input.map { "\($0.portName) [\($0.portType.rawValue)]" } ?? "-")",
+            "PROBLEM MARKED: engine \(engine.rawValue) model \(settings.modelDescription(for: engine) ?? "-") lang \(settings.languageCode) microphone \(input.map { "\($0.portName) [\($0.portType.rawValue)]" } ?? "-")",
             "  lag \(number(stats.captionLagSeconds, "%.2f"))s levels \(stats.inputLevels.summary ?? "-") speech \(number(stats.speechShare.map { $0 * 100 }, "%.0f"))% floor \(number(stats.noiseFloorDecibels, "%.1f")) margin \(number(stats.noiseMarginDecibels, "%.1f"))dB restarts \(stats.engineRestarts) stalls \(stats.audioStalls) updates \(stats.tokensReceived) lines \(stats.segmentsCommitted)",
             "  \(device)",
         ]
