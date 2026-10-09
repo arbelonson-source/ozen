@@ -8,6 +8,7 @@ step() {
         echo "ok    $name"
     else
         echo "FAIL  $name"
+        grep -E 'recorded an issue|^(FAIL|ERROR): ' /tmp/ozen-ci-local.$$ | head -20 | cut -c1-400
         tail -15 /tmp/ozen-ci-local.$$
         failed+=("$name")
     fi
