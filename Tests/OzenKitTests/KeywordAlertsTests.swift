@@ -211,6 +211,13 @@ struct KeywordAlertMatcherTests {
         #expect(matches[0].wordIndex == 1)
     }
 
+    @Test("a nickname ending on a later word of a multi-word phrase still matches")
+    func nicknameEndingOnLaterWordMatches() {
+        let matcher = KeywordAlertMatcher(alerts: [alert("סבתא רחל")])
+        #expect(matcher.matches(in: "בואי סבתא רחל'ה").map(\.matchedText) == ["סבתא רחל'ה"])
+        #expect(matcher.matches(in: "בואי סבתא רחל׳ה").map(\.matchedText) == ["סבתא רחל׳ה"])
+    }
+
     @Test("two occurrences of the same keyword yield two matches in caption order")
     func twoOccurrencesYieldTwoMatches() {
         let grandma = alert("סבתא")
