@@ -300,9 +300,19 @@ struct CloudCoverTests {
         captions.switchBackAfterAnsweredChecks = 3
         await captions.start(settings: cloudSettings)
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .cloud })
+        cloud.availability = .unavailable(.noInternet, "offline")
         cloud.endStream(throwing: EngineUnavailability(kind: .noInternet, detail: "connection lost"))
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .whisperKit })
-        let before = cloud.prepareCount
+        // As in the home computer's twin: checks go unanswered until one is
+        // held, the count starts just before it, and a line is said first.
+        let gate = PrepareGate()
+        cloud.prepareGate = gate
+        #expect(await eventually { cloud.heldPrepares == 1 })
+        let before = cloud.prepareCount - 1
+        cloud.availability = .available
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "הטלוויזיה מדברת", isFinal: true, timestamp: Date().timeIntervalSince1970))
+        #expect(await eventually { captions.segments.last?.text == "הטלוויזיה מדברת" })
+        await gate.open()
         var spoken = 0
         while captions.activeEngineKind == .whisperKit, spoken < 60 {
             phone.emit(TranscriptToken(utteranceID: UUID(), text: "הטלוויזיה מדברת \(spoken)", isFinal: true, timestamp: Date().timeIntervalSince1970))
@@ -310,6 +320,8 @@ struct CloudCoverTests {
             try await Task.sleep(for: .milliseconds(20))
         }
         #expect(captions.activeEngineKind == .cloud)
+        // The engine kind changes as the switch starts, before it asks.
+        #expect(await eventually { captions.phase == .listening })
         // Exactly the answered checks asked for, then the switch itself.
         #expect(cloud.prepareCount - before == captions.switchBackAfterAnsweredChecks + 1)
         captions.stop()
