@@ -1178,6 +1178,12 @@ class Startup(unittest.TestCase):
         made, _ = self.start()
         self.assertIsNone(made[0][5])
 
+    def test_with_no_options_it_listens_where_the_phone_looks_with_the_measured_settings(self):
+        made, _ = self.start()
+        port = re.search(r"static let defaultPort = (\d+)", swift_source("OzenKit", "HomeServer.swift")).group(1)
+        self.assertEqual(self.served[0][1:3], ("0.0.0.0", int(port)))
+        self.assertEqual((made[0][3], made[0][6]), (5, 0.05))
+
     def test_the_live_interval_on_the_command_line_reaches_every_connection(self):
         for argv, interval in [(["--live-interval", "0.5"], 0.5), ([], 0.3)]:
             self.start(*argv)
@@ -1429,6 +1435,22 @@ class SessionAfterHello(unittest.TestCase):
             asyncio.run(asyncio.wait_for(S.handle(ws, NamesGPU(), "example-code-123", 1.0), 5))
         self.assertEqual(made[0].at_hello, first[:200])
         self.assertEqual(made[0].vocabulary, second[:200])
+
+    def test_a_long_purpose_and_app_name_are_cut_in_the_log_and_the_report(self):
+        hello = {"type": "hello", "token": "example-code-123", "purpose": "p" * 30, "client": "c" * 100}
+        ws = PhoneSocket(hello, [json.dumps({"type": "report", "text": "the diagnostics"}), json.dumps({"type": "end"})])
+        with tempfile.TemporaryDirectory() as folder:
+            reports = os.path.join(folder, "reports")
+            with mock.patch.object(S, "REPORTS_DIR", reports), self.assertLogs(S.log, "INFO") as logged:
+                asyncio.run(asyncio.wait_for(S.handle(ws, NamesGPU(), "example-code-123", 1.0), 5))
+            saved = [json.loads(text)["name"] for text in ws.sent if json.loads(text)["type"] == "report_saved"]
+            with open(os.path.join(reports, saved[0]), encoding="utf-8") as f:
+                report = f.read()
+        self.assertTrue(report.startswith("from: " + "c" * 80 + "\n"), report[:120])
+        opened = next(line for line in logged.output if "session from" in line)
+        self.assertIn("p" * 20 + ",", opened)
+        self.assertNotIn("p" * 21, opened)
+        self.assertNotIn("c" * 81, opened)
 
     def test_a_phone_that_only_checked_and_hung_up_leaves_no_worker_running(self):
         hello = {"type": "hello", "token": "example-code-123"}
