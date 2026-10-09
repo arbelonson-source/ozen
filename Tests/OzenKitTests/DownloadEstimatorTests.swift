@@ -146,6 +146,38 @@ struct CaptionPipelineDownloadEstimateTests {
         await start.value
     }
 
+    @Test("a start waiting on an abandoned download keeps that download's time left up to date", .timeLimit(.minutes(1)))
+    func waitingStartKeepsTimeLeft() async {
+        let engine = FakeEngine(progressUpdates: [0.1, 0.2, 0.3, 0.4].map {
+            EnginePreparationProgress(stage: .downloadingModel, fraction: $0)
+        })
+        let held = PrepareGate()
+        let rest = PrepareGate()
+        engine.prepareGate = held
+        engine.afterProgressGate = rest
+        let clock = Clock()
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { _ in engine },
+            embedder: FakeEmbedder(),
+            recovery: .disabled,
+            audioWatchdog: .disabled,
+            now: { clock.tick() }
+        )
+        let first = Task { await pipeline.start(settings: .default) }
+        while engine.prepareCount == 0 { await Task.yield() }
+        pipeline.stop()
+        let second = Task { await pipeline.start(settings: .default) }
+        for _ in 0..<50 { await Task.yield() }
+        await held.open()
+        let last = EnginePreparationProgress(stage: .downloadingModel, fraction: 0.4)
+        #expect(await eventually { pipeline.phase == .preparingEngine(last) })
+        #expect(pipeline.downloadSecondsRemaining != nil)
+        await rest.open()
+        await first.value
+        await second.value
+    }
+
     @Test("a download that keeps reporting keeps its time left", .timeLimit(.minutes(1)))
     func reportingKeepsTimeLeft() async {
         let updates = (1...40).map { EnginePreparationProgress(stage: .downloadingModel, fraction: Double($0) / 100) }
