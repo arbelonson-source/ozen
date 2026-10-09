@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import types
 import unittest
 from unittest import mock
@@ -73,6 +74,23 @@ class WordsWrong(unittest.TestCase):
                 f.write("the doctor comes at ten\n")
             out = run([line(0, "the doctor comes"), line(1, "at two")], reference)
             self.assertIn("words wrong: 20.0%", out)
+
+
+class Sending(unittest.TestCase):
+    def test_the_whole_recording_goes_out_in_order_at_the_pace_it_was_said_then_the_end(self):
+        audio = np.linspace(-0.5, 0.5, 8000, dtype=np.float32)
+        socket = Socket([])
+        with mock.patch.dict(sys.modules, {"jiwer": None}), \
+                mock.patch.object(T.sf, "read", return_value=(audio, 16000), create=True), \
+                mock.patch.object(T.websockets, "connect", return_value=socket, create=True), \
+                mock.patch("sys.stdout", io.StringIO()):
+            started = time.monotonic()
+            asyncio.run(T.main("ws://localhost:8765", "example-code-123", "speech.wav", None))
+            took = time.monotonic() - started
+        sent = np.frombuffer(b"".join(m for m in socket.sent if isinstance(m, bytes)), dtype="<i2")
+        self.assertTrue(np.array_equal(sent, (audio * 32767).astype("<i2")))
+        self.assertEqual(json.loads(socket.sent[-1]), {"type": "end"})
+        self.assertGreater(took, 0.4)
 
 
 class Lines(unittest.TestCase):
