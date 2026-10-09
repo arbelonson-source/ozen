@@ -26,7 +26,9 @@ sys.modules.setdefault("faster_whisper.utils", fake_utils)
 sys.modules.setdefault("websockets", types.ModuleType("websockets"))
 if not hasattr(sys.modules["websockets"], "ConnectionClosed"):
     sys.modules["websockets"].ConnectionClosed = type("ConnectionClosed", (Exception,), {})
+sys.modules.setdefault("onnxruntime", types.ModuleType("onnxruntime"))
 
+import enhance as E
 import ozen_server as S
 
 
@@ -667,6 +669,39 @@ class QuietestPoint(unittest.TestCase):
         self.assertEqual(S.quietest_point(np.zeros(0), 50, 10, 4), 0)
         self.assertEqual(S.quietest_point(alternating(1_000), 5_000, 1_000, 0), 1_000)
         self.assertEqual(S.quietest_point(alternating(1_000), -3, 1_000, 100), 0)
+
+
+class UnchangedSpectrum:
+    """GTCRN's inputs and outputs, with the spectrum handed back as it came."""
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def run(self, names, inputs):
+        return inputs["mix"], inputs["conv_cache"], inputs["tra_cache"], inputs["inter_cache"]
+
+
+class Cleaner(unittest.TestCase):
+    def cleaner(self, mix):
+        with mock.patch.object(E.onnxruntime, "InferenceSession", UnchangedSpectrum, create=True):
+            return E.StreamingEnhancer("gtcrn_simple.onnx", mix)
+
+    def test_with_a_model_that_changes_nothing_the_mix_is_the_input_a_hop_late(self):
+        cleaner = self.cleaner(0.3)
+        audio = (0.3 * np.sin(np.arange(16_000) * 0.05)).astype(np.float32)
+        out = np.concatenate([cleaner.process(audio[i:i + 100]) for i in range(0, len(audio), 100)])
+        self.assertEqual(len(out), 16_000 // E.HOP * E.HOP)
+        self.assertTrue(np.allclose(out[:E.HOP], 0))
+        self.assertTrue(np.allclose(out[E.HOP:], audio[:len(out) - E.HOP], atol=1e-4))
+
+    def test_each_full_hop_comes_out_as_soon_as_it_is_in(self):
+        cleaner = self.cleaner(0.5)
+        self.assertEqual(len(cleaner.process(np.zeros(E.HOP - 1, np.float32))), 0)
+        self.assertEqual(len(cleaner.process(np.zeros(1, np.float32))), E.HOP)
+
+    def test_frames_fade_in_and_out_as_the_model_was_trained_on(self):
+        self.assertEqual(E.WINDOW[0], 0)
+        self.assertAlmostEqual(float(E.WINDOW[E.N_FFT // 2]), 1.0, places=6)
 
 
 def slow_wave(peak, count=16_000):
