@@ -2,6 +2,8 @@ import asyncio
 import io
 import json
 import os
+import re
+import runpy
 import sys
 import tempfile
 import time
@@ -93,6 +95,30 @@ class Sending(unittest.TestCase):
         self.assertGreater(took, 0.4)
 
 
+class Hello(unittest.TestCase):
+    def test_the_pairing_code_goes_out_in_a_hello_before_any_audio(self):
+        socket = Socket([])
+        with mock.patch.dict(sys.modules, {"jiwer": None}), \
+                mock.patch.object(T.sf, "read", return_value=(np.zeros(1600, np.float32), 16000), create=True), \
+                mock.patch.object(T.websockets, "connect", return_value=socket, create=True), \
+                mock.patch("sys.stdout", io.StringIO()):
+            asyncio.run(T.main("ws://localhost:8765", "example-code-123", "speech.wav", None))
+        hello = json.loads(socket.sent[0])
+        self.assertEqual((hello["type"], hello["version"], hello["token"]), ("hello", 1, "example-code-123"))
+
+
+class Command(unittest.TestCase):
+    def test_running_the_file_runs_a_session(self):
+        out = io.StringIO()
+        with mock.patch.dict(sys.modules, {"jiwer": None}), \
+                mock.patch.object(T.sf, "read", return_value=(np.zeros(1600, np.float32), 16000), create=True), \
+                mock.patch.object(T.websockets, "connect", return_value=Socket([]), create=True), \
+                mock.patch.object(sys, "argv", ["try_server.py", "ws://localhost:8765", "example-code-123", "speech.wav"]), \
+                mock.patch("sys.stdout", out):
+            runpy.run_path(T.__file__, run_name="__main__")
+        self.assertIn("connected: fake", out.getvalue())
+
+
 class Lines(unittest.TestCase):
     def test_lines_are_counted_as_the_phone_shows_them(self):
         out = run([line(0, "the doctor", final=False), line(0, ""), line(1, ""), line(2, " "), line(3, "at ten")])
@@ -100,6 +126,11 @@ class Lines(unittest.TestCase):
         self.assertIn("the doctor", out)
         self.assertNotRegex(out, r"\[\s*\d+\]\s+\S+s\s*\n")
         self.assertRegex(out, r"first words of a line on screen: median -?\d+\.\d\ds")
+
+    def test_first_words_are_timed_once_per_line_not_at_every_update(self):
+        replies = [dict(line(0, "the doctor", final=False), end_s=1.0), dict(line(0, "the doctor comes"), end_s=9.0)]
+        found = re.search(r"first words of a line on screen: median (-?\d+\.\d\d)s", run(replies))
+        self.assertAlmostEqual(float(found.group(1)), -1.0, delta=0.5)
 
 
 if __name__ == "__main__":

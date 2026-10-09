@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import runpy
 import tempfile
 import unittest
 from unittest import mock
@@ -109,6 +110,24 @@ class PairingPage(unittest.TestCase):
             os.chmod(out, 0o644)
             self.make_page(folder)
             self.assertEqual(os.stat(out).st_mode & 0o777, 0o600)
+
+    def test_the_page_shows_a_code_the_camera_can_scan(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with open(self.make_page(folder), encoding="utf-8") as f:
+                page = f.read()
+            self.assertIn("<svg", page)
+            self.assertIn("<path", page)
+
+    def test_running_the_file_makes_the_page(self):
+        with tempfile.TemporaryDirectory() as folder:
+            code = os.path.join(folder, "pairing-code")
+            with open(code, "w", encoding="utf-8") as f:
+                f.write("example-code-123\n")
+            out = os.path.join(folder, "pairing.html")
+            argv = ["pairing.py", "--address", "192.168.1.20", "--code-file", code, "--out", out, "--no-open"]
+            with mock.patch("sys.argv", argv), mock.patch("sys.stdout", io.StringIO()):
+                runpy.run_path(pairing.__file__, run_name="__main__")
+            self.assertTrue(os.path.exists(out))
 
     def test_a_page_whose_permissions_cannot_be_changed_is_still_made(self):
         with tempfile.TemporaryDirectory() as folder, mock.patch("os.chmod", side_effect=PermissionError("locked")):
