@@ -355,6 +355,7 @@ struct HomeServerEngineTests {
         }
         let (dead, deadPings) = try await run(answering: false)
         #expect((dead as? EngineUnavailability)?.kind == .homeServerUnreachable)
+        #expect((dead as? EngineUnavailability)?.detail.contains("ping") == true, "\(String(describing: dead))")
         #expect(deadPings == 1)
         let (alive, alivePings) = try await run(answering: true)
         #expect(alive == nil)
@@ -408,8 +409,7 @@ struct HomeServerEngineTests {
 
     @Test("a server that stays connected but never answers speech is given up on, so the phone's own model can take over; silence alone never is")
     func stuckServerIsDropped() async throws {
-        func run(_ chunk: [Float], replyEvery: Int?, reply: @escaping (Int) -> String = { text($0, "", final: true) }) async throws -> Error? {
-            let socket = ScriptedSocket(helloReply: ready)
+        func run(_ chunk: [Float], replyEvery: Int?, socket: ScriptedSocket = ScriptedSocket(helloReply: ready), reply: @escaping (Int) -> String = { text($0, "", final: true) }) async throws -> Error? {
             let server = HomeServerEngine(address: "10.0.0.5", token: { "1234" }, connector: Connector(socket: socket), handshakeSeconds: 1, stallSeconds: 2)
             let (audio, feed) = AsyncStream<[Float]>.makeStream()
             let tokens = server.stream(languageCode: "he", audio: audio)
@@ -436,8 +436,13 @@ struct HomeServerEngineTests {
         }
         let loud = (0..<1600).map { Float(0.3 * sin(Double($0) * 0.3)) }
         let quiet = [Float](repeating: 0.0005, count: 1600)
-        let stuck = try await run(loud, replyEvery: nil)
+        let stuckSocket = ScriptedSocket(helloReply: ready)
+        let stuck = try await run(loud, replyEvery: nil, socket: stuckSocket)
         #expect((stuck as? EngineUnavailability)?.kind == .homeServerUnreachable)
+        #expect((stuck as? EngineUnavailability)?.detail.contains("no reply") == true, "\(String(describing: stuck))")
+        // Given up on while the speech went on, not once the audio ended:
+        // a hung computer still answers pings, and the audio never ends.
+        #expect(await !stuckSocket.sentTexts.contains(HomeServer.end))
         #expect(try await run(quiet, replyEvery: nil) == nil)
         #expect(try await run(loud, replyEvery: 5) == nil)
         let garbage = try await run(loud, replyEvery: 5) { _ in "<html>502 Bad Gateway</html>" }
