@@ -192,6 +192,23 @@ struct PluralizationTests {
         }
     }
 
+    @Test("French, Spanish and Portuguese count one speaker in the singular and two in the plural")
+    func speakersSingularAndPlural() {
+        let expected: [(UILanguage, Int, String)] = [
+            (.french, 1, "1 intervenant"),
+            (.french, 2, "2 intervenants"),
+            (.spanish, 1, "1 interlocutor"),
+            (.spanish, 2, "2 interlocutores"),
+            (.portuguese, 1, "1 interlocutor"),
+            (.portuguese, 2, "2 interlocutores"),
+        ]
+        for (language, count, text) in expected {
+            Localization.$override.withValue(language) {
+                #expect(ConversationStats.speakersText(count) == text, "\(language) \(count)")
+            }
+        }
+    }
+
     @Test("Arabic \"ago\" takes the dual after its preposition, and the numeral only from three on")
     func arabicAgoForms() {
         let expected: [(Int, String)] = [
