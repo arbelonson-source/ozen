@@ -778,6 +778,21 @@ struct CaptionPipelineTokenTests {
         #expect(pipeline.displayName(for: pipeline.segments[0]) != pipeline.displayName(for: pipeline.segments[1]))
     }
 
+    @Test("clearing the captions starts the voices over: an unnamed voice is new again, named people stay")
+    func clearingStartsVoicesOver() async {
+        let engine = FakeEngine()
+        let (pipeline, audio, _) = makePipeline(engines: [.whisperKit: engine])
+        pipeline.enroll(profile: SpeakerProfile(name: "דנה", embedding: [0, 1, 0]))
+        await pipeline.start(settings: .default)
+        engine.emit(token(UUID(), "מי מדבר"))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { pipeline.speakerClusters.count == 2 })
+
+        pipeline.clearTranscript()
+        #expect(pipeline.speakerClusters.map(\.name) == ["דנה"])
+    }
+
     @Test("a speaker found while a line is being written stays on it when the line is closed after a pause")
     func speakerSurvivesStaleCommit() async {
         let engine = FakeEngine()
@@ -3063,6 +3078,26 @@ struct CaptionPipelineAudioStallTests {
 
         clock.advance(30)
         audio.onInputsChanged?()
+        #expect(await eventually { pipeline.phase.isListening })
+    }
+
+    @Test("captions brought back by a change of microphones get a fresh set of automatic retries")
+    func microphoneChangeGivesFreshAttempts() async {
+        let clock = TestClock()
+        let (pipeline, audio, _) = makePipeline(
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []), now: { clock.now }
+        )
+        await pipeline.start(settings: .default)
+        audio.onCaptureLost?()
+        #expect(await eventually { pipeline.phase.isListening && pipeline.scheduledRetry == nil })
+        audio.onCaptureLost?()
+        #expect(pipeline.phase.failure?.kind == .audioSessionFailed)
+        #expect(pipeline.scheduledRetry == nil)
+
+        audio.onInputsChanged?()
+        #expect(await eventually { pipeline.phase.isListening })
+        audio.onCaptureLost?()
+        #expect(pipeline.scheduledRetry != nil)
         #expect(await eventually { pipeline.phase.isListening })
     }
 
