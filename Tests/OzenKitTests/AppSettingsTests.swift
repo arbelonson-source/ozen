@@ -5,6 +5,22 @@ import Foundation
 @Suite("AppSettings persistence")
 struct AppSettingsTests {
 
+    @Test("the display she starts with: large dark text, not bold, names shown, the screen kept on, every helper on")
+    func displayDefaults() {
+        let display = AppSettings.default.display
+        #expect(display == DisplayPreferences.default)
+        #expect(display.fontSize == 30)
+        #expect(display.theme == .dark)
+        #expect(!display.boldText)
+        #expect(display.showSpeakerNames)
+        #expect(display.keepScreenAwake)
+        #expect(display.markUncertainLines)
+        #expect(display.announceNewLines)
+        #expect(display.emphasizeNumbers)
+        #expect(display.lockScreenCaptions)
+        #expect(display.autoHideControls)
+    }
+
     @Test("default settings use Whisper, Hebrew, and the requested credit line")
     func defaults() {
         let settings = AppSettings.default

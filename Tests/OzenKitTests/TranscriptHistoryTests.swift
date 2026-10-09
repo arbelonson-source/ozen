@@ -625,7 +625,7 @@ struct TranscriptHistoryTests {
         #expect(decoded.segments.isEmpty)
     }
 
-    @Test("total size on disk is positive after a save and zero once everything is deleted")
+    @Test("total size on disk is what the saved files take, not their folders, and zero once everything is deleted")
     func totalSizeOnDiskReflectsSavedFiles() throws {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -635,6 +635,13 @@ struct TranscriptHistoryTests {
 
         try store.save(record(startedAt: 100, segments: [segment(text: "בדיקה")]))
         #expect(store.totalSizeOnDisk() > 0)
+        let saved = try FileManager.default.subpathsOfDirectory(atPath: dir.path).map { dir.appendingPathComponent($0).path }
+        let fileBytes = try saved.reduce(Int64(0)) { sum, path in
+            let attributes = try FileManager.default.attributesOfItem(atPath: path)
+            guard attributes[.type] as? FileAttributeType == .typeRegular else { return sum }
+            return sum + ((attributes[.size] as? NSNumber)?.int64Value ?? 0)
+        }
+        #expect(store.totalSizeOnDisk() == fileBytes)
 
         try store.deleteAll()
         #expect(store.totalSizeOnDisk() == 0)
