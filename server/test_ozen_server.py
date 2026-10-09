@@ -1227,6 +1227,17 @@ class Startup(unittest.TestCase):
         self.assertEqual((made[0][3], made[0][6]), (5, 0.05))
         self.assertEqual(self.serve_options, {"max_size": 2 ** 22, "ping_interval": 10, "ping_timeout": 20})
 
+    def test_the_readme_gives_the_beam_gate_and_port_it_starts_with(self):
+        made, _ = self.start()
+        with open(os.path.join(os.path.dirname(os.path.abspath(S.__file__)), "README.md"), encoding="utf-8") as f:
+            readme = " ".join(f.read().split())
+        self.assertIn(f"Finished lines are written with beam {made[0][3]} (`--beam`), live words with beam 1", readme)
+        self.assertIn(f"(under {round(made[0][6] * 100)}% of it,", readme)
+        port = self.served[0][2]
+        self.assertIn(f"to any port {port} proto tcp", readme)
+        self.assertIn(f"`tailscale funnel --bg {port}`", readme)
+        self.assertIn(f"try_server.py ws://localhost:{port} ", readme)
+
     def test_the_live_interval_on_the_command_line_reaches_every_connection(self):
         for argv, interval in [(["--live-interval", "0.5"], 0.5), ([], 0.3)]:
             self.start(*argv)
@@ -1651,6 +1662,33 @@ class BadFramesFromPairedPhone(unittest.TestCase):
         self.assertFalse(any("ended with" in line for line in log_lines), log_lines)
         self.assertEqual(list(kept), saved)
         self.assertEqual([text.endswith("\n\na?b") for text in kept.values()], [True])
+
+
+class DocNumbers(unittest.TestCase):
+    """The numbers the server's README and the main README promise, read
+    from the code that keeps them."""
+
+    def doc(self, *parts):
+        with open(os.path.join(os.path.dirname(os.path.abspath(S.__file__)), *parts), encoding="utf-8") as f:
+            return " ".join(f.read().split())
+
+    def test_the_server_readme_gives_the_servers_own_numbers(self):
+        readme = self.doc("README.md")
+        self.assertEqual(S.LOAD_RETRY_SECONDS, 60)
+        self.assertIn("the server tries again every minute", readme)
+        self.assertEqual(S.MIN_VOICE_SECONDS, 0.2)
+        self.assertIn("and less than a fifth of a second in all)", readme)
+        self.assertIn(f"each copy is limited to about {S.NAMES_TOKENS} tokens", readme)
+        self.assertIn(f"({S.Session.pause} s of that is the quiet the server waits for", readme)
+        with mock.patch.object(S, "download_model", lambda name, local_files_only=False: name), \
+                mock.patch.object(S, "WhisperModel", lambda path, device, compute_type: BrokenGPU()):
+            limit = S.Transcriber("live", "cuda", "int8_float16", 5, 0).failures_before_exit
+        self.assertEqual(limit, 3)
+        self.assertIn("also when three passes in a row fail", readme)
+
+    def test_the_main_readme_gives_the_pause_that_finishes_a_line(self):
+        self.assertIn(f"a sentence counts as finished after a {S.Session.pause} s pause whatever the card",
+                      self.doc("..", "README.md"))
 
 
 if __name__ == "__main__":
