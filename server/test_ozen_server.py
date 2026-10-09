@@ -142,6 +142,37 @@ class OddScores:
         return [segment, silence], None
 
 
+class SameFilterAsThePhone(unittest.TestCase):
+    """The server drops a pass's segments by the phone's own default limits,
+    and asks the model for them too, read from the phone's source."""
+
+    def test_the_server_drops_what_the_phones_default_filter_drops(self):
+        swift = swift_source("OzenKit", "WhisperResultFilter.swift")
+        no_speech, logprob, compression = (
+            float(re.search(rf"{name}: Float = (-?[0-9.]+)", swift).group(1))
+            for name in ("noSpeechThreshold", "logprobThreshold", "compressionRatioThreshold"))
+        asked = []
+
+        def kept(**scores):
+            class Model:
+                def transcribe(self, audio, **kw):
+                    asked.append(kw)
+                    return [types.SimpleNamespace(text=" כן", **scores)], None
+            t = S.Transcriber.__new__(S.Transcriber)
+            t.model = t.final_model = Model()
+            t.beam, t.context, t.speech_gate = 5, 0, 0.0
+            return t._run(np.zeros(1600, dtype=np.float32), "he", None, True)[0] == "כן"
+
+        quiet, unsure = no_speech + 0.05, logprob - 0.05
+        self.assertFalse(kept(no_speech_prob=quiet, avg_logprob=unsure, compression_ratio=1.0))
+        self.assertTrue(kept(no_speech_prob=quiet, avg_logprob=logprob + 0.05, compression_ratio=1.0))
+        self.assertTrue(kept(no_speech_prob=no_speech - 0.05, avg_logprob=unsure, compression_ratio=1.0))
+        self.assertFalse(kept(no_speech_prob=0.0, avg_logprob=-0.1, compression_ratio=compression + 0.05))
+        self.assertTrue(kept(no_speech_prob=0.0, avg_logprob=-0.1, compression_ratio=compression - 0.05))
+        self.assertEqual({(kw["no_speech_threshold"], kw["log_prob_threshold"], kw["compression_ratio_threshold"]) for kw in asked},
+                         {(no_speech, logprob, compression)})
+
+
 class OddNumbers(unittest.TestCase):
     def test_a_score_json_cannot_hold_still_leaves_a_frame_the_phone_can_read(self):
         t = S.Transcriber.__new__(S.Transcriber)
