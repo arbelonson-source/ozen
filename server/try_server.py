@@ -14,7 +14,7 @@ USAGE = "usage: python try_server.py ws://localhost:8765 CODE speech.wav [refere
 
 
 def normalized(text):
-    text = re.sub("[\u0591-\u05c7]", "", text).replace("\u05be", " ").replace("-", " ")
+    text = re.sub("[\u0591-\u05c7]", "", text.replace("\u05be", " ")).replace("-", " ")
     return " ".join(re.sub(r"[^\w\s]", " ", text).lower().split())
 
 

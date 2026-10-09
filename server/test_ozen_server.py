@@ -827,6 +827,12 @@ class Cleaner(unittest.TestCase):
         self.assertTrue(np.allclose(out[:E.HOP], 0))
         self.assertTrue(np.allclose(out[E.HOP:], audio[:len(out) - E.HOP], atol=1e-4))
 
+    def test_the_cleaner_runs_on_the_cpu_and_leaves_the_card_to_whisper(self):
+        opened = []
+        with mock.patch.object(E.onnxruntime, "InferenceSession", lambda *a, **kw: opened.append(kw), create=True):
+            E.StreamingEnhancer("gtcrn_simple.onnx", 0.5)
+        self.assertEqual(opened, [{"providers": ["CPUExecutionProvider"]}])
+
     def test_each_full_hop_comes_out_as_soon_as_it_is_in(self):
         cleaner = self.cleaner(0.5)
         self.assertEqual(len(cleaner.process(np.zeros(E.HOP - 1, np.float32))), 0)

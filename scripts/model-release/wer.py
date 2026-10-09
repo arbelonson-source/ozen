@@ -20,8 +20,8 @@ PUNCT = re.compile(r"[^\w\s]|_", re.UNICODE)
 
 def normalize(text: str) -> list[str]:
     text = unicodedata.normalize("NFC", text)
-    text = NIKUD.sub("", text)
-    text = text.replace("־", " ").replace("-", " ")
+    text = NIKUD.sub("", text.replace("־", " "))
+    text = text.replace("-", " ")
     return PUNCT.sub("", text).split()
 
 

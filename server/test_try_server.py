@@ -66,6 +66,10 @@ class WordsWrong(unittest.TestCase):
         self.assertEqual(T.words_wrong("a b", "a b c"), 0.5)
         self.assertEqual(T.words_wrong("a b", ""), 1)
 
+    def test_vowel_marks_and_the_hebrew_hyphen_are_not_mistakes(self):
+        self.assertEqual(T.words_wrong("\u05e9\u05c1\u05b8\u05dc\u05d5\u05b9\u05dd", "\u05e9\u05dc\u05d5\u05dd"), 0)
+        self.assertEqual(T.words_wrong("\u05d1\u05d9\u05ea\u05be\u05e1\u05e4\u05e8", "\u05d1\u05d9\u05ea \u05e1\u05e4\u05e8"), 0)
+
     def test_punctuation_and_case_are_not_mistakes(self):
         self.assertEqual(T.words_wrong("Hello, world.", "hello world"), 0)
 
