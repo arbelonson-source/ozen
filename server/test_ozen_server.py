@@ -72,6 +72,25 @@ class Beam(unittest.TestCase):
         self.assertEqual((named["initial_prompt"], named["hotwords"]), ("Noa, Itai.", "Noa, Itai"))
         self.assertEqual((unnamed["initial_prompt"], unnamed["hotwords"]), (None, None))
 
+    def test_whisper_decodes_as_measured(self):
+        # Each of these was chosen on the benches. faster-whisper's own
+        # defaults differ for most: its VAD cuts quiet speech the server's
+        # gate already judged, conditioning on the line before brings back
+        # repeated phrases, and timestamps change what the model writes.
+        t = S.Transcriber.__new__(S.Transcriber)
+        t.model = t.final_model = Model()
+        t.beam, t.context, t.speech_gate = 5, 0, 0.0
+        audio = np.zeros(1600, dtype=np.float32)
+        t._run(audio, "he", None, True)
+        t._run(audio, "he", None, False)
+        common = dict(language="he", task="transcribe", condition_on_previous_text=False, without_timestamps=True,
+                      vad_filter=False, compression_ratio_threshold=2.4, log_prob_threshold=-1.0,
+                      no_speech_threshold=0.6)
+        final, live = t.model.calls
+        self.assertEqual({k: final[k] for k in common}, common)
+        self.assertEqual({k: live[k] for k in common}, common)
+        self.assertEqual((final["temperature"], live["temperature"]), ([0.0, 0.2, 0.4], 0.0))
+
 
 def voice(*stretches):
     """Silero's answer for a line: voice over these (start, seconds)."""

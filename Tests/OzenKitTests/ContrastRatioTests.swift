@@ -26,6 +26,14 @@ struct ContrastRatioTests {
         #expect(abs(blended - solid) < 0.0001)
     }
 
+    @Test("over a coloured background, the background shows through a translucent colour")
+    func blendOverColour() {
+        let card = (red: 0.8, green: 0.4, blue: 0.6)
+        let blended = ContrastRatio.ratio(foreground: black, alpha: 0.25, overBackground: card)
+        let solid = ContrastRatio.between((red: 0.6, green: 0.3, blue: 0.45), card)
+        #expect(abs(blended - solid) < 0.0001)
+    }
+
     @Test("a more opaque foreground contrasts more with its background")
     func moreOpaqueIsHigherContrast() {
         let dim = ContrastRatio.ratio(foreground: white, alpha: 0.5, overBackground: black)
