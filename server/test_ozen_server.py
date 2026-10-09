@@ -1000,12 +1000,15 @@ class Startup(unittest.TestCase):
     def start(self, *argv):
         made, cleaners = [], []
         self.warmed = warmed = []
+        self.served = served = []
+        self.order = order = []
 
         class Warm:
             name = "model"
 
             def __init__(self, *args):
                 made.append(args)
+                order.append("models")
 
             async def transcribe(self, audio, language, prompt, final, **kwargs):
                 warmed.append((final, kwargs.get("gate", True)))
@@ -1013,7 +1016,7 @@ class Startup(unittest.TestCase):
 
         class Serve:
             def __init__(self, *args, **kwargs):
-                pass
+                served.append(args)
 
             async def __aenter__(self):
                 raise Listening()
@@ -1024,6 +1027,7 @@ class Startup(unittest.TestCase):
         enhance = types.ModuleType("enhance")
         enhance.StreamingEnhancer = lambda path, mix: cleaners.append(mix)
         with mock.patch.object(S, "Transcriber", Warm), \
+                mock.patch.object(S, "setup_logging", lambda: order.append("log")), \
                 mock.patch.object(S.websockets, "serve", Serve, create=True), \
                 mock.patch.dict(sys.modules, {"enhance": enhance}), \
                 mock.patch.object(sys, "argv", ["ozen_server.py", *argv]), \
@@ -1037,6 +1041,18 @@ class Startup(unittest.TestCase):
         self.assertEqual(made[0][5], "ivrit-ai/whisper-large-v3-ct2")
         made, _ = self.start()
         self.assertIsNone(made[0][5])
+
+    def test_the_live_interval_on_the_command_line_reaches_every_connection(self):
+        for argv, interval in [(["--live-interval", "0.5"], 0.5), ([], 0.3)]:
+            self.start(*argv)
+            with mock.patch.object(S, "handle") as handle:
+                self.served[0][0]("phone")
+            self.assertEqual(handle.call_args.args[0], "phone")
+            self.assertEqual(handle.call_args.args[3], interval, argv)
+
+    def test_the_log_is_set_up_before_the_models_load(self):
+        self.start()
+        self.assertEqual(self.order, ["log", "models"])
 
     def test_both_models_are_warmed_past_the_voice_gate_before_listening(self):
         self.start("--final-model", "ivrit-ai/whisper-large-v3-ct2")
