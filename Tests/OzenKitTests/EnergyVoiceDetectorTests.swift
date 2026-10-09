@@ -178,6 +178,22 @@ struct EnergyVoiceDetectorTests {
         #expect(detector.noiseFloor < 0.001)
     }
 
+    @Test("the floor creeps up to a steady sound under the line, and never past it")
+    func floorCreepsUpToASteadySound() {
+        var detector = EnergyVoiceDetector()
+        let sound = tone(amplitude: 0.001)
+        let level = (sound.reduce(0) { $0 + $1 * $1 } / Float(sound.count)).squareRoot()
+        var highest: Float = 0
+        var heardAsSpeech = 0
+        for _ in 0..<500 {
+            if detector.isSpeech(sound) { heardAsSpeech += 1 }
+            highest = max(highest, detector.noiseFloor)
+        }
+        #expect(heardAsSpeech == 0)
+        #expect(highest <= level * 1.0001)
+        #expect(highest > level * 0.9)
+    }
+
     @Test("a dropout of digital silence, empty or zeroed buffers, says nothing about the room: a hum stays a hum after it")
     func digitalSilenceLeavesTheFloor() {
         var detector = EnergyVoiceDetector()

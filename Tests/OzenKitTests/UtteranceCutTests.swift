@@ -15,7 +15,8 @@ struct UtteranceCutTests {
     func findsTheGap() {
         let samples = speech(count: 16_000, gap: 12_000..<12_800)
         let cut = UtteranceCut.quietestPoint(in: samples, before: 16_000, lookBack: 8_000, frame: 400)
-        #expect((12_000...12_800).contains(cut))
+        // The middle of the last frame that is all silence.
+        #expect(cut == 12_600)
     }
 
     @Test("a gap older than the look-back is not reached for")

@@ -628,6 +628,17 @@ class Detector(unittest.TestCase):
             detector.is_speech(tone(0.0002))
         self.assertLess(detector.floor, 0.001)
 
+    def test_the_floor_creeps_up_to_a_steady_sound_under_the_line_and_never_past_it(self):
+        detector = S.EnergyVoiceDetector()
+        sound = tone(0.001)
+        level = float(np.sqrt(np.mean(np.square(sound))))
+        highest = 0.0
+        for _ in range(500):
+            self.assertFalse(detector.is_speech(sound))
+            highest = max(highest, detector.floor)
+        self.assertLessEqual(highest, level * 1.0001)
+        self.assertGreater(highest, 0.9 * level)
+
 
 def alternating(count, gap=range(0)):
     samples = np.where(np.arange(count) % 2 == 0, 0.5, -0.5)
@@ -640,7 +651,8 @@ class QuietestPoint(unittest.TestCase):
 
     def test_the_cut_goes_into_the_quiet_between_words(self):
         cut = S.quietest_point(alternating(16_000, range(12_000, 12_800)), 16_000, 8_000, 400)
-        self.assertTrue(12_000 <= cut <= 12_800, cut)
+        # The middle of the last frame that is all silence.
+        self.assertEqual(cut, 12_600)
 
     def test_a_gap_older_than_the_look_back_is_not_reached_for(self):
         cut = S.quietest_point(alternating(16_000, range(1_000, 1_800)), 16_000, 4_000, 400)
