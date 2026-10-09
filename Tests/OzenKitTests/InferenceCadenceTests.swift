@@ -37,6 +37,11 @@ struct InferenceCadenceTests {
         #expect(InferenceCadence.secondsBetweenLivePasses(heat: .nominal, lowPowerMode: false, lastPassSeconds: 1.7) == 3.4)
     }
 
+    @Test("a pass of half a second, shorter than a second but over half the base, still gets as long again to rest")
+    func shortPass() {
+        #expect(InferenceCadence.secondsBetweenLivePasses(heat: .nominal, lowPowerMode: false, lastPassSeconds: 0.5) == 1.0)
+    }
+
     @Test("a nonsense pass duration is ignored")
     func badDuration() {
         #expect(InferenceCadence.secondsBetweenLivePasses(heat: .nominal, lowPowerMode: false, lastPassSeconds: .infinity) == InferenceCadence.baseSeconds)
