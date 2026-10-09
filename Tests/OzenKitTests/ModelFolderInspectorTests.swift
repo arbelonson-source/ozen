@@ -27,6 +27,11 @@ struct ModelFolderInspectorTests {
         try write("config.json", in: folder)
     }
 
+    @Test("a finished download is known by the marker name phones already have on disk, so an update never downloads the model again")
+    func markerNameOnDisk() {
+        #expect(ModelFolderInspector.markerName == ".ozen-download-complete")
+    }
+
     @Test("no folder is missing")
     func missing() {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-nope-\(UUID().uuidString)")

@@ -23,6 +23,11 @@ struct SystemLanguageTests {
         #expect(AppLanguage.system.bundleLocalization == nil)
     }
 
+    @Test("the language is handed over in the one key iOS itself reads for an app's language")
+    func appleKey() {
+        #expect(SystemLanguage.key == "AppleLanguages")
+    }
+
     @Test("a chosen language is handed to iOS; 'like the phone' takes back only what Ozen wrote")
     func writesAndTakesBack() throws {
         let suite = "ozen-system-language-\(UUID().uuidString)"
