@@ -2,9 +2,11 @@ import io
 import ipaddress
 import json
 import os
+import re
 import runpy
 import tempfile
 import unittest
+import urllib.parse
 from unittest import mock
 
 import pairing
@@ -157,6 +159,28 @@ class PairingPage(unittest.TestCase):
             with open(out, encoding="utf-8") as f:
                 self.assertIn("example-code-123", f.read())
             self.assertEqual(os.stat(out).st_mode & 0o777, 0o600)
+
+
+class PairingLink(unittest.TestCase):
+    def test_the_link_is_one_the_phones_pairing_rule_accepts_with_this_address_and_code(self):
+        here = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(here, "..", "Sources", "OzenKit", "HomeServer.swift"), encoding="utf-8") as f:
+            swift = f.read()
+        scheme = re.search(r'public static let scheme = "(\w+)"', swift).group(1)
+        host = re.search(r'parts\.host = "(\w+)"', swift).group(1)
+        with tempfile.TemporaryDirectory() as folder:
+            code = os.path.join(folder, "pairing-code")
+            with open(code, "w", encoding="utf-8") as f:
+                f.write("example-code-123\n")
+            argv = ["pairing.py", "--address", "wss://pc.tail0example.ts.net", "--code-file", code,
+                    "--out", os.path.join(folder, "pairing.html"), "--no-open"]
+            out = io.StringIO()
+            with mock.patch("sys.argv", argv), mock.patch("sys.stdout", out):
+                pairing.main()
+        link = urllib.parse.urlsplit(out.getvalue().split("Link: ")[1].strip())
+        self.assertEqual((link.scheme, link.netloc), (scheme, host))
+        self.assertEqual(urllib.parse.parse_qs(link.query),
+                         {"address": ["wss://pc.tail0example.ts.net"], "code": ["example-code-123"]})
 
 
 class AddressChoice(unittest.TestCase):
