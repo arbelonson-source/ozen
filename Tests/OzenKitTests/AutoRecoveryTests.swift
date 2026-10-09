@@ -156,6 +156,21 @@ struct CaptionPipelineRecoveryTests {
         #expect(pipeline.scheduledRetry == ScheduledRetry(at: clock.now + 30, attempt: 1))
     }
 
+    @Test("captions started by hand drop the retry that was lined up, so nothing says they are recovering on their own")
+    func handStartDropsTheLinedUpRetry() async {
+        let engine = FakeEngine()
+        let pipeline = makeRecoveringPipeline(
+            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [30], downloadDelays: []), clock: TestClock()
+        )
+        await pipeline.start(settings: .default)
+        engine.endStream(throwing: TestError())
+        #expect(await eventually { pipeline.scheduledRetry != nil })
+        await pipeline.start(settings: .default)
+        #expect(pipeline.phase.isListening)
+        #expect(pipeline.scheduledRetry == nil)
+        #expect(!pipeline.isRecoveringByItself)
+    }
+
     @Test("a step of getting ready is logged with how long the step before took, not a clock reading")
     func stepLinesSayHowLongTheStepBeforeTook() async {
         let engine = FakeEngine(progressUpdates: [
