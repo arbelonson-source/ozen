@@ -31,6 +31,12 @@ struct SpeechGainTests {
         #expect((raised.map(abs).sorted()[raised.count / 2]) > 0.2)
     }
 
+    @Test("the level is set by the loudest stretch, wherever in the window it falls")
+    func loudStretchFirst() {
+        let gain = SpeechGain.gain(for: tone(peak: 0.1, count: 8_000) + tone(peak: 0.001, count: 8_000))
+        #expect(gain > 4.5 && gain < 5.5)
+    }
+
     @Test("near silence isn't blown up into a roar")
     func gainIsCapped() {
         #expect(SpeechGain.gain(for: tone(peak: 0.00001)) == SpeechGain.maximumGain)
