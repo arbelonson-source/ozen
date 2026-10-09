@@ -990,6 +990,7 @@ class Startup(unittest.TestCase):
 
     def start(self, *argv):
         made, cleaners = [], []
+        self.warmed = warmed = []
 
         class Warm:
             name = "model"
@@ -997,7 +998,8 @@ class Startup(unittest.TestCase):
             def __init__(self, *args):
                 made.append(args)
 
-            async def transcribe(self, *args, **kwargs):
+            async def transcribe(self, audio, language, prompt, final, **kwargs):
+                warmed.append((final, kwargs.get("gate", True)))
                 return "", None, []
 
         class Serve:
@@ -1026,6 +1028,10 @@ class Startup(unittest.TestCase):
         self.assertEqual(made[0][5], "ivrit-ai/whisper-large-v3-ct2")
         made, _ = self.start()
         self.assertIsNone(made[0][5])
+
+    def test_both_models_are_warmed_past_the_voice_gate_before_listening(self):
+        self.start("--final-model", "ivrit-ai/whisper-large-v3-ct2")
+        self.assertEqual(self.warmed, [(False, False), (True, False)])
 
     def test_the_audio_cleaner_is_loaded_only_when_its_mix_is_above_zero(self):
         self.assertEqual(self.start()[1], [])

@@ -15,9 +15,11 @@ class Done:
 
 class TailscaleAddress(unittest.TestCase):
     def test_a_fresh_install_is_found_by_its_full_path(self):
-        def run(command, **_):
+        def run(command, **options):
             if command[0] == "tailscale":
                 raise FileNotFoundError("not on PATH yet")
+            if not (options.get("capture_output") and options.get("text")):
+                return Done(None)
             return Done(json.dumps({"Self": {"DNSName": "desktop.tail0example.ts.net."}}))
 
         with mock.patch("subprocess.run", run):
@@ -82,18 +84,29 @@ class PairingPage(unittest.TestCase):
 
 
 class AddressChoice(unittest.TestCase):
-    def run_main(self, folder, extra, tailscale, lan):
+    def run_main(self, folder, extra, tailscale, lan, open_page=False):
         code = os.path.join(folder, "pairing-code")
         with open(code, "w", encoding="utf-8") as f:
             f.write("example-code-123\n")
-        argv = ["pairing.py", "--code-file", code, "--out", os.path.join(folder, "pairing.html"), "--no-open"] + extra
+        argv = ["pairing.py", "--code-file", code, "--out", os.path.join(folder, "pairing.html")] \
+            + ([] if open_page else ["--no-open"]) + extra
         out, err = io.StringIO(), io.StringIO()
         asked = mock.Mock(return_value=tailscale)
+        self.opened = mock.Mock()
         with mock.patch("sys.argv", argv), mock.patch("sys.stdout", out), mock.patch("sys.stderr", err), \
                 mock.patch.object(pairing, "tailscale_address", asked), \
-                mock.patch.object(pairing, "lan_address", return_value=lan):
+                mock.patch.object(pairing, "lan_address", return_value=lan), \
+                mock.patch.object(pairing.webbrowser, "open", self.opened):
             pairing.main()
         return out.getvalue(), err.getvalue(), asked.called
+
+    def test_the_page_opens_in_the_browser_unless_told_not_to(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.run_main(folder, [], "wss://pc.tail0example.ts.net", None, open_page=True)
+            page = "file://" + os.path.abspath(os.path.join(folder, "pairing.html"))
+            self.opened.assert_called_once_with(page)
+            self.run_main(folder, [], "wss://pc.tail0example.ts.net", None)
+            self.opened.assert_not_called()
 
     def test_the_tailscale_address_is_used_when_there_is_one(self):
         with tempfile.TemporaryDirectory() as folder:

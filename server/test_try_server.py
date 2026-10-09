@@ -99,6 +99,7 @@ class Lines(unittest.TestCase):
         self.assertIn("2 lines, 1 live updates", out)
         self.assertIn("the doctor", out)
         self.assertNotRegex(out, r"\[\s*\d+\]\s+\S+s\s*\n")
+        self.assertRegex(out, r"first words of a line on screen: median -?\d+\.\d\ds")
 
 
 if __name__ == "__main__":

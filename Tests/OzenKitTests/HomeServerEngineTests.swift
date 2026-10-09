@@ -589,6 +589,32 @@ struct HomeServerEngineTests {
         #expect(await socket.sentTexts.first?.contains(#""purpose":"captions""#) == true)
     }
 
+    @Test("after a long conversation, a late frame for a line just finished still isn't shown again", .timeLimit(.minutes(1)))
+    func lateFrameAfterManyLines() async throws {
+        let socket = ScriptedSocket(helloReply: ready)
+        let (audio, feed) = AsyncStream<[Float]>.makeStream()
+        let tokens = engine(socket).stream(languageCode: "he", audio: audio)
+        var iterator = tokens.makeAsyncIterator()
+        var waited = 0
+        while await socket.sentTexts.isEmpty, waited < 400 {
+            try await Task.sleep(for: .milliseconds(5))
+            waited += 1
+        }
+        // Past 200 finished lines the oldest are forgotten, to keep the
+        // memory small; the latest hundred are still recognized.
+        for number in 0...200 {
+            await socket.deliver(text(number, "shalom \(number)", final: true))
+            _ = try #require(try await iterator.next())
+        }
+        await socket.deliver(text(200, "shalom 200", final: false))
+        await socket.deliver(text(150, "shalom 150", final: true))
+        await socket.deliver(text(201, "ma nishma", final: false))
+        let next = try #require(try await iterator.next())
+        #expect(next.text == "ma nishma")
+        feed.finish()
+        while try await iterator.next() != nil {}
+    }
+
     @Test("a text frame's per-segment numbers are read; a frame without them still parses")
     func segmentsParse() {
         let frame = #"{"type":"text","utterance":2,"text":"כן","final":true,"confidence":0.8,"segments":[{"text":"כן","no_speech":0.1,"logprob":-0.3,"compression":1.2}]}"#
