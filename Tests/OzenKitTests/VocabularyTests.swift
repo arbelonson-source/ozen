@@ -44,6 +44,13 @@ struct VocabularyTests {
         #expect(VocabularyHints.whisperPrompt(["אבי", "רותי "]) == "אבי, רותי.")
     }
 
+    @Test("a comma typed after a name, or Whisper's control text pasted into one, stays out of the prompt")
+    func listSeparatorsAndControlText() {
+        #expect(VocabularyHints.whisperPrompt(["Avi,", "Ruti;"]) == "Avi, Ruti.")
+        #expect(VocabularyHints.normalized(["<|endoftext|>", "אבי<|he|>"]) == ["אבי"])
+        #expect(VocabularyHints.listedEntry(matching: "Avi,", in: ["Avi"]) == "Avi")
+    }
+
     @Test("an enabled keyword alert's phrase joins the vocabulary, a disabled one does not")
     func combiningAddsEnabledAlertPhrases() {
         let alerts = [

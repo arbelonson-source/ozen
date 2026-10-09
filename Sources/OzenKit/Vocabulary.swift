@@ -17,7 +17,7 @@ public enum VocabularyHints {
         var seen = Set<String>()
         var result: [String] = []
         for raw in terms {
-            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmed = cleaned(raw)
             guard !trimmed.isEmpty else { continue }
             let clipped = String(trimmed.prefix(maximumTermLength))
             let key = dedupKey(clipped)
@@ -33,10 +33,18 @@ public enum VocabularyHints {
     /// the way `normalized` compares, so the screen can say so instead of
     /// clearing the field as if the word had been added.
     public static func listedEntry(matching term: String, in terms: [String]) -> String? {
-        let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
-        let key = dedupKey(String(trimmed.prefix(maximumTermLength)))
+        let key = dedupKey(String(cleaned(term).prefix(maximumTermLength)))
         guard !key.isEmpty else { return nil }
         return terms.first { dedupKey($0) == key }
+    }
+
+    /// A comma or semicolon typed after a name, as in a written list, is
+    /// the list's and not the name's: kept, the prompt read "Avi,, Ruti.".
+    /// Whisper's control text ("<|endoftext|>") pasted into an entry would
+    /// reach the home computer's prompt as a real control token.
+    static func cleaned(_ term: String) -> String {
+        WhisperResultFilter.stripSpecialTokens(term)
+            .trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: ",;\u{060C}")))
     }
 
     /// Case and niqqud don't make a different word, but a geresh does:
