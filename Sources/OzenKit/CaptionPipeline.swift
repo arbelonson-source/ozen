@@ -123,9 +123,11 @@ public final class CaptionPipeline {
     /// Only switch back after this long without new words or speech, so a
     /// sentence isn't cut in half.
     public var homeServerSwitchBackQuietSeconds: Double = 2
-    /// How long the phone's model may load, when it is not a first set-up,
-    /// before the screen says it can take a few minutes.
-    public var slowLoadSeconds: Double = 15
+    /// What the phone's model waits through while it loads, when it is not
+    /// a first set-up, before the screen says it can take a few minutes:
+    /// 15 seconds. A test holds it until it has seen the plain "loading",
+    /// which a busy machine could otherwise sleep straight through.
+    public var slowLoadWait: @Sendable () async -> Void = { try? await Task.sleep(for: .seconds(15)) }
     /// How long a download may send no progress before its time left is
     /// taken off the screen: at least this long, and `downloadQuietGaps`
     /// times its usual gap between reports, so a slow connection that
@@ -1839,7 +1841,7 @@ public final class CaptionPipeline {
     /// The same for a start waiting on an earlier load, which says nothing
     /// more either (a model changed during a set-up of minutes).
     private func sayWaitIsSlow(_ waiter: UUID) async {
-        try? await Task.sleep(for: .seconds(slowLoadSeconds))
+        await slowLoadWait()
         guard !Task.isCancelled, newestWaitingStart == waiter, var shown = waitingShown,
               phase == .preparingEngine(shown), shown.stage == .loadingModel, !shown.isFirstTime, !shown.isTakingLong
         else { return }
@@ -1849,7 +1851,7 @@ public final class CaptionPipeline {
     }
 
     private func sayLoadIsSlow(run: UUID) async {
-        try? await Task.sleep(for: .seconds(slowLoadSeconds))
+        await slowLoadWait()
         guard !Task.isCancelled, runID == run, case .preparingEngine(var shown) = phase,
               shown.stage == .loadingModel, !shown.isFirstTime, !shown.isTakingLong
         else { return }

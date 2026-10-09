@@ -1733,12 +1733,14 @@ struct CaptionPipelineLifecycleTests {
         let gate = PrepareGate()
         slow.prepareGate = gate
         let (pipeline, _, _) = makePipeline(engines: [.whisperKit: slow])
-        pipeline.slowLoadSeconds = 0.2
+        let slowness = PrepareGate()
+        pipeline.slowLoadWait = { await slowness.wait() }
         let first = Task { await pipeline.start(settings: .default) }
         while slow.prepareCount == 0 { await Task.yield() }
         pipeline.stop()
         let second = Task { await pipeline.start(settings: .default) }
         #expect(await eventually { pipeline.phase == .preparingEngine(EnginePreparationProgress(stage: .loadingModel)) })
+        await slowness.open()
         #expect(await eventually { pipeline.phase == .preparingEngine(EnginePreparationProgress(stage: .loadingModel, isTakingLong: true)) })
 
         await gate.open()
@@ -1754,9 +1756,11 @@ struct CaptionPipelineLifecycleTests {
         let gate = PrepareGate()
         engine.afterProgressGate = gate
         let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
-        pipeline.slowLoadSeconds = 0.2
+        let slowness = PrepareGate()
+        pipeline.slowLoadWait = { await slowness.wait() }
         let start = Task { await pipeline.start(settings: .default) }
         #expect(await eventually { pipeline.phase == .preparingEngine(loading) })
+        await slowness.open()
         var long = loading
         long.isTakingLong = true
         #expect(await eventually { pipeline.phase == .preparingEngine(long) })
@@ -1772,7 +1776,7 @@ struct CaptionPipelineLifecycleTests {
         let gate = PrepareGate()
         engine.afterProgressGate = gate
         let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
-        pipeline.slowLoadSeconds = 0.05
+        pipeline.slowLoadWait = { try? await Task.sleep(for: .milliseconds(50)) }
         let start = Task { await pipeline.start(settings: .default) }
         #expect(await eventually { pipeline.phase == .preparingEngine(firstTime) })
         try? await Task.sleep(for: .milliseconds(200))
@@ -1783,7 +1787,7 @@ struct CaptionPipelineLifecycleTests {
         pipeline.stop()
         let quick = FakeEngine(progressUpdates: [EnginePreparationProgress(stage: .loadingModel, detail: "base")])
         let (fast, _, _) = makePipeline(engines: [.whisperKit: quick])
-        fast.slowLoadSeconds = 0.05
+        fast.slowLoadWait = { try? await Task.sleep(for: .milliseconds(50)) }
         await fast.start(settings: .default)
         try? await Task.sleep(for: .milliseconds(150))
         #expect(fast.phase == .listening)
