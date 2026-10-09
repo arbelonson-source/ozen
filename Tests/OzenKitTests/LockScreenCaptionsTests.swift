@@ -121,6 +121,12 @@ struct LockScreenCaptionsTests {
 
         let rachel = LockScreenCaptions.lines(from: [line(words)]) { _ in "Rachel" }
         #expect(rachel[0].text == CaptionLayout.directed(LockScreenCaptions.tail(of: words, maximumCharacters: budget - "Rachel: ".count)))
+
+        // Four-letter words start a word one character further in: a line
+        // with no name loses none of its room to one.
+        let short = Array(repeating: "good", count: 25).joined(separator: " ")
+        let unnamed = LockScreenCaptions.lines(from: [line(long), line(short)]) { _ in nil }
+        #expect(unnamed[1].text == CaptionLayout.directed(LockScreenCaptions.tail(of: short, maximumCharacters: budget)))
     }
 
     @Test("the newest line never outgrows the widget's three rows, counting the name it shows or gets back when shown alone")

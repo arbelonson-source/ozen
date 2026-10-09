@@ -206,6 +206,28 @@ struct CloudSpeechEngineTests {
         #expect(Set(received.map(\.utteranceID)).count == 1)
     }
 
+    @Test("a live request that fails is not tried again; only a final one is worth a second request")
+    func liveFailureIsNotRetried() async throws {
+        let http = FakeCloudHTTP(answers: [.offline, .text("שלום לכולם")])
+        let engine = engine(http)
+        let (audio, input) = AsyncStream<[Float]>.makeStream()
+        let tokens = engine.stream(languageCode: "he", audio: audio)
+        let collected = Task {
+            var received: [TranscriptToken] = []
+            for try await token in tokens { received.append(token) }
+            return received
+        }
+        for chunk in speech(seconds: 3) { input.yield(chunk) }
+        #expect(await eventually { http.transcriptionRequests.count == 1 })
+        for chunk in silence(seconds: 1) { input.yield(chunk) }
+        input.finish()
+        let received = try await collected.value
+        // A retried live pass would have shown the answer meant for the
+        // final one as a live line, and asked a third time.
+        #expect(received.map(\.isFinal) == [true])
+        #expect(http.transcriptionRequests.count == 2)
+    }
+
     @Test("a final request that fails once is tried again")
     func retriesFinal() async throws {
         let http = FakeCloudHTTP(answers: [.offline, .text("שלום")])

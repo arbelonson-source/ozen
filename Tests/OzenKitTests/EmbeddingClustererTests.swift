@@ -76,6 +76,12 @@ struct EmbeddingClustererTests {
         #expect(cosineSimilarity([], []) == 0)
     }
 
+    @Test("an all-zero embedding, silence or a failed embedder, is like no voice at all")
+    func cosineSimilarityOfZeroIsZero() {
+        #expect(cosineSimilarity([0, 0, 0], [1, 0, 0]) == 0)
+        #expect(cosineSimilarity([1, 0, 0], [0, 0, 0]) == 0)
+    }
+
     @Test("generic labels are Hebrew, because that is what the caption screen shows")
     func hebrewLabels() {
         var clusterer = EmbeddingClusterer()
