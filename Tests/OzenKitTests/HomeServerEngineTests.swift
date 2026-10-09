@@ -674,7 +674,11 @@ struct HomeServerEngineTests {
         await socket.deliver(#"{"type":"text","utterance":3,"text":"תודה רבה, אבי","final":true,"segments":[{"text":"תודה רבה, אבי","no_speech":0.02,"logprob":-0.2,"compression":1.1}]}"#)
         let kept = try #require(try await iterator.next())
         #expect(kept.text == "תודה רבה, אבי")
+        // A server that sends no segments has no numbers to say a thanks
+        // was barely heard: only the text is checked, and it stays.
+        await socket.deliver(text(4, "תודה", final: true))
         feed.finish()
+        #expect(try await iterator.next()?.text == "תודה")
         #expect(try await iterator.next() == nil)
     }
 
