@@ -1241,6 +1241,19 @@ class SessionAfterHello(unittest.TestCase):
         self.assertIsNone(ws.closed)
         self.assertTrue(any("1 lines" in line for line in logged.output), logged.output)
 
+    def test_a_phone_that_only_checked_and_hung_up_leaves_no_worker_running(self):
+        hello = {"type": "hello", "token": "example-code-123"}
+        ws = PhoneSocket(hello, [])
+
+        async def check():
+            await S.handle(ws, NamesGPU(), "example-code-123", 0.3)
+            await asyncio.sleep(0.1)
+            return [t for t in asyncio.all_tasks() if t is not asyncio.current_task() and not t.done()]
+
+        with self.assertLogs(S.log, "INFO"):
+            left = asyncio.run(check())
+        self.assertEqual(left, [])
+
     def test_a_pass_that_fails_closes_the_connection_so_the_phone_stops_waiting(self):
         hello = {"type": "hello", "token": "example-code-123"}
         ws = PhoneSocket(hello, [*speech_frames(1.5), 0.6])
