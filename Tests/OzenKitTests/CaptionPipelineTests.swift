@@ -2269,6 +2269,39 @@ struct CaptionPipelineAlertTests {
         #expect(pipeline.keywordHitSegmentIDs.isEmpty)
     }
 
+    @Test("an alert whose word is changed while a sentence is still coming fires on the new word in that sentence")
+    func editedAlertFiresOnPendingSentence() async {
+        let engine = FakeEngine()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
+        await pipeline.start(settings: .default)
+        let alert = KeywordAlert(phrase: "דנה")
+        pipeline.setKeywordAlerts([alert])
+        let sentence = UUID()
+        engine.emit(token(sentence, "דנה הגיעה"))
+        #expect(await eventually { pipeline.keywordHits.count == 1 })
+
+        var edited = alert
+        edited.phrase = "רותי"
+        pipeline.setKeywordAlerts([edited])
+        engine.emit(token(sentence, "דנה הגיעה עם רותי"))
+        #expect(await eventually { pipeline.keywordHits.count == 2 })
+    }
+
+    @Test("after the screen is cleared mid-sentence, the word said again in that sentence alerts again")
+    func clearedSentenceAlertsAgain() async {
+        let engine = FakeEngine()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
+        await pipeline.start(settings: .default)
+        pipeline.setKeywordAlerts([KeywordAlert(phrase: "דנה")])
+        let sentence = UUID()
+        engine.emit(token(sentence, "דנה הגיעה"))
+        #expect(await eventually { pipeline.keywordHits.count == 1 })
+
+        pipeline.clearTranscript()
+        engine.emit(token(sentence, "דנה הגיעה ודנה יצאה"))
+        #expect(await eventually { pipeline.keywordHits.count == 1 })
+    }
+
     @Test("a keyword added while listening still alerts after captions start again on their own")
     func keywordAddedMidSessionSurvivesRestart() async {
         let engine = FakeEngine()
