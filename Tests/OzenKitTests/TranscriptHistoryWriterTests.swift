@@ -437,6 +437,27 @@ struct TranscriptHistoryWriterTests {
         #expect(writer.lastFailure == nil)
     }
 
+    @Test("deleting everything also drops a conversation still waiting for room, and its warning")
+    func deleteAllDropsTheWaiting() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.delete-all-waiting"))
+        let evening = record(id: UUID(), lines: 3, ended: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(evening)
+        #expect(writer.lastFailure != nil)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+
+        try writer.deleteAllNow()
+        #expect(writer.lastFailure == nil)
+        writer.saveNow(record(id: UUID(), lines: 1, ended: false))
+        #expect(store.load(id: evening.id) == nil)
+    }
+
     @Test("a star on a line only the waiting version has is put on that line")
     func starOnLineOnlyWaiting() throws {
         let (store, dir) = makeStore()
