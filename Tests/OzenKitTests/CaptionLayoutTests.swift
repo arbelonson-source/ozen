@@ -200,7 +200,10 @@ struct CaptionLayoutSavedSpeakerLabelTests {
     @Test("six quiet minutes between two saved lines repeats the same speaker's name, like the live view does")
     func quietGapRepeatsName() {
         func at(_ start: TimeInterval, name: String? = "שרה") -> SavedSegment {
-            SavedSegment(id: UUID(), text: "שלום", speakerName: name, speakerClusterID: nil, startTimestamp: start, isCommitted: true)
+            SavedSegment(
+                id: UUID(), text: "שלום", speakerName: name, speakerClusterID: nil,
+                startTimestamp: 1_790_000_000 + start, isCommitted: true
+            )
         }
         let first = at(0)
         #expect(!CaptionLayout.startsAfterQuiet(for: at(299), previous: first))

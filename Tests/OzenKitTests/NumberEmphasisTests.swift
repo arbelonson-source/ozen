@@ -8,6 +8,13 @@ struct NumberEmphasisTests {
         NumberEmphasis.ranges(in: text).map { String(text[$0]) }
     }
 
+    @Test("\"one\" or \"pa'am\" as the very last word of a line, even before a trailing space, is read safely")
+    func lastWordOfTheLine() {
+        #expect(emphasized("לקחתי את זה רק פעם") == [])
+        #expect(emphasized("נשאר רק כדור אחד ") == ["אחד"])
+        #expect(emphasized("נשארה רק אחת ") == ["אחת"])
+    }
+
     @Test("times, phone numbers, fractions and percentages written in digits")
     func digits() {
         #expect(emphasized("ניפגש ב-10:30 אצל הרופא") == ["10:30"])
