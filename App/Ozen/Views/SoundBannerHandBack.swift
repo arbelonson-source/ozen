@@ -8,7 +8,7 @@ private struct SoundBannerHandBack: ViewModifier {
 
     func body(content: Content) -> some View {
         content.onChange(of: isCovered) { _, covered in
-            guard !covered, let alert = viewModel.screenSoundAlert,
+            guard !covered, let alert = viewModel.bannerSoundAlert,
                   viewModel.soundAlerts.contains(where: { $0.id == alert.id }),
                   viewModel.bannerSecondsLeft(for: alert) > 1,
                   alert.takesBanner(from: banner)

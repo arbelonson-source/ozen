@@ -2323,6 +2323,32 @@ struct CaptionPipelineAlertTests {
         #expect(pipeline.bannerSecondsLeft(for: siren) == 0)
     }
 
+    @Test("a lesser sound heard during a siren's banner still buzzes and is read out, but the siren keeps the banner and the rest of its time")
+    func lesserSoundLeavesTheBanner() async throws {
+        let clock = TestClock()
+        let detector = FakeSoundDetector()
+        let (pipeline, audio, _) = makePipeline(soundDetector: detector, now: { clock.now })
+        var announced: [String] = []
+        pipeline.onSoundAlert = { announced.append($0.event.identifier) }
+        await pipeline.start(settings: .default)
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        #expect(await eventually { detector.chunksSeen == 1 })
+
+        detector.push(SoundObservation(identifier: "civil_defense_siren", confidence: 0.95, timestamp: clock.now))
+        #expect(await eventually { pipeline.screenSoundAlert != nil })
+        let siren = try #require(pipeline.screenSoundAlert)
+        clock.advance(5)
+        detector.push(SoundObservation(identifier: "door_bell", confidence: 0.95, timestamp: clock.now))
+        #expect(await eventually { pipeline.soundAlerts.count == 2 })
+
+        #expect(announced == ["civil_defense_siren", "door_bell"])
+        #expect(pipeline.screenSoundAlert?.event.identifier == "door_bell")
+        #expect(abs(pipeline.bannerSecondsLeft(for: siren) - (siren.bannerSeconds - 5)) < 0.01)
+        #expect(pipeline.currentBannerSoundAlert?.id == siren.id)
+        clock.advance(siren.bannerSeconds)
+        #expect(pipeline.currentBannerSoundAlert == nil)
+    }
+
     @Test("an alert past its banner time, like one heard while the app was away, is no longer the current one to buzz, flash or read out")
     func staleAlertIsNotCurrent() async throws {
         let clock = TestClock()

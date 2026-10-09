@@ -657,6 +657,7 @@ public final class LiveCaptionViewModel {
     public var soundAlerts: [SoundAlert] { pipeline.soundAlerts }
     public var screenSoundAlert: SoundAlert? { pipeline.screenSoundAlert }
     public var currentScreenSoundAlert: SoundAlert? { pipeline.currentScreenSoundAlert }
+    public var bannerSoundAlert: SoundAlert? { pipeline.bannerSoundAlert }
     public func bannerSecondsLeft(for alert: SoundAlert) -> Double { pipeline.bannerSecondsLeft(for: alert) }
     public var microphoneDrop: MicrophoneDropNotice { pipeline.microphoneDrop }
     /// Whether captions are coming in now: a phone call leaves the phase

@@ -76,6 +76,12 @@ public final class CaptionPipeline {
     /// alert before it isn't replayed as if it had just been heard.
     public private(set) var screenSoundAlert: SoundAlert?
     private var screenSoundAlertRaisedAt: TimeInterval?
+    /// The alert whose banner the screen shows. A lesser sound heard while
+    /// it lasts is `screenSoundAlert` (it buzzes and is read out) but
+    /// doesn't take the banner (`SoundAlert.takesBanner(from:)`): closing a
+    /// covering screen handed the banner to the kettle, not the alarm.
+    public private(set) var bannerSoundAlert: SoundAlert?
+    private var bannerSoundAlertRaisedAt: TimeInterval?
 
     /// Tunable from Settings without a restart.
     public var soundPolicy: SoundEventPolicy
@@ -878,6 +884,8 @@ public final class CaptionPipeline {
         soundAlerts = []
         screenSoundAlert = nil
         screenSoundAlertRaisedAt = nil
+        bannerSoundAlert = nil
+        bannerSoundAlertRaisedAt = nil
     }
 
     /// How long `alert`'s banner still has: the rest of its time when it is
@@ -894,8 +902,16 @@ public final class CaptionPipeline {
         return alert
     }
 
+    /// `bannerSoundAlert` while its banner time lasts, nil after.
+    public var currentBannerSoundAlert: SoundAlert? {
+        guard let alert = bannerSoundAlert, bannerSecondsLeft(for: alert) > 0 else { return nil }
+        return alert
+    }
+
     public func bannerSecondsLeft(for alert: SoundAlert) -> Double {
-        guard alert.id == screenSoundAlert?.id, let raised = screenSoundAlertRaisedAt else { return alert.bannerSeconds }
+        let raisedAt = alert.id == screenSoundAlert?.id ? screenSoundAlertRaisedAt
+            : alert.id == bannerSoundAlert?.id ? bannerSoundAlertRaisedAt : nil
+        guard let raised = raisedAt else { return alert.bannerSeconds }
         // A clock set back since would otherwise add the jump to the time left.
         return min(alert.bannerSeconds, max(0, alert.bannerSeconds - (now() - raised)))
     }
@@ -940,6 +956,10 @@ public final class CaptionPipeline {
         // of it as urgent as the first is still the less likely one.
         let weakerInSameReading = screenSoundAlert.map { $0.timestamp == alert.timestamp && $0.event.importance >= alert.event.importance } ?? false
         if !weakerInSameReading {
+            if alert.takesBanner(from: currentBannerSoundAlert) {
+                bannerSoundAlert = alert
+                bannerSoundAlertRaisedAt = now()
+            }
             screenSoundAlert = alert
             screenSoundAlertRaisedAt = now()
             onSoundAlert?(alert)
