@@ -382,6 +382,10 @@ class PauseEnd(unittest.TestCase):
         after_last_words = [t for t in speech_over if t > finals[0] - 0.7]
         self.assertLessEqual(len(after_last_words), 1, gpu.passes)
         self.assertLess(session.final_lag_seconds[0], 0.15, session.final_lag_seconds)
+        # 0.6 s of quiet, 1.5 s of speech and the 0.3 s pad after it.
+        final_end = [json.loads(m)["end_s"] for m in session.ws.sent if json.loads(m)["final"]]
+        self.assertEqual(len(final_end), 1, final_end)
+        self.assertAlmostEqual(final_end[0], 2.4, delta=0.06)
 
 
 class PreviousLine(unittest.TestCase):
@@ -425,6 +429,62 @@ class StopWithALineWaiting(unittest.TestCase):
         # Only the first line ended at a pause; the stop ended the second,
         # and has no pause to time it from.
         self.assertEqual(len(session.final_lag_seconds), 1, session.final_lag_seconds)
+
+
+class OneBigChunk(unittest.TestCase):
+    def test_a_pause_and_the_end_of_speech_are_found_inside_one_chunk(self):
+        session = S.Session(Socket(), SlowGPU(live_seconds=0.01), "he", [], live_interval=0.3)
+        session.add_audio(pcm(1.0, 0.3) + pcm(1.0, 0.0005) + pcm(1.0, 0.3) + pcm(0.5, 0.0005))
+        self.assertEqual(len(session.pauses), 1, session.pauses)
+        self.assertTrue(S.RATE <= session.pauses[0] <= S.RATE + 688, session.pauses)
+        self.assertTrue(3 * S.RATE <= session.last_speech_end <= 3 * S.RATE + 688, session.last_speech_end)
+
+
+class ThreeSentencesInOneSlowPass(unittest.TestCase):
+    def test_three_sentences_said_during_one_slow_live_pass_come_back_as_three_lines(self):
+        gpu = WindowGPU(live_seconds=2.0)
+        session = S.Session(Socket(), gpu, "he", [], live_interval=0.3)
+
+        async def feed():
+            worker = asyncio.create_task(session.run())
+            for seconds, level in ((0.6, 0.0005), (1.0, 0.3), (1.0, 0.0005), (1.0, 0.3), (1.0, 0.0005),
+                                   (1.0, 0.3), (1.6, 0.0005)):
+                chunk = pcm(seconds, level)
+                step = int(0.1 * S.RATE) * 2
+                for i in range(0, len(chunk), step):
+                    session.add_audio(chunk[i:i + step])
+                    await asyncio.sleep(0.02)
+            session.finished = True
+            session.changed.set()
+            await asyncio.wait_for(worker, 10)
+
+        asyncio.run(feed())
+        finals = [n / S.RATE for n, final in gpu.passes if final]
+        self.assertEqual(len(finals), 3, gpu.passes)
+        self.assertTrue(all(seconds <= 2.5 for seconds in finals), finals)
+        # The first line waited for the slow pass long after its pause.
+        self.assertGreater(session.final_lag_seconds[0], 0.5, session.final_lag_seconds)
+
+
+class LiveCadence(unittest.TestCase):
+    def test_a_fast_card_still_waits_a_live_interval_of_new_audio_between_live_passes(self):
+        gpu = SlowGPU(live_seconds=0.01)
+        session = S.Session(Socket(), gpu, "he", [], live_interval=0.5)
+
+        async def feed():
+            worker = asyncio.create_task(session.run())
+            chunk = pcm(2.0, 0.3)
+            step = int(0.1 * S.RATE) * 2
+            for i in range(0, len(chunk), step):
+                session.add_audio(chunk[i:i + step])
+                await asyncio.sleep(0.05)
+            session.finished = True
+            session.changed.set()
+            await asyncio.wait_for(worker, 5)
+
+        asyncio.run(feed())
+        live = [t for t, final in gpu.passes if not final]
+        self.assertTrue(2 <= len(live) <= 5, gpu.passes)
 
 
 class WindowGPU(SlowGPU):
@@ -648,6 +708,7 @@ class Summary(unittest.TestCase):
         self.assertIn("1 lines, 2 finished empty", summary)
         median = float(summary.split("finished-line pass median ")[1].split(" s")[0])
         self.assertGreaterEqual(median, 0.15, summary)
+        self.assertLess(median, 1.0, summary)
 
     def test_a_session_of_only_noise_still_says_how_many_lines_came_back_empty(self):
         summary = self.play([(0.2, 0.3), (1.6, 0.0005), (0.2, 0.3), (1.6, 0.0005)])
