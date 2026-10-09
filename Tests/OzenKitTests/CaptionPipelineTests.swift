@@ -3715,6 +3715,10 @@ struct CaptionPipelineSilencePhraseTests {
         engine.emit(TranscriptToken(utteranceID: id, text: "תודה. תודה.", isFinal: true, timestamp: 1))
         #expect(await eventually { pipeline.segments.first?.isCommitted == true })
         #expect(pipeline.segments.first?.text == "תודה")
+        // Counted as finished, so VoiceOver reads it now, not when the
+        // next line ends.
+        #expect(pipeline.committedLineCount == 1)
+        #expect(pipeline.stats.segmentsCommitted == 1)
     }
 }
 
