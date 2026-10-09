@@ -93,6 +93,7 @@ class Sending(unittest.TestCase):
         self.assertTrue(np.array_equal(sent, (audio * 32767).astype("<i2")))
         self.assertEqual(json.loads(socket.sent[-1]), {"type": "end"})
         self.assertGreater(took, 0.4)
+        self.assertLess(took, 3.0)
 
 
 class Stereo(unittest.TestCase):
