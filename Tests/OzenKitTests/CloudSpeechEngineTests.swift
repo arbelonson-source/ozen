@@ -107,13 +107,13 @@ struct CloudSpeechEngineTests {
     func audioSent() async throws {
         let http = FakeCloudHTTP(answers: [.text("שלום")])
         _ = try await transcribe(engine(http), silence(seconds: 2) + speech(seconds: 1) + silence(seconds: 2))
-        let request = try #require(http.transcriptionRequests.first)
-        let json = try #require(JSONSerialization.jsonObject(with: request.body ?? Data()) as? [String: Any])
-        let content = try #require(((json["messages"] as? [[String: Any]])?.first?["content"]) as? [[String: Any]])
-        let audio = try #require(Data(base64Encoded: (content.last?["input_audio"] as? [String: String])?["data"] ?? ""))
-        let seconds = Double(audio.count - 44) / 2 / 16_000
-        #expect(seconds > 1.0)
-        #expect(seconds < 2.0)
+        // An engine that looks before all the audio is in sends a live pass
+        // first (2.04 s with the pause not yet reached); the line is the last.
+        let sent = try http.transcriptionRequests.map(secondsSent)
+        let line = try #require(sent.last)
+        #expect(line > 1.0)
+        #expect(line < 2.0)
+        #expect(sent.allSatisfy { $0 < 2.3 }, "\(sent)")
     }
 
     @Test("the half second before the speech goes with it, so its first syllable isn't clipped", .timeLimit(.minutes(1)))
