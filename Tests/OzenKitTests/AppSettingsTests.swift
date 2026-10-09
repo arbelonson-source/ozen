@@ -173,16 +173,19 @@ struct AppSettingsTests {
         #expect(decoded.creditLine == "Arbel")
     }
 
-    @Test("an empty JSON object decodes to the defaults")
+    @Test("an empty JSON object decodes to the defaults, but for the cloud service, which a file from before the choice meant as OpenRouter")
     func emptyObjectIsDefaults() throws {
         let decoded = try JSONDecoder().decode(AppSettings.self, from: Data("{}".utf8))
-        #expect(decoded == AppSettings.default)
+        var expected = AppSettings.default
+        expected.cloudProvider = .openRouter
+        #expect(decoded == expected)
     }
 
     @Test("the model shown for a conversation is the one its engine used")
     func modelDescription() {
         var settings = AppSettings.default
         settings.whisperModelVariant = "small"
+        settings.cloudProvider = .openRouter
         settings.cloudModel = CloudSpeech.accurateModel
         settings.engine = .whisperKit
         let whisper = settings.modelDescription
@@ -216,9 +219,19 @@ struct AppSettingsTests {
         #expect(decoded.cloudProvider == .deepgram)
     }
 
+    @Test("a new install starts on the recommended cloud service, Soniox; saved settings without one keep OpenRouter, whose key they were set up with")
+    func cloudProviderForNewInstalls() throws {
+        #expect(AppSettings.default.cloudProvider == .soniox)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(AppSettings.default))
+        #expect(decoded.cloudProvider == .soniox)
+        let saved = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"engine":"cloud"}"#.utf8))
+        #expect(saved.cloudProvider == .openRouter)
+    }
+
     @Test("a cloud model left from another service is never sent to the chosen one")
     func cloudModelBelongsToTheService() {
         var settings = AppSettings.default
+        settings.cloudProvider = .openRouter
         settings.cloudModel = CloudSpeech.fastModel
         #expect(settings.chosenCloudModel == CloudSpeech.fastModel)
         settings.cloudProvider = .deepgram

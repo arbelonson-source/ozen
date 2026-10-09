@@ -173,8 +173,9 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// see `chosenCloudModel`. The key itself is kept in the Keychain,
     /// never in this file.
     public var cloudModel: String
-    /// Which service cloud captions go to. Settings from before there was
-    /// a choice meant OpenRouter.
+    /// Which service cloud captions go to: Soniox, the recommended one,
+    /// on a new install. Settings from before there was a choice meant
+    /// OpenRouter, whose key they were set up with.
     public var cloudProvider: CloudProvider
     /// Where the home server is ("192.168.1.20", "pc.example:8765",
     /// "wss://…"); the pairing code is kept in the Keychain, not here.
@@ -286,7 +287,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         whisperModelVariant: String = WhisperModelCatalog.defaultVariant,
         allowServerFallbackForAppleSpeech: Bool = false,
         cloudModel: String = CloudSpeech.accurateModel,
-        cloudProvider: CloudProvider = .openRouter,
+        cloudProvider: CloudProvider = .soniox,
         homeServerAddress: String = "",
         homeServerBeam: Int = 5,
         display: DisplayPreferences = .default,
@@ -438,7 +439,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         whisperModelVariant = container.lenient(String.self, forKey: .whisperModelVariant) ?? defaults.whisperModelVariant
         allowServerFallbackForAppleSpeech = container.lenient(Bool.self, forKey: .allowServerFallbackForAppleSpeech) ?? defaults.allowServerFallbackForAppleSpeech
         cloudModel = container.lenient(String.self, forKey: .cloudModel).flatMap { $0.isEmpty ? nil : $0 } ?? defaults.cloudModel
-        cloudProvider = container.lenient(CloudProvider.self, forKey: .cloudProvider) ?? defaults.cloudProvider
+        cloudProvider = container.lenient(CloudProvider.self, forKey: .cloudProvider) ?? .openRouter
         homeServerAddress = container.lenient(String.self, forKey: .homeServerAddress) ?? defaults.homeServerAddress
         homeServerBeam = container.lenient(Int.self, forKey: .homeServerBeam)
             .map { min(max($0, Self.homeServerBeamRange.lowerBound), Self.homeServerBeamRange.upperBound) } ?? defaults.homeServerBeam
