@@ -36,6 +36,7 @@ struct CloudSpeechTests {
     @Test("a sentence that opens with a short word and a colon keeps the word")
     func shortWordWithColon() {
         #expect(CloudSpeech.turns(in: "אז: הלכנו הביתה") == ["אז: הלכנו הביתה"])
+        #expect(CloudSpeech.turns(in: "Mom: dinner is ready") == ["Mom: dinner is ready"])
     }
 
     @Test("a line that opens with a time keeps the whole time")
