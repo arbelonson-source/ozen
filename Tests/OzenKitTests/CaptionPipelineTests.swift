@@ -635,10 +635,12 @@ struct CaptionPipelineTokenTests {
         // final pass takes: the line must still be open.
         pipeline.commitStaleSegments(now: 1_004.5)
         #expect(pipeline.segments.first?.isCommitted == false)
+        #expect(pipeline.stats.hasOpenLine)
 
         pipeline.commitStaleSegments(now: 1_000 + CaptionStabilizer.defaultSilenceCommitThreshold + 0.5)
         #expect(pipeline.segments.first?.isCommitted == true)
         #expect(pipeline.stats.segmentsCommitted == 1)
+        #expect(!pipeline.stats.hasOpenLine)
     }
 
     @Test("while listening, the stale timer commits such a line by itself", .timeLimit(.minutes(1)))
@@ -1769,6 +1771,25 @@ struct CaptionPipelineInputTests {
         #expect(pipeline.microphoneDrop.lost == nil)
     }
 
+    @Test("the notice of a dropped microphone goes away when she closes it")
+    func closingTheMicrophoneDropNotice() async {
+        let builtIn = AudioInputDescriptor(uid: "builtin", portName: "iPhone Microphone", portType: .builtInMic)
+        let lapel = AudioInputDescriptor(uid: "usb-lav", portName: "USB Lavalier", portType: .usb)
+        let audio = FakeAudioCapturer()
+        audio.availableInputs = [builtIn, lapel]
+        let (pipeline, _, _) = makePipeline(audio: audio)
+        var settings = AppSettings.default
+        settings.preferredInputUID = "usb-lav"
+        await pipeline.start(settings: settings)
+        audio.selectedInputUID = "builtin"
+        audio.simulateRouteChange(inputs: [builtIn])
+        #expect(pipeline.microphoneDrop.lost == lapel)
+
+        pipeline.dismissMicrophoneDrop()
+        #expect(pipeline.microphoneDrop.lost == nil)
+        #expect(pipeline.phase.isListening)
+    }
+
     @Test("stopping captions takes down the notice of a dropped microphone")
     func stopClearsMicrophoneDrop() async {
         let builtIn = AudioInputDescriptor(uid: "builtin", portName: "iPhone Microphone", portType: .builtInMic)
@@ -1926,6 +1947,23 @@ struct CaptionPipelineEnrollmentTests {
         #expect(progress == [0.5, 1])
         #expect(pipeline.phase == .listening)
         #expect(audio.calls.filter { $0 == "startCapture" }.count == 3)
+    }
+
+    @Test("captions that start again after a voice recording keep their microphone once the recording's time is up", .timeLimit(.minutes(1)))
+    func recordingLeavesTheResumedCaptionsAlone() async throws {
+        let (pipeline, audio, _) = makePipeline(audioWatchdog: .disabled)
+        pipeline.enrollmentStallSeconds = 0.2
+        await pipeline.start(settings: .default)
+        let recording = Task { @MainActor in await pipeline.captureEnrollmentSamples(seconds: 0.1) }
+        #expect(await eventually { audio.calls.filter { $0 == "startCapture" }.count == 2 })
+        audio.push([Float](repeating: 0.1, count: 1_600))
+        _ = await recording.value
+        #expect(pipeline.phase == .listening)
+        let resumed = audio.calls.count
+
+        try await Task.sleep(for: .seconds(1))
+        #expect(!audio.calls.dropFirst(resumed).contains("stopCapture"))
+        #expect(pipeline.phase == .listening)
     }
 
     @Test("stopping a voice recording ends it at once, not after its full length", .timeLimit(.minutes(1)))
