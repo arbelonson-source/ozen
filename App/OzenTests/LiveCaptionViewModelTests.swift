@@ -1970,6 +1970,37 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(pipeline.speakerClusters.filter { $0.name == "Danna" }.count == 2)
     }
 
+    @Test("fixing a name's spelling from one line reaches the names list and earlier saved conversations, as it does from Settings")
+    func spellingFixReachesSavedConversations() async throws {
+        let engine = FakeEngine()
+        let audio = FakeAudioCapturer()
+        let pipeline = CaptionPipeline(audio: audio, engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-rename-\(UUID())", isDirectory: true)
+        let history = TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathComponent("settings.json")),
+            pipeline: pipeline,
+            historyStore: history
+        )
+        let earlier = TranscriptSessionRecord(
+            id: UUID(), startedAt: 100, endedAt: 200, engine: .whisperKit, modelVariant: nil, inputName: nil,
+            segments: [SavedSegment(id: UUID(), text: "בוקר טוב", speakerName: "Dana", speakerClusterID: nil, startTimestamp: 100, isCommitted: true)]
+        )
+        _ = try history.save(earlier)
+        await viewModel.start()
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { pipeline.speakerClusters.count == 1 })
+        await say("שלום", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        viewModel.nameSpeaker(of: viewModel.segments[0], name: "Dana")
+        viewModel.addVocabularyTerm("Dana")
+
+        viewModel.nameSpeaker(of: viewModel.segments[0], name: "Danna")
+        viewModel.waitForHistorySaves()
+
+        #expect(viewModel.vocabulary == ["Danna"])
+        #expect(history.load(id: earlier.id)?.segments.first?.speakerName == "Danna")
+    }
+
     @Test("delete all also retires the conversation in progress")
     func deleteAllIncludesLive() async throws {
         let (viewModel, engine, history) = makeViewModel()
@@ -2181,6 +2212,42 @@ struct LiveCaptionViewModelAnnouncementTests {
         viewModel.display.announceNewLines = true
         await say("ועכשיו שוב", count: 4)
         #expect(viewModel.captionAnnouncement(voiceOverRunning: true) == "ועכשיו שוב")
+    }
+
+    @Test("while the phone's own model covers for the cloud, a line is judged by that model's cutoffs, as History judges it")
+    func coverJudgedByThePhonesModel() async throws {
+        let model = try #require(WhisperModelCatalog.options.first { $0.uncertainBelow != nil })
+        let cutoff = try #require(model.uncertainBelow?.line)
+        let cloud = FakeEngine(kind: .cloud, availability: .unavailable(.noInternet, "offline"))
+        let phone = FakeEngine(kind: .whisperKit)
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { $0.engine == .cloud ? cloud : phone },
+            embedder: FakeEmbedder(),
+            recovery: .disabled
+        )
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-announce-\(UUID())", isDirectory: true)
+        let store = SettingsStore(fileURL: directory.appendingPathComponent("settings.json"))
+        var settings = AppSettings.default
+        settings.engine = .cloud
+        settings.whisperModelVariant = model.variant
+        try store.save(settings)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: store,
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        viewModel.display.showSpeakerNames = false
+        await viewModel.start()
+        #expect(await eventually { pipeline.isCoveringForCloud && pipeline.phase == .listening })
+
+        let line = "נפגשים מחר בשמונה בבוקר בבית"
+        let between = (cutoff + CaptionConfidence.uncertainBelow(for: .cloud, words: 5)) / 2
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: line, isFinal: true, timestamp: Date().timeIntervalSince1970, confidence: between))
+        #expect(await eventually { viewModel.segments.count == 1 })
+
+        let announced = try #require(viewModel.captionAnnouncement(voiceOverRunning: true))
+        #expect(announced != line && announced.hasSuffix(line), "read without its doubt: \(announced)")
     }
 }
 

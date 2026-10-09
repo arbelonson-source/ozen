@@ -1271,8 +1271,9 @@ public final class LiveCaptionViewModel {
         }
         let namesShown = settings.display.showSpeakerNames
         let marksUncertain = settings.display.markUncertainLines
-        let engine = settings.engine
-        let model = settings.whisperModelVariant
+        let scoring = transcribingSettings
+        let engine = scoring.engine
+        let model = scoring.whisperModelVariant
         return announcer.announcement(
             for: segments,
             speakerName: { [pipeline] segment in
@@ -1707,18 +1708,15 @@ public final class LiveCaptionViewModel {
         // vanish from the saved speakers; this voice gets a print instead.
         let isAnotherSavedPerson = name != oldName && settings.speakerProfiles.contains(where: { $0.name == name })
         if let oldName, !isAnotherSavedPerson, settings.speakerProfiles.contains(where: { $0.name == oldName }) {
-            for index in settings.speakerProfiles.indices where settings.speakerProfiles[index].name == oldName {
-                settings.speakerProfiles[index].name = name
-            }
-            // Each saved print listens as a voice of its own: only the tapped
-            // one was renamed, and lines matched to the person's other prints
-            // kept the old spelling while the saved list showed the new one.
-            pipeline.renameSpeakers(named: oldName, to: name)
+            // Fixed here, a spelling stayed wrong in the names list and in
+            // every earlier saved conversation, which the same fix made in
+            // Settings reaches.
+            if oldName != name { renamePerson(from: oldName, to: name) }
         } else {
             settings.speakerProfiles.append(SpeakerProfile(name: name, embedding: centroid))
+            persist()
+            speakerLabelsChanged()
         }
-        persist()
-        speakerLabelsChanged()
     }
 
     /// Deletes a person from the saved speakers: every voice print with
@@ -1755,20 +1753,26 @@ public final class LiveCaptionViewModel {
               let index = settings.speakerProfiles.firstIndex(where: { $0.id == id }),
               settings.speakerProfiles[index].name != trimmed
         else { return }
-        let oldName = settings.speakerProfiles[index].name
-        for other in settings.speakerProfiles.indices where settings.speakerProfiles[other].name == oldName {
-            settings.speakerProfiles[other].name = trimmed
+        renamePerson(from: settings.speakerProfiles[index].name, to: trimmed)
+    }
+
+    private func renamePerson(from oldName: String, to newName: String) {
+        for index in settings.speakerProfiles.indices where settings.speakerProfiles[index].name == oldName {
+            settings.speakerProfiles[index].name = newName
         }
         if let term = settings.vocabulary.firstIndex(of: oldName) {
-            settings.vocabulary[term] = trimmed
+            settings.vocabulary[term] = newName
             settings.vocabulary = VocabularyHints.normalized(settings.vocabulary)
             vocabularyChanged()
         } else {
             persist()
         }
-        pipeline.renameSpeakers(named: oldName, to: trimmed)
+        // Each saved print listens as a voice of its own: with only one
+        // renamed, lines matched to the person's other prints kept the old
+        // spelling while the saved list showed the new one.
+        pipeline.renameSpeakers(named: oldName, to: newName)
         speakerLabelsChanged()
-        historyWriter.renameSpeakerInBackground(from: oldName, to: trimmed)
+        historyWriter.renameSpeakerInBackground(from: oldName, to: newName)
     }
 
     /// A name was given, changed or removed. The lines on screen show the
@@ -1814,8 +1818,9 @@ public final class LiveCaptionViewModel {
     /// stutter the captions. Every other save waits until it is on disk.
     /// What is actually writing the captions: her settings, or the phone's
     /// own model while it covers for the cloud (see `isCoveringForCloud`).
-    /// A saved conversation says which engine wrote it.
-    private var transcribingSettings: AppSettings {
+    /// A saved conversation says which engine wrote it, and a line is
+    /// judged sure or not by that engine's cutoffs, on screen as in History.
+    var transcribingSettings: AppSettings {
         pipeline.isCoveringForCloud ? (pipeline.activeSettings ?? settings) : settings
     }
 
