@@ -1505,9 +1505,21 @@ struct HomeServerCoverTests {
         captions.switchBackAfterAnsweredChecks = 3
         await captions.start(settings: serverSettings)
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .homeServer })
+        server.availability = .unavailable(.homeServerUnreachable, "asleep")
         server.endStream(throwing: EngineUnavailability(kind: .homeServerUnreachable, detail: "connection lost"))
         #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .whisperKit })
-        let before = server.prepareCount
+        // Checks come every 50 ms, so one could land before the count is
+        // read: they go unanswered until one is held, and the count starts
+        // just before that one, the first to be answered. A line is said
+        // first, or with nothing said yet it is already between sentences.
+        let gate = PrepareGate()
+        server.prepareGate = gate
+        #expect(await eventually { server.heldPrepares == 1 })
+        let before = server.prepareCount - 1
+        server.availability = .available
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "הטלוויזיה מדברת", isFinal: true, timestamp: Date().timeIntervalSince1970))
+        #expect(await eventually { captions.segments.last?.text == "הטלוויזיה מדברת" })
+        await gate.open()
         var spoken = 0
         while captions.activeEngineKind == .whisperKit, spoken < 60 {
             phone.emit(TranscriptToken(utteranceID: UUID(), text: "הטלוויזיה מדברת \(spoken)", isFinal: true, timestamp: Date().timeIntervalSince1970))
@@ -1515,6 +1527,9 @@ struct HomeServerCoverTests {
             try await Task.sleep(for: .milliseconds(20))
         }
         #expect(captions.activeEngineKind == .homeServer)
+        // The engine kind changes as the switch starts, before it asks the
+        // computer; listening again, the switch has asked.
+        #expect(await eventually { captions.phase == .listening })
         // Exactly the answered checks asked for, then the switch itself.
         #expect(server.prepareCount - before == captions.switchBackAfterAnsweredChecks + 1)
     }
