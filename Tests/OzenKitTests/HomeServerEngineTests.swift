@@ -445,6 +445,9 @@ struct HomeServerEngineTests {
         // Given up on while the speech went on, not once the audio ended:
         // a hung computer still answers pings, and the audio never ends.
         #expect(await !stuckSocket.sentTexts.contains(HomeServer.end))
+        // And only once stallSeconds of 16 kHz speech went out after the
+        // first speech chunk: the 10 quiet chunks, that one, and 2 s more.
+        #expect(await stuckSocket.sentBytes == (10 + 1 + 20) * 3200)
         #expect(try await run(quiet, replyEvery: nil) == nil)
         #expect(try await run(loud, replyEvery: 5) == nil)
         let garbage = try await run(loud, replyEvery: 5) { _ in "<html>502 Bad Gateway</html>" }
