@@ -18,7 +18,7 @@
   <img alt="No tracking, no account" src="https://img.shields.io/badge/tracking-none-success">
   <img alt="Works with VoiceOver" src="https://img.shields.io/badge/VoiceOver-ready-8A2BE2?logo=apple">
   <img alt="Works offline once the model is on the phone" src="https://img.shields.io/badge/works-offline-success">
-  <a href="#training-a-model-that-hears-across-the-room"><img alt="Model training: underway" src="https://img.shields.io/badge/model%20training-underway-ffc928"></a>
+  <a href="#training-a-model-that-hears-across-the-room"><img alt="Noise-trained model: shipped" src="https://img.shields.io/badge/noise--trained%20model-shipped-success"></a>
 </p>
 
 Ozen (the word means "ear") turns what the people around you say into
@@ -500,15 +500,19 @@ Open a section for the details.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/training-dark.svg">
-  <img alt="Training underway since 6 October 2026: Ozen's speech model is learning to hear better from across a room and through noise, and the models will keep improving over time. It trains on 265,000 hand-checked Hebrew clips heard through 60,000 simulated rooms; a new version ships only when it beats the current one on a fixed exam; $1.99 an hour on a rented RTX PRO 6000, paid from donated GPU credit." src="docs/assets/training-light.svg" width="100%">
+  <img alt="Shipped 9 October 2026: Ozen's own speech model hears better from across a room and through noise, and the models will keep improving over time. It was trained on 265,000 hand-checked Hebrew clips heard through 60,000 simulated rooms; a new version ships only when it beats the current one on a fixed exam; $1.99 an hour on a rented RTX PRO 6000, paid from donated GPU credit." src="docs/assets/training-light.svg" width="100%">
 </picture>
 
-We're training Ozen's speech model to hear better from across a room and
-through household noise, and the models will keep improving over time.
-Each new version sits the same fixed listening exam and replaces the
-current one only when it does better. Training runs on a rented RTX PRO
-6000 at $1.99 an hour, paid from free GPU credit GarageFarm gave the
-project. The scripts are in `training/`.
+Ozen's own version of the speech model, trained to hear better from
+across a room and through household noise, shipped on 9 October 2026 and
+is the recommended model: on 700 test sentences heard across a room, in
+household noise or beside a TV it gets 20.1% of words wrong, against 23.1%
+for ivrit.ai's Turbo it was trained from, and clean speech is level (13.3%
+against 13.1%). The models will keep improving over time. Each new version
+sits the same fixed listening exam and replaces the current one only when
+it does better. Training ran on a rented RTX PRO 6000 at $1.99 an hour,
+paid from free GPU credit GarageFarm gave the project. The scripts are in
+`training/`.
 
 ## Home computer requirements
 
@@ -630,17 +634,17 @@ engine hot-swap, pause/resume, automatic recovery, every failure path —
 lives in `OzenKit` as `CaptionPipeline` and is unit tested on Linux
 against fakes, along with the alert matching, history, statistics,
 vocabulary, model-download, recovery, battery, notification and layout
-logic (over 1,100 tests). The platform layer (WhisperKit/Speech engines, real
+logic (over 1,200 tests). The platform layer (WhisperKit/Speech engines, real
 audio capture, the speaker embedder) and the app's view model are built
 and tested on CI's iOS Simulator, with the view model driven end to end by
 the same fakes (about 180 more; the Simulator run, which repeats the
-portable ones, has about 1,300).
+portable ones, has about 1,400).
 The app has been installed and run on a real iPhone 15 Pro Max (iOS 18)
 and an iPad (iPadOS 27). Actual Hebrew
 transcription quality, external-mic behaviour and speaker separation in a
 real room are being verified by hand — see the design doc's [checklist](docs/superpowers/specs/2026-09-13-ozen-live-captions-design.md#testing-strategy).
-A version of the speech model trained to hear across a noisy room has
-been training since 6 October 2026; see
+Ozen's own version of the speech model, trained to hear across a noisy
+room, has been the recommended model since 9 October 2026; see
 [Training](#training-a-model-that-hears-across-the-room).
 
 ## Support Ozen
