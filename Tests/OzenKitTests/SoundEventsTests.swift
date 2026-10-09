@@ -156,6 +156,14 @@ struct SoundEventsTests {
         #expect(policy.evaluate(reading("whistling", confidence: 0.7, at: 101)) != nil)
     }
 
+    @Test("one window that names the kettle twice is still one window")
+    func kettleLabelsInOneReadingDoNotConfirm() {
+        var policy = SoundEventPolicy()
+        #expect(policy.evaluate(reading("boiling", confidence: 0.7, at: 100)) == nil)
+        #expect(policy.evaluate(reading("whistling", confidence: 0.7, at: 100)) == nil)
+        #expect(policy.evaluate(reading("boiling", confidence: 0.7, at: 101)) != nil)
+    }
+
     @Test("a confident, listed, important sound becomes an alert")
     func basicAlert() {
         var policy = SoundEventPolicy()

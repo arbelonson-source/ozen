@@ -362,8 +362,10 @@ public struct SoundEventPolicy: Sendable, Equatable {
             // By the sound, not the label: a kettle the classifier hears as
             // "boiling" in one window and "whistling" in the next is one
             // kettle confirming itself, not two sounds each starting over.
+            // A later window only: both labels in one reading share its
+            // timestamp, and one clatter scored as both is still one spike.
             guard let pendingAt = pendingSince[event.cooldownKey],
-                  observation.timestamp >= pendingAt,
+                  observation.timestamp > pendingAt,
                   observation.timestamp - pendingAt <= persistenceWindowSeconds
             else {
                 pendingSince[event.cooldownKey] = observation.timestamp

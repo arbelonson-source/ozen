@@ -2259,6 +2259,25 @@ struct CaptionPipelineAlertTests {
         #expect(pipeline.screenSoundAlert?.event.identifier == "door_bell")
     }
 
+    @Test("two equally urgent sounds in one reading: the surer one stays on screen and only it is announced")
+    func sameReadingEqualImportance() async {
+        let detector = FakeSoundDetector()
+        let (pipeline, audio, _) = makePipeline(soundDetector: detector)
+        var announced: [String] = []
+        pipeline.onSoundAlert = { announced.append($0.event.identifier) }
+        await pipeline.start(settings: .default)
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        #expect(await eventually { detector.chunksSeen == 1 })
+
+        // An air raid siren the classifier also scores, less surely, as a
+        // police siren: the banner must not end up naming the police.
+        detector.push(SoundObservation(identifier: "civil_defense_siren", confidence: 0.95, timestamp: 300))
+        detector.push(SoundObservation(identifier: "police_siren", confidence: 0.88, timestamp: 300))
+        #expect(await eventually { pipeline.soundAlerts.count == 2 })
+        #expect(pipeline.screenSoundAlert?.event.identifier == "civil_defense_siren")
+        #expect(announced == ["civil_defense_siren"])
+    }
+
     @Test("a banner shown again after a covering screen closes gets only the rest of its time")
     func bannerTimeLeft() async throws {
         let clock = TestClock()
