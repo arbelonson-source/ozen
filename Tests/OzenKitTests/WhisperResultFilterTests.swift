@@ -151,6 +151,15 @@ struct WhisperResultFilterTests {
         #expect(filter.isKnownHallucination("[תרגום: מיכל]"))
     }
 
+    @Test("a credit label is still one behind a direction mark or with vowel points")
+    func creditLabelsUnderMarks() {
+        let filter = WhisperResultFilter()
+        #expect(filter.isKnownHallucination("\u{200F}תרגום: ישראל ישראלי"))
+        #expect(filter.isKnownHallucination("כתוּביות: ישראל ישראלי"))
+        #expect(filter.isKnownHallucination("\u{200F}כתוביות - ישראל ישראלי"))
+        #expect(filter.isKnownHallucination("\u{200F}עריכה - זה היה ממש נחמד היום") == false)
+    }
+
     @Test("credit lines in the abbreviated written form, and translated-and-synced credits, are dropped")
     func abbreviatedCreditLines() {
         let filter = WhisperResultFilter()

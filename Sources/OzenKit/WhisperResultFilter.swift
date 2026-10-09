@@ -455,7 +455,10 @@ public struct WhisperResultFilter: Sendable, Equatable {
         }
         if byPhrase { return true }
 
-        let opening = raw
+        // Without the stray U+200F and vowel points `normalize` drops for
+        // the other checks, but with the colon and dash this one needs.
+        let unmarked = HebrewText.stripNiqqud(raw).unicodeScalars.filter { $0.properties.generalCategory != .format }
+        let opening = String(String.UnicodeScalarView(unmarked))
             .trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "[](){}<>\"'״-–—")))
             .lowercased()
         return hallucinatedCreditLabels.contains { label in
