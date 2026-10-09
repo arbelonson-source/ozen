@@ -274,6 +274,9 @@ struct TranscriptHistoryTests {
         #expect(store.search("והרופא").count == 2)
         // "and pills" finds a bare "pills" with no prefix at all.
         #expect(store.search("וכדורים").count == 1)
+        // "for tomorrow" finds "tomorrow": a stem of three letters is kept.
+        try store.save(record(startedAt: 400, segments: [segment(text: "נתראה מחר בבוקר")]))
+        #expect(store.search("למחר").count == 1)
     }
 
     @Test("a word finds its plural and its 'of' form, and a plural finds the word, though the ending changes")
@@ -307,6 +310,9 @@ struct TranscriptHistoryTests {
         // A word of two letters is left alone: "ben" (son) is inside too many others.
         try store.save(record(startedAt: 700, segments: [segment(text: "שלושה בנים")]))
         #expect(store.search("בן").isEmpty)
+        // One of three is not: "money" finds "the funds".
+        try store.save(record(startedAt: 800, segments: [segment(text: "הכספים הגיעו")]))
+        #expect(store.search("כסף").count == 1)
     }
 
     @Test("dictation punctuation and Hebrew quotes around a search query don't stop it matching")
