@@ -1883,6 +1883,13 @@ public final class CaptionPipeline {
             }
             return
         }
+        // A voice sample that began during the check holds the microphone:
+        // `start` refused to run, the cover's flags stayed set for the next
+        // start, and nothing brought captions back after the recording.
+        guard !isRecordingVoice else {
+            if retryAfterRecording == nil { retryAfterRecording = HeldRetry(settings: nil) }
+            return
+        }
         logEvent(.note("cloud unavailable, the phone's own model took over"))
         nextStartCoversCloud = true
         coverReason = failure.engineUnavailability?.kind

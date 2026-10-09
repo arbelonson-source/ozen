@@ -2040,6 +2040,33 @@ struct CaptionPipelineEnrollmentTests {
         #expect(pipeline.phase == .listening)
     }
 
+    @Test("a voice sample that begins while the phone's model is about to cover for the cloud brings the cover once it ends", .timeLimit(.minutes(1)))
+    func coverWaitsForTheRecording() async {
+        let cloud = FakeEngine(kind: .cloud, availability: .unavailable(.noInternet, "offline"))
+        let phone = FakeEngine(kind: .whisperKit)
+        let audio = FakeAudioCapturer()
+        let pipeline = CaptionPipeline(
+            audio: audio,
+            engineFactory: { $0.engine == .cloud ? cloud : phone },
+            embedder: FakeEmbedder(),
+            recovery: .disabled
+        )
+        var recording: Task<[Float], Never>?
+        phone.duringPendingDownloadCheck = {
+            guard recording == nil else { return }
+            recording = Task { await pipeline.captureEnrollmentSamples(seconds: 1) }
+        }
+        var onCloud = AppSettings.default
+        onCloud.engine = .cloud
+        await pipeline.start(settings: onCloud)
+        #expect(await eventually { pipeline.isRecordingVoice })
+        audio.push([Float](repeating: 0.1, count: 16_000))
+        _ = await recording?.value
+
+        #expect(await eventually { pipeline.phase == .listening })
+        #expect(pipeline.isCoveringForCloud)
+    }
+
     @Test("without microphone permission enrollment records nothing and sets nothing up")
     func enrollmentWithoutPermission() async {
         let (pipeline, audio, _) = makePipeline()
