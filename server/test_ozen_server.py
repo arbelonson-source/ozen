@@ -285,6 +285,25 @@ class Restart(unittest.TestCase):
             S.lacks_voice, S.os._exit, S.logging.shutdown = real_gate, real_exit, real_shutdown
         self.assertEqual(exits, [3])
 
+    def test_a_fresh_server_restarts_after_its_third_failed_pass_in_a_row_not_before(self):
+        with mock.patch.object(S, "download_model", lambda name, local_files_only=False: name), \
+                mock.patch.object(S, "WhisperModel", lambda path, device, compute_type: BrokenGPU()):
+            t = S.Transcriber("live", "cuda", "int8_float16", 5, 0)
+        exits, after = [], []
+        speech = np.full(1600, 0.1, dtype=np.float32)
+
+        async def evening():
+            for _ in range(3):
+                with self.assertRaises(RuntimeError):
+                    await t.transcribe(speech, "he", None, True)
+                after.append(list(exits))
+
+        with mock.patch.object(S.os, "_exit", exits.append), mock.patch.object(S.logging, "shutdown", lambda: None), \
+                self.assertLogs(S.log, "CRITICAL") as logged:
+            asyncio.run(evening())
+        self.assertEqual(after, [[], [], [3]])
+        self.assertIn("3 passes failed in a row", logged.output[0])
+
     def test_a_pass_that_fails_now_and_then_does_not_restart_the_server(self):
         t = S.Transcriber.__new__(S.Transcriber)
         t.model = t.final_model = NowAndThenGPU()
@@ -799,6 +818,11 @@ class SpeechGain(unittest.TestCase):
     def test_a_voice_just_under_the_level_gets_the_small_lift_it_needs(self):
         peak = np.abs(S.speech_gain(slow_wave(0.4))).max()
         self.assertTrue(0.48 < peak <= 0.52, peak)
+
+    def test_a_click_below_zero_is_held_to_the_range_too(self):
+        samples = slow_wave(0.01)
+        samples[8_000] = -0.9
+        self.assertEqual(S.speech_gain(samples)[8_000], -1)
 
     def test_speech_that_is_already_loud_is_left_as_it_is(self):
         loud = slow_wave(0.8)
