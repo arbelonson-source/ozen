@@ -90,6 +90,30 @@ struct AudioFanOutTests {
         #expect(abandoned == (15..<25).map(Float.init))
     }
 
+    @Test("cancelling ends every output while the source is still open")
+    func cancelEndsOutputs() async {
+        let (source, input) = AsyncStream<[Float]>.makeStream()
+        defer { input.finish() }
+        let fan = AudioFanOut(source: source, count: 2)
+        fan.cancel()
+        let ended = await withTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                for output in fan.outputs {
+                    for await _ in output {}
+                }
+                return true
+            }
+            group.addTask {
+                try? await Task.sleep(for: .seconds(5))
+                return false
+            }
+            let first = await group.next() ?? false
+            group.cancelAll()
+            return first
+        }
+        #expect(ended)
+    }
+
     @Test("a count below one still yields a single usable output")
     func minimumOneOutput() {
         let (source, _) = AsyncStream<[Float]>.makeStream()
