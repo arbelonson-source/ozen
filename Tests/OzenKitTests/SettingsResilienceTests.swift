@@ -126,6 +126,15 @@ struct EnrollmentSpeechOnlyTests {
         #expect(abs(print[0] - 0.5) < 0.001 && abs(print[1] - 0.5) < 0.001)
     }
 
+    @Test("when most windows sound unlike the rest, none are dropped and the plain average stands")
+    func enrollmentKeepsTheAverageWhenMostAreOutliers() {
+        let her: [Float] = [1, 0, 0, 0, 0]
+        let others: [[Float]] = [[0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
+        let print = CaptionPipeline.consistentAverage(of: [her, her, her] + others)
+        #expect(abs(print[0] - 3.0 / 7) < 0.001)
+        #expect((1...4).allSatisfy { abs(print[$0] - 1.0 / 7) < 0.001 })
+    }
+
     @Test("a recording nobody spoke in makes no voice print")
     func silentRecording() {
         #expect(pipeline().embedding(forEnrollmentSamples: silence(seconds: 30)) == nil)
