@@ -34,6 +34,13 @@ struct ContrastRatioTests {
         #expect(abs(blended - solid) < 0.0001)
     }
 
+    @Test("reference greys: #767676 on white is 4.54:1, and a near-black grey 19.47:1")
+    func referenceGreys() {
+        let gray = 118.0 / 255
+        #expect(abs(ContrastRatio.between((red: gray, green: gray, blue: gray), white) - 4.54) < 0.01)
+        #expect(abs(ContrastRatio.between((red: 0.05, green: 0.05, blue: 0.05), white) - 19.47) < 0.01)
+    }
+
     @Test("a more opaque foreground contrasts more with its background")
     func moreOpaqueIsHigherContrast() {
         let dim = ContrastRatio.ratio(foreground: white, alpha: 0.5, overBackground: black)
