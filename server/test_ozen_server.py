@@ -1104,6 +1104,18 @@ class Reports(unittest.TestCase):
         finally:
             os.umask(previous)
 
+    def test_a_reports_folder_an_older_server_left_open_is_closed(self):
+        import os
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as folder:
+            reports = os.path.join(folder, "reports")
+            os.makedirs(reports)
+            os.chmod(reports, 0o755)
+            with mock.patch.object(S, "REPORTS_DIR", reports):
+                S.save_report("line one", "Ozen 0.2")
+            self.assertEqual(os.stat(reports).st_mode & 0o777, 0o700)
+
     def test_a_report_is_kept_even_where_permissions_cannot_be_changed(self):
         import os
         import tempfile
