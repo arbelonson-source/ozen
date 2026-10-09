@@ -46,6 +46,18 @@ struct ConversationStatsTests {
         #expect(stats.longestTurn == LongestTurn(speakerName: "אבי", words: 8))
     }
 
+    @Test("the turn still going when the conversation ends counts toward the longest")
+    func longestTurnAtTheEnd() {
+        let stats = ConversationStats.compute(segments: [
+            line("שלום", "רותי", at: 0),
+            line("אני רוצה לספר לכם משהו", "אבי", at: 1),
+            line("זה קרה אתמול", "אבי", at: 2),
+        ])
+        #expect(stats.longestTurn == LongestTurn(speakerName: "אבי", words: 8))
+        let alone = ConversationStats.compute(segments: [line("רק אני מדברת כאן", "רותי", at: 0)])
+        #expect(alone.longestTurn == LongestTurn(speakerName: "רותי", words: 4))
+    }
+
     @Test("fractions add up to one and a missing name becomes the unknown speaker")
     func fractionsAndUnknown() {
         let stats = ConversationStats.compute(segments: [
