@@ -505,6 +505,13 @@ class OneBigChunk(unittest.TestCase):
         self.assertTrue(3 * S.RATE <= session.last_speech_end <= 3 * S.RATE + 688, session.last_speech_end)
 
 
+class FullScale(unittest.TestCase):
+    def test_the_phones_16_bit_samples_become_floats_from_minus_one_to_one(self):
+        session = S.Session(Socket(), SlowGPU(live_seconds=0.01), "he", [], live_interval=0.3)
+        session.add_audio(np.array([16384, -32768, 0, 32767], dtype="<i2").tobytes())
+        self.assertTrue(np.allclose(session.buf, [0.5, -1.0, 0.0, 32767 / 32768]), session.buf)
+
+
 class ThreeSentencesInOneSlowPass(unittest.TestCase):
     def test_three_sentences_said_during_one_slow_live_pass_come_back_as_three_lines(self):
         gpu = WindowGPU(live_seconds=2.0)
