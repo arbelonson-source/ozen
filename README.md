@@ -254,7 +254,8 @@ Open a section for the details.
   lesser sound heard meanwhile (a kettle during a smoke alarm) still buzzes
   but doesn't take the alarm's banner or flash away. While captions wait to
   try again (the home computer asleep, the cloud out of reach, a model
-  download being retried) the microphone stays on for sound alerts alone,
+  download being retried or waiting for Wi-Fi or for room on the phone)
+  the microphone stays on for sound alerts alone,
   so a smoke alarm at night isn't missed because the computer was off.
 - **Alerts reach her with the screen off.** With the phone in a pocket or
   locked, a sound alert or her name becomes a phone notification (once per

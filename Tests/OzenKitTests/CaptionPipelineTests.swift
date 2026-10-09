@@ -3055,7 +3055,8 @@ struct CaptionPipelineDownloadNetworkTests {
     private func makePipeline(
         network: FakeNetworkMonitor?,
         pendingDownload: Int? = 626,
-        recovery: AutoRecoveryPolicy = .disabled
+        recovery: AutoRecoveryPolicy = .disabled,
+        soundDetector: FakeSoundDetector? = nil
     ) -> (CaptionPipeline, FakeEngine) {
         let engine = FakeEngine()
         engine.pendingDownload = pendingDownload
@@ -3063,6 +3064,7 @@ struct CaptionPipelineDownloadNetworkTests {
             audio: FakeAudioCapturer(),
             engineFactory: { _ in engine },
             embedder: FakeEmbedder(),
+            soundDetector: soundDetector,
             recovery: recovery,
             network: network
         )
@@ -3238,6 +3240,19 @@ struct CaptionPipelineDownloadNetworkTests {
 
         #expect(pipeline.phase.failure?.engineUnavailability?.kind == .modelDownloadFailed)
         #expect(pipeline.scheduledRetry != nil)
+    }
+
+    @Test("while a download waits for Wi-Fi the microphone stays on for sound alerts, until Wi-Fi brings captions back")
+    func soundsWhileWaitingForWiFi() async {
+        let network = FakeNetworkMonitor(.cellular)
+        let (pipeline, _) = makePipeline(network: network, soundDetector: FakeSoundDetector())
+        await pipeline.start(settings: settings())
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == .waitingForWiFi)
+        #expect(pipeline.isListeningForSoundsOnly)
+
+        network.change(to: .wifi)
+        #expect(await eventually { pipeline.phase.isListening })
+        #expect(!pipeline.isListeningForSoundsOnly)
     }
 
     @Test("reaching Wi-Fi starts a waiting download by itself")
@@ -3485,7 +3500,7 @@ final class FakeStorage: @unchecked Sendable {
 @Suite("CaptionPipeline model download and free space")
 @MainActor
 struct CaptionPipelineStorageTests {
-    private func makePipeline(storage: FakeStorage?, pendingDownload: Int? = 626) -> (CaptionPipeline, FakeEngine, FakeAudioCapturer) {
+    private func makePipeline(storage: FakeStorage?, pendingDownload: Int? = 626, soundDetector: FakeSoundDetector? = nil) -> (CaptionPipeline, FakeEngine, FakeAudioCapturer) {
         let engine = FakeEngine()
         let audio = FakeAudioCapturer()
         engine.pendingDownload = pendingDownload
@@ -3497,6 +3512,7 @@ struct CaptionPipelineStorageTests {
             audio: audio,
             engineFactory: { _ in engine },
             embedder: FakeEmbedder(),
+            soundDetector: soundDetector,
             recovery: AutoRecoveryPolicy(),
             network: FakeNetworkMonitor(.wifi),
             availableStorageBytes: freeSpace
@@ -3519,6 +3535,14 @@ struct CaptionPipelineStorageTests {
         #expect(pipeline.scheduledRetry == nil)
         #expect(pipeline.phase.failure?.suggestsOtherEngine == true)
         #expect(pipeline.phase.failure?.isRetryableInApp == true)
+    }
+
+    @Test("while the model waits for room on the phone the microphone stays on for sound alerts")
+    func soundsWhileWaitingForRoom() async {
+        let (pipeline, _, _) = makePipeline(storage: FakeStorage(megabytes: 300), soundDetector: FakeSoundDetector())
+        await pipeline.start(settings: .default)
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == .notEnoughStorage)
+        #expect(pipeline.isListeningForSoundsOnly)
     }
 
     @Test("enough room, nothing to download, an unknown size, or no way to check: it goes ahead")

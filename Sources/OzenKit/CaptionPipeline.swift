@@ -1334,7 +1334,7 @@ public final class CaptionPipeline {
         } else if let held = retryAfterRecording {
             retryAfterRecording = nil
             await retry(settings: held.settings)
-        } else if case .failed(let failure) = phase, retryToken != nil || homeServerRecheck != nil {
+        } else if case .failed(let failure) = phase, retryToken != nil || homeServerRecheck != nil || comesBackWithoutTimer(failure) {
             listenForSoundsMeanwhile(after: failure)
         }
         return collected
@@ -2175,7 +2175,7 @@ public final class CaptionPipeline {
         guard !systemInterrupted else { return }
         guard let delay = recovery.nextDelay(for: failure) else {
             coverOnceRetriesRunOut(after: failure)
-            if waitForHomeServer(after: failure) {
+            if waitForHomeServer(after: failure) || comesBackWithoutTimer(failure) {
                 listenForSoundsMeanwhile(after: failure)
             }
             return
@@ -2226,6 +2226,15 @@ public final class CaptionPipeline {
             guard let self, self.runID == run else { return }
             self.stats.soundDetectionRunning = false
         }
+    }
+
+    /// Waiting for Wi-Fi or for room on the phone has no timer, but
+    /// captions come back by themselves: on the next change of connection,
+    /// or when the app is opened again with room. The microphone was off
+    /// for sounds all that time, and a smoke alarm went unheard.
+    private func comesBackWithoutTimer(_ failure: PipelineFailure) -> Bool {
+        guard let kind = failure.engineUnavailability?.kind else { return false }
+        return kind == .waitingForWiFi || kind == .notEnoughStorage
     }
 
     private func stopListeningForSounds() {
