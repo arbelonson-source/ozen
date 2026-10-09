@@ -641,6 +641,19 @@ struct CaptionPipelineTokenTests {
         #expect(pipeline.stats.segmentsCommitted == 1)
     }
 
+    @Test("while listening, the stale timer commits such a line by itself", .timeLimit(.minutes(1)))
+    func staleTimerRunsWhileListening() async {
+        let engine = FakeEngine()
+        let clock = TestClock()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine], audioWatchdog: .disabled, now: { clock.now })
+        await pipeline.start(settings: .default)
+        engine.emit(token(UUID(), "מילה", at: clock.now))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        clock.advance(CaptionStabilizer.defaultSilenceCommitThreshold + 0.5)
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        #expect(pipeline.phase.isListening)
+    }
+
     @Test("a live update, a pause, then the engine's final: the line stays open until the final arrives")
     func finalPassIsNotRaced() async {
         let engine = FakeEngine()
