@@ -177,6 +177,20 @@ struct ReleaseModelDownloaderTests {
         #expect(fetcher.fetches.map(\.asset) == ["manifest.json", "AudioEncoder.mlpackage__weights__weight.bin", "config.json"])
     }
 
+    @Test("a first download makes its own folder, and the bar moves while the files come in")
+    func firstDownloadMakesFolderAndMoves() async throws {
+        let (_, assets) = release()
+        let parent = temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: parent) }
+        let folder = parent.appendingPathComponent("models/m1", isDirectory: true)
+        let seen = ProgressLog()
+
+        _ = try await ReleaseModelDownloader(fetcher: FakeReleaseFetcher(assets: assets)).download(tag: "m1", into: folder) { seen.record($0) }
+
+        #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("config.json").path))
+        #expect(seen.values.contains { $0 > 0 && $0 < 1 }, "\(seen.values)")
+    }
+
     @Test("a download cut off part way continues from where each file stopped")
     func resumes() async throws {
         let (_, assets) = release()
