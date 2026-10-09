@@ -56,6 +56,40 @@ struct LiveAgreementTests {
         #expect(agreement.settle("thank you very much") == "thank you very much")
     }
 
+    @Test("a word or two of an agreed line is held, but a third changed word is a real change of mind")
+    func twoHeldThreeShown() {
+        let line = "we will meet at the clinic on Sunday at ten"
+        var agreement = LiveAgreement()
+        _ = agreement.settle(line)
+        _ = agreement.settle(line)
+        #expect(agreement.settle("we will meet at the clinic on Monday at two") == line)
+        var other = LiveAgreement()
+        _ = other.settle(line)
+        _ = other.settle(line)
+        #expect(other.settle("we will eat at the clinic on Monday at two") == "we will eat at the clinic on Monday at two")
+    }
+
+    @Test("changed words are held only while they are at most a third of the agreed ones")
+    func aThirdAtMost() {
+        var agreement = LiveAgreement()
+        _ = agreement.settle("one two three four five six")
+        _ = agreement.settle("one two three four five six")
+        #expect(agreement.settle("one two tree four five sticks") == "one two three four five six")
+        var shorter = LiveAgreement()
+        _ = shorter.settle("one two three four five")
+        _ = shorter.settle("one two three four five")
+        #expect(shorter.settle("one two tree four fives") == "one two tree four fives")
+    }
+
+    @Test("one changed word in a two-word agreed line is too much of it to hold, so the new reading is shown")
+    func shortLineChange() {
+        var agreement = LiveAgreement()
+        _ = agreement.settle("good morning")
+        _ = agreement.settle("good morning")
+        #expect(agreement.settle("good evening") == "good evening")
+        #expect(agreement.settle("good evening everyone") == "good evening everyone")
+    }
+
     @Test("an empty pass changes nothing")
     func empty() {
         var agreement = LiveAgreement()
