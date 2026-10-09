@@ -37,6 +37,13 @@ struct NumberEmphasisTests {
         #expect(emphasized("050-1234567,03-1234567") == ["050-1234567", "03-1234567"])
     }
 
+    @Test("\"today\" after a unit or the shekel sign is not part of the amount; \"the day\" after a fraction is")
+    func todayAfterAUnit() {
+        #expect(emphasized("3 כדורים היום") == ["3 כדורים"])
+        #expect(emphasized("שילמתי 150 ₪ היום") == ["150 ₪"])
+        #expect(emphasized("שלושת רבעי היום") == ["שלושת רבעי היום"])
+    }
+
     @Test("a comma glued after a word ends the word, so the amount right after it still stands out")
     func commaGluedAfterWord() {
         #expect(emphasized("כן,שלושה כדורים") == ["שלושה כדורים"])
