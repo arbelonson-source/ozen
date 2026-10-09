@@ -915,6 +915,38 @@ class Summary(unittest.TestCase):
         self.assertIn("no lines, 0 finished empty, 1 left to the phone's filter", summary)
 
 
+class ContextOption(unittest.TestCase):
+    def test_each_finished_line_is_given_the_lines_before_it(self):
+        class ContextGPU(SlowGPU):
+            context = True
+
+            def __init__(self):
+                super().__init__(live_seconds=0.01)
+                self.prompts = []
+
+            async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
+                if final:
+                    self.prompts.append(prompt)
+                return await super().transcribe(audio, language, prompt, final, hotwords, gate, beam)
+
+        gpu = ContextGPU()
+        session = S.Session(Socket(), gpu, "he", [], live_interval=0.3)
+
+        async def feed():
+            worker = asyncio.create_task(session.run())
+            for _ in range(3):
+                session.add_audio(pcm(1.5, 0.3))
+                await asyncio.sleep(0.05)
+                session.add_audio(pcm(1.6, 0.0005))
+                await asyncio.sleep(0.4)
+            session.finished = True
+            session.changed.set()
+            await asyncio.wait_for(worker, 5)
+
+        asyncio.run(feed())
+        self.assertEqual(gpu.prompts, [None, "שלום", "שלום שלום"])
+
+
 class LongLine(unittest.TestCase):
     def test_a_line_cut_for_length_stays_within_the_limit_after_a_slow_pass(self):
         gpu = WindowGPU(live_seconds=1.3)
@@ -1256,6 +1288,8 @@ class PromptBudget(unittest.TestCase):
         self.assertIsNone(session.prompt())
         session.previous_text = "the doctor comes at ten"
         self.assertEqual(session.prompt(), "the doctor comes at ten")
+        session.vocabulary = ["Noa", "Itai"]
+        self.assertEqual(session.prompt(), "Noa, Itai. the doctor comes at ten")
 
     def test_a_short_list_is_kept_whole(self):
         self.assertEqual(S.front_terms(["a", "b"], lambda text: len(text), 200), ["a", "b"])
@@ -1325,6 +1359,18 @@ class Reports(unittest.TestCase):
             with open(os.path.join(reports, name), encoding="utf-8") as f:
                 body = f.read().split("\n\n", 1)[1]
         self.assertEqual(len(body), 1_000_000)
+
+    def test_reports_are_kept_in_the_reports_folder_next_to_the_server_as_its_readme_says(self):
+        here = os.path.dirname(os.path.abspath(S.__file__))
+        self.assertEqual(S.REPORTS_DIR, os.path.join(here, "reports"))
+        with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
+            self.assertIn("`reports/`", f.read())
+
+    def test_a_report_is_named_by_the_date_and_time_and_says_which_app_sent_it(self):
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(S, "REPORTS_DIR", os.path.join(folder, "reports")):
+            self.assertRegex(S.save_report("line one", "Ozen 0.2"), r"^20\d{6}-\d{6}\.txt$")
+            with open(os.path.join(folder, "reports", S.save_report("line two", "")), encoding="utf-8") as f:
+                self.assertEqual(f.read(), "from: unknown app\n\nline two")
 
     def test_a_reports_folder_an_older_server_left_open_is_closed(self):
         import os
