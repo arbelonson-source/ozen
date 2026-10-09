@@ -33,14 +33,17 @@ import ozen_server as S
 class Model:
     def __init__(self):
         self.beams = []
+        self.calls = []
 
     def transcribe(self, audio, **kw):
         self.beams.append(kw["beam_size"])
+        self.calls.append(kw)
         return [], None
 
 
 class Beam(unittest.TestCase):
     def test_only_a_sensible_beam_from_the_phone_counts(self):
+        self.assertEqual(S.requested_beam(1), 1)
         self.assertEqual(S.requested_beam(2), 2)
         self.assertEqual(S.requested_beam(10), 10)
         for junk in (None, 0, 11, -1, "3", 2.5, True):
@@ -55,6 +58,17 @@ class Beam(unittest.TestCase):
         t._run(audio, "he", None, True)
         t._run(audio, "he", None, False, beam=2)
         self.assertEqual(t.model.beams, [2, 5, 1])
+
+    def test_the_names_reach_the_model_as_the_prompt_and_as_hotwords(self):
+        t = S.Transcriber.__new__(S.Transcriber)
+        t.model = t.final_model = Model()
+        t.beam, t.context, t.speech_gate = 5, 0, 0.0
+        audio = np.zeros(1600, dtype=np.float32)
+        t._run(audio, "he", "Noa, Itai.", True, hotwords="Noa, Itai")
+        t._run(audio, "he", "", False, hotwords="")
+        named, unnamed = t.model.calls
+        self.assertEqual((named["initial_prompt"], named["hotwords"]), ("Noa, Itai.", "Noa, Itai"))
+        self.assertEqual((unnamed["initial_prompt"], unnamed["hotwords"]), (None, None))
 
 
 def voice(*stretches):
@@ -214,6 +228,12 @@ class ModelsFromDisk(unittest.TestCase):
                 mock.patch.object(S, "WhisperModel", Recorder):
             S.Transcriber("live", "cuda", "int8_float16", 5, 0, final_model="final")
         self.assertEqual(loaded, [live, final])
+
+    def test_the_phone_is_told_the_model_and_the_finished_line_model_when_there_is_one(self):
+        with mock.patch.object(S, "download_model", lambda name, local_files_only=False: name), \
+                mock.patch.object(S, "WhisperModel", lambda path, device, compute_type: object()):
+            self.assertEqual(S.Transcriber("live", "cuda", "int8_float16", 5, 0).name, "live")
+            self.assertEqual(S.Transcriber("live", "cuda", "int8_float16", 5, 0, final_model="final").name, "live + final")
 
 
 class Restart(unittest.TestCase):
