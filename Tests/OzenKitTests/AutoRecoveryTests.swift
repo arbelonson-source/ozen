@@ -273,6 +273,24 @@ struct CaptionPipelineRecoveryTests {
         #expect(await eventually { pipeline.phase.isListening })
     }
 
+    @Test("captions stopped and started again by hand get a fresh set of attempts")
+    func stopGivesFreshAttempts() async {
+        let engine = FakeEngine()
+        let pipeline = makeRecoveringPipeline(
+            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []), clock: TestClock()
+        )
+        await pipeline.start(settings: .default)
+        engine.endStream(throwing: TestError())
+        #expect(await eventually { pipeline.phase.failure != nil })
+        #expect(await eventually { pipeline.phase.isListening && pipeline.scheduledRetry == nil })
+
+        pipeline.stop()
+        await pipeline.start(settings: .default)
+        engine.endStream(throwing: TestError())
+        #expect(await eventually { pipeline.phase.failure != nil })
+        #expect(await eventually { pipeline.phase.isListening })
+    }
+
     @Test("failing again right after a recovery does not get a fresh set of attempts")
     func quickRefailExhausts() async {
         let engine = FakeEngine()

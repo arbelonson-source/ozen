@@ -1755,6 +1755,24 @@ struct CaptionPipelineInputTests {
         #expect(pipeline.microphoneDrop.lost == nil)
     }
 
+    @Test("stopping captions takes down the notice of a dropped microphone")
+    func stopClearsMicrophoneDrop() async {
+        let builtIn = AudioInputDescriptor(uid: "builtin", portName: "iPhone Microphone", portType: .builtInMic)
+        let lapel = AudioInputDescriptor(uid: "usb-lav", portName: "USB Lavalier", portType: .usb)
+        let audio = FakeAudioCapturer()
+        audio.availableInputs = [builtIn, lapel]
+        let (pipeline, _, _) = makePipeline(audio: audio)
+        var settings = AppSettings.default
+        settings.preferredInputUID = "usb-lav"
+        await pipeline.start(settings: settings)
+        audio.selectedInputUID = "builtin"
+        audio.simulateRouteChange(inputs: [builtIn])
+        #expect(pipeline.microphoneDrop.lost == lapel)
+
+        pipeline.stop()
+        #expect(pipeline.microphoneDrop.lost == nil)
+    }
+
     @Test("a lapel microphone unplugged while captions are paused is said when they resume on the phone's own")
     func externalMicrophoneDropWhilePausedIsShown() async {
         let builtIn = AudioInputDescriptor(uid: "builtin", portName: "iPhone Microphone", portType: .builtInMic)
