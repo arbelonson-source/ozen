@@ -81,6 +81,13 @@ struct InstallExpiryTests {
         }
     }
 
+    @Test("just after midnight, later that morning is today, counted in her own time zone")
+    func justAfterMidnight() {
+        let now = monday(1)
+        #expect(InstallExpiry.whenText(expiresAt: monday(10, 30), now: now, utcOffsetSeconds: israel) == "היום בשעה 10:30")
+        #expect(InstallExpiry.whenText(expiresAt: monday(0, 30, plusDays: 1), now: now, utcOffsetSeconds: israel) == "מחר בשעה 00:30")
+    }
+
     @Test("when it stops opening reads as today, tomorrow, or the day of the week")
     func wording() {
         let now = monday(9)
