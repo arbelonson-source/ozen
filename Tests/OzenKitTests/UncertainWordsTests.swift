@@ -72,6 +72,8 @@ struct UncertainWordsTests {
             logprobs: [[unsure], [unsure], [sure], [sure], [sure]]
         )
         #expect(UncertainWords.ranges(in: text, words: words).map { String(text[$0]) } == ["no", "no,"])
+        // Listed once and never as sure: marked wherever it appears.
+        #expect(UncertainWords.ranges(in: text, words: ["no"]).map { String(text[$0]) } == ["no", "no,"])
     }
 
     @Test("a line that reached the screen carries its doubtful words, and a later pass replaces them")
