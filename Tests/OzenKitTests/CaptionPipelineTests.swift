@@ -3353,6 +3353,17 @@ struct CaptionPipelineDownloadNetworkTests {
         #expect(await eventually { pipeline.phase.isListening })
     }
 
+    @Test("with the phone plan allowed, a download that failed offline starts again when mobile data comes back")
+    func mobileDataReturnsWhenAllowed() async {
+        let network = FakeNetworkMonitor(.offline)
+        let (pipeline, _) = makePipeline(network: network)
+        await pipeline.start(settings: settings(allowCellular: true))
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == .modelDownloadFailed)
+
+        network.change(to: .cellular)
+        #expect(await eventually { pipeline.phase.isListening })
+    }
+
     @Test("a download that failed on Wi-Fi isn't retried early just because Wi-Fi reported again")
     func sameWiFiAgain() async {
         let network = FakeNetworkMonitor(.wifi)
