@@ -42,6 +42,14 @@ struct DocNumbersTests {
         #expect(readme.contains("still going in the last \(minutes(ConversationBreak.quietSeconds)) minutes"))
     }
 
+    @Test("the reply screen's picture names one of the ready-made phrases the app really has")
+    func quickPhrase() throws {
+        let readme = try doc("README.md")
+        let phrase = "Could you say that again?"
+        #expect(AppSettings.defaultQuickPhrasesEnglish.contains(phrase))
+        #expect(readme.contains("a list of quick phrases such as \(phrase)"))
+    }
+
     @Test("alerts: how often a name or a sound buzzes, and what a name's buzz feels like")
     func alerts() throws {
         let readme = try doc("README.md"), guide = try doc("docs/troubleshooting.md")
