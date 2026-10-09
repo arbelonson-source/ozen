@@ -81,6 +81,28 @@ struct CloudSpeechEngineTests {
         #expect(request.headers["Authorization"] == "Bearer sk-test")
     }
 
+    @Test("a pause finishes the line while the conversation is still going", .timeLimit(.minutes(1)))
+    func pauseFinishesTheLineMidStream() async throws {
+        let http = FakeCloudHTTP(answers: [.text("שלום לכולם")])
+        let (audio, input) = AsyncStream<[Float]>.makeStream()
+        let tokens = engine(http).stream(languageCode: "he", audio: audio)
+        for chunk in speech(seconds: 1) + silence(seconds: 1) { input.yield(chunk) }
+        let started = ContinuousClock.now
+        let closer = Task {
+            try await Task.sleep(for: .seconds(5))
+            input.finish()
+        }
+        var finished: String?
+        for try await token in tokens where token.isFinal {
+            finished = token.text
+            break
+        }
+        closer.cancel()
+        input.finish()
+        #expect(finished == "שלום לכולם")
+        #expect(ContinuousClock.now - started < .seconds(5))
+    }
+
     @Test("the audio sent is the sentence, not the silence around it")
     func audioSent() async throws {
         let http = FakeCloudHTTP(answers: [.text("שלום")])
