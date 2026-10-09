@@ -2083,7 +2083,7 @@ public final class CaptionPipeline {
     /// Not during a phone call, which holds the microphone: the call's end
     /// starts a fresh set of attempts instead.
     private func networkConditionsChanged(_ conditions: NetworkConditions) {
-        let allowCellular = (activeSettings?.allowCellularModelDownload ?? false) || cellularDownloadApproved
+        let allowCellular = allowsCellularDownload
         let previous = lastNetwork
         lastNetwork = conditions
         guard networkRetryTask == nil, !systemInterrupted, let kind = phase.failure?.engineUnavailability?.kind else { return }
@@ -2099,6 +2099,14 @@ public final class CaptionPipeline {
         }
         guard returned else { return }
         recovery.reset()
+        startNetworkRetry()
+    }
+
+    private var allowsCellularDownload: Bool {
+        (activeSettings?.allowCellularModelDownload ?? false) || cellularDownloadApproved
+    }
+
+    private func startNetworkRetry() {
         networkRetryTask = Task { [weak self] in
             await self?.retry()
             self?.networkRetryTask = nil
@@ -2121,6 +2129,13 @@ public final class CaptionPipeline {
         } else if let failure = phase.failure {
             recovery.reset()
             scheduleAutoRecovery(for: failure)
+            // Wi-Fi that came back during the call was passed over, and
+            // waiting for Wi-Fi has no timer to try again: captions stayed
+            // stopped on a connection that could take the download.
+            if isWaitingForWiFi, networkRetryTask == nil, let network = lastNetwork,
+               ModelDownloadGate.canRetryDownload(on: network, allowCellular: allowsCellularDownload) {
+                startNetworkRetry()
+            }
         }
     }
 

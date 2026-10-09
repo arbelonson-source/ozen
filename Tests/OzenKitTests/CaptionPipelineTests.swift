@@ -3281,6 +3281,29 @@ struct CaptionPipelineDownloadNetworkTests {
         #expect(await eventually { pipeline.phase.isListening })
     }
 
+    @Test("Wi-Fi that came back during a phone call starts the waiting download when the call ends; still on cellular, it keeps waiting")
+    func wifiReturnsDuringCall() async {
+        let network = FakeNetworkMonitor(.cellular)
+        let (pipeline, engine) = makePipeline(network: network, recovery: AutoRecoveryPolicy())
+        await pipeline.start(settings: settings())
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == .waitingForWiFi)
+
+        pipeline.systemInterruptionChanged(active: true)
+        pipeline.systemInterruptionChanged(active: false)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(engine.prepareCount == 0)
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == .waitingForWiFi)
+
+        pipeline.systemInterruptionChanged(active: true)
+        network.change(to: .wifi)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(engine.prepareCount == 0, "the download took the microphone during the call")
+
+        pipeline.systemInterruptionChanged(active: false)
+        #expect(await eventually { pipeline.phase.isListening })
+        #expect(engine.prepareCount == 1)
+    }
+
     @Test("a connection change doesn't touch captions that are running or failed for other reasons")
     func unrelatedFailuresIgnored() async {
         let network = FakeNetworkMonitor(.offline)
