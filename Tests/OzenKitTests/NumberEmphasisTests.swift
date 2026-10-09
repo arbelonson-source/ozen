@@ -37,6 +37,12 @@ struct NumberEmphasisTests {
         #expect(emphasized("050-1234567,03-1234567") == ["050-1234567", "03-1234567"])
     }
 
+    @Test("a comma glued after a word ends the word, so the amount right after it still stands out")
+    func commaGluedAfterWord() {
+        #expect(emphasized("כן,שלושה כדורים") == ["שלושה כדורים"])
+        #expect(emphasized("בסך הכל,250 שקל") == ["250 שקל"])
+    }
+
     @Test("numbers in words, with Hebrew's attached prefixes and around punctuation")
     func words() {
         #expect(emphasized("לקחת שלושה כדורים, ובשש בערב עוד חצי.") == ["שלושה כדורים", "ובשש", "חצי"])
