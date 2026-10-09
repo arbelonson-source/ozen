@@ -408,10 +408,16 @@ Open a section for the details.
   See [Home computer requirements](#home-computer-requirements) and
   `server/README.md`.
 - **Optional cloud captions** for when the phone's models are too slow or
-  lose track of several people talking: each sentence goes to a speech
-  model through [OpenRouter](https://openrouter.ai) with a key pasted into
-  Settings (stored only in the phone's Keychain), together with the names
-  and important words lists so it can spell them. On twelve Hebrew test
+  lose track of several people talking: each sentence goes to the cloud
+  speech service chosen in Settings, [Deepgram](https://deepgram.com) or a
+  Google model through [OpenRouter](https://openrouter.ai) (more are being
+  added), with your own key pasted into Settings (stored only in the phone's
+  Keychain, one per service), together with the names and important words
+  lists so it can spell them. Which one? Deepgram for now: second best
+  of the cloud services on the only independent Hebrew test, and a new
+  account gets $200 of free credit with no card. Prices, languages, privacy
+  and how to get each key: [docs/cloud-services.md](docs/cloud-services.md).
+  Through OpenRouter, on twelve Hebrew test
   recordings the default cloud model got 24% of words wrong (the faster,
   cheaper one 29%) against 39% for OpenAI's Whisper large-v3 turbo and 60%
   for Whisper small, and puts each change of speaker on its own line. The
