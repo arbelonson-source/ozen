@@ -47,6 +47,16 @@ struct QuietHoursTests {
         #expect(hours.isQuiet(now: 21 * 3_600, utcOffsetSeconds: -3 * 3_600) == false)
     }
 
+    @Test("on a real date in Israel's summer time, half past eleven at night and the minute before seven are quiet; noon and seven are not")
+    func realDate() {
+        let hours = QuietHours(isEnabled: true, startHour: 22, endHour: 7)
+        let offset = 3 * 3_600
+        #expect(hours.isQuiet(now: 1_791_577_800, utcOffsetSeconds: offset))
+        #expect(hours.isQuiet(now: 1_791_536_400, utcOffsetSeconds: offset) == false)
+        #expect(hours.isQuiet(now: 1_791_604_799, utcOffsetSeconds: offset))
+        #expect(hours.isQuiet(now: 1_791_604_800, utcOffsetSeconds: offset) == false)
+    }
+
     @Test("hours outside 0...23 are clamped, both from init and from decoding")
     func clampedHours() throws {
         let hours = QuietHours(isEnabled: true, startHour: -5, endHour: 99)

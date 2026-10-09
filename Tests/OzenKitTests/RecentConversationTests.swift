@@ -40,6 +40,12 @@ struct RecentConversationTests {
         #expect(RecentConversation.resumable(in: [earlier, later], now: now)?.id == later.id)
     }
 
+    @Test("a conversation of a single line is offered")
+    func singleLine() {
+        let oneLine = summary(startedMinutesAgo: 2, lastLineMinutesAgo: 1, lines: 1)
+        #expect(RecentConversation.resumable(in: [oneLine], now: now)?.id == oneLine.id)
+    }
+
     @Test("nothing is offered for an old conversation, an empty one, or the one already under way")
     func notOffered() {
         let old = summary(startedMinutesAgo: 90, endedMinutesAgo: 60)

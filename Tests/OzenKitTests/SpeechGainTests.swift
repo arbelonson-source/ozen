@@ -15,6 +15,13 @@ struct SpeechGainTests {
         #expect(peak > 0.45 && peak <= 0.55)
     }
 
+    @Test("speech only a little quiet is raised too, by less than double")
+    func slightlyQuietIsRaised() {
+        let raised = SpeechGain.normalized(tone(peak: 0.4))
+        let peak = raised.map(abs).max() ?? 0
+        #expect(peak > 0.45 && peak <= 0.55)
+    }
+
     @Test("speech that is already loud is left as it is")
     func loudIsUntouched() {
         let loud = tone(peak: 0.8)
@@ -25,8 +32,10 @@ struct SpeechGainTests {
     func clickIsIgnored() {
         var samples = tone(peak: 0.01)
         samples[8_000] = 0.9
+        samples[12_000] = -0.9
         let raised = SpeechGain.normalized(samples)
         #expect(raised[8_000] == 1)
+        #expect(raised[12_000] == -1)
         #expect(abs(raised[8_001]) < 0.6)
         #expect((raised.map(abs).sorted()[raised.count / 2]) > 0.2)
     }
