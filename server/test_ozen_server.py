@@ -903,6 +903,13 @@ class Summary(unittest.TestCase):
         summary = self.play([(0.2, 0.3), (1.6, 0.0005), (0.2, 0.3), (1.6, 0.0005)])
         self.assertIn("no lines, 2 finished empty", summary)
 
+    def test_the_figures_are_minutes_heard_the_middle_and_worst_pass_and_the_middle_wait(self):
+        session = S.Session(Socket(), GateGPU(0.01), "he", [], live_interval=0.3)
+        session.offset = 600 * S.RATE
+        session.lines, session.final_seconds, session.final_lag_seconds = 4, [0.4, 0.2, 0.9, 0.3], [0.5, 0.1, 0.3, 0.2]
+        self.assertEqual(session.summary(), "10.0 min of audio, 4 lines, 0 finished empty, finished-line pass median "
+                                            "0.40 s, worst 0.90 s, wait after the pause median 0.30 s")
+
     def test_a_line_left_to_the_phone_is_not_counted_empty(self):
         summary = self.play([(1.5, 0.3), (1.6, 0.0005)], gpu=RepeatGPU(0.01))
         self.assertIn("no lines, 0 finished empty, 1 left to the phone's filter", summary)
