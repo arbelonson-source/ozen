@@ -130,6 +130,13 @@ struct NumberEmphasisTests {
         #expect(emphasized("רק פעם אחת ביום") == ["אחת"])
     }
 
+    @Test("one after a word that starts like 'that' is still a count: one sachet, one hour, one week")
+    func oneAfterAShinWord() {
+        #expect(emphasized("קחי שקית אחת בבוקר") == ["אחת"])
+        #expect(emphasized("חכו שעה אחת אחרי האוכל") == ["אחת"])
+        #expect(emphasized("התרופה למשך שבוע אחד") == ["אחד"])
+    }
+
     @Test("everybody and nobody after 'that', one of the doctors, and on the one or the other hand are not counts")
     func idiomsFromRealSpeech() {
         // Lines the home computer wrote from broadcast and lecture speech.
