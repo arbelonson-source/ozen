@@ -128,6 +128,17 @@ class Overs(unittest.TestCase):
         self.assertEqual((sent[10], sent[20]), (32767, -32767))
 
 
+class Reading(unittest.TestCase):
+    def test_the_recording_is_read_as_floats_the_sending_scales_to_16_bits(self):
+        with mock.patch.dict(sys.modules, {"jiwer": None}), \
+                mock.patch.object(T.sf, "read", return_value=(np.zeros(1600, np.float32), 16000), create=True) as read, \
+                mock.patch.object(T.websockets, "connect", return_value=Socket([]), create=True), \
+                mock.patch("sys.stdout", io.StringIO()):
+            asyncio.run(T.main("ws://localhost:8765", "example-code-123", "speech.wav", None))
+        self.assertEqual(read.call_args.args, ("speech.wav",))
+        self.assertEqual(read.call_args.kwargs, {"dtype": "float32"})
+
+
 class Hello(unittest.TestCase):
     def test_the_pairing_code_goes_out_in_a_hello_before_any_audio(self):
         socket = Socket([])
