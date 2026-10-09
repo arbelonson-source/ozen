@@ -534,6 +534,36 @@ class QuietestPoint(unittest.TestCase):
         self.assertEqual(S.quietest_point(alternating(1_000), -3, 1_000, 100), 0)
 
 
+def slow_wave(peak, count=16_000):
+    return (peak * np.sin(np.arange(count) * 0.05)).astype(np.float32)
+
+
+class SpeechGain(unittest.TestCase):
+    """The cases of Tests/OzenKitTests/SpeechGainTests.swift."""
+
+    def test_speech_from_across_the_room_is_brought_up_to_a_level_a_16_bit_file_keeps(self):
+        peak = np.abs(S.speech_gain(slow_wave(0.01))).max()
+        self.assertTrue(0.45 < peak <= 0.55, peak)
+
+    def test_speech_that_is_already_loud_is_left_as_it_is(self):
+        loud = slow_wave(0.8)
+        self.assertTrue(np.array_equal(S.speech_gain(loud), loud))
+
+    def test_one_click_does_not_decide_the_level_or_leave_the_range_once_raised(self):
+        samples = slow_wave(0.01)
+        samples[8_000] = 0.9
+        raised = S.speech_gain(samples)
+        self.assertEqual(raised[8_000], 1)
+        self.assertLess(abs(raised[8_001]), 0.6)
+        self.assertGreater(np.sort(np.abs(raised))[len(raised) // 2], 0.2)
+
+    def test_near_silence_is_not_blown_up_into_a_roar(self):
+        self.assertAlmostEqual(float(np.abs(S.speech_gain(slow_wave(0.00001))).max()), 0.001, delta=0.00001)
+        for audio in (np.zeros(100, dtype=np.float32), np.zeros(0, dtype=np.float32),
+                      np.array([np.nan, np.inf], dtype=np.float32)):
+            self.assertTrue(np.array_equal(S.speech_gain(audio), audio, equal_nan=True))
+
+
 class Summary(unittest.TestCase):
     def play(self, pieces, gpu=None):
         session = S.Session(Socket(), gpu or GateGPU(0.01), "he", [], live_interval=0.3)
