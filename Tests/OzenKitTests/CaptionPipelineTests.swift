@@ -3599,6 +3599,28 @@ struct CaptionPipelineDownloadNetworkTests {
         #expect(await eventually { pipeline.phase.isListening })
     }
 
+    @Test("captions whose quick retries ran out get a fresh set when the connection comes back, so a first try that fails isn't the last", .timeLimit(.minutes(1)))
+    func connectionReturnGivesFreshAttempts() async {
+        let network = FakeNetworkMonitor(.offline)
+        let engine = FakeEngine(availability: .unavailable(.noInternet, "offline"))
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { _ in engine },
+            embedder: FakeEmbedder(),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: []),
+            network: network
+        )
+        await pipeline.start(settings: settings())
+        #expect(await eventually { engine.prepareCount == 2 && pipeline.phase.failure != nil && pipeline.scheduledRetry == nil })
+
+        // Back on Wi-Fi, but the first try still fails: the router is
+        // still coming up.
+        network.change(to: .wifi)
+        #expect(await eventually { engine.prepareCount == 3 && pipeline.phase.failure != nil })
+        engine.availability = .available
+        #expect(await eventually { pipeline.phase.isListening })
+    }
+
     @Test("Wi-Fi that came back during a phone call starts the waiting download when the call ends; still on cellular, it keeps waiting")
     func wifiReturnsDuringCall() async {
         let network = FakeNetworkMonitor(.cellular)
