@@ -307,9 +307,11 @@ struct CloudSpeechEngineTests {
         _ = try? await transcribe(engine(http, pause: 0.25), speech(seconds: 1) + silence(seconds: 1))
         let times = http.transcriptionSentAt
         #expect(times.count == CloudSpeechEngine.failuresBeforeStopping * 2)
-        // Each failed segment is two attempts; between one segment's second
-        // attempt and the next segment's first, the pause grows: 1, 2, 3 steps.
+        // Each failed segment is two attempts, 0.4 s apart; between one
+        // segment's second attempt and the next segment's first, the pause
+        // grows: 1, 2, 3 steps.
         guard times.count == 8 else { return }
+        #expect(times[0].duration(to: times[1]) >= .seconds(0.35))
         #expect(times[1].duration(to: times[2]) >= .seconds(0.2))
         #expect(times[3].duration(to: times[4]) >= .seconds(0.45))
         #expect(times[5].duration(to: times[6]) >= .seconds(0.7))
