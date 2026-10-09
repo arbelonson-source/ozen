@@ -384,6 +384,49 @@ class PauseEnd(unittest.TestCase):
         self.assertLess(session.final_lag_seconds[0], 0.15, session.final_lag_seconds)
 
 
+class PreviousLine(unittest.TestCase):
+    def test_the_line_before_goes_into_the_prompt_only_when_the_server_keeps_context(self):
+        session = S.Session(Socket(), SlowGPU(live_seconds=0.01), "he", [], live_interval=0.3)
+        session.previous_text = "the line before"
+        self.assertIsNone(session.prompt())
+        session.t.context = True
+        self.assertEqual(session.prompt(), "the line before")
+
+
+class SlowFinalGPU(SlowGPU):
+    """Finished passes take half a second, live ones a moment."""
+
+    async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
+        self.passes.append((len(audio), final))
+        await asyncio.sleep(0.5 if final else 0.01)
+        return ("שלום" if final else "של"), 0.9, []
+
+
+class StopWithALineWaiting(unittest.TestCase):
+    def test_a_phone_that_stops_during_a_slow_finished_pass_still_gets_the_sentence_after_it(self):
+        gpu = SlowFinalGPU(live_seconds=0.01)
+        session = S.Session(Socket(), gpu, "he", [], live_interval=0.3)
+
+        async def feed():
+            worker = asyncio.create_task(session.run())
+            for seconds, level in ((1.0, 0.3), (0.8, 0.0005), (1.0, 0.3), (0.2, 0.0005)):
+                chunk = pcm(seconds, level)
+                step = int(0.1 * S.RATE) * 2
+                for i in range(0, len(chunk), step):
+                    session.add_audio(chunk[i:i + step])
+                    await asyncio.sleep(0.01)
+            session.finished = True
+            session.changed.set()
+            await asyncio.wait_for(worker, 5)
+
+        asyncio.run(feed())
+        finals = [length for length, final in gpu.passes if final]
+        self.assertEqual(len(finals), 2, gpu.passes)
+        # Only the first line ended at a pause; the stop ended the second,
+        # and has no pause to time it from.
+        self.assertEqual(len(session.final_lag_seconds), 1, session.final_lag_seconds)
+
+
 class WindowGPU(SlowGPU):
     """Remembers how much audio each pass was given."""
 
