@@ -878,6 +878,14 @@ public final class CaptionPipeline {
 
     public func dismissSoundAlert(id: UUID) {
         soundAlerts.removeAll { $0.id == id }
+        // Tapped away, an alarm no longer holds the banner: kept, a sound
+        // heard after it never took the banner, and closing a covering
+        // screen handed back nothing.
+        if bannerSoundAlert?.id == id {
+            let latest = screenSoundAlert?.id == id ? nil : screenSoundAlert
+            bannerSoundAlert = latest
+            bannerSoundAlertRaisedAt = latest == nil ? nil : screenSoundAlertRaisedAt
+        }
     }
 
     public func clearSoundAlerts() {

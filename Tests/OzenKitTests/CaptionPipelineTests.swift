@@ -2349,6 +2349,32 @@ struct CaptionPipelineAlertTests {
         #expect(pipeline.currentBannerSoundAlert == nil)
     }
 
+    @Test("a siren banner tapped away leaves the banner to the next sound, heard before or after the tap")
+    func dismissedSirenLeavesTheBanner() async throws {
+        for doorbellFirst in [false, true] {
+            let clock = TestClock()
+            let detector = FakeSoundDetector()
+            let (pipeline, audio, _) = makePipeline(soundDetector: detector, now: { clock.now })
+            await pipeline.start(settings: .default)
+            audio.push([Float](repeating: 0.1, count: 1_024))
+            #expect(await eventually { detector.chunksSeen == 1 })
+
+            detector.push(SoundObservation(identifier: "civil_defense_siren", confidence: 0.95, timestamp: clock.now))
+            #expect(await eventually { pipeline.screenSoundAlert != nil })
+            let siren = try #require(pipeline.screenSoundAlert)
+            if !doorbellFirst { pipeline.dismissSoundAlert(id: siren.id) }
+            clock.advance(2)
+            detector.push(SoundObservation(identifier: "door_bell", confidence: 0.95, timestamp: clock.now))
+            #expect(await eventually { pipeline.screenSoundAlert?.event.identifier == "door_bell" })
+            let doorbell = try #require(pipeline.screenSoundAlert)
+            if doorbellFirst { pipeline.dismissSoundAlert(id: siren.id) }
+            clock.advance(1)
+
+            #expect(pipeline.currentBannerSoundAlert?.id == doorbell.id, "doorbell first: \(doorbellFirst)")
+            #expect(abs(pipeline.bannerSecondsLeft(for: doorbell) - (doorbell.bannerSeconds - 1)) < 0.01)
+        }
+    }
+
     @Test("an alert past its banner time, like one heard while the app was away, is no longer the current one to buzz, flash or read out")
     func staleAlertIsNotCurrent() async throws {
         let clock = TestClock()
