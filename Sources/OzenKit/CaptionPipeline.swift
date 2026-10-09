@@ -623,7 +623,7 @@ public final class CaptionPipeline {
                 // The classifier's stream can end on its own (the request
                 // failed); captions carry on, but diagnostics should say
                 // sound alerts are off rather than let them look armed.
-                guard let self, self.runID == run else { return }
+                guard let self, self.runID == run, !Task.isCancelled else { return }
                 self.stats.soundDetectionRunning = false
             }
         }
@@ -2232,7 +2232,10 @@ public final class CaptionPipeline {
                 guard let self, self.runID == run else { return }
                 self.handle(soundObservation: observation)
             }
-            guard let self, self.runID == run else { return }
+            // Stopped on purpose, the stop already said so; a task stopped
+            // for a voice sample woke late enough to call the next one's
+            // sounds off.
+            guard let self, self.runID == run, !Task.isCancelled else { return }
             self.stats.soundDetectionRunning = false
         }
     }
