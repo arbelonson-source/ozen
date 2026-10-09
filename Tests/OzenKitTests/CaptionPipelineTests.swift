@@ -862,6 +862,20 @@ struct CaptionPipelineTokenTests {
         #expect(pipeline.stats.speakerClustersOpened == 0)
     }
 
+    @Test("with no voice model to compare against, no saved voice print is called out of date")
+    func noVoiceModelKeepsPrints() async {
+        struct NoModel: SpeakerEmbedding {
+            func embed(samples: [Float], sampleRate: Double) -> [Float]? { nil }
+        }
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { _ in FakeEngine() },
+            embedder: NoModel(),
+            recovery: .disabled
+        )
+        #expect(pipeline.canRecognize(SpeakerProfile(name: "דנה", embedding: [1, 0])))
+    }
+
     @Test("a profile saved by a different, since-replaced embedder is not seeded as a phantom speaker")
     func mismatchedProfileLengthIsNotEnrolled() async {
         let engine = FakeEngine()
