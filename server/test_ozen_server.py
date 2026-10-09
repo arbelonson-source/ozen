@@ -347,6 +347,29 @@ class HungUpMidPass(unittest.TestCase):
         self.assertEqual(state["peak"], 1, "two passes were on the card at once")
 
 
+class PassResult(unittest.TestCase):
+    def test_the_words_the_model_wrote_come_back_from_a_pass(self):
+        class OneLine:
+            def transcribe(self, audio, **kw):
+                line = types.SimpleNamespace(text=" the doctor comes at ten", no_speech_prob=0.01,
+                                             avg_logprob=-0.1, compression_ratio=1.2)
+                return [line], None
+
+        t = S.Transcriber.__new__(S.Transcriber)
+        t.model = t.final_model = OneLine()
+        t.beam, t.context, t.speech_gate = 5, 0, 0.0
+        t.failures, t.failures_before_exit, t.model_ran = 0, 3, False
+
+        async def ask():
+            t.lock = asyncio.Lock()
+            return await t.transcribe(np.zeros(1600, dtype=np.float32), "he", None, True)
+
+        text, confidence, pieces = asyncio.run(ask())
+        self.assertEqual(text, "the doctor comes at ten")
+        self.assertAlmostEqual(confidence, float(np.exp(-0.1)))
+        self.assertEqual([piece["text"] for piece in pieces], ["the doctor comes at ten"])
+
+
 class SlowGPU:
     """Stands in for the Transcriber: each pass takes a while, as on a GPU."""
     context = False
