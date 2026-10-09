@@ -854,6 +854,57 @@ class ModelsThatWontLoad(unittest.TestCase):
         self.assertIn("CUBLAS_STATUS_NOT_SUPPORTED", logged.output[0])
 
 
+class Listening(Exception):
+    pass
+
+
+class Startup(unittest.TestCase):
+    """What main() makes of its command line, up to where it would listen."""
+
+    def start(self, *argv):
+        made, cleaners = [], []
+
+        class Warm:
+            name = "model"
+
+            def __init__(self, *args):
+                made.append(args)
+
+            async def transcribe(self, *args, **kwargs):
+                return "", None, []
+
+        class Serve:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                raise Listening()
+
+            async def __aexit__(self, *exc):
+                return False
+
+        enhance = types.ModuleType("enhance")
+        enhance.StreamingEnhancer = lambda path, mix: cleaners.append(mix)
+        with mock.patch.object(S, "Transcriber", Warm), \
+                mock.patch.object(S.websockets, "serve", Serve, create=True), \
+                mock.patch.dict(sys.modules, {"enhance": enhance}), \
+                mock.patch.object(sys, "argv", ["ozen_server.py", *argv]), \
+                mock.patch.dict("os.environ", {"OZEN_TOKEN": "x"}):
+            with self.assertRaises(Listening):
+                asyncio.run(S.main())
+        return made, cleaners
+
+    def test_the_finished_line_model_on_the_command_line_is_the_one_loaded(self):
+        made, _ = self.start("--final-model", "ivrit-ai/whisper-large-v3-ct2")
+        self.assertEqual(made[0][5], "ivrit-ai/whisper-large-v3-ct2")
+        made, _ = self.start()
+        self.assertIsNone(made[0][5])
+
+    def test_the_audio_cleaner_is_loaded_only_when_its_mix_is_above_zero(self):
+        self.assertEqual(self.start()[1], [])
+        self.assertEqual(self.start("--enhance-mix", "0.3")[1], [0.3])
+
+
 class PromptBudget(unittest.TestCase):
     def test_the_names_at_the_top_are_the_ones_kept(self):
         terms = [f"name{i}" for i in range(100)]
