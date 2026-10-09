@@ -1413,6 +1413,23 @@ class SessionAfterHello(unittest.TestCase):
         self.assertIsNone(ws.closed)
         self.assertTrue(any("1 lines" in line for line in logged.output), logged.output)
 
+    def test_a_names_list_is_kept_to_its_first_200_at_hello_and_on_an_update(self):
+        made = []
+
+        class Recorded(S.Session):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.at_hello = list(self.vocabulary)
+                made.append(self)
+
+        first, second = [f"first{i}" for i in range(250)], [f"second{i}" for i in range(300)]
+        hello = {"type": "hello", "token": "example-code-123", "vocabulary": first}
+        ws = PhoneSocket(hello, [json.dumps({"type": "vocabulary", "terms": second}), json.dumps({"type": "end"})])
+        with mock.patch.object(S, "Session", Recorded), self.assertLogs(S.log, "INFO"):
+            asyncio.run(asyncio.wait_for(S.handle(ws, NamesGPU(), "example-code-123", 1.0), 5))
+        self.assertEqual(made[0].at_hello, first[:200])
+        self.assertEqual(made[0].vocabulary, second[:200])
+
     def test_a_phone_that_only_checked_and_hung_up_leaves_no_worker_running(self):
         hello = {"type": "hello", "token": "example-code-123"}
         ws = PhoneSocket(hello, [])
