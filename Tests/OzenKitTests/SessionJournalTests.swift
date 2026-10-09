@@ -146,6 +146,30 @@ struct SessionJournalTests {
         #expect(size <= SessionJournal.maximumBytes + 1_000)
     }
 
+    #if canImport(Darwin)
+    @Test("the journal stays out of iCloud and computer backups, also once its oldest lines were trimmed")
+    func notBackedUp() throws {
+        let url = temporaryFile()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let journal = SessionJournal(fileURL: url)
+        func excluded() throws -> Bool {
+            var fresh = url
+            fresh.removeAllCachedResourceValues()
+            return try fresh.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true
+        }
+        journal.append("listening", at: 1)
+        _ = journal.entries()
+        #expect(try excluded())
+        // A flush past maximumBytes rewrites the file as a new one.
+        let text = String(repeating: "y", count: 300)
+        for index in 0..<1_000 {
+            journal.append("\(index) \(text)", at: TimeInterval(index))
+        }
+        _ = journal.entries()
+        #expect(try excluded())
+    }
+    #endif
+
     @Test("lines that could not be written, say on a full phone, are kept and written once the disk takes them")
     func failedWriteKeepsLines() throws {
         let url = temporaryFile()
