@@ -605,6 +605,15 @@ class Detector(unittest.TestCase):
             self.assertIn(name, defaults)
             self.assertEqual(float(defaults[name]), value, name)
 
+    def test_the_margin_over_the_floor_grows_with_the_rooms_swing_from_6_to_8_db(self):
+        detector = S.EnergyVoiceDetector()
+        for swing, ratio in [(0.0, 2.0), (1.0, 2.0 * 10 ** (1 / 20)), (2.0, 2.5), (10.0, 2.5)]:
+            detector.swing = swing
+            self.assertAlmostEqual(detector._ratio_now(), ratio, places=6, msg=swing)
+
+    def test_an_empty_piece_of_audio_is_not_speech(self):
+        self.assertFalse(S.EnergyVoiceDetector().is_speech(np.zeros(0, dtype=np.float32)))
+
     def test_silence_is_not_speech_and_talk_across_the_table_is(self):
         detector = S.EnergyVoiceDetector()
         self.assertFalse(detector.is_speech(np.zeros(1024)))
