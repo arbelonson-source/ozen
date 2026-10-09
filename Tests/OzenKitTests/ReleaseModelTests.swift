@@ -213,6 +213,22 @@ struct ReleaseModelDownloaderTests {
         #expect(seen.values.last == 1)
     }
 
+    @Test("a leftover file longer than the manifest's is fetched again from the start, not added to")
+    func oversizedLeftoverStartsOver() async throws {
+        let (_, assets) = release()
+        let fetcher = FakeReleaseFetcher(assets: assets)
+        let folder = temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let leftover = folder.appendingPathComponent("config.json")
+        try (config + config).write(to: leftover)
+
+        _ = try await ReleaseModelDownloader(fetcher: fetcher).download(tag: "m1", into: folder) { _ in }
+
+        #expect(try Data(contentsOf: leftover) == config)
+        #expect(fetcher.fetches.contains { $0.asset == "config.json" && $0.offset == 0 })
+    }
+
     @Test("a server that will not resume makes the file start over and still lands it whole")
     func startsOverWhenResumeRefused() async throws {
         let (_, assets) = release()
