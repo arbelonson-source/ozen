@@ -437,6 +437,31 @@ struct TranscriptHistoryWriterTests {
         #expect(writer.lastFailure == nil)
     }
 
+    @Test("a star on a line only the waiting version has is put on that line")
+    func starOnLineOnlyWaiting() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.refused-new-line-star"))
+        let early = record(id: UUID(), lines: 2, ended: false)
+        writer.saveNow(early)
+        var later = early
+        later.segments += record(id: early.id, lines: 2, ended: true).segments
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+
+        let starred = writer.toggleStarNow(sessionID: early.id, segmentID: later.segments[2].id)
+        writer.saveNow(record(id: UUID(), lines: 1, ended: false))
+
+        #expect(starred == true)
+        let saved = try #require(store.load(id: early.id))
+        #expect(saved.segments.map(\.isStarred) == [false, false, true, false])
+    }
+
     @Test("a name given to a conversation the disk refused before it was ever written is kept when it is written")
     func renameRefusedConversation() throws {
         let (store, dir) = makeStore()
