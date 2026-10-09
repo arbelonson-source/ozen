@@ -109,6 +109,20 @@ class Stereo(unittest.TestCase):
         self.assertTrue(np.array_equal(sent, (stereo.mean(1) * 32767).astype("<i2")))
 
 
+class Overs(unittest.TestCase):
+    def test_a_float_recording_past_full_scale_is_held_to_it_both_ways(self):
+        audio = np.zeros(1600, dtype=np.float32)
+        audio[10], audio[20] = 1.5, -1.5
+        socket = Socket([])
+        with mock.patch.dict(sys.modules, {"jiwer": None}), \
+                mock.patch.object(T.sf, "read", return_value=(audio, 16000), create=True), \
+                mock.patch.object(T.websockets, "connect", return_value=socket, create=True), \
+                mock.patch("sys.stdout", io.StringIO()):
+            asyncio.run(T.main("ws://localhost:8765", "example-code-123", "speech.wav", None))
+        sent = np.frombuffer(b"".join(m for m in socket.sent if isinstance(m, bytes)), dtype="<i2")
+        self.assertEqual((sent[10], sent[20]), (32767, -32767))
+
+
 class Hello(unittest.TestCase):
     def test_the_pairing_code_goes_out_in_a_hello_before_any_audio(self):
         socket = Socket([])
