@@ -123,6 +123,7 @@ struct NumberEmphasisTests {
         #expect(NumberEmphasis.hasListableNumber("הדוח יוצא בכל רבעי השנה") == false)
         #expect(emphasized("שתיתי כבר שלושת רבעי הכוס") == ["שלושת רבעי הכוס"])
         #expect(emphasized("חצי הכוס, ורבע השעה הראשונה") == ["חצי הכוס", "ורבע השעה"])
+        #expect(emphasized("ממיסים חצי הכף במים") == ["חצי הכף"])
         #expect(emphasized("שלושת רבעי, כוס") == ["שלושת רבעי"])
         #expect(emphasized("שלושת, רבעי כוס") == ["שלושת"])
     }
@@ -132,6 +133,7 @@ struct NumberEmphasisTests {
         #expect(emphasized("כדור פעם ביום, אחרי האוכל") == ["פעם"])
         #expect(emphasized("ביקורת פעם בשבוע ופעם בחודש בדיקת דם") == ["פעם", "ופעם"])
         #expect(emphasized("זריקה פעם בשלושה ימים") == ["פעם", "בשלושה ימים"])
+        #expect(emphasized("כדור פעם בשש שעות") == ["פעם", "בשש שעות"])
         #expect(emphasized("אף פעם ביום כזה, עוד פעם בבוקר, פעם הייתי שם") == [])
         #expect(NumberEmphasis.hasListableNumber("כדור פעם ביום"))
         #expect(NumberEmphasis.hasListableNumber("פעם הייתי שם") == false)
@@ -163,6 +165,7 @@ struct NumberEmphasisTests {
         #expect(emphasized("אני מבקש שכל אחד מכם יקשיב") == [])
         #expect(emphasized("וכדי שלאף אחד לא יהיה ספק") == [])
         #expect(emphasized("היה לאחר ביקור אצל אחד הרופאים.") == [])
+        #expect(emphasized("אחד הבנים יבוא מחר") == [])
         #expect(emphasized("אחת הבעיות העיקריות של החילונים") == [])
         #expect(emphasized("הוא הפך אותה לאחת הקלפטוקרטיות המושחתות") == [])
         #expect(emphasized("מצד אחד להסתכל על זה, ומצד שני, זה לא רע.") == [])
