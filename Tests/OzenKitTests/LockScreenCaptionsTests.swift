@@ -108,6 +108,21 @@ struct LockScreenCaptionsTests {
         #expect(plain(short[1].text).count > plain(full[1].text).count)
     }
 
+    @Test("an earlier line longer than its room hands the newest none, and a name costs its own length and the colon after it")
+    func exactRoom() {
+        // With eight-letter words a word starts right next to both cuts
+        // below, so one character more or less room shows or drops a
+        // whole word.
+        let long = (1...40).map { "word\($0)" }.joined(separator: " ")
+        let words = Array(repeating: "tomorrow", count: 12).joined(separator: " ")
+        let budget = LockScreenTextSize.regular.newestLineMaximumCharacters
+        let full = LockScreenCaptions.lines(from: [line(long), line(words)]) { _ in nil }
+        #expect(full[1].text == CaptionLayout.directed(LockScreenCaptions.tail(of: words, maximumCharacters: budget)))
+
+        let rachel = LockScreenCaptions.lines(from: [line(words)]) { _ in "Rachel" }
+        #expect(rachel[0].text == CaptionLayout.directed(LockScreenCaptions.tail(of: words, maximumCharacters: budget - "Rachel: ".count)))
+    }
+
     @Test("the newest line never outgrows the widget's three rows, counting the name it shows or gets back when shown alone")
     func newestLineFitsThreeRows() {
         let long = (1...40).map { "word\($0)" }.joined(separator: " ")
@@ -164,9 +179,15 @@ struct LockScreenCaptionsTests {
         #expect(HebrewTime.minutesAgo(75) == "לפני שעה")
         #expect(HebrewTime.minutesAgo(130) == "לפני שעתיים")
         #expect(HebrewTime.minutesAgo(200) == "לפני 3 שעות")
+        for (minutes, text) in [(3, "לפני 3 דקות"), (60, "לפני שעה"), (119, "לפני שעה"), (120, "לפני שעתיים"), (179, "לפני שעתיים"), (180, "לפני 3 שעות")] {
+            #expect(HebrewTime.minutesAgo(minutes) == text, "\(minutes)")
+        }
         Localization.$override.withValue(.english) {
             #expect(HebrewTime.minutesAgo(75) == "an hour ago")
             #expect(HebrewTime.minutesAgo(200) == "3 hours ago")
+            for (minutes, text) in [(59, "59 minutes ago"), (60, "an hour ago"), (119, "an hour ago"), (120, "2 hours ago")] {
+                #expect(HebrewTime.minutesAgo(minutes) == text, "\(minutes)")
+            }
         }
     }
 
