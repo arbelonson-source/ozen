@@ -3,6 +3,7 @@ import Foundation
 public enum RecordingImport {
     public static func personName(fromFileName fileName: String) -> String? {
         var name = (fileName as NSString).deletingPathExtension
+        name.unicodeScalars.removeAll { [0x061C, 0x200E, 0x200F].contains($0.value) || (0x202A...0x202E).contains($0.value) || (0x2066...0x2069).contains($0.value) }
         let trailing = try! NSRegularExpression(pattern: "[\\s_\\-.,()\\[\\]#]*(?:\\d+(?:[\\s_\\-.,()\\[\\]#]+\\d+)*)?[\\s_\\-.,()\\[\\]#]*$")
         name = trailing.stringByReplacingMatches(in: name, range: NSRange(name.startIndex..., in: name), withTemplate: "")
         name = name.replacingOccurrences(of: "_", with: " ").trimmingCharacters(in: .whitespacesAndNewlines)

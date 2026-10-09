@@ -17,6 +17,15 @@ struct RecordingImportTests {
         #expect(RecordingImport.personName(fromFileName: "Bat_Sheva 1.m4a") == "Bat Sheva")
     }
 
+    @Test("invisible direction marks, as text pasted from a Hebrew message carries them, don't make another person")
+    func directionMarks() {
+        #expect(RecordingImport.personName(fromFileName: "סבתא 1\u{200F}.m4a") == "סבתא")
+        #expect(RecordingImport.personName(fromFileName: "\u{200F}סבתא 2.m4a") == "סבתא")
+        #expect(RecordingImport.personName(fromFileName: "\u{2067}סבא יוסי\u{2069} 3.m4a") == "סבא יוסי")
+        #expect(RecordingImport.personName(fromFileName: "Dana\u{200E} (2).m4a") == "Dana")
+        #expect(RecordingImport.personName(fromFileName: "\u{200F}4\u{200F}.m4a") == nil)
+    }
+
     @Test("a date or several numbers after the name all come off")
     func datedNames() {
         #expect(RecordingImport.personName(fromFileName: "Dana 2024-05-03.m4a") == "Dana")
