@@ -132,7 +132,11 @@ public final class LiveCaptionViewModel {
                     return AppleSpeechEngine(allowServerFallback: settings.allowServerFallbackForAppleSpeech)
                 case .cloud:
                     let provider = settings.cloudProvider
-                    return CloudSpeechEngine(provider: provider, model: settings.chosenCloudModel, apiKey: { CloudKeyStore.read(for: provider) })
+                    return provider.engine(
+                        model: settings.chosenCloudModel,
+                        connector: URLSessionHomeServerConnector(),
+                        apiKey: { CloudKeyStore.read(for: provider) }
+                    )
                 case .homeServer:
                     return HomeServerEngine(
                         address: settings.homeServerAddress,

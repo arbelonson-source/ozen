@@ -274,6 +274,12 @@ public protocol HomeServerConnecting: Sendable {
     func open(_ url: URL) async throws -> any HomeServerSocket
 }
 
+/// Opens a connection that has to carry headers when it opens, such as a
+/// cloud service's key (see `SonioxEngine`).
+public protocol CloudSocketConnecting: Sendable {
+    func open(_ url: URL, headers: [String: String]) async throws -> any HomeServerSocket
+}
+
 extension EngineUnavailability {
     static func homeServerUnreachable(_ detail: String) -> EngineUnavailability {
         EngineUnavailability(kind: .homeServerUnreachable, detail: detail)

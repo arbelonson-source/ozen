@@ -309,7 +309,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
     }
 
     private func transcribe(_ window: [Float], key: String, languageCode: String) async throws -> [String] {
-        let request = provider.transcriptionRequest(
+        guard let request = provider.transcriptionRequest(
             model: model,
             apiKey: key,
             // Measurement mode hands speech from across a room over at
@@ -318,7 +318,11 @@ public actor CloudSpeechEngine: TranscriptionEngine {
             wav: WAVFile.pcm16(SpeechGain.normalized(window), sampleRate: Self.sampleRate),
             languageCode: languageCode,
             vocabulary: vocabulary
-        )
+        ) else {
+            // A service that streams has no request per sentence; it gets
+            // its own engine (see `CloudProvider.engine`).
+            throw CloudSpeechError.badReply
+        }
         let response: CloudHTTPResponse
         do {
             response = try await http.send(request)

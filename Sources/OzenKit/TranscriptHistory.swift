@@ -196,6 +196,7 @@ public extension TranscriptSessionRecord {
             case CloudSpeech.fastModel: return "OpenRouter · Gemini Flash Lite"
             case CloudSpeech.accurateModel: return "OpenRouter · Gemini Flash"
             case DeepgramSpeech.model: return "Deepgram · Nova-3"
+            case SonioxSpeech.model: return "Soniox"
             default: return modelVariant
             }
         case .homeServer, .appleSpeech: return nil

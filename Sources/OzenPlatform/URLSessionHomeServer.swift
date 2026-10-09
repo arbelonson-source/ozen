@@ -1,11 +1,19 @@
 import Foundation
 import OzenKit
 
-public struct URLSessionHomeServerConnector: HomeServerConnecting {
+public struct URLSessionHomeServerConnector: HomeServerConnecting, CloudSocketConnecting {
     public init() {}
 
     public func open(_ url: URL) async throws -> any HomeServerSocket {
-        let task = URLSession.shared.webSocketTask(with: url)
+        try await open(url, headers: [:])
+    }
+
+    public func open(_ url: URL, headers: [String: String]) async throws -> any HomeServerSocket {
+        var request = URLRequest(url: url)
+        for (name, value) in headers {
+            request.setValue(value, forHTTPHeaderField: name)
+        }
+        let task = URLSession.shared.webSocketTask(with: request)
         task.maximumMessageSize = 1 << 20
         task.resume()
         return URLSessionHomeServerSocket(task: task)

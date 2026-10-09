@@ -1,0 +1,7 @@
+{"tokens":[{"text":"מה","start_ms":120,"end_ms":360,"confidence":0.81,"is_final":false,"speaker":"1","language":"he"}],"final_audio_proc_ms":0,"total_audio_proc_ms":480}
+{"tokens":[{"text":"מה","start_ms":120,"end_ms":360,"confidence":0.97,"is_final":true,"speaker":"1","language":"he"},{"text":" שלומך","start_ms":420,"end_ms":900,"confidence":0.74,"is_final":false,"speaker":"1","language":"he"}],"final_audio_proc_ms":400,"total_audio_proc_ms":960}
+{"tokens":[{"text":" שלומך?","start_ms":420,"end_ms":960,"confidence":0.95,"is_final":true,"speaker":"1","language":"he"},{"text":"<end>","is_final":true}],"final_audio_proc_ms":1680,"total_audio_proc_ms":1680}
+{"tokens":[{"text":"טוב,","start_ms":2040,"end_ms":2400,"confidence":0.96,"is_final":true,"speaker":"2","language":"he"},{"text":" תודה.","start_ms":2460,"end_ms":2880,"confidence":0.7,"is_final":false,"speaker":"2","language":"he"}],"final_audio_proc_ms":2400,"total_audio_proc_ms":2940}
+{"tokens":[{"text":" תודה.","start_ms":2460,"end_ms":2880,"confidence":0.94,"is_final":true,"speaker":"2","language":"he"},{"text":" ואתה?","start_ms":3000,"end_ms":3420,"confidence":0.93,"is_final":true,"speaker":"2","language":"he"}],"final_audio_proc_ms":3480,"total_audio_proc_ms":3600}
+{"tokens":[{"text":"מצוין","start_ms":3720,"end_ms":4200,"confidence":0.92,"is_final":true,"speaker":"1","language":"he"}],"final_audio_proc_ms":4260,"total_audio_proc_ms":4320}
+{"tokens":[],"finished":true,"final_audio_proc_ms":4320,"total_audio_proc_ms":4320}
