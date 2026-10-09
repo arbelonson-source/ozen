@@ -143,6 +143,35 @@ struct CaptionPipelineRecoveryTests {
         #expect(pipeline.scheduledRetry == nil)
     }
 
+    @Test("the retry is due the delay after now, the time Diagnostics counts down to")
+    func retryIsDueAfterTheDelay() async {
+        let engine = FakeEngine()
+        let clock = TestClock()
+        let pipeline = makeRecoveringPipeline(
+            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [30], downloadDelays: []), clock: clock
+        )
+        await pipeline.start(settings: .default)
+        engine.endStream(throwing: TestError())
+        #expect(await eventually { pipeline.scheduledRetry != nil })
+        #expect(pipeline.scheduledRetry == ScheduledRetry(at: clock.now + 30, attempt: 1))
+    }
+
+    @Test("a step of getting ready is logged with how long the step before took, not a clock reading")
+    func stepLinesSayHowLongTheStepBeforeTook() async {
+        let engine = FakeEngine(progressUpdates: [
+            EnginePreparationProgress(stage: .downloadingModel, fraction: 0.5),
+            EnginePreparationProgress(stage: .loadingModel),
+        ])
+        let pipeline = makeRecoveringPipeline(engine: engine, policy: .disabled)
+        var took: [Double] = []
+        pipeline.onEvent = { event in
+            if case .step(_, let afterSeconds?) = event.kind { took.append(afterSeconds) }
+        }
+        await pipeline.start(settings: .default)
+        #expect(!took.isEmpty)
+        #expect(took.allSatisfy { (0..<60).contains($0) }, "\(took)")
+    }
+
     @Test("a mid-stream cloud error that needs a person is reported specifically, not retried as a generic glitch")
     func cloudErrorMidStreamReportedSpecifically() async {
         let engine = FakeEngine()
