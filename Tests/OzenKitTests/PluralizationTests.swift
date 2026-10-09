@@ -192,6 +192,26 @@ struct PluralizationTests {
         }
     }
 
+    @Test("Arabic \"ago\" takes the dual after its preposition, and the numeral only from three on")
+    func arabicAgoForms() {
+        let expected: [(Int, String)] = [
+            (1, "قبل دقيقة"),
+            (2, "قبل دقيقتين"),
+            (3, "قبل 3 دقائق"),
+            (10, "قبل 10 دقائق"),
+            (11, "قبل 11 دقيقة"),
+            (60, "قبل ساعة"),
+            (120, "قبل ساعتين"),
+            (180, "قبل 3 ساعات"),
+            (660, "قبل 11 ساعة"),
+        ]
+        Localization.$override.withValue(.arabic) {
+            for (minutes, text) in expected {
+                #expect(HebrewTime.minutesAgo(minutes) == text, "\(minutes)")
+            }
+        }
+    }
+
     @Test("\"the conversation from 5 minutes ago was saved\" takes the ago phrase whole, with no second preposition")
     func savedConversationAgo() {
         let expected: [UILanguage: String] = [
