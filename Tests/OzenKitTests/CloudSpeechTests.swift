@@ -134,6 +134,7 @@ struct CloudSpeechTests {
         #expect(!CloudSpeech.hasCreditLeft(keyCheck: reply(200, #"{"data":{"limit":3,"limit_remaining":0}}"#)))
         #expect(!CloudSpeech.hasCreditLeft(keyCheck: reply(200, #"{"data":{"limit":3,"limit_remaining":-0.01}}"#)))
         #expect(CloudSpeech.hasCreditLeft(keyCheck: reply(200, #"{"data":{"limit":3,"limit_remaining":2.5}}"#)))
+        #expect(CloudSpeech.hasCreditLeft(keyCheck: reply(200, #"{"data":{"limit":3,"limit_remaining":0.5}}"#)))
         #expect(CloudSpeech.hasCreditLeft(keyCheck: reply(200, #"{"data":{"limit":null,"limit_remaining":null}}"#)))
         #expect(CloudSpeech.hasCreditLeft(keyCheck: reply(200, "nope")))
     }
@@ -147,6 +148,8 @@ struct CloudSpeechTests {
         #expect(request.headers["Authorization"] == "Bearer sk-test")
         let json = try body(of: request)
         #expect(json["model"] as? String == CloudSpeech.fastModel)
+        // No sampling: the same audio is written the same way, without invented variety.
+        #expect((json["temperature"] as? NSNumber)?.doubleValue == 0)
         #expect((json["reasoning"] as? [String: String])?["effort"] == "minimal")
         let content = try #require(((json["messages"] as? [[String: Any]])?.first?["content"]) as? [[String: Any]])
         let prompt = try #require(content.first?["text"] as? String)

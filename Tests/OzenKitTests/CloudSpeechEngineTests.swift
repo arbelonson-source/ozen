@@ -301,6 +301,25 @@ struct CloudSpeechEngineTests {
         #expect(http.transcriptionRequests.count == CloudSpeechEngine.failuresBeforeStopping * 2)
     }
 
+    @Test("a line that gets through starts the count of failures over", .timeLimit(.minutes(1)))
+    func successStartsTheCountOver() async {
+        // Three failed tries at the first sentence (two requests each),
+        // then it gets through; the next sentence then gets a whole new run
+        // of failures before the stream gives up.
+        let failedTries = (CloudSpeechEngine.failuresBeforeStopping - 1) * 2
+        let http = FakeCloudHTTP(answers: Array(repeating: .offline, count: failedTries) + [.text("שלום"), .offline])
+        let (audio, input) = AsyncStream<[Float]>.makeStream()
+        let tokens = engine(http).stream(languageCode: "he", audio: audio)
+        for chunk in speech(seconds: 1) + silence(seconds: 1) { input.yield(chunk) }
+        #expect(await eventually { http.transcriptionRequests.count == failedTries + 1 })
+        for chunk in speech(seconds: 1) + silence(seconds: 1) { input.yield(chunk) }
+        input.finish()
+        await #expect(throws: CloudSpeechError.offline) {
+            for try await _ in tokens {}
+        }
+        #expect(http.transcriptionRequests.count == failedTries + 1 + CloudSpeechEngine.failuresBeforeStopping * 2)
+    }
+
     @Test("the same audio is sent again only after a growing pause, not in a burst")
     func failedSegmentsBackOff() async {
         let http = FakeCloudHTTP(answers: [.offline])
