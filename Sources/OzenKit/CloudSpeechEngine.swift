@@ -30,6 +30,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
     static let longCutFrameSeconds = 0.05
 
     public nonisolated let model: String
+    public nonisolated let provider: CloudProvider
     private let http: any CloudHTTP
     private let apiKey: @Sendable () -> String?
     private let filter: WhisperResultFilter
@@ -54,7 +55,8 @@ public actor CloudSpeechEngine: TranscriptionEngine {
     private let failedSegmentPauseSeconds: Double
 
     public init(
-        model: String = CloudSpeech.accurateModel,
+        provider: CloudProvider = .openRouter,
+        model: String? = nil,
         http: any CloudHTTP = URLSessionCloudHTTP(),
         filter: WhisperResultFilter = WhisperResultFilter(),
         failedSegmentPauseSeconds: Double = 1,
@@ -63,7 +65,8 @@ public actor CloudSpeechEngine: TranscriptionEngine {
     ) {
         self.failedSegmentPauseSeconds = failedSegmentPauseSeconds
         self.approvalSeconds = approvalSeconds
-        self.model = model
+        self.provider = provider
+        self.model = model ?? provider.defaultModel
         self.http = http
         self.filter = filter
         self.apiKey = apiKey
@@ -88,14 +91,14 @@ public actor CloudSpeechEngine: TranscriptionEngine {
         }
         let response: CloudHTTPResponse
         do {
-            response = try await http.send(CloudSpeech.keyCheckRequest(apiKey: key))
+            response = try await http.send(provider.keyCheckRequest(apiKey: key))
         } catch {
             return .unavailable(CloudSpeechError.offline.unavailability)
         }
         guard (200..<300).contains(response.status) else {
-            return .unavailable(CloudSpeech.failure(from: response).unavailability)
+            return .unavailable(provider.failure(from: response).unavailability)
         }
-        guard CloudSpeech.hasCreditLeft(keyCheck: response) else {
+        guard provider.hasCreditLeft(keyCheck: response) else {
             return .unavailable(CloudSpeechError.outOfCredit.unavailability)
         }
         approvedKey = key
@@ -306,7 +309,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
     }
 
     private func transcribe(_ window: [Float], key: String, languageCode: String) async throws -> [String] {
-        let request = CloudSpeech.completionRequest(
+        let request = provider.transcriptionRequest(
             model: model,
             apiKey: key,
             // Measurement mode hands speech from across a room over at
@@ -324,7 +327,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
             throw CloudSpeechError.offline
         }
         let echo = self.echo
-        return CloudSpeech.turns(in: try CloudSpeech.transcript(from: response), filter: filter)
+        return CloudSpeech.turns(in: try provider.transcript(from: response), filter: filter)
             .filter { !(echo?.isEcho($0) ?? false) }
     }
 }

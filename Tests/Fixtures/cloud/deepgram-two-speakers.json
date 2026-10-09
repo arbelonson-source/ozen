@@ -1,0 +1,26 @@
+{
+  "metadata": {
+    "request_id": "00000000-0000-0000-0000-000000000001",
+    "duration": 4.2,
+    "channels": 1,
+    "models": ["nova-3"]
+  },
+  "results": {
+    "channels": [
+      {
+        "alternatives": [
+          {
+            "transcript": "מה שלומך? טוב, תודה. ואתה?",
+            "confidence": 0.95,
+            "words": []
+          }
+        ]
+      }
+    ],
+    "utterances": [
+      {"start": 0.1, "end": 1.1, "confidence": 0.96, "channel": 0, "transcript": "מה שלומך?", "words": [], "speaker": 0, "id": "u1"},
+      {"start": 1.6, "end": 2.6, "confidence": 0.95, "channel": 0, "transcript": "טוב, תודה.", "words": [], "speaker": 1, "id": "u2"},
+      {"start": 3.4, "end": 4.0, "confidence": 0.94, "channel": 0, "transcript": "ואתה?", "words": [], "speaker": 1, "id": "u3"}
+    ]
+  }
+}

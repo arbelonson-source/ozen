@@ -169,9 +169,13 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// servers. That's a privacy decision the user makes explicitly, never
     /// a silent fallback.
     public var allowServerFallbackForAppleSpeech: Bool
-    /// The OpenRouter model cloud captions use (see `CloudSpeech`). The key
-    /// itself is kept in the Keychain, never in this file.
+    /// The model cloud captions use; one of `cloudProvider`'s models, or
+    /// see `chosenCloudModel`. The key itself is kept in the Keychain,
+    /// never in this file.
     public var cloudModel: String
+    /// Which service cloud captions go to. Settings from before there was
+    /// a choice meant OpenRouter.
+    public var cloudProvider: CloudProvider
     /// Where the home server is ("192.168.1.20", "pc.example:8765",
     /// "wss://…"); the pairing code is kept in the Keychain, not here.
     public var homeServerAddress: String
@@ -282,6 +286,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         whisperModelVariant: String = WhisperModelCatalog.defaultVariant,
         allowServerFallbackForAppleSpeech: Bool = false,
         cloudModel: String = CloudSpeech.accurateModel,
+        cloudProvider: CloudProvider = .openRouter,
         homeServerAddress: String = "",
         homeServerBeam: Int = 5,
         display: DisplayPreferences = .default,
@@ -311,6 +316,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         self.whisperModelVariant = whisperModelVariant
         self.allowServerFallbackForAppleSpeech = allowServerFallbackForAppleSpeech
         self.cloudModel = cloudModel
+        self.cloudProvider = cloudProvider
         self.homeServerAddress = homeServerAddress
         self.homeServerBeam = min(max(homeServerBeam, Self.homeServerBeamRange.lowerBound), Self.homeServerBeamRange.upperBound)
         self.display = display
@@ -408,7 +414,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case engine, languageCode, preferredInputUID, speakerProfiles, creditLine
-        case whisperModelVariant, allowServerFallbackForAppleSpeech, cloudModel, homeServerAddress, homeServerBeam, display
+        case whisperModelVariant, allowServerFallbackForAppleSpeech, cloudModel, cloudProvider, homeServerAddress, homeServerBeam, display
         case hapticOnSpeechResume, speakerSimilarityThreshold, speakerThresholdScale
         case keywordAlerts, soundAlerts, saveHistory
         case quickPhrases, speechRate, vocabulary, hasCompletedOnboarding, appLanguage
@@ -432,6 +438,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         whisperModelVariant = container.lenient(String.self, forKey: .whisperModelVariant) ?? defaults.whisperModelVariant
         allowServerFallbackForAppleSpeech = container.lenient(Bool.self, forKey: .allowServerFallbackForAppleSpeech) ?? defaults.allowServerFallbackForAppleSpeech
         cloudModel = container.lenient(String.self, forKey: .cloudModel).flatMap { $0.isEmpty ? nil : $0 } ?? defaults.cloudModel
+        cloudProvider = container.lenient(CloudProvider.self, forKey: .cloudProvider) ?? defaults.cloudProvider
         homeServerAddress = container.lenient(String.self, forKey: .homeServerAddress) ?? defaults.homeServerAddress
         homeServerBeam = container.lenient(Int.self, forKey: .homeServerBeam)
             .map { min(max($0, Self.homeServerBeamRange.lowerBound), Self.homeServerBeamRange.upperBound) } ?? defaults.homeServerBeam
@@ -472,12 +479,19 @@ public struct AppSettings: Codable, Sendable, Equatable {
         modelDescription(for: engine)
     }
 
+    /// `cloudModel` when the chosen service has it, else that service's
+    /// own default: a model name left from another service means nothing
+    /// to this one.
+    public var chosenCloudModel: String {
+        cloudProvider.models.contains(cloudModel) ? cloudModel : cloudProvider.defaultModel
+    }
+
     /// The model `engine` runs with these settings, which need not be the
     /// chosen engine: the phone's own Whisper covers for the cloud.
     public func modelDescription(for engine: TranscriptionEngineKind) -> String? {
         switch engine {
         case .whisperKit: return whisperModelVariant
-        case .cloud: return cloudModel
+        case .cloud: return chosenCloudModel
         case .homeServer: return "home server"
         case .appleSpeech: return nil
         }

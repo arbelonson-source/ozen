@@ -193,8 +193,9 @@ public extension TranscriptSessionRecord {
         case .whisperKit: return WhisperModelCatalog.option(for: modelVariant)?.displayName ?? modelVariant
         case .cloud:
             switch modelVariant {
-            case CloudSpeech.fastModel: return "Gemini Flash Lite"
-            case CloudSpeech.accurateModel: return "Gemini Flash"
+            case CloudSpeech.fastModel: return "OpenRouter · Gemini Flash Lite"
+            case CloudSpeech.accurateModel: return "OpenRouter · Gemini Flash"
+            case DeepgramSpeech.model: return "Deepgram · Nova-3"
             default: return modelVariant
             }
         case .homeServer, .appleSpeech: return nil

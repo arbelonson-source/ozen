@@ -203,6 +203,31 @@ struct AppSettingsTests {
         #expect(decoded.appLanguage == .system)
     }
 
+    @Test("settings from before the cloud service choice keep OpenRouter, a service this build doesn't know falls back to it, a chosen one is kept")
+    func cloudProvider() throws {
+        let old = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"cloudModel":"google/gemini-3.1-flash-lite"}"#.utf8))
+        #expect(old.cloudProvider == .openRouter)
+        #expect(old.chosenCloudModel == "google/gemini-3.1-flash-lite")
+        let unknown = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"cloudProvider":"someday"}"#.utf8))
+        #expect(unknown.cloudProvider == .openRouter)
+        var settings = AppSettings.default
+        settings.cloudProvider = .deepgram
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
+        #expect(decoded.cloudProvider == .deepgram)
+    }
+
+    @Test("a cloud model left from another service is never sent to the chosen one")
+    func cloudModelBelongsToTheService() {
+        var settings = AppSettings.default
+        settings.cloudModel = CloudSpeech.fastModel
+        #expect(settings.chosenCloudModel == CloudSpeech.fastModel)
+        settings.cloudProvider = .deepgram
+        #expect(settings.chosenCloudModel == CloudProvider.deepgram.defaultModel)
+        #expect(CloudProvider.deepgram.models.contains(settings.chosenCloudModel))
+        settings.engine = .cloud
+        #expect(settings.modelDescription == settings.chosenCloudModel)
+    }
+
     @Test("a language name from a newer build falls back to following the phone")
     func unknownLanguage() throws {
         let decoded = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"appLanguage":"klingon"}"#.utf8))

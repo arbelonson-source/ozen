@@ -21,14 +21,14 @@ final class FakeCloudHTTP: CloudHTTP, @unchecked Sendable {
     }
 
     var requests: [CloudHTTPRequest] { lock.withLock { sent } }
-    var transcriptionRequests: [CloudHTTPRequest] { requests.filter { $0.url == CloudSpeech.completionsURL } }
+    var transcriptionRequests: [CloudHTTPRequest] { requests.filter { $0.method == "POST" } }
     var transcriptionSentAt: [ContinuousClock.Instant] { lock.withLock { transcriptionTimes } }
 
     func send(_ request: CloudHTTPRequest) async throws -> CloudHTTPResponse {
         let answer: Answer = lock.withLock {
             sent.append(request)
-            if request.url == CloudSpeech.completionsURL { transcriptionTimes.append(.now) }
-            if request.url == CloudSpeech.keyURL {
+            if request.method == "POST" { transcriptionTimes.append(.now) }
+            if request.method == "GET" {
                 return keyChecks.isEmpty ? .status(200, #"{"data":{"limit_remaining":null}}"#) : keyChecks.removeFirst()
             }
             return answers.count > 1 ? answers.removeFirst() : (answers.first ?? .text(""))
@@ -175,6 +175,21 @@ struct CloudSpeechEngineTests {
         #expect(finals.map(\.text) == ["מה שלומך?", "טוב, תודה"])
         #expect(Set(finals.map(\.utteranceID)).count == 2)
         #expect(finals.map(\.startsNewSpeakerTurn) == [false, true])
+    }
+
+    @Test("the same sentence loop works through Deepgram: its key check, its reply, two voices as two lines")
+    func deepgramSentence() async throws {
+        let body = try String(contentsOf: DeepgramSpeechTests.fixtures.appendingPathComponent("deepgram-two-speakers.json"), encoding: .utf8)
+        let http = FakeCloudHTTP(answers: [.status(200, body)], keyChecks: [.status(200, #"{"projects":[]}"#)])
+        let engine = CloudSpeechEngine(provider: .deepgram, http: http, failedSegmentPauseSeconds: 0.001, apiKey: { "dg-test" })
+        #expect(engine.model == DeepgramSpeech.model)
+        #expect(await engine.checkAvailability(languageCode: "he") == .available)
+        #expect(http.requests.first?.url == DeepgramSpeech.keyURL)
+        let finals = try await transcribe(engine, speech(seconds: 1.5) + silence(seconds: 1)).filter { $0.isFinal }
+        #expect(finals.map(\.text) == ["מה שלומך?", "טוב, תודה. ואתה?"])
+        let sent = try #require(http.transcriptionRequests.last)
+        #expect(sent.url.host == "api.deepgram.com")
+        #expect(sent.headers["Authorization"] == "Token dg-test")
     }
 
     @Test("a quiet room sends nothing and shows nothing")

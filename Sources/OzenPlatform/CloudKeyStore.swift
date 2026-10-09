@@ -1,12 +1,12 @@
 import Foundation
+import OzenKit
 import Security
 
 public enum CloudKeyStore {
-    private static let service = "com.arbelonson.ozen.openrouter"
     private static let account = "api-key"
 
-    public static func read() -> String? {
-        var query = baseQuery
+    public static func read(for provider: CloudProvider = .openRouter) -> String? {
+        var query = baseQuery(provider)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
@@ -15,13 +15,13 @@ public enum CloudKeyStore {
         return key.isEmpty ? nil : key
     }
 
-    public static var hasKey: Bool { read() != nil }
+    public static func hasKey(for provider: CloudProvider = .openRouter) -> Bool { read(for: provider) != nil }
 
     @discardableResult
-    public static func save(_ key: String) -> Bool {
+    public static func save(_ key: String, for provider: CloudProvider = .openRouter) -> Bool {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            SecItemDelete(baseQuery as CFDictionary)
+            SecItemDelete(baseQuery(provider) as CFDictionary)
             return true
         }
         // Update in place rather than delete-then-add: a read() racing this
@@ -30,23 +30,23 @@ public enum CloudKeyStore {
         // brief window where the item is genuinely gone and wrongly see no
         // key at all, right after one was just saved.
         let data = Data(trimmed.utf8)
-        let updateStatus = SecItemUpdate(baseQuery as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        let updateStatus = SecItemUpdate(baseQuery(provider) as CFDictionary, [kSecValueData as String: data] as CFDictionary)
         if updateStatus == errSecSuccess { return true }
         guard updateStatus == errSecItemNotFound else { return false }
-        var item = baseQuery
+        var item = baseQuery(provider)
         item[kSecValueData as String] = data
         item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
     }
 
-    public static func remove() {
-        SecItemDelete(baseQuery as CFDictionary)
+    public static func remove(for provider: CloudProvider = .openRouter) {
+        SecItemDelete(baseQuery(provider) as CFDictionary)
     }
 
-    private static var baseQuery: [String: Any] {
+    private static func baseQuery(_ provider: CloudProvider) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
+            kSecAttrService as String: provider.keychainService,
             kSecAttrAccount as String: account,
         ]
     }

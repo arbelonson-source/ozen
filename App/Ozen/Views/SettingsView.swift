@@ -30,10 +30,10 @@ struct SettingsView: View {
     /// iOS has Live Activities for Ozen switched off, so the lock screen
     /// captions switch can't show anything until they're allowed.
     @State private var lockScreenBlocked = false
-    /// What's typed in the OpenRouter key field. The saved key itself is
+    /// What's typed in the cloud key field. The saved key itself is
     /// never read back onto the screen, only whether there is one.
     @State private var cloudKeyDraft = ""
-    @State private var hasCloudKey = CloudKeyStore.hasKey
+    @State private var hasCloudKey = CloudKeyStore.hasKey()
     @State private var cloudKeySaveFailed = false
     @State private var homeServerAddressDraft = ""
     @Environment(\.colorScheme) private var systemScheme
@@ -250,7 +250,7 @@ struct SettingsView: View {
         switch kind {
         case .whisperKit: return tr("מודל קוד פתוח שרץ על הטלפון. עברית טובה, אפשר לבחור גודל מודל.", "An open-source model that runs on the phone. Good Hebrew, and you can choose the model size.")
         case .appleSpeech: return tr("מובנה ב‑iOS. מהיר מאוד, אבל עברית במכשיר לא זמינה בכל גרסה.", "Built into iOS. Very fast, but on-device Hebrew isn’t available in every version.")
-        case .cloud: return tr("מודל באינטרנט, לטלפון שאיטי מדי למודל שבתוכו. בעברית הוא טועה יותר מהמודל שבטלפון. צריך אינטרנט ומפתח \u{2066}OpenRouter.\u{2069}", "A model online, for a phone too slow for the one inside it. It gets more Hebrew wrong than the phone’s own model. Needs internet and an OpenRouter key.")
+        case .cloud: return tr("מודל באינטרנט, לטלפון שאיטי מדי למודל שבתוכו. בעברית הוא טועה יותר מהמודל שבטלפון. צריך אינטרנט ומפתח של שירות ענן.", "A model online, for a phone too slow for the one inside it. It gets more Hebrew wrong than the phone’s own model. Needs internet and a key for a cloud service.")
         case .homeServer: return tr("מחשב של המשפחה עם כרטיס מסך כותב את הכתוביות: אותו מודל עברית, מהר בהרבה, והטלפון לא מתחמם. כשאין אליו חיבור, הטלפון ממשיך לבד.", "A family computer with a graphics card writes the captions: the same Hebrew model, much faster, and the phone stays cool. When it can’t be reached, the phone carries on by itself.")
         }
     }
@@ -322,13 +322,35 @@ struct SettingsView: View {
         )
     }
 
+    private var cloudProviderBinding: Binding<CloudProvider> {
+        Binding(
+            get: { viewModel.settings.cloudProvider },
+            set: { provider in
+                cloudKeyDraft = ""
+                cloudKeySaveFailed = false
+                hasCloudKey = CloudKeyStore.hasKey(for: provider)
+                Task { await viewModel.setCloudProvider(provider) }
+            }
+        )
+    }
+
     private var cloudSection: some View {
         Section {
+            Picker(tr("שירות", "Service"), selection: cloudProviderBinding) {
+                ForEach(CloudProvider.allCases, id: \.self) { provider in
+                    Text(provider.name).tag(provider)
+                }
+            }
+            .onAppear { hasCloudKey = CloudKeyStore.hasKey(for: viewModel.settings.cloudProvider) }
+            if !viewModel.settings.cloudProvider.covers(languageCode: viewModel.settings.languageCode) {
+                Label(tr("השירות הזה לא יודע לכתוב כתוביות בשפה שמדברים בה. בחרו שירות אחר.", "This service can’t caption the language being spoken. Choose another service."), systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.readable(.red))
+            }
             if hasCloudKey {
                 Label(tr("מפתח שמור בטלפון", "Key saved on the phone"), systemImage: "key.fill")
                     .foregroundStyle(.readable(.green))
             }
-            SecureField(hasCloudKey ? tr("מפתח חדש במקום השמור", "New key instead of the saved one") : tr("הדביקו כאן מפתח OpenRouter", "Paste your OpenRouter key here"), text: $cloudKeyDraft)
+            SecureField(hasCloudKey ? tr("מפתח חדש במקום השמור", "New key instead of the saved one") : tr("הדביקו כאן מפתח %1", "Paste your %1 key here", args: ["\(viewModel.settings.cloudProvider.name)"]), text: $cloudKeyDraft)
                 .textContentType(.password)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -346,7 +368,7 @@ struct SettingsView: View {
                 }
                 .confirmationDialog(tr("למחוק את מפתח הענן?", "Delete the cloud key?"), isPresented: $confirmingCloudKeyDelete, titleVisibility: .visible) {
                     Button(tr("למחוק", "Delete"), role: .destructive) {
-                        CloudKeyStore.remove()
+                        CloudKeyStore.remove(for: viewModel.settings.cloudProvider)
                         hasCloudKey = false
                         Task { await viewModel.cloudKeyChanged() }
                     }
@@ -355,14 +377,18 @@ struct SettingsView: View {
                     Text(tr("בלי המפתח הכתוביות לא יגיעו מהענן, עד שיכניסו אותו שוב.", "Without the key, captions can’t come from the cloud until it’s entered again."))
                 }
             }
-            Picker(tr("מודל", "Model"), selection: cloudModelBinding) {
-                Text(tr("מהיר (Gemini Flash Lite)", "Fast (Gemini Flash Lite)")).tag(CloudSpeech.fastModel)
-                Text(tr("מדויק יותר, קצת איטי (Gemini Flash)", "More accurate, a bit slower (Gemini Flash)")).tag(CloudSpeech.accurateModel)
+            if viewModel.settings.cloudProvider == .openRouter {
+                Picker(tr("מודל", "Model"), selection: cloudModelBinding) {
+                    Text(tr("מהיר (Gemini Flash Lite)", "Fast (Gemini Flash Lite)")).tag(CloudSpeech.fastModel)
+                    Text(tr("מדויק יותר, קצת איטי (Gemini Flash)", "More accurate, a bit slower (Gemini Flash)")).tag(CloudSpeech.accurateModel)
+                }
             }
         } header: {
             Text(tr("תמלול בענן", "Cloud transcription"))
         } footer: {
-            Text(tr("הקול נשלח דרך האינטרנט ל‑OpenRouter, ומשם לדגם של Google שכותב את הכתוביות, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שיכתוב אותן נכון. רק כשמישהו מדבר; כל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 15 סנט מהקרדיט של המפתח (המדויק יותר: כ‑30 סנט), ודיבור רצוף בלי הפסקות, כמו חדשות או הרצאה, עד פי שלושה. בלי Wi‑Fi זה משתמש בגלישה סלולרית: כמה מאות MB לשעת דיבור, ועד כ‑1 GB. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.", "The audio is sent over the internet to OpenRouter, and from there to a Google model that writes the captions, together with the names and special words and the important words, so it can spell them. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 15 cents from the key’s credit (the more accurate one: about 30 cents), and unbroken talk like the news or a lecture up to three times that. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself."))
+            Text(viewModel.settings.cloudProvider == .deepgram
+                ? tr("הקול נשלח דרך האינטרנט ל‑Deepgram, שכותבת את הכתוביות, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שתכתוב אותן נכון; Deepgram מתבקשת לא להשתמש בו לשיפור המודלים שלה. רק כשמישהו מדבר; כל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 65 סנט מהקרדיט של המפתח, ודיבור רצוף בלי הפסקות, כמו חדשות או הרצאה, עד פי שלושה; חשבון Deepgram חדש מקבל 200 דולר קרדיט חינם. בלי Wi‑Fi זה משתמש בגלישה סלולרית: כמה מאות MB לשעת דיבור, ועד כ‑1 GB. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.", "The audio is sent over the internet to Deepgram, which writes the captions, together with the names and special words and the important words, so it can spell them; Deepgram is asked not to use it to improve its models. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 65 cents from the key’s credit, and unbroken talk like the news or a lecture up to three times that; a new Deepgram account comes with $200 of free credit. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
+                : tr("הקול נשלח דרך האינטרנט ל‑OpenRouter, ומשם לדגם של Google שכותב את הכתוביות, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שיכתוב אותן נכון. רק כשמישהו מדבר; כל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 15 סנט מהקרדיט של המפתח (המדויק יותר: כ‑30 סנט), ודיבור רצוף בלי הפסקות, כמו חדשות או הרצאה, עד פי שלושה. בלי Wi‑Fi זה משתמש בגלישה סלולרית: כמה מאות MB לשעת דיבור, ועד כ‑1 GB. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.", "The audio is sent over the internet to OpenRouter, and from there to a Google model that writes the captions, together with the names and special words and the important words, so it can spell them. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 15 cents from the key’s credit (the more accurate one: about 30 cents), and unbroken talk like the news or a lecture up to three times that. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself."))
         }
     }
 
@@ -582,7 +608,7 @@ struct SettingsView: View {
     private func saveCloudKey() {
         let key = cloudKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return }
-        let saved = CloudKeyStore.save(key)
+        let saved = CloudKeyStore.save(key, for: viewModel.settings.cloudProvider)
         cloudKeySaveFailed = !saved
         guard saved else { return }
         cloudKeyDraft = ""

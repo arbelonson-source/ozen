@@ -187,6 +187,13 @@ struct CloudSpeechTests {
         }
     }
 
+    @Test("each service keeps its key in its own keychain slot, and OpenRouter's keeps the name it always had, so a saved key survives the update")
+    func keychainSlots() {
+        #expect(CloudProvider.openRouter.keychainService == "com.arbelonson.ozen.openrouter")
+        let slots = CloudProvider.allCases.map(\.keychainService)
+        #expect(Set(slots).count == slots.count)
+    }
+
     @Test("no names list, no names sentence; a model that isn't Google's gets no thinking setting")
     func plainRequest() throws {
         #expect(!CloudSpeech.prompt(languageCode: "he", vocabulary: []).contains("Names"))

@@ -1974,6 +1974,31 @@ struct CaptionPipelineInputTests {
     }
 }
 
+@Suite("CaptionPipeline engine per cloud service")
+@MainActor
+struct CaptionPipelineCloudServiceTests {
+    @Test("switching the cloud service makes an engine for it instead of reusing the last service's")
+    func newEngineForAnotherService() async {
+        final class Made { var settings: [AppSettings] = [] }
+        let made = Made()
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { settings in
+                made.settings.append(settings)
+                return FakeEngine()
+            },
+            embedder: FakeEmbedder(),
+            recovery: .disabled
+        )
+        var settings = AppSettings.default
+        settings.engine = .cloud
+        await pipeline.start(settings: settings)
+        settings.cloudProvider = .deepgram
+        await pipeline.restart(settings: settings)
+        #expect(made.settings.contains { $0.engine == .cloud && $0.cloudProvider == .deepgram })
+    }
+}
+
 @Suite("CaptionPipeline enrollment capture")
 @MainActor
 struct CaptionPipelineEnrollmentTests {

@@ -1430,10 +1430,11 @@ struct TranscriptSourceLineTests {
         #expect(record(.homeServer, model: "home server").sourceLine(in: .hebrew) == "המחשב בבית · iPhone Microphone")
     }
 
-    @Test("cloud models read as Settings names them; missing parts are skipped")
+    @Test("cloud models read as their service and Settings name them; missing parts are skipped")
     func cloudAndMissing() {
-        #expect(record(.cloud, model: CloudSpeech.fastModel, input: nil).sourceLine(in: .english) == "Cloud transcription (OpenRouter) · Gemini Flash Lite")
-        #expect(record(.cloud, model: CloudSpeech.accurateModel, input: nil).sourceLine(in: .english) == "Cloud transcription (OpenRouter) · Gemini Flash")
+        #expect(record(.cloud, model: CloudSpeech.fastModel, input: nil).sourceLine(in: .english) == "Cloud transcription · OpenRouter · Gemini Flash Lite")
+        #expect(record(.cloud, model: CloudSpeech.accurateModel, input: nil).sourceLine(in: .english) == "Cloud transcription · OpenRouter · Gemini Flash")
+        #expect(record(.cloud, model: DeepgramSpeech.model, input: nil).sourceLine(in: .english) == "Cloud transcription · Deepgram · Nova-3")
         #expect(record(.appleSpeech, model: nil, input: nil).sourceLine(in: .english) == "Apple's speech recognition")
     }
 }

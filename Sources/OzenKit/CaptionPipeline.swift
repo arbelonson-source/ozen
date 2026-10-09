@@ -1817,7 +1817,7 @@ public final class CaptionPipeline {
     }
 
     private func engineCacheKey(_ settings: AppSettings) -> String {
-        "\(settings.engine.rawValue)|\(settings.whisperModelVariant)|\(settings.allowServerFallbackForAppleSpeech)|\(settings.cloudModel)|\(settings.homeServerAddress)|\(settings.homeServerBeam)"
+        "\(settings.engine.rawValue)|\(settings.whisperModelVariant)|\(settings.allowServerFallbackForAppleSpeech)|\(settings.cloudProvider.rawValue)|\(settings.chosenCloudModel)|\(settings.homeServerAddress)|\(settings.homeServerBeam)"
     }
 
     /// A tap that stopped delivering (see `AudioStallWatchdog`) becomes a

@@ -19,7 +19,7 @@ public enum TranscriptionEngineKind: String, Codable, Sendable, CaseIterable {
         switch self {
         case .whisperKit: return tr("Whisper (במכשיר)", "Whisper (on device)", in: language)
         case .appleSpeech: return tr("זיהוי הדיבור של אפל", "Apple's speech recognition", in: language)
-        case .cloud: return tr("תמלול בענן \u{2066}(OpenRouter)\u{2069}", "Cloud transcription (OpenRouter)", in: language)
+        case .cloud: return tr("תמלול בענן", "Cloud transcription", in: language)
         case .homeServer: return tr("המחשב בבית", "Home computer", in: language)
         }
     }
@@ -145,9 +145,9 @@ public struct EngineUnavailability: Sendable, Equatable, Error {
         case waitingForWiFi
         /// The phone doesn't have room for the model (see `StorageSpaceGate`).
         case notEnoughStorage
-        /// Cloud captions have no key, or OpenRouter turned the key down.
+        /// Cloud captions have no key, or the cloud service turned the key down.
         case cloudKeyNeeded
-        /// The OpenRouter key has used up its credit or spending limit.
+        /// The cloud key has used up its credit or spending limit.
         case cloudOutOfCredit
         /// Cloud captions can't reach the internet.
         case noInternet

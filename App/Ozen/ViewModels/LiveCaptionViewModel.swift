@@ -131,7 +131,8 @@ public final class LiveCaptionViewModel {
                 case .appleSpeech:
                     return AppleSpeechEngine(allowServerFallback: settings.allowServerFallbackForAppleSpeech)
                 case .cloud:
-                    return CloudSpeechEngine(model: settings.cloudModel, apiKey: { CloudKeyStore.read() })
+                    let provider = settings.cloudProvider
+                    return CloudSpeechEngine(provider: provider, model: settings.chosenCloudModel, apiKey: { CloudKeyStore.read(for: provider) })
                 case .homeServer:
                     return HomeServerEngine(
                         address: settings.homeServerAddress,
@@ -977,7 +978,16 @@ public final class LiveCaptionViewModel {
         }
     }
 
-    /// The OpenRouter key was saved or removed in Settings. The engine reads
+    public func setCloudProvider(_ provider: CloudProvider) async {
+        guard settings.cloudProvider != provider else { return }
+        settings.cloudProvider = provider
+        persist()
+        if settings.engine == .cloud {
+            await restartIfRunning()
+        }
+    }
+
+    /// A cloud key was saved or removed in Settings. The engine reads
     /// it at every start, so a running or failed session just starts again.
     public func cloudKeyChanged() async {
         if settings.engine == .cloud {
