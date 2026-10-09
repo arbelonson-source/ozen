@@ -72,13 +72,9 @@ public struct BatteryAdvisor: Sendable, Equatable {
     /// once per threshold per discharge.
     public mutating func update(level: Float?, isPluggedIn: Bool) -> BatteryWarning? {
         guard let level, level >= 0 else { return nil }
-        if isPluggedIn {
-            warnedLow = false
-            warnedCritical = false
-            return nil
-        }
         if level > lowThreshold + rearmMargin { warnedLow = false }
         if level > criticalThreshold + rearmMargin { warnedCritical = false }
+        guard !isPluggedIn else { return nil }
 
         let percent = Int((level * 100).rounded())
         if level <= criticalThreshold, !warnedCritical {

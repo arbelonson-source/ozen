@@ -32,6 +32,15 @@ struct BatteryAdvisorTests {
         #expect(advisor.update(level: 0.19, isPluggedIn: false) == .low(percent: 19))
     }
 
+    @Test("a loose cable flickering at 9% doesn't send the urgent warning again with every flicker")
+    func looseCable() {
+        var advisor = BatteryAdvisor()
+        let warnings = run([(0.09, false), (0.09, true), (0.09, false), (0.09, true), (0.08, false), (0.12, true), (0.1, false)], advisor: &advisor)
+        #expect(warnings.compactMap { $0 } == [.critical(percent: 9)])
+        #expect(advisor.update(level: 0.16, isPluggedIn: true) == nil)
+        #expect(advisor.update(level: 0.1, isPluggedIn: false) == .critical(percent: 10))
+    }
+
     @Test("a level flickering around the threshold doesn't nag")
     func hysteresis() {
         var advisor = BatteryAdvisor()
