@@ -192,6 +192,23 @@ struct SessionJournalTests {
         #expect(entries.last?.text == "line 999")
     }
 
+    @Test("buffered lines reach the disk by themselves, batch after batch, with nobody reading them", .timeLimit(.minutes(1)))
+    func flushesByItself() async throws {
+        let url = temporaryFile()
+        let journal = SessionJournal(fileURL: url)
+        func onDisk(_ text: String) async throws -> Bool {
+            for _ in 0..<100 {
+                if let data = try? Data(contentsOf: url), String(decoding: data, as: UTF8.self).contains(text) { return true }
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            return false
+        }
+        journal.append("first batch", at: 1)
+        #expect(try await onDisk("first batch"))
+        journal.append("second batch", at: 2)
+        #expect(try await onDisk("second batch"))
+    }
+
     @Test("a fresh append sits buffered in memory rather than touching disk right away; entries() flushes it and sees it immediately regardless")
     func bufferedUntilAskedFor() {
         let url = temporaryFile()
