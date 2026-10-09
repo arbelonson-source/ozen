@@ -930,6 +930,15 @@ class WrongCode(unittest.TestCase):
         self.assertIn("unauthorized", ws.sent[0])
 
 
+class BadHello(unittest.TestCase):
+    def test_a_first_message_that_is_not_a_hello_is_told_why_before_the_line_closes(self):
+        for first in ["not json", "[1, 2]", "null"]:
+            ws = HelloSocket(first)
+            asyncio.run(S.handle(ws, None, "real-code-456", 1.0))
+            self.assertEqual(len(ws.sent), 1, first)
+            self.assertIn("bad_request", ws.sent[0], first)
+
+
 class WorkerEndings(unittest.TestCase):
     def test_a_phone_hanging_up_mid_send_is_not_a_failure(self):
         self.assertFalse(S.worker_failed(S.websockets.ConnectionClosed(None, None)))
