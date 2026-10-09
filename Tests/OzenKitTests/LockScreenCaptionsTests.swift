@@ -307,4 +307,11 @@ struct LockScreenPresenceTests {
             #expect(LockScreenCaptions.presence(phase: .paused, interruptedByCall: false, pausedForSpeech: true).status == "The phone is talking")
         }
     }
+
+    @Test("the notice that captions left the lock screen is a quiet status, not an alert that breaks through Focus")
+    func endedNoticeIsQuiet() {
+        let notice = LockScreenCaptions.endedNotice
+        #expect(!notice.isUrgent)
+        #expect(notice.threadIdentifier == "status")
+    }
 }
