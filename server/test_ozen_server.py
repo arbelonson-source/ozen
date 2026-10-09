@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import runpy
 import shutil
 import sys
@@ -587,6 +588,22 @@ class Detector(unittest.TestCase):
     """The cases of Tests/OzenKitTests/EnergyVoiceDetectorTests.swift that
     PCM16 can carry, with the same numbers, so the port can't drift from
     the phone's detector unnoticed."""
+
+    def test_the_port_keeps_every_number_of_the_swift_detector(self):
+        swift = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Sources", "OzenKit",
+                             "EnergyVoiceDetector.swift")
+        with open(swift, encoding="utf-8") as f:
+            defaults = dict(re.findall(r"(\w+): (?:Float|Int) = ([0-9][0-9_.e-]*)", f.read()))
+        port = S.EnergyVoiceDetector()
+        pairs = {"absoluteThreshold": port.absolute, "noiseFloorRatio": port.ratio,
+                 "steadyNoiseFloorRatio": port.steady_ratio, "noiseSwingRate": port.swing_rate,
+                 "floorFallRate": port.fall, "floorRiseRate": port.rise, "maximumNoiseFloor": port.max_floor,
+                 "initialNoiseFloor": port.floor, "recentWindowSamples": port.window,
+                 "recentMinimumRiseRate": port.recent_rise, "noiseSwingDecibels": port.swing,
+                 "digitalSilence": port.digital_silence}
+        for name, value in pairs.items():
+            self.assertIn(name, defaults)
+            self.assertEqual(float(defaults[name]), value, name)
 
     def test_silence_is_not_speech_and_talk_across_the_table_is(self):
         detector = S.EnergyVoiceDetector()
