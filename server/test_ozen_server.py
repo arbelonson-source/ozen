@@ -603,16 +603,42 @@ def tone(amplitude, count=1024):
     return amplitude * np.sin(np.arange(count) * 0.3)
 
 
+def swift_source(*parts):
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Sources", *parts), encoding="utf-8") as f:
+        return f.read()
+
+
+class CutLikeThePhone(unittest.TestCase):
+    """The server cuts lines with the numbers the phone's own Whisper
+    engine was measured with; these read them from the Swift files."""
+
+    def test_pauses_pads_the_length_limit_and_the_long_cut_match_the_phones_whisper_engine(self):
+        engine = swift_source("OzenPlatform", "WhisperKitEngine.swift")
+        lets = dict(re.findall(r"private let (\w+) = ([0-9][0-9_.]*)", engine))
+        pairs = {"pauseSeconds": S.Session.pause, "trailingPadSeconds": S.Session.trailing_pad,
+                 "leadingKeepSeconds": S.Session.leading_keep, "maxUtteranceSeconds": S.Session.max_utterance,
+                 "longCutLookBackSeconds": S.Session.cut_look_back, "longCutFrameSeconds": S.Session.cut_frame,
+                 "sampleRate": S.RATE}
+        for name, value in pairs.items():
+            self.assertIn(name, lets)
+            self.assertEqual(float(lets[name]), value, name)
+
+    def test_the_line_detector_is_the_phones_detector_for_whisper_lines(self):
+        found = re.search(r"forWhisperLines\(\) -> EnergyVoiceDetector \{\s*EnergyVoiceDetector\("
+                          r"noiseFloorRatio: ([0-9.]+), steadyNoiseFloorRatio: ([0-9.]+)\)",
+                          swift_source("OzenKit", "EnergyVoiceDetector.swift"))
+        detector = S.Session(None, None, "he", [], 0.3).detector
+        self.assertEqual((detector.ratio, detector.steady_ratio), (float(found.group(1)), float(found.group(2))))
+
+
 class Detector(unittest.TestCase):
     """The cases of Tests/OzenKitTests/EnergyVoiceDetectorTests.swift that
     PCM16 can carry, with the same numbers, so the port can't drift from
     the phone's detector unnoticed."""
 
     def test_the_port_keeps_every_number_of_the_swift_detector(self):
-        swift = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Sources", "OzenKit",
-                             "EnergyVoiceDetector.swift")
-        with open(swift, encoding="utf-8") as f:
-            defaults = dict(re.findall(r"(\w+): (?:Float|Int) = ([0-9][0-9_.e-]*)", f.read()))
+        original = swift_source("OzenKit", "EnergyVoiceDetector.swift")
+        defaults = dict(re.findall(r"(\w+): (?:Float|Int) = ([0-9][0-9_.e-]*)", original))
         port = S.EnergyVoiceDetector()
         pairs = {"absoluteThreshold": port.absolute, "noiseFloorRatio": port.ratio,
                  "steadyNoiseFloorRatio": port.steady_ratio, "noiseSwingRate": port.swing_rate,
