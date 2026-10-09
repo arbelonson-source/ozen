@@ -81,6 +81,7 @@ struct EnergyVoiceDetectorTests {
         }
         #expect(steady.noiseSwingDecibels < 0.5)
         #expect(steady.currentNoiseFloorRatio < 2.15)
+        #expect(abs(steady.currentNoiseFloorRatio - 2.0) < 0.01)
         // Six decibels above the hum: speech with the lower margin.
         let justAbove = steady.isSpeech(tone(amplitude: 0.0042, count: 1_600))
         #expect(justAbove)
@@ -92,6 +93,14 @@ struct EnergyVoiceDetectorTests {
         }
         #expect(swinging.noiseSwingDecibels > 2)
         #expect(abs(swinging.currentNoiseFloorRatio - 2.5) < 0.01)
+
+        // A decibel more margin for each decibel of swing: noise whose
+        // quieter moments are a tenth below the rest needs 2.0 x 1.1.
+        var slightly = EnergyVoiceDetector()
+        for i in 0..<600 {
+            slightly.isSpeech(tone(amplitude: i % 10 == 0 ? 0.002 : 0.0022, count: 1_600))
+        }
+        #expect(abs(slightly.currentNoiseFloorRatio - 2.2) < 0.002)
     }
 
     @Test("the line for Whisper hears a voice 5 dB over a steady hum that the default line misses")
@@ -223,6 +232,8 @@ struct EnergyVoiceDetectorTests {
         #expect(EnergyVoiceDetector.meterLevel(forRMS: 1) == 1)
         let mid = EnergyVoiceDetector.meterLevel(forRMS: 0.0316) // ≈ -30 dBFS
         #expect(mid > 0.52 && mid < 0.62)
+        // -30 dBFS is 40 of the meter's 70 dB.
+        #expect(abs(mid - 4.0 / 7) < 0.005)
         // Conversation at -55 dBFS moves the meter; a -80 dBFS room doesn't.
         #expect(EnergyVoiceDetector.meterLevel(forRMS: 0.0018) > 0.15)
         #expect(EnergyVoiceDetector.meterLevel(forRMS: 0.0001) == 0)
