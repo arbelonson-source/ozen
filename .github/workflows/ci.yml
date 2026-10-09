@@ -39,7 +39,7 @@ jobs:
         run: python3 scripts/check-doc-quotes.py
       - name: Check that no real pairing code or tailnet name is in the repo
         run: python3 scripts/check-no-real-values.py
-      - name: Release word-error script
+      - name: Model release scripts
         run: python3 -m unittest discover -s scripts/model-release -p "test_*.py"
       - uses: swift-actions/setup-swift@v2
         with:

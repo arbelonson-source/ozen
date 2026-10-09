@@ -15,6 +15,7 @@ step() {
 step translations python3 scripts/check-translations.py
 step doc-quotes python3 scripts/check-doc-quotes.py
 step no-real-values python3 scripts/check-no-real-values.py
+step release-scripts python3 -m unittest discover -s scripts/model-release -p "test_*.py"
 step swift-test swift test
 step server-tests bash -c "cd server && python3 -m unittest -q test_ozen_server test_pairing test_try_server"
 rm -f /tmp/ozen-ci-local.$$

@@ -37,6 +37,10 @@ def pack(folder: Path, assets: Path) -> None:
         if relative == "manifest.json" or path.name.startswith("."):
             continue
         asset = relative.replace("/", "__")
+        if path.stat().st_size == 0:
+            raise SystemExit(f"{relative}: empty; the app refuses a manifest that lists an empty file")
+        if any(f["asset"] == asset for f in files):
+            raise SystemExit(f"{asset}: two files flatten to this asset name")
         shutil.copyfile(path, assets / asset)
         files.append({"path": relative, "asset": asset, "size": path.stat().st_size, "sha256": sha256(path)})
     (assets / "manifest.json").write_text(json.dumps({"files": files}, indent=1) + "\n")
