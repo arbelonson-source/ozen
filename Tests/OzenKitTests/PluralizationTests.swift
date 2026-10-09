@@ -209,6 +209,41 @@ struct PluralizationTests {
         }
     }
 
+    @Test("words, lines and speakers take the singular for one and the plural for two in the languages that split them so")
+    func countedNounsSingularAndPlural() {
+        let expected: [(UILanguage, (Int) -> String, Int, String)] = [
+            (.french, ConversationStats.wordsText, 1, "1 mot"),
+            (.french, ConversationStats.wordsText, 2, "2 mots"),
+            (.spanish, ConversationStats.wordsText, 1, "1 palabra"),
+            (.spanish, ConversationStats.wordsText, 2, "2 palabras"),
+            (.german, ConversationStats.wordsText, 1, "1 Wort"),
+            (.german, ConversationStats.wordsText, 2, "2 Wörter"),
+            (.portuguese, ConversationStats.wordsText, 1, "1 palavra"),
+            (.portuguese, ConversationStats.wordsText, 2, "2 palavras"),
+            (.amharic, ConversationStats.wordsText, 1, "1 ቃል"),
+            (.amharic, ConversationStats.wordsText, 2, "2 ቃላት"),
+            (.french, { ConversationStats.linesText($0) }, 1, "1 ligne"),
+            (.french, { ConversationStats.linesText($0) }, 2, "2 lignes"),
+            (.spanish, { ConversationStats.linesText($0) }, 1, "1 línea"),
+            (.spanish, { ConversationStats.linesText($0) }, 2, "2 líneas"),
+            (.german, { ConversationStats.linesText($0) }, 1, "1 Zeile"),
+            (.german, { ConversationStats.linesText($0) }, 2, "2 Zeilen"),
+            (.portuguese, { ConversationStats.linesText($0) }, 1, "1 linha"),
+            (.portuguese, { ConversationStats.linesText($0) }, 2, "2 linhas"),
+            (.hindi, { ConversationStats.linesText($0) }, 1, "1 पंक्ति"),
+            (.hindi, { ConversationStats.linesText($0) }, 2, "2 पंक्तियाँ"),
+            (.amharic, { ConversationStats.linesText($0) }, 1, "1 መስመር"),
+            (.amharic, { ConversationStats.linesText($0) }, 2, "2 መስመሮች"),
+            (.amharic, ConversationStats.speakersText, 1, "1 ተናጋሪ"),
+            (.amharic, ConversationStats.speakersText, 2, "2 ተናጋሪዎች"),
+        ]
+        for (language, text, count, wanted) in expected {
+            Localization.$override.withValue(language) {
+                #expect(text(count) == wanted, "\(language) \(count)")
+            }
+        }
+    }
+
     @Test("Arabic \"ago\" takes the dual after its preposition, and the numeral only from three on")
     func arabicAgoForms() {
         let expected: [(Int, String)] = [
