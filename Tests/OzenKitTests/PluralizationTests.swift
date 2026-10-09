@@ -244,6 +244,41 @@ struct PluralizationTests {
         }
     }
 
+    @Test("hours and seconds take the singular for one and the plural for two in the languages that split them so")
+    func timeUnitsSingularAndPlural() {
+        let duration = { (minutes: Int) in ConversationStats.minutesText(Double(minutes * 60)) }
+        let expected: [(UILanguage, (Int) -> String, Int, String)] = [
+            (.french, duration, 60, "1 heure"),
+            (.french, duration, 120, "2 heures"),
+            (.spanish, duration, 60, "1 hora"),
+            (.spanish, duration, 120, "2 horas"),
+            (.german, duration, 60, "1 Stunde"),
+            (.german, duration, 120, "2 Stunden"),
+            (.portuguese, duration, 60, "1 hora"),
+            (.portuguese, duration, 120, "2 horas"),
+            (.hindi, duration, 60, "1 घंटा"),
+            (.hindi, duration, 120, "2 घंटे"),
+            (.french, HebrewTime.minutesAgo, 60, "il y a 1 heure"),
+            (.french, HebrewTime.minutesAgo, 120, "il y a 2 heures"),
+            (.spanish, HebrewTime.minutesAgo, 60, "hace 1 hora"),
+            (.german, HebrewTime.minutesAgo, 120, "vor 2 Stunden"),
+            (.portuguese, HebrewTime.minutesAgo, 60, "há 1 hora"),
+            (.hindi, HebrewTime.minutesAgo, 60, "1 घंटा पहले"),
+            (.hindi, HebrewTime.minutesAgo, 120, "2 घंटे पहले"),
+            (.french, ConversationStats.secondsText, 1, "1 seconde"),
+            (.french, ConversationStats.secondsText, 2, "2 secondes"),
+            (.spanish, ConversationStats.secondsText, 1, "1 segundo"),
+            (.spanish, ConversationStats.secondsText, 2, "2 segundos"),
+            (.portuguese, ConversationStats.secondsText, 1, "1 segundo"),
+            (.portuguese, ConversationStats.secondsText, 2, "2 segundos"),
+        ]
+        for (language, text, count, wanted) in expected {
+            Localization.$override.withValue(language) {
+                #expect(text(count) == wanted, "\(language) \(count)")
+            }
+        }
+    }
+
     @Test("Arabic \"ago\" takes the dual after its preposition, and the numeral only from three on")
     func arabicAgoForms() {
         let expected: [(Int, String)] = [
