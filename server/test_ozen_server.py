@@ -1131,6 +1131,7 @@ class Startup(unittest.TestCase):
         made, cleaners = [], []
         self.warmed = warmed = []
         self.served = served = []
+        self.serve_options = options = {}
         self.order = order = []
 
         class Warm:
@@ -1147,6 +1148,7 @@ class Startup(unittest.TestCase):
         class Serve:
             def __init__(self, *args, **kwargs):
                 served.append(args)
+                options.update(kwargs)
 
             async def __aenter__(self):
                 if not listening:
@@ -1183,6 +1185,7 @@ class Startup(unittest.TestCase):
         port = re.search(r"static let defaultPort = (\d+)", swift_source("OzenKit", "HomeServer.swift")).group(1)
         self.assertEqual(self.served[0][1:3], ("0.0.0.0", int(port)))
         self.assertEqual((made[0][3], made[0][6]), (5, 0.05))
+        self.assertEqual(self.serve_options, {"max_size": 2 ** 22, "ping_interval": 10, "ping_timeout": 20})
 
     def test_the_live_interval_on_the_command_line_reaches_every_connection(self):
         for argv, interval in [(["--live-interval", "0.5"], 0.5), ([], 0.3)]:

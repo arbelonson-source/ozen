@@ -26,6 +26,16 @@ class TailscaleAddress(unittest.TestCase):
         with mock.patch("subprocess.run", run):
             self.assertEqual(pairing.tailscale_address(), "wss://desktop.tail0example.ts.net")
 
+    @unittest.skipIf(os.name == "nt", "the stand-in is a shell script")
+    def test_a_real_tailscale_on_the_path_is_asked_and_answers(self):
+        with tempfile.TemporaryDirectory() as folder:
+            fake = os.path.join(folder, "tailscale")
+            with open(fake, "w", encoding="utf-8") as f:
+                f.write("#!/bin/sh\necho '{\"Self\": {\"DNSName\": \"desktop.tail0example.ts.net.\"}}'\n")
+            os.chmod(fake, 0o755)
+            with mock.patch.dict("os.environ", {"PATH": folder}):
+                self.assertEqual(pairing.tailscale_address(), "wss://desktop.tail0example.ts.net")
+
     def test_no_tailscale_anywhere_gives_no_address(self):
         def run(command, **_):
             raise FileNotFoundError(command[0])
@@ -134,6 +144,7 @@ class PairingPage(unittest.TestCase):
             out = self.make_page(folder)
             with open(out, encoding="utf-8") as f:
                 self.assertIn("example-code-123", f.read())
+            self.assertEqual(os.stat(out).st_mode & 0o777, 0o600)
 
 
 class AddressChoice(unittest.TestCase):
