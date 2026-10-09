@@ -206,6 +206,48 @@ struct CloudSpeechEngineTests {
         #expect(Set(received.map(\.utteranceID)).count == 1)
     }
 
+    @Test("while two people are still talking their words show as one live line, a space apart; finished, they become two")
+    func livePreviewOfTwoVoices() async throws {
+        let http = FakeCloudHTTP(answers: [.text("A: מה שלומך?\nB: טוב"), .text("A: מה שלומך?\nB: טוב, תודה")])
+        let engine = engine(http)
+        let (audio, input) = AsyncStream<[Float]>.makeStream()
+        let tokens = engine.stream(languageCode: "he", audio: audio)
+        let collected = Task {
+            var received: [TranscriptToken] = []
+            for try await token in tokens { received.append(token) }
+            return received
+        }
+        for chunk in speech(seconds: 3) { input.yield(chunk) }
+        #expect(await eventually { http.transcriptionRequests.count == 1 })
+        for chunk in silence(seconds: 1) { input.yield(chunk) }
+        input.finish()
+        let received = try await collected.value
+        #expect(received.map(\.text) == ["מה שלומך? טוב", "מה שלומך?", "טוב, תודה"])
+        #expect(received.map(\.isFinal) == [false, true, true])
+    }
+
+    @Test("the next sentence coming back empty doesn't bring back the last sentence's live words")
+    func emptyNextSentenceShowsNothing() async throws {
+        let http = FakeCloudHTTP(answers: [.text("שלום"), .text("שלום לכולם"), .text("")])
+        let engine = engine(http)
+        let (audio, input) = AsyncStream<[Float]>.makeStream()
+        let tokens = engine.stream(languageCode: "he", audio: audio)
+        let collected = Task {
+            var received: [TranscriptToken] = []
+            for try await token in tokens { received.append(token) }
+            return received
+        }
+        for chunk in speech(seconds: 3) { input.yield(chunk) }
+        #expect(await eventually { http.transcriptionRequests.count == 1 })
+        for chunk in silence(seconds: 1) { input.yield(chunk) }
+        #expect(await eventually { http.transcriptionRequests.count == 2 })
+        for chunk in speech(seconds: 1) + silence(seconds: 1) { input.yield(chunk) }
+        input.finish()
+        let received = try await collected.value
+        #expect(received.map(\.text) == ["שלום", "שלום לכולם"])
+        #expect(http.transcriptionRequests.count >= 3)
+    }
+
     @Test("a live request that fails is not tried again; only a final one is worth a second request")
     func liveFailureIsNotRetried() async throws {
         let http = FakeCloudHTTP(answers: [.offline, .text("שלום לכולם")])

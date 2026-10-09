@@ -162,6 +162,31 @@ struct CloudSpeechTests {
         #expect(Data(base64Encoded: audio["data"] ?? "") == wav)
     }
 
+    @Test("the request and the key check are shaped the way OpenRouter reads them, and go only to OpenRouter over https")
+    func openRouterShape() throws {
+        let request = CloudSpeech.completionRequest(model: CloudSpeech.fastModel, apiKey: "k", wav: Data(), languageCode: "he", vocabulary: [])
+        let message = try #require((try body(of: request)["messages"] as? [[String: Any]])?.first)
+        #expect(message["role"] as? String == "user")
+        let content = try #require(message["content"] as? [[String: Any]])
+        #expect(content.map { $0["type"] as? String } == ["text", "input_audio"])
+        let check = CloudSpeech.keyCheckRequest(apiKey: "k")
+        #expect(check.method == "GET")
+        #expect(check.headers["Authorization"] == "Bearer k")
+        for url in [CloudSpeech.completionsURL, CloudSpeech.keyURL] {
+            #expect(url.scheme == "https" && url.host == "openrouter.ai", "\(url)")
+        }
+        #expect(CloudSpeech.completionsURL.path == "/api/v1/chat/completions")
+        #expect(CloudSpeech.keyURL.path == "/api/v1/key")
+    }
+
+    @Test("both Gemini models the app offers are told not to think first, which would make every line seconds later")
+    func offeredModelsAnswerAtOnce() throws {
+        for model in CloudSpeech.models {
+            let request = CloudSpeech.completionRequest(model: model, apiKey: "k", wav: Data(), languageCode: "he", vocabulary: [])
+            #expect((try body(of: request)["reasoning"] as? [String: String])?["effort"] == "minimal", "\(model)")
+        }
+    }
+
     @Test("no names list, no names sentence; a model that isn't Google's gets no thinking setting")
     func plainRequest() throws {
         #expect(!CloudSpeech.prompt(languageCode: "he", vocabulary: []).contains("Names"))
