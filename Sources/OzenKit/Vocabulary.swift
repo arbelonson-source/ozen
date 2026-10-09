@@ -84,6 +84,20 @@ public enum VocabularyHints {
         guard !cleaned.isEmpty else { return "" }
         return cleaned.joined(separator: ", ") + "."
     }
+
+    /// `whisperPrompt` with only the names from the top of the list whose
+    /// prompt, as encoded with its leading space, fits `budget` tokens.
+    /// Cut by tokens instead, a long list ended in half a name, in front of
+    /// every line: with 21 Hebrew names, the first three letters of
+    /// "Savta". The home computer cuts the same way (`front_terms`).
+    public static func whisperPrompt(_ terms: [String], fittingIn budget: Int, tokens: (String) -> Int) -> String {
+        var kept: [String] = []
+        for term in normalized(terms) {
+            guard tokens(" " + (kept + [term]).joined(separator: ", ") + ".") <= budget else { break }
+            kept.append(term)
+        }
+        return kept.isEmpty ? "" : kept.joined(separator: ", ") + "."
+    }
 }
 
 /// Whisper conditioned on a prompt sometimes "hears" the prompt itself in

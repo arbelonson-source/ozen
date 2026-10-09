@@ -535,21 +535,19 @@ public actor WhisperKitEngine: TranscriptionEngine {
     // MARK: - Vocabulary prompt
 
     /// Encodes the names list the way WhisperKit's own CLI does for
-    /// `--prompt`: a leading space, special tokens stripped, trimmed to
-    /// the budget from the end (the list is ordered most-important-first).
+    /// `--prompt`: a leading space, special tokens stripped, and only the
+    /// whole names from the top of the list (ordered most-important-first)
+    /// that fit the budget.
     private func promptTokens(using pipe: WhisperKit) -> [Int]? {
         guard !vocabulary.isEmpty, let tokenizer = pipe.tokenizer else { return nil }
         if let cached = promptCache, cached.terms == vocabulary {
             return cached.tokens
         }
-        let text = VocabularyHints.whisperPrompt(vocabulary)
-        guard !text.isEmpty else { return nil }
         let specialTokenBegin = tokenizer.specialTokens.specialTokenBegin
-        let tokens = Array(
-            tokenizer.encode(text: " " + text)
-                .filter { $0 < specialTokenBegin }
-                .prefix(WhisperKitDecodeRoom.maxPromptTokens)
-        )
+        let encode = { (text: String) in tokenizer.encode(text: text).filter { $0 < specialTokenBegin } }
+        let text = VocabularyHints.whisperPrompt(vocabulary, fittingIn: WhisperKitDecodeRoom.maxPromptTokens) { encode($0).count }
+        guard !text.isEmpty else { return nil }
+        let tokens = Array(encode(" " + text).prefix(WhisperKitDecodeRoom.maxPromptTokens))
         promptCache = (vocabulary, tokens)
         return tokens.isEmpty ? nil : tokens
     }

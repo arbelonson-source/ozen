@@ -44,6 +44,17 @@ struct VocabularyTests {
         #expect(VocabularyHints.whisperPrompt(["אבי", "רותי "]) == "אבי, רותי.")
     }
 
+    @Test("a names list too long for the prompt keeps whole names from the top, never half of the next one")
+    func promptKeepsWholeNames() {
+        let letters: (String) -> Int = { $0.count }
+        let terms = ["Avi", "Ruti", "Savta", "Dani"]
+        #expect(VocabularyHints.whisperPrompt(terms, fittingIn: 100, tokens: letters) == "Avi, Ruti, Savta, Dani.")
+        #expect(VocabularyHints.whisperPrompt(terms, fittingIn: 18, tokens: letters) == "Avi, Ruti, Savta.")
+        #expect(VocabularyHints.whisperPrompt(terms, fittingIn: 17, tokens: letters) == "Avi, Ruti.")
+        #expect(VocabularyHints.whisperPrompt(terms, fittingIn: 4, tokens: letters) == "")
+        #expect(VocabularyHints.whisperPrompt(["Avi,", "", "Ruti"], fittingIn: 100, tokens: letters) == VocabularyHints.whisperPrompt(["Avi,", "", "Ruti"]))
+    }
+
     @Test("a comma typed after a name, or Whisper's control text pasted into one, stays out of the prompt")
     func listSeparatorsAndControlText() {
         #expect(VocabularyHints.whisperPrompt(["Avi,", "Ruti;"]) == "Avi, Ruti.")
