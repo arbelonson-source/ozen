@@ -220,13 +220,13 @@ public enum CloudSpeechError: Error, Sendable, Equatable {
 
     public var unavailability: EngineUnavailability {
         switch self {
-        case .keyMissing: return EngineUnavailability(kind: .cloudKeyNeeded, detail: "no OpenRouter key")
-        case .keyRejected: return EngineUnavailability(kind: .cloudKeyNeeded, detail: "OpenRouter rejected the key")
-        case .outOfCredit: return EngineUnavailability(kind: .cloudOutOfCredit, detail: "OpenRouter key is out of credit")
-        case .offline: return EngineUnavailability(kind: .noInternet, detail: "no connection to OpenRouter")
-        case .rateLimited: return EngineUnavailability(kind: .temporarilyUnavailable, detail: "OpenRouter rate limit")
-        case .serverTrouble(let status): return EngineUnavailability(kind: .temporarilyUnavailable, detail: "OpenRouter answered \(status)")
-        case .badReply: return EngineUnavailability(kind: .temporarilyUnavailable, detail: "unreadable reply from OpenRouter")
+        case .keyMissing: return EngineUnavailability(kind: .cloudKeyNeeded, detail: "no key for the cloud service")
+        case .keyRejected: return EngineUnavailability(kind: .cloudKeyNeeded, detail: "the cloud service turned the key down")
+        case .outOfCredit: return EngineUnavailability(kind: .cloudOutOfCredit, detail: "the cloud key is out of credit")
+        case .offline: return EngineUnavailability(kind: .noInternet, detail: "no connection to the cloud service")
+        case .rateLimited: return EngineUnavailability(kind: .temporarilyUnavailable, detail: "the cloud service's rate limit")
+        case .serverTrouble(let status): return EngineUnavailability(kind: .temporarilyUnavailable, detail: "the cloud service answered \(status)")
+        case .badReply: return EngineUnavailability(kind: .temporarilyUnavailable, detail: "unreadable reply from the cloud service")
         }
     }
 }

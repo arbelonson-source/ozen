@@ -187,6 +187,17 @@ struct CloudSpeechTests {
         }
     }
 
+    @Test("a cloud failure's detail in Diagnostics names no one service, since every service shares these reasons")
+    func failureDetailsFitEveryService() {
+        let errors: [CloudSpeechError] = [.keyMissing, .keyRejected, .outOfCredit, .rateLimited, .offline, .serverTrouble(status: 503), .badReply]
+        for error in errors {
+            let detail = error.unavailability.detail
+            #expect(!detail.isEmpty)
+            #expect(!CloudProvider.allCases.contains { detail.contains($0.name) }, "\(detail)")
+        }
+        #expect(CloudSpeechError.serverTrouble(status: 503).unavailability.detail.contains("503"))
+    }
+
     @Test("each service keeps its key in its own keychain slot, and OpenRouter's keeps the name it always had, so a saved key survives the update")
     func keychainSlots() {
         #expect(CloudProvider.openRouter.keychainService == "com.arbelonson.ozen.openrouter")
