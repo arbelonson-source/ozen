@@ -2888,6 +2888,21 @@ struct CaptionPipelineAudioStallTests {
         #expect(audio.calls.last == "stopCapture")
     }
 
+    @Test("captions started again after a stop mid-stall get the watchdog's whole wait, not what was left of it", .timeLimit(.minutes(1)))
+    func restartGetsTheWholeWait() async throws {
+        let (pipeline, audio, _) = makePipeline(audioWatchdog: AudioStallWatchdog(stallSeconds: 4))
+        await pipeline.start(settings: .default)
+        audio.push([Float](repeating: 0, count: 1_600))
+        try await Task.sleep(for: .seconds(3))
+        try #require(pipeline.phase.isListening)
+        pipeline.stop()
+        // A Bluetooth microphone can take a second or two to deliver its
+        // first audio after a start.
+        await pipeline.start(settings: .default)
+        try await Task.sleep(for: .seconds(2.5))
+        #expect(pipeline.phase.isListening)
+    }
+
     @Test("a microphone the phone gave up setting up again fails at once, not after the watchdog's wait")
     func captureLostFailsAtOnce() async {
         let (pipeline, audio, _) = makePipeline()

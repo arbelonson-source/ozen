@@ -52,6 +52,16 @@ struct AlertVibrationTests {
         #expect(critical.pulses.allSatisfy { $0.duration >= 0.3 })
     }
 
+    @Test("a pattern lasts until its last pulse ends")
+    func lastsUntilTheLastPulseEnds() {
+        let pattern = AlertVibration(pulses: [
+            AlertVibration.Pulse(start: 0, duration: 0.2, intensity: 1, sharpness: 0.5),
+            AlertVibration.Pulse(start: 1, duration: 0.5, intensity: 1, sharpness: 0.5),
+        ])
+        #expect(pattern.pulses.map(\.end) == [0.2, 1.5])
+        #expect(pattern.totalSeconds == 1.5)
+    }
+
     @Test("every pattern has pulses in order that don't overlap, at strengths the hardware accepts")
     func wellFormed() {
         for pattern in kinds {
