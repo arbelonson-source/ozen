@@ -116,6 +116,22 @@ struct CloudSpeechEngineTests {
         #expect(seconds < 2.0)
     }
 
+    @Test("the half second before the speech goes with it, so its first syllable isn't clipped", .timeLimit(.minutes(1)))
+    func leadInIsKept() async throws {
+        let http = FakeCloudHTTP(answers: [.text("שלום")])
+        let (audio, input) = AsyncStream<[Float]>.makeStream()
+        let tokens = engine(http).stream(languageCode: "he", audio: audio)
+        for chunk in silence(seconds: 2) { input.yield(chunk) }
+        // Long enough for the engine to look at the quiet several times and
+        // trim it, as it does while a room is silent.
+        try await Task.sleep(for: .milliseconds(400))
+        for chunk in speech(seconds: 1) + silence(seconds: 2) { input.yield(chunk) }
+        input.finish()
+        for try await _ in tokens {}
+        let request = try #require(http.transcriptionRequests.first)
+        #expect(try secondsSent(request) > 1.6)
+    }
+
     private func secondsSent(_ request: CloudHTTPRequest) throws -> Double {
         let json = try #require(JSONSerialization.jsonObject(with: request.body ?? Data()) as? [String: Any])
         let content = try #require(((json["messages"] as? [[String: Any]])?.first?["content"]) as? [[String: Any]])
