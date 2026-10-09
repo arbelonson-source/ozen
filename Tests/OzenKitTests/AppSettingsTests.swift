@@ -250,6 +250,15 @@ struct AppSettingsTests {
         #expect(huge.fontSize == DisplayPreferences.maximumFontSize)
     }
 
+    @Test("the README's text size range is the one the slider and the pinch allow")
+    func readmeFontRange() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let readme = try String(contentsOf: root.appendingPathComponent("README.md"), encoding: .utf8)
+        let low = Int(DisplayPreferences.minimumFontSize), high = Int(DisplayPreferences.maximumFontSize)
+        #expect(readme.contains("Text from \(low) to \(high) pt"))
+        #expect(readme.contains("text size \(low)–\(high) pt"))
+    }
+
     @Test("a pinch lands on a whole-point size inside the readable range")
     func pinchFontSize() {
         #expect(DisplayPreferences.fontSize(30, scaledBy: 1.2) == 36)

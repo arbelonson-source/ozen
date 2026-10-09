@@ -25,6 +25,12 @@ struct AlertFlashTests {
         }
     }
 
+    @Test("the limit is the seizure guideline's three flashes a second, and a flash is one lit-and-dark cycle")
+    func limitIsTheGuideline() {
+        #expect(AlertFlash.maximumFlashesPerSecond <= 3)
+        #expect(AlertFlash(litSeconds: 0.125, darkSeconds: 0.125, count: 8).flashesPerSecond == 4)
+    }
+
     @Test("a flash gives way only to an alert at least as important, and a dark screen to any that flashes")
     func takingOver() {
         #expect(AlertFlash.takesOver(from: nil, with: .high, reduceMotion: false))

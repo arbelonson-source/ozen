@@ -62,6 +62,13 @@ struct AlertVibrationTests {
         #expect(pattern.totalSeconds == 1.5)
     }
 
+    @Test("every pattern starts buzzing the moment it is played, with the banner and the flash")
+    func startsAtOnce() {
+        for pattern in kinds {
+            #expect(pattern.pulses.first?.start == 0)
+        }
+    }
+
     @Test("every pattern has pulses in order that don't overlap, at strengths the hardware accepts")
     func wellFormed() {
         for pattern in kinds {

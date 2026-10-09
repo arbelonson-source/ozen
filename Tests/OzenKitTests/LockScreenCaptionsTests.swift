@@ -141,6 +141,13 @@ struct LockScreenCaptionsTests {
         #expect(LockScreenTextSize(captionSize: 64) == .large)
     }
 
+    @Test("the troubleshooting guide names the caption size where the lock screen's lines grow")
+    func guideNamesTheSize() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let guide = try String(contentsOf: root.appendingPathComponent("docs/troubleshooting.md"), encoding: .utf8)
+        #expect(guide.contains("caption text size at \(Int(LockScreenTextSize.largeFromCaptionSize)) or more"))
+    }
+
     @Test("quiet for a minute says how long ago; for a quarter of an hour, no lines")
     func quietThresholds() {
         #expect(LockScreenCaptions.quiet(newestLineAt: nil, now: 1000) == .recent)
