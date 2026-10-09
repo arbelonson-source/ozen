@@ -22,7 +22,7 @@ def normalize(text: str) -> list[str]:
     text = unicodedata.normalize("NFC", text)
     text = NIKUD.sub("", text.replace("־", " "))
     text = text.replace("-", " ")
-    return PUNCT.sub("", text).split()
+    return PUNCT.sub("", text).lower().split()
 
 
 def edit_distance(a: list[str], b: list[str]) -> int:
