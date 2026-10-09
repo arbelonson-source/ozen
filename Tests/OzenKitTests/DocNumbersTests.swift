@@ -50,6 +50,12 @@ struct DocNumbersTests {
         #expect(readme.contains("a list of quick phrases such as \(phrase)"))
     }
 
+    @Test("the troubleshooting guide shows the very mark a cut-off caption line ends with")
+    func cutOffMark() throws {
+        let guide = try doc("docs/troubleshooting.md")
+        #expect(guide.contains("A caption line ends with \"\(CaptionStabilizer.cutOffMark)\".** The rest of that sentence was never captioned"))
+    }
+
     @Test("alerts: how often a name or a sound buzzes, and what a name's buzz feels like")
     func alerts() throws {
         let readme = try doc("README.md"), guide = try doc("docs/troubleshooting.md")
