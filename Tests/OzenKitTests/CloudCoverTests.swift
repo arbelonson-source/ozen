@@ -290,6 +290,31 @@ struct CloudCoverTests {
         #expect(switchesBack == 1)
     }
 
+    @Test("with talk that never goes quiet, the cloud comes back after exactly the answered checks asked for")
+    func switchesBackAfterTheAnsweredChecks() async throws {
+        let cloud = FakeEngine(kind: .cloud)
+        let phone = FakeEngine(kind: .whisperKit)
+        let captions = pipeline(cloud: cloud, phone: phone)
+        captions.cloudRecheckSeconds = 0.05
+        captions.homeServerSwitchBackQuietSeconds = 1000
+        captions.switchBackAfterAnsweredChecks = 3
+        await captions.start(settings: cloudSettings)
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .cloud })
+        cloud.endStream(throwing: EngineUnavailability(kind: .noInternet, detail: "connection lost"))
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .whisperKit })
+        let before = cloud.prepareCount
+        var spoken = 0
+        while captions.activeEngineKind == .whisperKit, spoken < 60 {
+            phone.emit(TranscriptToken(utteranceID: UUID(), text: "הטלוויזיה מדברת \(spoken)", isFinal: true, timestamp: Date().timeIntervalSince1970))
+            spoken += 1
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(captions.activeEngineKind == .cloud)
+        // Exactly the answered checks asked for, then the switch itself.
+        #expect(cloud.prepareCount - before == captions.switchBackAfterAnsweredChecks + 1)
+        captions.stop()
+    }
+
     @Test("an alert word or a name added while the phone's model covers is still there after switching back")
     func changesDuringCoverSurviveSwitchBack() async {
         let cloud = FakeEngine(kind: .cloud)

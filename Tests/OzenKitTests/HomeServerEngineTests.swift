@@ -1513,7 +1513,8 @@ struct HomeServerCoverTests {
             try await Task.sleep(for: .milliseconds(20))
         }
         #expect(captions.activeEngineKind == .homeServer)
-        #expect(server.prepareCount - before >= 3)
+        // Exactly the answered checks asked for, then the switch itself.
+        #expect(server.prepareCount - before == captions.switchBackAfterAnsweredChecks + 1)
     }
 
     @Test("those answered checks must come in a row: a computer that answers every other time keeps the phone's model on")
