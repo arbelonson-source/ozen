@@ -1842,6 +1842,26 @@ struct CaptionPipelineInputTests {
 @Suite("CaptionPipeline enrollment capture")
 @MainActor
 struct CaptionPipelineEnrollmentTests {
+    @Test("a voice sample recorded while captions wait to retry gives the microphone back to sound alerts", .timeLimit(.minutes(1)))
+    func soundsAfterVoiceSampleWhileRetryWaits() async {
+        let engine = FakeEngine(availability: .unavailable(.temporarilyUnavailable, "busy"))
+        let (pipeline, audio, _) = makePipeline(
+            engines: [.whisperKit: engine],
+            soundDetector: FakeSoundDetector(),
+            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [])
+        )
+        await pipeline.start(settings: .default)
+        #expect(await eventually { pipeline.scheduledRetry != nil && pipeline.stats.soundDetectionRunning })
+
+        let recording = Task { await pipeline.captureEnrollmentSamples(seconds: 0.5) }
+        #expect(await eventually { pipeline.isRecordingVoice })
+        #expect(!pipeline.stats.soundDetectionRunning)
+        audio.push([Float](repeating: 0.1, count: 8_000))
+        #expect(await recording.value.count == 8_000)
+        #expect(pipeline.scheduledRetry != nil)
+        #expect(pipeline.stats.soundDetectionRunning)
+    }
+
     @Test("enrollment records through the live capture path, pausing and resuming captions around it")
     func enrollmentPausesAndResumes() async {
         let (pipeline, audio, _) = makePipeline()
