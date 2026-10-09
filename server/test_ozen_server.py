@@ -1247,6 +1247,16 @@ class PromptBudget(unittest.TestCase):
             t = S.Transcriber("live", "cuda", "int8_float16", 5, 0)
         self.assertEqual(t.count_tokens("Noa, Itai, Dana."), 3)
 
+    def test_with_context_on_the_first_line_has_no_line_before_it_to_send(self):
+        class Context:
+            context = True
+            count_tokens = staticmethod(len)
+
+        session = S.Session(Socket(), Context(), "he", [], live_interval=0.3)
+        self.assertIsNone(session.prompt())
+        session.previous_text = "the doctor comes at ten"
+        self.assertEqual(session.prompt(), "the doctor comes at ten")
+
     def test_a_short_list_is_kept_whole(self):
         self.assertEqual(S.front_terms(["a", "b"], lambda text: len(text), 200), ["a", "b"])
 
