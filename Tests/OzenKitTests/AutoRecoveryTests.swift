@@ -72,15 +72,29 @@ struct AutoRecoveryPolicyTests {
         let loadFailure = failure(.engineUnavailable, engine: .modelLoadFailed)
 
         var sawNil = false
+        var retries = 0
         for i in 0..<(policy.maxAttemptsAcrossSchedules * 2) {
             let delay = policy.nextDelay(for: i.isMultiple(of: 2) ? download : loadFailure)
             if delay == nil {
                 sawNil = true
                 break
             }
+            retries += 1
         }
         #expect(sawNil)
+        // The streak gets every one of its tries, not one fewer.
+        #expect(retries == policy.maxAttemptsAcrossSchedules)
         #expect(policy.overallAttempts <= policy.maxAttemptsAcrossSchedules)
+
+        // After a reset (a minute of healthy listening) the next streak
+        // starts with the whole budget again.
+        policy.reset()
+        retries = 0
+        for i in 0..<(policy.maxAttemptsAcrossSchedules * 2) {
+            guard policy.nextDelay(for: i.isMultiple(of: 2) ? download : loadFailure) != nil else { break }
+            retries += 1
+        }
+        #expect(retries == policy.maxAttemptsAcrossSchedules)
     }
 
     @Test("reset starts the count over, and the disabled policy never retries")
