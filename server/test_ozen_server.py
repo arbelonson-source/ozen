@@ -1686,6 +1686,16 @@ class DocNumbers(unittest.TestCase):
         self.assertEqual(limit, 3)
         self.assertIn("also when three passes in a row fail", readme)
 
+    def test_the_phone_and_the_server_give_the_protocol_version_both_document(self):
+        swift = swift_source("OzenKit", "HomeServer.swift")
+        version = int(re.search(r"static let protocolVersion = (\d+)", swift).group(1))
+        self.assertEqual(version, S.PROTOCOL_VERSION)
+        self.assertIn(f"/// Protocol version {version}.", swift)
+        docstring = " ".join(S.__doc__.split())
+        self.assertIn(f"Protocol, version {version}.", docstring)
+        self.assertIn(f'{{"type": "hello", "version": {version},', docstring)
+        self.assertIn(f'{{"type": "ready", "model": "...", "version": {version}}}', docstring)
+
     def test_the_main_readme_gives_the_pause_that_finishes_a_line(self):
         self.assertIn(f"a sentence counts as finished after a {S.Session.pause} s pause whatever the card",
                       self.doc("..", "README.md"))
