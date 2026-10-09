@@ -601,6 +601,45 @@ struct CaptionPipelineTokenTests {
         #expect(pipeline.recentAudioSamples.isEmpty)
     }
 
+    @Test("only the last 30 seconds of sound are kept, as the troubleshooting guide tells her")
+    func keepsOnlyTheLastHalfMinute() async throws {
+        let audio = FakeAudioCapturer()
+        let (pipeline, _, _) = makePipeline(audio: audio, engines: [.whisperKit: FakeEngine()])
+        await pipeline.start(settings: .default)
+        #expect(await eventually { pipeline.phase == .listening })
+        for second in 0..<31 {
+            audio.push([Float](repeating: Float(second) / 1_000, count: 16_000))
+        }
+        #expect(await eventually { pipeline.recentAudioSamples.last == Float(30) / 1_000 })
+        let kept = pipeline.recentAudioSamples
+        #expect(kept.count == 30 * 16_000)
+        #expect(kept.first == Float(1) / 1_000)
+        pipeline.stop()
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let guide = try String(contentsOf: root.appendingPathComponent("docs/troubleshooting.md"), encoding: .utf8)
+        #expect(guide.contains("keeps the last \(kept.count / 16_000) seconds of sound"))
+    }
+
+    @Test("the report's noise floor and margin are the voice detector's own, in decibels")
+    func reportFloorAndMargin() async throws {
+        let audio = FakeAudioCapturer()
+        let (pipeline, _, _) = makePipeline(audio: audio, engines: [.whisperKit: FakeEngine()])
+        await pipeline.start(settings: .default)
+        #expect(await eventually { pipeline.phase == .listening })
+        let chunk = [Float](repeating: 0.003, count: 688)
+        var detector = EnergyVoiceDetector()
+        _ = detector.isSpeech(chunk)
+        audio.push(chunk)
+        #expect(await eventually { pipeline.stats.noiseFloorDecibels != nil })
+        let floor = try #require(pipeline.stats.noiseFloorDecibels)
+        let margin = try #require(pipeline.stats.noiseMarginDecibels)
+        #expect(abs(floor - Double(20 * log10(detector.noiseFloor))) < 0.01)
+        #expect(abs(margin - Double(20 * log10(detector.currentNoiseFloorRatio))) < 0.01)
+        // A new session starts at the cautious margin, about 8 dB.
+        #expect(abs(margin - 8) < 0.1)
+        pipeline.stop()
+    }
+
     @Test("tokens become segments; the same utterance updates in place; final commits it")
     func tokensBecomeSegments() async {
         let engine = FakeEngine()
@@ -1058,6 +1097,21 @@ struct CaptionPipelineTokenTests {
         engine.emit(token(other, "עם המספר של", final: true))
         engine.emit(token(UUID(), "שלום", final: true))
         #expect(await eventually { pipeline.segments.map(\.text) == ["שלום"] })
+    }
+
+    @Test("a cleared sentence finished with one cleared word left out still keeps the cleared words away")
+    func clearMidSentenceFinishedWithAWordLeftOut() async {
+        let engine = FakeEngine()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
+        await pipeline.start(settings: .default)
+        let open = UUID()
+        engine.emit(token(open, "קבענו תור מחר"))
+        #expect(await eventually { pipeline.segments.count == 1 })
+
+        pipeline.clearTranscript()
+        engine.emit(token(open, "קבענו מחר בבוקר מוקדם", final: true))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        #expect(pipeline.segments.map(\.text) == ["בבוקר מוקדם"])
     }
 
     @Test("a cleared sentence the cloud finishes as one line per speaker keeps the cleared words away from the second speaker's line too")
