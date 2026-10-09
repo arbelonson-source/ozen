@@ -251,6 +251,15 @@ struct CaptionLayoutOnScreenTests {
         #expect(CaptionLayout.firstOnScreenIndex(lineCount: CaptionLayout.onScreenLineLimit + 1) == 1)
         #expect(CaptionLayout.firstOnScreenIndex(lineCount: 20_000) == 20_000 - CaptionLayout.onScreenLineLimit)
     }
+
+    @Test("the README and the troubleshooting guide give the screen's line limit")
+    func docsGiveTheLimit() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        for doc in ["README.md", "docs/troubleshooting.md"] {
+            let text = try String(contentsOf: root.appendingPathComponent(doc), encoding: .utf8)
+            #expect(text.contains("newest \(CaptionLayout.onScreenLineLimit) lines"), "\(doc)")
+        }
+    }
 }
 
 @Suite("CaptionPipeline with days of lines")

@@ -1611,8 +1611,8 @@ struct HomeServerCoverTests {
         captions.homeServerSwitchBackQuietSeconds = 0
         await captions.start(settings: serverSettings)
         // The wait is set just after the switch to the phone; read it once
-        // it has settled.
-        for wait in [0.1, 0.2, 0.4, 0.8] {
+        // it has settled. It doubles up to 16 times, then stays there.
+        for wait in [0.1, 0.2, 0.4, 0.8, 1.6, 1.6] {
             #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .homeServer })
             server.endStream(throwing: EngineUnavailability(kind: .homeServerUnreachable, detail: "no reply for 35 s of speech"))
             #expect(await eventually { captions.activeEngineKind == .whisperKit && captions.currentHomeServerRecheckSeconds == wait })

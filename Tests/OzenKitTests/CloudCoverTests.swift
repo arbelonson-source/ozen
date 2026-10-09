@@ -424,7 +424,8 @@ struct CloudCoverTests {
         captions.cloudRecheckSeconds = 0.1
         captions.homeServerSwitchBackQuietSeconds = 0
         await captions.start(settings: cloudSettings)
-        for wait in [0.1, 0.2, 0.4, 0.8] {
+        // Doubles up to 16 times the minute, then stays there.
+        for wait in [0.1, 0.2, 0.4, 0.8, 1.6, 1.6] {
             #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .cloud })
             cloud.endStream(throwing: EngineUnavailability(kind: .noInternet, detail: "connection lost"))
             #expect(await eventually { captions.activeEngineKind == .whisperKit && captions.currentCloudRecheckSeconds == wait })
@@ -435,6 +436,17 @@ struct CloudCoverTests {
         cloud.endStream(throwing: EngineUnavailability(kind: .noInternet, detail: "connection lost"))
         #expect(await eventually { captions.activeEngineKind == .whisperKit && captions.currentCloudRecheckSeconds == 0.1 })
         captions.stop()
+    }
+
+    @Test("the troubleshooting guide's timing for going back to the cloud is the pipeline's")
+    func guideTiming() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let guide = try String(contentsOf: root.appendingPathComponent("docs/troubleshooting.md"), encoding: .utf8)
+        let captions = pipeline(cloud: FakeEngine(kind: .cloud), phone: FakeEngine(kind: .whisperKit))
+        #expect(captions.cloudRecheckSeconds == 60)
+        #expect(captions.currentCloudRecheckSeconds == 60)
+        #expect(guide.contains("checked every minute, between sentences"))
+        #expect(guide.contains("up to every 16 minutes"))
     }
 
     @Test("a key or credit problem is left for a person, never asked again on its own")
