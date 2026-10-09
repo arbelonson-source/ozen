@@ -1119,6 +1119,23 @@ struct TranscriptHistoryAllStarredTests {
         #expect(starred.map(\.isUncertain) == [true, false, false])
     }
 
+    @Test("a starred line and shared text are judged by the model their conversation was recorded with")
+    func unsureByModel() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-unsure-model-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        var noiseTrained = line("שני כדורים בעשר וחצי", starred: true)
+        noiseTrained.confidence = 0.82
+        var ivrit = line("שני כדורים בעשר וחצי", starred: true)
+        ivrit.confidence = 0.82
+        let a3Record = TranscriptSessionRecord(startedAt: 900, engine: .whisperKit, modelVariant: "ozen-turbo-hebrew-a3-8bit", inputName: nil, segments: [noiseTrained])
+        try store.save(a3Record)
+        try store.save(TranscriptSessionRecord(startedAt: 100, engine: .whisperKit, modelVariant: "ivrit-large-v3-turbo-8bit", inputName: nil, segments: [ivrit]))
+
+        #expect(store.starredLines().map(\.isUncertain) == [true, false])
+        #expect(TranscriptHistoryStore.exportText(a3Record, utcOffsetAt: { _ in 0 }, marksUncertain: true).contains("ייתכן שלא נשמע נכון."))
+    }
+
     @Test("no stars anywhere gives an empty list")
     func none() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-no-stars-\(UUID())")

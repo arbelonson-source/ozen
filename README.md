@@ -152,8 +152,9 @@ Open a section for the details.
   engine itself was unsure of (so she knows when to ask again; with
   ivrit.ai's models one or two lines in a hundred, and in tests 50 of
   52 marked lines had a word wrong; Ozen's noise-trained model is a
-  little surer of itself: of 3,500 test lines, near and far, it marked
-  215 (ivrit.ai's, 297) and 214 of them had a word wrong), numbers
+  little surer of itself, so its lines get the mark a little sooner: of
+  3,500 test lines, near and far, it marked 282 (ivrit.ai's, 297) and
+  278 of them had a word wrong), numbers
   (the time of an appointment, how many pills, a phone number) in a
   heavier weight and a second colour, whether written in digits or in
   words ("and six" (u-ve-shesh), "three pills" (shlosha kadurim), "twice"

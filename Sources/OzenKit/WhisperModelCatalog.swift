@@ -22,6 +22,9 @@ public struct WhisperModelOption: Sendable, Equatable, Identifiable {
     /// The model's folder name on disk. WhisperKit's hub names folders
     /// `openai_whisper-<variant>`; a model from elsewhere says its own.
     public let folderName: String
+    /// The question mark's cutoffs for a model whose scores sit higher
+    /// than those `CaptionConfidence`'s were measured on; nil keeps those.
+    public let uncertainBelow: CaptionConfidence.Cutoffs?
 
     public init(
         variant: String,
@@ -32,8 +35,10 @@ public struct WhisperModelOption: Sendable, Equatable, Identifiable {
         note: String,
         isRecommended: Bool,
         source: WhisperModelSource = .whisperKitHub,
-        folderName: String? = nil
+        folderName: String? = nil,
+        uncertainBelow: CaptionConfidence.Cutoffs? = nil
     ) {
+        self.uncertainBelow = uncertainBelow
         self.variant = variant
         self.displayName = displayName
         self.sizeMB = sizeMB
@@ -117,13 +122,21 @@ public enum WhisperModelCatalog {
         // across a room, in noise and over a TV (October 2026, run a3):
         // 20.1% of words wrong on those recordings against 23.1% for
         // ivrit.ai's own, and 13.3% against 13.1% up close.
+        //
+        // It is also surer of itself. On the same 3,500 lines Whisper's
+        // usual 0.6 / 0.8 marked 27% of the 707 it got badly wrong, against
+        // 33% of ivrit.ai's 806; 0.65 / 0.83 marks 33%, with 4 fully right
+        // lines among its 282 marks (ivrit.ai's: 5 of 297) and no right
+        // short answer. Measured on the computer's copy of the model, whose
+        // scores the phone's are averaged to match.
         WhisperModelOption(
             variant: "ozen-turbo-hebrew-a3-8bit", displayName: "Turbo Hebrew, noise-trained (Ozen)", sizeMB: 819,
             hebrewQuality: 5, speed: 3,
             note: "Turbo Hebrew trained further by Ozen on speech from across a room, in noise and over a TV: about a tenth fewer wrong words there, the same up close. As quick, the same download.",
             isRecommended: true,
             source: .ozenRelease(tag: "model-ozen-turbo-hebrew-a3-8bit-1"),
-            folderName: "ozen_whisper-large-v3-turbo-hebrew-a3_8bit"
+            folderName: "ozen_whisper-large-v3-turbo-hebrew-a3_8bit",
+            uncertainBelow: CaptionConfidence.Cutoffs(shortLine: 0.65, line: 0.83)
         ),
         WhisperModelOption(
             variant: "ivrit-large-v3-turbo-8bit", displayName: "Turbo Hebrew (ivrit.ai)", sizeMB: 819,

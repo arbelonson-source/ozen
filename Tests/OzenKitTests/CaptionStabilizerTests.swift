@@ -228,6 +228,21 @@ struct CaptionConfidenceTests {
         #expect(CaptionConfidence.isUncertain(confidence: 0.45, isCommitted: true, text: "שתיים", engine: .appleSpeech) == false)
     }
 
+    @Test("Ozen's noise-trained model is surer of itself, so its lines are marked a little higher up; other models and engines keep theirs")
+    func noiseTrainedModelHasItsOwnCutoffs() {
+        let a3 = "ozen-turbo-hebrew-a3-8bit"
+        let line = "נפגשים מחר בבוקר אצל הרופא"
+        #expect(CaptionConfidence.isUncertain(confidence: 0.82, isCommitted: true, text: line, engine: .whisperKit, model: a3))
+        #expect(CaptionConfidence.isUncertain(confidence: 0.84, isCommitted: true, text: line, engine: .whisperKit, model: a3) == false)
+        #expect(CaptionConfidence.isUncertain(confidence: 0.62, isCommitted: true, text: "ריח אין.", engine: .whisperKit, model: a3))
+        #expect(CaptionConfidence.isUncertain(confidence: 0.82, isCommitted: true, text: line, engine: .whisperKit, model: "ivrit-large-v3-turbo-8bit") == false)
+        #expect(CaptionConfidence.isUncertain(confidence: 0.62, isCommitted: true, text: "ריח אין.", engine: .whisperKit) == false)
+        // The right short answers of the test above still go unmarked.
+        #expect(CaptionConfidence.isUncertain(confidence: 0.683, isCommitted: true, text: "אפשר ביס?", engine: .whisperKit, model: a3) == false)
+        // The home computer runs its own models, whichever one the phone has.
+        #expect(CaptionConfidence.isUncertain(confidence: 0.82, isCommitted: true, text: line, engine: .homeServer, model: a3) == false)
+    }
+
     @Test("the phone's score for a line is averaged as the cutoffs were measured: over its words' tokens and the end, not the four that open every line")
     func phoneScoreOnTheMeasuredScale() throws {
         // "hey oho" for "ah ho", a broadcast line Turbo got wrong: five

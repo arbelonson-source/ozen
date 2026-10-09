@@ -79,24 +79,43 @@ public enum CaptionConfidence {
         return segments.contains { $0.temperature > 0 } ? min(score, retriedLine) : score
     }
 
-    public static func uncertainBelow(for engine: TranscriptionEngineKind, words: Int) -> Float {
+    /// A Whisper model's own cutoffs, for one whose scores sit higher than
+    /// those the usual ones were measured on (`WhisperModelOption`).
+    public struct Cutoffs: Sendable, Equatable {
+        public let shortLine: Float
+        public let line: Float
+
+        public init(shortLine: Float, line: Float) {
+            self.shortLine = shortLine
+            self.line = line
+        }
+    }
+
+    /// `model` is the phone's Whisper variant; only the phone's own engine
+    /// runs it, so the others ignore it.
+    public static func uncertainBelow(for engine: TranscriptionEngineKind, words: Int, model: String? = nil) -> Float {
         switch engine {
         case .appleSpeech: return appleUncertainBelow
-        case .whisperKit, .homeServer, .cloud:
+        case .whisperKit:
+            let own = model.flatMap { WhisperModelCatalog.option(for: $0)?.uncertainBelow }
+            return words <= shortLineWords
+                ? own?.shortLine ?? whisperShortLineUncertainBelow
+                : own?.line ?? whisperUncertainBelow
+        case .homeServer, .cloud:
             return words <= shortLineWords ? whisperShortLineUncertainBelow : whisperUncertainBelow
         }
     }
 
-    public static func isUncertain(_ segment: TranscriptSegment, engine: TranscriptionEngineKind) -> Bool {
-        isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: engine)
+    public static func isUncertain(_ segment: TranscriptSegment, engine: TranscriptionEngineKind, model: String? = nil) -> Bool {
+        isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: engine, model: model)
     }
 
     /// Only finished lines: a line still being written changes its mind.
     /// Exactly 0 means "no score" (Apple reports that on partial results).
-    public static func isUncertain(confidence: Float?, isCommitted: Bool, text: String, engine: TranscriptionEngineKind) -> Bool {
+    public static func isUncertain(confidence: Float?, isCommitted: Bool, text: String, engine: TranscriptionEngineKind, model: String? = nil) -> Bool {
         guard isCommitted, let confidence, confidence > 0 else { return false }
         let words = WhisperResultFilter.normalize(text).split(separator: " ").count
-        return confidence < uncertainBelow(for: engine, words: words)
+        return confidence < uncertainBelow(for: engine, words: words, model: model)
     }
 }
 

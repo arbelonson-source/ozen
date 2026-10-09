@@ -1272,12 +1272,13 @@ public final class LiveCaptionViewModel {
         let namesShown = settings.display.showSpeakerNames
         let marksUncertain = settings.display.markUncertainLines
         let engine = settings.engine
+        let model = settings.whisperModelVariant
         return announcer.announcement(
             for: segments,
             speakerName: { [pipeline] segment in
                 namesShown && segment.speakerClusterID != nil ? pipeline.displayName(for: segment) : nil
             },
-            isUncertain: { marksUncertain && CaptionConfidence.isUncertain($0, engine: engine) }
+            isUncertain: { marksUncertain && CaptionConfidence.isUncertain($0, engine: engine, model: model) }
         )
     }
 

@@ -55,7 +55,7 @@ struct HistoryDetailView: View {
                     NumberLineLabel(
                         segment: segment,
                         isUncertain: viewModel.display.markUncertainLines
-                            && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: record.engine)
+                            && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: record.engine, model: record.modelVariant)
                     )
                 }
                 .accessibilityHint(tr("מעבר לשורה בשיחה", "Jump to this line in the conversation"))
@@ -92,6 +92,7 @@ struct HistoryDetailView: View {
                             showsTime: timeMarks.contains(segment.id),
                             markUncertain: viewModel.display.markUncertainLines,
                             engine: record.engine,
+                            model: record.modelVariant,
                             fontSize: viewModel.display.fontSize,
                             emphasizeNumbers: viewModel.display.emphasizeNumbers,
                             isMatch: isMatch
@@ -449,6 +450,7 @@ private struct SavedLineRow: View {
     let showsTime: Bool
     let markUncertain: Bool
     let engine: TranscriptionEngineKind
+    let model: String?
     let fontSize: Double
     let emphasizeNumbers: Bool
     let isMatch: Bool
@@ -502,7 +504,7 @@ private struct SavedLineRow: View {
     }
 
     private var isUncertain: Bool {
-        markUncertain && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: engine)
+        markUncertain && CaptionConfidence.isUncertain(confidence: segment.confidence, isCommitted: segment.isCommitted, text: segment.text, engine: engine, model: model)
     }
 
     private var timeText: String {
