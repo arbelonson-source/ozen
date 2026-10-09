@@ -341,6 +341,21 @@ struct CaptionStabilizerCommitAllTests {
         #expect(stabilizer.segments.map(\.text) == ["שלום", "מה נש" + CaptionStabilizer.cutOffMark])
     }
 
+    @Test("a live line finished by its final pass, or by commit(id:), is closed: stopping doesn't mark it cut off")
+    func finishedLiveLineIsClosed() {
+        var stabilizer = CaptionStabilizer()
+        let id = UUID()
+        let suppressed = UUID()
+        stabilizer.ingest(TranscriptToken(utteranceID: id, text: "אני רוצה", isFinal: false, timestamp: 1))
+        stabilizer.ingest(TranscriptToken(utteranceID: id, text: "אני רוצה לשתות", isFinal: true, timestamp: 2))
+        stabilizer.ingest(TranscriptToken(utteranceID: suppressed, text: "כן", isFinal: false, timestamp: 3))
+        stabilizer.commit(id: suppressed)
+
+        #expect(!stabilizer.hasOpenLine)
+        #expect(stabilizer.commitAll().isEmpty)
+        #expect(stabilizer.segments.map(\.text) == ["אני רוצה לשתות", "כן"])
+    }
+
     @Test("a line that already trails off in three dots is not marked cut off a second time")
     func cutOffMarkNotDoubled() {
         #expect(CaptionStabilizer.markingCutOff("ואז הוא...") == "ואז הוא...")
