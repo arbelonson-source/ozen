@@ -258,6 +258,7 @@ struct WhisperRepeatCollapseTests {
         #expect(WhisperResultFilter.collapsingRepeats("לא, לא, לא") == "לא, לא, לא")
         #expect(WhisperResultFilter.collapsingRepeats("כן  כן כן") == "כן  כן כן")
         #expect(WhisperResultFilter.collapsingRepeats("שלום מה שלומך היום") == "שלום מה שלומך היום")
+        #expect(WhisperResultFilter.collapsingRepeats(" שלום  מה שלומך היום ") == " שלום  מה שלומך היום ")
     }
 
     @Test("a word looped more than three times is cut to three, keeping the closing punctuation")
