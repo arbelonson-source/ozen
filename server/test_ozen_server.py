@@ -1470,6 +1470,67 @@ def speech_frames(seconds):
     return [chunk[i:i + step] for i in range(0, len(chunk), step)]
 
 
+class PhoneContract(unittest.TestCase):
+    """What the phone sends and reads, taken from HomeServer.swift, against
+    what this server reads and sends in a real session."""
+
+    def phone_reads(self):
+        swift = swift_source("OzenKit", "HomeServer.swift")
+        parser = swift[swift.index("public init?(json: String)"):]
+        parser = parser[:parser.index("default:")]
+        parts = re.split(r'case "(\w+)":', parser)[1:]
+        frames = {name: set(re.findall(r'object\["(\w+)"\]', body)) for name, body in zip(parts[::2], parts[1::2])}
+        segment = set(re.findall(r'segment\["(\w+)"\]', parser)) | set(re.findall(r'number\("(\w+)"', parser))
+        return frames, segment
+
+    def test_every_frame_the_server_sends_carries_what_the_phone_reads(self):
+        class Words(NamesGPU):
+            async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
+                await asyncio.sleep(0.01)
+                return "shalom", 0.9, [{"text": "shalom", "no_speech": 0.01, "logprob": -0.2, "compression": 1.1}]
+
+        frames, segment_keys = self.phone_reads()
+        hello = {"type": "hello", "token": "example-code-123"}
+        session = PhoneSocket(hello, [*speech_frames(1.5), json.dumps({"type": "report", "text": "the diagnostics"}),
+                                      json.dumps({"type": "end"})])
+        wrong = HelloSocket(json.dumps({"type": "hello", "token": "wrong-code-000"}))
+        garbled = HelloSocket("not json")
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(S, "REPORTS_DIR", folder), \
+                self.assertLogs(S.log, "INFO"):
+            asyncio.run(asyncio.wait_for(S.handle(session, Words(), "example-code-123", 1.0), 5))
+            asyncio.run(S.handle(wrong, Words(), "example-code-123", 1.0))
+            asyncio.run(S.handle(garbled, Words(), "example-code-123", 1.0))
+        sent = [json.loads(text) for ws in (session, wrong, garbled) for text in ws.sent]
+        self.assertEqual({frame["type"] for frame in sent}, set(frames))
+        for frame in sent:
+            self.assertLessEqual(frames[frame["type"]], set(frame), frame)
+            for piece in frame.get("segments") or []:
+                self.assertLessEqual(segment_keys, set(piece), piece)
+        refused = [frame["code"] for frame in sent if frame["type"] == "error"]
+        engine = swift_source("OzenKit", "HomeServerEngine.swift")
+        self.assertEqual(refused, [re.search(r'code == "(\w+)"', engine).group(1), "bad_request"])
+
+    def test_every_hello_field_the_server_reads_is_one_the_phone_sends_and_is_used(self):
+        swift = swift_source("OzenKit", "HomeServer.swift")
+        hello_fields = swift[swift.index("public static func hello("):swift.index("public static func vocabularyUpdate")]
+        sent_keys = set(re.findall(r'"(\w+)": ', hello_fields)) | set(re.findall(r'fields\["(\w+)"\]', hello_fields))
+        self.assertLessEqual({"type", "token", "language", "vocabulary", "purpose", "client", "beam"}, sent_keys)
+        made = []
+
+        class Recorded(S.Session):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                made.append(self)
+
+        hello = {"type": "hello", "version": 1, "token": "example-code-123", "language": "en", "vocabulary": ["Noa"],
+                 "purpose": "captions", "client": "Ozen test build", "beam": 3}
+        ws = PhoneSocket(hello, [json.dumps({"type": "end"})])
+        with mock.patch.object(S, "Session", Recorded), self.assertLogs(S.log, "INFO") as logged:
+            asyncio.run(asyncio.wait_for(S.handle(ws, NamesGPU(), "example-code-123", 1.0), 5))
+        self.assertEqual((made[0].language, made[0].vocabulary, made[0].beam), ("en", ["Noa"], 3))
+        self.assertTrue(any("captions, Ozen test build, beam 3" in line for line in logged.output), logged.output)
+
+
 class SessionAfterHello(unittest.TestCase):
     def test_new_names_reach_the_next_pass_a_report_is_kept_junk_is_skipped_and_end_finishes_the_line(self):
         import os
