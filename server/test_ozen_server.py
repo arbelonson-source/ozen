@@ -1225,6 +1225,28 @@ class PromptBudget(unittest.TestCase):
         kept = S.front_terms(terms, lambda text: len(text.split()), 10)
         self.assertEqual(kept, terms[:10])
 
+    def test_the_budget_is_spent_on_exactly_the_prompt_the_session_sends(self):
+        class Chars:
+            context = False
+            count_tokens = staticmethod(len)
+
+        prompt = S.Session(Socket(), Chars(), "he", ["Noa", "Itai"], live_interval=0.3).prompt()
+        self.assertEqual(S.front_terms(["Noa", "Itai"], len, len(prompt)), ["Noa", "Itai"])
+        self.assertEqual(S.front_terms(["Noa", "Itai"], len, len(prompt) - 1), ["Noa"])
+
+    def test_names_are_counted_with_the_models_own_tokenizer_without_special_tokens(self):
+        class Tokenizer:
+            def encode(self, text, add_special_tokens=True):
+                return types.SimpleNamespace(ids=([0] if add_special_tokens else []) + text.split())
+
+        class Model:
+            hf_tokenizer = Tokenizer()
+
+        with mock.patch.object(S, "download_model", lambda name, local_files_only=False: name), \
+                mock.patch.object(S, "WhisperModel", lambda path, device, compute_type: Model()):
+            t = S.Transcriber("live", "cuda", "int8_float16", 5, 0)
+        self.assertEqual(t.count_tokens("Noa, Itai, Dana."), 3)
+
     def test_a_short_list_is_kept_whole(self):
         self.assertEqual(S.front_terms(["a", "b"], lambda text: len(text), 200), ["a", "b"])
 
