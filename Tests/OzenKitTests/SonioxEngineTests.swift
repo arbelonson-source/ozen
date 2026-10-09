@@ -209,18 +209,20 @@ struct SonioxEngineTests {
         #expect(await socket.isClosed)
     }
 
-    @Test("a connection that answers its pings is pinged and stays open", .timeLimit(.minutes(1)))
+    @Test("a connection that answers its pings is pinged again and stays open", .timeLimit(.minutes(1)))
     func answeredPings() async {
         let socket = SonioxSocket(afterEnd: [frames.last!])
         let (audio, microphone) = AsyncStream<[Float]>.makeStream()
         microphone.yield([Float](repeating: 0.05, count: 1_600))
-        let soniox = engine(Dialer(socket), pingSeconds: 0.05, pongSeconds: 1.5)
+        let soniox = engine(Dialer(socket), pingSeconds: 0.05, pongSeconds: 5)
         let listening = Task { await listen(soniox, audio) }
-        try? await Task.sleep(for: .milliseconds(500))
+        // Waited for, not slept for: a busy CI runner got to the first
+        // ping only after a 500 ms sleep was over. A second ping is only
+        // sent once the first was answered.
+        #expect(await waitUntil { await socket.pings >= 2 })
         microphone.finish()
         let heard = await listening.value
         #expect(heard.error == nil)
-        #expect(await socket.pings >= 1)
     }
 
     @Test("no connection at all, or no key, ends the stream with the reason")
