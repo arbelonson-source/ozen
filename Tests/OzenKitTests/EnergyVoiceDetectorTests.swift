@@ -130,6 +130,19 @@ struct EnergyVoiceDetectorTests {
         #expect(abs(detector.currentNoiseFloorRatio - 2.5) < 0.01)
     }
 
+    @Test("five chunks in the window are enough to tell how a hum swings; four are not")
+    func fiveChunksMeasureTheSwing() {
+        let hum = tone(amplitude: 0.002, count: 1_600)
+        var five = EnergyVoiceDetector(recentWindowSamples: 5 * 1_600)
+        var four = EnergyVoiceDetector(recentWindowSamples: 4 * 1_600)
+        for _ in 0..<600 {
+            five.isSpeech(hum)
+            four.isSpeech(hum)
+        }
+        #expect(abs(five.currentNoiseFloorRatio - 2.0) < 0.01)
+        #expect(abs(four.currentNoiseFloorRatio - 2.5) < 0.01)
+    }
+
     @Test("a glitched chunk, NaN or infinite, is not speech and doesn't stop the floor from following a hum")
     func glitchedChunksAreIgnored() {
         var detector = EnergyVoiceDetector()

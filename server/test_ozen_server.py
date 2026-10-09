@@ -749,6 +749,17 @@ class Detector(unittest.TestCase):
             detector.is_speech(tone(0.001 if i % 2 == 0 else 0.004, 1600))
         self.assertAlmostEqual(detector._ratio_now(), 2.5, delta=0.01)
 
+    def test_five_chunks_in_the_window_tell_how_a_hum_swings_and_four_do_not(self):
+        ratios = []
+        for chunks in (5, 4):
+            detector = S.EnergyVoiceDetector()
+            detector.window = chunks * 1600
+            for _ in range(600):
+                detector.is_speech(tone(0.002, 1600))
+            ratios.append(detector._ratio_now())
+        self.assertAlmostEqual(ratios[0], 2.0, delta=0.01)
+        self.assertAlmostEqual(ratios[1], 2.5, delta=0.01)
+
     def test_the_floor_is_capped_so_a_loud_fan_cannot_hide_a_voice_over_it(self):
         detector = S.EnergyVoiceDetector()
         for _ in range(1_000):
