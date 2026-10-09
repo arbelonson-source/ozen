@@ -266,8 +266,17 @@ class Transcriber:
 
     async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
         async with self.lock:
+            work = asyncio.ensure_future(asyncio.to_thread(self._run, audio, language, prompt, final, hotwords, gate, beam))
             try:
-                result = await asyncio.to_thread(self._run, audio, language, prompt, final, hotwords, gate, beam)
+                result = await asyncio.shield(work)
+            except asyncio.CancelledError:
+                # A thread can't be stopped. When the phone that asked hangs
+                # up mid-pass, the lock is held until the pass ends anyway:
+                # released at once, the next pass shared the card with it.
+                await asyncio.wait({work})
+                if not work.cancelled():
+                    work.exception()
+                raise
             except Exception:
                 self.failures += 1
                 if self.failures >= self.failures_before_exit:

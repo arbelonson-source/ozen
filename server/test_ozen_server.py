@@ -5,6 +5,7 @@ import os
 import shutil
 import sys
 import tempfile
+import threading
 import time
 import types
 import unittest
@@ -264,6 +265,44 @@ class Restart(unittest.TestCase):
             S.os._exit, S.logging.shutdown = real_exit, real_shutdown
         self.assertEqual(exits, [])
         self.assertEqual(t.failures, 0)
+
+
+class HungUpMidPass(unittest.TestCase):
+    def test_a_phone_that_hangs_up_mid_pass_does_not_let_the_next_pass_share_the_card(self):
+        t = S.Transcriber.__new__(S.Transcriber)
+        t.speech_gate, t.beam, t.context = 0.0, 5, False
+        t.failures, t.failures_before_exit, t.model_ran = 0, 3, False
+        release = threading.Event()
+        guard = threading.Lock()
+        state = {"running": 0, "peak": 0}
+
+        def run(*args):
+            with guard:
+                state["running"] += 1
+                state["peak"] = max(state["peak"], state["running"])
+            release.wait(2)
+            with guard:
+                state["running"] -= 1
+            return "", None, []
+
+        t._run = run
+        audio = np.zeros(1600, dtype=np.float32)
+
+        async def scenario():
+            t.lock = asyncio.Lock()
+            first = asyncio.create_task(t.transcribe(audio, "he", None, True))
+            await asyncio.sleep(0.1)
+            first.cancel()
+            await asyncio.sleep(0.05)
+            second = asyncio.create_task(t.transcribe(audio, "he", None, True))
+            await asyncio.sleep(0.2)
+            release.set()
+            await second
+            with self.assertRaises(asyncio.CancelledError):
+                await first
+
+        asyncio.run(scenario())
+        self.assertEqual(state["peak"], 1, "two passes were on the card at once")
 
 
 class SlowGPU:
