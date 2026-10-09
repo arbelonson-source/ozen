@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import runpy
 import shutil
 import sys
 import tempfile
@@ -997,7 +998,7 @@ class Listening(Exception):
 class Startup(unittest.TestCase):
     """What main() makes of its command line, up to where it would listen."""
 
-    def start(self, *argv):
+    def start(self, *argv, listening=False):
         made, cleaners = [], []
         self.warmed = warmed = []
         self.served = served = []
@@ -1019,7 +1020,9 @@ class Startup(unittest.TestCase):
                 served.append(args)
 
             async def __aenter__(self):
-                raise Listening()
+                if not listening:
+                    raise Listening()
+                return self
 
             async def __aexit__(self, *exc):
                 return False
@@ -1032,8 +1035,12 @@ class Startup(unittest.TestCase):
                 mock.patch.dict(sys.modules, {"enhance": enhance}), \
                 mock.patch.object(sys, "argv", ["ozen_server.py", *argv]), \
                 mock.patch.dict("os.environ", {"OZEN_TOKEN": "x"}):
-            with self.assertRaises(Listening):
-                asyncio.run(S.main())
+            if listening:
+                with self.assertRaises(asyncio.TimeoutError):
+                    asyncio.run(asyncio.wait_for(S.main(), 0.3))
+            else:
+                with self.assertRaises(Listening):
+                    asyncio.run(S.main())
         return made, cleaners
 
     def test_the_finished_line_model_on_the_command_line_is_the_one_loaded(self):
@@ -1049,6 +1056,17 @@ class Startup(unittest.TestCase):
                 self.served[0][0]("phone")
             self.assertEqual(handle.call_args.args[0], "phone")
             self.assertEqual(handle.call_args.args[3], interval, argv)
+
+    def test_once_listening_the_server_stays_up_instead_of_ending(self):
+        self.start(listening=True)
+        self.assertEqual(len(self.served), 1)
+
+    def test_running_the_file_starts_the_server(self):
+        environ = {key: value for key, value in os.environ.items() if key != "OZEN_TOKEN"}
+        with mock.patch.object(sys, "argv", ["ozen_server.py"]), mock.patch.dict("os.environ", environ, clear=True):
+            with self.assertRaises(SystemExit) as stopped:
+                runpy.run_path(S.__file__, run_name="__main__")
+        self.assertIn("OZEN_TOKEN", str(stopped.exception.code))
 
     def test_the_log_is_set_up_before_the_models_load(self):
         self.start()

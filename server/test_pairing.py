@@ -33,6 +33,40 @@ class TailscaleAddress(unittest.TestCase):
             self.assertIsNone(pairing.tailscale_address())
 
 
+class LanAddress(unittest.TestCase):
+    def find(self, reachable=True):
+        probes = []
+
+        class Probe:
+            def __init__(self, *args):
+                self.peer, self.closed = None, False
+                probes.append(self)
+
+            def connect(self, peer):
+                if not reachable:
+                    raise OSError("network is unreachable")
+                self.peer = peer
+
+            def getsockname(self):
+                return ("192.168.1.20", 50000) if self.peer else ("0.0.0.0", 0)
+
+            def close(self):
+                self.closed = True
+
+        with mock.patch.object(pairing.socket, "socket", Probe):
+            return pairing.lan_address(), probes
+
+    def test_the_home_address_is_the_one_the_computer_reaches_out_from_and_the_probe_is_closed(self):
+        address, probes = self.find()
+        self.assertEqual(address, "192.168.1.20")
+        self.assertTrue(probes[0].closed)
+
+    def test_no_network_gives_no_address_and_still_closes_the_probe(self):
+        address, probes = self.find(reachable=False)
+        self.assertIsNone(address)
+        self.assertTrue(probes[0].closed)
+
+
 class PhoneAddress(unittest.TestCase):
     def test_the_funnel_https_address_becomes_wss(self):
         self.assertEqual(pairing.phone_address("https://pc.tail0example.ts.net"), "wss://pc.tail0example.ts.net")
