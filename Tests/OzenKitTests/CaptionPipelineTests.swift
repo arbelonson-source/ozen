@@ -1878,7 +1878,7 @@ struct CaptionPipelineEnrollmentTests {
         let samples = await recording.value
 
         #expect(samples.count == 16_000)
-        #expect(progress.last == 1)
+        #expect(progress == [0.5, 1])
         #expect(pipeline.phase == .listening)
         #expect(audio.calls.filter { $0 == "startCapture" }.count == 3)
     }

@@ -169,6 +169,28 @@ struct LockScreenCaptionsCoordinatorTests {
         #expect(display.shown.count == afterStop)
     }
 
+    @Test("a line from minutes ago above one just said doesn't make the lock screen say the room went quiet")
+    func quietIsJudgedByTheNewestLine() {
+        let display = FakeDisplay()
+        let now = Date().timeIntervalSince1970
+        let coordinator = LockScreenCaptionsCoordinator(
+            display: display,
+            keepAliveSeconds: 50,
+            situation: {
+                .init(enabled: true, phase: .listening, interruptedByCall: false, pausedForSpeech: false, captionSize: 30)
+            },
+            lines: { count, _ in
+                Array([
+                    LockScreenCaptionLine(speaker: nil, text: "the pills are on the table", isFinal: true, lastUpdate: now - 5 * 60),
+                    LockScreenCaptionLine(speaker: nil, text: "see you tomorrow", isFinal: true, lastUpdate: now),
+                ].suffix(count))
+            }
+        )
+        coordinator.refresh()
+        #expect(display.shown.last?.lines.map(\.text) == ["the pills are on the table", "see you tomorrow"])
+        #expect(display.shown.last?.ageNote == nil)
+    }
+
     @Test("after a quiet minute only the newest line shows, saying how long ago; after a quarter of an hour none")
     func quietRoom() async {
         let (coordinator, display, captions) = make()
