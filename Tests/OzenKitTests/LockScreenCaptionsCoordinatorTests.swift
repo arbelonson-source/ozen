@@ -137,6 +137,32 @@ struct LockScreenCaptionsCoordinatorTests {
         #expect(display.startAttempts == 2 && coordinator.isShowing)
     }
 
+    @Test("a refused start is asked for again once the retry time is up, with the app left in front")
+    func refusedStartRetriesInTime() {
+        let display = FakeDisplay()
+        let captions = Captions()
+        var time: TimeInterval = 1_000
+        let coordinator = LockScreenCaptionsCoordinator(
+            display: display,
+            keepAliveSeconds: 50,
+            now: { time },
+            situation: { captions.situation },
+            lines: { _, _ in [] }
+        )
+        display.refusesStarts = true
+        coordinator.refresh()
+        #expect(display.startAttempts == 1)
+
+        display.refusesStarts = false
+        time += LockScreenCaptionsCoordinator.startRetrySeconds - 1
+        coordinator.refresh()
+        #expect(display.startAttempts == 1 && !coordinator.isShowing)
+
+        time += 1
+        coordinator.refresh()
+        #expect(display.startAttempts == 2 && coordinator.isShowing)
+    }
+
     @Test("in front new lines wait; leaving the app sends them at once; a new note never waits")
     func pace() async {
         let (coordinator, display, captions) = make()
