@@ -411,6 +411,129 @@ class DigitalSilence(unittest.TestCase):
         self.assertTrue(detector.is_speech(0.05 * np.sin(np.arange(1024) * 0.3)))
 
 
+def tone(amplitude, count=1024):
+    return amplitude * np.sin(np.arange(count) * 0.3)
+
+
+class Detector(unittest.TestCase):
+    """The cases of Tests/OzenKitTests/EnergyVoiceDetectorTests.swift that
+    PCM16 can carry, with the same numbers, so the port can't drift from
+    the phone's detector unnoticed."""
+
+    def test_silence_is_not_speech_and_talk_across_the_table_is(self):
+        detector = S.EnergyVoiceDetector()
+        self.assertFalse(detector.is_speech(np.zeros(1024)))
+        self.assertFalse(detector.is_speech(tone(0.0008)))
+        self.assertTrue(detector.is_speech(tone(0.0025)))
+        self.assertTrue(detector.is_speech(tone(0.05)))
+
+    def test_a_long_stretch_of_speech_with_the_gaps_speech_has_stays_speech(self):
+        detector = S.EnergyVoiceDetector()
+        words = heard = 0
+        for index in range(3_000):
+            if index % 7 < 5:
+                words += 1
+                heard += detector.is_speech(tone(0.01))
+            else:
+                detector.is_speech(tone(0.0005))
+        self.assertEqual(heard, words)
+        self.assertLess(detector.floor, 0.001)
+
+    def test_a_steady_hum_stops_counting_as_speech_within_seconds(self):
+        detector = S.EnergyVoiceDetector()
+        hum = tone(0.009)
+        self.assertTrue(detector.is_speech(hum))
+        for _ in range(156):
+            detector.is_speech(hum)
+        self.assertFalse(detector.is_speech(hum))
+        self.assertTrue(detector.is_speech(tone(0.05)))
+
+    def test_without_the_recent_minimum_a_steady_hum_stays_speech(self):
+        detector = S.EnergyVoiceDetector()
+        detector.window = 10**12
+        hum = tone(0.009)
+        for _ in range(156):
+            detector.is_speech(hum)
+        self.assertTrue(detector.is_speech(hum))
+
+    def test_steady_noise_lowers_the_margin_to_6_db_and_swinging_noise_keeps_8(self):
+        steady = S.EnergyVoiceDetector()
+        self.assertAlmostEqual(steady._ratio_now(), 2.5, delta=0.01)
+        for _ in range(600):
+            steady.is_speech(tone(0.002, 1600))
+        self.assertLess(steady.swing, 0.5)
+        self.assertLess(steady._ratio_now(), 2.15)
+        self.assertTrue(steady.is_speech(tone(0.0042, 1600)))
+
+        swinging = S.EnergyVoiceDetector()
+        for i in range(600):
+            decibels = (i * 7) % 13 - 6
+            swinging.is_speech(tone(0.002 * 10 ** (decibels / 20), 1600))
+        self.assertGreater(swinging.swing, 2)
+        self.assertAlmostEqual(swinging._ratio_now(), 2.5, delta=0.01)
+
+    def test_the_servers_line_hears_a_voice_5_db_over_a_hum_that_the_default_misses(self):
+        hum = tone(0.002, 1600)
+        quiet_voice = tone(0.002 * 10 ** (5 / 20), 1600)
+        standard = S.EnergyVoiceDetector()
+        server = S.Session(Socket(), GateGPU(0.01), "he", [], live_interval=0.3).detector
+        for _ in range(600):
+            standard.is_speech(hum)
+            server.is_speech(hum)
+        self.assertFalse(standard.is_speech(quiet_voice))
+        self.assertTrue(server.is_speech(quiet_voice))
+        self.assertFalse(server.is_speech(hum))
+
+    def test_a_window_only_a_few_chunks_long_keeps_the_margin_cautious(self):
+        detector = S.EnergyVoiceDetector()
+        detector.window = 3_200
+        for i in range(600):
+            detector.is_speech(tone(0.001 if i % 2 == 0 else 0.004, 1600))
+        self.assertAlmostEqual(detector._ratio_now(), 2.5, delta=0.01)
+
+    def test_the_floor_is_capped_so_a_loud_fan_cannot_hide_a_voice_over_it(self):
+        detector = S.EnergyVoiceDetector()
+        for _ in range(1_000):
+            detector.is_speech(tone(0.1))
+        self.assertEqual(detector.floor, detector.max_floor)
+        self.assertTrue(detector.is_speech(tone(0.15)))
+
+    def test_the_floor_falls_quickly_when_the_room_gets_quieter(self):
+        detector = S.EnergyVoiceDetector()
+        detector.floor = 0.02
+        for _ in range(20):
+            detector.is_speech(tone(0.0002))
+        self.assertLess(detector.floor, 0.001)
+
+
+def alternating(count, gap=range(0)):
+    samples = np.where(np.arange(count) % 2 == 0, 0.5, -0.5)
+    samples[gap.start:gap.stop] = 0
+    return samples
+
+
+class QuietestPoint(unittest.TestCase):
+    """The cases of Tests/OzenKitTests/UtteranceCutTests.swift."""
+
+    def test_the_cut_goes_into_the_quiet_between_words(self):
+        cut = S.quietest_point(alternating(16_000, range(12_000, 12_800)), 16_000, 8_000, 400)
+        self.assertTrue(12_000 <= cut <= 12_800, cut)
+
+    def test_a_gap_older_than_the_look_back_is_not_reached_for(self):
+        cut = S.quietest_point(alternating(16_000, range(1_000, 1_800)), 16_000, 4_000, 400)
+        self.assertGreaterEqual(cut, 12_000)
+
+    def test_with_nothing_quieter_anywhere_the_latest_point_wins(self):
+        cut = S.quietest_point(alternating(16_000), 16_000, 4_000, 400)
+        self.assertTrue(15_000 <= cut <= 16_000, cut)
+
+    def test_too_little_audio_or_nonsense_arguments_leave_the_cut_where_it_was_asked_for(self):
+        self.assertEqual(S.quietest_point(alternating(100), 100, 4_000, 400), 100)
+        self.assertEqual(S.quietest_point(np.zeros(0), 50, 10, 4), 0)
+        self.assertEqual(S.quietest_point(alternating(1_000), 5_000, 1_000, 0), 1_000)
+        self.assertEqual(S.quietest_point(alternating(1_000), -3, 1_000, 100), 0)
+
+
 class Summary(unittest.TestCase):
     def play(self, pieces, gpu=None):
         session = S.Session(Socket(), gpu or GateGPU(0.01), "he", [], live_interval=0.3)
