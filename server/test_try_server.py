@@ -95,6 +95,20 @@ class Sending(unittest.TestCase):
         self.assertGreater(took, 0.4)
 
 
+class Stereo(unittest.TestCase):
+    def test_a_stereo_recording_goes_out_mixed_to_one_channel(self):
+        left = np.linspace(-0.5, 0.5, 1600, dtype=np.float32)
+        stereo = np.stack([left, -0.5 * left], 1)
+        socket = Socket([])
+        with mock.patch.dict(sys.modules, {"jiwer": None}), \
+                mock.patch.object(T.sf, "read", return_value=(stereo, 16000), create=True), \
+                mock.patch.object(T.websockets, "connect", return_value=socket, create=True), \
+                mock.patch("sys.stdout", io.StringIO()):
+            asyncio.run(T.main("ws://localhost:8765", "example-code-123", "speech.wav", None))
+        sent = np.frombuffer(b"".join(m for m in socket.sent if isinstance(m, bytes)), dtype="<i2")
+        self.assertTrue(np.array_equal(sent, (stereo.mean(1) * 32767).astype("<i2")))
+
+
 class Hello(unittest.TestCase):
     def test_the_pairing_code_goes_out_in_a_hello_before_any_audio(self):
         socket = Socket([])
