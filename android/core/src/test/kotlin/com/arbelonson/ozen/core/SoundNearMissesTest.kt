@@ -5,6 +5,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlinx.coroutines.test.runTest
 
 private fun heard(identifier: String, confidence: Double, at: Double) =
     SoundObservation(identifier = identifier, confidence = confidence, timestamp = at)
@@ -74,5 +76,26 @@ class SoundNearMissesTest {
         assertEquals(SoundNearMisses.limit, misses.entries.size)
         assertFalse(misses.entries.any { it.identifier == identifiers.first() })
         assertNull(SoundNearMisses().reportLine(utcOffsetSeconds = 0))
+    }
+}
+
+class PipelineSoundNearMissTest {
+    @Test
+    fun `a faint doorbell is noted without an alert, a clear one alerts and isn't a near miss`() = runTest {
+        val detector = FakeSoundDetector()
+        val pipeline = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { FakeEngine() },
+            embedder = FakeEmbedder(),
+            soundDetector = detector,
+        )
+        pipeline.start(AppSettings.default)
+        detector.push(SoundObservation(identifier = "door_bell", confidence = 0.45, timestamp = 1_000.0))
+        assertTrue(eventually { pipeline.soundNearMisses.entries.size == 1 })
+        assertTrue(pipeline.soundAlerts.isEmpty())
+
+        detector.push(SoundObservation(identifier = "smoke_detector", confidence = 0.95, timestamp = 1_001.0))
+        assertTrue(eventually { pipeline.soundAlerts.size == 1 })
+        assertEquals(listOf("door_bell"), pipeline.soundNearMisses.entries.map { it.identifier })
     }
 }

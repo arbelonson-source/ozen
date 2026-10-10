@@ -2,10 +2,15 @@ package com.arbelonson.ozen.core
 
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runTest
 
 private const val PROFILE_ID = "7C9E6679-7425-40DE-944B-E07FC1F90AE7"
 
@@ -90,5 +95,120 @@ class TranscriptRecordResilienceTest {
         assertEquals(listOf("שלום", "להתראות"), record.segments.map { it.text })
         assertEquals(TranscriptionEngineKind.WhisperKit, record.engine)
         assertNull(record.title)
+    }
+}
+
+class EnrollmentNonFiniteTest {
+    private class NaNEmbedder : SpeakerEmbedding {
+        override fun embed(samples: FloatArray, sampleRate: Double): FloatArray? = floatArrayOf(0.1f, Float.NaN, 0.3f)
+    }
+
+    @Test
+    fun `a voice print with NaN in it is refused, so it can never break saving settings`() = runTest {
+        val pipeline = captionPipeline(audio = FakeAudioCapturer(), engineFactory = { FakeEngine() }, embedder = NaNEmbedder())
+        assertNull(pipeline.embedding(FloatArray(96_000) { 0.2f }))
+    }
+}
+
+class EnrollmentSpeechOnlyTest {
+    /**
+     * The "voice print" is the window's loudness, so a test can see
+     * exactly which audio went into it.
+     */
+    private class LoudnessEmbedder : SpeakerEmbedding {
+        override fun embed(samples: FloatArray, sampleRate: Double): FloatArray? =
+            floatArrayOf(EnergyVoiceDetector.rms(samples))
+    }
+
+    private fun TestScope.pipeline(): CaptionPipeline =
+        captionPipeline(audio = FakeAudioCapturer(), engineFactory = { FakeEngine() }, embedder = LoudnessEmbedder())
+
+    private fun speech(seconds: Double, amplitude: Float = 0.3f): FloatArray =
+        FloatArray((seconds * 16_000).toInt()) { if (it % 2 == 0) amplitude else -amplitude }
+
+    private fun silence(seconds: Double): FloatArray = FloatArray((seconds * 16_000).toInt())
+
+    @Test
+    fun `windows of another voice (the TV, a relative) are left out of the saved voice`() {
+        val her = floatArrayOf(1f, 0f, 0f)
+        val tv = floatArrayOf(0f, 1f, 0f)
+        val print = CaptionPipeline.consistentAverage(List(7) { her } + listOf(tv, tv))
+        assertTrue(cosineSimilarity(print, her) > 0.999)
+    }
+
+    @Test
+    fun `when most of the recording disagrees, the plain average stands`() {
+        val one = floatArrayOf(1f, 0f, 0f)
+        val other = floatArrayOf(0f, 1f, 0f)
+        val print = CaptionPipeline.consistentAverage(listOf(one, one, one, other, other, other))
+        assertTrue(abs(print[0] - 0.5f) < 0.001 && abs(print[1] - 0.5f) < 0.001)
+    }
+
+    @Test
+    fun `when most windows sound unlike the rest, none are dropped and the plain average stands`() {
+        val her = floatArrayOf(1f, 0f, 0f, 0f, 0f)
+        val others = listOf(
+            floatArrayOf(0f, 1f, 0f, 0f, 0f),
+            floatArrayOf(0f, 0f, 1f, 0f, 0f),
+            floatArrayOf(0f, 0f, 0f, 1f, 0f),
+            floatArrayOf(0f, 0f, 0f, 0f, 1f),
+        )
+        val print = CaptionPipeline.consistentAverage(listOf(her, her, her) + others)
+        assertTrue(abs(print[0] - 3.0f / 7) < 0.001)
+        assertTrue((1..4).all { abs(print[it] - 1.0f / 7) < 0.001 })
+    }
+
+    @Test
+    fun `a recording nobody spoke in makes no voice print`() = runTest {
+        assertNull(pipeline().embedding(silence(30.0)))
+        // A quiet room: nothing near speech level.
+        assertNull(pipeline().embedding(speech(30.0, amplitude = 0.002f)))
+    }
+
+    @Test
+    fun `a couple of seconds of speech isn't enough, a few more is`() = runTest {
+        assertNull(pipeline().embedding(speech(3.0) + silence(27.0)))
+        assertNotNull(pipeline().embedding(speech(4.5) + silence(25.5)))
+    }
+
+    @Test
+    fun `pauses between sentences don't water the voice down`() = runTest {
+        val recording = speech(6.0) + silence(6.0) + speech(6.0) + silence(12.0)
+        val print = assertNotNull(pipeline().embedding(recording))
+        // The whole recording's loudness would be about 0.19.
+        assertTrue(abs(print[0] - 0.3f) < 0.001)
+    }
+
+    @Test
+    fun `the voice print made off the main thread is the same one`() = runTest {
+        val recording = speech(6.0) + silence(3.0) + speech(3.0)
+        val pipeline = pipeline()
+        val inBackground = pipeline.embeddingInBackground(recording)
+        assertNotNull(inBackground)
+        assertTrue(inBackground.contentEquals(pipeline.embedding(recording)))
+        assertNull(pipeline.embeddingInBackground(silence(30.0)))
+    }
+
+    private class CountingEmbedder : SpeakerEmbedding {
+        private val calls = AtomicInteger()
+        val embedCalls: Int get() = calls.get()
+        override val embeddingLength: Int? get() = 3
+
+        override fun embed(samples: FloatArray, sampleRate: Double): FloatArray? {
+            calls.incrementAndGet()
+            return floatArrayOf(1f, 0f, 0f)
+        }
+    }
+
+    // Saved profiles are checked when the app opens, on the main thread:
+    // running a neural model there to learn its print length froze launch.
+    @Test
+    fun `checking saved voices at launch doesn't run the speaker model`() = runTest {
+        val embedder = CountingEmbedder()
+        val pipeline = captionPipeline(audio = FakeAudioCapturer(), engineFactory = { FakeEngine() }, embedder = embedder)
+        pipeline.enroll(SpeakerProfile(name = "Savta", embedding = floatArrayOf(1f, 0f, 0f)))
+        pipeline.enroll(SpeakerProfile(name = "Old", embedding = FloatArray(12) { 1f }))
+        assertEquals(0, embedder.embedCalls)
+        assertEquals(listOf("Savta"), pipeline.speakerClusters.map { it.name })
     }
 }
