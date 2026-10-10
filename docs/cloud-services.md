@@ -196,7 +196,8 @@ key again.
   Groq's terms apply. Off Wi-Fi this uses about 150 MB of mobile data an
   hour of speech.
 - ElevenLabs: audio is sent only while someone is speaking, with the first
-  hundred names as key terms. ElevenLabs' terms apply.
+  hundred names as key terms (a name of more than five words is left out,
+  as ElevenLabs does not take it). ElevenLabs' terms apply.
 - Google Gemini: audio is sent only while someone is speaking, with the first
   hundred names as its vocabulary. On Google's free plan, Google uses what
   is sent to improve its products and human reviewers may read it; with

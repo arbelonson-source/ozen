@@ -5,6 +5,10 @@ public enum ElevenLabsSpeech {
     public static let transcribeURL = URL(string: "https://api.elevenlabs.io/v1/speech-to-text")!
     public static let keyURL = URL(string: "https://api.elevenlabs.io/v1/user")!
     static let maximumTerms = 100
+    /// ElevenLabs refuses a key term of more than five words, or with any
+    /// of these characters.
+    static let maximumTermWords = 5
+    static let refusedCharacters = CharacterSet(charactersIn: "<>{}[]\\")
 
     public static func request(model: String, apiKey: String, wav: Data, languageCode: String, vocabulary: [String]) -> CloudHTTPRequest {
         var form = MultipartForm()
@@ -12,7 +16,7 @@ public enum ElevenLabsSpeech {
         form.add("language_code", languageCode)
         form.add("diarize", "true")
         form.add("tag_audio_events", "false")
-        for term in VocabularyHints.normalized(vocabulary).prefix(maximumTerms) {
+        for term in terms(vocabulary) {
             form.add("keyterms", term)
         }
         form.add(file: "file", filename: "speech.wav", type: "audio/wav", data: wav)
@@ -23,6 +27,14 @@ public enum ElevenLabsSpeech {
             body: form.body,
             timeoutSeconds: 20
         )
+    }
+
+    static func terms(_ vocabulary: [String]) -> [String] {
+        let taken = VocabularyHints.normalized(vocabulary).filter { term in
+            term.split(whereSeparator: \.isWhitespace).count <= maximumTermWords
+                && term.rangeOfCharacter(from: refusedCharacters) == nil
+        }
+        return Array(taken.prefix(maximumTerms))
     }
 
     public static func transcript(from response: CloudHTTPResponse) throws(CloudSpeechError) -> String {

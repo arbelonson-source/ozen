@@ -85,7 +85,7 @@ def read_recording(path: Path) -> Recording:
     return Recording(wav=path.read_bytes(), pcm=pcm, seconds=seconds)
 
 
-def terms(names: list[str]) -> list[str]:
+def terms(names: list[str], cap: int = MAX_TERMS) -> list[str]:
     """The names list as the app sends it: trimmed, no repeats (ignoring case
     and Hebrew vowel marks), 40 letters each, the first 100."""
     seen, kept = set(), []
@@ -95,7 +95,7 @@ def terms(names: list[str]) -> list[str]:
         if key and key not in seen:
             seen.add(key)
             kept.append(clipped)
-    return kept[:MAX_TERMS]
+    return kept[:cap]
 
 
 def multipart(fields: list[tuple[str, str]], wav: bytes) -> tuple[str, bytes]:
@@ -166,9 +166,15 @@ def groq(key: str, recording: Recording, language: str, names: list[str]) -> Req
     return openai_style("https://api.groq.com/openai/v1", "whisper-large-v3", key, recording, language, names)
 
 
+def elevenlabs_terms(names: list[str]) -> list[str]:
+    """Names ElevenLabs takes: five words at most, none of < > { } [ ] \\."""
+    taken = [term for term in terms(names, cap=200) if len(term.split()) <= 5 and not set(term) & set("<>{}[]\\")]
+    return taken[:MAX_TERMS]
+
+
 def elevenlabs(key: str, recording: Recording, language: str, names: list[str]) -> Request:
     fields = [("model_id", "scribe_v2"), ("language_code", language), ("diarize", "true"), ("tag_audio_events", "false")]
-    fields += [("keyterms", term) for term in terms(names)]
+    fields += [("keyterms", term) for term in elevenlabs_terms(names)]
     content_type, body = multipart(fields, recording.wav)
     return Request(url="https://api.elevenlabs.io/v1/speech-to-text", headers={"xi-api-key": key, "Content-Type": content_type}, body=body)
 

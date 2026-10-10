@@ -30,6 +30,17 @@ struct ElevenLabsSpeechTests {
         #expect(parts.first { $0.name == "language_code" }?.text == "am")
     }
 
+    @Test("a name ElevenLabs would refuse, more than five words or with < > { } [ ] \\, is left out, and the hundred are counted after it")
+    func termsElevenLabsTakes() throws {
+        let refused = zip(["Avi", "Ben", "Chen", "Dana", "Eli", "Gal", "Hila"], ["<", ">", "{", "}", "[", "]", "\\"]).map { "\($0)\($1)x" }
+        let names = ["אחת שתיים שלוש ארבע חמש", "one two three four five six"] + refused + ["דנה"] + (1...100).map { "n\($0)" }
+        let parts = try formParts(ElevenLabsSpeech.request(model: "scribe_v2", apiKey: "k", wav: Data(), languageCode: "he", vocabulary: names))
+        let terms = parts.filter { $0.name == "keyterms" }.map(\.text)
+        #expect(terms.prefix(2) == ["אחת שתיים שלוש ארבע חמש", "דנה"])
+        #expect(terms.count == 100)
+        #expect(terms.last == "n98")
+    }
+
     @Test("each speaker's stretch is its own line, a laugh tag is left out, and the same speaker going on stays one line")
     func speakers() throws {
         let body = try Data(contentsOf: DeepgramSpeechTests.fixtures.appendingPathComponent("elevenlabs-two-speakers.json"))

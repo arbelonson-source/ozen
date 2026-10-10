@@ -142,6 +142,14 @@ class RequestTests(unittest.TestCase):
              ("keyterms", "Avi"), ("keyterms", "Ruti"), ("file", "RIFFfake")],
         )
 
+    def test_elevenlabs_leaves_out_names_it_would_refuse(self):
+        refused = [f"{name}{mark}x" for name, mark in zip(["Avi", "Ben", "Chen", "Dana", "Eli", "Gal", "Hila"], "<>{}[]\\", strict=True)]
+        names = ["one two three four five", "one two three four five six"] + refused + ["Dana"] + [f"n{n}" for n in range(1, 101)]
+        taken = trial.elevenlabs_terms(names)
+        self.assertEqual(taken[:2], ["one two three four five", "Dana"])
+        self.assertEqual(len(taken), 100)
+        self.assertEqual(taken[-1], "n98")
+
     def test_gemini_names_the_language_by_region(self):
         request = trial.gemini("k", sample(), "zh", ["Dana"])
         body = json.loads(request.body)
