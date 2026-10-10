@@ -334,13 +334,26 @@ struct SettingsView: View {
         )
     }
 
+    /// Beside its label, a menu's value at the largest text sizes kept its
+    /// first and last letters only ("G…ini" for Google Gemini). There the
+    /// value has the row to itself, under the section's title; VoiceOver
+    /// still reads the label.
+    @ViewBuilder
+    private func valueAloneWhenLarge<Menu: View>(_ menu: Menu) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            menu.labelsHidden()
+        } else {
+            menu
+        }
+    }
+
     private var cloudSection: some View {
         Section {
-            Picker(tr("שירות", "Service"), selection: cloudProviderBinding) {
+            valueAloneWhenLarge(Picker(tr("שירות", "Service"), selection: cloudProviderBinding) {
                 ForEach(CloudProvider.allCases, id: \.self) { provider in
                     Text(provider.name).tag(provider)
                 }
-            }
+            })
             .accessibilityIdentifier("cloudServicePicker")
             .onAppear { hasCloudKey = CloudKeyStore.hasKey(for: viewModel.settings.cloudProvider) }
             if !viewModel.settings.cloudProvider.covers(languageCode: viewModel.settings.languageCode) {
@@ -380,10 +393,10 @@ struct SettingsView: View {
                 }
             }
             if viewModel.settings.cloudProvider == .openRouter {
-                Picker(tr("מודל", "Model"), selection: cloudModelBinding) {
+                valueAloneWhenLarge(Picker(tr("מודל", "Model"), selection: cloudModelBinding) {
                     Text(tr("מהיר (Gemini Flash Lite)", "Fast (Gemini Flash Lite)")).tag(CloudSpeech.fastModel)
                     Text(tr("מדויק יותר, קצת איטי (Gemini Flash)", "More accurate, a bit slower (Gemini Flash)")).tag(CloudSpeech.accurateModel)
-                }
+                })
             }
         } header: {
             Text(tr("תמלול בענן", "Cloud transcription"))

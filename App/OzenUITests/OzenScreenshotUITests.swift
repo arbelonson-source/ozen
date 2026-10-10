@@ -489,8 +489,14 @@ final class OzenScreenshotUITests: XCTestCase {
             bringOffBottomEdge(app, picker)
             capture(app, name: "\(run.name)-1")
             picker.tap()
+            let menuItem = app.buttons["Speechmatics"]
+            XCTAssertTrue(menuItem.waitForExistence(timeout: 5), "\(run.name): the service menu never opened")
             capture(app, name: "\(run.name)-services")
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.06)).tap()
+            // A tap on the status bar left the menu open over every later
+            // page; the navigation bar's middle is outside it at any size.
+            app.navigationBars.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: menuItem)
+            XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 3), .completed, "\(run.name): the service menu never closed")
             for page in 2...run.pages {
                 app.swipeUp()
                 capture(app, name: "\(run.name)-\(page)")
