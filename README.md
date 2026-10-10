@@ -610,6 +610,9 @@ App/OzenWidget/         Widget extension: lock screen captions, Control Center b
 App/Shared/             Code compiled into both the app and the widget extension
 project.yml             XcodeGen config — run `xcodegen generate` to get Ozen.xcodeproj
 docs/superpowers/specs/ Design doc with the full rationale and open questions
+docs/design/            Design docs for newer work: the Android app, the cloud services
+android/core/           The Android app's portable core in Kotlin (tests run on the JVM)
+android/app/            The Android app: microphone, whisper.cpp, background service, screens
 training/               Training the speech model to hear across a room, and its exam
 ```
 
@@ -632,6 +635,15 @@ macOS runners, not a plain macOS build. To build it yourself on a Mac:
 brew install xcodegen
 xcodegen generate
 xcodebuild -project Ozen.xcodeproj -scheme Ozen -destination "platform=iOS Simulator,name=iPhone 16" test
+```
+
+The Android app (being built, not ready to use yet) needs Java 21 and the
+Android SDK, plus the NDK for whisper.cpp:
+
+```bash
+cd android
+./gradlew :core:test            # the portable core, on the JVM, no emulator
+./gradlew :app:assembleDebug    # the debug APK
 ```
 
 ## Installing on a phone without a Mac
@@ -673,6 +685,13 @@ real room are being verified by hand — see the design doc's [checklist](docs/s
 Ozen's own version of the speech model, trained to hear across a noisy
 room, has been the recommended model since 9 October 2026; see
 [Training](#training-a-model-that-hears-across-the-room).
+
+An Android version is being built in `android/`, started on 10 October
+2026 as a full Kotlin rewrite. The portable core and the caption pipeline
+are ported (about 1,450 tests on the JVM), and whisper.cpp runs on the
+phone with the same Hebrew model as the iPhone. The screens are not there
+yet, so there is nothing to install. The plan and how far it has got are
+in [docs/design/2026-10-10-android.md](docs/design/2026-10-10-android.md).
 
 ## Support Ozen
 
