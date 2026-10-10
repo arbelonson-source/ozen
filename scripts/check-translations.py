@@ -21,6 +21,12 @@ from pathlib import Path
 HEBREW = re.compile(r"[֐-׿]")
 PLACEHOLDER = re.compile(r"%(\d+)")
 ROOTS = ["App", "Sources"]
+# The Android app looks its texts up in the same table, so its tr() calls
+# count as keys too: without them, an Android text missing from the table
+# showed in English on a French phone, and one only Android uses was
+# reported as stale.
+KOTLIN_ROOTS = ["android/app/src/main", "android/core/src/main"]
+KOTLIN_ARGS = re.compile(r"\s*,\s*(?:args\s*=\s*)?listOf\(")
 TRANSLATIONS_PATH = Path("Sources/OzenKit/Resources/Translations.json")
 TRANSLATED_LANGUAGES = [
     "arabic", "russian", "amharic", "french", "spanish",
@@ -137,6 +143,10 @@ def unescape(body):
                     out.append(chr(int(body[i + 3:end], 16)))
                     i = end + 1
                     continue
+            if nxt == "u" and re.fullmatch(r"[0-9A-Fa-f]{4}", body[i + 2:i + 6]):
+                out.append(chr(int(body[i + 2:i + 6], 16)))
+                i += 6
+                continue
             out.append(nxt)
             i += 2
             continue
@@ -187,6 +197,39 @@ def args_list(rest, after):
     return len(list(literals(rest[i:j + 1])))
 
 
+def kotlin_args_count(rest, after):
+    """The Kotlin form: `, listOf(...)` or `, args = listOf(...)` after the
+    two literals. Its values are often plain expressions (`listOf(name)`),
+    so they are counted by their top-level commas, not as literals."""
+    match = KOTLIN_ARGS.match(rest, after)
+    if not match:
+        return None
+    i = match.end()
+    depth = 1
+    commas = 0
+    seen = False
+    while i < len(rest):
+        c = rest[i]
+        if c == '"':
+            inner = next(literals(rest[i:]), None)
+            if inner:
+                i += inner[1]
+                seen = True
+                continue
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+            if depth == 0:
+                break
+        elif c == "," and depth == 1:
+            commas += 1
+        elif not c.isspace():
+            seen = True
+        i += 1
+    return commas + 1 if seen else 0
+
+
 def check(path, list_untranslated, keys):
     text = path.read_text(encoding="utf-8")
     problems = []
@@ -211,7 +254,7 @@ def check(path, list_untranslated, keys):
             problems.append(f"{path}:{line}: interpolations differ: {interpolations(hebrew)} vs {interpolations(english)}")
         if not english.strip() and hebrew.strip():
             problems.append(f"{path}:{line}: English text is empty")
-        count = args_list(rest, e2)
+        count = kotlin_args_count(rest, e2) if path.suffix == ".kt" else args_list(rest, e2)
         heb_placeholders = placeholders(hebrew)
         eng_placeholders = placeholders(english)
         if count is None:
@@ -517,6 +560,7 @@ def main():
     paths = [a for a in sys.argv[1:] if not a.startswith("--")]
     requested = {Path(p) for p in paths}
     all_files = [p for root in ROOTS for p in Path(root).rglob("*.swift") if p.name != "Localization.swift"]
+    all_files += [p for root in KOTLIN_ROOTS for p in Path(root).rglob("*.kt") if p.name != "Localization.kt"]
     # The translation table is checked against every tr() call in the whole
     # tree, even when explicit paths narrow which files get a per-line report.
     all_problems = []
