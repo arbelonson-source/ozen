@@ -414,6 +414,14 @@ class PhasePresentation private constructor(
                     action = Action.Retry,
                 )
 
+                EngineUnavailability.Kind.ModelNotOnDevice -> PhasePresentation(
+                    title = tr("מודל השפה עוד לא נמצא בטלפון", "The language model isn’t on this phone yet"),
+                    detail = tr("בקשו עזרה ממי שהתקין את הטלפון", "Ask whoever set up the phone for help"),
+                    systemImage = "arrow.down.circle",
+                    tint = PhaseTint.Problem,
+                    action = Action.OpenEngineSettings,
+                )
+
                 EngineUnavailability.Kind.WaitingForWiFi -> {
                     val size = engineFailure.downloadMegabytes?.let { if (it > 0) "$it MB" else null }
                     PhasePresentation(

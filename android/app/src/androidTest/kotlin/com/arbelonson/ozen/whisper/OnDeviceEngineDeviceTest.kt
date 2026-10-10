@@ -73,12 +73,12 @@ class OnDeviceEngineDeviceTest {
     }
 
     @Test
-    fun aModelThatIsNotOnThePhoneIsReportedNotDownloaded() = runBlocking {
+    fun aModelThatIsNotOnThePhoneIsReportedAsNotOnThePhone() = runBlocking {
         val missing = File(folder, "not-downloaded.bin")
         val engine = OnDeviceWhisperEngine(missing.name, ModelFileLoader(missing, context.applicationInfo.nativeLibraryDir))
         val result = engine.prepare("he") {}
         assertEquals(
-            EngineUnavailability.Kind.ModelDownloadFailed,
+            EngineUnavailability.Kind.ModelNotOnDevice,
             (result as? EngineAvailability.Unavailable)?.why?.kind,
         )
     }

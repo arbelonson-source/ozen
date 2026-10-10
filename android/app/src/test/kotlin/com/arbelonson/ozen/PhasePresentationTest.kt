@@ -113,6 +113,17 @@ class PhasePresentationTest {
     }
 
     @Test
+    fun `a model that is not on the phone says so, not that a download failed or that the internet is to blame`() {
+        val missing = present(failure(unavailable(EngineUnavailability.Kind.ModelNotOnDevice)), TranscriptionEngineKind.WhisperKit)
+        val downloadFailed = present(failure(unavailable(EngineUnavailability.Kind.ModelDownloadFailed)), TranscriptionEngineKind.WhisperKit)
+        assertNotEquals(downloadFailed.title, missing.title)
+        assertFalse(missing.title.contains("הורדת") || missing.detail.orEmpty().contains("אינטרנט"))
+        assertTrue(missing.detail?.contains("ממי שהתקין את הטלפון") == true)
+        assertEquals(Action.OpenEngineSettings, missing.action)
+        assertEquals(PhaseTint.Problem, missing.tint)
+    }
+
+    @Test
     fun `cloud captions without a usable key or credit send the person to Settings, no internet offers a retry`() {
         val key = present(failure(unavailable(EngineUnavailability.Kind.CloudKeyNeeded)), TranscriptionEngineKind.Cloud)
         val credit = present(failure(unavailable(EngineUnavailability.Kind.CloudOutOfCredit)), TranscriptionEngineKind.Cloud)

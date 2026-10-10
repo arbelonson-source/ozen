@@ -29,6 +29,11 @@ class AutoRecoveryPolicyTest {
     }
 
     @Test
+    fun `a model that is not on the phone is not retried on a timer, which cannot put it there`() {
+        assertEquals(S.Never, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.ModelNotOnDevice)))
+    }
+
+    @Test
     fun `glitches back off through their delays and then stop`() {
         val policy = AutoRecoveryPolicy(glitchDelays = listOf(1.0, 3.0, 8.0), downloadDelays = listOf(60.0))
         val stopped = failure(PipelineFailure.Kind.TranscriptionStopped)

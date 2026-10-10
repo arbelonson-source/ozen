@@ -21,7 +21,7 @@ class ModelFileLoader(
         progress: (EnginePreparationProgress) -> Unit,
     ): WhisperLoadedModel {
         if (!file.isFile) {
-            throw EngineUnavailability(EngineUnavailability.Kind.ModelDownloadFailed, "${file.name} is not on this phone")
+            throw EngineUnavailability(EngineUnavailability.Kind.ModelNotOnDevice, "${file.name} is not on this phone")
         }
         progress(EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel, detail = file.name))
         val model = withContext(Dispatchers.IO) { WhisperModel.load(file.path, libraryDir) }

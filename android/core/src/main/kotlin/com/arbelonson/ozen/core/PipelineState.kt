@@ -53,6 +53,7 @@ data class PipelineFailure(
                 EngineUnavailability.Kind.LanguageNotSupportedOnDevice,
                 EngineUnavailability.Kind.ModelDownloadFailed,
                 EngineUnavailability.Kind.ModelLoadFailed,
+                EngineUnavailability.Kind.ModelNotOnDevice,
                 EngineUnavailability.Kind.NotEnoughStorage,
                 EngineUnavailability.Kind.NoInternet,
                 EngineUnavailability.Kind.HomeServerUnreachable,

@@ -154,6 +154,13 @@ data class EngineUnavailability(
         ModelLoadFailed("modelLoadFailed"),
 
         /**
+         * Android only: the phone's own model file isn't on the phone, and
+         * the app has nowhere to download it from yet. Not a failed
+         * download, so nothing about the internet is to blame.
+         */
+        ModelNotOnDevice("modelNotOnDevice"),
+
+        /**
          * The model still has to be downloaded, the phone is on cellular
          * data or Low Data Mode, and nobody said that's fine.
          */

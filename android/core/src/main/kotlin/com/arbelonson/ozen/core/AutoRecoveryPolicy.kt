@@ -136,6 +136,8 @@ class AutoRecoveryPolicy(
                 // the phone again. The pipeline checks again when the app
                 // comes back on screen.
                 EngineUnavailability.Kind.NotEnoughStorage -> Schedule.Never
+                // A timer can't put the file on the phone.
+                EngineUnavailability.Kind.ModelNotOnDevice -> Schedule.Never
                 EngineUnavailability.Kind.ModelDownloadFailed -> Schedule.Download
                 EngineUnavailability.Kind.ModelLoadFailed -> Schedule.LoadFailure
                 EngineUnavailability.Kind.NoInternet,

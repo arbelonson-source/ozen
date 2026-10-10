@@ -59,6 +59,7 @@ class PipelineStateTest {
         assertTrue(failure(EngineUnavailability.Kind.LanguageNotSupportedOnDevice).suggestsOtherEngine)
         assertTrue(failure(EngineUnavailability.Kind.ModelDownloadFailed).suggestsOtherEngine)
         assertTrue(failure(EngineUnavailability.Kind.ModelLoadFailed).suggestsOtherEngine)
+        assertTrue(failure(EngineUnavailability.Kind.ModelNotOnDevice).suggestsOtherEngine)
         assertFalse(failure(EngineUnavailability.Kind.PermissionDenied).suggestsOtherEngine)
         assertFalse(failure(EngineUnavailability.Kind.TemporarilyUnavailable).suggestsOtherEngine)
         assertTrue(failure(EngineUnavailability.Kind.NoInternet).suggestsOtherEngine)
