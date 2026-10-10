@@ -145,11 +145,11 @@ struct SpeechmaticsSpeechTests {
         #expect(shown.filter { $0.isFinal }.map(\.startsNewSpeakerTurn) == [false, true, true])
     }
 
-    @Test("a key check failing reads as the HTTP answer says, and the key goes in the header")
+    @Test("the key is checked by the request Speechmatics' own guide gives, on its European host as captions are, and a failing check reads as the HTTP answer says")
     func keyCheck() {
         let request = SpeechmaticsSpeech.keyCheckRequest(apiKey: "sm-test")
         #expect(request.method == "GET")
-        #expect(request.url.absoluteString == "https://asr.api.speechmatics.com/v2/jobs?limit=1")
+        #expect(request.url.absoluteString == "https://eu1.asr.api.speechmatics.com/v2/jobs/")
         #expect(request.headers["Authorization"] == "Bearer sm-test")
         #expect(SpeechmaticsSpeech.headers(apiKey: "sm-test") == ["Authorization": "Bearer sm-test"])
         #expect(SpeechmaticsSpeech.streamURL.absoluteString == "wss://eu.rt.speechmatics.com/v2")

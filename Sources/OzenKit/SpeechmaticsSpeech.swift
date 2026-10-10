@@ -14,9 +14,10 @@ public enum SpeechmaticsSpeech: CloudStreamService {
     /// the newer `model` field.
     public static let model = "enhanced"
     public static let streamURL = URL(string: "wss://eu.rt.speechmatics.com/v2")!
-    /// Listing one transcription job is the cheapest request that needs a
-    /// valid key; the same key opens live transcription.
-    public static let keyURL = URL(string: "https://asr.api.speechmatics.com/v2/jobs?limit=1")!
+    /// Listing transcription jobs costs nothing and needs a valid key; the
+    /// same key opens live transcription. This is the request Speechmatics'
+    /// authentication guide gives, on the European host captions use too.
+    public static let keyURL = URL(string: "https://eu1.asr.api.speechmatics.com/v2/jobs/")!
     public static let waitsForStart = true
     public static let languages: [String: String] = [
         "he": "he", "en": "en", "ar": "ar", "ru": "ru", "fr": "fr", "es": "es",
