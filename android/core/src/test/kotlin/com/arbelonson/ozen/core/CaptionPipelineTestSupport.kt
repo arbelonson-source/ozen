@@ -13,8 +13,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Checks [condition] until it holds or [within] passes (on the test
@@ -404,4 +407,93 @@ class FakeStorage(megabytes: Long?) {
     }
 
     fun available(): Long? = bytes
+}
+
+/**
+ * Like [eventually], for a condition that other threads move (a pipeline
+ * that embeds on a thread of its own, held by a test): the wait is in real
+ * time, with the test scheduler run between looks.
+ */
+suspend fun eventuallyInRealTime(within: Duration = 10.seconds, condition: () -> Boolean): Boolean {
+    val deadline = System.nanoTime() + within.inWholeNanoseconds
+    while (!condition()) {
+        if (System.nanoTime() > deadline) return false
+        delay(1.milliseconds)
+        Thread.sleep(1)
+    }
+    return true
+}
+
+class TestClock {
+    @Volatile
+    var now: Double = 1_000.0
+        private set
+
+    @Synchronized
+    fun advance(seconds: Double) {
+        now += seconds
+    }
+}
+
+data class MadePipeline(val pipeline: CaptionPipeline, val audio: FakeAudioCapturer, val log: FactoryLog)
+
+/**
+ * A pipeline on the test scheduler's clock and dispatcher. The voice model
+ * is run on a second dispatcher of the same scheduler, which leaves the
+ * caller's context for a moment as a detached task does.
+ */
+fun TestScope.captionPipeline(
+    audio: AudioCapturing,
+    engineFactory: (AppSettings) -> TranscriptionEngine,
+    embedder: SpeakerEmbedding = FakeEmbedder(),
+    soundDetector: SoundEventDetecting? = null,
+    soundPolicy: SoundEventPolicy = SoundEventPolicy(),
+    clusterer: EmbeddingClusterer = EmbeddingClusterer(),
+    stabilizer: CaptionStabilizer = CaptionStabilizer(),
+    recovery: AutoRecoveryPolicy = AutoRecoveryPolicy(),
+    audioWatchdog: AudioStallWatchdog = AudioStallWatchdog(),
+    network: NetworkMonitoring? = null,
+    availableStorageBytes: (() -> Long?)? = null,
+    now: () -> Double = { System.currentTimeMillis() / 1000.0 },
+    embedderContext: CoroutineContext = StandardTestDispatcher(testScheduler),
+): CaptionPipeline = CaptionPipeline(
+    scope = backgroundScope,
+    audio = audio,
+    engineFactory = engineFactory,
+    embedder = embedder,
+    soundDetector = soundDetector,
+    soundPolicy = soundPolicy,
+    clusterer = clusterer,
+    stabilizer = stabilizer,
+    recovery = recovery,
+    audioWatchdog = audioWatchdog,
+    network = network,
+    availableStorageBytes = availableStorageBytes,
+    now = now,
+    timeSource = testScheduler.timeSource,
+    embedderContext = embedderContext,
+)
+
+fun TestScope.makePipeline(
+    audio: FakeAudioCapturer = FakeAudioCapturer(),
+    engines: Map<TranscriptionEngineKind, FakeEngine> = mapOf(TranscriptionEngineKind.WhisperKit to FakeEngine()),
+    soundDetector: FakeSoundDetector? = null,
+    recovery: AutoRecoveryPolicy = AutoRecoveryPolicy.disabled(),
+    audioWatchdog: AudioStallWatchdog = AudioStallWatchdog(),
+    now: () -> Double = { 1_000.0 },
+): MadePipeline {
+    val log = FactoryLog()
+    val pipeline = captionPipeline(
+        audio = audio,
+        engineFactory = { settings ->
+            log.calls += 1
+            engines[settings.engine] ?: FakeEngine(kind = settings.engine)
+        },
+        embedder = FakeEmbedder(),
+        soundDetector = soundDetector,
+        recovery = recovery,
+        audioWatchdog = audioWatchdog,
+        now = now,
+    )
+    return MadePipeline(pipeline, audio, log)
 }
