@@ -356,6 +356,23 @@ def check_permission_prompts():
     return problems
 
 
+CJK = "\u3400-\u9fff\u3000-\u303f\uff00-\uffef"
+ASCII_BESIDE_CHINESE = re.compile(f"(?<=[{CJK}])[,;:!?()]|[,;:!?(](?=[{CJK}])")
+
+
+def check_chinese_punctuation():
+    """Chinese text takes full-width punctuation (，；：！？（）); an ASCII
+    comma or bracket beside a Chinese character reads as a typo there."""
+    texts = [(str(TRANSLATIONS_PATH), key, value) for key, value in json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))["chineseSimplified"].items()]
+    for catalog in [SYSTEM_CATALOG, SHORTCUTS_CATALOG, Path("App/Ozen/InfoPlist.xcstrings")]:
+        for key, entry in json.loads(catalog.read_text(encoding="utf-8"))["strings"].items():
+            unit = entry.get("localizations", {}).get("zh-Hans", {}).get("stringUnit")
+            if unit:
+                texts.append((str(catalog), key, unit["value"]))
+    return [f"{path}: zh-Hans for {key[:60]!r} has ASCII punctuation beside Chinese: {value!r}"
+            for path, key, value in texts if ASCII_BESIDE_CHINESE.search(value)]
+
+
 def check_system_wording():
     """Controls that bring their own words show them in the phone's
     language, not the one picked in Ozen: SwiftUI's EditButton, and a
@@ -433,6 +450,7 @@ def main():
         all_problems += check_siri_phrases()
         all_problems += check_permission_prompts()
         all_problems += check_system_wording()
+        all_problems += check_chinese_punctuation()
         all_problems += check_system_names_in_help(keys)
     for problem in all_problems:
         print(problem)
