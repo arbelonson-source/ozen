@@ -22,6 +22,7 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 object AssemblyAISpeech : CloudStreamService {
     override val model = "universal-3-6-pro"
+    override val provider: CloudProvider get() = CloudProvider.AssemblyAI
     val streamURL: URI = URI("wss://streaming.assemblyai.com/v3/ws")
 
     /**
@@ -33,11 +34,10 @@ object AssemblyAISpeech : CloudStreamService {
     val languages: Set<String> = setOf("he", "en", "ar", "ru", "fr", "es", "de", "pt", "zh", "hi")
     internal const val MAXIMUM_TERMS = 100
     internal const val UNKNOWN_SPEAKER = "UNKNOWN"
-    private const val SAMPLE_RATE = 16_000
 
     override fun address(languageCode: String, vocabulary: List<String>): URI {
         val settings = arrayListOf(
-            "sample_rate" to SAMPLE_RATE.toString(),
+            "sample_rate" to CloudSpeechEngine.SAMPLE_RATE.toString(),
             "encoding" to "pcm_s16le",
             "speech_model" to model,
             "language_codes" to json(listOf(languageCode)),

@@ -15,6 +15,12 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.test.assertIs
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runTest
 
 private val speechmaticsFrames: List<String> =
     File(System.getProperty("ozen.fixtures"), "cloud/speechmatics-two-speakers.jsonl").readText(Charsets.UTF_8)
@@ -22,6 +28,8 @@ private val speechmaticsFrames: List<String> =
 
 private const val SPEECHMATICS_STARTED = """{"message":"RecognitionStarted","id":"x"}"""
 private const val SPEECHMATICS_ENDED = """{"message":"EndOfTranscript"}"""
+
+private fun speechmaticsIsEnd(text: String): Boolean = text.contains("EndOfStream")
 
 private fun speechmaticsJson(text: String): JsonObject = Json.parseToJsonElement(text).jsonObject
 
@@ -43,7 +51,7 @@ class SpeechmaticsSpeechTest {
         assertEquals(true, settings["enable_partials"]?.jsonPrimitive?.boolean)
         assertEquals(2.0, settings["max_delay"]?.jsonPrimitive?.double)
         assertEquals("speaker", settings["diarization"]?.jsonPrimitive?.content)
-        assertEquals(0.7, settings["conversation_config"]?.jsonObject?.get("end_of_utterance_silence_trigger")?.jsonPrimitive?.double)
+        assertEquals(CloudSpeechEngine.PAUSE_SECONDS, settings["conversation_config"]?.jsonObject?.get("end_of_utterance_silence_trigger")?.jsonPrimitive?.double)
         assertEquals(listOf("דנה", "ד\"ר כהן"), speechmaticsStrings(settings["additional_vocab"]))
     }
 
@@ -163,5 +171,72 @@ class SpeechmaticsSpeechTest {
         assertEquals(CloudSpeechError.OutOfCredit, SpeechmaticsSpeech.failure(CloudHTTPResponse(402, ByteArray(0))))
         assertEquals(CloudSpeechError.RateLimited, SpeechmaticsSpeech.failure(CloudHTTPResponse(429, ByteArray(0))))
         assertEquals(CloudSpeechError.ServerTrouble(503), SpeechmaticsSpeech.failure(CloudHTTPResponse(503, ByteArray(0))))
+    }
+
+    @Test
+    fun `Speechmatics streams, writes eleven caption languages but not Amharic, and keeps its own key`() {
+        for (code in listOf("he", "en", "ar", "ru", "fr", "es", "uk", "de", "pt", "zh", "hi")) {
+            assertTrue(CloudProvider.Speechmatics.covers(code), code)
+        }
+        assertTrue(!CloudProvider.Speechmatics.covers("am"))
+        assertEquals("Speechmatics", CloudProvider.Speechmatics.displayName)
+        assertEquals(listOf("enhanced"), CloudProvider.Speechmatics.models)
+        assertEquals("com.arbelonson.ozen.cloud.speechmatics", CloudProvider.Speechmatics.keychainService)
+        assertTrue(CloudProvider.Speechmatics.streams)
+        assertEquals(SpeechmaticsSpeech.keyURL, CloudProvider.Speechmatics.keyCheckRequest("k").url)
+        val engine = CloudProvider.Speechmatics.engine(connector = StreamDialer(null), apiKey = { "k" }) as? CloudStreamEngine
+        assertTrue(engine?.provider == CloudProvider.Speechmatics && engine.model == "enhanced")
+    }
+
+    @Test
+    fun `a conversation streams over one connection - the key in its header, the settings first, the audio once Speechmatics has started, the end naming the pieces sent, and a line per turn back`() = runTest(timeout = 1.minutes) {
+        val socket = StreamSocket(onConfig = speechmaticsFrames.dropLast(2), afterEnd = speechmaticsFrames.takeLast(2), endsAudio = ::speechmaticsIsEnd)
+        val dialer = StreamDialer(socket)
+        val engine = SpeechmaticsEngine(connector = dialer, timeSource = testScheduler.timeSource, apiKey = { "sm-test" })
+        val heard = listen(engine, streamAudio(4))
+        assertNull(heard.error)
+        assertEquals(listOf("מה שלומך?", "טוב, תודה. ואתה?", "מצוין"), heard.tokens.filter { it.isFinal }.map { it.text })
+        assertEquals(listOf(SpeechmaticsSpeech.streamURL), dialer.calls.map { it.url })
+        assertEquals(mapOf("Authorization" to "Bearer sm-test"), dialer.calls.firstOrNull()?.headers)
+        assertEquals(listOf(SpeechmaticsSpeech.config("he", emptyList()), SpeechmaticsSpeech.endMessage(4)), socket.sentTexts)
+        assertEquals(4, socket.sentChunks)
+    }
+
+    @Test
+    fun `no audio goes until Speechmatics says it has started`() = runTest(timeout = 1.minutes) {
+        val socket = StreamSocket(afterEnd = listOf(SPEECHMATICS_ENDED), endsAudio = ::speechmaticsIsEnd)
+        val engine = SpeechmaticsEngine(connector = StreamDialer(socket), timeSource = testScheduler.timeSource, apiKey = { "sm-test" })
+        val listening = launch { engine.stream("he", streamAudio(3)).collect { } }
+        assertTrue(waitUntil { socket.sentTexts.size == 1 })
+        delay(500.milliseconds)
+        assertEquals(0, socket.sentChunks)
+        assertEquals(1, socket.sentTexts.size)
+        socket.deliver(SPEECHMATICS_STARTED)
+        assertTrue(waitUntil { socket.isClosed })
+        assertEquals(3, socket.sentChunks)
+        assertEquals(SpeechmaticsSpeech.endMessage(3), socket.sentTexts.last())
+        listening.cancel()
+        listening.join()
+    }
+
+    @Test
+    fun `a key Speechmatics refuses once connected ends captions with that reason`() = runTest(timeout = 1.minutes) {
+        val socket = StreamSocket(
+            onConfig = listOf("""{"message":"Error","type":"not_authorised","reason":"Unauthorized","code":4001}"""),
+            endsAudio = ::speechmaticsIsEnd,
+        )
+        val engine = SpeechmaticsEngine(connector = StreamDialer(socket), timeSource = testScheduler.timeSource, apiKey = { "sm-bad" })
+        val heard = listen(engine, streamAudio(2, ends = false))
+        assertEquals(CloudSpeechError.KeyRejected, heard.error)
+        assertEquals(0, socket.sentChunks)
+    }
+
+    @Test
+    fun `the key is checked before captions start, and one Speechmatics turns down needs fixing`() = runTest {
+        val http = FakeCloudHTTP(keyChecks = listOf(FakeCloudHTTP.Answer.Status(401, "")), timeSource = testScheduler.timeSource)
+        val engine = SpeechmaticsEngine(http = http, connector = StreamDialer(null), timeSource = testScheduler.timeSource, apiKey = { "sm-bad" })
+        val why = assertIs<EngineAvailability.Unavailable>(engine.prepare("he") { }, "a refused key was accepted").why
+        assertEquals(EngineUnavailability.Kind.CloudKeyNeeded, why.kind)
+        assertEquals(listOf(SpeechmaticsSpeech.keyURL), http.requests.map { it.url })
     }
 }

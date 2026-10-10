@@ -217,8 +217,24 @@ class CloudSpeechTest {
         for (error in errors) {
             val detail = error.unavailability.detail
             assertTrue(detail.isNotEmpty())
+            assertFalse(CloudProvider.entries.any { detail.contains(it.displayName) }, detail)
         }
         assertTrue(CloudSpeechError.ServerTrouble(503).unavailability.detail.contains("503"))
+    }
+
+    @Test
+    fun `each service keeps its key in its own keychain slot, and OpenRouter's keeps the name it always had, so a saved key survives the update`() {
+        assertEquals("com.arbelonson.ozen.openrouter", CloudProvider.OpenRouter.keychainService)
+        val slots = CloudProvider.entries.map { it.keychainService }
+        assertEquals(slots.size, slots.toSet().size)
+    }
+
+    @Test
+    fun `the picker names each service as the service names itself, the recommended one first, as the guide lists them`() {
+        assertEquals(
+            listOf("Soniox", "Deepgram", "OpenAI", "Groq", "ElevenLabs", "Google Gemini", "Speechmatics", "AssemblyAI", "OpenRouter"),
+            CloudProvider.entries.map { it.displayName },
+        )
     }
 
     @Test

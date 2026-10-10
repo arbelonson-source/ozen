@@ -9,6 +9,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.assertIs
+import kotlinx.coroutines.test.runTest
 
 private fun elevenLabsReply(status: Int, json: String) = CloudHTTPResponse(status, json.toByteArray(Charsets.UTF_8))
 
@@ -131,5 +133,39 @@ class ElevenLabsSpeechTest {
         assertFalse(ElevenLabsSpeech.keyCheckPasses(elevenLabsReply(401, """{"detail":{"status":"invalid_api_key"}}""")))
         assertTrue(ElevenLabsSpeech.keyCheckPasses(elevenLabsReply(401, """{"detail":{"status":"missing_permissions","message":"The API key you used is missing the permission user_read"}}""")))
         assertFalse(ElevenLabsSpeech.keyCheckPasses(elevenLabsReply(503, "")))
+        assertTrue(CloudProvider.ElevenLabs.acceptsKeyCheck(elevenLabsReply(401, """{"detail":{"status":"missing_permissions"}}""")))
+        assertFalse(CloudProvider.Deepgram.acceptsKeyCheck(elevenLabsReply(401, """{"detail":{"status":"missing_permissions"}}""")))
+    }
+
+    @Test
+    fun `a key limited to speech to text gets captions started, a key ElevenLabs calls invalid is turned down before any audio goes`() = runTest {
+        val limited = FakeCloudHTTP(
+            keyChecks = listOf(FakeCloudHTTP.Answer.Status(401, """{"detail":{"status":"missing_permissions"}}""")),
+            timeSource = testScheduler.timeSource,
+        )
+        assertEquals(
+            EngineAvailability.Available,
+            CloudSpeechEngine(provider = CloudProvider.ElevenLabs, http = limited, timeSource = testScheduler.timeSource, apiKey = { "xi" }).prepare("he") { },
+        )
+        val invalid = FakeCloudHTTP(
+            keyChecks = listOf(FakeCloudHTTP.Answer.Status(401, """{"detail":{"status":"invalid_api_key"}}""")),
+            timeSource = testScheduler.timeSource,
+        )
+        val availability = CloudSpeechEngine(provider = CloudProvider.ElevenLabs, http = invalid, timeSource = testScheduler.timeSource, apiKey = { "xi" })
+            .prepare("he") { }
+        val why = assertIs<EngineAvailability.Unavailable>(availability, "an invalid key was accepted").why
+        assertEquals(EngineUnavailability.Kind.CloudKeyNeeded, why.kind)
+        assertTrue(invalid.transcriptionRequests.isEmpty() && limited.transcriptionRequests.isEmpty())
+    }
+
+    @Test
+    fun `ElevenLabs writes all twelve caption languages and keeps its own key`() {
+        for (code in listOf("he", "en", "ar", "ru", "am", "fr", "es", "uk", "de", "pt", "zh", "hi")) {
+            assertTrue(CloudProvider.ElevenLabs.covers(code), code)
+        }
+        assertEquals("ElevenLabs", CloudProvider.ElevenLabs.displayName)
+        assertEquals(listOf("scribe_v2"), CloudProvider.ElevenLabs.models)
+        assertEquals("com.arbelonson.ozen.cloud.elevenLabs", CloudProvider.ElevenLabs.keychainService)
+        assertTrue(CloudProvider.ElevenLabs.livePasses && !CloudProvider.ElevenLabs.streams)
     }
 }

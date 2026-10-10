@@ -101,6 +101,11 @@ class SonioxSpeechTest {
     @Test
     fun `eleven of the twelve caption languages, Soniox has no Amharic`() {
         assertEquals(setOf("he", "en", "ar", "ru", "fr", "es", "uk", "de", "pt", "hi", "zh"), SonioxSpeech.languages)
+        assertTrue(CloudProvider.Soniox.covers("he"))
+        assertTrue(!CloudProvider.Soniox.covers("am"))
+        assertEquals(listOf("stt-rt-v5"), CloudProvider.Soniox.models)
+        assertEquals("com.arbelonson.ozen.cloud.soniox", CloudProvider.Soniox.keychainService)
+        assertTrue(CloudProvider.Soniox.streams && !CloudProvider.Deepgram.streams && !CloudProvider.OpenRouter.streams)
     }
 
     @Test

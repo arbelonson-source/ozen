@@ -9,6 +9,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 
 private fun deepgramReply(status: Int, json: String) = CloudHTTPResponse(status, json.toByteArray(Charsets.UTF_8))
 
@@ -141,5 +142,10 @@ class DeepgramSpeechTest {
             assertTrue(code in DeepgramSpeech.languages, code)
         }
         assertTrue("am" !in DeepgramSpeech.languages)
+        for (code in listOf("he", "en", "ar", "ru", "fr", "es", "uk", "de", "pt", "hi", "zh")) {
+            assertTrue(CloudProvider.Deepgram.covers(code), code)
+        }
+        assertFalse(CloudProvider.Deepgram.covers("am"))
+        assertTrue(CloudProvider.OpenRouter.covers("am"))
     }
 }

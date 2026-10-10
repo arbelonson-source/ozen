@@ -8,11 +8,10 @@ import java.util.UUID
  * conversation (see `CloudStreamEngine`): opened with the key in a
  * header, then a settings message, then the microphone as 16-bit
  * samples, then a message saying the audio is over.
- *
- * The service's `CloudProvider` is named by the engine that is built over
- * it, which is ported with the engine.
  */
 interface CloudStreamService {
+    val provider: CloudProvider
+
     val model: String
 
     /** Whether the audio waits until the service says it has started. */
@@ -176,7 +175,7 @@ internal class CloudStreamLines(private val spaced: Boolean = true) {
         const val END_OF_LINE = "<end>"
 
         /** The longest a line runs, as `CloudSpeechEngine` cuts its own: 28 seconds. */
-        const val MAX_LINE_MS = 28_000
+        const val MAX_LINE_MS = (CloudSpeechEngine.MAX_UTTERANCE_SECONDS * 1_000).toInt()
 
         /** Whether the language puts spaces between words; Chinese does not. */
         fun spaced(languageCode: String): Boolean = languageCode != "zh"

@@ -21,6 +21,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * that may still change.
  */
 object SonioxSpeech : CloudStreamService {
+    override val provider: CloudProvider get() = CloudProvider.Soniox
     override val model = "stt-rt-v5"
     val languages: Set<String> = setOf("he", "en", "ar", "ru", "fr", "es", "uk", "de", "pt", "hi", "zh")
     val streamURL: URI = URI("wss://stt-rt.soniox.com/transcribe-websocket")
@@ -34,7 +35,6 @@ object SonioxSpeech : CloudStreamService {
     override val waitsForStart = false
     internal const val END_OF_LINE = CloudStreamLines.END_OF_LINE
     internal const val MAXIMUM_TERMS = 100
-    private const val SAMPLE_RATE = 16_000
 
     override fun address(languageCode: String, vocabulary: List<String>): URI = streamURL
 
@@ -50,7 +50,7 @@ object SonioxSpeech : CloudStreamService {
         val settings = TreeMap<String, JsonElement>()
         settings["model"] = JsonPrimitive(model)
         settings["audio_format"] = JsonPrimitive("pcm_s16le")
-        settings["sample_rate"] = JsonPrimitive(SAMPLE_RATE)
+        settings["sample_rate"] = JsonPrimitive(CloudSpeechEngine.SAMPLE_RATE)
         settings["num_channels"] = JsonPrimitive(1)
         settings["language_hints"] = JsonArray(listOf(JsonPrimitive(languageCode)))
         settings["enable_speaker_diarization"] = JsonPrimitive(true)

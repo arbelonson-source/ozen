@@ -16,6 +16,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.runTest
 
 private fun geminiReply(status: Int, json: String) = CloudHTTPResponse(status, json.toByteArray(Charsets.UTF_8))
 
@@ -115,5 +119,57 @@ class GeminiSpeechTest {
         assertEquals("GET", request.method)
         assertEquals("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1", request.url.toString())
         assertEquals("AIza-test", request.headers["x-goog-api-key"])
+    }
+
+    @Test
+    fun `a key Google calls invalid is turned down before any audio goes, as a key to fix rather than Google's trouble`() = runTest {
+        val http = FakeCloudHTTP(
+            keyChecks = listOf(
+                FakeCloudHTTP.Answer.Status(
+                    400,
+                    """{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"reason":"API_KEY_INVALID"}]}}""",
+                ),
+            ),
+            timeSource = testScheduler.timeSource,
+        )
+        val availability = CloudSpeechEngine(provider = CloudProvider.Gemini, http = http, timeSource = testScheduler.timeSource, apiKey = { "AIza-bad" })
+            .prepare("he") { }
+        val why = assertIs<EngineAvailability.Unavailable>(availability, "an invalid key was accepted").why
+        assertEquals(EngineUnavailability.Kind.CloudKeyNeeded, why.kind)
+        assertTrue(http.transcriptionRequests.isEmpty())
+    }
+
+    @Test
+    fun `the cloud engine checks a Gemini key and sends each sentence to Google, and Google's reply becomes the caption`() = runTest {
+        val answer = """{"status":"completed","steps":[{"type":"model_output","content":[{"type":"text","text":"שלום לכולם"}]}]}"""
+        val http = FakeCloudHTTP(
+            answers = listOf(FakeCloudHTTP.Answer.Status(200, answer)),
+            keyChecks = listOf(FakeCloudHTTP.Answer.Status(200, """{"models":[]}""")),
+            timeSource = testScheduler.timeSource,
+        )
+        val engine = CloudSpeechEngine(provider = CloudProvider.Gemini, http = http, timeSource = testScheduler.timeSource, apiKey = { "AIza-test" })
+        assertEquals(EngineAvailability.Available, engine.prepare("he") { })
+        val feed = AudioFeed()
+        feed.add(List(46) { FloatArray(1_024) { index -> 0.05f * kotlin.math.sin(index.toFloat() * 0.3f) } })
+        feed.add(List(16) { FloatArray(1_024) })
+        feed.finish()
+        val heard = engine.stream("he", feed.flow).toList()
+        assertTrue(heard.lastOrNull()?.text == "שלום לכולם" && heard.lastOrNull()?.isFinal == true)
+        assertEquals(GeminiSpeech.keyURL, http.requests.first().url)
+        assertTrue(http.transcriptionRequests.isNotEmpty())
+        for (request in http.requests) {
+            assertEquals("AIza-test", request.headers["x-goog-api-key"])
+        }
+        for (request in http.transcriptionRequests) {
+            assertEquals(GeminiSpeech.interactionsURL, request.url)
+        }
+    }
+
+    @Test
+    fun `Google Gemini keeps its own key and names its model`() {
+        assertEquals("Google Gemini", CloudProvider.Gemini.displayName)
+        assertEquals(listOf("gemini-3.5-transcribe"), CloudProvider.Gemini.models)
+        assertEquals("com.arbelonson.ozen.cloud.gemini", CloudProvider.Gemini.keychainService)
+        assertTrue(CloudProvider.Gemini.livePasses && !CloudProvider.Gemini.streams)
     }
 }

@@ -27,6 +27,7 @@ object SpeechmaticsSpeech : CloudStreamService {
      * the newer `model` field.
      */
     override val model = "enhanced"
+    override val provider: CloudProvider get() = CloudProvider.Speechmatics
     val streamURL: URI = URI("wss://eu.rt.speechmatics.com/v2")
 
     /**
@@ -42,8 +43,6 @@ object SpeechmaticsSpeech : CloudStreamService {
     )
     internal const val MAXIMUM_TERMS = 100
     internal const val UNKNOWN_SPEAKER = "UU"
-    private const val SAMPLE_RATE = 16_000
-    private const val PAUSE_SECONDS = 0.7
 
     override fun address(languageCode: String, vocabulary: List<String>): URI = streamURL
 
@@ -56,7 +55,7 @@ object SpeechmaticsSpeech : CloudStreamService {
             "enable_partials" to JsonPrimitive(true),
             "max_delay" to JsonPrimitive(2),
             "diarization" to JsonPrimitive("speaker"),
-            "conversation_config" to sortedObject(mapOf("end_of_utterance_silence_trigger" to JsonPrimitive(PAUSE_SECONDS))),
+            "conversation_config" to sortedObject(mapOf("end_of_utterance_silence_trigger" to JsonPrimitive(CloudSpeechEngine.PAUSE_SECONDS))),
         )
         val terms = VocabularyHints.normalized(vocabulary).take(MAXIMUM_TERMS)
         if (terms.isNotEmpty()) {
@@ -66,7 +65,7 @@ object SpeechmaticsSpeech : CloudStreamService {
             mapOf(
                 "message" to JsonPrimitive("StartRecognition"),
                 "audio_format" to sortedObject(
-                    mapOf("type" to JsonPrimitive("raw"), "encoding" to JsonPrimitive("pcm_s16le"), "sample_rate" to JsonPrimitive(SAMPLE_RATE)),
+                    mapOf("type" to JsonPrimitive("raw"), "encoding" to JsonPrimitive("pcm_s16le"), "sample_rate" to JsonPrimitive(CloudSpeechEngine.SAMPLE_RATE)),
                 ),
                 "transcription_config" to sortedObject(settings),
             ),

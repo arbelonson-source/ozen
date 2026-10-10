@@ -160,4 +160,17 @@ class OpenAICompatibleSpeechTest {
         assertEquals("Bearer sk-test", openAI.headers["Authorization"])
         assertEquals("https://api.groq.com/openai/v1/models", OpenAICompatibleSpeech.keyCheckRequest(OpenAICompatibleSpeech.groq, "g").url.toString())
     }
+
+    @Test
+    fun `both write all twelve caption languages, keep their keys apart, and only Groq waits for the end of a sentence`() {
+        for (code in listOf("he", "en", "ar", "ru", "am", "fr", "es", "uk", "de", "pt", "zh", "hi")) {
+            assertTrue(CloudProvider.OpenAI.covers(code) && CloudProvider.Groq.covers(code), code)
+        }
+        assertTrue(CloudProvider.OpenAI.models == listOf("gpt-4o-transcribe") && CloudProvider.Groq.models == listOf("whisper-large-v3"))
+        assertTrue(CloudProvider.OpenAI.displayName == "OpenAI" && CloudProvider.Groq.displayName == "Groq")
+        assertEquals("com.arbelonson.ozen.cloud.openAI", CloudProvider.OpenAI.keychainService)
+        assertEquals("com.arbelonson.ozen.cloud.groq", CloudProvider.Groq.keychainService)
+        assertTrue(!CloudProvider.Groq.livePasses)
+        assertTrue(CloudProvider.OpenAI.livePasses && CloudProvider.Deepgram.livePasses && CloudProvider.OpenRouter.livePasses)
+    }
 }

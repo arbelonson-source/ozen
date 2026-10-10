@@ -13,10 +13,15 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.test.assertIs
+import kotlin.time.Duration.Companion.minutes
+import kotlinx.coroutines.test.runTest
 
 private val assemblyAIFrames: List<String> =
     File(System.getProperty("ozen.fixtures"), "cloud/assemblyai-two-speakers.jsonl").readText(Charsets.UTF_8)
         .split("\n").filter { it.isNotEmpty() }
+
+private fun assemblyAIIsEnd(text: String): Boolean = text.contains("Terminate")
 
 private fun assemblyAIQuery(url: URI): Map<String, String> {
     val settings = LinkedHashMap<String, String>()
@@ -217,5 +222,76 @@ class AssemblyAISpeechTest {
         assertEquals(CloudSpeechError.OutOfCredit, AssemblyAISpeech.failure(CloudHTTPResponse(402, ByteArray(0))))
         assertEquals(CloudSpeechError.RateLimited, AssemblyAISpeech.failure(CloudHTTPResponse(429, ByteArray(0))))
         assertEquals(CloudSpeechError.ServerTrouble(500), AssemblyAISpeech.failure(CloudHTTPResponse(500, ByteArray(0))))
+    }
+
+    @Test
+    fun `credit running out mid-sentence ends captions as no credit rather than no connection, the words on screen marked cut, an expired session is no connection`() = runTest(timeout = 1.minutes) {
+        for ((closing, expected) in listOf(
+            SocketClosed(4002, "Insufficient Funds") to CloudSpeechError.OutOfCredit,
+            SocketClosed(4008, "Session Expired") to CloudSpeechError.Offline,
+        )) {
+            val socket = StreamSocket(endsAudio = ::assemblyAIIsEnd)
+            socket.deliver(assemblyAIFrames[1])
+            val engine = AssemblyAIEngine(connector = StreamDialer(socket), timeSource = testScheduler.timeSource, apiKey = { "aai-test" })
+            val heard = StreamHeard()
+            listen(engine, streamAudio(2, ends = false), heard = heard) { socket.drop(closing) }
+            assertEquals(expected, heard.error)
+            assertEquals(listOf("מה", CaptionStabilizer.markingCutOff("מה")), heard.tokens.map { it.text })
+        }
+    }
+
+    @Test
+    fun `AssemblyAI streams, writes ten caption languages but not Ukrainian or Amharic, and keeps its own key`() {
+        for (code in listOf("he", "en", "ar", "ru", "fr", "es", "de", "pt", "zh", "hi")) {
+            assertTrue(CloudProvider.AssemblyAI.covers(code), code)
+        }
+        assertTrue(!CloudProvider.AssemblyAI.covers("uk") && !CloudProvider.AssemblyAI.covers("am"))
+        assertEquals("AssemblyAI", CloudProvider.AssemblyAI.displayName)
+        assertEquals(listOf("universal-3-6-pro"), CloudProvider.AssemblyAI.models)
+        assertEquals("com.arbelonson.ozen.cloud.assemblyAI", CloudProvider.AssemblyAI.keychainService)
+        assertTrue(CloudProvider.AssemblyAI.streams)
+        assertEquals(AssemblyAISpeech.keyURL, CloudProvider.AssemblyAI.keyCheckRequest("k").url)
+        val engine = CloudProvider.AssemblyAI.engine(connector = StreamDialer(null), apiKey = { "k" }) as? CloudStreamEngine
+        assertTrue(engine?.provider == CloudProvider.AssemblyAI && engine.model == "universal-3-6-pro")
+    }
+
+    @Test
+    fun `a conversation streams over one connection opened with the settings in its address and the key in its header, no settings message, the audio at once, and a line per turn back`() = runTest(timeout = 1.minutes) {
+        val socket = StreamSocket(onConfig = assemblyAIFrames.dropLast(2), afterEnd = assemblyAIFrames.takeLast(2), endsAudio = ::assemblyAIIsEnd)
+        val dialer = StreamDialer(socket)
+        val engine = AssemblyAIEngine(connector = dialer, timeSource = testScheduler.timeSource, apiKey = { "aai-test" })
+        engine.setVocabulary(listOf("דנה"))
+        val heard = listen(engine, streamAudio(4))
+        assertNull(heard.error)
+        assertEquals(listOf("מה שלומך?", "טוב, תודה. ואתה?", "מצוין."), heard.tokens.filter { it.isFinal }.map { it.text })
+        assertEquals(listOf(AssemblyAISpeech.address("he", listOf("דנה"))), dialer.calls.map { it.url })
+        assertEquals(mapOf("Authorization" to "aai-test"), dialer.calls.firstOrNull()?.headers)
+        assertEquals(listOf(AssemblyAISpeech.endMessage(4)), socket.sentTexts)
+        assertEquals(4, socket.sentChunks)
+    }
+
+    @Test
+    fun `the microphone's 43 ms pieces reach AssemblyAI gathered to at least 50 ms, which it closes the session over otherwise (3007), the last filled out with silence`() = runTest(timeout = 1.minutes) {
+        for ((pieces, expected) in listOf(10 to listOf(2_752, 2_752, 2_752, 2_752, 2_752), 3 to listOf(2_752, 1_600))) {
+            val socket = StreamSocket(onConfig = emptyList(), afterEnd = assemblyAIFrames.takeLast(1), endsAudio = ::assemblyAIIsEnd)
+            val engine = AssemblyAIEngine(connector = StreamDialer(socket), timeSource = testScheduler.timeSource, apiKey = { "k" })
+            val microphone = AudioFeed()
+            microphone.add(List(pieces) { FloatArray(688) { 0.05f } })
+            microphone.finish()
+            engine.stream("he", microphone.flow).collect { }
+            assertEquals(expected, socket.sentChunkBytes, "$pieces")
+        }
+    }
+
+    @Test
+    fun `the key is checked before captions start, and one AssemblyAI turns down needs fixing`() = runTest {
+        val http = FakeCloudHTTP(
+            keyChecks = listOf(FakeCloudHTTP.Answer.Status(401, """{"error":"Authentication error, API token missing/invalid"}""")),
+            timeSource = testScheduler.timeSource,
+        )
+        val engine = AssemblyAIEngine(http = http, connector = StreamDialer(null), timeSource = testScheduler.timeSource, apiKey = { "aai-bad" })
+        val why = assertIs<EngineAvailability.Unavailable>(engine.prepare("he") { }, "a refused key was accepted").why
+        assertEquals(EngineUnavailability.Kind.CloudKeyNeeded, why.kind)
+        assertEquals(listOf(AssemblyAISpeech.keyURL), http.requests.map { it.url })
     }
 }
