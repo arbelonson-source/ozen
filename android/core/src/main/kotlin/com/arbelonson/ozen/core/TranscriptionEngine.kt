@@ -178,6 +178,14 @@ data class EngineUnavailability(
         TemporarilyUnavailable("temporarilyUnavailable"),
         Other("other"),
     }
+
+    companion object {
+        internal fun homeServerUnreachable(detail: String): EngineUnavailability =
+            EngineUnavailability(Kind.HomeServerUnreachable, detail)
+
+        internal fun homeServerRejected(detail: String): EngineUnavailability =
+            EngineUnavailability(Kind.HomeServerRejected, detail)
+    }
 }
 
 /**
