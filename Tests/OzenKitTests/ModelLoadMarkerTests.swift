@@ -29,7 +29,7 @@ struct ModelLoadMarkerTests {
     @Test("a marker from before the iOS version was kept still counts")
     func olderEmptyMarker() throws {
         let model = try folder()
-        FileManager.default.createFile(atPath: model.appendingPathComponent(ModelLoadMarker.fileName).path, contents: nil)
+        _ = FileManager.default.createFile(atPath: model.appendingPathComponent(ModelLoadMarker.fileName).path, contents: nil)
         #expect(ModelLoadMarker.fileName == ".ozen-loaded-once")
         #expect(ModelLoadMarker.hasLoadedBefore(model, system: "Version 26.1 (Build 23B85)"))
     }

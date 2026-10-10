@@ -9,6 +9,6 @@ public enum ModelLoadMarker {
     }
 
     public static func markLoaded(_ folder: URL, system: String) {
-        FileManager.default.createFile(atPath: folder.appendingPathComponent(fileName).path, contents: Data(system.utf8))
+        _ = FileManager.default.createFile(atPath: folder.appendingPathComponent(fileName).path, contents: Data(system.utf8))
     }
 }

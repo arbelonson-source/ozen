@@ -73,7 +73,7 @@ struct RecentAudioTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = ProblemAudioStore(directory: directory, keep: 5)
         for second in 0..<3 {
-            try #require(store.save([0.1], sampleRate: 16_000, at: Date(timeIntervalSince1970: 1_790_000_000 + Double(second))))
+            _ = try #require(store.save([0.1], sampleRate: 16_000, at: Date(timeIntervalSince1970: 1_790_000_000 + Double(second))))
         }
         store.deleteAll()
         #expect(store.clips().isEmpty)
