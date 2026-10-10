@@ -57,12 +57,13 @@ jobs:
         working-directory: server
         run: pip install numpy qrcode && python -m unittest test_ozen_server test_pairing test_try_server -v
 
-  # The Android app's shared core: plain Kotlin, so its tests run on the
-  # JVM in seconds, reading the same translations and test cases as OzenKit.
-  android-core:
-    name: Android core (Kotlin, JVM)
+  # The Android app. Its shared core is plain Kotlin, so its tests run on
+  # the JVM in seconds, reading the same translations and test cases as
+  # OzenKit; the debug APK is kept so a phone can install this commit.
+  android:
+    name: Android (core tests, debug APK)
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v6
@@ -70,9 +71,14 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
-      - name: Core tests
+      - name: Core tests and debug APK
         working-directory: android
-        run: ./gradlew :core:test
+        run: ./gradlew :core:test :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ozen-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
   app:
     name: Ozen app (iOS Simulator)

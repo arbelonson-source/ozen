@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ozen-android"
 include(":core")
+include(":app")
