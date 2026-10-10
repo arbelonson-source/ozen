@@ -49,6 +49,7 @@ class CaptionSessionDeviceTest {
                 context,
                 SettingsHolder(SettingsStore(File(work, "settings.json"))),
                 HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
                 audio,
             )
         }
@@ -85,6 +86,7 @@ class CaptionSessionDeviceTest {
                 context,
                 SettingsHolder(SettingsStore(File(work, "settings.json"))),
                 HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
                 ClipAudio(speech),
             )
         }
@@ -123,6 +125,7 @@ class CaptionSessionDeviceTest {
                 context,
                 settings,
                 codes,
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
                 ClipAudio(FloatArray(16_000)),
                 File(work, "not-downloaded.bin"),
             )

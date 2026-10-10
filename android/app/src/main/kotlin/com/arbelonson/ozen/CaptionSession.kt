@@ -23,6 +23,7 @@ class CaptionSession(
     private val context: Context,
     private val settings: SettingsHolder,
     private val homeServerCode: HomeServerCodeStore,
+    private val cloudKeys: CloudKeyStore,
     val audio: AudioCapturing = AndroidAudioCapture(context),
     private val modelFile: File = File(context.filesDir, MODEL_FILE),
 ) {
@@ -93,11 +94,13 @@ class CaptionSession(
             client = "Ozen ${context.packageManager.getPackageInfo(context.packageName, 0).versionName}, Android ${Build.VERSION.RELEASE}",
             beam = settings.homeServerBeam,
         )
-        TranscriptionEngineKind.Cloud -> settings.cloudProvider.engine(
-            model = settings.chosenCloudModel,
-            connector = connector,
-            apiKey = { null },
-        )
+        TranscriptionEngineKind.Cloud -> settings.cloudProvider.let { provider ->
+            provider.engine(
+                model = settings.chosenCloudModel,
+                connector = connector,
+                apiKey = { cloudKeys.read(provider) },
+            )
+        }
         TranscriptionEngineKind.WhisperKit, TranscriptionEngineKind.AppleSpeech -> OnDeviceWhisperEngine(
             modelName = modelFile.name,
             loader = ModelFileLoader(modelFile, context.applicationInfo.nativeLibraryDir),
