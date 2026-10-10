@@ -204,6 +204,9 @@ public actor CloudStreamEngine<Service: CloudStreamService>: TranscriptionEngine
                 // Asked again for real next time: the pipeline checks
                 // whether the cloud is back.
                 approvedKey = nil
+                if let closed = error as? SocketClosed, let failure = Service.failure(closedWith: closed.code, reason: closed.reason) {
+                    throw failure
+                }
                 throw CloudSpeechError.offline
             }
             guard let reply = Service.reply(from: frame, languageCode: languageCode) else { continue }

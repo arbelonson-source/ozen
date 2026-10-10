@@ -19,6 +19,7 @@ actor StreamSocket: HomeServerSocket {
     private var queue: [String] = []
     private var waiters: [CheckedContinuation<String, Error>] = []
     private var pingWaiters: [CheckedContinuation<Void, Error>] = []
+    private var closedWith: any Error = StreamGone()
 
     init(onConfig: [String] = [], afterEnd: [String] = [], answersPings: Bool = true, endsAudio: @escaping @Sendable (String) -> Bool = { $0 == SonioxSpeech.end }) {
         self.onConfig = onConfig
@@ -31,11 +32,14 @@ actor StreamSocket: HomeServerSocket {
         if waiters.isEmpty { queue.append(frame) } else { waiters.removeFirst().resume(returning: frame) }
     }
 
-    func drop() {
+    /// Closes the connection as the service would, with `error` as the
+    /// reason the engine is given.
+    func drop(with error: (any Error)? = nil) {
+        if let error, !isClosed { closedWith = error }
         isClosed = true
         let pending = waiters
         waiters = []
-        pending.forEach { $0.resume(throwing: StreamGone()) }
+        pending.forEach { $0.resume(throwing: closedWith) }
         let pings = pingWaiters
         pingWaiters = []
         pings.forEach { $0.resume(throwing: StreamGone()) }
@@ -59,7 +63,7 @@ actor StreamSocket: HomeServerSocket {
 
     func receive() async throws -> String {
         if !queue.isEmpty { return queue.removeFirst() }
-        if isClosed { throw StreamGone() }
+        if isClosed { throw closedWith }
         return try await withCheckedThrowingContinuation { waiters.append($0) }
     }
 

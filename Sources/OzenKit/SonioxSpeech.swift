@@ -59,6 +59,11 @@ public enum SonioxSpeech: CloudStreamService {
         reply(from: frame)
     }
 
+    /// Soniox says why in a message before it closes.
+    public static func failure(closedWith code: Int, reason: String) -> CloudSpeechError? {
+        nil
+    }
+
     public static func reply(from frame: String) -> Reply? {
         guard let parsed = try? JSONDecoder().decode(Frame.self, from: Data(frame.utf8)) else { return nil }
         if let code = parsed.errorCode {

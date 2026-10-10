@@ -37,7 +37,14 @@ final class URLSessionHomeServerSocket: HomeServerSocket, @unchecked Sendable {
 
     func receive() async throws -> String {
         while true {
-            switch try await task.receive() {
+            let message: URLSessionWebSocketTask.Message
+            do {
+                message = try await task.receive()
+            } catch {
+                guard task.closeCode != .invalid else { throw error }
+                throw SocketClosed(code: task.closeCode.rawValue, reason: String(decoding: task.closeReason ?? Data(), as: UTF8.self))
+            }
+            switch message {
             case .string(let text): return text
             case .data: continue
             @unknown default: continue

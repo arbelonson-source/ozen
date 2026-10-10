@@ -257,12 +257,25 @@ public enum HomeServerMessage: Sendable, Equatable {
     }
 }
 
+/// What a socket's receive throws when the other side closed the
+/// connection with a code, so a cloud service's reason can be read.
+public struct SocketClosed: Error, Equatable, Sendable {
+    public var code: Int
+    public var reason: String
+
+    public init(code: Int, reason: String) {
+        self.code = code
+        self.reason = reason
+    }
+}
+
 /// One open connection to the server. The real one wraps
 /// `URLSessionWebSocketTask` (OzenPlatform); tests script a fake.
 public protocol HomeServerSocket: Sendable {
     func send(text: String) async throws
     func send(data: Data) async throws
-    /// The next text frame; throws once the connection is closed.
+    /// The next text frame; throws once the connection is closed, as
+    /// `SocketClosed` when the other side gave a code.
     func receive() async throws -> String
     /// Returns when the server answers a ping; throws if the connection
     /// closes first.

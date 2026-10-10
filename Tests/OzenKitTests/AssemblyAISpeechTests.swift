@@ -125,6 +125,42 @@ struct AssemblyAISpeechTests {
         #expect(AssemblyAISpeech.reply(from: #"{"type":"Error","error":"Not Authorized"}"#, languageCode: "he") == .failure(.keyRejected))
     }
 
+    @Test("a session AssemblyAI closes says why: no funds or a card needed is no credit even when called unauthorized, a refused key a key to fix, its own trouble its code; an expired or normal close is no connection")
+    func closeReasons() {
+        #expect(AssemblyAISpeech.failure(closedWith: 4001, reason: "Not Authorized") == .keyRejected)
+        #expect(AssemblyAISpeech.failure(closedWith: 4002, reason: "Insufficient Funds") == .outOfCredit)
+        #expect(AssemblyAISpeech.failure(closedWith: 4003, reason: "This feature is paid-only and requires you to add a credit card") == .outOfCredit)
+        #expect(AssemblyAISpeech.failure(closedWith: 1008, reason: "Unauthorized Connection: insufficient account balance") == .outOfCredit)
+        #expect(AssemblyAISpeech.failure(closedWith: 1008, reason: "Unauthorized Connection: Missing Authorization header") == .keyRejected)
+        #expect(AssemblyAISpeech.failure(closedWith: 3005, reason: "Internal error") == .serverTrouble(status: 3005))
+        #expect(AssemblyAISpeech.failure(closedWith: 4008, reason: "Session Expired") == nil)
+        #expect(AssemblyAISpeech.failure(closedWith: 1000, reason: "") == nil)
+    }
+
+    @Test("credit running out mid-sentence ends captions as no credit rather than no connection, the words on screen marked cut; an expired session is no connection", .timeLimit(.minutes(1)))
+    func closedMidSentence() async {
+        for (closing, expected) in [
+            (SocketClosed(code: 4002, reason: "Insufficient Funds"), CloudSpeechError.outOfCredit),
+            (SocketClosed(code: 4008, reason: "Session Expired"), CloudSpeechError.offline),
+        ] {
+            let socket = StreamSocket(endsAudio: isEnd)
+            await socket.deliver(frames[1])
+            let engine = AssemblyAIEngine(connector: StreamDialer(socket), apiKey: { "aai-test" })
+            var tokens: [TranscriptToken] = []
+            var failure: Error?
+            do {
+                for try await token in engine.stream(languageCode: "he", audio: chunks(2, ends: false)) {
+                    tokens.append(token)
+                    if tokens.count == 1 { await socket.drop(with: closing) }
+                }
+            } catch {
+                failure = error
+            }
+            #expect(failure as? CloudSpeechError == expected)
+            #expect(tokens.map(\.text) == ["מה", CaptionStabilizer.markingCutOff("מה")])
+        }
+    }
+
     @Test("the recorded conversation becomes a line per turn, each speaker change a new turn")
     func lines() {
         var lines = CloudStreamLines()
@@ -205,10 +241,10 @@ struct AssemblyAISpeechTests {
         #expect(http.requests.map(\.url) == [AssemblyAISpeech.keyURL])
     }
 
-    private func chunks(_ count: Int) -> AsyncStream<[Float]> {
+    private func chunks(_ count: Int, ends: Bool = true) -> AsyncStream<[Float]> {
         AsyncStream { continuation in
             for _ in 0..<count { continuation.yield([Float](repeating: 0.05, count: 1_600)) }
-            continuation.finish()
+            if ends { continuation.finish() }
         }
     }
 }

@@ -18,6 +18,9 @@ public protocol CloudStreamService {
     /// message Ozen doesn't know yet is skipped rather than taken for a
     /// failure.
     static func reply(from frame: String, languageCode: String) -> CloudStreamReply?
+    /// Nil when the service closing the connection with this code is no
+    /// more than a lost connection.
+    static func failure(closedWith code: Int, reason: String) -> CloudSpeechError?
     static func keyCheckRequest(apiKey: String) -> CloudHTTPRequest
     static func failure(from response: CloudHTTPResponse) -> CloudSpeechError
 }

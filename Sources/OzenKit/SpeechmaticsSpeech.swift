@@ -87,6 +87,15 @@ public enum SpeechmaticsSpeech: CloudStreamService {
         }
     }
 
+    public static func failure(closedWith code: Int, reason: String) -> CloudSpeechError? {
+        switch code {
+        case 4001: .keyRejected
+        case 4005: .rateLimited
+        case 4013, 1011: .serverTrouble(status: code)
+        default: nil
+        }
+    }
+
     public static func failure(from response: CloudHTTPResponse) -> CloudSpeechError {
         switch response.status {
         case 401, 403: .keyRejected

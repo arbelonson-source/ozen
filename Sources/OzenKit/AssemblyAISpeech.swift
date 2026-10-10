@@ -72,6 +72,18 @@ public enum AssemblyAISpeech: CloudStreamService {
         return .serverTrouble(status: 500)
     }
 
+    /// 1008 covers a refused key and an empty balance alike, told apart
+    /// by the reason.
+    public static func failure(closedWith code: Int, reason: String) -> CloudSpeechError? {
+        switch code {
+        case 4001: .keyRejected
+        case 4002, 4003: .outOfCredit
+        case 1008: failure(saying: reason) == .outOfCredit ? .outOfCredit : .keyRejected
+        case 3005: .serverTrouble(status: code)
+        default: nil
+        }
+    }
+
     public static func failure(from response: CloudHTTPResponse) -> CloudSpeechError {
         switch response.status {
         case 401, 403: .keyRejected
