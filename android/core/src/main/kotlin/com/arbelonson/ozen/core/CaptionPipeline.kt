@@ -891,8 +891,8 @@ class CaptionPipeline(
         logEvent(PipelineEvent.Kind.MemoryWarning(footprintBytes?.let { (it / StorageSpaceGate.BYTES_PER_MEGABYTE).toInt() }))
         val current = phase
         when {
-            current == PipelinePhase.Idle || current == PipelinePhase.Paused -> engineCache.clear()
-            current is PipelinePhase.Failed && scheduledRetry == null -> engineCache.clear()
+            current == PipelinePhase.Idle || current == PipelinePhase.Paused -> dropEngines()
+            current is PipelinePhase.Failed && scheduledRetry == null -> dropEngines()
             else -> Unit
         }
     }
@@ -1916,14 +1916,25 @@ class CaptionPipeline(
         // retries on the same settings still reuse it.
         val cached = engineCache[key]
         if (cached != null) {
-            engineCache.clear()
+            dropEngines(keeping = cached)
             engineCache[key] = cached
             return cached
         }
-        engineCache.clear()
+        dropEngines()
         val engine = engineFactory(settings)
         engineCache[key] = engine
         return engine
+    }
+
+    /**
+     * Empties the cache, telling each engine let go to give its model back
+     * (see `TranscriptionEngine.release`): on the iPhone the last reference
+     * to an engine frees its model, on Android nothing does but this.
+     */
+    private fun dropEngines(keeping: TranscriptionEngine? = null) {
+        val dropped = engineCache.values.filter { it !== keeping }
+        engineCache.clear()
+        dropped.forEach { it.release() }
     }
 
     /**

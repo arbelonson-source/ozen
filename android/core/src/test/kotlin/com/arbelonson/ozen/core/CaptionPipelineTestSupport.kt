@@ -306,6 +306,14 @@ class FakeEngine(
         cellularHistory.add(allowed)
     }
 
+    /** How often the pipeline told this engine to give its model back. */
+    var releaseCount = 0
+        private set
+
+    override fun release() {
+        releaseCount++
+    }
+
     fun emit(token: TranscriptToken) {
         tokenChannel?.trySend(token)
     }

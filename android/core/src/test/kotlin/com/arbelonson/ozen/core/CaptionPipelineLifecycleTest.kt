@@ -154,6 +154,30 @@ class CaptionPipelineLifecycleTest {
     }
 
     @Test
+    fun `an engine let go is told to give its model back, which on Android nothing else frees`() = runTest {
+        val engines = ArrayList<FakeEngine>()
+        val pipeline = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { settings -> FakeEngine(kind = settings.engine).also { engines.add(it) } },
+            embedder = FakeEmbedder(),
+            recovery = AutoRecoveryPolicy.disabled(),
+        )
+        pipeline.start(AppSettings.default)
+        pipeline.restart(AppSettings.default)
+        assertEquals(listOf(0), engines.map { it.releaseCount })
+        val turbo = AppSettings.default
+        turbo.whisperModelVariant = "large-v3_turbo"
+        pipeline.restart(turbo)
+        assertEquals(listOf(1, 0), engines.map { it.releaseCount })
+        pipeline.handleMemoryWarning()
+        assertEquals(listOf(1, 0), engines.map { it.releaseCount })
+        pipeline.stop()
+        pipeline.handleMemoryWarning()
+        pipeline.handleMemoryWarning()
+        assertEquals(listOf(1, 1), engines.map { it.releaseCount })
+    }
+
+    @Test
     fun `switching to another model lets go of the one before, so two models are never kept loaded`() = runTest {
         val built = BuiltEngines()
         val pipeline = captionPipeline(
