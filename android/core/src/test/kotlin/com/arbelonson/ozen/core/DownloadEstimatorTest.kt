@@ -4,8 +4,16 @@ import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 
 class DownloadEstimatorTest {
     @Test
@@ -129,5 +137,113 @@ class DownloadEstimatorTest {
         b.record(fraction = 0.1, time = 0.0)
         assertEquals(a, b)
         assertEquals(a.hashCode(), b.hashCode())
+    }
+}
+
+private class StepClock {
+    private var time = 1_000.0
+
+    @Synchronized
+    fun tick(): Double {
+        time += 3
+        return time
+    }
+}
+
+private fun downloading(vararg fractions: Double) = fractions.map {
+    EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = it)
+}
+
+private fun TestScope.estimatePipeline(engineFor: () -> FakeEngine, clock: StepClock): CaptionPipeline = captionPipeline(
+    audio = FakeAudioCapturer(),
+    engineFactory = { engineFor() },
+    embedder = FakeEmbedder(),
+    recovery = AutoRecoveryPolicy.disabled(),
+    audioWatchdog = AudioStallWatchdog.disabled,
+    now = { clock.tick() },
+)
+
+class CaptionPipelineDownloadEstimateTest {
+    @Test
+    fun `the time left goes away when progress stops coming, as while the model is set up at the end`() = runTest {
+        val engine = FakeEngine(progressUpdates = downloading(0.1, 0.2, 0.3, 0.4))
+        val gate = PrepareGate()
+        engine.afterProgressGate = gate
+        val pipeline = estimatePipeline({ engine }, StepClock())
+        pipeline.downloadQuietSeconds = 0.3
+        pipeline.downloadQuietGaps = 0.0
+        val start = launch { pipeline.start(AppSettings.default) }
+        assertTrue(eventually { pipeline.downloadSecondsRemaining != null })
+        assertTrue(eventually(within = 5.seconds) { pipeline.downloadSecondsRemaining == null })
+        gate.open()
+        start.join()
+    }
+
+    @Test
+    fun `a start waiting on an abandoned download keeps that download's time left up to date`() = runTest {
+        val engine = FakeEngine(progressUpdates = downloading(0.1, 0.2, 0.3, 0.4))
+        val held = PrepareGate()
+        val rest = PrepareGate()
+        engine.prepareGate = held
+        engine.afterProgressGate = rest
+        val pipeline = estimatePipeline({ engine }, StepClock())
+        val first = launch { pipeline.start(AppSettings.default) }
+        while (engine.prepareCount == 0) yield()
+        pipeline.stop()
+        val second = launch { pipeline.start(AppSettings.default) }
+        repeat(50) { yield() }
+        held.open()
+        val last = EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.4)
+        assertTrue(eventually { pipeline.phase == PipelinePhase.PreparingEngine(last) })
+        assertTrue(pipeline.downloadSecondsRemaining != null)
+        rest.open()
+        first.join()
+        second.join()
+    }
+
+    @Test
+    fun `a download that keeps reporting keeps its time left`() = runTest {
+        val updates = (1..40).map {
+            EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = it.toDouble() / 100)
+        }
+        val engine = FakeEngine(progressUpdates = updates)
+        engine.progressSpacing = 50.milliseconds
+        val gate = PrepareGate()
+        engine.afterProgressGate = gate
+        val pipeline = estimatePipeline({ engine }, StepClock())
+        pipeline.downloadQuietSeconds = 1.5
+        pipeline.downloadQuietGaps = 0.0
+        val start = launch { pipeline.start(AppSettings.default) }
+        assertTrue(eventually { pipeline.downloadSecondsRemaining != null })
+        var dropped = false
+        while (pipeline.phase != PipelinePhase.PreparingEngine(updates[updates.size - 1])) {
+            if (pipeline.downloadSecondsRemaining == null) dropped = true
+            delay(5.milliseconds)
+        }
+        assertFalse(dropped)
+        gate.open()
+        start.join()
+    }
+
+    @Test
+    fun `a model download reports how long it has left, and a new start times it afresh`() = runTest {
+        val downloading = FakeEngine(progressUpdates = downloading(0.1, 0.2, 0.3, 0.4))
+        var current = downloading
+        val pipeline = estimatePipeline({ current }, StepClock())
+        var left: Double? = null
+        downloading.duringPrepare = { left = pipeline.downloadSecondsRemaining }
+        pipeline.start(AppSettings.default)
+        assertTrue((left ?: 0.0) > 0)
+
+        // Another model, already on the phone: nothing left over from before.
+        pipeline.stop()
+        val ready = FakeEngine(kind = TranscriptionEngineKind.AppleSpeech)
+        current = ready
+        left = -1.0
+        ready.duringPrepare = { left = pipeline.downloadSecondsRemaining }
+        val settings = AppSettings.default
+        settings.engine = TranscriptionEngineKind.AppleSpeech
+        pipeline.start(settings)
+        assertNull(left)
     }
 }
