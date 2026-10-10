@@ -269,6 +269,16 @@ public struct SocketClosed: Error, Equatable, Sendable {
     }
 }
 
+/// What a socket throws when the server answered the request to open it
+/// with an HTTP status instead of opening the connection.
+public struct SocketRefused: Error, Equatable, Sendable {
+    public var status: Int
+
+    public init(status: Int) {
+        self.status = status
+    }
+}
+
 /// One open connection to the server. The real one wraps
 /// `URLSessionWebSocketTask` (OzenPlatform); tests script a fake.
 public protocol HomeServerSocket: Sendable {

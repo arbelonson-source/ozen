@@ -11,6 +11,7 @@ actor StreamSocket: HomeServerSocket {
     private let afterEnd: [String]
     private let endsAudio: @Sendable (String) -> Bool
     private let holdsAudio: Bool
+    private let refusal: SocketRefused?
     private var heldSends: [CheckedContinuation<Void, Never>] = []
     private(set) var sentTexts: [String] = []
     /// Every text the engine tried to send, after the close too.
@@ -25,11 +26,14 @@ actor StreamSocket: HomeServerSocket {
     private var pingWaiters: [CheckedContinuation<Void, Error>] = []
     private var closedWith: any Error = StreamGone()
 
-    init(onConfig: [String] = [], afterEnd: [String] = [], answersPings: Bool = true, holdsAudio: Bool = false, endsAudio: @escaping @Sendable (String) -> Bool = { $0 == SonioxSpeech.end }) {
+    /// `refusing`: the service answered the opening request with that
+    /// HTTP status instead of opening the connection.
+    init(onConfig: [String] = [], afterEnd: [String] = [], answersPings: Bool = true, holdsAudio: Bool = false, refusing: Int? = nil, endsAudio: @escaping @Sendable (String) -> Bool = { $0 == SonioxSpeech.end }) {
         self.onConfig = onConfig
         self.afterEnd = afterEnd
         self.answersPings = answersPings
         self.holdsAudio = holdsAudio
+        self.refusal = refusing.map { SocketRefused(status: $0) }
         self.endsAudio = endsAudio
     }
 
@@ -60,6 +64,7 @@ actor StreamSocket: HomeServerSocket {
 
     func send(text: String) async throws {
         attemptedTexts.append(text)
+        if let refusal { throw refusal }
         if isClosed { throw StreamGone() }
         sentTexts.append(text)
         if sentTexts.count == 1 { onConfig.forEach(deliver) }
@@ -70,6 +75,7 @@ actor StreamSocket: HomeServerSocket {
     }
 
     func send(data: Data) async throws {
+        if let refusal { throw refusal }
         if isClosed { throw StreamGone() }
         if holdsAudio { await withCheckedContinuation { heldSends.append($0) } }
         sentBytes += data.count
@@ -77,6 +83,7 @@ actor StreamSocket: HomeServerSocket {
     }
 
     func receive() async throws -> String {
+        if let refusal { throw refusal }
         if !queue.isEmpty { return queue.removeFirst() }
         if isClosed { throw closedWith }
         return try await withCheckedThrowingContinuation { waiters.append($0) }
@@ -214,6 +221,23 @@ struct SonioxEngineTests {
         let socket = StreamSocket(onConfig: [words], afterEnd: [#"{"tokens":[],"finished":true}"#])
         let heard = await listen(engine(StreamDialer(socket)), audio(chunks: 1), languageCode: "zh")
         #expect(heard.tokens.filter { $0.isFinal }.map(\.text) == [18, 18, 4].map { String(repeating: "你好", count: $0) })
+    }
+
+    @Test("a service refusing to open the connection is read as its HTTP answer: a refused key to fix, no credit, or its own trouble, not no internet", .timeLimit(.minutes(1)))
+    func refusedOpening() async {
+        for (status, expected) in [(401, CloudSpeechError.keyRejected), (402, .outOfCredit), (503, .serverTrouble(status: 503))] {
+            let socket = StreamSocket(refusing: status)
+            let heard = await listen(engine(StreamDialer(socket)), audio(chunks: 1, ends: false))
+            #expect(heard.error as? CloudSpeechError == expected, "\(status)")
+        }
+        let assembly = AssemblyAIEngine(connector: StreamDialer(StreamSocket(refusing: 402, endsAudio: { $0.contains("Terminate") })), apiKey: { "aai-test" })
+        var failure: Error?
+        do {
+            for try await _ in assembly.stream(languageCode: "he", audio: audio(chunks: 1, ends: false)) {}
+        } catch {
+            failure = error
+        }
+        #expect(failure as? CloudSpeechError == .outOfCredit)
     }
 
     @Test("the names list goes with the settings")

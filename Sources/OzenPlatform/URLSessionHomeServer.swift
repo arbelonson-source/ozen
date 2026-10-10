@@ -28,11 +28,19 @@ final class URLSessionHomeServerSocket: HomeServerSocket, @unchecked Sendable {
     }
 
     func send(text: String) async throws {
-        try await task.send(.string(text))
+        do {
+            try await task.send(.string(text))
+        } catch {
+            throw reason(for: error)
+        }
     }
 
     func send(data: Data) async throws {
-        try await task.send(.data(data))
+        do {
+            try await task.send(.data(data))
+        } catch {
+            throw reason(for: error)
+        }
     }
 
     func receive() async throws -> String {
@@ -41,8 +49,7 @@ final class URLSessionHomeServerSocket: HomeServerSocket, @unchecked Sendable {
             do {
                 message = try await task.receive()
             } catch {
-                guard task.closeCode != .invalid else { throw error }
-                throw SocketClosed(code: task.closeCode.rawValue, reason: String(decoding: task.closeReason ?? Data(), as: UTF8.self))
+                throw reason(for: error)
             }
             switch message {
             case .string(let text): return text
@@ -62,5 +69,17 @@ final class URLSessionHomeServerSocket: HomeServerSocket, @unchecked Sendable {
 
     func close() async {
         task.cancel(with: .normalClosure, reason: nil)
+    }
+
+    /// A close with a code, or an HTTP answer that never became a
+    /// connection, says more than the error URLSession throws for it.
+    private func reason(for error: any Error) -> any Error {
+        if task.closeCode != .invalid {
+            return SocketClosed(code: task.closeCode.rawValue, reason: String(decoding: task.closeReason ?? Data(), as: UTF8.self))
+        }
+        if let answer = task.response as? HTTPURLResponse, answer.statusCode != 101 {
+            return SocketRefused(status: answer.statusCode)
+        }
+        return error
     }
 }

@@ -126,7 +126,7 @@ public actor CloudStreamEngine<Service: CloudStreamService>: TranscriptionEngine
                 try await socket.send(text: settings)
             } catch {
                 await socket.close()
-                throw CloudSpeechError.offline
+                throw failure(after: error)
             }
         }
         let (started, start) = AsyncStream<Void>.makeStream()
@@ -207,10 +207,7 @@ public actor CloudStreamEngine<Service: CloudStreamService>: TranscriptionEngine
                 // Asked again for real next time: the pipeline checks
                 // whether the cloud is back.
                 approvedKey = nil
-                if let closed = error as? SocketClosed, let failure = Service.failure(closedWith: closed.code, reason: closed.reason) {
-                    throw failure
-                }
-                throw CloudSpeechError.offline
+                throw failure(after: error)
             }
             guard let reply = Service.reply(from: frame, languageCode: languageCode) else { continue }
             if approvedKey == key { approvedAt = .now }
@@ -234,6 +231,18 @@ public actor CloudStreamEngine<Service: CloudStreamService>: TranscriptionEngine
                 }
             }
         }
+    }
+
+    /// What a connection that failed means: the service's own reason when
+    /// it refused to open it or closed it with a code, else no internet.
+    private func failure(after error: any Error) -> CloudSpeechError {
+        if let refused = error as? SocketRefused {
+            return Service.failure(from: CloudHTTPResponse(status: refused.status, body: Data()))
+        }
+        if let closed = error as? SocketClosed, let failure = Service.failure(closedWith: closed.code, reason: closed.reason) {
+            return failure
+        }
+        return .offline
     }
 
     private func markEndSent() {
