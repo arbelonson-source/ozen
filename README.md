@@ -79,7 +79,7 @@ handling of external microphones (no explicit input picker, a USB-C
 lavalier mic didn't work at all, AirPods worked but not reliably), live
 transcription treated as a minor feature rather than the point of the app,
 and no real speaker detection. Ozen exists to fix specifically those three
-things, for Hebrew conversation, entirely on-device.
+things, for Hebrew conversation, on the phone by default.
 
 ## What it does
 

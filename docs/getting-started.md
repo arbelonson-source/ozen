@@ -64,8 +64,8 @@ for Wi-Fi.
 
 Ozen needs the microphone to hear the conversation. Tap **Approve the
 microphone** (le'asher et ha-mikrofon) and answer the question iOS shows.
-When the audio stays on the phone, the page says that nothing recorded is
-saved or leaves the phone.
+When the audio stays on the phone, the page says that the sound doesn't
+leave the phone and isn't kept unless you mark a problem.
 
 If the answer is no, the page says the microphone is blocked and that
 without it there are no captions. Tap **Open phone settings** (ptichat
