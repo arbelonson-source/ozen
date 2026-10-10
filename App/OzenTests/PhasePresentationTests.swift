@@ -26,6 +26,27 @@ struct PhasePresentationTests {
         #expect(off.title == PhasePresentation(phase: .idle, engine: .whisperKit, interruptedBySystem: false).title)
     }
 
+    @Test("a call doesn't cover a failure nothing will retry: those captions don't come back when it ends")
+    func callOverFailure() {
+        let call = PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: true)
+        let keyNeeded = failure(EngineUnavailability(kind: .cloudKeyNeeded, detail: ""))
+        let duringCall = PhasePresentation(phase: keyNeeded, engine: .cloud, interruptedBySystem: true)
+        #expect(duringCall.title != call.title)
+        #expect(duringCall.title == PhasePresentation(phase: keyNeeded, engine: .cloud, interruptedBySystem: false).title)
+        #expect(duringCall.action == .openEngineSettings)
+
+        let noMicrophone = PipelinePhase.failed(PipelineFailure(kind: .microphonePermissionDenied, detail: ""))
+        #expect(PhasePresentation(phase: noMicrophone, engine: nil, interruptedBySystem: true).action == .openSystemSettings)
+
+        let retrying = PhasePresentation(
+            phase: .failed(PipelineFailure(kind: .audioSessionFailed, detail: "")),
+            engine: .whisperKit,
+            interruptedBySystem: true,
+            scheduledRetry: ScheduledRetry(at: 0, attempt: 1)
+        )
+        #expect(retrying.title == call.title)
+    }
+
     @Test("waiting for Wi-Fi says the size, and a tap asks before using cellular data")
     func waitingForWiFi() {
         let presentation = PhasePresentation(
