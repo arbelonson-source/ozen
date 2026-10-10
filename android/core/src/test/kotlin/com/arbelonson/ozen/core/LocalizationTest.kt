@@ -15,6 +15,16 @@ import kotlin.test.fail
 
 class LocalizationTest {
     @Test
+    fun `an engine's name reads in the app's language, as Settings names it, wherever a saved conversation shows it`() {
+        assertEquals("המחשב בבית", TranscriptionEngineKind.HomeServer.displayName(UILanguage.Hebrew))
+        assertEquals("Whisper (on device)", TranscriptionEngineKind.WhisperKit.displayName(UILanguage.English))
+        assertEquals("Распознавание речи Apple", TranscriptionEngineKind.AppleSpeech.displayName(UILanguage.Russian))
+        for (kind in TranscriptionEngineKind.entries) {
+            assertNotEquals(kind.displayName(UILanguage.English), kind.displayName(UILanguage.Hebrew), "$kind")
+        }
+    }
+
+    @Test
     fun `the phone's preferred languages resolve to the first one that's supported, with Hebrew the fallback`() {
         val cases = listOf(
             listOf("he-IL", "en-US") to UILanguage.Hebrew,
@@ -122,6 +132,11 @@ class LocalizationTest {
         val mark = "‏"
         assertEquals(mark + "VoiceOver מקריא שורות חדשות", tr("VoiceOver מקריא שורות חדשות", "VoiceOver reads new lines aloud", UILanguage.Hebrew))
         assertEquals(mark + "812 MB בשימוש", tr("%1 בשימוש", "%1 in use", listOf("812 MB"), UILanguage.Hebrew))
+        assertEquals(
+            mark + "Whisper (במכשיר) לא זמין",
+            tr("%1 לא זמין", "%1 isn't available", listOf(TranscriptionEngineKind.WhisperKit.displayName(UILanguage.Hebrew)), UILanguage.Hebrew),
+        )
+        assertEquals(mark + "Whisper (على الجهاز)", TranscriptionEngineKind.WhisperKit.displayName(UILanguage.Arabic))
         assertEquals(mark + "VoiceOver", tr(mark + "VoiceOver", "VoiceOver", UILanguage.Hebrew))
         assertEquals("3 מתוך 5", tr("%1 מתוך %2", "%1 of %2", listOf("3", "5"), UILanguage.Hebrew))
         assertEquals("עוד 1.9 GB", tr("עוד %1", "%1 more", listOf("1.9 GB"), UILanguage.Hebrew))

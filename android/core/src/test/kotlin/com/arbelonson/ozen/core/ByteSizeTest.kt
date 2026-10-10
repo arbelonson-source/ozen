@@ -18,11 +18,14 @@ class ByteSizeTest {
         assertEquals("999 MB", ByteSize.text(999_400_000))
         assertEquals("1.0 GB", ByteSize.text(999_600_000))
         assertEquals("1.6 GB", ByteSize.text(1_619_000_000))
+        for (option in WhisperModelCatalog.options) {
+            assertEquals(option.sizeLabel, ByteSize.text(option.sizeMB.toLong() * StorageSpaceGate.BYTES_PER_MEGABYTE), option.variant)
+        }
     }
 
     @Test
     fun `a size never wraps between its number and its unit, at any text size`() {
-        val sizes = listOf(0L, 640_000L, 819_200_000L, 1_619_000_000L).map { ByteSize.text(it) }
+        val sizes = listOf(0L, 640_000L, 819_200_000L, 1_619_000_000L).map { ByteSize.text(it) } + WhisperModelCatalog.options.map { it.sizeLabel }
         for (size in sizes) {
             assertFalse(size.contains(" "), size)
             assertTrue(size.contains(" "), size)

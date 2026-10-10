@@ -316,3 +316,18 @@ class ReleaseModelTest {
         assertEquals(ReleaseModelManifest.ParseFailure.NotJSON, parseFailure("""{"other":[]}""".toByteArray()))
     }
 }
+
+class CatalogFolderNameTest {
+    @Test
+    fun `a hub model keeps WhisperKit's folder name and a release model its own`() {
+        val hub = WhisperModelOption(variant = "small", displayName = "Small", sizeMB = 1, hebrewQuality = 1, speed = 1, note = "", isRecommended = false)
+        assertEquals(WhisperModelSource.WhisperKitHub, hub.source)
+        assertEquals("openai_whisper-small", hub.folderName)
+
+        val release = WhisperModelOption(
+            variant = "hebrew", displayName = "Hebrew", sizeMB = 1, hebrewQuality = 1, speed = 1, note = "", isRecommended = false,
+            source = WhisperModelSource.OzenRelease(tag = "m1"), folderName = "ivrit-ai_whisper",
+        )
+        assertEquals("ivrit-ai_whisper", release.folderName)
+    }
+}
