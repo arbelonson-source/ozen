@@ -28,6 +28,11 @@ struct SystemLanguageTests {
         #expect(SystemLanguage.key == "AppleLanguages")
     }
 
+    @Test("the note that Ozen wrote the phone's language keeps its saved name, so an update still knows what to take back")
+    func writtenKeyKeepsItsName() {
+        #expect(SystemLanguage.writtenKey == "OzenWroteAppleLanguages")
+    }
+
     @Test("a chosen language is handed to iOS; 'like the phone' takes back only what Ozen wrote")
     func writesAndTakesBack() throws {
         let suite = "ozen-system-language-\(UUID().uuidString)"

@@ -68,6 +68,8 @@ struct WhisperModelCatalogTests {
         #expect(WhisperModelCatalog.folderName(for: "ozen-turbo-hebrew-a3-8bit") == "ozen_whisper-large-v3-turbo-hebrew-a3_8bit")
         #expect(WhisperModelCatalog.variant(fromFolderName: "ozen_whisper-large-v3-turbo-hebrew-a3_8bit") == "ozen-turbo-hebrew-a3-8bit")
         #expect(WhisperModelCatalog.variant(fromFolderName: "openai_whisper-large-v3-v20240930_626MB") == "large-v3-v20240930_626MB")
+        #expect(WhisperModelCatalog.variant(fromFolderName: "openai_whisper-unlisted-test") == "unlisted-test")
+        #expect(WhisperModelCatalog.variant(fromFolderName: "someone_whisper-unlisted-test") == nil)
         #expect(WhisperModelCatalog.variant(fromFolderName: "distil-whisper_distil-large-v3") == nil)
     }
 

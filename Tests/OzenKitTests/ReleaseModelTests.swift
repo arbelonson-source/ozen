@@ -116,6 +116,7 @@ struct ReleaseModelManifestTests {
     func assetURL() {
         let url = ReleaseModelURLs.asset(repository: "arbelonson-source/ozen", tag: "model-ivrit-turbo-1", name: "manifest.json")
         #expect(url.absoluteString == "https://github.com/arbelonson-source/ozen/releases/download/model-ivrit-turbo-1/manifest.json")
+        #expect(ReleaseModelDownloader.defaultRepository == "arbelonson-source/ozen-models")
     }
 }
 

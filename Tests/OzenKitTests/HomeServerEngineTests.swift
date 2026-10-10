@@ -118,7 +118,7 @@ struct HomeServerEngineTests {
         let release = try String(contentsOf: root.appendingPathComponent(".github/workflows/release.yml"), encoding: .utf8)
         let launcher = try String(contentsOf: root.appendingPathComponent("server").appendingPathComponent(HomeServer.setupFileName), encoding: .utf8)
         #expect(HomeServer.setupDownload.lastPathComponent == HomeServer.setupFileName)
-        #expect(HomeServer.setupDownload.absoluteString.contains("/releases/latest/download/"))
+        #expect(HomeServer.setupDownload.absoluteString == "https://github.com/arbelonson-source/ozen/releases/latest/download/Ozen-Home-Setup.cmd")
         #expect(release.contains("cp server/\(HomeServer.setupFileName) ."))
         #expect(release.contains("gh release create \"$TAG\" Ozen.ipa ozen-home-server.zip \(HomeServer.setupFileName)"))
         #expect(release.contains("zip -q ../ozen-home-server.zip") && release.contains("setup-windows.ps1"))

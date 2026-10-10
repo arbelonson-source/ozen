@@ -205,6 +205,23 @@ struct CloudSpeechTests {
         #expect(Set(slots).count == slots.count)
     }
 
+    @Test("the prompt names each caption language in full, so Ukrainian is never asked for as \"uk\", which reads as British English")
+    func promptLanguageNames() {
+        let names = [
+            "he": "Hebrew", "en": "English", "ar": "Arabic", "ru": "Russian", "am": "Amharic", "fr": "French",
+            "es": "Spanish", "uk": "Ukrainian", "de": "German", "pt": "Portuguese", "zh": "Chinese", "hi": "Hindi",
+        ]
+        for (code, name) in names {
+            #expect(CloudSpeech.prompt(languageCode: code, vocabulary: []).contains("as spoken, in \(name). Do not translate"), "\(code)")
+        }
+    }
+
+    @Test("a request to OpenRouter carries the key, says it is JSON, and names the app")
+    func openRouterHeaders() {
+        let request = CloudSpeech.completionRequest(model: CloudSpeech.accurateModel, apiKey: "k", wav: Data(), languageCode: "he", vocabulary: [])
+        #expect(request.headers == ["Authorization": "Bearer k", "Content-Type": "application/json", "X-Title": "Ozen"])
+    }
+
     @Test("the picker names each service as the service names itself, the recommended one first, as the guide lists them")
     func pickerNames() {
         #expect(CloudProvider.allCases.map(\.name) == [

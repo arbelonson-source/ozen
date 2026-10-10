@@ -14,6 +14,13 @@ struct LocalizationTests {
         }
     }
 
+    @Test("English counts one second and one hour in the singular, more in the plural")
+    func englishTimeWords() {
+        #expect(TimeUnitWord.second(.one, in: .english) == "second" && TimeUnitWord.second(.other, in: .english) == "seconds")
+        #expect(TimeUnitWord.hour(.one, in: .english) == "hour" && TimeUnitWord.hour(.other, in: .english) == "hours")
+        #expect(TimeUnitWord.minute(.one, in: .english) == "minute" && TimeUnitWord.minute(.other, in: .english) == "minutes")
+    }
+
     @Test("the phone's preferred languages resolve to the first one that's supported; Hebrew is the fallback")
     func resolution() {
         #expect(AppLanguage.system.resolved(preferredLanguages: ["he-IL", "en-US"]) == .hebrew)
