@@ -43,6 +43,13 @@ mainly for a phone that is too slow for its own model. Before relying on a
 service, try it on a real conversation: the test used clean recordings, and
 a kitchen table is harder.
 
+To compare them on one of your own recordings before choosing,
+[`scripts/cloud-trial/try_cloud_services.py`](../scripts/cloud-trial/try_cloud_services.py)
+sends it to each service you have a key for, the way Ozen sends it, and
+prints what each one wrote and how long it took. Given the words that were
+really said, it also prints the share of words each got wrong. Its first
+lines say how to run it.
+
 ## How they compare
 
 Accuracy is the share of words wrong on ivrit.ai's

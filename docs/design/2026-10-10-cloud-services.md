@@ -70,8 +70,9 @@ build differs from the table above:
   no internet.
 
 Not done yet: OpenRouter's move to its transcription endpoint (needs
-testing against the real service), and `scripts/try-cloud-services.py`
-below. Nothing here has met a real key yet; each service's sample answers
+testing against the real service). The comparison script below is
+`scripts/cloud-trial/try_cloud_services.py` (#452), with offline tests run
+in CI. Nothing here has met a real key yet; each service's sample answers
 follow its documentation.
 
 Not added: Mistral (no Hebrew), Azure and Google Cloud Speech (need a portal
@@ -109,7 +110,7 @@ resource or a service account, not a pasted key), Gladia (card required).
 - The engine tests that exist for OpenRouter are repeated through a second
   service, so the shared loop is proven service-independent.
 - No test reaches the network. A separate script outside the app,
-  `scripts/try-cloud-services.py`, lets the owner compare services on real
+  `scripts/cloud-trial/try_cloud_services.py`, lets the owner compare services on real
   recordings with their own keys before the README's recommendation is final.
 
 ## Documentation
