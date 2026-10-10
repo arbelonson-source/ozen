@@ -332,6 +332,15 @@ struct LockScreenPresenceTests {
         #expect(LockScreenCaptions.presence(phase: .paused, interruptedByCall: true, pausedForSpeech: true) == LockScreenCaptions.presence(phase: .listening, interruptedByCall: true, pausedForSpeech: false))
     }
 
+    @Test("a call doesn't cover a failure nothing will retry: those captions don't come back when it ends")
+    func callOverFailure() {
+        Localization.$override.withValue(.english) {
+            let failure = PipelineFailure(kind: .transcriptionStopped, detail: "")
+            #expect(LockScreenCaptions.presence(phase: .failed(failure), interruptedByCall: true, pausedForSpeech: false) == (true, "Captions stopped. Open Ozen."))
+            #expect(LockScreenCaptions.presence(phase: .failed(failure), interruptedByCall: true, pausedForSpeech: false, recoveringByItself: true) == (true, "Captions paused for a call"))
+        }
+    }
+
     @Test("the lock screen status is in English when the app is")
     func englishStatus() {
         Localization.$override.withValue(.english) {

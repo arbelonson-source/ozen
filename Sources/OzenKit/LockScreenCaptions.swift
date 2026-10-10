@@ -338,8 +338,10 @@ extension LockScreenCaptions {
         pausedForSpeech: Bool,
         recoveringByItself: Bool = false
     ) -> (keep: Bool, status: String?) {
-        // Captions she paused or stopped herself are not the call's doing.
-        if interruptedByCall, phase != .idle, phase != .paused || pausedForSpeech {
+        // Captions she paused or stopped herself are not the call's doing,
+        // and a failure nothing retries doesn't end with the call.
+        if interruptedByCall, phase != .idle, phase != .paused || pausedForSpeech,
+           !phase.failedForGood(recoveringByItself: recoveringByItself) {
             return (true, tr("הכתוביות מושהות בגלל שיחה", "Captions paused for a call"))
         }
         switch phase {
@@ -406,5 +408,14 @@ public struct LockScreenUpdateThrottle: Sendable, Equatable {
     public mutating func reset() {
         lastSent = nil
         lastSentAt = nil
+    }
+}
+
+extension PipelinePhase {
+    /// A failure no retry is on the way for: captions don't come back by
+    /// themselves, whatever ends (a call, the app being away).
+    func failedForGood(recoveringByItself: Bool) -> Bool {
+        if case .failed = self { return !recoveringByItself }
+        return false
     }
 }
