@@ -10,7 +10,11 @@ actor StreamSocket: HomeServerSocket {
     private let onConfig: [String]
     private let afterEnd: [String]
     private let endsAudio: @Sendable (String) -> Bool
+    private let holdsAudio: Bool
+    private var heldSends: [CheckedContinuation<Void, Never>] = []
     private(set) var sentTexts: [String] = []
+    /// Every text the engine tried to send, after the close too.
+    private(set) var attemptedTexts: [String] = []
     private(set) var sentBytes = 0
     private(set) var sentChunks = 0
     private(set) var isClosed = false
@@ -21,11 +25,20 @@ actor StreamSocket: HomeServerSocket {
     private var pingWaiters: [CheckedContinuation<Void, Error>] = []
     private var closedWith: any Error = StreamGone()
 
-    init(onConfig: [String] = [], afterEnd: [String] = [], answersPings: Bool = true, endsAudio: @escaping @Sendable (String) -> Bool = { $0 == SonioxSpeech.end }) {
+    init(onConfig: [String] = [], afterEnd: [String] = [], answersPings: Bool = true, holdsAudio: Bool = false, endsAudio: @escaping @Sendable (String) -> Bool = { $0 == SonioxSpeech.end }) {
         self.onConfig = onConfig
         self.afterEnd = afterEnd
         self.answersPings = answersPings
+        self.holdsAudio = holdsAudio
         self.endsAudio = endsAudio
+    }
+
+    var heldAudio: Int { heldSends.count }
+
+    func releaseAudio() {
+        let held = heldSends
+        heldSends = []
+        held.forEach { $0.resume() }
     }
 
     func deliver(_ frame: String) {
@@ -46,6 +59,7 @@ actor StreamSocket: HomeServerSocket {
     }
 
     func send(text: String) async throws {
+        attemptedTexts.append(text)
         if isClosed { throw StreamGone() }
         sentTexts.append(text)
         if sentTexts.count == 1 { onConfig.forEach(deliver) }
@@ -57,6 +71,7 @@ actor StreamSocket: HomeServerSocket {
 
     func send(data: Data) async throws {
         if isClosed { throw StreamGone() }
+        if holdsAudio { await withCheckedContinuation { heldSends.append($0) } }
         sentBytes += data.count
         sentChunks += 1
     }
@@ -93,13 +108,28 @@ final class StreamDialer: CloudSocketConnecting, @unchecked Sendable {
     }
 }
 
+/// Hands out a new socket for each connection, as a reconnect gets.
+private final class StreamDialers: CloudSocketConnecting, @unchecked Sendable {
+    private let lock = NSLock()
+    private var sockets: [StreamSocket]
+
+    init(_ sockets: [StreamSocket]) { self.sockets = sockets }
+
+    func open(_ url: URL, headers: [String: String]) async throws -> any HomeServerSocket {
+        try lock.withLock {
+            guard !sockets.isEmpty else { throw StreamGone() }
+            return sockets.removeFirst()
+        }
+    }
+}
+
 struct StreamHeard {
     var tokens: [TranscriptToken] = []
     var error: Error?
 }
 
-func waitUntil(_ check: () async -> Bool) async -> Bool {
-    let deadline = ContinuousClock.now + .seconds(10)
+func waitUntil(within seconds: Double = 10, _ check: () async -> Bool) async -> Bool {
+    let deadline = ContinuousClock.now + .seconds(seconds)
     while !(await check()) {
         guard ContinuousClock.now < deadline else { return false }
         try? await Task.sleep(for: .milliseconds(5))
@@ -149,6 +179,41 @@ struct SonioxEngineTests {
         #expect(sent == [SonioxSpeech.config(languageCode: "he", vocabulary: []), SonioxSpeech.end])
         #expect(await socket.sentBytes == 4 * 1_600 * 2)
         #expect(await socket.isClosed)
+    }
+
+    @Test("a stream stopped while a piece of audio is still going out never counts as ended, so the next stream losing its connection is still no internet", .timeLimit(.minutes(1)))
+    func stoppedSenderLeavesTheNextStreamAlone() async {
+        let first = StreamSocket(holdsAudio: true)
+        let second = StreamSocket()
+        let soniox = SonioxEngine(connector: StreamDialers([first, second]), apiKey: { "sx-test" })
+        let stopped = Task {
+            for try await _ in soniox.stream(languageCode: "he", audio: audio(chunks: 1, ends: false)) {}
+        }
+        #expect(await waitUntil { await first.heldAudio == 1 })
+        stopped.cancel()
+        _ = await stopped.result
+        #expect(await waitUntil { await first.isClosed })
+        let next = Task { () -> Error? in
+            do {
+                for try await _ in soniox.stream(languageCode: "he", audio: audio(chunks: 1, ends: false)) {}
+                return nil
+            } catch {
+                return error
+            }
+        }
+        #expect(await waitUntil { await second.sentTexts.count == 1 })
+        await first.releaseAudio()
+        _ = await waitUntil(within: 0.5) { await first.attemptedTexts.contains(SonioxSpeech.end) }
+        await second.drop()
+        #expect(await next.value as? CloudSpeechError == .offline)
+    }
+
+    @Test("Chinese captions from a live service are cut into lines too", .timeLimit(.minutes(1)))
+    func chineseLines() async {
+        let words = #"{"tokens":[{"text":"你好","is_final":true,"speaker":"1","start_ms":0,"end_ms":1400},{"text":"你好","is_final":true,"speaker":"1","start_ms":1500,"end_ms":2900},{"text":"你好","is_final":true,"speaker":"1","start_ms":3000,"end_ms":4400},{"text":"你好","is_final":true,"speaker":"1","start_ms":4500,"end_ms":5900},{"text":"你好","is_final":true,"speaker":"1","start_ms":6000,"end_ms":7400},{"text":"你好","is_final":true,"speaker":"1","start_ms":7500,"end_ms":8900},{"text":"你好","is_final":true,"speaker":"1","start_ms":9000,"end_ms":10400},{"text":"你好","is_final":true,"speaker":"1","start_ms":10500,"end_ms":11900},{"text":"你好","is_final":true,"speaker":"1","start_ms":12000,"end_ms":13400},{"text":"你好","is_final":true,"speaker":"1","start_ms":13500,"end_ms":14900},{"text":"你好","is_final":true,"speaker":"1","start_ms":15000,"end_ms":16400},{"text":"你好","is_final":true,"speaker":"1","start_ms":16500,"end_ms":17900},{"text":"你好","is_final":true,"speaker":"1","start_ms":18000,"end_ms":19400},{"text":"你好","is_final":true,"speaker":"1","start_ms":19500,"end_ms":20900},{"text":"你好","is_final":true,"speaker":"1","start_ms":21000,"end_ms":22400},{"text":"你好","is_final":true,"speaker":"1","start_ms":22500,"end_ms":23900},{"text":"你好","is_final":true,"speaker":"1","start_ms":24000,"end_ms":25400},{"text":"你好","is_final":true,"speaker":"1","start_ms":25500,"end_ms":26900},{"text":"你好","is_final":true,"speaker":"1","start_ms":27000,"end_ms":28400},{"text":"你好","is_final":true,"speaker":"1","start_ms":28500,"end_ms":29900},{"text":"你好","is_final":true,"speaker":"1","start_ms":30000,"end_ms":31400},{"text":"你好","is_final":true,"speaker":"1","start_ms":31500,"end_ms":32900},{"text":"你好","is_final":true,"speaker":"1","start_ms":33000,"end_ms":34400},{"text":"你好","is_final":true,"speaker":"1","start_ms":34500,"end_ms":35900},{"text":"你好","is_final":true,"speaker":"1","start_ms":36000,"end_ms":37400},{"text":"你好","is_final":true,"speaker":"1","start_ms":37500,"end_ms":38900},{"text":"你好","is_final":true,"speaker":"1","start_ms":39000,"end_ms":40400},{"text":"你好","is_final":true,"speaker":"1","start_ms":40500,"end_ms":41900},{"text":"你好","is_final":true,"speaker":"1","start_ms":42000,"end_ms":43400},{"text":"你好","is_final":true,"speaker":"1","start_ms":43500,"end_ms":44900},{"text":"你好","is_final":true,"speaker":"1","start_ms":45000,"end_ms":46400},{"text":"你好","is_final":true,"speaker":"1","start_ms":46500,"end_ms":47900},{"text":"你好","is_final":true,"speaker":"1","start_ms":48000,"end_ms":49400},{"text":"你好","is_final":true,"speaker":"1","start_ms":49500,"end_ms":50900},{"text":"你好","is_final":true,"speaker":"1","start_ms":51000,"end_ms":52400},{"text":"你好","is_final":true,"speaker":"1","start_ms":52500,"end_ms":53900},{"text":"你好","is_final":true,"speaker":"1","start_ms":54000,"end_ms":55400},{"text":"你好","is_final":true,"speaker":"1","start_ms":55500,"end_ms":56900},{"text":"你好","is_final":true,"speaker":"1","start_ms":57000,"end_ms":58400},{"text":"你好","is_final":true,"speaker":"1","start_ms":58500,"end_ms":59900}]}"#
+        let socket = StreamSocket(onConfig: [words], afterEnd: [#"{"tokens":[],"finished":true}"#])
+        let heard = await listen(engine(StreamDialer(socket)), audio(chunks: 1), languageCode: "zh")
+        #expect(heard.tokens.filter { $0.isFinal }.map(\.text) == [18, 18, 4].map { String(repeating: "你好", count: $0) })
     }
 
     @Test("the names list goes with the settings")

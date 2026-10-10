@@ -56,7 +56,7 @@ public enum AssemblyAISpeech: CloudStreamService {
             return .failure(failure(saying: error))
         }
         switch parsed.type {
-        case "Turn": return .tokens(tokens(parsed, spaced: languageCode != "zh"), finished: false)
+        case "Turn": return .tokens(tokens(parsed, spaced: CloudStreamLines.spaced(languageCode)), finished: false)
         case "Termination": return .tokens([], finished: true)
         default: return nil
         }

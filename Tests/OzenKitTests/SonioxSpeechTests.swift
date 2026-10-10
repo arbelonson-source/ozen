@@ -153,6 +153,35 @@ struct SonioxSpeechTests {
         #expect(same.last?.text == "ומה" && same.last?.startsNewSpeakerTurn == false)
     }
 
+    @Test("Chinese, written without spaces, is still cut into lines of 28 seconds at most; with spaces, a piece without one stays on its word")
+    func unspacedLinesAreCut() {
+        var chinese = CloudStreamLines(spaced: false)
+        var spacedLines = CloudStreamLines()
+        var cut: [String] = []
+        var kept: [String] = []
+        for i in 0..<40 {
+            let piece = CloudStreamToken(text: "你好", isFinal: true, speaker: "1", startMs: i * 1_500, endMs: i * 1_500 + 1_400)
+            cut += chinese.take([piece], at: Double(i)).filter { $0.isFinal }.map(\.text)
+            kept += spacedLines.take([piece], at: Double(i)).filter { $0.isFinal }.map(\.text)
+        }
+        #expect(cut == [String(repeating: "你好", count: 18), String(repeating: "你好", count: 18)])
+        #expect(kept.isEmpty)
+        #expect(CloudStreamLines.spaced("zh") == false && CloudStreamLines.spaced("he") && CloudStreamLines.spaced("en"))
+    }
+
+    @Test("a line whose first word has no known voice learns the voice from a later word, and splits when the voice changes")
+    func voiceLearnedAfterTheFirstWord() {
+        var lines = CloudStreamLines()
+        let shown = lines.take([
+            CloudStreamToken(text: " אחת", isFinal: true),
+            CloudStreamToken(text: " שתיים", isFinal: true, speaker: "1"),
+            CloudStreamToken(text: " שלוש", isFinal: true, speaker: "2"),
+        ], at: 1) + lines.finish(at: 2)
+        let finals = shown.filter { $0.isFinal }
+        #expect(finals.map(\.text) == ["אחת שתיים", "שלוש"])
+        #expect(finals.map(\.startsNewSpeakerTurn) == [false, true])
+    }
+
     @Test("a lost connection cuts the line on screen with the cut-off mark; with nothing on screen there is nothing to cut")
     func cutOff() {
         var lines = CloudStreamLines()

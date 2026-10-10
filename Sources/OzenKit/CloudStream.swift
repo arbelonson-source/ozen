@@ -49,6 +49,12 @@ struct CloudStreamLines {
     static let endOfLine = "<end>"
     static let maxLineMs = Int(CloudSpeechEngine.maxUtteranceSeconds * 1_000)
 
+    /// Whether the language puts spaces between words; Chinese does not.
+    static func spaced(_ languageCode: String) -> Bool {
+        languageCode != "zh"
+    }
+
+    private let spaced: Bool
     private var id = UUID()
     private var words = ""
     private var speaker: String?
@@ -58,6 +64,10 @@ struct CloudStreamLines {
     /// Whose line came before, so a line in another voice is marked as a
     /// new turn and the voice heard just before is not counted as its own.
     private var lastSpeaker: String?
+
+    init(spaced: Bool = true) {
+        self.spaced = spaced
+    }
 
     mutating func take(_ tokens: [CloudStreamToken], at timestamp: TimeInterval) -> [TranscriptToken] {
         var out: [TranscriptToken] = []
@@ -69,15 +79,19 @@ struct CloudStreamLines {
             let hasWords = !words.trimmingCharacters(in: .whitespaces).isEmpty
             let otherVoice = token.speaker != nil && speaker != nil && token.speaker != speaker
             // Only before a new word: a piece that goes on the last word
-            // has no space in front of it.
-            let tooLong = token.text.first?.isWhitespace == true
+            // has no space in front of it. Without spaces, any piece will do.
+            let tooLong = (!spaced || token.text.first?.isWhitespace == true)
                 && (startMs.map { (token.endMs ?? $0) - $0 >= Self.maxLineMs } ?? false)
             if hasWords && (otherVoice || tooLong) {
                 close(into: &out, at: timestamp)
             }
             if words.isEmpty {
                 startMs = token.startMs
-                if let voice = token.speaker { heard(voice) }
+            }
+            // A line begun by a word of no known voice takes the first
+            // voice it hears, or a change of voice would never split it.
+            if let voice = token.speaker, words.isEmpty || speaker == nil {
+                heard(voice)
             }
             words += token.text
         }

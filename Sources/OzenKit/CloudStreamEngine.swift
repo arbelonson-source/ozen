@@ -140,6 +140,9 @@ public actor CloudStreamEngine<Service: CloudStreamService>: TranscriptionEngine
                 try? await socket.send(data: HomeServer.pcm16(chunk))
                 chunks += 1
             }
+            // A stream that was stopped never ended its audio, and its
+            // engine may already be running the next one.
+            if Task.isCancelled { return }
             // Marked before it is sent: the service may close the
             // connection as soon as it has answered the last words.
             self.markEndSent()
@@ -185,7 +188,7 @@ public actor CloudStreamEngine<Service: CloudStreamService>: TranscriptionEngine
         start: AsyncStream<Void>.Continuation,
         continuation: AsyncThrowingStream<TranscriptToken, Error>.Continuation
     ) async throws {
-        var lines = CloudStreamLines()
+        var lines = CloudStreamLines(spaced: CloudStreamLines.spaced(languageCode))
         while true {
             let frame: String
             do {

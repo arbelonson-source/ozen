@@ -63,7 +63,7 @@ public enum SpeechmaticsSpeech: CloudStreamService {
         case "RecognitionStarted":
             return .started
         case "AddPartialTranscript", "AddTranscript":
-            let pieces = tokens(parsed.results ?? [], isFinal: parsed.message == "AddTranscript", spaced: languageCode != "zh")
+            let pieces = tokens(parsed.results ?? [], isFinal: parsed.message == "AddTranscript", spaced: CloudStreamLines.spaced(languageCode))
             return .tokens(pieces, finished: false)
         case "EndOfUtterance":
             return .tokens([CloudStreamToken(text: CloudStreamLines.endOfLine, isFinal: true)], finished: false)
