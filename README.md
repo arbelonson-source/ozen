@@ -413,7 +413,9 @@ Open a section for the details.
   writes the words as they are said, over one open connection),
   [Deepgram](https://deepgram.com), [OpenAI](https://openai.com),
   [Groq](https://groq.com), [ElevenLabs](https://elevenlabs.io),
-  [Google Gemini](https://ai.google.dev) or a Google model through
+  [Google Gemini](https://ai.google.dev),
+  [Speechmatics](https://www.speechmatics.com) (which also writes as the
+  words are said) or a Google model through
   [OpenRouter](https://openrouter.ai) (more are being added), with your own
   key pasted into Settings (stored only in the phone's Keychain, one per
   service), together with the names and important words lists so it can

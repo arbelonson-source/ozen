@@ -7,6 +7,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
     case groq
     case elevenLabs
     case gemini
+    case speechmatics
     case openRouter
 
     public var name: String {
@@ -17,6 +18,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         case .groq: "Groq"
         case .elevenLabs: "ElevenLabs"
         case .gemini: "Google Gemini"
+        case .speechmatics: "Speechmatics"
         case .openRouter: "OpenRouter"
         }
     }
@@ -33,6 +35,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         case .groq: OpenAICompatibleSpeech.groq.model
         case .elevenLabs: ElevenLabsSpeech.model
         case .gemini: GeminiSpeech.model
+        case .speechmatics: SpeechmaticsSpeech.model
         case .openRouter: CloudSpeech.accurateModel
         }
     }
@@ -46,12 +49,13 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         case .soniox: SonioxSpeech.languages.contains(languageCode)
         case .deepgram: DeepgramSpeech.languages.contains(languageCode)
         case .gemini: GeminiSpeech.languageTags[languageCode] != nil
+        case .speechmatics: SpeechmaticsSpeech.languages[languageCode] != nil
         case .openAI, .groq, .elevenLabs, .openRouter: true
         }
     }
 
     public var streams: Bool {
-        self == .soniox
+        self == .soniox || self == .speechmatics
     }
 
     public var livePasses: Bool {
@@ -66,13 +70,14 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
     ) -> any TranscriptionEngine {
         switch self {
         case .soniox: SonioxEngine(http: http, connector: connector, apiKey: apiKey)
+        case .speechmatics: SpeechmaticsEngine(http: http, connector: connector, apiKey: apiKey)
         case .deepgram, .openAI, .groq, .elevenLabs, .gemini, .openRouter: CloudSpeechEngine(provider: self, model: model, http: http, apiKey: apiKey)
         }
     }
 
     public func transcriptionRequest(model: String, apiKey: String, wav: Data, languageCode: String, vocabulary: [String]) -> CloudHTTPRequest? {
         switch self {
-        case .soniox: nil
+        case .soniox, .speechmatics: nil
         case .deepgram: DeepgramSpeech.request(model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
         case .openAI: OpenAICompatibleSpeech.request(OpenAICompatibleSpeech.openAI, model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
         case .groq: OpenAICompatibleSpeech.request(OpenAICompatibleSpeech.groq, model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
@@ -84,7 +89,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
 
     public func transcript(from response: CloudHTTPResponse) throws(CloudSpeechError) -> String {
         switch self {
-        case .soniox: throw .badReply
+        case .soniox, .speechmatics: throw .badReply
         case .deepgram: try DeepgramSpeech.transcript(from: response)
         case .openAI, .groq: try OpenAICompatibleSpeech.transcript(from: response)
         case .elevenLabs: try ElevenLabsSpeech.transcript(from: response)
@@ -96,6 +101,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
     public func failure(from response: CloudHTTPResponse) -> CloudSpeechError {
         switch self {
         case .soniox: SonioxSpeech.failure(from: response)
+        case .speechmatics: SpeechmaticsSpeech.failure(from: response)
         case .deepgram: DeepgramSpeech.failure(from: response)
         case .openAI, .groq: OpenAICompatibleSpeech.failure(from: response)
         case .elevenLabs: ElevenLabsSpeech.failure(from: response)
@@ -107,6 +113,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
     public func keyCheckRequest(apiKey: String) -> CloudHTTPRequest {
         switch self {
         case .soniox: SonioxSpeech.keyCheckRequest(apiKey: apiKey)
+        case .speechmatics: SpeechmaticsSpeech.keyCheckRequest(apiKey: apiKey)
         case .deepgram: DeepgramSpeech.keyCheckRequest(apiKey: apiKey)
         case .openAI: OpenAICompatibleSpeech.keyCheckRequest(OpenAICompatibleSpeech.openAI, apiKey: apiKey)
         case .groq: OpenAICompatibleSpeech.keyCheckRequest(OpenAICompatibleSpeech.groq, apiKey: apiKey)

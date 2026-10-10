@@ -2,15 +2,17 @@ import Foundation
 import Testing
 @testable import OzenKit
 
-private struct Gone: Error {}
+struct StreamGone: Error {}
 
-/// Soniox as the engine meets it: what it answers once the settings
-/// arrive, and what it says once the audio is over.
-private actor SonioxSocket: HomeServerSocket {
+/// A live service as the engine meets it: what it answers once the
+/// settings arrive, and what it says once the audio is over.
+actor StreamSocket: HomeServerSocket {
     private let onConfig: [String]
     private let afterEnd: [String]
+    private let endsAudio: @Sendable (String) -> Bool
     private(set) var sentTexts: [String] = []
     private(set) var sentBytes = 0
+    private(set) var sentChunks = 0
     private(set) var isClosed = false
     private(set) var pings = 0
     private var answersPings: Bool
@@ -18,10 +20,11 @@ private actor SonioxSocket: HomeServerSocket {
     private var waiters: [CheckedContinuation<String, Error>] = []
     private var pingWaiters: [CheckedContinuation<Void, Error>] = []
 
-    init(onConfig: [String] = [], afterEnd: [String] = [], answersPings: Bool = true) {
+    init(onConfig: [String] = [], afterEnd: [String] = [], answersPings: Bool = true, endsAudio: @escaping @Sendable (String) -> Bool = { $0 == SonioxSpeech.end }) {
         self.onConfig = onConfig
         self.afterEnd = afterEnd
         self.answersPings = answersPings
+        self.endsAudio = endsAudio
     }
 
     func deliver(_ frame: String) {
@@ -32,35 +35,36 @@ private actor SonioxSocket: HomeServerSocket {
         isClosed = true
         let pending = waiters
         waiters = []
-        pending.forEach { $0.resume(throwing: Gone()) }
+        pending.forEach { $0.resume(throwing: StreamGone()) }
         let pings = pingWaiters
         pingWaiters = []
-        pings.forEach { $0.resume(throwing: Gone()) }
+        pings.forEach { $0.resume(throwing: StreamGone()) }
     }
 
     func send(text: String) async throws {
-        if isClosed { throw Gone() }
+        if isClosed { throw StreamGone() }
         sentTexts.append(text)
         if sentTexts.count == 1 { onConfig.forEach(deliver) }
-        if text == SonioxSpeech.end {
+        if endsAudio(text) {
             afterEnd.forEach(deliver)
             drop()
         }
     }
 
     func send(data: Data) async throws {
-        if isClosed { throw Gone() }
+        if isClosed { throw StreamGone() }
         sentBytes += data.count
+        sentChunks += 1
     }
 
     func receive() async throws -> String {
         if !queue.isEmpty { return queue.removeFirst() }
-        if isClosed { throw Gone() }
+        if isClosed { throw StreamGone() }
         return try await withCheckedThrowingContinuation { waiters.append($0) }
     }
 
     func ping() async throws {
-        if isClosed { throw Gone() }
+        if isClosed { throw StreamGone() }
         pings += 1
         if answersPings { return }
         try await withCheckedThrowingContinuation { pingWaiters.append($0) }
@@ -69,28 +73,28 @@ private actor SonioxSocket: HomeServerSocket {
     func close() async { drop() }
 }
 
-private final class Dialer: CloudSocketConnecting, @unchecked Sendable {
+final class StreamDialer: CloudSocketConnecting, @unchecked Sendable {
     private let lock = NSLock()
-    private let socket: SonioxSocket?
+    private let socket: StreamSocket?
     private var opened: [(url: URL, headers: [String: String])] = []
 
-    init(_ socket: SonioxSocket?) { self.socket = socket }
+    init(_ socket: StreamSocket?) { self.socket = socket }
 
     var calls: [(url: URL, headers: [String: String])] { lock.withLock { opened } }
 
     func open(_ url: URL, headers: [String: String]) async throws -> any HomeServerSocket {
         lock.withLock { opened.append((url, headers)) }
-        guard let socket else { throw Gone() }
+        guard let socket else { throw StreamGone() }
         return socket
     }
 }
 
-private struct Heard {
+struct StreamHeard {
     var tokens: [TranscriptToken] = []
     var error: Error?
 }
 
-private func waitUntil(_ check: () async -> Bool) async -> Bool {
+func waitUntil(_ check: () async -> Bool) async -> Bool {
     let deadline = ContinuousClock.now + .seconds(10)
     while !(await check()) {
         guard ContinuousClock.now < deadline else { return false }
@@ -103,7 +107,7 @@ private func waitUntil(_ check: () async -> Bool) async -> Bool {
 struct SonioxEngineTests {
     private let frames = SonioxSpeechTests.frames
 
-    private func engine(_ dialer: Dialer, http: FakeCloudHTTP = FakeCloudHTTP(), key: String? = "sx-test", pingSeconds: Double = 5, pongSeconds: Double = 8) -> SonioxEngine {
+    private func engine(_ dialer: StreamDialer, http: FakeCloudHTTP = FakeCloudHTTP(), key: String? = "sx-test", pingSeconds: Double = 5, pongSeconds: Double = 8) -> SonioxEngine {
         SonioxEngine(http: http, connector: dialer, pingSeconds: pingSeconds, pongSeconds: pongSeconds, apiKey: { key })
     }
 
@@ -114,8 +118,8 @@ struct SonioxEngineTests {
         }
     }
 
-    private func listen(_ engine: SonioxEngine, _ audio: AsyncStream<[Float]>, languageCode: String = "he", afterFirst: (@Sendable () async -> Void)? = nil) async -> Heard {
-        var heard = Heard()
+    private func listen(_ engine: SonioxEngine, _ audio: AsyncStream<[Float]>, languageCode: String = "he", afterFirst: (@Sendable () async -> Void)? = nil) async -> StreamHeard {
+        var heard = StreamHeard()
         do {
             for try await token in engine.stream(languageCode: languageCode, audio: audio) {
                 heard.tokens.append(token)
@@ -129,8 +133,8 @@ struct SonioxEngineTests {
 
     @Test("a conversation streams over one connection: the key in its header, the settings first, the microphone as 16-bit samples, an empty message at the end, and a line per turn back", .timeLimit(.minutes(1)))
     func conversation() async {
-        let socket = SonioxSocket(onConfig: Array(frames.dropLast()), afterEnd: [frames.last!])
-        let dialer = Dialer(socket)
+        let socket = StreamSocket(onConfig: Array(frames.dropLast()), afterEnd: [frames.last!])
+        let dialer = StreamDialer(socket)
         let heard = await listen(engine(dialer), audio(chunks: 4))
         #expect(heard.error == nil)
         #expect(heard.tokens.map(\.text) == ["מה", "מה שלומך", "מה שלומך?", "טוב, תודה.", "טוב, תודה. ואתה?", "טוב, תודה. ואתה?", "מצוין", "מצוין"])
@@ -145,8 +149,8 @@ struct SonioxEngineTests {
 
     @Test("the names list goes with the settings")
     func vocabulary() async {
-        let socket = SonioxSocket(afterEnd: [frames.last!])
-        let soniox = engine(Dialer(socket))
+        let socket = StreamSocket(afterEnd: [frames.last!])
+        let soniox = engine(StreamDialer(socket))
         await soniox.setVocabulary(["דנה"])
         _ = await listen(soniox, audio(chunks: 1), languageCode: "ar")
         #expect(await socket.sentTexts.first == SonioxSpeech.config(languageCode: "ar", vocabulary: ["דנה"]))
@@ -155,8 +159,8 @@ struct SonioxEngineTests {
     @Test("credit running out mid-sentence ends the stream with that reason, and the words on screen are marked cut", .timeLimit(.minutes(1)))
     func outOfCredit() async {
         let error = #"{"tokens":[],"error_code":402,"error_type":"organization_balance_exhausted","error_message":"x"}"#
-        let socket = SonioxSocket(onConfig: [frames[0], error])
-        let heard = await listen(engine(Dialer(socket)), audio(chunks: 2, ends: false))
+        let socket = StreamSocket(onConfig: [frames[0], error])
+        let heard = await listen(engine(StreamDialer(socket)), audio(chunks: 2, ends: false))
         #expect(heard.error as? CloudSpeechError == .outOfCredit)
         #expect(heard.tokens.map(\.text) == ["מה", CaptionStabilizer.markingCutOff("מה")])
         #expect(heard.tokens.map(\.isFinal) == [false, true])
@@ -166,16 +170,16 @@ struct SonioxEngineTests {
 
     @Test("a connection that drops is no internet, so the phone's model can take over, with the line on screen marked cut", .timeLimit(.minutes(1)))
     func dropped() async {
-        let socket = SonioxSocket(onConfig: [frames[0]])
-        let heard = await listen(engine(Dialer(socket)), audio(chunks: 2, ends: false)) { await socket.drop() }
+        let socket = StreamSocket(onConfig: [frames[0]])
+        let heard = await listen(engine(StreamDialer(socket)), audio(chunks: 2, ends: false)) { await socket.drop() }
         #expect(heard.error as? CloudSpeechError == .offline)
         #expect(heard.tokens.map(\.text) == ["מה", CaptionStabilizer.markingCutOff("מה")])
     }
 
     @Test("Soniox closing after the last words without saying it has finished still ends captions quietly, the last line as said", .timeLimit(.minutes(1)))
     func closedAfterTheEnd() async {
-        let socket = SonioxSocket(afterEnd: [frames[5]])
-        let heard = await listen(engine(Dialer(socket)), audio(chunks: 1))
+        let socket = StreamSocket(afterEnd: [frames[5]])
+        let heard = await listen(engine(StreamDialer(socket)), audio(chunks: 1))
         #expect(heard.error == nil)
         #expect(heard.tokens.map(\.text) == ["מצוין", "מצוין"])
         #expect(heard.tokens.map(\.isFinal) == [false, true])
@@ -184,15 +188,15 @@ struct SonioxEngineTests {
     @Test("after a dropped connection, or credit running out, the next check asks Soniox again rather than trusting the last answer", .timeLimit(.minutes(1)))
     func checkedAgainAfterTrouble() async {
         let http = FakeCloudHTTP()
-        let dropping = SonioxSocket(onConfig: [frames[0]])
-        let soniox = engine(Dialer(dropping), http: http)
+        let dropping = StreamSocket(onConfig: [frames[0]])
+        let soniox = engine(StreamDialer(dropping), http: http)
         #expect(await soniox.prepare(languageCode: "he") { _ in } == .available)
         _ = await listen(soniox, audio(chunks: 1, ends: false)) { await dropping.drop() }
         #expect(await soniox.prepare(languageCode: "he") { _ in } == .available)
         #expect(http.requests.count == 2)
 
-        let broke = SonioxSocket(onConfig: [#"{"tokens":[],"error_code":402,"error_type":"organization_balance_exhausted"}"#])
-        let spent = engine(Dialer(broke), http: http)
+        let broke = StreamSocket(onConfig: [#"{"tokens":[],"error_code":402,"error_type":"organization_balance_exhausted"}"#])
+        let spent = engine(StreamDialer(broke), http: http)
         #expect(await spent.prepare(languageCode: "he") { _ in } == .available)
         _ = await listen(spent, audio(chunks: 1, ends: false))
         #expect(await spent.prepare(languageCode: "he") { _ in } == .available)
@@ -201,9 +205,9 @@ struct SonioxEngineTests {
 
     @Test("a connection that stops answering pings is closed and reported as no internet", .timeLimit(.minutes(1)))
     func silentConnection() async {
-        let socket = SonioxSocket(answersPings: false)
+        let socket = StreamSocket(answersPings: false)
         let started = ContinuousClock.now
-        let heard = await listen(engine(Dialer(socket), pingSeconds: 0.05, pongSeconds: 0.2), audio(chunks: 1, ends: false))
+        let heard = await listen(engine(StreamDialer(socket), pingSeconds: 0.05, pongSeconds: 0.2), audio(chunks: 1, ends: false))
         #expect(heard.error as? CloudSpeechError == .offline)
         #expect(ContinuousClock.now - started < .seconds(5))
         #expect(await socket.isClosed)
@@ -211,10 +215,10 @@ struct SonioxEngineTests {
 
     @Test("a connection that answers its pings is pinged again and stays open", .timeLimit(.minutes(1)))
     func answeredPings() async {
-        let socket = SonioxSocket(afterEnd: [frames.last!])
+        let socket = StreamSocket(afterEnd: [frames.last!])
         let (audio, microphone) = AsyncStream<[Float]>.makeStream()
         microphone.yield([Float](repeating: 0.05, count: 1_600))
-        let soniox = engine(Dialer(socket), pingSeconds: 0.05, pongSeconds: 5)
+        let soniox = engine(StreamDialer(socket), pingSeconds: 0.05, pongSeconds: 5)
         let listening = Task { await listen(soniox, audio) }
         // Waited for, not slept for: a busy CI runner got to the first
         // ping only after a 500 ms sleep was over. A second ping is only
@@ -227,19 +231,19 @@ struct SonioxEngineTests {
 
     @Test("no connection at all, or no key, ends the stream with the reason")
     func cannotStart() async {
-        #expect(await listen(engine(Dialer(nil)), audio(chunks: 1)).error as? CloudSpeechError == .offline)
-        let dialer = Dialer(SonioxSocket())
+        #expect(await listen(engine(StreamDialer(nil)), audio(chunks: 1)).error as? CloudSpeechError == .offline)
+        let dialer = StreamDialer(StreamSocket())
         #expect(await listen(engine(dialer, key: "  "), audio(chunks: 1)).error as? CloudSpeechError == .keyMissing)
         #expect(dialer.calls.isEmpty)
     }
 
     @Test("stopping captions closes the connection without an error and leaves the line as it was", .timeLimit(.minutes(1)))
     func stopping() async {
-        let socket = SonioxSocket(onConfig: [frames[0]])
-        let soniox = engine(Dialer(socket))
+        let socket = StreamSocket(onConfig: [frames[0]])
+        let soniox = engine(StreamDialer(socket))
         let stream = soniox.stream(languageCode: "he", audio: audio(chunks: 1, ends: false))
         let listening = Task {
-            var heard = Heard()
+            var heard = StreamHeard()
             do {
                 for try await token in stream { heard.tokens.append(token) }
             } catch {
@@ -259,13 +263,13 @@ struct SonioxEngineTests {
     @Test("the key is checked once with Soniox and trusted for a while; a key Soniox turns down, or one out of credit, says so")
     func prepare() async {
         let http = FakeCloudHTTP(keyChecks: [.status(200, #"{"files":[],"next_page_cursor":null}"#), .status(401, ""), .status(402, "")])
-        let soniox = engine(Dialer(nil), http: http)
+        let soniox = engine(StreamDialer(nil), http: http)
         #expect(await soniox.prepare(languageCode: "he") { _ in } == .available)
         #expect(await soniox.prepare(languageCode: "he") { _ in } == .available)
         #expect(http.requests.count == 1)
         #expect(http.requests.first == SonioxSpeech.keyCheckRequest(apiKey: "sx-test"))
 
-        let rejected = engine(Dialer(nil), http: http)
+        let rejected = engine(StreamDialer(nil), http: http)
         guard case .unavailable(let why) = await rejected.prepare(languageCode: "he", progress: { _ in }) else {
             Issue.record("a turned-down key was accepted")
             return
@@ -277,7 +281,7 @@ struct SonioxEngineTests {
         }
         #expect(broke.kind == .cloudOutOfCredit)
 
-        guard case .unavailable(let none) = await engine(Dialer(nil), key: nil).prepare(languageCode: "he", progress: { _ in }) else {
+        guard case .unavailable(let none) = await engine(StreamDialer(nil), key: nil).prepare(languageCode: "he", progress: { _ in }) else {
             Issue.record("no key was accepted")
             return
         }
@@ -286,7 +290,7 @@ struct SonioxEngineTests {
 
     @Test("Soniox gets the engine that keeps one connection open; the other services get one request per sentence")
     func enginePerService() {
-        let dialer = Dialer(nil)
+        let dialer = StreamDialer(nil)
         #expect((CloudProvider.soniox.engine(connector: dialer, apiKey: { "k" }) as? SonioxEngine)?.provider == .soniox)
         let deepgram = CloudProvider.deepgram.engine(connector: dialer, apiKey: { "k" }) as? CloudSpeechEngine
         #expect(deepgram?.provider == .deepgram && deepgram?.model == DeepgramSpeech.model)
@@ -296,7 +300,7 @@ struct SonioxEngineTests {
 
     @Test("Soniox is a cloud engine that names its service and model")
     func identity() {
-        let soniox = engine(Dialer(nil))
+        let soniox = engine(StreamDialer(nil))
         #expect(soniox.kind == .cloud)
         #expect(soniox.provider == .soniox)
         #expect(soniox.model == "stt-rt-v5")

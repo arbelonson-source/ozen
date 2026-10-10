@@ -95,7 +95,7 @@ struct SonioxSpeechTests {
 
     @Test("a two-person conversation becomes a line per turn: live words, the final line, and a new turn marked when the voice changes")
     func linesFromFixture() throws {
-        var lines = SonioxLines()
+        var lines = CloudStreamLines()
         var shown: [TranscriptToken] = []
         for frame in Self.frames {
             guard case .tokens(let tokens, let finished)? = SonioxSpeech.reply(from: frame) else {
@@ -115,7 +115,7 @@ struct SonioxSpeechTests {
 
     @Test("one voice going on past 28 seconds is cut at the next word, as every other engine cuts a line")
     func longLine() {
-        var lines = SonioxLines()
+        var lines = CloudStreamLines()
         var shown = lines.take([SonioxSpeech.Token(text: "אחת", isFinal: true, speaker: "1", startMs: 0, endMs: 500)], at: 1)
         shown += lines.take([SonioxSpeech.Token(text: "ים", isFinal: true, speaker: "1", startMs: 27_900, endMs: 28_100)], at: 1)
         #expect(shown.last?.text == "אחתים")
@@ -129,7 +129,7 @@ struct SonioxSpeechTests {
 
     @Test("a line Soniox ends before any of its guesses became final keeps what was on screen, as the other engines keep theirs")
     func guessesKept() {
-        var lines = SonioxLines()
+        var lines = CloudStreamLines()
         let live = lines.take([SonioxSpeech.Token(text: "שלום", isFinal: false, speaker: "1", startMs: 0, endMs: 300)], at: 1)
         let ended = lines.take([SonioxSpeech.Token(text: "<end>", isFinal: true)], at: 2)
         #expect(ended.map(\.text) == ["שלום"])
@@ -138,7 +138,7 @@ struct SonioxSpeechTests {
 
     @Test("a new voice heard first in the guesses is a new turn from its first word, before any of it is final")
     func newVoiceInGuesses() {
-        var lines = SonioxLines()
+        var lines = CloudStreamLines()
         _ = lines.take([
             SonioxSpeech.Token(text: "שלום", isFinal: true, speaker: "1", startMs: 0, endMs: 300),
             SonioxSpeech.Token(text: "<end>", isFinal: true),
@@ -155,7 +155,7 @@ struct SonioxSpeechTests {
 
     @Test("a lost connection cuts the line on screen with the cut-off mark; with nothing on screen there is nothing to cut")
     func cutOff() {
-        var lines = SonioxLines()
+        var lines = CloudStreamLines()
         #expect(lines.cutOff(at: 1) == nil)
         let live = lines.take([SonioxSpeech.Token(text: "שלום", isFinal: false, speaker: "1", startMs: 0, endMs: 300)], at: 1)
         let cut = lines.cutOff(at: 2)

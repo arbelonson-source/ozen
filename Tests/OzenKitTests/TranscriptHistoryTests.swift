@@ -1440,6 +1440,7 @@ struct TranscriptSourceLineTests {
         #expect(record(.cloud, model: OpenAICompatibleSpeech.groq.model, input: nil).sourceLine(in: .english) == "Cloud transcription · Groq · Whisper large-v3")
         #expect(record(.cloud, model: ElevenLabsSpeech.model, input: nil).sourceLine(in: .english) == "Cloud transcription · ElevenLabs · Scribe v2")
         #expect(record(.cloud, model: GeminiSpeech.model, input: nil).sourceLine(in: .english) == "Cloud transcription · Google Gemini · Transcribe")
+        #expect(record(.cloud, model: SpeechmaticsSpeech.model, input: nil).sourceLine(in: .english) == "Cloud transcription · Speechmatics · Enhanced")
         #expect(record(.appleSpeech, model: nil, input: nil).sourceLine(in: .english) == "Apple's speech recognition")
     }
 }

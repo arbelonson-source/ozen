@@ -275,7 +275,7 @@ public protocol HomeServerConnecting: Sendable {
 }
 
 /// Opens a connection that has to carry headers when it opens, such as a
-/// cloud service's key (see `SonioxEngine`).
+/// cloud service's key (see `CloudStreamEngine`).
 public protocol CloudSocketConnecting: Sendable {
     func open(_ url: URL, headers: [String: String]) async throws -> any HomeServerSocket
 }

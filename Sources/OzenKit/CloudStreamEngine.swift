@@ -1,19 +1,21 @@
 import Foundation
 
-/// Live captions from Soniox (see `SonioxSpeech`) over one connection for
-/// the whole conversation, where the other cloud services get a request
-/// per sentence: words come back while they are said, and Soniox marks
-/// where each line ends and whose voice it is.
+public typealias SonioxEngine = CloudStreamEngine<SonioxSpeech>
+
+/// Live captions from a service that streams (see `CloudStreamService`)
+/// over one connection for the whole conversation, where the other cloud
+/// services get a request per sentence: words come back while they are
+/// said, and the service marks where each line ends and whose voice it is.
 ///
-/// A key Soniox turns down, or no credit, ends the stream with that
+/// A key the service turns down, or no credit, ends the stream with that
 /// reason, which only a person can fix. A connection that drops, or stops
 /// answering pings, ends it as no internet, which `CloudCover` answers by
 /// carrying on with the phone's own model. Either way the line on screen
 /// is marked cut, as the other engines mark theirs.
-public actor SonioxEngine: TranscriptionEngine {
+public actor CloudStreamEngine<Service: CloudStreamService>: TranscriptionEngine {
     public nonisolated let kind: TranscriptionEngineKind = .cloud
-    public nonisolated let provider: CloudProvider = .soniox
-    public nonisolated let model = SonioxSpeech.model
+    public nonisolated let provider = Service.provider
+    public nonisolated let model = Service.model
 
     private let http: any CloudHTTP
     private let connector: any CloudSocketConnecting
@@ -47,7 +49,7 @@ public actor SonioxEngine: TranscriptionEngine {
         self.apiKey = apiKey
     }
 
-    /// Soniox takes the names list with the settings that open the
+    /// The service takes the names list with the settings that open the
     /// connection, so a change made while captions run is used from the
     /// next start.
     public func setVocabulary(_ terms: [String]) async {
@@ -67,12 +69,12 @@ public actor SonioxEngine: TranscriptionEngine {
         }
         let response: CloudHTTPResponse
         do {
-            response = try await http.send(SonioxSpeech.keyCheckRequest(apiKey: key))
+            response = try await http.send(Service.keyCheckRequest(apiKey: key))
         } catch {
             return .unavailable(CloudSpeechError.offline.unavailability)
         }
         guard (200..<300).contains(response.status) else {
-            return .unavailable(SonioxSpeech.failure(from: response).unavailability)
+            return .unavailable(Service.failure(from: response).unavailability)
         }
         approvedKey = key
         approvedAt = .now
@@ -111,7 +113,7 @@ public actor SonioxEngine: TranscriptionEngine {
         guard let key = currentKey() else { throw CloudSpeechError.keyMissing }
         let socket: any HomeServerSocket
         do {
-            socket = try await connector.open(SonioxSpeech.streamURL, headers: SonioxSpeech.headers(apiKey: key))
+            socket = try await connector.open(Service.streamURL, headers: Service.headers(apiKey: key))
         } catch {
             throw CloudSpeechError.offline
         }
@@ -119,20 +121,26 @@ public actor SonioxEngine: TranscriptionEngine {
         pongLost = false
         pingSentAt = nil
         do {
-            try await socket.send(text: SonioxSpeech.config(languageCode: languageCode, vocabulary: vocabulary))
+            try await socket.send(text: Service.config(languageCode: languageCode, vocabulary: vocabulary))
         } catch {
             await socket.close()
             throw CloudSpeechError.offline
         }
+        let (started, start) = AsyncStream<Void>.makeStream()
+        if !Service.waitsForStart { start.finish() }
         let sender = Task {
+            for await _ in started { break }
+            if Task.isCancelled { return }
+            var chunks = 0
             for await chunk in audio {
                 if Task.isCancelled { return }
                 try? await socket.send(data: HomeServer.pcm16(chunk))
+                chunks += 1
             }
-            // Marked before it is sent: Soniox may close the connection
-            // as soon as it has answered the last words.
+            // Marked before it is sent: the service may close the
+            // connection as soon as it has answered the last words.
             self.markEndSent()
-            try? await socket.send(text: SonioxSpeech.end)
+            try? await socket.send(text: Service.endMessage(chunksSent: chunks))
         }
         let heartbeat = Task {
             var nextCheck = Duration.seconds(self.pingSeconds)
@@ -161,7 +169,7 @@ public actor SonioxEngine: TranscriptionEngine {
         // A socket's receive doesn't notice cancellation: stopping
         // captions closes the connection, which ends it.
         try await withTaskCancellationHandler {
-            try await receive(from: socket, key: key, continuation: continuation)
+            try await receive(from: socket, key: key, languageCode: languageCode, start: start, continuation: continuation)
         } onCancel: {
             Task { await socket.close() }
         }
@@ -170,9 +178,11 @@ public actor SonioxEngine: TranscriptionEngine {
     private func receive(
         from socket: any HomeServerSocket,
         key: String,
+        languageCode: String,
+        start: AsyncStream<Void>.Continuation,
         continuation: AsyncThrowingStream<TranscriptToken, Error>.Continuation
     ) async throws {
-        var lines = SonioxLines()
+        var lines = CloudStreamLines()
         while true {
             let frame: String
             do {
@@ -193,10 +203,12 @@ public actor SonioxEngine: TranscriptionEngine {
                 approvedKey = nil
                 throw CloudSpeechError.offline
             }
-            guard let reply = SonioxSpeech.reply(from: frame) else { continue }
+            guard let reply = Service.reply(from: frame, languageCode: languageCode) else { continue }
             if approvedKey == key { approvedAt = .now }
             let now = Date().timeIntervalSince1970
             switch reply {
+            case .started:
+                start.finish()
             case .failure(let error):
                 if let cut = lines.cutOff(at: now) {
                     continuation.yield(cut)
