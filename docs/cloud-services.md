@@ -20,10 +20,9 @@ Google Gemini model).
 - Deepgram, to try cloud captions for free: a new account gets $200 of free
   credit with no card, which is many months of captions. It is the second
   most accurate cloud service on the same test, ahead of OpenAI's models.
-- OpenAI, Groq or ElevenLabs, for Amharic, which Soniox, Deepgram,
-  Speechmatics and AssemblyAI don't have, or for anyone who already has one
-  of their keys. Groq is the cheapest of the three and has a free plan, but
-  its words only appear once each sentence is finished.
+- OpenAI, Groq or ElevenLabs, for anyone who already has one of their
+  keys. Groq is the cheapest of the three and has a free plan, but its
+  words only appear once each sentence is finished.
 - Google Gemini, for anyone with a Google account who wants to start without
   paying: Google's free plan needs no card. On that plan Google may use what
   is sent to improve its products and people at Google may read it, so for
@@ -32,8 +31,7 @@ Google Gemini model).
   $100 of free credit for a new account and no card: about 125 hours of
   captions. After that it costs several times what Soniox does.
 - AssemblyAI, the same way: words as they are said, $50 of free credit with
-  no card (about 88 hours of captions), then about 57 cents an hour. It has
-  no Ukrainian or Amharic.
+  no card (about 88 hours of captions), then about 57 cents an hour.
 - OpenRouter stays for anyone who already has a key.
 
 For Hebrew, the phone's own Hebrew model is about as accurate as Soniox on
@@ -91,22 +89,25 @@ a cloud project set up around the key, so they are not planned.
 
 ## Languages
 
-Of Ozen's twelve caption languages:
+Ozen captions Hebrew speech: every service is asked for Hebrew, and all nine
+write it. Ozen's buttons and settings come in twelve languages, but there is
+no setting yet for the language people speak.
+
+Each service's reach in those twelve is kept in the app for the day there is
+one, and then a service that lacks the chosen language says so under its
+name:
 
 - Soniox and Speechmatics write eleven, all but Amharic. Chinese goes to
   Speechmatics as Mandarin.
 - AssemblyAI writes ten, all but Ukrainian and Amharic.
 - Deepgram writes eleven, Chinese among them. Amharic it does not have.
-- OpenAI, Groq and ElevenLabs are sent all twelve, Amharic too; their
+- OpenAI, Groq and ElevenLabs take all twelve, Amharic too; their
   accuracy outside Hebrew was not measured here.
-- Google Gemini is sent all twelve, with the caption language as a regional
-  tag (European Portuguese for Portuguese); its accuracy was not measured
-  here in any language.
-- OpenRouter is sent all twelve; Gemini's accuracy outside Hebrew was not
+- Google Gemini takes all twelve, each as a regional tag (European
+  Portuguese for Portuguese); its accuracy was not measured here in any
+  language.
+- OpenRouter takes all twelve; Gemini's accuracy outside Hebrew was not
   measured here.
-
-When the spoken language is one the chosen service does not have, Ozen says
-so under the service.
 
 ## Getting a key
 
