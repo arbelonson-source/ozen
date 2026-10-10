@@ -8,16 +8,20 @@ import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPermission
 import com.arbelonson.ozen.core.AudioPortType
+import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SettingsStore
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -48,10 +52,6 @@ class CaptionSessionDeviceTest {
                 audio,
             )
         }
-        var sawLiveLine = false
-        val watcher = launch(Dispatchers.Default) {
-            CaptionState.screen.collect { screen -> if (screen.lines.any { !it.isFinal }) sawLiveLine = true }
-        }
         val started = SystemClock.elapsedRealtime()
         withContext(Dispatchers.Main) { session.listen() }
         val said = reference.readText()
@@ -63,16 +63,90 @@ class CaptionSessionDeviceTest {
             if (audio.fedAll && DeviceClips.wordErrorRate(said, finished) < 0.35) break
         }
         val seconds = (SystemClock.elapsedRealtime() - started) / 1000.0
-        withContext(Dispatchers.Main) { session.pipeline.stop() }
-        watcher.cancel()
+        withContext(Dispatchers.Main) { session.close() }
         val screen = CaptionState.screen.value
         val heard = screen.lines.filter { it.isFinal }.joinToString(" ") { it.text }
         val wrong = DeviceClips.wordErrorRate(said, heard)
         Log.i("OzenSession", "%.1f s, phase %s, %d lines, %.0f%% words wrong | %s".format(seconds, screen.phase, screen.lines.size, wrong * 100, heard))
         assertTrue("the pipeline stopped: ${screen.phase}", screen.phase !is PipelinePhase.Failed)
-        assertTrue("no live line before the lines were finished", sawLiveLine)
         assertTrue("%.0f%% of the words wrong: $heard".format(wrong * 100), wrong < 0.35)
     }
+
+    @Test
+    fun twentySecondsOfSpeechWithoutAPauseShowLiveTextBeforeTheLineIsFinished() = runBlocking {
+        val clip = File(File(context.filesDir, "device-test"), "clip.wav")
+        val model = File(context.filesDir, CaptionSession.MODEL_FILE)
+        assumeTrue("put clip.wav in device-test and the model at ${model.path}", clip.exists() && model.exists())
+        val work = File(context.cacheDir, "caption-live-test").apply { deleteRecursively(); mkdirs() }
+        val speech = DeviceClips.withoutPauses(DeviceClips.readWav(clip)).copyOf(20 * 16_000)
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                ClipAudio(speech),
+            )
+        }
+        val started = SystemClock.elapsedRealtime()
+        var liveAt: Long? = null
+        var finishedAt: Long? = null
+        val watcher = launch(Dispatchers.Default) {
+            CaptionState.screen.collect { screen ->
+                val now = SystemClock.elapsedRealtime() - started
+                if (liveAt == null && screen.lines.any { !it.isFinal }) liveAt = now
+                if (finishedAt == null && screen.lines.any { it.isFinal }) finishedAt = now
+            }
+        }
+        withContext(Dispatchers.Main) { session.listen() }
+        while (SystemClock.elapsedRealtime() - started < 180_000 && finishedAt == null) {
+            delay(500)
+            if (CaptionState.screen.value.phase is PipelinePhase.Failed) break
+        }
+        withContext(Dispatchers.Main) { session.close() }
+        watcher.cancel()
+        Log.i("OzenSession", "live text at %s ms, line finished at %s ms".format(liveAt, finishedAt))
+        assertTrue("the pipeline stopped: ${CaptionState.screen.value.phase}", CaptionState.screen.value.phase !is PipelinePhase.Failed)
+        val live = liveAt
+        assertNotNull("no live text in 20 seconds of speech", live)
+        assertTrue("live text at $live ms came after the line was finished at $finishedAt ms", live!! < (finishedAt ?: Long.MAX_VALUE))
+    }
+
+    @Test
+    fun pairingWithTheHomeComputerTakesOverFromAPhoneWithoutItsModel(): Unit = runBlocking {
+        val work = File(context.cacheDir, "caption-pairing-test").apply { deleteRecursively(); mkdirs() }
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        val codes = HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher())
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(
+                context,
+                settings,
+                codes,
+                ClipAudio(FloatArray(16_000)),
+                File(work, "not-downloaded.bin"),
+            )
+        }
+        val pairing = PairingRequests(settings, codes::save).apply { onPaired = session::settingsChanged }
+        try {
+            withContext(Dispatchers.Main) { session.listen() }
+            val stopped = withTimeoutOrNull(30_000) { CaptionState.screen.first { it.phase.modelMissing } }
+            assertNotNull("a fresh phone did not stop on its missing model: ${CaptionState.screen.value.phase}", stopped)
+            withContext(Dispatchers.Main) {
+                pairing.open("ozen://pair?address=ws://10.0.2.2:9&code=devicetest")
+                assertTrue(pairing.acceptPending())
+            }
+            val tookOver = withTimeoutOrNull(30_000) {
+                CaptionState.screen.first { !it.phase.modelMissing && it.phase != PipelinePhase.Idle }
+            }
+            assertNotNull("captions stayed stopped on the missing model after pairing", tookOver)
+        } finally {
+            withContext(Dispatchers.Main) { session.close() }
+        }
+    }
+
+    private val PipelinePhase.modelMissing: Boolean
+        get() = this is PipelinePhase.Failed && reason.engineUnavailability?.kind == EngineUnavailability.Kind.ModelNotOnDevice
 
     private class ClipAudio(private val samples: FloatArray) : AudioCapturing {
         @Volatile

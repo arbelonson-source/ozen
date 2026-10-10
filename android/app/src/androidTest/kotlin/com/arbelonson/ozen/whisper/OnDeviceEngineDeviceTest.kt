@@ -8,6 +8,7 @@ import com.arbelonson.ozen.DeviceClips
 import com.arbelonson.ozen.core.EngineAvailability
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
+import com.arbelonson.ozen.core.TranscriptToken
 import java.io.File
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
@@ -27,10 +28,31 @@ class OnDeviceEngineDeviceTest {
 
     @Test
     fun aRecordedLectureComesOutAsItsWordsThroughTheWholePhoneEngine() = runBlocking {
-        val file = File(folder, "model.bin")
-        val clip = File(folder, "clip.wav")
         val reference = File(folder, "clip.txt")
-        assumeTrue("put model.bin, clip.wav and clip.txt in ${folder.path}", file.exists() && clip.exists() && reference.exists())
+        assumeTrue("put clip.txt in ${folder.path}", reference.exists())
+        val tokens = heard(DeviceClips.readWav(clip()))
+        val text = tokens.filter { it.isFinal }.joinToString(" ") { it.text }
+        val wrong = DeviceClips.wordErrorRate(reference.readText(), text)
+        assertTrue("%.0f%% of the words wrong: $text".format(wrong * 100), wrong < 0.35)
+    }
+
+    @Test
+    fun twentySecondsOfSpeechWithoutAPauseGetLiveWordsBeforeTheLineIsFinished() = runBlocking {
+        val speech = DeviceClips.withoutPauses(DeviceClips.readWav(clip())).copyOf(20 * 16_000)
+        val tokens = heard(speech)
+        val beforeFinished = tokens.takeWhile { !it.isFinal }
+        assertTrue("no live words before the line was finished: ${tokens.size} tokens", beforeFinished.any { it.text.isNotBlank() })
+    }
+
+    private fun clip(): File {
+        val model = File(folder, "model.bin")
+        val clip = File(folder, "clip.wav")
+        assumeTrue("put model.bin and clip.wav in ${folder.path}", model.exists() && clip.exists())
+        return clip
+    }
+
+    private suspend fun heard(audio: FloatArray): List<TranscriptToken> {
+        val file = File(folder, "model.bin")
         val scorer = checkNotNull(SileroVoiceScorer.fromAssets(context)) { "the voice model did not load" }
         val threads = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
         val engine = OnDeviceWhisperEngine(
@@ -44,7 +66,6 @@ class OnDeviceEngineDeviceTest {
         )
         try {
             assertEquals(EngineAvailability.Available, engine.prepare("he") {})
-            val audio = DeviceClips.readWav(clip)
             val chunks = flow {
                 for (start in audio.indices step 1_600) {
                     emit(audio.copyOfRange(start, minOf(start + 1_600, audio.size)))
@@ -53,19 +74,15 @@ class OnDeviceEngineDeviceTest {
             }
             val started = SystemClock.elapsedRealtime()
             val tokens = withTimeout(600_000) { engine.stream("he", chunks).toList() }
-            val seconds = (SystemClock.elapsedRealtime() - started) / 1000.0
-            val finals = tokens.filter { it.isFinal }
-            val heard = finals.joinToString(" ") { it.text }
-            val wrong = DeviceClips.wordErrorRate(reference.readText(), heard)
+            val finals = tokens.count { it.isFinal }
             Log.i(
                 "OzenWhisper",
-                "engine: %.1f s of audio in %.1f s, %d live and %d final tokens, %.0f%% words wrong | %s | %s".format(
-                    audio.size / 16_000.0, seconds, tokens.size - finals.size, finals.size, wrong * 100, heard,
-                    engine.diagnosticsSummary(),
+                "engine: %.1f s of audio in %.1f s, %d live and %d final tokens | %s | %s".format(
+                    audio.size / 16_000.0, (SystemClock.elapsedRealtime() - started) / 1000.0, tokens.size - finals, finals,
+                    tokens.filter { it.isFinal }.joinToString(" ") { it.text }, engine.diagnosticsSummary(),
                 ),
             )
-            assertTrue("no live captions before the lines were finished", tokens.size > finals.size)
-            assertTrue("%.0f%% of the words wrong: $heard".format(wrong * 100), wrong < 0.35)
+            return tokens
         } finally {
             engine.release()
             scorer.close()

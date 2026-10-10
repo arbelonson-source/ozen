@@ -17,6 +17,13 @@ object DeviceClips {
         error("no data chunk in ${file.name}")
     }
 
+    fun withoutPauses(samples: FloatArray): FloatArray {
+        val frames = samples.toList().chunked(1_600).map { it.toFloatArray() }
+        val loudness = frames.map { frame -> kotlin.math.sqrt(frame.sumOf { (it * it).toDouble() } / frame.size) }
+        val voiced = loudness.sorted()[loudness.size / 2] * 0.3
+        return frames.filterIndexed { index, _ -> loudness[index] >= voiced }.flatMap { it.asList() }.toFloatArray()
+    }
+
     fun wordErrorRate(reference: String, hypothesis: String): Double {
         fun words(text: String) = text.replace(Regex("[\\u0591-\\u05C7]"), "")
             .replace(Regex("[^\\p{L}\\p{N}\\s]"), " ").lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
