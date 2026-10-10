@@ -1419,11 +1419,13 @@ struct LiveCaptionView: View {
         // Opened from Siri or the Action button, the pad is for someone new;
         // what the last person wrote on it is not theirs to read.
         bigText = ""
-        let somethingOpen = showingMicPicker || showingSettings || showingTypeToSpeak
-            || namingSegment != nil || fixingWordFromSegment != nil || openedConversation != nil
+        // Every sheet the screen can show, the pad itself ruled out above:
+        // the name alert's was missed, and under it the pad never opened.
+        let somethingOpen = isCoveredByAlertScreen
         showingMicPicker = false
         showingSettings = false
         showingTypeToSpeak = false
+        showingNameAlertForm = false
         namingSegment = nil
         fixingWordFromSegment = nil
         openedConversation = nil
