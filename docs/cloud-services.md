@@ -87,6 +87,54 @@ too, with no words until the sentence is finished.
 Mistral's speech model has no Hebrew, and Azure and Google Cloud Speech need
 a cloud project set up around the key, so they are not planned.
 
+## How quickly the words appear
+
+The services reach the screen in three different ways, and that matters
+more than any one speed figure.
+
+| Service | How the words arrive in Ozen | Measured delay |
+|---|---|---|
+| Soniox | as they are said, over one open connection | finished words 0.06 s after the speech ends (Artificial Analysis) |
+| Speechmatics | as they are said, over one open connection | first guesses "typically" under half a second (Speechmatics); Ozen asks for finished words within 2 seconds |
+| AssemblyAI | as they are said, over one open connection | first words 0.47 s after the speech ends (Artificial Analysis) |
+| Deepgram, OpenAI, ElevenLabs, Google Gemini | in steps, about every 2 seconds while someone talks | no independent figure for the way Ozen calls them |
+| OpenRouter | in steps, as above | about 1.6 s a request for the fast model and 4 s for the more accurate one (our test, September 2026) |
+| Groq | all at once, when the sentence ends | no independent figure |
+
+**As they are said** (Soniox, Speechmatics, AssemblyAI). The microphone goes
+to the service over one connection that stays open, and the words show up
+while the person is still talking, then settle a moment later. Ozen asks
+Speechmatics to settle each word within 2 seconds, the setting Speechmatics
+itself recommends for most uses (its fastest is 0.7 s, less accurate).
+
+**In steps** (Deepgram, OpenAI, ElevenLabs, Google Gemini, OpenRouter). These
+get a recording of the sentence so far, sent again after every 2 seconds of
+speech, so the line grows in jumps of a few words. If a request takes
+longer than 2 seconds, the next one waits for that much more speech, so a
+slow connection makes the jumps further apart rather than piling up
+requests. Deepgram and ElevenLabs also sell separate live services that are
+faster, but Ozen does not use them, so their published live figures do not
+apply here.
+
+**At the end** (Groq). Groq charges every request as at least ten seconds,
+so Ozen sends each sentence once, when it is finished: nothing shows until
+then, and then the whole sentence appears together.
+
+For the services that get a request per sentence, a line counts as finished
+after 0.7 seconds of quiet, the same pause the phone's own model uses, or
+after 28 seconds of speech with no pause, cut at the quietest moment of its
+last 2 seconds. Speechmatics is told the same 0.7 seconds; Soniox and
+AssemblyAI decide where a sentence ends by themselves.
+
+About the figures: Artificial Analysis's
+[streaming test](https://artificialanalysis.ai/articles/new-streaming-speech-to-text-benchmark-aa-wer-streaming)
+(June 2026) used English recordings and measured from the end of the speech
+to the first or finished words. Speechmatics' figure is its own, from its
+[documentation](https://docs.speechmatics.com/features/realtime-latency).
+None of the services publishes a Hebrew figure, and a phone on mobile data
+adds its own delay. The trial script above prints how long each service took
+on your own recording and connection.
+
 ## Languages
 
 Ozen captions Hebrew speech: every service is asked for Hebrew, and all nine

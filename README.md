@@ -41,6 +41,12 @@ either unreliable with external microphones or too shallow to trust.
 - **Faster with a home computer.** Optionally, a PC with a graphics card
   writes the captions, faster and more accurately than the phone.
 
+**Guides:** [Getting started](docs/getting-started.md) ·
+[Where your words go](docs/privacy.md) ·
+[Cloud captions: which service?](docs/cloud-services.md) ·
+[Captions from a computer at home](docs/home-computer.md) ·
+[Helping someone who uses Ozen](docs/troubleshooting.md)
+
 ## How it works
 
 <picture>
