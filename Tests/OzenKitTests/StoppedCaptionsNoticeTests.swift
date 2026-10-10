@@ -124,13 +124,16 @@ struct StoppedCaptionsNoticeTests {
         #expect(permission.contains("הרשאה"))
         #expect(storage.contains("מקום"))
         #expect(noMic.contains("מיקרופון"))
-        #expect(cloudKey == cloudCredit)
+        // Running out of credit is not a key to check: whoever helps her
+        // tops up the account instead.
+        #expect(cloudKey != cloudCredit)
+        #expect(cloudCredit.contains("התקציב") && !cloudCredit.contains("מפתח"))
         #expect(offline.contains("אינטרנט"))
         #expect(offline.contains("זיהוי הדיבור שבטלפון") && !offline.contains("Whisper"))
         // Opening the app doesn't wake the computer; captions come back by
         // themselves once it answers.
         #expect(computer.contains("אין תשובה מהמחשב"))
-        #expect(Set([callEnded, permission, storage, noMic, other, cloudKey, offline, computer]).count == 8)
+        #expect(Set([callEnded, permission, storage, noMic, other, cloudKey, cloudCredit, offline, computer]).count == 9)
     }
 
     @Test("the message is in English when the app is")
