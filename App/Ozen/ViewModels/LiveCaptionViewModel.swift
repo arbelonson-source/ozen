@@ -1026,6 +1026,9 @@ public final class LiveCaptionViewModel {
     public var pairingLinkBroken = false
 
     public func openURL(_ url: URL) {
+        // A pairing already waiting for a yes stays: a newer link would
+        // change the computer under the Connect button as she taps it.
+        guard pendingPairing == nil else { return }
         pendingPairing = HomeServerPairing(url: url)
         pairingLinkBroken = pendingPairing == nil && HomeServerPairing.isPairingLink(url)
     }
