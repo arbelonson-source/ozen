@@ -25,11 +25,13 @@ import kotlin.coroutines.CoroutineContext
  * something that happens within milliseconds, so a passing test never gets
  * near the ceiling.
  */
-suspend fun eventually(within: Duration = 10.seconds, condition: () -> Boolean): Boolean =
+suspend fun eventually(within: Duration, condition: () -> Boolean): Boolean =
     withTimeoutOrNull(within) {
         while (!condition()) delay(5.milliseconds)
         true
     } ?: false
+
+suspend fun eventually(condition: () -> Boolean): Boolean = eventually(10.seconds, condition)
 
 class TestError : Exception() {
     override fun toString(): String = "TestError()"
@@ -377,7 +379,14 @@ class BuiltEngines {
     private val references = ArrayList<WeakReference<FakeEngine>>()
 
     val count: Int get() = references.size
-    val aliveCount: Int get() = references.count { it.get() != null }
+    val aliveCount: Int
+        get() {
+            repeat(3) {
+                System.gc()
+                Thread.sleep(5)
+            }
+            return references.count { it.get() != null }
+        }
 
     fun add(engine: FakeEngine) {
         references.add(WeakReference(engine))
