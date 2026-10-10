@@ -19,8 +19,8 @@ import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPermission
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.AudioRoutePolicy
+import com.arbelonson.ozen.core.EnergyVoiceDetector
 import kotlin.concurrent.thread
-import kotlin.math.sqrt
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -144,9 +144,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
                     }
                     if (read == 0) continue
                     val chunk = FloatArray(read) { buffer[it] / 32768f }
-                    var sum = 0.0
-                    for (sample in chunk) sum += sample * sample
-                    inputLevel = sqrt(sum / read).toFloat()
+                    inputLevel = EnergyVoiceDetector.meterLevel(EnergyVoiceDetector.rms(chunk))
                     trySend(chunk)
                 }
             } finally {
