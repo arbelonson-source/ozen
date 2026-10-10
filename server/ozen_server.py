@@ -40,6 +40,7 @@ Protocol, version 1. Text frames are JSON, binary frames are audio.
 import argparse
 import asyncio
 import contextlib
+import gc
 import hmac
 import json
 import logging
@@ -146,6 +147,7 @@ SPEECH_OPTIONS = VadOptions(min_silence_duration_ms=100, speech_pad_ms=0)
 
 MIN_VOICE_SECONDS = 0.2
 LOAD_RETRY_SECONDS = 60
+IDLE_CHECK_SECONDS = 30
 # The names go to the model twice, as the prompt and as hotwords, and
 # Whisper reads both and the caption out of one 448-token context. A
 # 28 s line can take 220 tokens by itself, so each copy of the names
@@ -335,6 +337,107 @@ class Transcriber:
             confidence = min(max(math.exp(mean), 0.0), 1.0)
         self.model_ran = True
         return text, confidence, pieces
+
+
+def load_models(args):
+    """Builds the Transcriber the command line asks for and warms both
+    models past the voice gate, as startup does, so the first sentence a
+    phone sends isn't the slow one. Runs in a worker thread."""
+    transcriber = Transcriber(args.model, args.device, args.compute_type, args.beam, args.context,
+                              args.final_model or None, args.speech_gate)
+    for final in (False, True):
+        transcriber._run(np.zeros(RATE, dtype=np.float32), "he", None, final, gate=False)
+    return transcriber
+
+
+class OnDemandTranscriber:
+    """The models, loaded only while a phone uses them (--unload-after).
+
+    Loading takes several seconds and the phone waits 5 for "ready", so
+    the connection is answered at once and loading starts with the hello;
+    sound that arrives meanwhile waits in the session's buffer. After
+    `unload_after` seconds with no phone connected and no pass running,
+    the models leave the graphics card, so a computer that also runs
+    other things only gives the card to Ozen while it captions. A load
+    that fails (the card is full) fails that session, which the phone
+    answers by using its own model, and the next phone tries again."""
+
+    def __init__(self, load, name, beam, unload_after, clock=time.monotonic):
+        self._load = load
+        self.name = name
+        self.beam = beam
+        self.unload_after = unload_after
+        self._clock = clock
+        self._loaded = None
+        self._loading = None
+        self.connections = 0
+        self.last_used = clock()
+
+    @property
+    def count_tokens(self):
+        if self._loaded is not None:
+            return self._loaded.count_tokens
+        return lambda text: len(text) // 2
+
+    def prepare(self):
+        if self._loaded is None and self._loading is None:
+            log.info("loading the speech models for a phone")
+            started = time.monotonic()
+
+            def load():
+                transcriber = self._load()
+                log.info("models loaded and warmed in %.1f s", time.monotonic() - started)
+                return transcriber
+
+            self._loading = asyncio.ensure_future(asyncio.to_thread(load))
+        return self._loading
+
+    async def loaded(self):
+        if self._loaded is not None:
+            return self._loaded
+        loading = self.prepare()
+        try:
+            transcriber = await asyncio.shield(loading)
+        except Exception as error:
+            if self._loading is loading:
+                self._loading = None
+            log.error("could not load the speech models (%s); the phone uses its own model until they can", error)
+            raise
+        if self._loading is loading:
+            self._loaded, self._loading = transcriber, None
+        return transcriber
+
+    async def transcribe(self, *args, **kwargs):
+        transcriber = await self.loaded()
+        self.last_used = self._clock()
+        try:
+            return await transcriber.transcribe(*args, **kwargs)
+        finally:
+            self.last_used = self._clock()
+
+    def opened(self):
+        self.connections += 1
+        self.last_used = self._clock()
+
+    def closed(self):
+        self.connections = max(0, self.connections - 1)
+        self.last_used = self._clock()
+
+    def unload_if_idle(self):
+        if self._loaded is None or self.connections or self._loaded.lock.locked():
+            return False
+        if self._clock() - self.last_used < self.unload_after:
+            return False
+        self._loaded = None
+        gc.collect()
+        log.info("speech models unloaded after %.0f idle minutes", self.unload_after / 60)
+        return True
+
+
+async def unload_when_idle(models, every=IDLE_CHECK_SECONDS):
+    while True:
+        await asyncio.sleep(every)
+        models.unload_if_idle()
 
 
 class Session:
@@ -616,6 +719,10 @@ async def handle(ws, transcriber, token, live_interval, make_enhancer=None):
         await refuse(ws, "unauthorized", "")
         return
     beam = requested_beam(hello.get("beam"))
+    on_demand = isinstance(transcriber, OnDemandTranscriber)
+    if on_demand:
+        transcriber.opened()
+        transcriber.prepare()
     session = Session(ws, transcriber, hello.get("language", "he"),
                       [str(v) for v in hello.get("vocabulary", [])][:200], live_interval,
                       make_enhancer() if make_enhancer else None, beam)
@@ -665,6 +772,8 @@ async def handle(ws, transcriber, token, live_interval, make_enhancer=None):
         log.error("session from %s ended with %r", peer, error)
     finally:
         worker.cancel()
+        if on_demand:
+            transcriber.closed()
         log.info("session from %s ended: %s", peer, session.summary())
 
 
@@ -688,11 +797,19 @@ async def main():
     p.add_argument("--enhance-mix", type=float, default=0.0,
                    help="mix this share of GTCRN-cleaned audio with the original (see enhance.py); 0 turns it off")
     p.add_argument("--enhance-model", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "gtcrn_simple.onnx"))
+    p.add_argument("--unload-after", type=float, default=0.0,
+                   help="load the models only when a phone connects, and free the graphics card after this many "
+                        "minutes with no phone connected; 0 loads them at startup and keeps them")
     args = p.parse_args()
     token = pairing_code(os.environ.get("OZEN_TOKEN", ""))
     if not token:
         raise SystemExit("set OZEN_TOKEN to the pairing code the phone will send")
     setup_logging()
+    if args.unload_after > 0:
+        models = OnDemandTranscriber(lambda: load_models(args), args.model if not args.final_model else
+                                     f"{args.model} + {args.final_model}", args.beam, args.unload_after * 60)
+        await serve(args, models, token, audio_cleaner(args))
+        return
     try:
         transcriber = Transcriber(args.model, args.device, args.compute_type, args.beam, args.context, args.final_model or None,
                                   args.speech_gate)
@@ -713,16 +830,29 @@ async def main():
         time.sleep(LOAD_RETRY_SECONDS)
         raise SystemExit(4)
     log.info("models warmed in %.1f s", time.monotonic() - started)
-    make_enhancer = None
-    if args.enhance_mix > 0:
-        from enhance import StreamingEnhancer
-        make_enhancer = lambda: StreamingEnhancer(args.enhance_model, args.enhance_mix)
-        make_enhancer()
-        log.info("cleaning audio: %.0f%% GTCRN", args.enhance_mix * 100)
+    await serve(args, transcriber, token, audio_cleaner(args))
+
+
+def audio_cleaner(args):
+    if args.enhance_mix <= 0:
+        return None
+    from enhance import StreamingEnhancer
+    make_enhancer = lambda: StreamingEnhancer(args.enhance_model, args.enhance_mix)
+    make_enhancer()
+    log.info("cleaning audio: %.0f%% GTCRN", args.enhance_mix * 100)
+    return make_enhancer
+
+
+async def serve(args, transcriber, token, make_enhancer):
     async with websockets.serve(lambda ws: handle(ws, transcriber, token, args.live_interval, make_enhancer),
                                 args.host, args.port, max_size=2**22, ping_interval=10, ping_timeout=20):
-        log.info("listening on %s:%d with %s", args.host, args.port, transcriber.name)
-        await asyncio.Future()
+        if isinstance(transcriber, OnDemandTranscriber):
+            log.info("listening on %s:%d with %s, loaded when a phone connects and freed after %.0f idle minutes",
+                     args.host, args.port, transcriber.name, transcriber.unload_after / 60)
+            await unload_when_idle(transcriber)
+        else:
+            log.info("listening on %s:%d with %s", args.host, args.port, transcriber.name)
+            await asyncio.Future()
 
 
 if __name__ == "__main__":

@@ -117,6 +117,14 @@ Finished lines are written with beam 5 (`--beam`), live words with beam 1: on
 the 2080 Ti that cut conversation mistakes from 8.9% to 8.3% for about 0.15 s
 more per finished line.
 
+The models stay on the graphics card from the moment the server starts. On
+a computer that also runs games or other models, `--unload-after 15` loads
+them only when a phone connects and frees the card after 15 minutes with no
+phone connected. The phone hears back at once, and the first words come a
+few seconds late while the models load. Testing the connection from the
+phone starts the loading too. If the card is too full to load them, that
+phone uses its own model for the session, and the next one tries again.
+
 Each connection is logged with what it was for (`check` when the phone only
 tests that the server is there, `captions` when it streams, `report` when it
 sends a diagnostics report to keep in `reports/`) and the app build

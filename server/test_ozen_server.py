@@ -1311,6 +1311,201 @@ class Startup(unittest.TestCase):
     def test_the_audio_cleaner_is_loaded_only_when_its_mix_is_above_zero(self):
         self.assertEqual(self.start()[1], [])
         self.assertEqual(self.start("--enhance-mix", "0.3")[1], [0.3])
+        self.assertEqual(self.start("--enhance-mix", "0.3", "--unload-after", "15")[1], [0.3])
+
+    def test_with_unload_after_nothing_loads_before_a_phone_connects(self):
+        made, _ = self.start("--unload-after", "15")
+        self.assertEqual(made, [])
+        self.assertEqual(self.warmed, [])
+        self.assertEqual(len(self.served), 1)
+        with mock.patch.object(S, "handle") as handle:
+            self.served[0][0]("phone")
+        models = handle.call_args.args[1]
+        self.assertIsInstance(models, S.OnDemandTranscriber)
+        self.assertEqual(models.unload_after, 15 * 60)
+        self.assertEqual((models.name, models.beam), ("ivrit-ai/whisper-large-v3-turbo-ct2", 5))
+
+
+class LoadedGPU:
+    """What a load hands back: a Transcriber stand-in that answers at once."""
+    name = "loaded"
+    beam = 5
+
+    def __init__(self):
+        self.lock = asyncio.Lock()
+        self.passes = 0
+
+    @staticmethod
+    def count_tokens(text):
+        return len(text.split())
+
+    async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
+        async with self.lock:
+            self.passes += 1
+            return "shalom", 0.9, []
+
+
+class OnDemand(unittest.TestCase):
+    """--unload-after: the models load when a phone needs them and leave the
+    graphics card after the given idle time, so a home computer that also
+    runs other things only gives the card to Ozen while it captions."""
+
+    def models(self, unload_after=600, load=None):
+        self.now = 1000.0
+        self.loads = []
+
+        def default_load():
+            self.loads.append(time.monotonic())
+            return LoadedGPU()
+
+        models = S.OnDemandTranscriber(load or default_load, "turbo", 5, unload_after, clock=lambda: self.now)
+        return models
+
+    def caption(self, models):
+        return asyncio.run(models.transcribe(np.zeros(1600, dtype=np.float32), "he", None, True))
+
+    def test_nothing_loads_until_a_phone_needs_it_and_then_only_once(self):
+        models = self.models()
+        self.assertEqual(self.loads, [])
+        self.assertEqual(models.name, "turbo")
+        with self.assertLogs(S.log, "INFO"):
+            self.assertEqual(self.caption(models)[0], "shalom")
+        self.caption(models)
+        self.assertEqual(len(self.loads), 1)
+
+    def test_two_phones_at_once_share_one_load(self):
+        started = threading.Event()
+        release = threading.Event()
+
+        def slow_load():
+            self.loads.append(1)
+            started.set()
+            release.wait(5)
+            return LoadedGPU()
+
+        models = self.models(load=slow_load)
+
+        async def two():
+            first = asyncio.ensure_future(models.transcribe(np.zeros(1600, dtype=np.float32), "he", None, False))
+            second = asyncio.ensure_future(models.transcribe(np.zeros(1600, dtype=np.float32), "he", None, True))
+            await asyncio.to_thread(started.wait, 5)
+            release.set()
+            return await asyncio.gather(first, second)
+
+        with self.assertLogs(S.log, "INFO"):
+            results = asyncio.run(two())
+        self.assertEqual([text for text, _, _ in results], ["shalom", "shalom"])
+        self.assertEqual(self.loads, [1])
+
+    def test_a_phone_saying_hello_starts_the_load_before_any_sound(self):
+        models = self.models()
+
+        async def hello():
+            models.opened()
+            await asyncio.wait_for(models.prepare(), 5)
+
+        with self.assertLogs(S.log, "INFO"):
+            asyncio.run(hello())
+        self.assertEqual(len(self.loads), 1)
+
+    def test_the_models_leave_the_card_after_the_idle_time_and_come_back_when_needed(self):
+        models = self.models(unload_after=600)
+        with self.assertLogs(S.log, "INFO") as logged:
+            self.caption(models)
+            self.now += 599
+            self.assertFalse(models.unload_if_idle())
+            self.now += 1
+            self.assertTrue(models.unload_if_idle())
+            self.assertFalse(models.unload_if_idle())
+            self.caption(models)
+        self.assertEqual(len(self.loads), 2)
+        self.assertTrue(any("unloaded" in line for line in logged.output), logged.output)
+
+    def test_a_phone_still_connected_keeps_the_models_however_quiet_it_is(self):
+        models = self.models(unload_after=600)
+        with self.assertLogs(S.log, "INFO"):
+            models.opened()
+            self.caption(models)
+            self.now += 3600
+            self.assertFalse(models.unload_if_idle())
+            models.closed()
+            self.assertFalse(models.unload_if_idle())
+            self.now += 600
+            self.assertTrue(models.unload_if_idle())
+
+    def test_models_that_are_not_loaded_have_nothing_to_unload(self):
+        models = self.models()
+        self.now += 10_000
+        self.assertFalse(models.unload_if_idle())
+
+    def test_a_load_that_fails_reaches_the_phone_and_the_next_phone_tries_again(self):
+        attempts = []
+
+        def flaky_load():
+            attempts.append(1)
+            if len(attempts) == 1:
+                raise RuntimeError("CUDA out of memory")
+            return LoadedGPU()
+
+        models = self.models(load=flaky_load)
+        with self.assertLogs(S.log, "INFO") as logged:
+            with self.assertRaises(RuntimeError):
+                self.caption(models)
+            self.assertEqual(self.caption(models)[0], "shalom")
+        self.assertEqual(len(attempts), 2)
+        self.assertTrue(any("CUDA out of memory" in line for line in logged.output), logged.output)
+
+    def test_names_are_counted_with_the_loaded_tokenizer_and_roughly_before(self):
+        models = self.models()
+        self.assertEqual(models.count_tokens("Noa Itai Dana Avi"), len("Noa Itai Dana Avi") // 2)
+        with self.assertLogs(S.log, "INFO"):
+            self.caption(models)
+        self.assertEqual(models.count_tokens("Noa Itai Dana Avi"), 4)
+
+    def test_the_phone_hears_ready_at_once_and_its_hello_starts_the_load(self):
+        began = threading.Event()
+        release = threading.Event()
+        loaded = []
+
+        def slow_load():
+            began.set()
+            release.wait(5)
+            loaded.append(1)
+            return LoadedGPU()
+
+        models = self.models(load=slow_load)
+        ws = PhoneSocket({"type": "hello", "token": "example-code-123", "purpose": "check"}, [json.dumps({"type": "end"})])
+
+        async def connect():
+            await asyncio.wait_for(S.handle(ws, models, "example-code-123", 1.0), 5)
+            ready_before_load = [json.loads(text)["type"] for text in ws.sent] == ["ready"] and not loaded
+            started_by_the_hello = await asyncio.to_thread(began.wait, 2)
+            release.set()
+            await asyncio.wait_for(models.loaded(), 5)
+            return ready_before_load, started_by_the_hello
+
+        with self.assertLogs(S.log, "INFO"):
+            self.assertEqual(asyncio.run(connect()), (True, True))
+        self.assertEqual(json.loads(ws.sent[0])["model"], "turbo")
+        self.assertEqual(loaded, [1])
+        self.assertEqual(models.connections, 0)
+
+    def test_models_loaded_for_a_phone_are_warmed_past_the_voice_gate_like_at_startup(self):
+        runs = []
+
+        class Built:
+            def __init__(self, *args):
+                self.args = args
+
+            def _run(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
+                runs.append((language, final, gate))
+
+        args = types.SimpleNamespace(model="turbo", device="cuda", compute_type="float16", beam=5, context=False,
+                                     final_model="ivrit-ai/whisper-large-v3-ct2", speech_gate=0.05)
+        with mock.patch.object(S, "Transcriber", Built):
+            built = S.load_models(args)
+        self.assertEqual(built.args, ("turbo", "cuda", "float16", 5, False, "ivrit-ai/whisper-large-v3-ct2", 0.05))
+        self.assertEqual(runs, [("he", False, False), ("he", True, False)])
 
 
 class PromptBudget(unittest.TestCase):
