@@ -392,6 +392,13 @@ struct HomeServerEngineTests {
         #expect(!HomeServerPairing.isPairingLink(try #require(URL(string: "https://example.com/pair"))))
     }
 
+    @Test("the address field keeps what was typed when its row comes back, and otherwise shows the saved address")
+    func addressFieldOnReturn() {
+        #expect(HomeServer.addressField(draft: "", loaded: "", saved: "10.0.0.5") == "10.0.0.5")
+        #expect(HomeServer.addressField(draft: "192.168.1.", loaded: "10.0.0.5", saved: "10.0.0.5") == "192.168.1.")
+        #expect(HomeServer.addressField(draft: "10.0.0.5", loaded: "10.0.0.5", saved: "wss://pc.example.ts.net") == "wss://pc.example.ts.net")
+    }
+
     @Test("an address typed but never saved is kept as Settings closes, unless it is unchanged, empty or not an address")
     func unsavedAddress() {
         #expect(HomeServer.unsavedAddress(draft: " wss://pc.example.ts.net\n", saved: "10.0.0.5") == "wss://pc.example.ts.net")

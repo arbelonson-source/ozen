@@ -34,6 +34,15 @@ public enum HomeServer {
         return address
     }
 
+    /// What the address field shows as its row appears again (back from the
+    /// setup guide, or the engine switched away and back): an address typed
+    /// there stays, where it used to be replaced by the saved one and lost.
+    /// A field left as `loaded` put it takes the saved address, which a
+    /// pairing may have changed meanwhile.
+    public static func addressField(draft: String, loaded: String, saved: String) -> String {
+        draft == loaded ? saved : draft
+    }
+
     /// A host reached without crossing the open internet: a private or
     /// tailnet address, a name with no dots, or a local or tailnet name.
     public static func isPrivate(host: String) -> Bool {

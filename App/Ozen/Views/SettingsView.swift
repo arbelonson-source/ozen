@@ -36,6 +36,8 @@ struct SettingsView: View {
     @State private var hasCloudKey = CloudKeyStore.hasKey()
     @State private var cloudKeySaveFailed = false
     @State private var homeServerAddressDraft = ""
+    /// The saved address last put in the field (see `HomeServer.addressField`).
+    @State private var homeServerAddressLoaded = ""
     @Environment(\.colorScheme) private var systemScheme
     @Environment(\.colorSchemeContrast) private var contrast
     private var previewTheme: CaptionTheme { CaptionTheme(viewModel.display.theme, system: systemScheme, contrast: contrast) }
@@ -443,7 +445,9 @@ struct SettingsView: View {
                 .autocorrectionDisabled()
                 .onSubmit(saveHomeServerAddress)
                 .onAppear {
-                    homeServerAddressDraft = viewModel.settings.homeServerAddress
+                    let saved = viewModel.settings.homeServerAddress
+                    homeServerAddressDraft = HomeServer.addressField(draft: homeServerAddressDraft, loaded: homeServerAddressLoaded, saved: saved)
+                    if homeServerAddressDraft == saved { homeServerAddressLoaded = saved }
                     hasHomeServerCode = HomeServerCodeStore.hasKey
                 }
             if homeServerAddressDraft.trimmingCharacters(in: .whitespacesAndNewlines) != viewModel.settings.homeServerAddress {
@@ -484,6 +488,7 @@ struct SettingsView: View {
                     Task {
                         if let typedAddress {
                             homeServerAddressDraft = typedAddress
+                            homeServerAddressLoaded = typedAddress
                             await viewModel.setHomeServerAddress(typedAddress)
                         }
                         let check = await viewModel.checkHomeServer()
@@ -625,6 +630,7 @@ struct SettingsView: View {
     private func saveHomeServerAddress() {
         let address = homeServerAddressDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         homeServerAddressDraft = address
+        homeServerAddressLoaded = address
         forgetHomeServerCheck()
         Task { await viewModel.setHomeServerAddress(address) }
     }
