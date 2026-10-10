@@ -32,6 +32,18 @@ struct DeepgramSpeechTests {
         #expect(items.filter { $0.name == "keyterm" }.map(\.value) == ["דנה", "ד\"ר כהן"])
     }
 
+    @Test("a name with a plus or an ampersand reaches Deepgram as typed, which reads a plus in the address as a space")
+    func namesAsTyped() throws {
+        let request = DeepgramSpeech.request(model: DeepgramSpeech.model, apiKey: "k", wav: Data(), languageCode: "en", vocabulary: ["C++", "Dana & Avi", "x=1"])
+        let query = try #require(request.url.query(percentEncoded: true))
+        let heard = query.split(separator: "&").compactMap { pair -> (String, String)? in
+            let parts = pair.split(separator: "=", maxSplits: 1).map { $0.replacingOccurrences(of: "+", with: " ").removingPercentEncoding ?? "" }
+            return parts.count == 2 ? (parts[0], parts[1]) : nil
+        }
+        #expect(heard.filter { $0.0 == "keyterm" }.map(\.1) == ["C++", "Dana & Avi", "x=1"])
+        #expect(heard.first { $0.0 == "model" }?.1 == "nova-3")
+    }
+
     @Test("Chinese goes to Nova-2, the only Deepgram model that has it, which takes no names list")
     func chinese() {
         let request = DeepgramSpeech.request(model: DeepgramSpeech.model, apiKey: "k", wav: Data(), languageCode: "zh", vocabulary: ["王芳"])

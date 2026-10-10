@@ -18,7 +18,6 @@ public enum AssemblyAISpeech: CloudStreamService {
     public static let languages: Set<String> = ["he", "en", "ar", "ru", "fr", "es", "de", "pt", "zh", "hi"]
     static let maximumTerms = 100
     static let unknownSpeaker = "UNKNOWN"
-    private static let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
 
     public static func address(languageCode: String, vocabulary: [String]) -> URL {
         var settings: [(String, String)] = [
@@ -32,10 +31,7 @@ public enum AssemblyAISpeech: CloudStreamService {
         if !terms.isEmpty {
             settings.append(("keyterms_prompt", json(Array(terms))))
         }
-        let query = settings.map { name, value in
-            "\(name)=\(value.addingPercentEncoding(withAllowedCharacters: unreserved) ?? "")"
-        }
-        return URL(string: streamURL.absoluteString + "?" + query.joined(separator: "&")) ?? streamURL
+        return CloudQuery.url(streamURL, settings)
     }
 
     public static func headers(apiKey: String) -> [String: String] {

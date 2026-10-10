@@ -10,22 +10,20 @@ public enum DeepgramSpeech {
 
     public static func request(model: String, apiKey: String, wav: Data, languageCode: String, vocabulary: [String]) -> CloudHTTPRequest {
         let chinese = languageCode == "zh"
-        var items = [
-            URLQueryItem(name: "model", value: chinese ? chineseModel : model),
-            URLQueryItem(name: "language", value: chinese ? "zh-CN" : languageCode),
-            URLQueryItem(name: "punctuate", value: "true"),
-            URLQueryItem(name: "smart_format", value: "true"),
-            URLQueryItem(name: "utterances", value: "true"),
-            chinese ? URLQueryItem(name: "diarize", value: "true") : URLQueryItem(name: "diarize_model", value: "latest"),
-            URLQueryItem(name: "mip_opt_out", value: "true"),
+        var settings = [
+            ("model", chinese ? chineseModel : model),
+            ("language", chinese ? "zh-CN" : languageCode),
+            ("punctuate", "true"),
+            ("smart_format", "true"),
+            ("utterances", "true"),
+            chinese ? ("diarize", "true") : ("diarize_model", "latest"),
+            ("mip_opt_out", "true"),
         ]
         if !chinese {
-            items += VocabularyHints.normalized(vocabulary).prefix(maximumTerms).map { URLQueryItem(name: "keyterm", value: $0) }
+            settings += VocabularyHints.normalized(vocabulary).prefix(maximumTerms).map { ("keyterm", $0) }
         }
-        var components = URLComponents(url: listenURL, resolvingAgainstBaseURL: false)!
-        components.queryItems = items
         return CloudHTTPRequest(
-            url: components.url!,
+            url: CloudQuery.url(listenURL, settings),
             method: "POST",
             headers: headers(apiKey: apiKey).merging(["Content-Type": "audio/wav"]) { $1 },
             body: wav,
