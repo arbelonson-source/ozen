@@ -85,9 +85,9 @@ struct DiagnosticsView: View {
                 LabeledContent(tr("פיגור כתוביות", "Caption lag"), value: viewModel.stats.captionLagSeconds.map { String(format: tr("%.1f שנ׳", "%.1f s"), $0) } ?? "—")
                 LabeledContent(tr("הפעלות מחדש", "Restarts"), value: "\(viewModel.stats.engineRestarts)")
                 LabeledContent(tr("דוברים שזוהו", "Speakers identified"), value: "\(viewModel.pipeline.speakerClusters.count)")
-                LabeledContent(tr("דוברים חדשים בסשן", "New speakers this session"), value: "\(viewModel.stats.speakerClustersOpened)")
+                LabeledContent(tr("דוברים חדשים מאז שהאפליקציה נפתחה", "New speakers since the app opened"), value: "\(viewModel.stats.speakerClustersOpened)")
                 if let started = viewModel.stats.sessionStartedAt {
-                    LabeledContent(tr("התחלת סשן", "Session started"), value: Date(timeIntervalSince1970: started).formatted(inAppLanguage: .omitted, time: .standard))
+                    LabeledContent(tr("ההאזנה התחילה", "Listening started"), value: Date(timeIntervalSince1970: started).formatted(inAppLanguage: .omitted, time: .standard))
                 }
             }
 
