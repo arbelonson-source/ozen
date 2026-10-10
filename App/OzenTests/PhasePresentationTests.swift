@@ -327,6 +327,14 @@ struct ScreenWordingTests {
         #expect(HistoryView.emptyConversationsMessage(query: "רופא", speakerFilter: nil, saving: false).contains("רופא"))
     }
 
+    @Test("after a star is taken away, next-starred stays on its line or starts over, never reading 3 of 2")
+    func starredStepAfterReload() {
+        let first = UUID(), second = UUID(), third = UUID()
+        #expect(HistoryDetailView.position(of: 2, from: [first, second, third], in: [first, third]) == 1)
+        #expect(HistoryDetailView.position(of: 1, from: [first, second, third], in: [first, third]) == nil)
+        #expect(HistoryDetailView.position(of: 0, from: [], in: [first]) == nil)
+    }
+
     @Test("every auto-delete choice has its own name")
     func retentionNames() {
         let names = HistoryRetention.allCases.map(HistoryView.name(for:))

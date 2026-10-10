@@ -286,9 +286,24 @@ struct HistoryDetailView: View {
         }.value
         record = loaded.record
         stats = loaded.stats
+        if let index = Self.position(of: currentMatch, from: matches, in: loaded.matches) {
+            currentMatch = index
+        } else {
+            currentMatch = 0
+            hasJumped = false
+        }
         matches = loaded.matches
         timeMarks = loaded.timeMarks
         numberLineIDs = loaded.numberLineIDs
+    }
+
+    /// Where "next" stands once the lines it steps through are loaded
+    /// again (a star added or taken away): on the line it showed if that
+    /// is still one of them, else on none yet, so the next tap starts from
+    /// the first. Kept as it was, the button read "Next starred (3 of 2)".
+    static func position(of index: Int, from old: [UUID], in new: [UUID]) -> Int? {
+        guard old.indices.contains(index) else { return nil }
+        return new.firstIndex(of: old[index])
     }
 
     /// Everything the screen shows about one saved conversation, worked
