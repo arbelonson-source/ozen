@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import android.content.Context
 import android.os.Build
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.CaptionPipeline
 import com.arbelonson.ozen.core.HomeServerEngine
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
@@ -21,12 +22,12 @@ class CaptionSession(
     private val context: Context,
     private val settings: SettingsHolder,
     private val homeServerCode: HomeServerCodeStore,
+    val audio: AudioCapturing = AndroidAudioCapture(context),
 ) {
     private val scope = MainScope()
     private val connector = WebSocketConnector()
     private val voiceScorer by lazy { SileroVoiceScorer.fromAssets(context) }
     private var interruptedBySystem = false
-    val audio = AndroidAudioCapture(context)
     val pipeline = CaptionPipeline(
         scope = scope,
         audio = audio,
@@ -36,7 +37,7 @@ class CaptionSession(
     )
 
     init {
-        audio.onInterruption = { active ->
+        (audio as? AndroidAudioCapture)?.onInterruption = { active ->
             interruptedBySystem = active
             pipeline.systemInterruptionChanged(active)
             publish()
