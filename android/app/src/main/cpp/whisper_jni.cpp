@@ -1,8 +1,10 @@
 #include <jni.h>
+#include <android/log.h>
 
 #include <cmath>
 #include <string>
 
+#include "ggml-backend.h"
 #include "whisper.h"
 
 namespace {
@@ -17,6 +19,14 @@ std::string text(JNIEnv *env, jstring value) {
     std::string result(chars);
     env->ReleaseStringUTFChars(value, chars);
     return result;
+}
+
+void log_to_logcat(ggml_log_level level, const char *message, void *) {
+    int priority = ANDROID_LOG_INFO;
+    if (level == GGML_LOG_LEVEL_ERROR) priority = ANDROID_LOG_ERROR;
+    else if (level == GGML_LOG_LEVEL_WARN) priority = ANDROID_LOG_WARN;
+    else if (level == GGML_LOG_LEVEL_DEBUG) return;
+    __android_log_print(priority, "OzenGgml", "%s", message);
 }
 
 }  // namespace
@@ -95,4 +105,11 @@ Java_com_arbelonson_ozen_whisper_WhisperCpp_segmentLogprob(JNIEnv *, jobject, jl
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_arbelonson_ozen_whisper_WhisperCpp_systemInfo(JNIEnv *env, jobject) {
     return env->NewStringUTF(whisper_print_system_info());
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_loadBackends(JNIEnv *env, jobject, jstring folder) {
+    ggml_log_set(log_to_logcat, nullptr);
+    ggml_backend_load_all_from_path(text(env, folder).c_str());
+    return ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU) != nullptr;
 }

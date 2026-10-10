@@ -74,6 +74,9 @@ jobs:
       - name: Core tests and debug APK
         working-directory: android
         run: ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug
+      - name: The APK carries the speech code for every processor
+        working-directory: android
+        run: bash check-apk.sh
       - uses: actions/upload-artifact@v6
         with:
           name: ozen-android-debug

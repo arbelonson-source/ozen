@@ -15,7 +15,17 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class WhisperCppDeviceTest {
-    private val folder = File(InstrumentationRegistry.getInstrumentation().targetContext.filesDir, "device-test")
+    private val context = InstrumentationRegistry.getInstrumentation().targetContext
+    private val folder = File(context.filesDir, "device-test")
+    private val libraries = context.applicationInfo.nativeLibraryDir
+
+    @Test
+    fun theProcessorsOwnBuildOfTheSpeechModelCodeLoads() {
+        assertTrue("no CPU library loaded from $libraries", WhisperCpp.loadCpu(libraries))
+        val info = WhisperCpp.systemInfo()
+        Log.i("OzenWhisper", info)
+        assertTrue(info, info.contains("CPU : "))
+    }
 
     @Test
     fun hebrewSpeechComesBackAsTheWordsThatWereSaid() {
@@ -25,7 +35,7 @@ class WhisperCppDeviceTest {
         assumeTrue("put model.bin, clip.wav and clip.txt in ${folder.path}", model.exists() && clip.exists() && reference.exists())
         val audio = readWav(clip)
         val loadStarted = SystemClock.elapsedRealtime()
-        val whisper = WhisperModel.load(model.path)
+        val whisper = WhisperModel.load(model.path, libraries)
         assertNotNull("the model did not load", whisper)
         val loadSeconds = (SystemClock.elapsedRealtime() - loadStarted) / 1000.0
         val started = SystemClock.elapsedRealtime()

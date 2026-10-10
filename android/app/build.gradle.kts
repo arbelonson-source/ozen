@@ -24,7 +24,7 @@ android {
         }
         externalNativeBuild {
             cmake {
-                arguments += "-DCMAKE_BUILD_TYPE=Release"
+                arguments += listOf("-DCMAKE_BUILD_TYPE=Release", "-DANDROID_STL=c++_shared")
             }
         }
     }
@@ -35,6 +35,13 @@ android {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
             version = "4.1.2"
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            excludes += "**/libparakeet.so"
         }
     }
 

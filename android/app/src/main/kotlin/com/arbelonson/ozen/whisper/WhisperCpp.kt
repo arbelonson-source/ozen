@@ -24,7 +24,10 @@ class WhisperModel private constructor(private var handle: Long) : AutoCloseable
     }
 
     companion object {
-        fun load(path: String): WhisperModel? = WhisperCpp.load(path).takeIf { it != 0L }?.let(::WhisperModel)
+        fun load(path: String, libraryDir: String): WhisperModel? {
+            if (!WhisperCpp.loadCpu(libraryDir)) return null
+            return WhisperCpp.load(path).takeIf { it != 0L }?.let(::WhisperModel)
+        }
     }
 }
 
@@ -32,6 +35,16 @@ internal object WhisperCpp {
     init {
         System.loadLibrary("ozen_whisper")
     }
+
+    private var cpuLoaded = false
+
+    @Synchronized
+    fun loadCpu(libraryDir: String): Boolean {
+        if (!cpuLoaded) cpuLoaded = loadBackends(libraryDir)
+        return cpuLoaded
+    }
+
+    private external fun loadBackends(folder: String): Boolean
 
     external fun load(path: String): Long
     external fun free(handle: Long)
