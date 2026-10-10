@@ -391,7 +391,10 @@ struct LiveCaptionView: View {
                 try? await Task.sleep(for: .seconds(30))
             }
         }
-        .sensoryFeedback(.warning, trigger: battery.notice?.id)
+        // Only a warning arriving: plugging in, closing the banner or
+        // stopping captions took it away with the same buzz, read as
+        // something new gone wrong.
+        .sensoryFeedback(.warning, trigger: battery.notice?.id) { _, id in id != nil }
         .sensoryFeedback(.selection, trigger: fontSizeTrigger)
         .animation(.default, value: battery.notice)
         .onChange(of: scenePhase, initial: true) { _, phase in
