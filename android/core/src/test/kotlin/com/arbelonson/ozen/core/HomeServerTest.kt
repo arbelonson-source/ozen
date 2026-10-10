@@ -9,6 +9,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -53,7 +54,7 @@ class HomeServerTest {
     }
 
     @Test
-    fun `a typed address out on the internet must be wss, plain ws would carry the pairing code, the names and the sound unencrypted`() {
+    fun `a typed address out on the internet must be wss, plain ws would carry the pairing code, the names and the sound unencrypted`() = runTest {
         for (typed in listOf("203.0.113.5", "192.186.1.20", "ws://captions.example.org:8765")) {
             assertNull(HomeServer.url(typed), typed)
             assertTrue(HomeServer.needsEncryptedAddress(typed), typed)
@@ -64,6 +65,17 @@ class HomeServerTest {
         }
         assertNotNull(HomeServer.url("wss://203.0.113.5:8765"))
         assertEquals("ws://grandma-pc.local:8765", HomeServer.url("grandma-pc.local")?.toString())
+        val socket = ScriptedSocket(SCRIPTED_READY, timeSource = testScheduler.timeSource)
+        val check = HomeServerEngine(
+            address = "203.0.113.5",
+            token = { "1234" },
+            connector = ScriptedConnector(socket),
+            handshakeSeconds = 1.0,
+            client = "Ozen 36, iOS 18.2",
+            timeSource = testScheduler.timeSource,
+        ).checkAvailability("he")
+        assertEquals(HomeServerCheck.NotSetUp, HomeServerCheck.of(check, 0.0))
+        assertTrue(socket.sentTexts.isEmpty())
     }
 
     @Test

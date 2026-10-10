@@ -5,10 +5,12 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.coroutineScope
@@ -218,8 +220,16 @@ class CloudStreamEngine(
                 }
             }
         }
+        // A socket's receive doesn't notice cancellation: stopping captions
+        // closes the connection, which ends it.
+        val stopping = AtomicBoolean(false)
+        val receiver = workers.async { receive(socket, key, languageCode, started, tokens, stopping) }
         try {
-            receive(socket, key, languageCode, started, tokens)
+            receiver.await()
+        } catch (error: CancellationException) {
+            stopping.set(true)
+            withContext(NonCancellable) { socket.close() }
+            throw error
         } finally {
             sender.cancel()
             heartbeat.cancel()
@@ -232,6 +242,7 @@ class CloudStreamEngine(
         languageCode: String,
         started: CompletableDeferred<Unit>,
         tokens: SendChannel<TranscriptToken>,
+        stopping: AtomicBoolean,
     ) {
         val lines = CloudStreamLines(spaced = CloudStreamLines.spaced(languageCode))
         while (true) {
@@ -240,7 +251,7 @@ class CloudStreamEngine(
             } catch (error: Exception) {
                 withContext(NonCancellable) { socket.close() }
                 // Stopping captions leaves the lines as they are.
-                if (!currentCoroutineContext().isActive) throw CancellationException("cancelled")
+                if (stopping.get()) throw CancellationException("cancelled")
                 val ended = synchronized(lock) { endSent && !pongLost }
                 if (ended) {
                     lines.finish(nowSeconds()).forEach { tokens.trySend(it) }
