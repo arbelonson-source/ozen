@@ -20,6 +20,7 @@ step release-scripts python3 -m unittest discover -s scripts/model-release -p "t
 step cloud-trial python3 -m unittest discover -s scripts/cloud-trial -p "test_*.py"
 step swift-test swift test
 step server-tests bash -c "cd server && python3 -m unittest -q test_ozen_server test_pairing test_try_server"
+step android-core bash -c "cd android && ./gradlew -q :core:test"
 rm -f /tmp/ozen-ci-local.$$
 if [ ${#failed[@]} -gt 0 ]; then
     echo "${#failed[@]} failed: ${failed[*]}"

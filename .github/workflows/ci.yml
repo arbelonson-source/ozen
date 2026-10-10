@@ -57,6 +57,23 @@ jobs:
         working-directory: server
         run: pip install numpy qrcode && python -m unittest test_ozen_server test_pairing test_try_server -v
 
+  # The Android app's shared core: plain Kotlin, so its tests run on the
+  # JVM in seconds, reading the same translations and test cases as OzenKit.
+  android-core:
+    name: Android core (Kotlin, JVM)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Core tests
+        working-directory: android
+        run: ./gradlew :core:test
+
   app:
     name: Ozen app (iOS Simulator)
     runs-on: macos-15
