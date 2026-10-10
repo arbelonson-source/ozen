@@ -212,7 +212,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var quickPhrases: [String]
     /// 0...1 as AVSpeechUtterance understands it; 0.45 is a calm pace.
     public var speechRate: Float
-    /// Family names, places, medicines — words both engines are told to
+    /// Family names, places, medicines — words every engine is told to
     /// expect so they come out spelled right. See `VocabularyHints`.
     public var vocabulary: [String]
     /// The first-launch walkthrough (what the app does, engine choice,

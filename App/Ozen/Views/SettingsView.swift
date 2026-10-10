@@ -988,7 +988,7 @@ struct SettingsView: View {
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("vocabularyRow")
         } footer: {
-            Text(tr("שני המנועים מקבלים את הרשימה כרמז, כדי ששמות של בני משפחה ייכתבו נכון.", "Both engines get the list as a hint, so family members’ names are spelled correctly."))
+            Text(tr("כל המנועים מקבלים את הרשימה כרמז, כדי ששמות של בני משפחה ייכתבו נכון.", "Every engine gets the list as a hint, so family members’ names are spelled correctly."))
         }
     }
 

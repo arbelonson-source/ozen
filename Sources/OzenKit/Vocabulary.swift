@@ -2,9 +2,10 @@ import Foundation
 
 /// Names and words the recognizers should expect. Family members' names
 /// are the single biggest source of wrong captions in a home — "Avi"
-/// becomes "aval" ("but"), "Ruti" becomes "Rotem" — and both engines
-/// accept hints: Apple's recognizer via `contextualStrings`, Whisper via
-/// a text prompt the decoder is conditioned on before it hears any audio.
+/// becomes "aval" ("but"), "Ruti" becomes "Rotem" — and every engine
+/// accepts hints: Apple's recognizer via `contextualStrings`, Whisper via
+/// a text prompt the decoder is conditioned on before it hears any audio,
+/// the home computer and each cloud service in its own way.
 public enum VocabularyHints {
     public static let maximumTerms = 200
     public static let maximumTermLength = 40

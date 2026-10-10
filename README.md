@@ -212,8 +212,9 @@ Open a section for the details.
   conversation, so fixing a misspelled name also fixes last week's
   conversations and a search for the new name finds them.
 - **Names and words list.** Family names, the doctor, the medicines.
-  Both engines are primed with the list (Apple's recognizer via
-  contextual strings, Whisper via a decoder prompt; on a long list,
+  Every engine is primed with the list (Apple's recognizer via
+  contextual strings, Whisper via a decoder prompt, the home computer and
+  each cloud service in its own way; on a long list,
   Whisper on the phone gets only the start of it, about 20 first names or
   a dozen full names and medicines, so put the important ones
   first), edits apply from the next sentence, and Whisper output that is
