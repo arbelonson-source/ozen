@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
 /**
@@ -1457,6 +1458,7 @@ class CaptionPipeline(
         }
 
         val collected = FloatList()
+        var wasCancelled = false
         val target = (seconds * SAMPLE_RATE).toInt()
         // A Siri "start captions" meanwhile would take the microphone from
         // the recording; it waits for the recording to end instead.
@@ -1476,13 +1478,20 @@ class CaptionPipeline(
                     audio.stopCapture()
                 }
                 var reached = false
-                stream.transformWhile { chunk ->
-                    emit(chunk)
-                    !reached
-                }.collect { chunk ->
-                    collected.append(AudioFanOut.withoutGlitches(chunk))
-                    onProgress(minOf(collected.size.toDouble() / target.toDouble(), 1.0))
-                    if (collected.size >= target) reached = true
+                // A cancelled recording ends like a finished one, with what
+                // it has heard, and captions come back (a cancelled Swift
+                // task leaves its stream loop and carries on).
+                try {
+                    stream.transformWhile { chunk ->
+                        emit(chunk)
+                        !reached
+                    }.collect { chunk ->
+                        collected.append(AudioFanOut.withoutGlitches(chunk))
+                        onProgress(minOf(collected.size.toDouble() / target.toDouble(), 1.0))
+                        if (collected.size >= target) reached = true
+                    }
+                } catch (error: CancellationException) {
+                    wasCancelled = true
                 }
                 deadline.cancel()
                 audio.stopCapture()
@@ -1491,25 +1500,28 @@ class CaptionPipeline(
             isRecordingVoice = false
         }
 
-        val restartSettings = restartAfterRecording
-        val held = retryAfterRecording
-        if (restartSettings != null) {
-            restartAfterRecording = null
-            retryAfterRecording = null
-            restart(restartSettings)
-        } else if (wasRunning) {
-            resume()
-        } else if (held != null) {
-            retryAfterRecording = null
-            retry(held.settings)
-        } else {
-            val current = phase
-            if (current is PipelinePhase.Failed &&
-                (retryToken != null || homeServerRecheck != null || comesBackWithoutTimer(current.reason))
-            ) {
-                listenForSoundsMeanwhile(current.reason)
+        val afterwards: suspend () -> Unit = {
+            val restartSettings = restartAfterRecording
+            val held = retryAfterRecording
+            if (restartSettings != null) {
+                restartAfterRecording = null
+                retryAfterRecording = null
+                restart(restartSettings)
+            } else if (wasRunning) {
+                resume()
+            } else if (held != null) {
+                retryAfterRecording = null
+                retry(held.settings)
+            } else {
+                val current = phase
+                if (current is PipelinePhase.Failed &&
+                    (retryToken != null || homeServerRecheck != null || comesBackWithoutTimer(current.reason))
+                ) {
+                    listenForSoundsMeanwhile(current.reason)
+                }
             }
         }
+        if (wasCancelled) withContext(NonCancellable) { afterwards() } else afterwards()
         return collected.toFloatArray()
     }
 

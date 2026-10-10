@@ -275,6 +275,7 @@ class FakeEngine(
         duringPendingDownloadCheck?.let { hook ->
             hop()
             hook()
+            hop()
         }
         pendingDownloadChecks += 1
         return pendingDownload
