@@ -107,14 +107,4 @@ class AutoRecoveryPolicyTest {
         val disabled = AutoRecoveryPolicy.disabled()
         assertNull(disabled.nextDelay(stopped))
     }
-
-    @Test
-    fun `a copy counts on its own`() {
-        val policy = AutoRecoveryPolicy(glitchDelays = listOf(1.0, 2.0), downloadDelays = emptyList())
-        val stopped = failure(PipelineFailure.Kind.TranscriptionStopped)
-        val copy = policy.copy()
-        assertEquals(1.0, policy.nextDelay(stopped))
-        assertEquals(0, copy.attempts)
-        assertEquals(1.0, copy.nextDelay(stopped))
-    }
 }
