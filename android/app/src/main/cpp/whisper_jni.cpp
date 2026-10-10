@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <android/log.h>
 
+#include <atomic>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -10,8 +11,25 @@
 
 namespace {
 
+struct Model {
+    whisper_context *context;
+    std::atomic<bool> stop{false};
+};
+
+Model *model(jlong handle) {
+    return reinterpret_cast<Model *>(handle);
+}
+
 whisper_context *context(jlong handle) {
-    return reinterpret_cast<whisper_context *>(handle);
+    return model(handle)->context;
+}
+
+// Each pass starts listening for a stop of its own: one asked for after
+// the last pass ended must not cut the next stream's first pass short.
+void stop_when_asked(jlong handle, whisper_full_params &params) {
+    model(handle)->stop = false;
+    params.abort_callback = [](void *stop) { return static_cast<std::atomic<bool> *>(stop)->load(); };
+    params.abort_callback_user_data = &model(handle)->stop;
 }
 
 std::string text(JNIEnv *env, jstring value) {
@@ -36,12 +54,20 @@ extern "C" JNIEXPORT jlong JNICALL
 Java_com_arbelonson_ozen_whisper_WhisperCpp_load(JNIEnv *env, jobject, jstring path) {
     whisper_context_params params = whisper_context_default_params();
     params.use_gpu = false;
-    return reinterpret_cast<jlong>(whisper_init_from_file_with_params(text(env, path).c_str(), params));
+    whisper_context *loaded = whisper_init_from_file_with_params(text(env, path).c_str(), params);
+    if (loaded == nullptr) return 0;
+    return reinterpret_cast<jlong>(new Model{loaded});
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_arbelonson_ozen_whisper_WhisperCpp_free(JNIEnv *, jobject, jlong handle) {
     whisper_free(context(handle));
+    delete model(handle);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_abort(JNIEnv *, jobject, jlong handle) {
+    model(handle)->stop = true;
 }
 
 extern "C" JNIEXPORT jint JNICALL
@@ -66,6 +92,7 @@ Java_com_arbelonson_ozen_whisper_WhisperCpp_transcribe(
     params.temperature_inc = finished ? 0.2f : 0.0f;
     params.logprob_thold = -1.0f;
     params.no_speech_thold = 0.6f;
+    stop_when_asked(handle, params);
 
     jsize count = env->GetArrayLength(audio);
     jfloat *samples = env->GetFloatArrayElements(audio, nullptr);
@@ -100,6 +127,7 @@ Java_com_arbelonson_ozen_whisper_WhisperCpp_pass(
     params.greedy.best_of = 1;
     params.no_speech_thold = 1.0f;
     params.audio_ctx = audioContext;
+    stop_when_asked(handle, params);
 
     std::vector<whisper_token> promptTokens;
     if (prompt != nullptr) {

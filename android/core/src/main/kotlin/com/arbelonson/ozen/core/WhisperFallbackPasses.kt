@@ -6,12 +6,16 @@ interface WhisperSinglePass {
     fun tokenize(text: String): List<Int>
 
     suspend fun once(audio: FloatArray, options: WhisperPassOptions, temperature: Float): List<WhisperSegment>
+
+    fun abortRunningPass() {}
 }
 
 class WhisperFallbackPasses(private val single: WhisperSinglePass) : WhisperPasses {
     override val specialTokenBegin: Int get() = single.specialTokenBegin
 
     override fun tokenize(text: String): List<Int> = single.tokenize(text)
+
+    override fun abortRunningPass() = single.abortRunningPass()
 
     override suspend fun run(audio: FloatArray, options: WhisperPassOptions): List<WhisperSegment> {
         var segments = emptyList<WhisperSegment>()

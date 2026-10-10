@@ -14,6 +14,8 @@ class WhisperCppPasses(private val model: WhisperModel, private val threads: Int
     override fun tokenize(text: String): List<Int> =
         model.withHandle { WhisperCpp.tokenize(it, text) }?.toList() ?: emptyList()
 
+    override fun abortRunningPass() = model.abort()
+
     override suspend fun once(audio: FloatArray, options: WhisperPassOptions, temperature: Float): List<PassSegment> =
         model.withHandle { handle ->
             val count = WhisperCpp.pass(

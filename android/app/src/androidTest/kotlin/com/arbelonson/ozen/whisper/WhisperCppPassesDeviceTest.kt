@@ -1,5 +1,7 @@
 package com.arbelonson.ozen.whisper
 
+import android.os.SystemClock
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.WhisperFallbackPasses
@@ -9,6 +11,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.concurrent.thread
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -84,6 +87,25 @@ class WhisperCppPassesDeviceTest {
         val prompt = passes.tokenize(" דוד, רותי, אבי")
         val segments = runBlocking { passes.once(audio, WhisperPassOptions.final("he").copy(promptTokens = prompt), 0f) }
         assertTrue("nothing heard with a prompt", words(segments).isNotBlank())
+    }
+
+    @Test
+    fun aPassAskedToStopReturnsAtOnceAndTheModelStillWorksAfterwards() {
+        val audio = clip()
+        val stopping = thread {
+            Thread.sleep(500)
+            passes.abortRunningPass()
+        }
+        val started = SystemClock.elapsedRealtime()
+        val stopped = runCatching { runBlocking { passes.once(audio, WhisperPassOptions.final("he"), 0f) } }
+        val seconds = (SystemClock.elapsedRealtime() - started) / 1000.0
+        stopping.join()
+        Log.i("OzenWhisper", "a pass asked to stop after 0.5 s returned after %.1f s: %s".format(seconds, stopped))
+        assertTrue("the pass was not stopped: $stopped", stopped.isFailure)
+        assertTrue("the stopped pass ran on for %.1f s".format(seconds), seconds < 3.0)
+        passes.abortRunningPass()
+        val next = runBlocking { passes.once(audio, WhisperPassOptions.live("he").copy(maxTokens = 3), 0f) }
+        assertTrue("the next pass heard nothing", words(next).isNotBlank())
     }
 
     private fun clip(): FloatArray = readWav(File(folder, "clip.wav")).let { it.copyOf(minOf(it.size, 28 * 16_000)) }

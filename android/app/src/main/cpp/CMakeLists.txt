@@ -16,6 +16,7 @@ FetchContent_Declare(
     whisper
     URL https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v1.9.5.tar.gz
     URL_HASH SHA256=ff1a9053feb509ff9d7729703355541ae9690073a6b1c40eb692c962e0dc1720
+    PATCH_COMMAND patch -p1 --forward -i ${CMAKE_CURRENT_LIST_DIR}/whisper-abort.patch
 )
 FetchContent_MakeAvailable(whisper)
 

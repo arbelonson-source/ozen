@@ -5,8 +5,10 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.coroutineScope
@@ -208,8 +210,21 @@ class OnDeviceWhisperEngine(
 
     // MARK: - Streaming
 
-    private suspend fun runPass(passes: WhisperPasses, audio: FloatArray, options: WhisperPassOptions): List<WhisperSegment> =
-        withContext(passDispatcher + NonCancellable) { passes.run(audio, options) }
+    // A pass is native code no coroutine can interrupt. Stopping captions
+    // asks it to stop, as the iPhone's cancelled WhisperKit pass does, then
+    // still waits for it to return, so nothing outlives the stream; running
+    // it out instead held the next start (and, on a closed session, the
+    // model's memory) for a whole pass, about 30 s on the emulator.
+    private suspend fun runPass(passes: WhisperPasses, audio: FloatArray, options: WhisperPassOptions): List<WhisperSegment> {
+        val pass = CoroutineScope(passDispatcher).async { passes.run(audio, options) }
+        try {
+            return pass.await()
+        } catch (stopped: CancellationException) {
+            passes.abortRunningPass()
+            withContext(NonCancellable) { pass.join() }
+            throw stopped
+        }
+    }
 
     private suspend fun runStreaming(languageCode: String, audio: Flow<FloatArray>, tokens: SendChannel<TranscriptToken>) {
         val pipe = synchronized(lock) { passes } ?: throw NotPrepared()

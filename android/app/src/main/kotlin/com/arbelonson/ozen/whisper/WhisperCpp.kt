@@ -23,8 +23,14 @@ class WhisperModel private constructor(private var handle: Long) : AutoCloseable
         return block(handle)
     }
 
+    private val stopLock = Any()
+
+    fun abort() = synchronized(stopLock) {
+        if (handle != 0L) WhisperCpp.abort(handle)
+    }
+
     @Synchronized
-    override fun close() {
+    override fun close() = synchronized(stopLock) {
         if (handle != 0L) WhisperCpp.free(handle)
         handle = 0L
     }
@@ -54,6 +60,7 @@ internal object WhisperCpp {
 
     external fun load(path: String): Long
     external fun free(handle: Long)
+    external fun abort(handle: Long)
     external fun transcribe(
         handle: Long, audio: FloatArray, language: String, prompt: String?, threads: Int, beam: Int, finished: Boolean,
     ): Int

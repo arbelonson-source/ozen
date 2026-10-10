@@ -45,6 +45,8 @@ interface WhisperPasses {
     fun tokenize(text: String): List<Int>
 
     suspend fun run(audio: FloatArray, options: WhisperPassOptions): List<WhisperSegment>
+
+    fun abortRunningPass() {}
 }
 
 class WhisperLoadedModel(val passes: WhisperPasses, val isFirstTime: Boolean = false, val release: () -> Unit = {})
