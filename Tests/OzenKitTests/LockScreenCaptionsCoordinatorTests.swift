@@ -288,6 +288,24 @@ struct LockScreenCaptionsCoordinatorTests {
         #expect(reports == 1)
     }
 
+    @Test("a lock screen that said captions had stopped, ended while away, isn't reported: they don't carry on in the app")
+    func endedWhileAwayAfterFailure() async {
+        let (coordinator, display, captions) = make(keepAliveSeconds: 0.05)
+        var reports = 0
+        coordinator.onEndedWhileAway = { reports += 1 }
+        captions.texts = ["good morning"]
+        captions.situation.phase = .failed(PipelineFailure(kind: .transcriptionStopped, detail: ""))
+        coordinator.refresh()
+        #expect(coordinator.isShowing)
+        #expect(display.shown.last?.status != nil)
+
+        coordinator.appActivityChanged(isActive: false)
+        display.isRunning = false
+        #expect(await eventually { !coordinator.isShowing })
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(reports == 0)
+    }
+
     @Test("the notice that captions left the lock screen is out of date once they are back on it, or captions stop")
     func endedNoticeOutdated() async {
         let (coordinator, display, captions) = make(keepAliveSeconds: 0.05)

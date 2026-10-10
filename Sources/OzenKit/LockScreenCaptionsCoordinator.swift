@@ -161,7 +161,7 @@ public final class LockScreenCaptionsCoordinator {
         case .nothingNew where isShowing:
             return
         case .send, .nothingNew:
-            send(content, at: time)
+            send(content, at: time, captionsStopped: situation.phase.failedForGood(recoveringByItself: situation.recoveringByItself))
         case .wait(let delay):
             guard flush == nil else { return }
             flush = Task { [weak self] in
@@ -195,7 +195,7 @@ public final class LockScreenCaptionsCoordinator {
         onEndedNoticeOutdated?()
     }
 
-    private func send(_ content: LockScreenCaptionContent, at time: TimeInterval) {
+    private func send(_ content: LockScreenCaptionContent, at time: TimeInterval, captionsStopped: Bool) {
         // A start iOS refused (Live Activities off, too many running) isn't
         // asked for again with every word that follows.
         let mayStart = isAppActive && time >= nextStartAttempt
@@ -206,7 +206,9 @@ public final class LockScreenCaptionsCoordinator {
             // Nothing left for the keep-alive to keep alive.
             keepAlive?.cancel()
             keepAlive = nil
-            if wasShowing, !isAppActive {
+            // The notice says captions carry on in the app, which isn't so
+            // once they have stopped for good; that has its own notice.
+            if wasShowing, !isAppActive, !captionsStopped {
                 endedWhileAway = true
                 onEndedWhileAway?()
             }
