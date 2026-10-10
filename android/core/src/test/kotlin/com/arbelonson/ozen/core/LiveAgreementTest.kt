@@ -1,5 +1,6 @@
 package com.arbelonson.ozen.core
 
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -96,5 +97,38 @@ class LiveAgreementTest {
         agreement.settle("hello there")
         assertEquals("  ", agreement.settle("  "))
         assertEquals("hello there friend", agreement.settle("hello there friend"))
+    }
+
+    @Test
+    fun `on the caption line itself - held while it is being written, and the final pass always wins`() {
+        val stabilizer = CaptionStabilizer()
+        val id = UUID.randomUUID()
+        stabilizer.ingest(TranscriptToken(utteranceID = id, text = "I have an appointment at the", isFinal = false, timestamp = 1.0))
+        stabilizer.ingest(TranscriptToken(utteranceID = id, text = "I have an appointment at the doctor", isFinal = false, timestamp = 2.0))
+        stabilizer.ingest(TranscriptToken(utteranceID = id, text = "I have an ointment at the doctor at ten", isFinal = false, timestamp = 3.0))
+        assertEquals("I have an appointment at the doctor at ten", stabilizer.segments[0].text)
+
+        stabilizer.ingest(TranscriptToken(utteranceID = id, text = "I have an ointment at the doctor at ten.", isFinal = true, timestamp = 4.0))
+        assertEquals("I have an ointment at the doctor at ten.", stabilizer.segments[0].text)
+    }
+
+    @Test
+    fun `lines whose final never came are forgotten, and the line being written keeps its held words`() {
+        val stabilizer = CaptionStabilizer()
+        val abandoned = UUID.randomUUID()
+        stabilizer.ingest(TranscriptToken(utteranceID = abandoned, text = "take two pills after the meal", isFinal = false, timestamp = 1.0))
+        stabilizer.ingest(TranscriptToken(utteranceID = abandoned, text = "take two pills after the meal today", isFinal = false, timestamp = 2.0))
+        for ((offset, text) in listOf("good morning", "how are you", "fine thanks").withIndex()) {
+            stabilizer.ingest(TranscriptToken(utteranceID = UUID.randomUUID(), text = text, isFinal = false, timestamp = 3.0 + offset))
+        }
+
+        val id = UUID.randomUUID()
+        stabilizer.ingest(TranscriptToken(utteranceID = id, text = "I have an appointment at the", isFinal = false, timestamp = 6.0))
+        stabilizer.ingest(TranscriptToken(utteranceID = id, text = "I have an appointment at the doctor", isFinal = false, timestamp = 7.0))
+        val line = stabilizer.ingest(TranscriptToken(utteranceID = id, text = "I have an ointment at the doctor at ten", isFinal = false, timestamp = 8.0))
+        assertEquals("I have an appointment at the doctor at ten", line.text)
+
+        val forgotten = stabilizer.ingest(TranscriptToken(utteranceID = abandoned, text = "take three pills after the meal today", isFinal = false, timestamp = 9.0))
+        assertEquals("take three pills after the meal today", forgotten.text)
     }
 }

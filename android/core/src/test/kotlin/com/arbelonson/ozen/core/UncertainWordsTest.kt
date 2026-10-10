@@ -1,5 +1,6 @@
 package com.arbelonson.ozen.core
 
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -77,6 +78,16 @@ class UncertainWordsTest {
         )
         assertEquals(listOf("no", "no,"), UncertainWords.ranges(text, words).map { text.substring(it.start, it.endExclusive) })
         assertEquals(listOf("no", "no,"), UncertainWords.ranges(text, listOf("no")).map { text.substring(it.start, it.endExclusive) })
+    }
+
+    @Test
+    fun `a line that reached the screen carries its doubtful words, and a later pass replaces them`() {
+        val stabilizer = CaptionStabilizer()
+        val id = UUID.randomUUID()
+        stabilizer.ingest(TranscriptToken(utteranceID = id, text = "at ten", isFinal = false, timestamp = 1.0, uncertainWords = listOf("ten")))
+        assertEquals(listOf("ten"), stabilizer.segments[0].uncertainWords)
+        stabilizer.ingest(TranscriptToken(utteranceID = id, text = "at 10:30", isFinal = true, timestamp = 2.0))
+        assertTrue(stabilizer.segments[0].uncertainWords.isEmpty())
     }
 
     @Test
