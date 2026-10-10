@@ -486,6 +486,18 @@ public struct TranscriptHistoryStore: Sendable {
                 record.title = (try? JSONDecoder().decode(SavedTitle.self, from: data))?.title
             }
         }
+        // What wrote a conversation is what its first save said, within
+        // seconds of its first lines. Later saves (the stop after an engine
+        // switch, a rename the next day) stamped it with whatever engine
+        // and microphone were in use by then, and History showed those,
+        // and judged its uncertain lines by them.
+        if let data = try? Data(contentsOf: url),
+           let source = try? JSONDecoder().decode(SavedSource.self, from: data),
+           let engine = source.engine {
+            record.engine = engine
+            record.modelVariant = source.modelVariant
+            record.inputName = source.inputName
+        }
         let data = try JSONEncoder().encode(record)
         try data.write(to: url, options: .privateFile)
         guard updateSearchCaches else { return true }
@@ -500,6 +512,12 @@ public struct TranscriptHistoryStore: Sendable {
 
     private struct SavedTitle: Decodable {
         let title: String?
+    }
+
+    private struct SavedSource: Decodable {
+        let engine: TranscriptionEngineKind?
+        let modelVariant: String?
+        let inputName: String?
     }
 
     public func load(id: UUID) -> TranscriptSessionRecord? {

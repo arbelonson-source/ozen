@@ -58,6 +58,24 @@ struct TranscriptHistoryTests {
         #expect(loaded == original)
     }
 
+    @Test("a conversation keeps the engine, model and microphone of its first save, whatever is in use when it is saved again")
+    func sourceKeptAcrossSaves() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        let id = UUID()
+        let hello = segment(text: "שלום")
+        _ = try store.save(TranscriptSessionRecord(id: id, startedAt: 100, endedAt: nil, engine: .appleSpeech, modelVariant: nil, inputName: "AirPods", segments: [hello]))
+        _ = try store.save(TranscriptSessionRecord(id: id, startedAt: 100, endedAt: 300, engine: .whisperKit, modelVariant: "small", inputName: "iPhone Microphone", segments: [hello, segment(text: "מה נשמע")]))
+
+        let loaded = try #require(store.load(id: id))
+        #expect(loaded.engine == .appleSpeech)
+        #expect(loaded.modelVariant == nil)
+        #expect(loaded.inputName == "AirPods")
+        #expect(loaded.segments.count == 2 && loaded.endedAt == 300)
+        #expect(store.listSummaries().first?.engine == .appleSpeech)
+    }
+
     @Test("a line whose confidence is not a number is saved without it, instead of the whole conversation failing to save")
     func nonFiniteConfidenceStillSaves() throws {
         let dir = makeTempDirectory()
