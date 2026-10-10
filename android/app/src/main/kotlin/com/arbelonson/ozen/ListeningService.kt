@@ -54,9 +54,9 @@ class ListeningService : Service() {
         val manager = getSystemService(NotificationManager::class.java)
         CaptionState.screen
             .drop(1)
-            .map { screen -> screen.phase to screen.lines.lastOrNull { it.isFinal }?.text }
+            .map { screen -> Triple(screen.phase, screen.status.title, screen.lines.lastOrNull { it.isFinal }?.text) }
             .distinctUntilChanged()
-            .collect { (phase, _) ->
+            .collect { (phase, _, _) ->
                 if (phase == PipelinePhase.Idle || phase == PipelinePhase.Paused) {
                     finish()
                 } else {
@@ -78,10 +78,11 @@ class ListeningService : Service() {
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
         )
-        val newest = CaptionState.screen.value.lines.lastOrNull { it.isFinal }?.text
+        val screen = CaptionState.screen.value
+        val newest = screen.lines.lastOrNull { it.isFinal }?.text
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_listening)
-            .setContentTitle(tr("מקשיב", "Listening"))
+            .setContentTitle(screen.status.title)
             .setContentText(newest ?: tr("הכתוביות יופיעו כאן.", "Captions will appear here."))
             .setContentIntent(open)
             .setOngoing(true)
