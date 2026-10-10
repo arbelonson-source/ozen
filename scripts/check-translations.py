@@ -340,15 +340,19 @@ def check_permission_prompts():
     # prompt names that switch as Settings does instead of promising that
     # nothing leaves the phone.
     settings = Path("App/Ozen/Views/SettingsView.swift").read_text(encoding="utf-8")
-    hebrew, english = re.search(r'Toggle\(tr\("([^"]*)", "([^"]*)"\), isOn: serverFallbackBinding\)', settings).groups()
-    table = json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))
-    switch = {"he": hebrew, "en": english} | {code: table[language][english] for code, language in zip(SYSTEM_LANGUAGES[1:], TRANSLATED_LANGUAGES)}
-    prompt = catalog["NSSpeechRecognitionUsageDescription"]["localizations"]
-    base = re.search(r'NSSpeechRecognitionUsageDescription: "([^"]*)"', project).group(1)
-    for code, name in [("project.yml", english)] + sorted(switch.items()):
-        text = base if code == "project.yml" else prompt.get(code, {}).get("stringUnit", {}).get("value", "")
-        if name not in text:
-            problems.append(f"NSSpeechRecognitionUsageDescription ({code}) must name Settings' switch {name!r}: {text!r}")
+    toggle = re.search(r'Toggle\(tr\("([^"]*)", "([^"]*)"\), isOn: serverFallbackBinding\)', settings)
+    base = re.search(r'NSSpeechRecognitionUsageDescription: "((?:[^"\\]|\\.)*)"', project)
+    if not toggle or not base:
+        problems.append("check_permission_prompts: the Apple's servers switch (SettingsView.swift) or the speech prompt (project.yml) changed shape; update this check")
+    else:
+        hebrew, english = toggle.groups()
+        table = json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))
+        switch = {"he": hebrew, "en": english} | {code: table.get(language, {}).get(english) for code, language in zip(SYSTEM_LANGUAGES[1:], TRANSLATED_LANGUAGES)}
+        prompt = catalog.get("NSSpeechRecognitionUsageDescription", {}).get("localizations", {})
+        for code, name in [("project.yml", english)] + sorted(switch.items()):
+            text = base.group(1) if code == "project.yml" else prompt.get(code, {}).get("stringUnit", {}).get("value", "")
+            if name is not None and name not in text:
+                problems.append(f"NSSpeechRecognitionUsageDescription ({code}) must name Settings' switch {name!r}: {text!r}")
     for declared in re.findall(r"CFBundleLocalizations: \[([^\]]*)\]", project):
         missing = set(["he"] + SYSTEM_LANGUAGES) - {l.strip() for l in declared.split(",")}
         if missing:
@@ -357,13 +361,13 @@ def check_permission_prompts():
 
 
 CJK = "\u3400-\u9fff\u3000-\u303f\uff00-\uffef"
-ASCII_BESIDE_CHINESE = re.compile(f"(?<=[{CJK}])[,;:!?()]|[,;:!?(](?=[{CJK}])")
+ASCII_BESIDE_CHINESE = re.compile(f"(?<=[{CJK}])[,;:!?()]|[,;:!?()](?=[{CJK}])")
 
 
 def check_chinese_punctuation():
     """Chinese text takes full-width punctuation (，；：！？（）); an ASCII
     comma or bracket beside a Chinese character reads as a typo there."""
-    texts = [(str(TRANSLATIONS_PATH), key, value) for key, value in json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))["chineseSimplified"].items()]
+    texts = [(str(TRANSLATIONS_PATH), key, value) for key, value in json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8")).get("chineseSimplified", {}).items()]
     for catalog in [SYSTEM_CATALOG, SHORTCUTS_CATALOG, Path("App/Ozen/InfoPlist.xcstrings")]:
         for key, entry in json.loads(catalog.read_text(encoding="utf-8"))["strings"].items():
             unit = entry.get("localizations", {}).get("zh-Hans", {}).get("stringUnit")
@@ -405,7 +409,8 @@ def check_quoted_labels(keys):
     languages = {"hebrew": hebrew} | {language: table[language] for language in TRANSLATED_LANGUAGES}
     # iOS lists the app by this name in every language (searching Control
     # Center for it, say), so it stays as it is inside any translation.
-    display_name = re.search(r'CFBundleDisplayName: "([^"]*)"', Path("project.yml").read_text(encoding="utf-8")).group(1)
+    display_name = re.search(r'CFBundleDisplayName: "([^"]*)"', Path("project.yml").read_text(encoding="utf-8"))
+    display_name = display_name.group(1) if display_name else None
     # Hebrew writes its quotes, and the gershayim of an abbreviation, as a
     # straight mark; the other languages use their curly or angled ones.
     problems = [f"{language}: {key[:50]!r} has a straight double quote; this language's text uses curly ones: {text!r}"
