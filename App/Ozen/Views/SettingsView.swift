@@ -253,7 +253,7 @@ struct SettingsView: View {
         case .whisperKit: return tr("מודל קוד פתוח שרץ על הטלפון. עברית טובה, אפשר לבחור גודל מודל.", "An open-source model that runs on the phone. Good Hebrew, and you can choose the model size.")
         case .appleSpeech: return tr("מובנה ב‑iOS. מהיר מאוד, אבל עברית במכשיר לא זמינה בכל גרסה.", "Built into iOS. Very fast, but on-device Hebrew isn’t available in every version.")
         case .cloud: return tr("מודל באינטרנט, לטלפון שאיטי מדי למודל שבתוכו. בעברית הוא טועה יותר מהמודל שבטלפון. צריך אינטרנט ומפתח של שירות ענן.", "A model online, for a phone too slow for the one inside it. It gets more Hebrew wrong than the phone’s own model. Needs internet and a key for a cloud service.")
-        case .homeServer: return tr("מחשב של המשפחה עם כרטיס מסך כותב את הכתוביות: אותו מודל עברית, מהר בהרבה, והטלפון לא מתחמם. כשאין אליו חיבור, הטלפון ממשיך לבד.", "A family computer with a graphics card writes the captions: the same Hebrew model, much faster, and the phone stays cool. When it can’t be reached, the phone carries on by itself.")
+        case .homeServer: return tr("מחשב של המשפחה עם כרטיס מסך כותב את הכתוביות: אותו מודל עברית, מהר בהרבה, והטלפון לא מתחמם. כשאין אליו חיבור, הטלפון ממשיך לבד אם יש בו גיבוי.", "A family computer with a graphics card writes the captions: the same Hebrew model, much faster, and the phone stays cool. When it can’t be reached, the phone carries on by itself if it has the backup.")
         }
     }
 
@@ -585,7 +585,7 @@ struct SettingsView: View {
                     }
                     Button(tr("ביטול", "Cancel"), role: .cancel) {}
                 } message: {
-                    Text(tr("הכתוביות יחזרו לזיהוי הדיבור בטלפון, עד שיסרקו שוב את קוד ה‑QR של המחשב.", "Captions go back to the phone’s speech recognition until the computer’s QR code is scanned again."))
+                    Text(tr("עד שיסרקו שוב את קוד ה‑QR של המחשב, הכתוביות יגיעו מהגיבוי שבטלפון אם הוא הורד, ויפסיקו אם לא.", "Until the computer’s QR code is scanned again, captions come from the backup on the phone if it’s downloaded, and stop if it isn’t."))
                 }
             }
         } header: {
@@ -714,7 +714,7 @@ struct SettingsView: View {
                 Text(tr("שפת האפליקציה", "App language"))
             }
         } footer: {
-            Text(tr("השפה של הכפתורים וההגדרות. הכתוביות נשארות בשפה שמדברים בה.", "The language of the buttons and settings. Captions stay in the language people speak."))
+            Text(tr("השפה של הכפתורים וההגדרות. הכתוביות נכתבות לדיבור בעברית, בכל שפה שתיבחר כאן.", "The language of the buttons and settings. Captions are written for Hebrew speech, whichever language is chosen here."))
         }
     }
 
