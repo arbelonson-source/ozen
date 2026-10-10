@@ -1,37 +1,60 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.TranscriptSegment
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class CaptionStateTest {
+    private fun line(text: String, committed: Boolean) =
+        TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = committed, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+
+    private fun show(phase: PipelinePhase, segments: List<TranscriptSegment> = emptyList(), interrupted: Boolean = false) =
+        CaptionState.show(phase, engine = null, interruptedBySystem = interrupted, scheduledRetry = null, segments = segments)
+
     @Test
-    fun `a line that grows replaces itself in place, and a new one goes below`() {
-        CaptionState.clear()
-        CaptionState.show(CaptionLine(1, "שלום", isFinal = false))
-        CaptionState.show(CaptionLine(1, "שלום לכולם", isFinal = true))
-        CaptionState.show(CaptionLine(2, "מה שלומך", isFinal = false))
+    fun `the pipeline's lines show in order, the committed ones as final`() {
+        val done = line("שלום לכולם", committed = true)
+        val growing = line("מה שלומך", committed = false)
+        show(PipelinePhase.Listening, listOf(done, growing))
         assertEquals(
-            listOf(CaptionLine(1, "שלום לכולם", true), CaptionLine(2, "מה שלומך", false)),
+            listOf(CaptionLine(done.id, "שלום לכולם", isFinal = true), CaptionLine(growing.id, "מה שלומך", isFinal = false)),
             CaptionState.screen.value.lines,
         )
     }
 
     @Test
     fun `only the newest two hundred lines are kept on the screen`() {
-        CaptionState.clear()
-        for (id in 1..205) CaptionState.show(CaptionLine(id, "line $id", isFinal = true))
+        val segments = (1..205).map { line("line $it", committed = true) }
+        show(PipelinePhase.Listening, segments)
         val lines = CaptionState.screen.value.lines
         assertEquals(200, lines.size)
-        assertEquals(6, lines.first().id)
-        assertEquals(205, lines.last().id)
+        assertEquals(segments[5].id, lines.first().id)
+        assertEquals(segments.last().id, lines.last().id)
     }
 
     @Test
-    fun `pausing keeps the lines already shown`() {
+    fun `the status button offers what the pipeline's phase allows`() {
+        show(PipelinePhase.Listening)
+        assertEquals(PhasePresentation.Action.Pause, CaptionState.screen.value.status.action)
+        show(PipelinePhase.Paused)
+        assertEquals(PhasePresentation.Action.Resume, CaptionState.screen.value.status.action)
+        show(PipelinePhase.Idle)
+        assertEquals(PhasePresentation.Action.Start, CaptionState.screen.value.status.action)
+    }
+
+    @Test
+    fun `a call that silences the microphone says so on the status button`() {
+        show(PipelinePhase.Listening, interrupted = true)
+        assertEquals("phone.fill", CaptionState.screen.value.status.systemImage)
+    }
+
+    @Test
+    fun `clearing starts the screen over, captions off and no lines`() {
+        show(PipelinePhase.Listening, listOf(line("שלום", committed = true)))
         CaptionState.clear()
-        CaptionState.show(CaptionLine(1, "שלום", isFinal = true))
-        CaptionState.setPhase(ListeningPhase.Paused)
-        assertEquals(ListeningPhase.Paused, CaptionState.screen.value.phase)
-        assertEquals(1, CaptionState.screen.value.lines.size)
+        assertEquals(PipelinePhase.Idle, CaptionState.screen.value.phase)
+        assertEquals(emptyList(), CaptionState.screen.value.lines)
     }
 }

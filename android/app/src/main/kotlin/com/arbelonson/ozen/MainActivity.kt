@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
         if (granted[Manifest.permission.RECORD_AUDIO] == true) {
             ListeningService.start(this)
         } else {
-            CaptionState.setPhase(ListeningPhase.NoMicrophone)
+            (application as OzenApplication).captions.listen()
         }
     }
 
@@ -79,10 +79,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun statusTapped() {
-        when (CaptionState.screen.value.phase) {
-            ListeningPhase.Listening -> ListeningService.pause(this)
-            ListeningPhase.NoMicrophone -> if (hasMicrophone()) startListening() else openAppSettings()
-            ListeningPhase.Off, ListeningPhase.Paused -> startListening()
+        when (CaptionState.screen.value.status.action) {
+            PhasePresentation.Action.Pause -> ListeningService.pause(this)
+            PhasePresentation.Action.OpenSystemSettings -> if (hasMicrophone()) startListening() else openAppSettings()
+            PhasePresentation.Action.Start, PhasePresentation.Action.Resume, PhasePresentation.Action.Retry -> startListening()
+            else -> Unit
         }
     }
 
@@ -194,7 +195,7 @@ private fun CaptionScreen(state: CaptionScreenState, onStatusTap: () -> Unit) {
                 CaptionLines(state.lines)
             }
         }
-        StatusButton(state.phase, onStatusTap)
+        StatusButton(state.status, onStatusTap)
     }
 }
 
@@ -215,14 +216,7 @@ private fun CaptionLines(lines: List<CaptionLine>) {
 }
 
 @Composable
-private fun StatusButton(phase: ListeningPhase, onTap: () -> Unit) {
-    val (title, hint) = when (phase) {
-        ListeningPhase.Off -> tr("הכתוביות כבויות", "Captions are off") to tr("הקישו כדי להתחיל", "Tap to start")
-        ListeningPhase.Listening -> tr("מקשיב", "Listening") to tr("הקישו כדי להשהות", "Tap to pause")
-        ListeningPhase.Paused -> tr("מושהה", "Paused") to tr("הקישו כדי להמשיך", "Tap to continue")
-        ListeningPhase.NoMicrophone -> tr("אין גישה למיקרופון", "No microphone access") to
-            tr("פתיחת הגדרות הטלפון", "Open phone settings")
-    }
+private fun StatusButton(status: PhasePresentation, onTap: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -231,7 +225,9 @@ private fun StatusButton(phase: ListeningPhase, onTap: () -> Unit) {
             .padding(vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(text = title, color = Color.White, fontSize = 22.sp, textAlign = TextAlign.Center)
-        Text(text = hint, color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp, textAlign = TextAlign.Center)
+        Text(text = status.title, color = Color.White, fontSize = 22.sp, textAlign = TextAlign.Center)
+        status.detail?.let { detail ->
+            Text(text = detail, color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp, textAlign = TextAlign.Center)
+        }
     }
 }

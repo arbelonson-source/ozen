@@ -10,16 +10,27 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.tr
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class ListeningService : Service() {
-    private var capture: MicrophoneCapture? = null
+    private val captions get() = (application as OzenApplication).captions
+    private val scope = MainScope()
+    private var watching: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_PAUSE) {
-            stopListening(ListeningPhase.Paused)
+            captions.pause()
+            finish()
             return START_NOT_STICKY
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -27,28 +38,34 @@ class ListeningService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, notification())
         }
-        if (capture == null) {
-            val microphone = MicrophoneCapture { }
-            if (microphone.start()) {
-                capture = microphone
-                CaptionState.setPhase(ListeningPhase.Listening)
-            } else {
-                stopListening(ListeningPhase.NoMicrophone)
-            }
-        }
+        captions.listen()
+        if (watching == null) watching = scope.launch { watch() }
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
-        capture?.stop()
-        capture = null
+        scope.cancel()
+        val phase = captions.pipeline.phase
+        if (phase != PipelinePhase.Idle && phase != PipelinePhase.Paused) captions.pause()
         super.onDestroy()
     }
 
-    private fun stopListening(phase: ListeningPhase) {
-        capture?.stop()
-        capture = null
-        CaptionState.setPhase(phase)
+    private suspend fun watch() {
+        val manager = getSystemService(NotificationManager::class.java)
+        CaptionState.screen
+            .drop(1)
+            .map { screen -> screen.phase to screen.lines.lastOrNull { it.isFinal }?.text }
+            .distinctUntilChanged()
+            .collect { (phase, _) ->
+                if (phase == PipelinePhase.Idle || phase == PipelinePhase.Paused) {
+                    finish()
+                } else {
+                    manager.notify(NOTIFICATION_ID, notification())
+                }
+            }
+    }
+
+    private fun finish() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -61,13 +78,14 @@ class ListeningService : Service() {
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
         )
-        val newest = CaptionState.screen.value.lines.lastOrNull()?.text
+        val newest = CaptionState.screen.value.lines.lastOrNull { it.isFinal }?.text
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_listening)
             .setContentTitle(tr("מקשיב", "Listening"))
             .setContentText(newest ?: tr("הכתוביות יופיעו כאן.", "Captions will appear here."))
             .setContentIntent(open)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .build()
     }
 

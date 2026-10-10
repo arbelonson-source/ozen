@@ -1,31 +1,49 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.ScheduledRetry
+import com.arbelonson.ozen.core.TranscriptSegment
+import com.arbelonson.ozen.core.TranscriptionEngineKind
+import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 
-enum class ListeningPhase { Off, Listening, Paused, NoMicrophone }
-
-data class CaptionLine(val id: Int, val text: String, val isFinal: Boolean)
+data class CaptionLine(val id: UUID, val text: String, val isFinal: Boolean)
 
 data class CaptionScreenState(
-    val phase: ListeningPhase = ListeningPhase.Off,
+    val phase: PipelinePhase = PipelinePhase.Idle,
+    val engine: TranscriptionEngineKind? = null,
+    val interruptedBySystem: Boolean = false,
+    val scheduledRetry: ScheduledRetry? = null,
     val lines: List<CaptionLine> = emptyList(),
-)
+) {
+    val status: PhasePresentation
+        get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
+}
 
 object CaptionState {
     private val state = MutableStateFlow(CaptionScreenState())
     val screen: StateFlow<CaptionScreenState> = state.asStateFlow()
 
-    fun setPhase(phase: ListeningPhase) = state.update { it.copy(phase = phase) }
+    fun show(
+        phase: PipelinePhase,
+        engine: TranscriptionEngineKind?,
+        interruptedBySystem: Boolean,
+        scheduledRetry: ScheduledRetry?,
+        segments: List<TranscriptSegment>,
+    ) {
+        state.value = CaptionScreenState(
+            phase = phase,
+            engine = engine,
+            interruptedBySystem = interruptedBySystem,
+            scheduledRetry = scheduledRetry,
+            lines = segments.takeLast(MAXIMUM_LINES).map { CaptionLine(it.id, it.text, it.isCommitted) },
+        )
+    }
 
-    fun clear() = state.update { it.copy(lines = emptyList()) }
-
-    fun show(line: CaptionLine) = state.update { current ->
-        val index = current.lines.indexOfFirst { it.id == line.id }
-        val lines = if (index < 0) current.lines + line else current.lines.toMutableList().also { it[index] = line }
-        current.copy(lines = lines.takeLast(MAXIMUM_LINES))
+    fun clear() {
+        state.value = CaptionScreenState()
     }
 
     private const val MAXIMUM_LINES = 200
