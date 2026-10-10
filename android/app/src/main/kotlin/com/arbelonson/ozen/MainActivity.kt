@@ -27,8 +27,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -61,7 +63,19 @@ class MainActivity : ComponentActivity() {
         val phoneLanguages = LocaleList.getDefault().let { list -> (0 until list.size()).map { list[it].toLanguageTag() } }
         Localization.language = AppLanguage.System.resolved(phoneLanguages)
         enableEdgeToEdge()
-        setContent { OzenApp(onStatusTap = ::statusTapped) }
+        val pairing = (application as OzenApplication).pairing
+        setContent { OzenApp(pairing, onStatusTap = ::statusTapped) }
+        openLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        openLink(intent)
+    }
+
+    private fun openLink(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        intent.dataString?.let { (application as OzenApplication).pairing.open(it) }
     }
 
     private fun statusTapped() {
@@ -92,13 +106,68 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun OzenApp(onStatusTap: () -> Unit) {
+private fun OzenApp(pairing: PairingRequests, onStatusTap: () -> Unit) {
     val direction = if (Localization.language.isRightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr
     val state by CaptionState.screen.collectAsStateWithLifecycle()
     MaterialTheme(colorScheme = darkColorScheme()) {
         CompositionLocalProvider(LocalLayoutDirection provides direction) {
             CaptionScreen(state, onStatusTap)
+            PairingDialogs(pairing)
         }
+    }
+}
+
+@Composable
+private fun PairingDialogs(pairing: PairingRequests) {
+    val pending by pairing.pending.collectAsStateWithLifecycle()
+    val saveFailed by pairing.saveFailed.collectAsStateWithLifecycle()
+    val linkBroken by pairing.linkBroken.collectAsStateWithLifecycle()
+    pending?.let { shown ->
+        AlertDialog(
+            onDismissRequest = { pairing.pending.value = null },
+            title = { Text(tr("להתחבר למחשב בבית?", "Connect to the home computer?")) },
+            text = {
+                Text(
+                    tr(
+                        "הקול ישלח לכתוביות אל %1. אשרו רק אם זה המחשב של המשפחה.",
+                        "The audio will go to %1 for captions. Only connect if this is the family’s computer.",
+                        listOf(shown.computerName),
+                    ),
+                )
+            },
+            confirmButton = { TextButton(onClick = { pairing.accept(shown) }) { Text(tr("להתחבר", "Connect")) } },
+            dismissButton = { TextButton(onClick = { pairing.pending.value = null }) { Text(tr("ביטול", "Cancel")) } },
+        )
+    }
+    if (saveFailed) {
+        AlertDialog(
+            onDismissRequest = { pairing.saveFailed.value = false },
+            title = { Text(tr("החיבור למחשב בבית לא נשמר", "The connection to the home computer wasn’t saved")) },
+            text = {
+                Text(
+                    tr(
+                        "הכתוביות ממשיכות כמו קודם. סרקו שוב את הקוד, או בקשו עזרה ממי שהתקין את הטלפון.",
+                        "Captions carry on as before. Scan the code again, or ask whoever set up the phone for help.",
+                    ),
+                )
+            },
+            confirmButton = { TextButton(onClick = { pairing.saveFailed.value = false }) { Text(tr("סגירה", "Close")) } },
+        )
+    }
+    if (linkBroken) {
+        AlertDialog(
+            onDismissRequest = { pairing.linkBroken.value = false },
+            title = { Text(tr("הקישור למחשב בבית לא תקין", "The home computer link didn’t come through")) },
+            text = {
+                Text(
+                    tr(
+                        "חלק מהקישור חסר או השתבש. סרקו שוב את הריבוע במחשב עם מצלמת הטלפון, ממש מקרוב.",
+                        "Part of the link is missing or garbled. Scan the square on the computer again with the phone’s camera, up close.",
+                    ),
+                )
+            },
+            confirmButton = { TextButton(onClick = { pairing.linkBroken.value = false }) { Text(tr("סגירה", "Close")) } },
+        )
     }
 }
 
