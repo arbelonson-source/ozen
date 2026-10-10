@@ -18,6 +18,7 @@ actor StreamSocket: HomeServerSocket {
     private(set) var attemptedTexts: [String] = []
     private(set) var sentBytes = 0
     private(set) var sentChunks = 0
+    private(set) var sentChunkBytes: [Int] = []
     private(set) var isClosed = false
     private(set) var pings = 0
     private var answersPings: Bool
@@ -80,6 +81,7 @@ actor StreamSocket: HomeServerSocket {
         if holdsAudio { await withCheckedContinuation { heldSends.append($0) } }
         sentBytes += data.count
         sentChunks += 1
+        sentChunkBytes.append(data.count)
     }
 
     func receive() async throws -> String {

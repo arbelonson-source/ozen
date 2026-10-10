@@ -241,6 +241,20 @@ struct AssemblyAISpeechTests {
         #expect(await socket.sentChunks == 4)
     }
 
+    @Test("the microphone's 43 ms pieces reach AssemblyAI gathered to at least 50 ms, which it closes the session over otherwise (3007), the last filled out with silence", .timeLimit(.minutes(1)))
+    func audioInPiecesItTakes() async throws {
+        for (pieces, expected) in [(10, [2_752, 2_752, 2_752, 2_752, 2_752]), (3, [2_752, 1_600])] {
+            let socket = StreamSocket(onConfig: [], afterEnd: Array(frames.suffix(1)), endsAudio: isEnd)
+            let engine = AssemblyAIEngine(connector: StreamDialer(socket), apiKey: { "k" })
+            let microphone = AsyncStream<[Float]> { continuation in
+                for _ in 0..<pieces { continuation.yield([Float](repeating: 0.05, count: 688)) }
+                continuation.finish()
+            }
+            for try await _ in engine.stream(languageCode: "he", audio: microphone) {}
+            #expect(await socket.sentChunkBytes == expected, "\(pieces)")
+        }
+    }
+
     @Test("the key is checked before captions start, and one AssemblyAI turns down needs fixing")
     func prepare() async {
         let http = FakeCloudHTTP(keyChecks: [.status(401, #"{"error":"Authentication error, API token missing/invalid"}"#)])

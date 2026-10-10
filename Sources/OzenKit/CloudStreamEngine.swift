@@ -135,14 +135,24 @@ public actor CloudStreamEngine<Service: CloudStreamService>: TranscriptionEngine
             for await _ in started { break }
             if Task.isCancelled { return }
             var chunks = 0
+            // The microphone hands over about 43 ms at a time; AssemblyAI
+            // closes a session over a piece shorter than 50 ms or longer
+            // than a second (3007), so the audio goes in pieces between.
+            var pieces = CloudAudioFrames()
             for await chunk in audio {
                 if Task.isCancelled { return }
-                try? await socket.send(data: HomeServer.pcm16(chunk))
-                chunks += 1
+                for piece in pieces.add(chunk) {
+                    try? await socket.send(data: HomeServer.pcm16(piece))
+                    chunks += 1
+                }
             }
             // A stream that was stopped never ended its audio, and its
             // engine may already be running the next one.
             if Task.isCancelled { return }
+            if let last = pieces.finish() {
+                try? await socket.send(data: HomeServer.pcm16(last))
+                chunks += 1
+            }
             // Marked before it is sent: the service may close the
             // connection as soon as it has answered the last words.
             self.markEndSent()
