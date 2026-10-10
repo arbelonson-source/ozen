@@ -60,4 +60,10 @@ class PhoneNumbersTest {
             assertTrue(dialed(text).isEmpty(), text)
         }
     }
+
+    @Test
+    fun `the number is still found in the line as the caption screen draws it, with its direction marks`() {
+        val shown = CaptionLayout.displayText("תתקשרי ל-050-1234567.")
+        assertEquals(listOf("0501234567"), PhoneNumbers.matches(shown).map { it.dialable })
+    }
 }

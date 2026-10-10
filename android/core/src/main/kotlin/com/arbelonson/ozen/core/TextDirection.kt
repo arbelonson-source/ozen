@@ -17,6 +17,6 @@ object TextDirection {
     fun isRightToLeft(languageCode: String): Boolean =
         languageCode.split("-").first().lowercase() in setOf("he", "iw", "yi", "ar", "fa", "ur")
 
-    private fun isRightToLeftLetter(codePoint: Int): Boolean =
+    internal fun isRightToLeftLetter(codePoint: Int): Boolean =
         codePoint in 0x0590..0x08FF || codePoint in 0xFB1D..0xFDFF || codePoint in 0xFE70..0xFEFF
 }
