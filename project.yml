@@ -66,6 +66,9 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MARKETING_VERSION: "0.2.0"
         CURRENT_PROJECT_VERSION: "2"
+        # Empty except in testflight.yml, which names the App Store
+        # profile for each target; one command-line setting can't.
+        PROVISIONING_PROFILE_SPECIFIER: "$(OZEN_APP_PROFILE)"
 
   OzenCaptionsWidget:
     type: app-extension
@@ -97,6 +100,7 @@ targets:
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) OZEN_WIDGET_EXTENSION"
         MARKETING_VERSION: "0.2.0"
         CURRENT_PROJECT_VERSION: "2"
+        PROVISIONING_PROFILE_SPECIFIER: "$(OZEN_WIDGET_PROFILE)"
         SKIP_INSTALL: YES
 
   OzenTests:

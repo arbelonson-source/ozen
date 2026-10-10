@@ -1,0 +1,117 @@
+name: TestFlight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    name: Build, sign and upload to TestFlight
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - name: Use the newest Xcode 26
+        run: |
+          set -euo pipefail
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
+          [ -n "$XCODE" ] || { echo "No Xcode 26 on this runner" >&2; exit 1; }
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Install the distribution certificate and profiles
+        env:
+          DIST_CERT_P12: ${{ secrets.DIST_CERT_P12 }}
+          DIST_CERT_PASSWORD: ${{ secrets.DIST_CERT_PASSWORD }}
+          APP_PROFILE: ${{ secrets.APP_PROFILE }}
+          WIDGET_PROFILE: ${{ secrets.WIDGET_PROFILE }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+          printf '%s' "$DIST_CERT_P12" | base64 --decode > "$RUNNER_TEMP/dist.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/dist.p12" -P "$DIST_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/dist.p12"
+          for DIR in "$HOME/Library/MobileDevice/Provisioning Profiles" "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"; do
+            mkdir -p "$DIR"
+            for PROFILE in "$APP_PROFILE" "$WIDGET_PROFILE"; do
+              printf '%s' "$PROFILE" | base64 --decode > "$RUNNER_TEMP/p.mobileprovision"
+              UUID=$(security cms -D -i "$RUNNER_TEMP/p.mobileprovision" | plutil -extract UUID raw -)
+              cp "$RUNNER_TEMP/p.mobileprovision" "$DIR/$UUID.mobileprovision"
+            done
+          done
+          security find-identity -v -p codesigning "$KEYCHAIN" | grep -c "Apple Distribution"
+      - name: Archive
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project Ozen.xcodeproj \
+            -scheme Ozen \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/Ozen.xcarchive" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM=9688D6924Z \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            OZEN_APP_PROFILE="Ozen App Store" \
+            OZEN_WIDGET_PROFILE="Ozen Captions App Store" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}.${{ github.run_attempt }}" \
+            2>&1 | tee xcodebuild-testflight.log | xcpretty
+      - name: Export and upload to TestFlight
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$KEY"
+          OPTIONS="$RUNNER_TEMP/ExportOptions.plist"
+          cat > "$OPTIONS" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>9688D6924Z</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>Apple Distribution</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.arbelonson.ozen.Ozen</key><string>Ozen App Store</string>
+              <key>com.arbelonson.ozen.Ozen.Captions</key><string>Ozen Captions App Store</string>
+            </dict>
+          </dict>
+          </plist>
+          PLIST
+          plutil -lint "$OPTIONS"
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Ozen.xcarchive" \
+            -exportOptionsPlist "$OPTIONS" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -authenticationKeyPath "$KEY" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+      - name: Keep the build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-testflight-log
+          path: xcodebuild-testflight.log
+          if-no-files-found: ignore
+      - name: Remove the signing files
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/AuthKey.p8"
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
