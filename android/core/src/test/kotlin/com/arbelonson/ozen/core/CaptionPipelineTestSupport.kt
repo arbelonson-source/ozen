@@ -285,8 +285,9 @@ class FakeEngine(
         val created = Channel<TranscriptToken>(Channel.UNLIMITED)
         tokenChannel = created
         return channelFlow {
-            launch { audio.collect { chunksSeen += 1 } }
+            val feeder = launch { audio.collect { chunksSeen += 1 } }
             for (token in created) send(token)
+            feeder.cancel()
         }
     }
 
@@ -357,11 +358,12 @@ class FakeSoundDetector : SoundEventDetecting {
         val created = Channel<SoundObservation>(Channel.UNLIMITED)
         channel = created
         return channelFlow {
-            launch {
+            val feeder = launch {
                 audio.collect { chunksSeen += 1 }
                 created.close()
             }
             for (observation in created) send(observation)
+            feeder.cancel()
         }
     }
 
