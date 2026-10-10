@@ -11,6 +11,7 @@ class PairingRequests(private val settings: SettingsHolder, private val saveCode
     val pending = MutableStateFlow<HomeServerPairing?>(null)
     val linkBroken = MutableStateFlow(false)
     val saveFailed = MutableStateFlow(false)
+    var onPaired: (() -> Unit)? = null
 
     fun open(link: String) {
         if (pending.value != null) return
@@ -36,6 +37,7 @@ class PairingRequests(private val settings: SettingsHolder, private val saveCode
             it.homeServerAddress = pairing.address
             it.engine = TranscriptionEngineKind.HomeServer
         }
+        onPaired?.invoke()
         return true
     }
 

@@ -96,6 +96,21 @@ class PairingRequestsTest {
     }
 
     @Test
+    fun `captions hear of a pairing once it is saved and switched to, and not of one the phone couldn't keep`() {
+        val told = mutableListOf<TranscriptionEngineKind>()
+        val pairing = PairingRequests(settings, codes::save).apply { onPaired = { told += settings.current.value.engine } }
+        pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=testcode123")
+        assertEquals(emptyList(), told, "nothing before someone confirms")
+        assertTrue(pairing.acceptPending())
+        assertEquals(listOf(TranscriptionEngineKind.HomeServer), told)
+
+        val refused = PairingRequests(settings) { false }.apply { onPaired = { told += settings.current.value.engine } }
+        refused.open("ozen://pair?address=wss://other.tail.ts.net&code=othercode")
+        assertFalse(refused.acceptPending())
+        assertEquals(1, told.size)
+    }
+
+    @Test
     fun `a pairing code the phone won't keep changes nothing and says so`() {
         val pairing = PairingRequests(settings) { false }
         pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=testcode123")

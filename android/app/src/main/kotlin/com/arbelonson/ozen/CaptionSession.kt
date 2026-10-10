@@ -16,6 +16,7 @@ import com.arbelonson.ozen.whisper.ModelFileLoader
 import com.arbelonson.ozen.whisper.SileroVoiceScorer
 import java.io.File
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class CaptionSession(
@@ -23,6 +24,7 @@ class CaptionSession(
     private val settings: SettingsHolder,
     private val homeServerCode: HomeServerCodeStore,
     val audio: AudioCapturing = AndroidAudioCapture(context),
+    private val modelFile: File = File(context.filesDir, MODEL_FILE),
 ) {
     private val scope = MainScope()
     private val connector = WebSocketConnector()
@@ -60,6 +62,21 @@ class CaptionSession(
 
     fun pause() = pipeline.pause()
 
+    fun close() {
+        pipeline.stop()
+        scope.cancel()
+    }
+
+    fun settingsChanged() {
+        scope.launch {
+            when (pipeline.phase) {
+                PipelinePhase.Idle -> Unit
+                PipelinePhase.Paused -> pipeline.settingsChangedWhilePaused()
+                else -> pipeline.restart(settings.current.value)
+            }
+        }
+    }
+
     private fun publish() = CaptionState.show(
         phase = pipeline.phase,
         engine = pipeline.activeEngineKind,
@@ -82,8 +99,8 @@ class CaptionSession(
             apiKey = { null },
         )
         TranscriptionEngineKind.WhisperKit, TranscriptionEngineKind.AppleSpeech -> OnDeviceWhisperEngine(
-            modelName = MODEL_FILE,
-            loader = ModelFileLoader(File(context.filesDir, MODEL_FILE), context.applicationInfo.nativeLibraryDir),
+            modelName = modelFile.name,
+            loader = ModelFileLoader(modelFile, context.applicationInfo.nativeLibraryDir),
             voiceScorerFactory = ::voiceScore,
         )
     }
