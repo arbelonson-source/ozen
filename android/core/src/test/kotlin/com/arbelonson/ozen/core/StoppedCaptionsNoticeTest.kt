@@ -6,6 +6,9 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.runTest
 
 class StoppedCaptionsNoticeTest {
     private val glitch = PipelineFailure(PipelineFailure.Kind.TranscriptionStopped, "stream ended")
@@ -160,5 +163,45 @@ class StoppedCaptionsNoticeTest {
             val computer = StoppedCaptionsNotice.content(failed(engineFailure(EngineUnavailability.Kind.HomeServerUnreachable))).body
             assertTrue(computer.startsWith("No answer from the computer"))
         }
+    }
+}
+
+class CaptionPipelinePhaseChangeTest {
+    @Test
+    fun `each step is reported once, not every bit of download progress`() = runTest {
+        val engine = FakeEngine(
+            progressUpdates = listOf(
+                EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.1),
+                EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.5),
+                EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.9),
+            ),
+        )
+        val pipeline = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { engine },
+            embedder = FakeEmbedder(),
+            recovery = AutoRecoveryPolicy.disabled(),
+            audioWatchdog = AudioStallWatchdog.disabled,
+        )
+        val reported = ArrayList<String>()
+        pipeline.onPhaseChange = { phase ->
+            reported.add(
+                when (phase) {
+                    PipelinePhase.Idle -> "idle"
+                    PipelinePhase.RequestingMicrophonePermission -> "permission"
+                    is PipelinePhase.PreparingEngine -> "preparing"
+                    PipelinePhase.StartingAudio -> "audio"
+                    PipelinePhase.Listening -> "listening"
+                    PipelinePhase.Paused -> "paused"
+                    is PipelinePhase.Failed -> "failed"
+                },
+            )
+        }
+
+        pipeline.start(AppSettings.default)
+        delay(100.milliseconds)
+        pipeline.pause()
+
+        assertEquals(listOf("permission", "preparing", "audio", "listening", "paused"), reported)
     }
 }
