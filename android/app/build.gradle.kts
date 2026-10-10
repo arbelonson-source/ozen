@@ -77,6 +77,8 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 }
 
 tasks.withType<Test> {

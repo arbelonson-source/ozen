@@ -35,7 +35,9 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,6 +52,8 @@ import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.tr
 
 class MainActivity : ComponentActivity() {
+    private val showingSettings = mutableStateOf(false)
+
     private val askForMicrophone = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
         if (granted[Manifest.permission.RECORD_AUDIO] == true) {
             ListeningService.start(this)
@@ -63,8 +67,8 @@ class MainActivity : ComponentActivity() {
         val phoneLanguages = LocaleList.getDefault().let { list -> (0 until list.size()).map { list[it].toLanguageTag() } }
         Localization.language = AppLanguage.System.resolved(phoneLanguages)
         enableEdgeToEdge()
-        val pairing = (application as OzenApplication).pairing
-        setContent { OzenApp(pairing, onStatusTap = ::statusTapped) }
+        val app = application as OzenApplication
+        setContent { OzenApp(app, showingSettings, onStatusTap = ::statusTapped) }
         openLink(intent)
     }
 
@@ -83,6 +87,7 @@ class MainActivity : ComponentActivity() {
             PhasePresentation.Action.Pause -> ListeningService.pause(this)
             PhasePresentation.Action.OpenSystemSettings -> if (hasMicrophone()) startListening() else openAppSettings()
             PhasePresentation.Action.Start, PhasePresentation.Action.Resume, PhasePresentation.Action.Retry -> startListening()
+            PhasePresentation.Action.OpenEngineSettings -> showingSettings.value = true
             else -> Unit
         }
     }
@@ -107,13 +112,17 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun OzenApp(pairing: PairingRequests, onStatusTap: () -> Unit) {
+private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>, onStatusTap: () -> Unit) {
     val direction = if (Localization.language.isRightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr
     val state by CaptionState.screen.collectAsStateWithLifecycle()
     MaterialTheme(colorScheme = darkColorScheme()) {
         CompositionLocalProvider(LocalLayoutDirection provides direction) {
-            CaptionScreen(state, onStatusTap)
-            PairingDialogs(pairing)
+            if (showingSettings.value) {
+                SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false })
+            } else {
+                CaptionScreen(state, onStatusTap, onSettings = { showingSettings.value = true })
+            }
+            PairingDialogs(app.pairing)
         }
     }
 }
@@ -173,7 +182,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
 }
 
 @Composable
-private fun CaptionScreen(state: CaptionScreenState, onStatusTap: () -> Unit) {
+private fun CaptionScreen(state: CaptionScreenState, onStatusTap: () -> Unit, onSettings: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -196,6 +205,9 @@ private fun CaptionScreen(state: CaptionScreenState, onStatusTap: () -> Unit) {
             }
         }
         StatusButton(state.status, onStatusTap)
+        TextButton(onClick = onSettings, modifier = Modifier.align(Alignment.End)) {
+            Text(tr("הגדרות", "Settings"), fontSize = 18.sp)
+        }
     }
 }
 
