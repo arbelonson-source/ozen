@@ -1464,4 +1464,21 @@ class TranscriptSourceLineTest {
     fun `the home computer's placeholder model, which only repeated the engine in English, is left out`() {
         assertEquals("המחשב בבית · iPhone Microphone", record(TranscriptionEngineKind.HomeServer, model = "home server").sourceLine(UILanguage.Hebrew))
     }
+
+    @Test
+    fun `cloud models read as their service and Settings name them, missing parts are skipped`() {
+        val cloud = TranscriptionEngineKind.Cloud
+        val english = UILanguage.English
+        assertEquals("Cloud transcription · OpenRouter · Gemini Flash Lite", record(cloud, CloudSpeech.FAST_MODEL, null).sourceLine(english))
+        assertEquals("Cloud transcription · OpenRouter · Gemini Flash", record(cloud, CloudSpeech.ACCURATE_MODEL, null).sourceLine(english))
+        assertEquals("Cloud transcription · Deepgram · Nova-3", record(cloud, DeepgramSpeech.MODEL, null).sourceLine(english))
+        assertEquals("Cloud transcription · Soniox", record(cloud, SonioxSpeech.model, null).sourceLine(english))
+        assertEquals("Cloud transcription · OpenAI", record(cloud, OpenAICompatibleSpeech.openAI.model, null).sourceLine(english))
+        assertEquals("Cloud transcription · Groq · Whisper large-v3", record(cloud, OpenAICompatibleSpeech.groq.model, null).sourceLine(english))
+        assertEquals("Cloud transcription · ElevenLabs · Scribe v2", record(cloud, ElevenLabsSpeech.MODEL, null).sourceLine(english))
+        assertEquals("Cloud transcription · Google Gemini · Transcribe", record(cloud, GeminiSpeech.MODEL, null).sourceLine(english))
+        assertEquals("Cloud transcription · Speechmatics · Enhanced", record(cloud, SpeechmaticsSpeech.model, null).sourceLine(english))
+        assertEquals("Cloud transcription · AssemblyAI · Universal-3.6 Pro", record(cloud, AssemblyAISpeech.model, null).sourceLine(english))
+        assertEquals("Apple's speech recognition", record(TranscriptionEngineKind.AppleSpeech, null, null).sourceLine(english))
+    }
 }

@@ -160,7 +160,19 @@ data class TranscriptSessionRecord(
             val variant = modelVariant ?: return null
             return when (engine) {
                 TranscriptionEngineKind.WhisperKit -> WhisperModelCatalog.option(variant)?.displayName ?: variant
-                TranscriptionEngineKind.Cloud -> variant
+                TranscriptionEngineKind.Cloud -> when (variant) {
+                    CloudSpeech.FAST_MODEL -> "OpenRouter · Gemini Flash Lite"
+                    CloudSpeech.ACCURATE_MODEL -> "OpenRouter · Gemini Flash"
+                    DeepgramSpeech.MODEL -> "Deepgram · Nova-3"
+                    SonioxSpeech.model -> "Soniox"
+                    OpenAICompatibleSpeech.openAI.model -> "OpenAI"
+                    OpenAICompatibleSpeech.groq.model -> "Groq · Whisper large-v3"
+                    ElevenLabsSpeech.MODEL -> "ElevenLabs · Scribe v2"
+                    GeminiSpeech.MODEL -> "Google Gemini · Transcribe"
+                    SpeechmaticsSpeech.model -> "Speechmatics · Enhanced"
+                    AssemblyAISpeech.model -> "AssemblyAI · Universal-3.6 Pro"
+                    else -> variant
+                }
                 TranscriptionEngineKind.HomeServer, TranscriptionEngineKind.AppleSpeech -> null
             }
         }
