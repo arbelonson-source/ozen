@@ -184,8 +184,12 @@ public actor HomeServerEngine: TranscriptionEngine {
                     return
                 }
             }
-            try? await socket.send(text: HomeServer.end)
+            // Marked before the send, not after: a computer with nothing
+            // left to write closes the moment it reads this, and a close
+            // that arrived while the send was still finishing was taken
+            // for a lost connection.
             self.markEndSent()
+            try? await socket.send(text: HomeServer.end)
         }
         let heartbeat = Task {
             var nextCheck = Duration.seconds(self.pingSeconds)
