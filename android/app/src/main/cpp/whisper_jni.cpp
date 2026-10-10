@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <string>
+#include <vector>
 
 #include "ggml-backend.h"
 #include "whisper.h"
@@ -71,6 +72,102 @@ Java_com_arbelonson_ozen_whisper_WhisperCpp_transcribe(
     int result = whisper_full(context(handle), params, samples, count);
     env->ReleaseFloatArrayElements(audio, samples, JNI_ABORT);
     return result == 0 ? whisper_full_n_segments(context(handle)) : -1;
+}
+
+// One decode at one temperature, as WhisperKit makes each of its attempts:
+// the retries at higher temperatures, and whether a stretch was silence,
+// are decided in Kotlin from the tokens, so whisper.cpp's own are off.
+extern "C" JNIEXPORT jint JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_pass(
+        JNIEnv *env, jobject, jlong handle, jfloatArray audio, jstring language, jintArray prompt,
+        jint maxTokens, jfloat temperature, jint threads, jboolean suppressBlank, jboolean noTimestamps) {
+    whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+    std::string languageCode = text(env, language);
+    params.language = languageCode.c_str();
+    params.n_threads = threads;
+    params.no_context = true;
+    params.no_timestamps = noTimestamps;
+    params.single_segment = true;
+    params.print_progress = false;
+    params.print_realtime = false;
+    params.print_special = false;
+    params.print_timestamps = false;
+    params.suppress_blank = suppressBlank;
+    params.max_tokens = maxTokens;
+    params.temperature = temperature;
+    params.temperature_inc = 0.0f;
+    params.greedy.best_of = 1;
+    params.no_speech_thold = 1.0f;
+
+    std::vector<whisper_token> promptTokens;
+    if (prompt != nullptr) {
+        const jsize length = env->GetArrayLength(prompt);
+        promptTokens.resize(length);
+        env->GetIntArrayRegion(prompt, 0, length, reinterpret_cast<jint *>(promptTokens.data()));
+        params.prompt_tokens = promptTokens.data();
+        params.prompt_n_tokens = static_cast<int>(promptTokens.size());
+    }
+
+    jsize count = env->GetArrayLength(audio);
+    jfloat *samples = env->GetFloatArrayElements(audio, nullptr);
+    int result = whisper_full(context(handle), params, samples, count);
+    env->ReleaseFloatArrayElements(audio, samples, JNI_ABORT);
+    return result == 0 ? whisper_full_n_segments(context(handle)) : -1;
+}
+
+extern "C" JNIEXPORT jintArray JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_segmentTokenIds(JNIEnv *env, jobject, jlong handle, jint segment) {
+    whisper_context *ctx = context(handle);
+    const int count = whisper_full_n_tokens(ctx, segment);
+    std::vector<jint> ids(count);
+    for (int i = 0; i < count; ++i) ids[i] = whisper_full_get_token_id(ctx, segment, i);
+    jintArray result = env->NewIntArray(count);
+    env->SetIntArrayRegion(result, 0, count, ids.data());
+    return result;
+}
+
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_segmentTokenProbabilities(JNIEnv *env, jobject, jlong handle, jint segment) {
+    whisper_context *ctx = context(handle);
+    const int count = whisper_full_n_tokens(ctx, segment);
+    std::vector<jfloat> chances(count);
+    for (int i = 0; i < count; ++i) chances[i] = whisper_full_get_token_p(ctx, segment, i);
+    jfloatArray result = env->NewFloatArray(count);
+    env->SetFloatArrayRegion(result, 0, count, chances.data());
+    return result;
+}
+
+// The token's own bytes: a Hebrew letter is two bytes and a token can end
+// between them, so they are put back together before being read as text.
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_tokenPiece(JNIEnv *env, jobject, jlong handle, jint token) {
+    const char *value = whisper_token_to_str(context(handle), token);
+    if (value == nullptr) value = "";
+    jsize length = static_cast<jsize>(std::char_traits<char>::length(value));
+    jbyteArray bytes = env->NewByteArray(length);
+    env->SetByteArrayRegion(bytes, 0, length, reinterpret_cast<const jbyte *>(value));
+    return bytes;
+}
+
+extern "C" JNIEXPORT jintArray JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_tokenize(JNIEnv *env, jobject, jlong handle, jstring value) {
+    whisper_context *ctx = context(handle);
+    std::string words = text(env, value);
+    std::vector<whisper_token> tokens(words.size() + 8);
+    int count = whisper_tokenize(ctx, words.c_str(), tokens.data(), static_cast<int>(tokens.size()));
+    if (count < 0) {
+        tokens.resize(-count);
+        count = whisper_tokenize(ctx, words.c_str(), tokens.data(), static_cast<int>(tokens.size()));
+    }
+    if (count < 0) return nullptr;
+    jintArray result = env->NewIntArray(count);
+    env->SetIntArrayRegion(result, 0, count, reinterpret_cast<const jint *>(tokens.data()));
+    return result;
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_tokenEot(JNIEnv *, jobject, jlong handle) {
+    return whisper_token_eot(context(handle));
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL

@@ -18,6 +18,12 @@ class WhisperModel private constructor(private var handle: Long) : AutoCloseable
     }
 
     @Synchronized
+    fun <T> withHandle(block: (Long) -> T): T {
+        check(handle != 0L) { "closed" }
+        return block(handle)
+    }
+
+    @Synchronized
     override fun close() {
         if (handle != 0L) WhisperCpp.free(handle)
         handle = 0L
@@ -54,6 +60,15 @@ internal object WhisperCpp {
     external fun segmentText(handle: Long, segment: Int): ByteArray
     external fun segmentNoSpeech(handle: Long, segment: Int): Float
     external fun segmentLogprob(handle: Long, segment: Int): Float
+    external fun pass(
+        handle: Long, audio: FloatArray, language: String, prompt: IntArray?, maxTokens: Int, temperature: Float,
+        threads: Int, suppressBlank: Boolean, noTimestamps: Boolean,
+    ): Int
+    external fun segmentTokenIds(handle: Long, segment: Int): IntArray
+    external fun segmentTokenProbabilities(handle: Long, segment: Int): FloatArray
+    external fun tokenPiece(handle: Long, token: Int): ByteArray
+    external fun tokenize(handle: Long, text: String): IntArray?
+    external fun tokenEot(handle: Long): Int
     external fun systemInfo(): String
     external fun vadLoad(path: String): Long
     external fun vadFrames(handle: Long, samples: FloatArray): FloatArray?
