@@ -73,8 +73,24 @@ public enum HomeServer {
     }
 
     /// "192.168.1.20", "grandma-pc:8765", "ws://…" or "wss://…" all work;
-    /// a bare host gets the default port and plain `ws`.
+    /// a bare host gets the default port and plain `ws`. Unencrypted audio
+    /// may only go to a computer on the home network or the family's
+    /// tailnet: plain `ws` to one out on the internet (a typo such as
+    /// 192.186… for 192.168…) would carry the pairing code, the names list
+    /// and the sound in the clear, so it is no address at all.
     public static func url(from address: String) -> URL? {
+        guard let url = parsedURL(from: address) else { return nil }
+        return url.scheme?.lowercased() == "wss" || isPrivate(host: url.host ?? "") ? url : nil
+    }
+
+    /// Refused by `url(from:)` only for being plain `ws` out on the
+    /// internet, so Settings can say to use the wss:// address instead of
+    /// that it doesn't look like an address.
+    public static func needsEncryptedAddress(_ address: String) -> Bool {
+        parsedURL(from: address) != nil && url(from: address) == nil
+    }
+
+    private static func parsedURL(from address: String) -> URL? {
         let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !trimmed.contains(" ") else { return nil }
         // "wss://wss://…", an address pasted into one already there, would
@@ -158,13 +174,9 @@ public struct HomeServerPairing: Sendable, Equatable {
     public init?(address: String, code: String) {
         let address = address.trimmingCharacters(in: .whitespacesAndNewlines)
         let code = code.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = HomeServer.url(from: address),
+        guard HomeServer.url(from: address) != nil,
               !code.isEmpty, code.count <= 200, !code.contains(where: \.isWhitespace)
         else { return nil }
-        // Unencrypted audio may only go to a computer on the home network
-        // or the family's tailnet: setup makes a ws:// link only for those,
-        // so one naming a computer out on the internet isn't the family's.
-        guard url.scheme?.lowercased() == "wss" || HomeServer.isPrivate(host: url.host ?? "") else { return nil }
         self.address = address
         self.code = code
     }

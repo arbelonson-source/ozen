@@ -150,6 +150,9 @@ You set up a computer of your own that writes the captions faster.
   with **Test connection** (bdikat chibur).
 - On the same Wi-Fi the address is plain (ws://), and the sound is not
   encrypted on the way. An address that starts with wss:// is encrypted.
+  Ozen accepts a plain address only for a computer on the home network or
+  the family's Tailscale network, never for one out on the internet, so a
+  typing slip can't send the code and the sound to a stranger unencrypted.
   For use away from home, the computer's setup guide (server/README.md)
   describes a wss:// address through Tailscale.
 - Only a phone that has the pairing code gets captions.

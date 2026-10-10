@@ -168,6 +168,25 @@ struct HomeServerEngineTests {
         #expect(HomeServer.url(from: "two words") == nil)
     }
 
+    @Test("a typed address out on the internet must be wss://: plain ws:// would carry the pairing code, the names and the sound unencrypted")
+    func internetAddressNeedsEncryption() async {
+        // 192.186… is a slip for 192.168…, and a computer on the internet.
+        for typed in ["203.0.113.5", "192.186.1.20", "ws://captions.example.org:8765"] {
+            #expect(HomeServer.url(from: typed) == nil, "\(typed)")
+            #expect(HomeServer.needsEncryptedAddress(typed), "\(typed)")
+            #expect(HomeServer.unsavedAddress(draft: typed, saved: "") == nil, "\(typed)")
+        }
+        for typed in ["wss://203.0.113.5:8765", "ws://100.64.0.7:8765", "grandma-pc.local", "10.0.0.5", "two words", ""] {
+            #expect(!HomeServer.needsEncryptedAddress(typed), "\(typed)")
+        }
+        #expect(HomeServer.url(from: "wss://203.0.113.5:8765") != nil)
+        #expect(HomeServer.url(from: "grandma-pc.local")?.absoluteString == "ws://grandma-pc.local:8765")
+        let socket = ScriptedSocket(helloReply: ready)
+        let check = await engine(socket, address: "203.0.113.5").checkAvailability(languageCode: "he")
+        #expect(HomeServerCheck(availability: check, seconds: 0) == .notSetUp)
+        #expect(await socket.sentTexts.isEmpty)
+    }
+
     @Test("an address pasted into one already there is refused, not saved with the host \"wss\"")
     func doubledScheme() {
         #expect(HomeServer.url(from: "wss://wss://desktop.tail.ts.net") == nil)

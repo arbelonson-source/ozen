@@ -133,7 +133,9 @@ In Settings, find the **Home computer** (ha-machshev ba-bayit) section.
 1. In **Computer address** (ktovet ha-machshev), type the address from the
    pairing page, then tap **Save address** (shmirat ha-ktovet). A bare number
    like `192.168.1.20` is fine, and so is a `wss://` address. A `https://`
-   address is turned into `wss://` for you.
+   address is turned into `wss://` for you. A computer out on the internet
+   needs its `wss://` address: Ozen won't send the sound there unencrypted,
+   and says so under the field.
 2. In **The pairing code from the computer** (kod ha-tzimud me-ha-machshev),
    type the code. Tap **Save code** (shmirat ha-kod). Afterwards the row
    says **Pairing code saved on the phone** (kod tzimud shamur ba-telefon).

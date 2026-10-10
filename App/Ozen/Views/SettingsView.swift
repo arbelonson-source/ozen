@@ -476,7 +476,10 @@ struct SettingsView: View {
             if homeServerAddressDraft.trimmingCharacters(in: .whitespacesAndNewlines) != viewModel.settings.homeServerAddress {
                 Button(tr("שמירת הכתובת", "Save address"), action: saveHomeServerAddress)
             }
-            if !homeServerAddressDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, HomeServer.url(from: homeServerAddressDraft) == nil {
+            if HomeServer.needsEncryptedAddress(homeServerAddressDraft) {
+                Label(tr("מחוץ לרשת הביתית, צריך את הכתובת שמתחילה ב-wss://", "Outside the home network, use the address that starts with wss://"), systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.readable(.orange))
+            } else if !homeServerAddressDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, HomeServer.url(from: homeServerAddressDraft) == nil {
                 Label(tr("הכתובת לא נראית תקינה", "That address doesn’t look right"), systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.readable(.orange))
             }
