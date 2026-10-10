@@ -287,4 +287,14 @@ interface TranscriptionEngine {
 
     /** [prepare] without caring about progress, for callers (and tests) that only want the yes/no answer. */
     suspend fun checkAvailability(languageCode: String): EngineAvailability = prepare(languageCode) {}
+
+    /**
+     * Gives back what the engine holds outside Kotlin's memory, the
+     * on-phone model above all, for the pipeline to call on an engine it
+     * drops. On the iPhone the model goes with the last reference to its
+     * engine; here nothing frees it but this, so an engine dropped without
+     * it kept its model's hundreds of megabytes until the app ended. A
+     * released engine loads again on its next [prepare].
+     */
+    fun release() {}
 }

@@ -59,6 +59,7 @@ class OnDeviceWhisperEngine(
 
     private val lock = Any()
     private var passes: WhisperPasses? = null
+    private var model: WhisperLoadedModel? = null
     private var vocabulary: List<String> = emptyList()
     private var cellularDownloadAllowed = true
 
@@ -176,8 +177,30 @@ class OnDeviceWhisperEngine(
         } catch (error: Exception) {
             // A failed warm-up is not a broken model.
         }
-        synchronized(lock) { passes = loaded.passes }
+        val superseded = synchronized(lock) {
+            if (passes != null) {
+                loaded
+            } else {
+                passes = loaded.passes
+                model = loaded
+                null
+            }
+        }
+        // Another prepare stored its model while this one loaded: that one
+        // stays and this copy goes back rather than sit in memory unused.
+        superseded?.release()
         return EngineAvailability.Available
+    }
+
+    override fun release() {
+        val held = synchronized(lock) {
+            val current = model
+            model = null
+            passes = null
+            promptCache = null
+            current
+        }
+        held?.release()
     }
 
     override fun stream(languageCode: String, audio: Flow<FloatArray>): Flow<TranscriptToken> =

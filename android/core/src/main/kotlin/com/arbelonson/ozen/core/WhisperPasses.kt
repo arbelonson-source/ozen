@@ -47,7 +47,7 @@ interface WhisperPasses {
     suspend fun run(audio: FloatArray, options: WhisperPassOptions): List<WhisperSegment>
 }
 
-class WhisperLoadedModel(val passes: WhisperPasses, val isFirstTime: Boolean = false)
+class WhisperLoadedModel(val passes: WhisperPasses, val isFirstTime: Boolean = false, val release: () -> Unit = {})
 
 interface WhisperModelLoader {
     suspend fun load(
