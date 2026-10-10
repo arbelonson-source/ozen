@@ -38,6 +38,16 @@ android {
         }
     }
 
+    androidResources {
+        noCompress += "bin"
+    }
+
+    sourceSets {
+        getByName("androidTest") {
+            assets.srcDir("../../Tests/OzenPlatformTests/Fixtures")
+        }
+    }
+
     packaging {
         jniLibs {
             useLegacyPackaging = true

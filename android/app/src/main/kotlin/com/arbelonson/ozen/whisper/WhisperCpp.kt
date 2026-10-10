@@ -55,4 +55,8 @@ internal object WhisperCpp {
     external fun segmentNoSpeech(handle: Long, segment: Int): Float
     external fun segmentLogprob(handle: Long, segment: Int): Float
     external fun systemInfo(): String
+    external fun vadLoad(path: String): Long
+    external fun vadFrames(handle: Long, samples: FloatArray): FloatArray?
+    external fun vadReset(handle: Long)
+    external fun vadFree(handle: Long)
 }

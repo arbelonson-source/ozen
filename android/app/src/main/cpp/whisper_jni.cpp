@@ -102,6 +102,44 @@ Java_com_arbelonson_ozen_whisper_WhisperCpp_segmentLogprob(JNIEnv *, jobject, jl
     return counted == 0 ? 0.0f : static_cast<jfloat>(sum / counted);
 }
 
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_vadLoad(JNIEnv *env, jobject, jstring path) {
+    whisper_vad_context_params params = whisper_vad_default_context_params();
+    params.n_threads = 1;
+    params.use_gpu = false;
+    whisper_vad_context *vad = whisper_vad_init_from_file_with_params(text(env, path).c_str(), params);
+    // Loading leaves Silero's memory as whatever was in it before: without
+    // this the first chunks of hiss scored as a voice on the emulator.
+    if (vad != nullptr) whisper_vad_reset_state(vad);
+    return reinterpret_cast<jlong>(vad);
+}
+
+// Silero's memory runs on from one call to the next, as it does across
+// the chunks of a live stream; one probability per 512-sample frame.
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_vadFrames(JNIEnv *env, jobject, jlong handle, jfloatArray samples) {
+    auto *vad = reinterpret_cast<whisper_vad_context *>(handle);
+    const jsize count = env->GetArrayLength(samples);
+    jfloat *audio = env->GetFloatArrayElements(samples, nullptr);
+    const bool ok = whisper_vad_detect_speech_no_reset(vad, audio, count);
+    env->ReleaseFloatArrayElements(samples, audio, JNI_ABORT);
+    if (!ok) return nullptr;
+    const int frames = whisper_vad_n_probs(vad);
+    jfloatArray result = env->NewFloatArray(frames);
+    env->SetFloatArrayRegion(result, 0, frames, whisper_vad_probs(vad));
+    return result;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_vadReset(JNIEnv *, jobject, jlong handle) {
+    whisper_vad_reset_state(reinterpret_cast<whisper_vad_context *>(handle));
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_vadFree(JNIEnv *, jobject, jlong handle) {
+    whisper_vad_free(reinterpret_cast<whisper_vad_context *>(handle));
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_arbelonson_ozen_whisper_WhisperCpp_systemInfo(JNIEnv *env, jobject) {
     return env->NewStringUTF(whisper_print_system_info());
