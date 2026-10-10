@@ -1227,7 +1227,7 @@ struct SettingsView: View {
         } header: {
             Text(tr("אודות", "About"))
         } footer: {
-            Text(tr("אוזן היא תוכנה חופשית בקוד פתוח (AGPL-3.0): כל עותק שלה חייב להישאר חופשי ופתוח. כל העיבוד נעשה בטלפון; שום דבר לא נשלח החוצה אלא אם ביקשתם זאת במפורש למעלה.", "Ozen is free, open-source software (AGPL-3.0): every copy of it has to stay free and open. All processing happens on the phone; nothing is sent out unless you explicitly asked for it above."))
+            Text(tr("אוזן היא תוכנה חופשית בקוד פתוח (AGPL-3.0): כל עותק שלה חייב להישאר חופשי ופתוח. אלא אם בחרתם אחרת למעלה, כל העיבוד נעשה בטלפון ושום דבר לא נשלח החוצה.", "Ozen is free, open-source software (AGPL-3.0): every copy of it has to stay free and open. Unless you chose otherwise above, all processing happens on the phone and nothing is sent out."))
         }
     }
 
