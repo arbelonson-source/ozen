@@ -63,6 +63,9 @@ either unreliable with external microphones or too shallow to trust.
   </tr>
 </table>
 
+<sub>Shown in English, the sample conversation too, so it reads here. Ozen
+captions Hebrew speech; the interface comes in twelve languages.</sub>
+
 ## Why this exists
 
 Existing apps (evaluated: Nagish) had three concrete problems: inconsistent
@@ -93,7 +96,7 @@ things, for Hebrew conversation, entirely on-device.
   <tr>
     <td width="33%" valign="top"><img src="docs/assets/icons/recover.svg" width="44" alt=""><br><b>Recovers by itself</b><br>A dropped recognizer, a failed audio session or a stalled download is retried, and the status line says so.</td>
     <td width="33%" valign="top"><img src="docs/assets/icons/computer.svg" width="44" alt=""><br><b>Home computer, optional</b><br>A PC with an NVIDIA card can write the captions instead, paired with a QR code.</td>
-    <td width="33%" valign="top"><img src="docs/assets/icons/globe.svg" width="44" alt=""><br><b>Twelve languages</b><br>The app follows the phone's language, or the one picked in Settings.</td>
+    <td width="33%" valign="top"><img src="docs/assets/icons/globe.svg" width="44" alt=""><br><b>Twelve languages</b><br>Buttons and settings follow the phone's language, or the one picked in Settings. The captions are of Hebrew speech.</td>
   </tr>
 </table>
 
