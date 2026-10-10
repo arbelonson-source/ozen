@@ -376,10 +376,27 @@ def check_chinese_punctuation():
 TR_PAIR = re.compile(r'tr\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"')
 
 
+def arrow_labels(key, keys):
+    """The app's own labels along a path such as "Settings → Diagnostics →
+    Send report": the steps that are labels, and the label that ends the
+    words before the first arrow."""
+    labels = []
+    for path in re.findall(r"[^.:;!?()]*\u2192[^.:;!?()]*", key):
+        steps = [step.strip(" \u201c\u201d") for step in path.split("\u2192")]
+        words = steps[0].split()
+        lead = next((" ".join(words[i:]) for i in range(len(words)) if " ".join(words[i:]) in keys), None)
+        inner = [step for step in steps[1:] if step in keys]
+        # A path with none of the app's labels after its first step leads
+        # through the phone's own Settings, which iOS names in each language.
+        labels += ([lead] if lead and inner else []) + inner
+    return labels
+
+
 def check_quoted_labels(keys):
-    """A message that names another of the app's labels in quotes (To fix:
-    "Add speaker" ...) names it in each language as that label reads
-    there, or the reader looks for a button that isn't on the screen."""
+    """A message that names another of the app's labels, in quotes (To fix:
+    "Add speaker" ...) or along a path (Settings → Diagnostics), names it in
+    each language as that label reads there, or the reader looks for a
+    button that isn't on the screen."""
     table = json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))
     hebrew = {}
     for path in sorted(p for root in ROOTS for p in Path(root).rglob("*.swift")):
@@ -395,7 +412,7 @@ def check_quoted_labels(keys):
                 for language, entries in [("english", {key: key for key in keys})] + list(languages.items())[1:]
                 for key, text in entries.items() if '"' in text]
     for key in sorted(keys):
-        for quoted in re.findall(r'["\u201c]([^"\u201d]+)["\u201d]', key):
+        for quoted in re.findall(r'["\u201c]([^"\u201d]+)["\u201d]', key) + arrow_labels(key, keys):
             if quoted not in keys or quoted == display_name:
                 continue
             for language, entries in languages.items():
