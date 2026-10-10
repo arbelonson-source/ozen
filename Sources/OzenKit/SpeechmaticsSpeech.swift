@@ -25,6 +25,10 @@ public enum SpeechmaticsSpeech: CloudStreamService {
     static let maximumTerms = 100
     static let unknownSpeaker = "UU"
 
+    public static func address(languageCode: String, vocabulary: [String]) -> URL {
+        streamURL
+    }
+
     public static func headers(apiKey: String) -> [String: String] {
         ["Authorization": "Bearer \(apiKey)"]
     }

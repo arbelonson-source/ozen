@@ -21,6 +21,10 @@ public enum SonioxSpeech: CloudStreamService {
     public typealias Token = CloudStreamToken
     public typealias Reply = CloudStreamReply
 
+    public static func address(languageCode: String, vocabulary: [String]) -> URL {
+        streamURL
+    }
+
     public static func headers(apiKey: String) -> [String: String] {
         ["Authorization": "Bearer \(apiKey)"]
     }

@@ -7,9 +7,9 @@ ours, and each service's key stays in the phone's Keychain. If the key stops
 working, the credit runs out or the internet goes, a Whisper model already on
 the phone takes over and the status line says so.
 
-Today Ozen offers Soniox, Deepgram, OpenAI, Groq, ElevenLabs, Google Gemini,
-Speechmatics and OpenRouter (which passes the audio on to a Google Gemini
-model). AssemblyAI is planned.
+Ozen offers Soniox, Deepgram, OpenAI, Groq, ElevenLabs, Google Gemini,
+Speechmatics, AssemblyAI and OpenRouter (which passes the audio on to a
+Google Gemini model).
 
 ## Which one should I use?
 
@@ -31,6 +31,9 @@ model). AssemblyAI is planned.
 - Speechmatics, for words that appear as they are said like Soniox's, with
   $100 of free credit for a new account and no card: about 125 hours of
   captions. After that it costs several times what Soniox does.
+- AssemblyAI, the same way: words as they are said, $50 of free credit with
+  no card (about 88 hours of captions), then about 57 cents an hour. It has
+  no Ukrainian or Amharic.
 - OpenRouter stays for anyone who already has a key.
 
 For Hebrew, the phone's own Hebrew model is about as accurate as Soniox on
@@ -48,9 +51,9 @@ Accuracy is the share of words wrong on ivrit.ai's
 lower is better. Prices are each service's list price per hour of audio in
 October 2026.
 
-Soniox and Speechmatics get the microphone as one stream for as long as the
-captions run, so they cost their list price for every hour of captions,
-quiet moments included.
+Soniox, Speechmatics and AssemblyAI get the microphone as one stream for as
+long as the captions run, so they cost their list price for every hour of
+captions, quiet moments included.
 The other services get a request per sentence, sent only while someone
 speaks, but each sentence is sent again every couple of seconds while it is
 being said so the words appear as they are spoken: an hour of speech costs
@@ -69,9 +72,10 @@ too, with no words until the sentence is finished.
 | ElevenLabs (Scribe v2) | yes | not tested (Scribe v1: 20.0%) | not tested (v1: 26.4%) | $0.22, $0.27 with names | free plan |
 | Google Gemini (gemini-3.5-transcribe) | yes | not tested | not tested | about $0.30 | free plan, no card |
 | Speechmatics (Enhanced) | yes | not tested | not tested | $0.80 | $100, no card |
+| AssemblyAI (Universal-3.6 Pro) | yes | not tested | not tested | $0.57 with speakers | $50, no card |
 | The phone's own model (ivrit.ai Turbo) | built in | 5.3% | 7.1% | free | - |
 
-AssemblyAI is not in Ozen or on that leaderboard yet. Mistral's speech
+Mistral's speech
 model has no Hebrew, and Azure and Google Cloud Speech need a cloud project set
 up around the key, so they are not planned.
 
@@ -81,6 +85,7 @@ Of Ozen's twelve caption languages:
 
 - Soniox and Speechmatics write eleven, all but Amharic. Chinese goes to
   Speechmatics as Mandarin.
+- AssemblyAI writes ten, all but Ukrainian and Amharic.
 - Deepgram writes eleven. Chinese goes to its older Nova-2 model, the only
   one of Deepgram's with Chinese. Amharic it does not have.
 - OpenAI, Groq and ElevenLabs are sent all twelve, Amharic too; their
@@ -153,6 +158,13 @@ on for a while.
 2. In the Speechmatics portal, create an API key.
 3. In Ozen, pick Speechmatics as the service, paste the key and save it.
 
+### AssemblyAI
+
+1. Create an account at [assemblyai.com](https://www.assemblyai.com/dashboard/signup).
+   No card is asked for.
+2. Copy the API key shown in the AssemblyAI dashboard.
+3. In Ozen, pick AssemblyAI as the service, paste the key and save it.
+
 ### OpenRouter
 
 1. Sign in at [openrouter.ai](https://openrouter.ai) and add some credit.
@@ -187,6 +199,10 @@ key again.
   captions run, quiet moments included, with the first hundred names sent
   once as it connects. Speechmatics' terms apply. Off Wi-Fi this uses about
   120 MB of mobile data an hour.
+- AssemblyAI: the microphone streams to AssemblyAI the whole time captions
+  run, quiet moments included, with the first hundred names sent as it
+  connects. AssemblyAI's terms apply. Off Wi-Fi this uses about 120 MB of
+  mobile data an hour.
 - OpenRouter: audio is sent only while someone is speaking, with the lists,
   and passed on to Google; OpenRouter's and Google's terms apply.
 

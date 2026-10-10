@@ -113,18 +113,21 @@ public actor CloudStreamEngine<Service: CloudStreamService>: TranscriptionEngine
         guard let key = currentKey() else { throw CloudSpeechError.keyMissing }
         let socket: any HomeServerSocket
         do {
-            socket = try await connector.open(Service.streamURL, headers: Service.headers(apiKey: key))
+            socket = try await connector.open(Service.address(languageCode: languageCode, vocabulary: vocabulary), headers: Service.headers(apiKey: key))
         } catch {
             throw CloudSpeechError.offline
         }
         endSent = false
         pongLost = false
         pingSentAt = nil
-        do {
-            try await socket.send(text: Service.config(languageCode: languageCode, vocabulary: vocabulary))
-        } catch {
-            await socket.close()
-            throw CloudSpeechError.offline
+        let settings = Service.config(languageCode: languageCode, vocabulary: vocabulary)
+        if !settings.isEmpty {
+            do {
+                try await socket.send(text: settings)
+            } catch {
+                await socket.close()
+                throw CloudSpeechError.offline
+            }
         }
         let (started, start) = AsyncStream<Void>.makeStream()
         if !Service.waitsForStart { start.finish() }

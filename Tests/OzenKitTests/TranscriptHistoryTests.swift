@@ -1441,6 +1441,7 @@ struct TranscriptSourceLineTests {
         #expect(record(.cloud, model: ElevenLabsSpeech.model, input: nil).sourceLine(in: .english) == "Cloud transcription · ElevenLabs · Scribe v2")
         #expect(record(.cloud, model: GeminiSpeech.model, input: nil).sourceLine(in: .english) == "Cloud transcription · Google Gemini · Transcribe")
         #expect(record(.cloud, model: SpeechmaticsSpeech.model, input: nil).sourceLine(in: .english) == "Cloud transcription · Speechmatics · Enhanced")
+        #expect(record(.cloud, model: AssemblyAISpeech.model, input: nil).sourceLine(in: .english) == "Cloud transcription · AssemblyAI · Universal-3.6 Pro")
         #expect(record(.appleSpeech, model: nil, input: nil).sourceLine(in: .english) == "Apple's speech recognition")
     }
 }

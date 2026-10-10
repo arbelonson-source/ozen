@@ -202,6 +202,7 @@ public extension TranscriptSessionRecord {
             case ElevenLabsSpeech.model: return "ElevenLabs · Scribe v2"
             case GeminiSpeech.model: return "Google Gemini · Transcribe"
             case SpeechmaticsSpeech.model: return "Speechmatics · Enhanced"
+            case AssemblyAISpeech.model: return "AssemblyAI · Universal-3.6 Pro"
             default: return modelVariant
             }
         case .homeServer, .appleSpeech: return nil

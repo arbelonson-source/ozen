@@ -7,10 +7,11 @@ import Foundation
 public protocol CloudStreamService {
     static var provider: CloudProvider { get }
     static var model: String { get }
-    static var streamURL: URL { get }
     /// Whether the audio waits until the service says it has started.
     static var waitsForStart: Bool { get }
+    static func address(languageCode: String, vocabulary: [String]) -> URL
     static func headers(apiKey: String) -> [String: String]
+    /// Empty for a service that takes its settings in the address.
     static func config(languageCode: String, vocabulary: [String]) -> String
     static func endMessage(chunksSent: Int) -> String
     /// Nil for anything that is neither words, a start nor an error, so a

@@ -414,9 +414,10 @@ Open a section for the details.
   [Deepgram](https://deepgram.com), [OpenAI](https://openai.com),
   [Groq](https://groq.com), [ElevenLabs](https://elevenlabs.io),
   [Google Gemini](https://ai.google.dev),
-  [Speechmatics](https://www.speechmatics.com) (which also writes as the
-  words are said) or a Google model through
-  [OpenRouter](https://openrouter.ai) (more are being added), with your own
+  [Speechmatics](https://www.speechmatics.com),
+  [AssemblyAI](https://www.assemblyai.com) (both also write as the words
+  are said), or a Google model through
+  [OpenRouter](https://openrouter.ai), with your own
   key pasted into Settings (stored only in the phone's Keychain, one per
   service), together with the names and important words lists so it can
   spell them. Which one? Soniox: the most accurate of the cloud services on
