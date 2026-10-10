@@ -199,6 +199,7 @@ public extension TranscriptSessionRecord {
             case SonioxSpeech.model: return "Soniox"
             case OpenAICompatibleSpeech.openAI.model: return "OpenAI"
             case OpenAICompatibleSpeech.groq.model: return "Groq · Whisper large-v3"
+            case ElevenLabsSpeech.model: return "ElevenLabs · Scribe v2"
             default: return modelVariant
             }
         case .homeServer, .appleSpeech: return nil

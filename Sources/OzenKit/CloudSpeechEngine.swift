@@ -95,7 +95,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
         } catch {
             return .unavailable(CloudSpeechError.offline.unavailability)
         }
-        guard (200..<300).contains(response.status) else {
+        guard provider.acceptsKeyCheck(response) else {
             return .unavailable(provider.failure(from: response).unavailability)
         }
         guard provider.hasCreditLeft(keyCheck: response) else {

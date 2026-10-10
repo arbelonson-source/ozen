@@ -22,24 +22,20 @@ public enum OpenAICompatibleSpeech {
     static let promptBytes = 224
 
     public static func request(_ service: Service, model: String, apiKey: String, wav: Data, languageCode: String, vocabulary: [String]) -> CloudHTTPRequest {
-        let boundary = "ozen-\(UUID().uuidString)"
-        var fields = [("model", model), ("language", languageCode), ("response_format", "json")]
+        var form = MultipartForm()
+        form.add("model", model)
+        form.add("language", languageCode)
+        form.add("response_format", "json")
         let prompt = VocabularyHints.whisperPrompt(vocabulary, fittingIn: promptBytes) { $0.utf8.count }
         if !prompt.isEmpty {
-            fields.append(("prompt", prompt))
+            form.add("prompt", prompt)
         }
-        var body = Data()
-        for (name, value) in fields {
-            body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8))
-        }
-        body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"speech.wav\"\r\nContent-Type: audio/wav\r\n\r\n".utf8))
-        body.append(wav)
-        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+        form.add(file: "file", filename: "speech.wav", type: "audio/wav", data: wav)
         return CloudHTTPRequest(
             url: service.transcriptionsURL,
             method: "POST",
-            headers: headers(apiKey: apiKey).merging(["Content-Type": "multipart/form-data; boundary=\(boundary)"]) { $1 },
-            body: body,
+            headers: headers(apiKey: apiKey).merging(["Content-Type": form.contentType]) { $1 },
+            body: form.body,
             timeoutSeconds: 20
         )
     }

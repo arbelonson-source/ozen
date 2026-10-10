@@ -1,0 +1,12 @@
+{"language_code":"heb","language_probability":0.99,"text":"מה שלומך? טוב, תודה. ואתה?","words":[
+{"text":"מה","start":0.12,"end":0.36,"type":"word","speaker_id":"speaker_0","logprob":-0.08},
+{"text":" ","start":0.36,"end":0.42,"type":"spacing","speaker_id":"speaker_0","logprob":0.0},
+{"text":"שלומך?","start":0.42,"end":0.96,"type":"word","speaker_id":"speaker_0","logprob":-0.12},
+{"text":" ","start":0.96,"end":1.4,"type":"spacing","speaker_id":"speaker_0","logprob":0.0},
+{"text":"(צחוק)","start":1.4,"end":1.8,"type":"audio_event","speaker_id":"speaker_1","logprob":0.0},
+{"text":"טוב,","start":2.04,"end":2.4,"type":"word","speaker_id":"speaker_1","logprob":-0.05},
+{"text":" ","start":2.4,"end":2.46,"type":"spacing","speaker_id":"speaker_1","logprob":0.0},
+{"text":"תודה.","start":2.46,"end":2.88,"type":"word","speaker_id":"speaker_1","logprob":-0.09},
+{"text":" ","start":2.88,"end":3.0,"type":"spacing","speaker_id":"speaker_1","logprob":0.0},
+{"text":"ואתה?","start":3.0,"end":3.42,"type":"word","speaker_id":"speaker_1","logprob":-0.11}
+]}

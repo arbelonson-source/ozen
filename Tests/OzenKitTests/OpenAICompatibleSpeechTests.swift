@@ -25,7 +25,8 @@ struct OpenAICompatibleSpeechTests {
             guard let split = part.range(of: Data("\r\n\r\n".utf8)) else { continue }
             let headers = String(decoding: part[part.startIndex..<split.lowerBound], as: UTF8.self)
             var content = Data(part[split.upperBound...])
-            if content.suffix(2) == Data("\r\n".utf8) { content.removeLast(2) }
+            #expect(content.suffix(2) == Data("\r\n".utf8), "a part must end with a line break before the next boundary")
+        content.removeLast(min(2, content.count))
             guard let start = headers.range(of: "name=\"") else { continue }
             let name = headers[start.upperBound...].prefix { $0 != "\"" }
             found[String(name)] = (headers, content)
