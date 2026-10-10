@@ -44,7 +44,7 @@ class AndroidAudioCaptureDeviceTest {
     }
 
     @Test
-    fun stoppingTheMicrophoneEndsTheRecording() = runBlocking {
+    fun stoppingTheMicrophoneEndsTheRecording(): Unit = runBlocking {
         val capture = AndroidAudioCapture(context)
         withContext(Dispatchers.Main) { capture.prepareSession(null) }
         val recording = CompletableDeferred<Unit>()
