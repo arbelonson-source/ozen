@@ -42,10 +42,37 @@ Added in this order; each lands on its own, tested and documented:
 | 5 | Groq (Whisper large-v3 / turbo) | one request per sentence, OpenAI-compatible | cheapest, free tier |
 | 6 | ElevenLabs (Scribe v2) | one request per sentence, file upload | wide language coverage incl. Amharic |
 | 7 | Speechmatics | live connection | Hebrew live, $100 free credit |
-| 8 | AssemblyAI (Universal) | submit, then wait | $50 free credit; finished lines only, no live preview |
+| 8 | AssemblyAI (Universal) | submit, then wait (built live, see below) | $50 free credit |
 
 OpenRouter stays, moved from the chat-completions workaround to its proper
 transcription endpoint once that is tested against the current path.
+
+### As built (2026-10-10, #431-#450)
+
+All eight are in, each with its own tests, sample answers, Settings text in
+the twelve languages and a section in `docs/cloud-services.md`. Where the
+build differs from the table above:
+
+- AssemblyAI streams too (Universal-3.6 Pro over its live connection), so it
+  shows words as they are said instead of finished lines only. It takes its
+  settings in the connection address.
+- Groq gets each sentence once, when it ends, with no live re-sends: it
+  bills every request as at least ten seconds.
+- Gemini direct uses Google's transcription model (`gemini-3.5-transcribe`)
+  through the Interactions API rather than the chat prompt OpenRouter uses.
+  On Google's free plan Google may use what is sent and people may read it;
+  Settings and the guide say so.
+- New installs start on Soniox; saved settings without a service still
+  mean OpenRouter.
+- `CloudStreamEngine` serves Soniox, Speechmatics and AssemblyAI. A service
+  closing the connection with a code, or refusing to open it, is read as
+  that service's reason (key, credit, busy, its own trouble) rather than as
+  no internet.
+
+Not done yet: OpenRouter's move to its transcription endpoint (needs
+testing against the real service), and `scripts/try-cloud-services.py`
+below. Nothing here has met a real key yet; each service's sample answers
+follow its documentation.
 
 Not added: Mistral (no Hebrew), Azure and Google Cloud Speech (need a portal
 resource or a service account, not a pasted key), Gladia (card required).
@@ -62,7 +89,7 @@ resource or a service account, not a pasted key), Gladia (card required).
   mark) and asks the chosen `CloudProvider` for requests and answers. Its
   existing tests run unchanged against OpenRouter.
 - A second engine, `CloudStreamEngine`, serves the live-connection services
-  (Soniox, Speechmatics), built like `HomeServerEngine`: audio goes out as it
+  (Soniox, Speechmatics, AssemblyAI), built like `HomeServerEngine`: audio goes out as it
   arrives, provisional words show as the live line, final words finish it.
   It shares the error kinds, key handling and cover-by-the-phone behaviour.
 - Keys: `CloudKeyStore` gets one keychain slot per service; the existing
