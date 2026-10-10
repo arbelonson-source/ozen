@@ -1,5 +1,6 @@
 package com.arbelonson.ozen.whisper
 
+import com.arbelonson.ozen.core.WhisperAudioContext
 import com.arbelonson.ozen.core.WhisperPassOptions
 import com.arbelonson.ozen.core.WhisperSinglePass
 import com.arbelonson.ozen.core.WhisperToken
@@ -18,6 +19,7 @@ class WhisperCppPasses(private val model: WhisperModel, private val threads: Int
             val count = WhisperCpp.pass(
                 handle, audio, options.language, options.promptTokens?.toIntArray(), options.maxTokens ?: 0,
                 temperature, threads, options.suppressBlank, options.withoutTimestamps,
+                WhisperAudioContext.frames(audio.size, options.isFinal),
             )
             check(count >= 0) { "whisper.cpp could not run the pass" }
             (0 until count).map { segment -> segment(handle, segment, temperature) }

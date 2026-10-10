@@ -62,7 +62,7 @@ internal object WhisperCpp {
     external fun segmentLogprob(handle: Long, segment: Int): Float
     external fun pass(
         handle: Long, audio: FloatArray, language: String, prompt: IntArray?, maxTokens: Int, temperature: Float,
-        threads: Int, suppressBlank: Boolean, noTimestamps: Boolean,
+        threads: Int, suppressBlank: Boolean, noTimestamps: Boolean, audioContext: Int,
     ): Int
     external fun segmentTokenIds(handle: Long, segment: Int): IntArray
     external fun segmentTokenProbabilities(handle: Long, segment: Int): FloatArray

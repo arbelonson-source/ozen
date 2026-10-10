@@ -80,7 +80,8 @@ Java_com_arbelonson_ozen_whisper_WhisperCpp_transcribe(
 extern "C" JNIEXPORT jint JNICALL
 Java_com_arbelonson_ozen_whisper_WhisperCpp_pass(
         JNIEnv *env, jobject, jlong handle, jfloatArray audio, jstring language, jintArray prompt,
-        jint maxTokens, jfloat temperature, jint threads, jboolean suppressBlank, jboolean noTimestamps) {
+        jint maxTokens, jfloat temperature, jint threads, jboolean suppressBlank, jboolean noTimestamps,
+        jint audioContext) {
     whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     std::string languageCode = text(env, language);
     params.language = languageCode.c_str();
@@ -98,6 +99,7 @@ Java_com_arbelonson_ozen_whisper_WhisperCpp_pass(
     params.temperature_inc = 0.0f;
     params.greedy.best_of = 1;
     params.no_speech_thold = 1.0f;
+    params.audio_ctx = audioContext;
 
     std::vector<whisper_token> promptTokens;
     if (prompt != nullptr) {
