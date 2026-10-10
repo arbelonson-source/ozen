@@ -13,7 +13,7 @@ Google Gemini model).
 
 ## Which one should I use?
 
-- Soniox. On the only independent Hebrew test (below) it is the most
+- Soniox. On ivrit.ai's public Hebrew leaderboard (below) it is the most
   accurate cloud service, and it is the cheapest: about 12 cents for every
   hour the captions run. The words appear as they are said, over one
   connection that stays open.
@@ -55,7 +55,11 @@ lines say how to run it.
 Accuracy is the share of words wrong on ivrit.ai's
 [Hebrew transcription leaderboard](https://huggingface.co/spaces/ivrit-ai/hebrew-transcription-leaderboard)
 (results as of June 2026), on its podcast set and its WhatsApp voice-note set;
-lower is better. Prices are each service's list price per hour of audio in
+lower is better. ivrit.ai, which runs it, also made the phone's own model.
+Each figure is the leaderboard's word-level results for that set, added
+up. Groq's are for the open Whisper large-v3 model that Groq runs (Groq
+itself is not on the leaderboard), and the phone's own model's are for
+ivrit.ai's May 2025 Turbo, the one Ozen ships. Prices are each service's list price per hour of audio in
 October 2026.
 
 Soniox, Speechmatics and AssemblyAI get the microphone as one stream for as
@@ -72,10 +76,10 @@ too, with no words until the sentence is finished.
 | Service | In Ozen | Hebrew, podcasts | Hebrew, voice notes | List price per hour | Free to start |
 |---|---|---|---|---|---|
 | Soniox (stt-rt-v5) | yes | 4.8% | 9.0% | $0.12 | not stated |
-| Deepgram (Nova-3) | yes | 6.7% | 12.0% | $0.26 | $200, no card |
+| Deepgram (Nova-3) | yes | 6.7% | 12.1% | $0.26 | $200, no card |
 | OpenRouter (Google Gemini) | yes | not tested | not tested | see openrouter.ai | no |
 | OpenAI (gpt-4o-transcribe) | yes | 7.3% | 12.6% | $0.36 | no |
-| Groq (Whisper large-v3) | yes | 9.8% | 13.2% | $0.11 | free tier |
+| Groq (Whisper large-v3) | yes | 9.8% | 13.3% | $0.11 | free tier |
 | ElevenLabs (Scribe v2) | yes | not tested (Scribe v1: 20.0%) | not tested (v1: 26.4%) | $0.22, $0.27 with names | free plan |
 | Google Gemini (gemini-3.5-transcribe) | yes | not tested | not tested | about $0.30 | free plan, no card |
 | Speechmatics (Enhanced) | yes | not tested | not tested | $0.80 | $100, no card |

@@ -7,7 +7,7 @@ app now and to the Android app when it gets cloud captions.
 
 Cloud captions reach exactly one service today: OpenRouter, which forwards the
 audio to Google's Gemini. The owner rates OpenRouter among the worst options,
-and the only independent Hebrew benchmark (ivrit.ai's leaderboard) shows
+and ivrit.ai's public Hebrew leaderboard shows
 dedicated speech services well ahead of general chat models. Ozen captions
 twelve languages (Hebrew, English, Arabic, Russian, Amharic, French, Spanish,
 Ukrainian, German, Portuguese, Chinese, Hindi), and no one service is best in

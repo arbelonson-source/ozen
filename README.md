@@ -421,7 +421,7 @@ Open a section for the details.
   key pasted into Settings (stored only in the phone's Keychain, one per
   service), together with the names and important words lists so it can
   spell them. Which one? Soniox: the most accurate of the cloud services on
-  the only independent Hebrew test, and the cheapest, about 12 cents for
+  ivrit.ai's public Hebrew leaderboard, and the cheapest, about 12 cents for
   every hour the captions run. To try the cloud for free, Deepgram: second
   best on that test, and a new account gets $200 of free credit with no
   card. Prices, languages, privacy and how to get each key:
