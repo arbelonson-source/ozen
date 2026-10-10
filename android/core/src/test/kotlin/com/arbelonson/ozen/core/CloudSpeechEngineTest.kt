@@ -517,4 +517,15 @@ class CloudSpeechEngineTest {
         assertEquals(CloudSpeechError.KeyRejected, failure)
         assertEquals(EngineUnavailability.Kind.CloudKeyNeeded, engine.checkAvailability("he").unavailability?.kind)
     }
+
+    @Test
+    fun `the approval lasts less than the wait between reconnect checks, so every check really asks the cloud`() = runTest {
+        val captions = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { FakeEngine(kind = TranscriptionEngineKind.Cloud) },
+            embedder = FakeEmbedder(),
+            recovery = AutoRecoveryPolicy.disabled(),
+        )
+        assertTrue(CloudSpeechEngine.DEFAULT_APPROVAL_SECONDS < captions.cloudRecheckSeconds)
+    }
 }

@@ -447,6 +447,14 @@ class TestClock {
     }
 }
 
+private const val CLOCK_BASE = 1_800_000_000.0
+
+/**
+ * The wall clock a pipeline reads when nothing else is given: it moves with
+ * the test scheduler's time, as the real clock moves with a Swift test's.
+ */
+fun TestScope.virtualNow(): Double = CLOCK_BASE + testScheduler.currentTime / 1000.0
+
 data class MadePipeline(val pipeline: CaptionPipeline, val audio: FakeAudioCapturer, val log: FactoryLog)
 
 /**
@@ -466,7 +474,7 @@ fun TestScope.captionPipeline(
     audioWatchdog: AudioStallWatchdog = AudioStallWatchdog(),
     network: NetworkMonitoring? = null,
     availableStorageBytes: (() -> Long?)? = null,
-    now: () -> Double = { System.currentTimeMillis() / 1000.0 },
+    now: () -> Double = { virtualNow() },
     embedderContext: CoroutineContext = StandardTestDispatcher(testScheduler),
 ): CaptionPipeline = CaptionPipeline(
     scope = backgroundScope,

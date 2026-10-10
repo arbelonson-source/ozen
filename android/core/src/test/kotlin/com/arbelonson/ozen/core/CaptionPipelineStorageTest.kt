@@ -147,7 +147,7 @@ private suspend fun TestScope.startWithOpenLine(): OpenLine {
     )
     pipeline.start(AppSettings.default)
     val utterance = UUID.randomUUID()
-    engine.emit(TranscriptToken(utteranceID = utterance, text = "הרופא אמר ש", isFinal = false, timestamp = System.currentTimeMillis() / 1000.0))
+    engine.emit(TranscriptToken(utteranceID = utterance, text = "הרופא אמר ש", isFinal = false, timestamp = virtualNow()))
     eventually { pipeline.segments.size == 1 }
     return OpenLine(pipeline, engine, utterance)
 }
@@ -169,7 +169,7 @@ class CaptionPipelineOpenLineTest {
     @Test
     fun `stopping finishes it too, and a line already final isn't counted twice`() = runTest {
         val (pipeline, engine, _) = startWithOpenLine()
-        engine.emit(TranscriptToken(utteranceID = UUID.randomUUID(), text = "כן", isFinal = true, timestamp = System.currentTimeMillis() / 1000.0))
+        engine.emit(TranscriptToken(utteranceID = UUID.randomUUID(), text = "כן", isFinal = true, timestamp = virtualNow()))
         eventually { pipeline.segments.size == 2 }
         assertEquals(1, pipeline.stats.segmentsCommitted)
 

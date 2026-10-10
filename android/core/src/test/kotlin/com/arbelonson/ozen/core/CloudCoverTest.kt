@@ -42,8 +42,8 @@ private fun lostConnection() = EngineUnavailability(EngineUnavailability.Kind.No
 private fun failureOf(kind: EngineUnavailability.Kind) =
     PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", EngineUnavailability(kind, ""))
 
-private fun spokenToken(text: String) =
-    TranscriptToken(utteranceID = UUID.randomUUID(), text = text, isFinal = true, timestamp = System.currentTimeMillis() / 1000.0)
+private fun TestScope.spokenToken(text: String) =
+    TranscriptToken(utteranceID = UUID.randomUUID(), text = text, isFinal = true, timestamp = virtualNow())
 
 private class Causes {
     val seen = ArrayList<StoppedCaptionsNotice.Cause?>()
