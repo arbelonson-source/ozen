@@ -7,9 +7,9 @@ ours, and each service's key stays in the phone's Keychain. If the key stops
 working, the credit runs out or the internet goes, a Whisper model already on
 the phone takes over and the status line says so.
 
-Today Ozen offers Soniox, Deepgram, OpenAI, Groq, ElevenLabs and OpenRouter
-(which passes the audio on to a Google Gemini model). Gemini directly from
-Google, Speechmatics and AssemblyAI are planned.
+Today Ozen offers Soniox, Deepgram, OpenAI, Groq, ElevenLabs, Google Gemini
+and OpenRouter (which passes the audio on to a Google Gemini model).
+Speechmatics and AssemblyAI are planned.
 
 ## Which one should I use?
 
@@ -21,9 +21,13 @@ Google, Speechmatics and AssemblyAI are planned.
   credit with no card, which is many months of captions. It is the second
   most accurate cloud service on the same test, ahead of OpenAI's models.
 - OpenAI, Groq or ElevenLabs, for Amharic, which neither Soniox nor
-  Deepgram has, or for anyone who already has one of their keys. Groq is the cheaper of the
-  two and has a free plan, but its words only appear once each sentence is
-  finished.
+  Deepgram has, or for anyone who already has one of their keys. Groq is the
+  cheapest of the three and has a free plan, but its words only appear once
+  each sentence is finished.
+- Google Gemini, for anyone with a Google account who wants to start without
+  paying: Google's free plan needs no card. On that plan Google may use what
+  is sent to improve its products and people at Google may read it, so for
+  private conversations turn billing on first (or pick another service).
 - OpenRouter stays for anyone who already has a key.
 
 For Hebrew, the phone's own Hebrew model is about as accurate as Soniox on
@@ -59,6 +63,7 @@ too, with no words until the sentence is finished.
 | OpenAI (gpt-4o-transcribe) | yes | 7.3% | 12.6% | $0.36 | no |
 | Groq (Whisper large-v3) | yes | 9.8% | 13.2% | $0.11 | free tier |
 | ElevenLabs (Scribe v2) | yes | not tested (Scribe v1: 20.0%) | not tested (v1: 26.4%) | $0.22, $0.27 with names | free plan |
+| Google Gemini (gemini-3.5-transcribe) | yes | not tested | not tested | about $0.30 | free plan, no card |
 | The phone's own model (ivrit.ai Turbo) | built in | 5.3% | 7.1% | free | - |
 
 Speechmatics and AssemblyAI are not on that leaderboard yet. Mistral's speech
@@ -74,6 +79,9 @@ Of Ozen's twelve caption languages:
   one of Deepgram's with Chinese. Amharic it does not have.
 - OpenAI, Groq and ElevenLabs are sent all twelve, Amharic too; their
   accuracy outside Hebrew was not measured here.
+- Google Gemini is sent all twelve, with the caption language as a regional
+  tag (European Portuguese for Portuguese); its accuracy was not measured
+  here in any language.
 - OpenRouter is sent all twelve; Gemini's accuracy outside Hebrew was not
   measured here.
 
@@ -123,6 +131,15 @@ on for a while.
    needs Speech to Text allowed.
 3. In Ozen, pick ElevenLabs as the service, paste the key and save it.
 
+### Google Gemini
+
+1. Sign in to [Google AI Studio](https://aistudio.google.com) with a Google
+   account.
+2. Create a key on the [API keys page](https://aistudio.google.com/apikey).
+   Keys start on the free plan; turning billing on for the key's project
+   moves it to the paid plan.
+3. In Ozen, pick Google Gemini as the service, paste the key and save it.
+
 ### OpenRouter
 
 1. Sign in at [openrouter.ai](https://openrouter.ai) and add some credit.
@@ -148,9 +165,14 @@ key again.
   hour of speech.
 - ElevenLabs: audio is sent only while someone is speaking, with the first
   hundred names as key terms. ElevenLabs' terms apply.
+- Google Gemini: audio is sent only while someone is speaking, with the first
+  hundred names as its vocabulary. On Google's free plan, Google uses what
+  is sent to improve its products and human reviewers may read it; with
+  billing on, it does not
+  ([Gemini API terms](https://ai.google.dev/gemini-api/terms)).
 - OpenRouter: audio is sent only while someone is speaking, with the lists,
   and passed on to Google; OpenRouter's and Google's terms apply.
 
-Off Wi-Fi, Deepgram, OpenAI, ElevenLabs and OpenRouter use a few hundred MB
-of mobile data an hour of speech, up to about 1 GB, because each sentence is sent
-several times.
+Off Wi-Fi, Deepgram, OpenAI, ElevenLabs, Google Gemini and OpenRouter use a
+few hundred MB of mobile data an hour of speech, up to about 1 GB, because
+each sentence is sent several times.

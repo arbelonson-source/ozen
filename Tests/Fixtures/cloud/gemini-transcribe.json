@@ -1,0 +1,23 @@
+{
+  "created": "2026-10-10T00:05:15Z",
+  "id": "v1_example",
+  "model": "gemini-3.5-transcribe",
+  "object": "interaction",
+  "status": "completed",
+  "steps": [
+    {
+      "type": "model_output",
+      "content": [
+        {
+          "type": "text",
+          "text": "מה שלומך? טוב, תודה."
+        }
+      ]
+    }
+  ],
+  "updated": "2026-10-10T00:05:16Z",
+  "usage": {
+    "total_input_tokens": 96,
+    "total_output_tokens": 9
+  }
+}

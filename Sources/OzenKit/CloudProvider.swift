@@ -6,6 +6,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
     case openAI
     case groq
     case elevenLabs
+    case gemini
     case openRouter
 
     public var name: String {
@@ -15,6 +16,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         case .openAI: "OpenAI"
         case .groq: "Groq"
         case .elevenLabs: "ElevenLabs"
+        case .gemini: "Google Gemini"
         case .openRouter: "OpenRouter"
         }
     }
@@ -30,6 +32,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         case .openAI: OpenAICompatibleSpeech.openAI.model
         case .groq: OpenAICompatibleSpeech.groq.model
         case .elevenLabs: ElevenLabsSpeech.model
+        case .gemini: GeminiSpeech.model
         case .openRouter: CloudSpeech.accurateModel
         }
     }
@@ -42,6 +45,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         switch self {
         case .soniox: SonioxSpeech.languages.contains(languageCode)
         case .deepgram: DeepgramSpeech.languages.contains(languageCode)
+        case .gemini: GeminiSpeech.languageTags[languageCode] != nil
         case .openAI, .groq, .elevenLabs, .openRouter: true
         }
     }
@@ -62,7 +66,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
     ) -> any TranscriptionEngine {
         switch self {
         case .soniox: SonioxEngine(http: http, connector: connector, apiKey: apiKey)
-        case .deepgram, .openAI, .groq, .elevenLabs, .openRouter: CloudSpeechEngine(provider: self, model: model, http: http, apiKey: apiKey)
+        case .deepgram, .openAI, .groq, .elevenLabs, .gemini, .openRouter: CloudSpeechEngine(provider: self, model: model, http: http, apiKey: apiKey)
         }
     }
 
@@ -73,6 +77,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         case .openAI: OpenAICompatibleSpeech.request(OpenAICompatibleSpeech.openAI, model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
         case .groq: OpenAICompatibleSpeech.request(OpenAICompatibleSpeech.groq, model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
         case .elevenLabs: ElevenLabsSpeech.request(model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
+        case .gemini: GeminiSpeech.request(model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
         case .openRouter: CloudSpeech.completionRequest(model: model, apiKey: apiKey, wav: wav, languageCode: languageCode, vocabulary: vocabulary)
         }
     }
@@ -83,6 +88,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         case .deepgram: try DeepgramSpeech.transcript(from: response)
         case .openAI, .groq: try OpenAICompatibleSpeech.transcript(from: response)
         case .elevenLabs: try ElevenLabsSpeech.transcript(from: response)
+        case .gemini: try GeminiSpeech.transcript(from: response)
         case .openRouter: try CloudSpeech.transcript(from: response)
         }
     }
@@ -93,6 +99,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         case .deepgram: DeepgramSpeech.failure(from: response)
         case .openAI, .groq: OpenAICompatibleSpeech.failure(from: response)
         case .elevenLabs: ElevenLabsSpeech.failure(from: response)
+        case .gemini: GeminiSpeech.failure(from: response)
         case .openRouter: CloudSpeech.failure(from: response)
         }
     }
@@ -104,6 +111,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         case .openAI: OpenAICompatibleSpeech.keyCheckRequest(OpenAICompatibleSpeech.openAI, apiKey: apiKey)
         case .groq: OpenAICompatibleSpeech.keyCheckRequest(OpenAICompatibleSpeech.groq, apiKey: apiKey)
         case .elevenLabs: ElevenLabsSpeech.keyCheckRequest(apiKey: apiKey)
+        case .gemini: GeminiSpeech.keyCheckRequest(apiKey: apiKey)
         case .openRouter: CloudSpeech.keyCheckRequest(apiKey: apiKey)
         }
     }

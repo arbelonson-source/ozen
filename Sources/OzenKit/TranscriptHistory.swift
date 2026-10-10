@@ -200,6 +200,7 @@ public extension TranscriptSessionRecord {
             case OpenAICompatibleSpeech.openAI.model: return "OpenAI"
             case OpenAICompatibleSpeech.groq.model: return "Groq · Whisper large-v3"
             case ElevenLabsSpeech.model: return "ElevenLabs · Scribe v2"
+            case GeminiSpeech.model: return "Google Gemini · Transcribe"
             default: return modelVariant
             }
         case .homeServer, .appleSpeech: return nil
