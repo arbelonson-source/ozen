@@ -20,10 +20,10 @@ Google Gemini model).
 - Deepgram, to try cloud captions for free: a new account gets $200 of free
   credit with no card, which is many months of captions. It is the second
   most accurate cloud service on the same test, ahead of OpenAI's models.
-- OpenAI, Groq or ElevenLabs, for Amharic, which neither Soniox nor
-  Deepgram has, or for anyone who already has one of their keys. Groq is the
-  cheapest of the three and has a free plan, but its words only appear once
-  each sentence is finished.
+- OpenAI, Groq or ElevenLabs, for Amharic, which Soniox, Deepgram,
+  Speechmatics and AssemblyAI don't have, or for anyone who already has one
+  of their keys. Groq is the cheapest of the three and has a free plan, but
+  its words only appear once each sentence is finished.
 - Google Gemini, for anyone with a Google account who wants to start without
   paying: Google's free plan needs no card. On that plan Google may use what
   is sent to improve its products and people at Google may read it, so for
@@ -38,10 +38,10 @@ Google Gemini model).
 
 For Hebrew, the phone's own Hebrew model is about as accurate as Soniox on
 that test (better on voice notes, a little worse on podcasts) and more
-accurate than every other cloud service, so the cloud is mainly for a phone
-that is too slow for its own model. Before relying on a service, try it on a
-real conversation: the test used clean recordings, and a kitchen table is
-harder.
+accurate than every other cloud service tested there, so the cloud is
+mainly for a phone that is too slow for its own model. Before relying on a
+service, try it on a real conversation: the test used clean recordings, and
+a kitchen table is harder.
 
 ## How they compare
 
@@ -75,9 +75,8 @@ too, with no words until the sentence is finished.
 | AssemblyAI (Universal-3.6 Pro) | yes | not tested | not tested | $0.57 with speakers | $50, no card |
 | The phone's own model (ivrit.ai Turbo) | built in | 5.3% | 7.1% | free | - |
 
-Mistral's speech
-model has no Hebrew, and Azure and Google Cloud Speech need a cloud project set
-up around the key, so they are not planned.
+Mistral's speech model has no Hebrew, and Azure and Google Cloud Speech need
+a cloud project set up around the key, so they are not planned.
 
 ## Languages
 
