@@ -106,4 +106,18 @@ class HistoryRetentionTest {
             assertNotNull(store.load(live.id))
         }
     }
+
+    @Test
+    fun `settings default to keeping forever, and an unknown choice from a newer build reads as forever`() {
+        assertEquals(HistoryRetention.Forever, AppSettings.default.historyRetention)
+        val old = AppSettings.fromJson("{}")
+        assertEquals(HistoryRetention.Forever, old.historyRetention)
+        val unknown = AppSettings.fromJson("""{"historyRetention":"fortnight"}""")
+        assertEquals(HistoryRetention.Forever, unknown.historyRetention)
+
+        val settings = AppSettings.default
+        settings.historyRetention = HistoryRetention.Month
+        val roundTripped = AppSettings.fromJson(settings.toJson())
+        assertEquals(HistoryRetention.Month, roundTripped.historyRetention)
+    }
 }

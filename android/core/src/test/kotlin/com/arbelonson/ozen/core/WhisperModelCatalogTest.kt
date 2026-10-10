@@ -13,11 +13,13 @@ class WhisperModelCatalogTest {
     fun `the default and recommended variants both exist in the catalog`() {
         assertNotNull(WhisperModelCatalog.option(WhisperModelCatalog.DEFAULT_VARIANT))
         assertEquals(true, WhisperModelCatalog.option(WhisperModelCatalog.RECOMMENDED_VARIANT)?.isRecommended)
+        assertEquals(WhisperModelCatalog.DEFAULT_VARIANT, AppSettings.default.whisperModelVariant)
     }
 
     @Test
     fun `a fresh install gets the recommended model, not Small`() {
         assertEquals(WhisperModelCatalog.RECOMMENDED_VARIANT, WhisperModelCatalog.DEFAULT_VARIANT)
+        assertEquals("ozen-turbo-hebrew-a3-8bit", AppSettings.default.whisperModelVariant)
     }
 
     @Test
