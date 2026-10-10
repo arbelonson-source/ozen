@@ -178,11 +178,14 @@ out only if you tap one of these:
 It contains: the app, iOS and device type, the engine and model chosen, the
 language, how many sound chunks and seconds arrived, the sound levels,
 how many speakers were told apart and how many are saved, which
-alerts are on and how many words, whether conversations are saved and for how
-long, the display size, the battery, free space, memory, heat, the type of
-connection, the names of the microphones, the home computer's address, and
-whether a code is saved. After that comes the list of recent events and the
-journal.
+alerts are on and how many words, the alert sounds it heard but not surely
+enough to alert (each with how sure it was and when), how many names are on
+your names list, whether conversations are saved and for how long, the
+display size, the battery, free space, memory, heat, the type of connection,
+the names of the microphones, the home computer's address, whether a code is
+saved, when the installed copy stops working, and the last error, if any,
+from saving settings or conversations, the lock screen captions or
+notifications. After that comes the list of recent events and the journal.
 
 It leaves out: the sound, the conversations, speaker names and voice prints,
 your names list, your alert words, the cloud keys, and the pairing code.
@@ -192,5 +195,6 @@ and only after a problem was marked. The sound clips are not in
 the report. Each one is shared only if you tap it.
 
 Before sending, read the report in the share sheet. A microphone can have a
-name you gave it, and the home computer's address can include the computer's
-name.
+name you gave it, the home computer's address can include the computer's
+name, and the sounds heard below the alert level say what the phone heard
+and at what time.
