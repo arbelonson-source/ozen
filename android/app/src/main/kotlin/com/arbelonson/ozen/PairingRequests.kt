@@ -13,6 +13,7 @@ class PairingRequests(private val settings: SettingsHolder, private val saveCode
     val saveFailed = MutableStateFlow(false)
 
     fun open(link: String) {
+        if (pending.value != null) return
         val url = try {
             URI(link)
         } catch (_: URISyntaxException) {

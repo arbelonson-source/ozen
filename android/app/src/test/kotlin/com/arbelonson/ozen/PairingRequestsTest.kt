@@ -82,6 +82,20 @@ class PairingRequestsTest {
     }
 
     @Test
+    fun `a link that arrives while the phone asks about another can't swap the computer under the Connect button`() {
+        val pairing = PairingRequests(settings, codes::save)
+        pairing.open("ozen://pair?address=wss://first.tail.ts.net&code=firstcode")
+        pairing.open("ozen://pair?address=wss://second.tail.ts.net&code=secondcode")
+        assertEquals("first.tail.ts.net", pairing.pending.value?.computerName)
+        pairing.open("ozen://pair?address=wss://second.tail.ts.net&code=")
+        assertFalse(pairing.linkBroken.value)
+        assertEquals("first.tail.ts.net", pairing.pending.value?.computerName)
+        pairing.pending.value = null
+        pairing.open("ozen://pair?address=wss://second.tail.ts.net&code=secondcode")
+        assertEquals("second.tail.ts.net", pairing.pending.value?.computerName)
+    }
+
+    @Test
     fun `a pairing code the phone won't keep changes nothing and says so`() {
         val pairing = PairingRequests(settings) { false }
         pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=testcode123")
