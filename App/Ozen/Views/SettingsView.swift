@@ -341,6 +341,7 @@ struct SettingsView: View {
                     Text(provider.name).tag(provider)
                 }
             }
+            .accessibilityIdentifier("cloudServicePicker")
             .onAppear { hasCloudKey = CloudKeyStore.hasKey(for: viewModel.settings.cloudProvider) }
             if !viewModel.settings.cloudProvider.covers(languageCode: viewModel.settings.languageCode) {
                 Label(tr("השירות הזה לא יודע לכתוב כתוביות בשפה שמדברים בה. בחרו שירות אחר.", "This service can’t caption the language being spoken. Choose another service."), systemImage: "exclamationmark.triangle.fill")
@@ -355,6 +356,7 @@ struct SettingsView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .onSubmit(saveCloudKey)
+                .accessibilityIdentifier("cloudKeyField")
             if !cloudKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Button(tr("שמירת המפתח", "Save key"), action: saveCloudKey)
             }

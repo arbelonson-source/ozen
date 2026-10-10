@@ -28,6 +28,11 @@ enum ScreenshotFixtures {
         /// Captions set to come from a home computer, so Settings shows
         /// the home computer section and its setup guide row.
         case homeServer
+        /// Captions set to come from a cloud service, Google Gemini, whose
+        /// Settings footer is the longest, so the service list, the key
+        /// field and the footer can be screenshotted.
+        case cloud
+        case cloudEnglish
         /// The README's gallery: English buttons over English captions.
         /// `english` keeps the Hebrew conversation, as an English-speaking
         /// family member would see the app on her phone.
@@ -39,9 +44,10 @@ enum ScreenshotFixtures {
     static func viewModel(variant: Variant) -> LiveCaptionViewModel {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ozen-screenshot-\(UUID().uuidString).json")
-        if variant == .homeServer {
+        if variant == .homeServer || variant == .cloud || variant == .cloudEnglish {
             var seeded = AppSettings.default
-            seeded.engine = .homeServer
+            seeded.engine = variant == .homeServer ? .homeServer : .cloud
+            if variant != .homeServer { seeded.cloudProvider = .gemini }
             try? SettingsStore(fileURL: url).save(seeded)
         }
         let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: url))
@@ -94,8 +100,10 @@ enum ScreenshotFixtures {
         case .quietHoursEnabled:
             viewModel.setAppLanguage(.hebrew)
             viewModel.quietHours = QuietHours(isEnabled: true, startHour: 22, endHour: 7)
-        case .homeServer:
+        case .homeServer, .cloud:
             viewModel.setAppLanguage(.hebrew)
+        case .cloudEnglish:
+            viewModel.setAppLanguage(.english)
         case .galleryDark:
             break
         case .galleryLight:

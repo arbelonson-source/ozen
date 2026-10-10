@@ -465,6 +465,40 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(share.exists, "home server guide: the share button never appeared")
     }
 
+    /// The cloud service settings, never screenshotted since seven
+    /// services were added: the open list of services, the key field and
+    /// the footer saying what is sent where and what it costs, at the
+    /// default and the largest text size in Hebrew, and in English.
+    func testCloudSettings() throws {
+        let runs: [(variant: String, size: String?, name: String, pages: Int)] = [
+            ("cloud", nil, "cloud-settings", 2),
+            ("cloud", "UICTContentSizeCategoryAccessibilityXXXL", "cloud-settings-accessibility-text", 6),
+            ("cloudEnglish", nil, "english-cloud-settings", 2),
+        ]
+        for run in runs {
+            let app = XCUIApplication()
+            app.launchArguments = ["-uiTestScreenshots", run.variant] + (run.size.map { ["-UIPreferredContentSizeCategoryName", $0] } ?? [])
+            app.launch()
+            let settingsButton = app.descendants(matching: .any)["settingsButton"]
+            XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "\(run.name): the settings button never appeared")
+            settingsButton.tap()
+            XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "\(run.name): settings never appeared")
+            let picker = scrollDownUntilVisible(app, identifier: "cloudServicePicker", maxSwipes: 40)
+            if !picker.exists { capture(app, name: "debug-\(run.name)-no-picker") }
+            XCTAssertTrue(picker.exists, "\(run.name): the cloud service picker never appeared")
+            bringOffBottomEdge(app, picker)
+            capture(app, name: "\(run.name)-1")
+            picker.tap()
+            capture(app, name: "\(run.name)-services")
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.06)).tap()
+            for page in 2...run.pages {
+                app.swipeUp()
+                capture(app, name: "\(run.name)-\(page)")
+            }
+            app.terminate()
+        }
+    }
+
     /// "Edit" on the quick phrases must show real delete and move handles.
     /// Before, it only listed the phrases: moving one needed a hidden
     /// long-press drag and VoiceOver could not move them at all.
