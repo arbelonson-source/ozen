@@ -336,26 +336,45 @@ struct SettingsView: View {
         )
     }
 
-    /// Beside its label, a menu's value at the largest text sizes kept its
-    /// first and last letters only ("G…ini" for Google Gemini). There the
-    /// value has the row to itself, under the section's title; VoiceOver
-    /// still reads the label.
+    /// At the largest text sizes a menu's value kept its first and last
+    /// letters only: "G…ini" beside its label, still "Goo…emini" with the
+    /// label hidden, as a menu button holds one line. There the row is a
+    /// menu whose label wraps, under the section's title; VoiceOver hears
+    /// the same name and value as from the plain menu.
     @ViewBuilder
-    private func valueAloneWhenLarge<Menu: View>(_ menu: Menu) -> some View {
+    private func menuRow<Value: Hashable, Choices: View>(_ title: String, selection: Binding<Value>, value: String, @ViewBuilder choices: () -> Choices) -> some View {
+        let picker = Picker(title, selection: selection, content: choices)
         if dynamicTypeSize.isAccessibilitySize {
-            menu.labelsHidden()
+            Menu {
+                picker
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(value)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .accessibilityHidden(true)
+                }
+            }
+            .accessibilityLabel(title)
+            .accessibilityValue(value)
         } else {
-            menu
+            picker
         }
+    }
+
+    private func cloudModelName(_ model: String) -> String {
+        model == CloudSpeech.fastModel
+            ? tr("מהיר (Gemini Flash Lite)", "Fast (Gemini Flash Lite)")
+            : tr("מדויק יותר, קצת איטי (Gemini Flash)", "More accurate, a bit slower (Gemini Flash)")
     }
 
     private var cloudSection: some View {
         Section {
-            valueAloneWhenLarge(Picker(tr("שירות", "Service"), selection: cloudProviderBinding) {
+            menuRow(tr("שירות", "Service"), selection: cloudProviderBinding, value: viewModel.settings.cloudProvider.name) {
                 ForEach(CloudProvider.allCases, id: \.self) { provider in
                     Text(provider.name).tag(provider)
                 }
-            })
+            }
             .accessibilityIdentifier("cloudServicePicker")
             .onAppear { hasCloudKey = CloudKeyStore.hasKey(for: viewModel.settings.cloudProvider) }
             if !viewModel.settings.cloudProvider.covers(languageCode: viewModel.settings.languageCode) {
@@ -395,10 +414,11 @@ struct SettingsView: View {
                 }
             }
             if viewModel.settings.cloudProvider == .openRouter {
-                valueAloneWhenLarge(Picker(tr("מודל", "Model"), selection: cloudModelBinding) {
-                    Text(tr("מהיר (Gemini Flash Lite)", "Fast (Gemini Flash Lite)")).tag(CloudSpeech.fastModel)
-                    Text(tr("מדויק יותר, קצת איטי (Gemini Flash)", "More accurate, a bit slower (Gemini Flash)")).tag(CloudSpeech.accurateModel)
-                })
+                menuRow(tr("מודל", "Model"), selection: cloudModelBinding, value: cloudModelName(viewModel.settings.cloudModel)) {
+                    ForEach(CloudSpeech.models, id: \.self) { model in
+                        Text(cloudModelName(model)).tag(model)
+                    }
+                }
             }
         } header: {
             Text(tr("תמלול בענן", "Cloud transcription"))
