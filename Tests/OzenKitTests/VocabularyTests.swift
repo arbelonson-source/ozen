@@ -18,6 +18,14 @@ struct VocabularyTests {
         #expect(VocabularyHints.normalized(["ד״ר כהן", "דר כהן"]).count == 2)
     }
 
+    @Test("the marks a phone types for a geresh or gershayim, with Smart Punctuation on or off, are the same mark")
+    func typedMarks() {
+        #expect(VocabularyHints.normalized(["צ׳יפס", "צ’יפס", "צ‘יפס"]) == ["צ׳יפס"])
+        #expect(VocabularyHints.normalized(["ד״ר כהן", "ד\"ר כהן", "ד”ר כהן", "ד“ר כהן"]) == ["ד״ר כהן"])
+        #expect(VocabularyHints.listedEntry(matching: "ד”ר כהן", in: ["ד״ר כהן"]) == "ד״ר כהן")
+        #expect(VocabularyHints.listedEntry(matching: "צ’יפס", in: ["צ׳יפס"]) == "צ׳יפס")
+    }
+
     @Test("an over-long entry is clipped and the list is capped")
     func caps() {
         let long = String(repeating: "א", count: 100)

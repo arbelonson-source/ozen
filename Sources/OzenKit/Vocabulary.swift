@@ -49,15 +49,18 @@ public enum VocabularyHints {
 
     /// Case and niqqud don't make a different word, but a geresh does:
     /// צ׳יפס isn't ציפס, and stripping it as punctuation made the second
-    /// impossible to add once the first was listed. A typed apostrophe
-    /// counts as the same mark.
+    /// impossible to add once the first was listed. A typed apostrophe or
+    /// quote counts as the same mark, curled by Smart Punctuation or not.
     static func dedupKey(_ term: String) -> String {
         let marked = term
             .replacingOccurrences(of: "\u{05F3}", with: "\u{02B9}")
             .replacingOccurrences(of: "'", with: "\u{02B9}")
+            .replacingOccurrences(of: "\u{2018}", with: "\u{02B9}")
             .replacingOccurrences(of: "\u{2019}", with: "\u{02B9}")
             .replacingOccurrences(of: "\u{05F4}", with: "\u{02BA}")
             .replacingOccurrences(of: "\"", with: "\u{02BA}")
+            .replacingOccurrences(of: "\u{201C}", with: "\u{02BA}")
+            .replacingOccurrences(of: "\u{201D}", with: "\u{02BA}")
         return HebrewText.normalize(marked).lowercased()
     }
 
