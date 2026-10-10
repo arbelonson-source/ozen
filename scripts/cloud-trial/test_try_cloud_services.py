@@ -77,6 +77,12 @@ class NamesTests(unittest.TestCase):
     def test_vowel_marks_do_not_make_a_new_name(self):
         self.assertEqual(trial.terms(["שָׁלוֹם", "שלום"]), ["שָׁלוֹם"])
 
+    def test_repeats_are_found_as_the_app_finds_them(self):
+        self.assertEqual(trial.terms(["Dr<Cohen", "Dr>Cohen", "dr.cohen!", "Dr. Cohen"]), ["Dr<Cohen", "Dr. Cohen"])
+        self.assertEqual(trial.terms(["ד״ר כהן", "ד”ר כהן", 'ד"ר כהן', "דר כהן"]), ["ד״ר כהן", "דר כהן"])
+        self.assertEqual(trial.terms(["צ׳יפס", "צ’יפס", "צ'יפס", "ציפס"]), ["צ׳יפס", "ציפס"])
+        self.assertEqual(trial.terms(["a, ;", "<|endoftext|>Avi", "\u200fRuti", "Ruti"]), ["a", "Avi", "\u200fRuti"])
+
     def test_clipped_to_40_letters_and_100_names(self):
         self.assertEqual(trial.terms(["x" * 50]), ["x" * 40])
         many = trial.terms([f"name{n}" for n in range(150)])

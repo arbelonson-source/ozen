@@ -25,6 +25,7 @@ import asyncio
 import base64
 import json
 import os
+import re
 import sys
 import time
 import unicodedata
@@ -85,13 +86,30 @@ def read_recording(path: Path) -> Recording:
     return Recording(wav=path.read_bytes(), pcm=pcm, seconds=seconds)
 
 
+SPECIAL_TOKEN = re.compile(r"<\|.*?\|>")
+LIST_EDGES = re.compile(r"^[\s,;\u060c]+|[\s,;\u060c]+$")
+SAME_MARK = str.maketrans({
+    "\u05f3": "\u02b9", "'": "\u02b9", "\u2018": "\u02b9", "\u2019": "\u02b9",
+    "\u05f4": "\u02ba", '"': "\u02ba", "\u201c": "\u02ba", "\u201d": "\u02ba",
+})
+
+
+def same_name_key(name: str) -> str:
+    """Two names are one when this matches, as in the app: a geresh and any
+    typed apostrophe are one mark, and case, vowel marks, punctuation and
+    direction marks do not count."""
+    marked = NIKUD.sub("", unicodedata.normalize("NFC", name).translate(SAME_MARK))
+    kept = "".join(ch for ch in marked if unicodedata.category(ch)[0] not in "PS" and unicodedata.category(ch) != "Cf")
+    return " ".join(kept.lower().split())
+
+
 def terms(names: list[str], cap: int = MAX_TERMS) -> list[str]:
-    """The names list as the app sends it: trimmed, no repeats (ignoring case
-    and Hebrew vowel marks), 40 letters each, the first 100."""
+    """The names list as the app sends it: trimmed, no repeats, 40 letters
+    each, the first 100."""
     seen, kept = set(), []
     for name in names:
-        clipped = name.strip().strip(",;\u060c").strip()[:40]
-        key = NIKUD.sub("", unicodedata.normalize("NFC", clipped)).casefold()
+        clipped = LIST_EDGES.sub("", SPECIAL_TOKEN.sub("", name))[:40]
+        key = same_name_key(clipped)
         if key and key not in seen:
             seen.add(key)
             kept.append(clipped)
