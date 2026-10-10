@@ -205,6 +205,13 @@ struct CloudSpeechTests {
         #expect(Set(slots).count == slots.count)
     }
 
+    @Test("the picker names each service as the service names itself, the recommended one first, as the guide lists them")
+    func pickerNames() {
+        #expect(CloudProvider.allCases.map(\.name) == [
+            "Soniox", "Deepgram", "OpenAI", "Groq", "ElevenLabs", "Google Gemini", "Speechmatics", "AssemblyAI", "OpenRouter",
+        ])
+    }
+
     @Test("no names list, no names sentence; a model that isn't Google's gets no thinking setting")
     func plainRequest() throws {
         #expect(!CloudSpeech.prompt(languageCode: "he", vocabulary: []).contains("Names"))

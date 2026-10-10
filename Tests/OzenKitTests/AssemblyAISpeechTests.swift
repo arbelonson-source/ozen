@@ -180,6 +180,16 @@ struct AssemblyAISpeechTests {
         #expect(shown.filter { $0.isFinal }.map(\.startsNewSpeakerTurn) == [false, true, true])
     }
 
+    @Test("a finished turn that came without its transcript shows nothing")
+    func turnWithoutTranscript() {
+        var lines = CloudStreamLines()
+        guard case .tokens(let tokens, _)? = AssemblyAISpeech.reply(from: #"{"type":"Turn","end_of_turn":true,"turn_is_formatted":true}"#, languageCode: "en") else {
+            Issue.record("a finished turn is read as words")
+            return
+        }
+        #expect(lines.take(tokens, at: 1).isEmpty)
+    }
+
     @Test("the key is checked by listing one transcript, with the key as it is")
     func keyCheck() {
         let request = AssemblyAISpeech.keyCheckRequest(apiKey: "aai-test")

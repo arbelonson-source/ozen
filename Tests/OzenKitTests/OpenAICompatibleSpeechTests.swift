@@ -86,6 +86,19 @@ struct OpenAICompatibleSpeechTests {
         #expect(kept == Array(names.prefix(kept.count)))
     }
 
+    @Test("the prompt may fill all 224 bytes, counting its leading space, and not one byte more")
+    func promptEdge() throws {
+        let long = ["a", "b", "c", "d", "e"].map { String(repeating: $0, count: 40) }
+        for (last, kept) in [(12, 6), (13, 5)] {
+            let form = try parts(OpenAICompatibleSpeech.request(
+                OpenAICompatibleSpeech.openAI, model: "gpt-4o-transcribe", apiKey: "k", wav: Data(), languageCode: "en",
+                vocabulary: long + [String(repeating: "f", count: last)]
+            ))
+            let prompt = try #require(text(form["prompt"]))
+            #expect(prompt.dropLast().components(separatedBy: ", ").count == kept, "\(last)")
+        }
+    }
+
     @Test("the reply's text is the transcript; an empty one is no speech, an unreadable one a failure")
     func transcript() throws {
         #expect(try OpenAICompatibleSpeech.transcript(from: reply(200, #"{"text":"שלום לכולם","usage":{"type":"duration","seconds":3}}"#)) == "שלום לכולם")

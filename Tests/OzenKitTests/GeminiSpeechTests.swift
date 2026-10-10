@@ -65,6 +65,8 @@ struct GeminiSpeechTests {
         let mixed = #"{"status":"completed","steps":[{"type":"user_input","content":[{"type":"text","text":"x"}]},{"type":"model_output","content":[{"type":"text","text":"שלום "},{"type":"thought","text":"the speaker greets"},{"type":"text","text":"לכולם"}]}]}"#
         #expect(try GeminiSpeech.transcript(from: reply(200, mixed)) == "שלום לכולם")
         #expect(try GeminiSpeech.transcript(from: reply(200, #"{"status":"completed","steps":[]}"#)) == "")
+        let textless = #"{"steps":[{"type":"model_output","content":[{"type":"text"},{"type":"text","text":"שלום"}]}]}"#
+        #expect(try GeminiSpeech.transcript(from: reply(200, textless)) == "שלום")
         #expect(throws: CloudSpeechError.badReply) {
             try GeminiSpeech.transcript(from: reply(200, "<html>"))
         }

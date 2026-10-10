@@ -44,6 +44,13 @@ struct DeepgramSpeechTests {
         #expect(heard.first { $0.0 == "model" }?.1 == "nova-3")
     }
 
+    @Test("a long names list sends its first hundred")
+    func hundredNames() {
+        let names = (1...150).map { "name\($0)" }
+        let request = DeepgramSpeech.request(model: DeepgramSpeech.model, apiKey: "k", wav: Data(), languageCode: "en", vocabulary: names)
+        #expect(query(request).filter { $0.name == "keyterm" }.map(\.value) == Array(names.prefix(100)))
+    }
+
     @Test("Chinese goes to Nova-2, the only Deepgram model that has it, which takes no names list")
     func chinese() {
         let request = DeepgramSpeech.request(model: DeepgramSpeech.model, apiKey: "k", wav: Data(), languageCode: "zh", vocabulary: ["王芳"])

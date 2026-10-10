@@ -127,6 +127,16 @@ struct SonioxSpeechTests {
         #expect(shown.last?.utteranceID != finals.first?.utteranceID)
     }
 
+    @Test("a line that has reached 28 seconds to the millisecond is cut at the next word; a millisecond short, it goes on")
+    func longLineEdge() {
+        for (end, cut) in [(28_000, true), (27_999, false)] {
+            var lines = CloudStreamLines()
+            var shown = lines.take([SonioxSpeech.Token(text: "אחת", isFinal: true, speaker: "1", startMs: 0, endMs: 500)], at: 1)
+            shown += lines.take([SonioxSpeech.Token(text: " שתיים", isFinal: true, speaker: "1", startMs: end - 400, endMs: end)], at: 1)
+            #expect(shown.filter(\.isFinal).map(\.text) == (cut ? ["אחת"] : []), "\(end)")
+        }
+    }
+
     @Test("a line Soniox ends before any of its guesses became final keeps what was on screen, as the other engines keep theirs")
     func guessesKept() {
         var lines = CloudStreamLines()
