@@ -338,28 +338,28 @@ struct SettingsView: View {
 
     /// At the largest text sizes a menu's value kept its first and last
     /// letters only: "G…ini" beside its label, still "Goo…emini" with the
-    /// label hidden, as a menu button holds one line. There the row is a
-    /// menu whose label wraps, under the section's title; VoiceOver hears
-    /// the same name and value as from the plain menu.
+    /// label hidden, as a menu button holds one line. There the row opens a
+    /// page with the choices, as the phone's own Settings do at those sizes,
+    /// and shows the value wrapped under its name. A menu with a wrapping
+    /// label came first, but in a Form row it never opened: the row's own
+    /// button took the tap.
     @ViewBuilder
     private func menuRow<Value: Hashable, Choices: View>(_ title: String, selection: Binding<Value>, value: String, @ViewBuilder choices: () -> Choices) -> some View {
         let picker = Picker(title, selection: selection, content: choices)
         if dynamicTypeSize.isAccessibilitySize {
-            Menu {
-                picker
-            } label: {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(value)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .accessibilityHidden(true)
+            NavigationLink {
+                Form {
+                    picker
+                        .pickerStyle(.inline)
+                        .labelsHidden()
                 }
-                // The whole row opens the menu, not only the letters: a tap
-                // between the wrapped lines or beside them did nothing.
-                .contentShape(Rectangle())
+                .navigationTitle(title)
+            } label: {
+                summaryRow(value: value) {
+                    Text(title)
+                }
             }
-            .accessibilityLabel(title)
-            .accessibilityValue(value)
+            .accessibilityElement(children: .combine)
         } else {
             picker
         }

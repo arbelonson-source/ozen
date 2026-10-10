@@ -495,9 +495,14 @@ final class OzenScreenshotUITests: XCTestCase {
             if !opened { print(app.debugDescription) }
             XCTAssertTrue(opened, "\(run.name): the service menu never opened")
             capture(app, name: "\(run.name)-services")
-            // A tap on the status bar left the menu open over every later
-            // page; the navigation bar's middle is outside it at any size.
-            app.navigationBars.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            if run.size == nil {
+                // A tap on the status bar left the menu open over every later
+                // page; the navigation bar's middle is outside it.
+                app.navigationBars.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            } else {
+                // At the largest text the choices are a page of their own.
+                app.navigationBars.buttons.firstMatch.tap()
+            }
             let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: menuItem)
             XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 3), .completed, "\(run.name): the service menu never closed")
             for page in 2...run.pages {
