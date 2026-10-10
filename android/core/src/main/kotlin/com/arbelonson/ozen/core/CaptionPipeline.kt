@@ -877,6 +877,17 @@ class CaptionPipeline(
     }
 
     /**
+     * For a pipeline that is being thrown away: [stop] keeps the engine
+     * for a quick start again, and on Android nothing but
+     * [dropEngines] frees the model it holds, so a closed pipeline's
+     * model stayed loaded beside the next one's.
+     */
+    fun close() {
+        stop()
+        dropEngines()
+    }
+
+    /**
      * The system is short of memory and ends the biggest apps first; a loaded
      * speech model makes this one of the biggest. The warning goes in the
      * diagnostics timeline, since an app the system ended leaves no other trace.

@@ -178,6 +178,26 @@ class CaptionPipelineLifecycleTest {
     }
 
     @Test
+    fun `closing a pipeline that is thrown away gives its model back at once, where stopping keeps it for a quick start`() = runTest {
+        val engines = ArrayList<FakeEngine>()
+        val pipeline = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { settings -> FakeEngine(kind = settings.engine).also { engines.add(it) } },
+            embedder = FakeEmbedder(),
+            recovery = AutoRecoveryPolicy.disabled(),
+        )
+        pipeline.start(AppSettings.default)
+        pipeline.stop()
+        assertEquals(listOf(0), engines.map { it.releaseCount })
+        pipeline.start(AppSettings.default)
+        assertEquals(1, engines.size)
+        pipeline.close()
+        assertEquals(PipelinePhase.Idle, pipeline.phase)
+        assertEquals(listOf(1), engines.map { it.releaseCount })
+        assertTrue(pipeline.eventLog.events.none { it.kind is PipelineEvent.Kind.MemoryWarning })
+    }
+
+    @Test
     fun `switching to another model lets go of the one before, so two models are never kept loaded`() = runTest {
         val built = BuiltEngines()
         val pipeline = captionPipeline(

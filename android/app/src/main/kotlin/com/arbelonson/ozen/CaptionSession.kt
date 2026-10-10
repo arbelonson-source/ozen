@@ -63,7 +63,7 @@ class CaptionSession(
     fun pause() = pipeline.pause()
 
     fun close() {
-        pipeline.stop()
+        pipeline.close()
         scope.cancel()
     }
 
