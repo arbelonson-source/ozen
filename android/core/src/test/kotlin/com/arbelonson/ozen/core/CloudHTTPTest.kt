@@ -1,9 +1,10 @@
 package com.arbelonson.ozen.core
 
+import java.net.HttpURLConnection
 import java.net.URI
-import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -40,17 +41,20 @@ class CloudHTTPTest {
     }
 
     @Test
-    fun `the java client request carries the method, headers, body and timeout`() {
-        val request = CloudHTTPRequest(url, "POST", mapOf("Authorization" to "Token k"), byteArrayOf(1, 2, 3), 7.5)
-        val built = JavaNetCloudHTTP().javaRequest(request)
-        assertEquals("POST", built.method())
-        assertEquals(url, built.uri())
-        assertEquals(listOf("Token k"), built.headers().allValues("Authorization"))
-        assertEquals(Duration.ofMillis(7_500), built.timeout().get())
-        assertEquals(3L, built.bodyPublisher().get().contentLength())
-        val get = JavaNetCloudHTTP().javaRequest(CloudHTTPRequest(url))
-        assertEquals("GET", get.method())
-        assertTrue(get.bodyPublisher().isPresent)
-        assertEquals(0L, get.bodyPublisher().get().contentLength())
+    fun `the connection carries the method, headers, body length and timeout, without connecting`() {
+        val request = CloudHTTPRequest(url, "POST", mapOf("Authorization" to "Token k", "Content-Type" to "audio/wav"), byteArrayOf(1, 2, 3), 7.5)
+        val post = url.toURL().openConnection() as HttpURLConnection
+        UrlConnectionCloudHTTP().configure(post, request)
+        assertEquals("POST", post.requestMethod)
+        assertEquals(url.toURL(), post.url)
+        assertEquals("audio/wav", post.getRequestProperty("Content-Type"))
+        assertEquals(7_500, post.connectTimeout)
+        assertEquals(7_500, post.readTimeout)
+        assertTrue(post.doOutput)
+        val get = url.toURL().openConnection() as HttpURLConnection
+        UrlConnectionCloudHTTP().configure(get, CloudHTTPRequest(url))
+        assertEquals("GET", get.requestMethod)
+        assertEquals(20_000, get.readTimeout)
+        assertFalse(get.doOutput)
     }
 }

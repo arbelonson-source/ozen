@@ -1,10 +1,7 @@
 package com.arbelonson.ozen.core
 
+import java.net.HttpURLConnection
 import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.time.Duration
 
 class CloudHTTPRequest(
     val url: URI,
@@ -36,20 +33,30 @@ fun interface CloudHTTP {
     fun send(request: CloudHTTPRequest): CloudHTTPResponse
 }
 
-class JavaNetCloudHTTP(private val client: HttpClient = HttpClient.newHttpClient()) : CloudHTTP {
+class UrlConnectionCloudHTTP : CloudHTTP {
     override fun send(request: CloudHTTPRequest): CloudHTTPResponse {
-        val response = client.send(javaRequest(request), HttpResponse.BodyHandlers.ofByteArray())
-        return CloudHTTPResponse(response.statusCode(), response.body())
+        val connection = request.url.toURL().openConnection() as HttpURLConnection
+        try {
+            configure(connection, request)
+            request.body?.let { body -> connection.outputStream.use { it.write(body) } }
+            val status = connection.responseCode
+            val stream = if (status >= 400) connection.errorStream else connection.inputStream
+            return CloudHTTPResponse(status, stream?.use { it.readBytes() } ?: ByteArray(0))
+        } finally {
+            connection.disconnect()
+        }
     }
 
-    internal fun javaRequest(request: CloudHTTPRequest): HttpRequest {
-        val builder = HttpRequest.newBuilder(request.url)
-            .timeout(Duration.ofMillis((request.timeoutSeconds * 1_000).toLong()))
-        val body = request.body
-        builder.method(request.method, if (body == null) HttpRequest.BodyPublishers.noBody() else HttpRequest.BodyPublishers.ofByteArray(body))
+    internal fun configure(connection: HttpURLConnection, request: CloudHTTPRequest) {
+        val millis = (request.timeoutSeconds * 1_000).toInt()
+        connection.connectTimeout = millis
+        connection.readTimeout = millis
+        connection.requestMethod = request.method
         for ((name, value) in request.headers) {
-            builder.header(name, value)
+            connection.setRequestProperty(name, value)
         }
-        return builder.build()
+        val body = request.body ?: return
+        connection.doOutput = true
+        connection.setFixedLengthStreamingMode(body.size)
     }
 }
