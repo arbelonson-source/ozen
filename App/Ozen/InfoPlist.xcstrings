@@ -161,73 +161,73 @@
         "am": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ozen ውይይትን በቀጥታ በካፕሽን ለማሳየት በስልኩ ላይ ያለውን የንግግር ማወቂያ ይጠቀማል። ምንም ነገር ከስልኩ አይላክም።"
+            "value": "Ozen ውይይትን በቀጥታ በካፕሽን ለማሳየት የአፕልን የንግግር ማወቂያ ይጠቀማል። በOzen ቅንብሮች ውስጥ “ማስኬድ በአፕል አገልጋዮች ላይ ፍቀድ”ን ካላበሩ በስተቀር ማወቂያው በስልኩ ላይ ይከናወናል።"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "يستخدم Ozen التعرّف على الكلام على الجهاز لعرض ترجمة نصية فورية للمحادثة. لا يُرسل أي شيء خارج الهاتف."
+            "value": "يستخدم Ozen ميزة التعرّف على الكلام من Apple لعرض ترجمة نصية فورية للمحادثة. يتم التعرّف على الهاتف نفسه ما لم تفعّلوا «السماح بالمعالجة على خوادم Apple» في إعدادات Ozen."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ozen nutzt die Spracherkennung auf dem Gerät, um Gespräche live zu untertiteln. Nichts verlässt das Telefon."
+            "value": "Ozen nutzt die Spracherkennung von Apple, um Gespräche live zu untertiteln. Die Erkennung läuft auf dem Telefon, es sei denn, Sie aktivieren in den Einstellungen von Ozen „Verarbeitung auf Apples Servern erlauben“."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ozen uses on-device speech recognition to caption conversation live. Nothing is sent off the phone."
+            "value": "Ozen uses Apple’s speech recognition to caption conversation live. It stays on the phone unless you turn on “Allow processing on Apple’s servers” in Ozen’s settings."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ozen usa el reconocimiento de voz del propio teléfono para subtitular la conversación en directo. No se envía nada fuera del teléfono."
+            "value": "Ozen usa el reconocimiento de voz de Apple para subtitular la conversación en directo. Se hace en el propio teléfono, salvo que actives «Permitir el procesamiento en los servidores de Apple» en los ajustes de Ozen."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ozen utilise la reconnaissance vocale sur l’appareil pour sous-titrer la conversation en direct. Rien ne quitte le téléphone."
+            "value": "Ozen utilise la reconnaissance vocale d’Apple pour sous-titrer la conversation en direct. Elle se fait sur le téléphone, sauf si vous activez « Autoriser le traitement sur les serveurs d’Apple » dans les réglages d’Ozen."
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "אוזן משתמשת בזיהוי הדיבור שבטלפון כדי להציג כתוביות לשיחה בזמן אמת. שום דבר לא נשלח מהטלפון."
+            "value": "אוזן משתמשת בזיהוי הדיבור של אפל כדי להציג כתוביות לשיחה בזמן אמת. הזיהוי נעשה בטלפון עצמו, אלא אם הפעלתם בהגדרות של אוזן את ״לאפשר עיבוד בשרתי אפל״."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "बातचीत के लाइव कैप्शन दिखाने के लिए Ozen फ़ोन पर ही बोली पहचान का उपयोग करता है। फ़ोन से कुछ भी बाहर नहीं भेजा जाता।"
+            "value": "बातचीत के लाइव कैप्शन दिखाने के लिए Ozen, Apple की बोली पहचान का उपयोग करता है। पहचान फ़ोन पर ही होती है, जब तक आप Ozen की सेटिंग्स में “Apple के सर्वर पर प्रोसेसिंग की अनुमति दें” चालू नहीं करते।"
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Ozen usa o reconhecimento de voz no próprio telemóvel para legendar a conversa em direto. Nada sai do telemóvel."
+            "value": "O Ozen usa o reconhecimento de voz da Apple para legendar a conversa em direto. É feito no próprio telemóvel, a não ser que ative «Permitir processamento nos servidores da Apple» nas definições do Ozen."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ozen распознаёт речь на самом телефоне, чтобы показывать субтитры разговора в реальном времени. Ничего не отправляется с телефона."
+            "value": "Ozen использует распознавание речи Apple, чтобы показывать субтитры разговора в реальном времени. Распознавание происходит на самом телефоне, если только вы не включите «Разрешить обработку на серверах Apple» в настройках Ozen."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ozen розпізнає мовлення на самому телефоні, щоб показувати субтитри розмови в реальному часі. Нічого не надсилається з телефона."
+            "value": "Ozen використовує розпізнавання мовлення Apple, щоб показувати субтитри розмови в реальному часі. Розпізнавання відбувається на самому телефоні, якщо тільки ви не ввімкнете «Дозволити обробку на серверах Apple» в налаштуваннях Ozen."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ozen 使用手机上的语音识别来实时显示对话字幕。不会有任何内容离开手机。"
+            "value": "Ozen 使用 Apple 的语音识别来实时显示对话字幕。识别在手机上完成，除非你在 Ozen 的设置中打开“允许在 Apple 服务器上处理”。"
           }
         }
       }

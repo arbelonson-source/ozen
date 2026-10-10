@@ -335,6 +335,20 @@ def check_permission_prompts():
         missing = [l for l in ["he"] + SYSTEM_LANGUAGES if l not in catalog.get(key, {}).get("localizations", {})]
         if missing:
             problems.append(f"App/Ozen/InfoPlist.xcstrings: {key} missing in {', '.join(missing)}")
+    # On a phone that can't recognise the language itself, Apple's engine
+    # asks for this permission only after its servers were allowed, so the
+    # prompt names that switch as Settings does instead of promising that
+    # nothing leaves the phone.
+    settings = Path("App/Ozen/Views/SettingsView.swift").read_text(encoding="utf-8")
+    hebrew, english = re.search(r'Toggle\(tr\("([^"]*)", "([^"]*)"\), isOn: serverFallbackBinding\)', settings).groups()
+    table = json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))
+    switch = {"he": hebrew, "en": english} | {code: table[language][english] for code, language in zip(SYSTEM_LANGUAGES[1:], TRANSLATED_LANGUAGES)}
+    prompt = catalog["NSSpeechRecognitionUsageDescription"]["localizations"]
+    base = re.search(r'NSSpeechRecognitionUsageDescription: "([^"]*)"', project).group(1)
+    for code, name in [("project.yml", english)] + sorted(switch.items()):
+        text = base if code == "project.yml" else prompt.get(code, {}).get("stringUnit", {}).get("value", "")
+        if name not in text:
+            problems.append(f"NSSpeechRecognitionUsageDescription ({code}) must name Settings' switch {name!r}: {text!r}")
     for declared in re.findall(r"CFBundleLocalizations: \[([^\]]*)\]", project):
         missing = set(["he"] + SYSTEM_LANGUAGES) - {l.strip() for l in declared.split(",")}
         if missing:
