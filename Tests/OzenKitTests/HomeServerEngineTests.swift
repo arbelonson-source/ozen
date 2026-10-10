@@ -625,19 +625,37 @@ struct HomeServerEngineTests {
         while try await iterator.next() != nil {}
     }
 
-    @Test("a text frame's per-segment numbers are read; a frame without them still parses")
+    @Test("a text frame's sureness, which marks an unsure line, and its per-segment numbers are read; a frame without them still parses")
     func segmentsParse() {
         let frame = #"{"type":"text","utterance":2,"text":"כן","final":true,"confidence":0.8,"segments":[{"text":"כן","no_speech":0.1,"logprob":-0.3,"compression":1.2}]}"#
-        guard case .text(_, _, _, _, let segments)? = HomeServerMessage(json: frame) else {
+        guard case .text(_, _, _, let confidence, let segments)? = HomeServerMessage(json: frame) else {
             Issue.record("not a text frame")
             return
         }
+        #expect(confidence == 0.8)
         #expect(segments == [WhisperSegmentSummary(text: "כן", noSpeechProb: 0.1, avgLogprob: -0.3, compressionRatio: 1.2)])
-        guard case .text(_, _, _, _, let none)? = HomeServerMessage(json: text(0, "כן", final: true)) else {
+        guard case .text(_, _, _, let unscored, let none)? = HomeServerMessage(json: #"{"type":"text","utterance":0,"text":"כן","final":true}"#) else {
             Issue.record("not a text frame")
             return
         }
+        #expect(unscored == nil)
         #expect(none == nil)
+    }
+
+    @Test("the first frame says hello as the server reads it: version, token, language, the names list, why the phone came and which phone, the beam only when picked")
+    func helloAsTheServerReadsIt() throws {
+        func fields(_ text: String) throws -> NSDictionary {
+            try #require(JSONSerialization.jsonObject(with: Data(text.utf8)) as? NSDictionary)
+        }
+        let hello = try fields(HomeServer.hello(token: "t", languageCode: "he", vocabulary: ["Ruti", "אבי"], purpose: "report", client: "Ozen 1 (1), iOS 26", beam: 5))
+        #expect(hello == [
+            "type": "hello", "version": HomeServer.protocolVersion, "token": "t", "language": "he",
+            "vocabulary": ["Ruti", "אבי"], "purpose": "report", "client": "Ozen 1 (1), iOS 26", "beam": 5,
+        ] as NSDictionary)
+        let plain = try fields(HomeServer.hello(token: "t", languageCode: "en", vocabulary: []))
+        #expect(plain["purpose"] as? String == "captions")
+        #expect(plain["beam"] == nil)
+        #expect(HomeServer.protocolVersion == 1)
     }
 
     @Test("ready and error messages missing their optional fields fall back to empty strings instead of failing to parse")

@@ -24,6 +24,11 @@ struct LocalizationTests {
         #expect(AppLanguage.system.resolved(preferredLanguages: ["fr-CA", "en-US"]) == .french)
         #expect(AppLanguage.system.resolved(preferredLanguages: ["zh-Hans-US", "en-US"]) == .chineseSimplified)
         #expect(AppLanguage.system.resolved(preferredLanguages: ["zh-Hant-TW"]) == .chineseSimplified)
+        #expect(AppLanguage.system.resolved(preferredLanguages: ["am-ET", "en-US"]) == .amharic)
+        #expect(AppLanguage.system.resolved(preferredLanguages: ["es-MX", "en-US"]) == .spanish)
+        #expect(AppLanguage.system.resolved(preferredLanguages: ["uk-UA", "ru-RU"]) == .ukrainian)
+        #expect(AppLanguage.system.resolved(preferredLanguages: ["pt-BR", "en-US"]) == .portuguese)
+        #expect(AppLanguage.system.resolved(preferredLanguages: ["hi-IN", "en-US"]) == .hindi)
         // A preference nobody supports is skipped in favor of the next one...
         #expect(AppLanguage.system.resolved(preferredLanguages: ["da-DK", "de-DE"]) == .german)
         // ...and falls back to Hebrew when none of them are supported at all.
