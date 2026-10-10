@@ -3790,7 +3790,10 @@ struct CaptionPipelineSilencePhraseTests {
     @Test("a final suppressed as a repeated thanks still commits the words already shown, without waiting on the stale-commit safety net")
     func suppressedFinalStillCommits() async {
         let engine = FakeEngine()
-        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder(), recovery: .disabled)
+        // The clock agrees with the tokens' times: against today's date every
+        // line looked decades quiet, so on a slow CI machine the stale-commit
+        // safety net finished it before the final and counted it twice.
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder(), recovery: .disabled, now: { 1 })
         await pipeline.start(settings: .default)
         let id = UUID()
         engine.emit(TranscriptToken(utteranceID: id, text: "תודה", isFinal: false, timestamp: 0))

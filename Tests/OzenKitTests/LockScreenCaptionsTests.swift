@@ -298,7 +298,9 @@ struct PipelineCaptionsChangedTests {
     @Test("each new or changed line, and clearing, calls the hook")
     func hookCalls() async {
         let engine = FakeEngine()
-        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        // As the tokens' times, or the stale-commit safety net can finish
+        // the line between them on a slow machine: one call too many.
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder(), now: { 1_001 })
         var calls = 0
         pipeline.onCaptionsChanged = { calls += 1 }
         await pipeline.start(settings: AppSettings.default)
