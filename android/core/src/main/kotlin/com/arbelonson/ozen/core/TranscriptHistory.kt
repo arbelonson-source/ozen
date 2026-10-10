@@ -1355,7 +1355,7 @@ private fun historyIsSpaceOrNewline(codePoint: Int): Boolean =
         else -> codePoint in 0x09..0x0D || codePoint == 0x85
     }
 
-private fun historyTrimmed(text: String): String {
+internal fun historyTrimmed(text: String): String {
     val scalars = text.codePoints().toArray()
     var from = 0
     var to = scalars.size
