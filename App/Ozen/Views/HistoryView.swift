@@ -362,13 +362,7 @@ struct HistoryView: View {
         sessions = found
         sessionsAreEveryConversation = text.isEmpty
         totalSize = size
-        // A filter for someone whose only conversation(s) were just
-        // deleted would otherwise keep filtering everything out forever,
-        // with no chip left on screen to clear it (the chip only shows for
-        // names still in `sessions`).
-        if let speakerFilter, !found.contains(where: { $0.speakerNames.contains(speakerFilter) }) {
-            self.speakerFilter = nil
-        }
+        speakerFilter = TranscriptSessionSummary.speakerFilter(speakerFilter, keptAfterLoading: found, everyConversation: text.isEmpty)
     }
 }
 

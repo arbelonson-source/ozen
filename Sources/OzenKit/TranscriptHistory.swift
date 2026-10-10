@@ -329,6 +329,18 @@ extension TranscriptSessionSummary {
         return names
     }
 
+    /// The name chosen above the history list, after it loaded `found`. A
+    /// name none of every conversation holds any more (its last one was
+    /// deleted) is dropped, or it would filter everything out with no chip
+    /// left to clear it. A search that finds none of theirs keeps it: the
+    /// list then says nothing was found, instead of quietly showing other
+    /// people's conversations under her search.
+    public static func speakerFilter(_ filter: String?, keptAfterLoading found: [TranscriptSessionSummary], everyConversation: Bool) -> String? {
+        guard let filter else { return nil }
+        guard everyConversation else { return filter }
+        return found.contains { $0.speakerNames.contains(filter) } ? filter : nil
+    }
+
     /// Named speakers across `summaries`, most-appeared first, ties broken
     /// alphabetically, for a short list of filter chips above a history
     /// list a person can actually scan.

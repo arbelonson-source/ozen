@@ -735,6 +735,18 @@ struct TranscriptHistoryTests {
         let names = TranscriptSessionSummary.topSpeakerNames(in: [summary(["רותי", "רותי", "אבי"]), summary(["אבי"])])
         #expect(names == ["אבי", "רותי"])
     }
+
+    @Test("a chosen name stays through a search that finds none of their conversations, and goes once none is left at all")
+    func speakerFilterKept() {
+        func summary(_ names: [String]) -> TranscriptSessionSummary {
+            TranscriptSessionSummary(id: UUID(), startedAt: 0, endedAt: nil, segmentCount: 1, preview: "", engine: .whisperKit, speakerNames: names)
+        }
+        let othersOnly = [summary(["אבי"]), summary(["דנה"])]
+        #expect(TranscriptSessionSummary.speakerFilter("רותי", keptAfterLoading: othersOnly, everyConversation: false) == "רותי")
+        #expect(TranscriptSessionSummary.speakerFilter("רותי", keptAfterLoading: othersOnly, everyConversation: true) == nil)
+        #expect(TranscriptSessionSummary.speakerFilter("רותי", keptAfterLoading: [summary(["רותי"])], everyConversation: true) == "רותי")
+        #expect(TranscriptSessionSummary.speakerFilter(nil, keptAfterLoading: othersOnly, everyConversation: true) == nil)
+    }
 }
 
 @Suite("Transcript history summary files")
