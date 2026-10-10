@@ -490,7 +490,10 @@ final class OzenScreenshotUITests: XCTestCase {
             capture(app, name: "\(run.name)-1")
             picker.tap()
             let menuItem = app.buttons["Speechmatics"]
-            XCTAssertTrue(menuItem.waitForExistence(timeout: 5), "\(run.name): the service menu never opened")
+            let opened = menuItem.waitForExistence(timeout: 5)
+            // What was on screen instead, in the raw log the job keeps.
+            if !opened { print(app.debugDescription) }
+            XCTAssertTrue(opened, "\(run.name): the service menu never opened")
             capture(app, name: "\(run.name)-services")
             // A tap on the status bar left the menu open over every later
             // page; the navigation bar's middle is outside it at any size.

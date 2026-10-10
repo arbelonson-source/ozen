@@ -354,6 +354,9 @@ struct SettingsView: View {
                     Image(systemName: "chevron.up.chevron.down")
                         .accessibilityHidden(true)
                 }
+                // The whole row opens the menu, not only the letters: a tap
+                // between the wrapped lines or beside them did nothing.
+                .contentShape(Rectangle())
             }
             .accessibilityLabel(title)
             .accessibilityValue(value)
