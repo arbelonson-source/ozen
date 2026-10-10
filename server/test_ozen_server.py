@@ -1323,7 +1323,11 @@ class Startup(unittest.TestCase):
         models = handle.call_args.args[1]
         self.assertIsInstance(models, S.OnDemandTranscriber)
         self.assertEqual(models.unload_after, 15 * 60)
-        self.assertEqual((models.name, models.beam), ("ivrit-ai/whisper-large-v3-turbo-ct2", 5))
+        self.assertEqual((models.name, models.beam, models.context), ("ivrit-ai/whisper-large-v3-turbo-ct2", 5, False))
+        self.start("--unload-after", "15", "--context")
+        with mock.patch.object(S, "handle") as handle:
+            self.served[0][0]("phone")
+        self.assertTrue(handle.call_args.args[1].context)
 
 
 class LoadedGPU:
@@ -1489,6 +1493,27 @@ class OnDemand(unittest.TestCase):
         self.assertEqual(json.loads(ws.sent[0])["model"], "turbo")
         self.assertEqual(loaded, [1])
         self.assertEqual(models.connections, 0)
+
+    def test_the_stand_in_offers_everything_a_session_reads_from_the_models(self):
+        with open(S.__file__, encoding="utf-8") as f:
+            source = f.read()
+        session = source[source.index("class Session:"):source.index("def report_order(")]
+        used = set(re.findall(r"self\.t\.(\w+)", session))
+        self.assertIn("transcribe", used)
+        models = self.models()
+        for name in used:
+            self.assertTrue(hasattr(models, name), name)
+
+    def test_a_whole_captions_session_runs_through_the_models_loaded_for_it(self):
+        models = self.models()
+        ws = PhoneSocket({"type": "hello", "token": "example-code-123"}, [*speech_frames(1.5), json.dumps({"type": "end"})])
+        with self.assertLogs(S.log, "INFO"):
+            asyncio.run(asyncio.wait_for(S.handle(ws, models, "example-code-123", 1.0), 5))
+        sent = [json.loads(text) for text in ws.sent]
+        self.assertEqual(sent[0]["type"], "ready")
+        self.assertIn("shalom", [frame.get("text") for frame in sent if frame["type"] == "text" and frame["final"]])
+        self.assertIsNone(ws.closed)
+        self.assertEqual(len(self.loads), 1)
 
     def test_models_loaded_for_a_phone_are_warmed_past_the_voice_gate_like_at_startup(self):
         runs = []

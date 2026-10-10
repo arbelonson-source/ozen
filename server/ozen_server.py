@@ -362,10 +362,11 @@ class OnDemandTranscriber:
     that fails (the card is full) fails that session, which the phone
     answers by using its own model, and the next phone tries again."""
 
-    def __init__(self, load, name, beam, unload_after, clock=time.monotonic):
+    def __init__(self, load, name, beam, unload_after, context=False, clock=time.monotonic):
         self._load = load
         self.name = name
         self.beam = beam
+        self.context = context
         self.unload_after = unload_after
         self._clock = clock
         self._loaded = None
@@ -807,7 +808,7 @@ async def main():
     setup_logging()
     if args.unload_after > 0:
         models = OnDemandTranscriber(lambda: load_models(args), args.model if not args.final_model else
-                                     f"{args.model} + {args.final_model}", args.beam, args.unload_after * 60)
+                                     f"{args.model} + {args.final_model}", args.beam, args.unload_after * 60, args.context)
         await serve(args, models, token, audio_cleaner(args))
         return
     try:
