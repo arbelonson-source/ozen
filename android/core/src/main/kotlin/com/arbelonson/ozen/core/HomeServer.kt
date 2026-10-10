@@ -1,5 +1,6 @@
 package com.arbelonson.ozen.core
 
+import java.net.IDN
 import java.net.URI
 import java.net.URISyntaxException
 import java.net.URLDecoder
@@ -159,7 +160,16 @@ object HomeServer {
         if (port != null && port.isEmpty()) port = null
         if (port != null && (!port.all { it in '0'..'9' } || port.toIntOrNull() == null)) return null
         if (port == null && !trimmed.contains("://")) port = DEFAULT_PORT.toString()
-        val text = scheme + "://" + userInfo + host + (if (port != null) ":$port" else "") + rest
+        val asciiHost = if (host.startsWith("[") || host.all { it.code < 0x80 }) {
+            host
+        } else {
+            try {
+                IDN.toASCII(host, IDN.ALLOW_UNASSIGNED)
+            } catch (_: IllegalArgumentException) {
+                return null
+            }
+        }
+        val text = scheme + "://" + userInfo + asciiHost + (if (port != null) ":$port" else "") + rest
         return try {
             URI(text)
         } catch (_: URISyntaxException) {

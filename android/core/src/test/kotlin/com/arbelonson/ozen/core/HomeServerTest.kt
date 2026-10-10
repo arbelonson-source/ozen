@@ -262,4 +262,12 @@ class HomeServerTest {
         val noAddress = EngineAvailability.unavailable(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.NO_ADDRESS)
         assertEquals(HomeServerCheck.NotSetUp, HomeServerCheck.of(noAddress, 0.0))
     }
+
+    @Test
+    fun `a host name with letters outside ASCII is given as its punycode form, so the URL has a host to connect to`() {
+        assertEquals("xn--5dbqzzl", HomeServer.url("ws://עברית")?.host)
+        assertEquals("xn--4ca0b.local", HomeServer.url("ws://ÄÖ.local")?.host)
+        assertEquals("xn--4ca0b.local", HomeServer.url("ÄÖ.local")?.host)
+        assertEquals(8765, HomeServer.url("ÄÖ.local")?.port)
+    }
 }
