@@ -73,7 +73,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Core tests and debug APK
         working-directory: android
-        run: ./gradlew :core:test :app:assembleDebug
+        run: ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: ozen-android-debug
