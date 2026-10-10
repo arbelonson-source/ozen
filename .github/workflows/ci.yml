@@ -118,6 +118,15 @@ jobs:
             -scheme Ozen \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
             2>&1 | tee xcodebuild-raw.log | xcpretty
+      - name: The app carries its privacy manifest
+        # App Store Connect turns away a build whose use of disk space,
+        # file dates, uptime or UserDefaults isn't declared, and XcodeGen
+        # only bundles the file if it treats it as a resource.
+        run: |
+          set -euo pipefail
+          APP=$(ls -d ~/Library/Developer/Xcode/DerivedData/Ozen-*/Build/Products/Debug-iphonesimulator/Ozen.app | head -n1)
+          plutil -lint "$APP/PrivacyInfo.xcprivacy"
+          test "$(plutil -extract NSPrivacyAccessedAPITypes xml1 -o - "$APP/PrivacyInfo.xcprivacy" | grep -c NSPrivacyAccessedAPICategory)" -eq 4
       - name: Show why it failed
         # xcpretty prints nothing useful when a test fails in a way it
         # doesn't recognise, or the test host crashes: the run just ends
