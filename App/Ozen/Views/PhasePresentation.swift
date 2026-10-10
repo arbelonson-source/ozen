@@ -57,8 +57,13 @@ struct PhasePresentation {
     ) {
         // Only captions the call interrupted come back when it ends: ones
         // she paused or stopped herself stay that way, and saying they
-        // would continue on their own was false.
-        if interruptedBySystem, phase != .idle, phase != .paused || pausedForSpeech {
+        // would continue on their own was false. So was it over a failure
+        // nothing retries (no key, no microphone permission): the call
+        // ending doesn't bring those back, and their own screen says what
+        // to do.
+        let failedForGood: Bool
+        if case .failed = phase { failedForGood = scheduledRetry == nil } else { failedForGood = false }
+        if interruptedBySystem, phase != .idle, phase != .paused || pausedForSpeech, !failedForGood {
             // iOS doesn't promise to say when a call ends, and can simply
             // never send it: without a tap she'd be stuck on this screen
             // for good. A tap tries to take the microphone back right now;
