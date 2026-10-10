@@ -128,7 +128,9 @@ close.
 
 ### Typing it in
 
-In Settings, find the **Home computer** (ha-machshev ba-bayit) section.
+In Settings, under **Transcription engine** (manoa timlul), choose
+**Home computer** (ha-machshev ba-bayit). Changing the engine restarts
+listening. The **Home computer** section then appears below it.
 
 1. In **Computer address** (ktovet ha-machshev), type the address from the
    pairing page, then tap **Save address** (shmirat ha-ktovet). A bare number
@@ -139,9 +141,6 @@ In Settings, find the **Home computer** (ha-machshev ba-bayit) section.
 2. In **The pairing code from the computer** (kod ha-tzimud me-ha-machshev),
    type the code. Tap **Save code** (shmirat ha-kod). Afterwards the row
    says **Pairing code saved on the phone** (kod tzimud shamur ba-telefon).
-3. Choose **Home computer** (ha-machshev ba-bayit) under
-   **Transcription engine** (manoa timlul). Changing the engine restarts
-   listening.
 
 ### Test connection
 

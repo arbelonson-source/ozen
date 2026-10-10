@@ -89,7 +89,7 @@ def main():
 <h1>Ozen: pair a phone with this computer</h1>
 <p>Open the iPhone's Camera, point it at the code, and tap the Ozen link. Ozen asks before connecting.</p>
 {svg.getvalue().decode()}
-<p>Or type it into Ozen's Settings, Home computer:</p>
+<p>Or type it into Ozen's Settings: Transcription engine, Home computer:</p>
 <p>Address: <code>{html.escape(address)}</code><br>Pairing code: <code>{html.escape(code)}</code></p>
 <p>Anyone with this code can use this computer for captions. Keep it in the family.</p>"""
     write_private(args.out, page)

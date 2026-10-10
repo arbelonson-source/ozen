@@ -53,5 +53,5 @@ echo
 echo "Set up in $home_dir"
 echo "Start it:      $home_dir/run.sh"
 echo "Pairing code:  $(cat "$code_file")"
-echo "(the phone needs this code: Settings, Engine, Home computer)"
+echo "(the phone needs this code: Settings, Transcription engine, Home computer)"
 "$home_dir/venv/bin/python" "$home_dir/pairing.py" --code-file "$code_file" --out "$home_dir/pairing.html" --no-open || true
