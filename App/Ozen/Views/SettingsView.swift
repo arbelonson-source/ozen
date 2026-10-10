@@ -282,7 +282,7 @@ struct SettingsView: View {
         } header: {
             Text("Whisper")
         } footer: {
-            Text(tr("מודל גדול יותר מבין עברית טוב יותר אבל מגיב לאט יותר. \u{2066}\"%1\"\u{2069} הוא הבחירה המומלצת לאייפון הזה. מודלים שוקלים מאות MB, ולכן כברירת מחדל הם יורדים רק ב-Wi-Fi.", "A bigger model understands Hebrew better but responds more slowly. “%1” is the recommended choice for this iPhone. Models weigh hundreds of MB, so by default they only download over Wi‑Fi.", args: ["\(recommendedModelName)"]))
+            Text(tr("מודל גדול יותר מבין עברית טוב יותר אבל מגיב לאט יותר. \u{2066}\"%1\"\u{2069} הוא הבחירה המומלצת. מודלים שוקלים מאות MB, ולכן כברירת מחדל הם יורדים רק ב-Wi-Fi.", "A bigger model understands Hebrew better but responds more slowly. “%1” is the recommended choice. Models weigh hundreds of MB, so by default they only download over Wi‑Fi.", args: ["\(recommendedModelName)"]))
         }
     }
 
@@ -781,6 +781,11 @@ struct SettingsView: View {
             // beside the switch at the largest sizes on a 375-point phone.
             Toggle(tr("להסתיר את הכפתורים בזמן האזנה", "Hide the buttons while captions are running"), isOn: $viewModel.display.autoHideControls)
             Toggle(tr("סימן שאלה ליד שורות שהמנוע לא בטוח בהן, ונקודות מתחת למילים שבספק", "Question mark next to lines the engine isn’t sure about, and dots under the doubtful words"), isOn: $viewModel.display.markUncertainLines)
+            if viewModel.display.markUncertainLines, viewModel.settings.engine == .cloud {
+                Text(tr("התמלול בענן לא מדווח כמה הוא בטוח, ולכן איתו שום דבר לא מסומן.", "Cloud transcription doesn’t report how sure it is, so with it nothing is marked."))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             Toggle(tr("מספרים בולטים (שעות, כמויות, טלפונים)", "Bold numbers (times, amounts, phone numbers)"), isOn: $viewModel.display.emphasizeNumbers)
             Toggle(tr("כתוביות גם במסך הנעילה", "Captions on the lock screen too"), isOn: $viewModel.display.lockScreenCaptions)
             if viewModel.display.lockScreenCaptions && lockScreenBlocked {
