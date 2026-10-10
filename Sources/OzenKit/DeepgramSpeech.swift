@@ -2,26 +2,25 @@ import Foundation
 
 public enum DeepgramSpeech {
     public static let model = "nova-3"
-    static let chineseModel = "nova-2"
     public static let languages: Set<String> = ["he", "en", "ar", "ru", "fr", "es", "uk", "de", "pt", "hi", "zh"]
     public static let listenURL = URL(string: "https://api.deepgram.com/v1/listen")!
     public static let keyURL = URL(string: "https://api.deepgram.com/v1/projects")!
     static let maximumTerms = 100
+    /// Deepgram fails the whole request when its names come to more than
+    /// 500 tokens. A name is never more tokens than it has bytes; one more
+    /// is counted for whatever comes between names.
+    static let termTokens = 500
 
     public static func request(model: String, apiKey: String, wav: Data, languageCode: String, vocabulary: [String]) -> CloudHTTPRequest {
-        let chinese = languageCode == "zh"
-        var settings = [
-            ("model", chinese ? chineseModel : model),
-            ("language", chinese ? "zh-CN" : languageCode),
+        let settings = [
+            ("model", model),
+            ("language", languageCode),
             ("punctuate", "true"),
             ("smart_format", "true"),
             ("utterances", "true"),
-            chinese ? ("diarize", "true") : ("diarize_model", "latest"),
+            ("diarize_model", "latest"),
             ("mip_opt_out", "true"),
-        ]
-        if !chinese {
-            settings += VocabularyHints.normalized(vocabulary).prefix(maximumTerms).map { ("keyterm", $0) }
-        }
+        ] + terms(vocabulary).map { ("keyterm", $0) }
         return CloudHTTPRequest(
             url: CloudQuery.url(listenURL, settings),
             method: "POST",
@@ -29,6 +28,18 @@ public enum DeepgramSpeech {
             body: wav,
             timeoutSeconds: 20
         )
+    }
+
+    /// Whole names from the top of the list, as many as fit.
+    static func terms(_ vocabulary: [String]) -> [String] {
+        var spent = 0
+        var kept: [String] = []
+        for term in VocabularyHints.normalized(vocabulary).prefix(maximumTerms) {
+            spent += term.utf8.count + 1
+            guard spent <= termTokens else { break }
+            kept.append(term)
+        }
+        return kept
     }
 
     public static func transcript(from response: CloudHTTPResponse) throws(CloudSpeechError) -> String {

@@ -106,11 +106,18 @@ class RequestTests(unittest.TestCase):
         self.assertEqual(request.headers["Authorization"], "Token k")
         self.assertEqual(request.body, b"RIFFfake")
 
-    def test_deepgram_chinese_uses_the_older_model_without_names(self):
+    def test_deepgram_chinese_goes_to_nova_3_with_names(self):
         request = trial.deepgram("k", sample(), "zh", ["Dana"])
-        self.assertIn("model=nova-2&language=zh-CN&", request.url)
-        self.assertIn("diarize=true", request.url)
-        self.assertNotIn("keyterm", request.url)
+        self.assertIn("model=nova-3&language=zh&", request.url)
+        self.assertIn("diarize_model=latest", request.url)
+        self.assertIn("keyterm=Dana", request.url)
+
+    def test_deepgram_names_stay_within_its_limit(self):
+        long = [letter * 40 for letter in "abcdefghijkl"]
+        self.assertEqual(trial.deepgram_terms(long + ["z" * 7, "after"]), long + ["z" * 7])
+        self.assertEqual(trial.deepgram_terms(long + ["z" * 8, "after"]), long)
+        request = trial.deepgram("k", sample(), "en", long + ["z" * 8])
+        self.assertEqual(request.url.count("keyterm="), 12)
 
     def test_openai_and_groq_send_the_names_as_a_prompt(self):
         for build, url, model in (

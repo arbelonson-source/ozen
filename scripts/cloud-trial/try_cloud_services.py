@@ -114,15 +114,25 @@ def strict_query(pairs: list[tuple[str, str]]) -> str:
     return "&".join(f"{name}={urllib.parse.quote(value, safe='')}" for name, value in pairs)
 
 
+def deepgram_terms(names: list[str], limit: int = 500) -> list[str]:
+    """Whole names from the top within Deepgram's 500-token limit, counting
+    each name's bytes and one more, as the app does."""
+    kept, spent = [], 0
+    for name in terms(names):
+        spent += len(name.encode()) + 1
+        if spent > limit:
+            break
+        kept.append(name)
+    return kept
+
+
 def deepgram(key: str, recording: Recording, language: str, names: list[str]) -> Request:
-    chinese = language == "zh"
     pairs = [
-        ("model", "nova-2" if chinese else "nova-3"), ("language", "zh-CN" if chinese else language),
+        ("model", "nova-3"), ("language", language),
         ("punctuate", "true"), ("smart_format", "true"), ("utterances", "true"),
-        ("diarize", "true") if chinese else ("diarize_model", "latest"), ("mip_opt_out", "true"),
+        ("diarize_model", "latest"), ("mip_opt_out", "true"),
     ]
-    if not chinese:
-        pairs += [("keyterm", term) for term in terms(names)]
+    pairs += [("keyterm", term) for term in deepgram_terms(names)]
     return Request(
         url="https://api.deepgram.com/v1/listen?" + strict_query(pairs),
         headers={"Authorization": f"Token {key}", "Content-Type": "audio/wav"},

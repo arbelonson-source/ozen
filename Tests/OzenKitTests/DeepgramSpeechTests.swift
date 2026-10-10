@@ -44,22 +44,37 @@ struct DeepgramSpeechTests {
         #expect(heard.first { $0.0 == "model" }?.1 == "nova-3")
     }
 
-    @Test("a long names list sends its first hundred")
+    @Test("a long list of short names sends its first hundred")
     func hundredNames() {
-        let names = (1...150).map { "name\($0)" }
+        let names = (1...150).map { "n\($0)" }
         let request = DeepgramSpeech.request(model: DeepgramSpeech.model, apiKey: "k", wav: Data(), languageCode: "en", vocabulary: names)
         #expect(query(request).filter { $0.name == "keyterm" }.map(\.value) == Array(names.prefix(100)))
     }
 
-    @Test("Chinese goes to Nova-2, the only Deepgram model that has it, which takes no names list")
+    @Test("names longer together than Deepgram's 500-token limit, which fails the whole request, keep whole names from the top that fit, counting each name's bytes and one more")
+    func namesWithinTheLimit() {
+        let long = (0..<12).map { String(repeating: Character(UnicodeScalar(UInt8(97 + $0))), count: 40) }
+        for (last, sent) in [(7, 13), (8, 12)] {
+            let names = long + [String(repeating: "z", count: last), "after"]
+            let request = DeepgramSpeech.request(model: DeepgramSpeech.model, apiKey: "k", wav: Data(), languageCode: "en", vocabulary: names)
+            let terms = query(request).filter { $0.name == "keyterm" }.map(\.value)
+            #expect(terms == Array(names.prefix(sent)), "\(last)")
+        }
+        let hebrew = (1...10).map { "\($0)" + String(repeating: "א", count: 38) }
+        let request = DeepgramSpeech.request(model: DeepgramSpeech.model, apiKey: "k", wav: Data(), languageCode: "he", vocabulary: hebrew)
+        #expect(query(request).filter { $0.name == "keyterm" }.count == 6)
+    }
+
+    @Test("Chinese goes to Nova-3 like the rest, which Deepgram lists with Mandarin, and takes the names list")
     func chinese() {
         let request = DeepgramSpeech.request(model: DeepgramSpeech.model, apiKey: "k", wav: Data(), languageCode: "zh", vocabulary: ["王芳"])
         let items = query(request)
         let settings = Dictionary(items.map { ($0.name, $0.value) }, uniquingKeysWith: { first, _ in first })
-        #expect(settings["model"] == "nova-2")
-        #expect(settings["language"] == "zh-CN")
-        #expect(settings["diarize"] == "true")
-        #expect(!items.contains { $0.name == "keyterm" })
+        #expect(settings["model"] == "nova-3")
+        #expect(settings["language"] == "zh")
+        #expect(settings["diarize_model"] == "latest")
+        #expect(settings["diarize"] == nil)
+        #expect(items.filter { $0.name == "keyterm" }.map(\.value) == ["王芳"])
     }
 
     @Test("each speaker's stretch is its own line, and the same speaker going on stays one line")

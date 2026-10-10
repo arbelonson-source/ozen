@@ -92,8 +92,7 @@ Of Ozen's twelve caption languages:
 - Soniox and Speechmatics write eleven, all but Amharic. Chinese goes to
   Speechmatics as Mandarin.
 - AssemblyAI writes ten, all but Ukrainian and Amharic.
-- Deepgram writes eleven. Chinese goes to its older Nova-2 model, the only
-  one of Deepgram's with Chinese. Amharic it does not have.
+- Deepgram writes eleven, Chinese among them. Amharic it does not have.
 - OpenAI, Groq and ElevenLabs are sent all twelve, Amharic too; their
   accuracy outside Hebrew was not measured here.
 - Google Gemini is sent all twelve, with the caption language as a regional
@@ -186,7 +185,9 @@ key again.
   quiet moments included, with the names and important words lists sent
   once as it connects so the service can spell them. Soniox's terms apply.
   Off Wi-Fi this uses about 120 MB of mobile data an hour.
-- Deepgram: audio is sent only while someone is speaking, with the lists.
+- Deepgram: audio is sent only while someone is speaking, with as many
+  names from the top of the lists as fit Deepgram's limit (about fifty
+  short names).
   Every request from Ozen tells Deepgram not to use the audio to improve its
   models (`mip_opt_out`).
 - OpenAI: audio is sent only while someone is speaking, with the names
