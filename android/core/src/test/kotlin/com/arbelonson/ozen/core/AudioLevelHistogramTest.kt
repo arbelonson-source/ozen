@@ -4,6 +4,8 @@ import kotlin.math.pow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlinx.coroutines.test.runTest
 
 class AudioLevelHistogramTest {
     private fun rms(decibels: Double): Float = 10.0.pow(decibels / 20).toFloat()
@@ -34,5 +36,24 @@ class AudioLevelHistogramTest {
         assertEquals(-98, histogram.decibels(atFraction = 0.0))
         assertEquals(-98, histogram.decibels(atFraction = 0.75))
         assertEquals(0, histogram.decibels(atFraction = 1.0))
+    }
+}
+
+class PipelineInputLevelTest {
+    @Test
+    fun `every chunk is counted by level, and speech chunks separately`() = runTest {
+        val audio = FakeAudioCapturer()
+        val pipeline = captionPipeline(audio = audio, engineFactory = { FakeEngine() }, embedder = FakeEmbedder())
+        pipeline.start(AppSettings.default)
+        assertNull(pipeline.stats.speechShare)
+        audio.push(FloatArray(800) { 0.00012f })
+        audio.push(FloatArray(800) { 0.2f })
+        audio.push(FloatArray(800) { 0.2f })
+        audio.push(FloatArray(800) { 0.00012f })
+        assertTrue(eventually { pipeline.stats.inputLevels.total == 4 })
+        assertEquals(2, pipeline.stats.speechChunks)
+        assertEquals(0.5, pipeline.stats.speechShare)
+        assertEquals(-78, pipeline.stats.inputLevels.decibels(atFraction = 0.5))
+        assertEquals(-12, pipeline.stats.inputLevels.decibels(atFraction = 1.0))
     }
 }

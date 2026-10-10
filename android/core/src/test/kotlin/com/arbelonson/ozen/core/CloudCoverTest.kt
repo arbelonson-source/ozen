@@ -1,5 +1,6 @@
 package com.arbelonson.ozen.core
 
+import java.io.File
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -491,6 +492,17 @@ class CloudCoverTest {
         cloud.endStream(throwing = lostConnection())
         assertTrue(eventually { captions.activeEngineKind == phoneKind && captions.currentCloudRecheckSeconds == 0.1 })
         captions.stop()
+    }
+
+    @Test
+    fun `the troubleshooting guide's timing for going back to the cloud is the pipeline's`() = runTest {
+        val root = File(System.getProperty("ozen.fixtures")).parentFile.parentFile
+        val guide = File(root, "docs/troubleshooting.md").readText(Charsets.UTF_8)
+        val captions = coverPipeline(FakeEngine(kind = cloudKind), FakeEngine(kind = phoneKind))
+        assertEquals(60.0, captions.cloudRecheckSeconds)
+        assertEquals(60.0, captions.currentCloudRecheckSeconds)
+        assertTrue(guide.contains("checked every minute, between sentences"))
+        assertTrue(guide.contains("up to every 16 minutes"))
     }
 
     @Test

@@ -6,6 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlinx.coroutines.test.runTest
 
 class CaptionLayoutTest {
     @Test
@@ -264,5 +265,28 @@ class CaptionLayoutOnScreenTest {
             val text = File(root, doc).readText(Charsets.UTF_8)
             assertTrue(text.contains("newest ${CaptionLayout.ON_SCREEN_LINE_LIMIT} lines"), doc)
         }
+    }
+}
+
+class CaptionPipelineLongRunTest {
+    @Test
+    fun `an update to the newest line lands on it, however many lines came before`() = runTest {
+        val engine = FakeEngine()
+        val pipeline = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { engine },
+            embedder = FakeEmbedder(),
+            recovery = AutoRecoveryPolicy.disabled(),
+        )
+        pipeline.start(AppSettings.default)
+        for (index in 0 until 2_000) {
+            engine.emit(TranscriptToken(utteranceID = UUID.randomUUID(), text = "שורה $index", isFinal = true, timestamp = 1_000.0 + index))
+        }
+        val open = UUID.randomUUID()
+        engine.emit(TranscriptToken(utteranceID = open, text = "עוד", isFinal = false, timestamp = 3_000.0))
+        engine.emit(TranscriptToken(utteranceID = open, text = "עוד מעט", isFinal = true, timestamp = 3_001.0))
+        assertTrue(eventually { pipeline.segments.size == 2_001 && pipeline.segments.lastOrNull()?.text == "עוד מעט" })
+        assertEquals(true, pipeline.segments.lastOrNull()?.isCommitted)
+        assertEquals("שורה 0", pipeline.segments.firstOrNull()?.text)
     }
 }
