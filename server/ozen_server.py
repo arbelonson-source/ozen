@@ -386,7 +386,13 @@ class OnDemandTranscriber:
             started = time.monotonic()
 
             def load():
-                transcriber = self._load()
+                try:
+                    transcriber = self._load()
+                except Exception as error:
+                    # The traceback holds the frames that were building the
+                    # models; kept, a model loaded before the card filled up
+                    # stays on it until Python's next cycle sweep.
+                    raise error.with_traceback(None)
                 log.info("models loaded and warmed in %.1f s", time.monotonic() - started)
                 return transcriber
 

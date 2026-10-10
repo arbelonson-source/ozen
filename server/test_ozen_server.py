@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import json
 import logging
 import os
@@ -11,6 +12,7 @@ import threading
 import time
 import types
 import unittest
+import weakref
 from unittest import mock
 
 import numpy as np
@@ -1458,6 +1460,27 @@ class OnDemand(unittest.TestCase):
             self.assertEqual(self.caption(models)[0], "shalom")
         self.assertEqual(len(attempts), 2)
         self.assertTrue(any("CUDA out of memory" in line for line in logged.output), logged.output)
+
+    def test_a_load_that_fails_leaves_nothing_it_built_on_the_card(self):
+        built = []
+
+        class HalfLoaded:
+            pass
+
+        def load_until_the_card_is_full():
+            first_model = HalfLoaded()
+            built.append(weakref.ref(first_model))
+            raise RuntimeError("CUDA failed with error out of memory")
+
+        models = self.models(load=load_until_the_card_is_full)
+        gc.disable()
+        self.addCleanup(gc.enable)
+        with self.assertLogs(S.log, "INFO"):
+            try:
+                self.caption(models)
+            except RuntimeError:
+                pass
+        self.assertIsNone(built[0](), "a half-built model would hold its share of the card until Python's cycle sweep")
 
     def test_names_are_counted_with_the_loaded_tokenizer_and_roughly_before(self):
         models = self.models()
