@@ -81,6 +81,20 @@ struct LiveCaptionViewModelTests {
         #expect(!((try? String(contentsOf: file, encoding: .utf8)) ?? "").contains("אני באה"))
     }
 
+    @Test("a link that arrives while the phone asks about another can't swap the computer under the Connect button")
+    func secondLinkCantSwapThePairing() throws {
+        let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
+        viewModel.openURL(try #require(URL(string: "ozen://pair?address=wss://first.tail.ts.net&code=firstcode")))
+        viewModel.openURL(try #require(URL(string: "ozen://pair?address=wss://second.tail.ts.net&code=secondcode")))
+        #expect(viewModel.pendingPairing?.computerName == "first.tail.ts.net")
+        viewModel.openURL(try #require(URL(string: "ozen://pair?address=wss://second.tail.ts.net&code=")))
+        #expect(!viewModel.pairingLinkBroken)
+        #expect(viewModel.pendingPairing?.computerName == "first.tail.ts.net")
+        viewModel.pendingPairing = nil
+        viewModel.openURL(try #require(URL(string: "ozen://pair?address=wss://second.tail.ts.net&code=secondcode")))
+        #expect(viewModel.pendingPairing?.computerName == "second.tail.ts.net")
+    }
+
     @Test("a damaged pairing link says so; other links stay quiet; a good one clears it")
     func brokenPairingLink() throws {
         let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
