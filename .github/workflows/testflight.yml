@@ -2,6 +2,10 @@ name: TestFlight
 
 on:
   workflow_dispatch:
+  # Every GitHub release goes to TestFlight too, built from the same commit.
+  workflow_run:
+    workflows: ["Build sideloadable IPA"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -9,10 +13,26 @@ permissions:
 jobs:
   upload:
     name: Build, sign and upload to TestFlight
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: macos-15
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+      - name: Build number
+        id: build
+        # The newest release this commit carries, then this workflow's run:
+        # 118.2.1 is release 118's code in TestFlight run 2. Apple turns
+        # away an upload whose number isn't above every earlier one.
+        run: |
+          set -euo pipefail
+          RELEASE=$(git tag --merged HEAD --list 'v*' --sort=-version:refname | head -n 1)
+          NUMBER="${RELEASE##*.}.${{ github.run_number }}.${{ github.run_attempt }}"
+          echo "$NUMBER" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "No release tag behind this commit: '$RELEASE'" >&2; exit 1; }
+          echo "Build $NUMBER from $(git rev-parse --short HEAD)"
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
       - name: Use the newest Xcode 26
         run: |
           set -euo pipefail
@@ -65,7 +85,7 @@ jobs:
             CODE_SIGN_IDENTITY="Apple Distribution" \
             OZEN_APP_PROFILE="Ozen App Store" \
             OZEN_WIDGET_PROFILE="Ozen Captions App Store" \
-            CURRENT_PROJECT_VERSION="${{ github.run_number }}.${{ github.run_attempt }}" \
+            CURRENT_PROJECT_VERSION="${{ steps.build.outputs.number }}" \
             2>&1 | tee xcodebuild-testflight.log | xcpretty
       - name: Export and upload to TestFlight
         env:
