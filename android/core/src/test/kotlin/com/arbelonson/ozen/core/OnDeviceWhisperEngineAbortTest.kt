@@ -40,12 +40,12 @@ class OnDeviceWhisperEngineAbortTest {
         }
     }
 
-    private class Loader(private val passes: WhisperPasses) : WhisperModelLoader {
+    private class Loader(private val passes: WhisperPasses, private val release: () -> Unit = {}) : WhisperModelLoader {
         override suspend fun load(
             languageCode: String,
             cellularDownloadAllowed: Boolean,
             progress: (EnginePreparationProgress) -> Unit,
-        ) = WhisperLoadedModel(passes)
+        ) = WhisperLoadedModel(passes, release = release)
     }
 
     private fun speechThatGoesOn(): Flow<FloatArray> = flow {
@@ -73,6 +73,19 @@ class OnDeviceWhisperEngineAbortTest {
         listening.cancel()
         withTimeout(2_000) { listening.join() }
         assertEquals(1, passes.aborts.get())
+    }
+
+    @Test
+    fun `a model whose warm-up pass is stopped is given back, not left loaded`() = runBlocking {
+        val passes = NativeLikePasses().apply { holdsThread = true }
+        val releases = AtomicInteger()
+        val engine = OnDeviceWhisperEngine("test", Loader(passes) { releases.incrementAndGet() }, passDispatcher = Dispatchers.IO)
+        val preparing = launch(Dispatchers.Default) { engine.prepare("he") {} }
+        withTimeout(10_000) { passes.started.await() }
+        preparing.cancel()
+        withTimeout(2_000) { preparing.join() }
+        assertEquals(1, passes.aborts.get())
+        assertEquals(1, releases.get())
     }
 
     @Test

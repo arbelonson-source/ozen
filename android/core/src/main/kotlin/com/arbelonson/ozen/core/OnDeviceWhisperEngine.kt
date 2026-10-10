@@ -175,6 +175,9 @@ class OnDeviceWhisperEngine(
         try {
             runPass(loaded.passes, FloatArray(sampleRate.toInt()), WhisperPassOptions.live(languageCode))
         } catch (error: CancellationException) {
+            // Stopped while warming up: nothing holds this model yet, so
+            // nothing else would ever give it back.
+            loaded.release()
             throw error
         } catch (error: Exception) {
             // A failed warm-up is not a broken model.
