@@ -7,6 +7,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.test.runTest
 
 class CloudHTTPTest {
     private val url = URI("https://example.com/listen")
@@ -29,7 +30,7 @@ class CloudHTTPTest {
     }
 
     @Test
-    fun `a fake can stand in for the network`() {
+    fun `a fake can stand in for the network`() = runTest {
         val seen = mutableListOf<CloudHTTPRequest>()
         val http = CloudHTTP { request ->
             seen.add(request)

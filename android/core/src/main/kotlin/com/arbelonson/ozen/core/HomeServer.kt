@@ -431,30 +431,31 @@ data class SocketRefused(val status: Int) : Exception("refused with $status")
 
 /**
  * One open connection to the server. The real one is supplied by the
- * app; tests script a fake. Every call blocks the calling thread.
+ * app; tests script a fake. Every call suspends and ends early when the
+ * calling coroutine is cancelled.
  */
 interface HomeServerSocket {
-    fun send(text: String)
+    suspend fun send(text: String)
 
-    fun send(data: ByteArray)
+    suspend fun send(data: ByteArray)
 
     /**
      * The next text frame; throws once the connection is closed, as
      * [SocketClosed] when the other side gave a code.
      */
-    fun receive(): String
+    suspend fun receive(): String
 
     /**
      * Returns when the server answers a ping; throws if the connection
      * closes first.
      */
-    fun ping()
+    suspend fun ping()
 
-    fun close()
+    suspend fun close()
 }
 
 interface HomeServerConnecting {
-    fun open(url: URI): HomeServerSocket
+    suspend fun open(url: URI): HomeServerSocket
 }
 
 /**
@@ -462,7 +463,7 @@ interface HomeServerConnecting {
  * cloud service's key (see `CloudStreamEngine`).
  */
 interface CloudSocketConnecting {
-    fun open(url: URI, headers: Map<String, String>): HomeServerSocket
+    suspend fun open(url: URI, headers: Map<String, String>): HomeServerSocket
 }
 
 private fun hostOf(url: URI): String? {

@@ -2,6 +2,8 @@ package com.arbelonson.ozen.core
 
 import java.net.HttpURLConnection
 import java.net.URI
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class CloudHTTPRequest(
     val url: URI,
@@ -30,18 +32,18 @@ class CloudHTTPResponse(val status: Int, val body: ByteArray) {
 }
 
 fun interface CloudHTTP {
-    fun send(request: CloudHTTPRequest): CloudHTTPResponse
+    suspend fun send(request: CloudHTTPRequest): CloudHTTPResponse
 }
 
 class UrlConnectionCloudHTTP : CloudHTTP {
-    override fun send(request: CloudHTTPRequest): CloudHTTPResponse {
+    override suspend fun send(request: CloudHTTPRequest): CloudHTTPResponse = withContext(Dispatchers.IO) {
         val connection = request.url.toURL().openConnection() as HttpURLConnection
         try {
             configure(connection, request)
             request.body?.let { body -> connection.outputStream.use { it.write(body) } }
             val status = connection.responseCode
             val stream = if (status >= 400) connection.errorStream else connection.inputStream
-            return CloudHTTPResponse(status, stream?.use { it.readBytes() } ?: ByteArray(0))
+            CloudHTTPResponse(status, stream?.use { it.readBytes() } ?: ByteArray(0))
         } finally {
             connection.disconnect()
         }

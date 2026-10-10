@@ -1,6 +1,7 @@
 package com.arbelonson.ozen.core
 
 import java.util.UUID
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Which speech-to-text engine is producing tokens. Kept as a plain enum
@@ -214,9 +215,9 @@ sealed class EngineAvailability {
  * pipeline (`CaptionStabilizer`, `CaptionPipeline`) can be tested against a
  * fake engine with no audio or model involved.
  *
- * Calls block the thread that makes them. [stream] reads [audio] and the
- * returned sequence yields tokens as they become available, blocking in
- * `hasNext`; an engine that fails throws from it.
+ * The slow calls suspend. [stream] reads [audio] and the returned flow
+ * emits tokens as they become available; an engine that fails throws from
+ * collecting it, and cancelling the collector stops the engine.
  */
 interface TranscriptionEngine {
     val kind: TranscriptionEngineKind
@@ -228,7 +229,7 @@ interface TranscriptionEngine {
      * already prepared: the pipeline caches engine instances across
      * restarts precisely so a second call is instant.
      */
-    fun prepare(languageCode: String, progress: (EnginePreparationProgress) -> Unit): EngineAvailability
+    suspend fun prepare(languageCode: String, progress: (EnginePreparationProgress) -> Unit): EngineAvailability
 
     /**
      * Consumes rolling PCM float buffers and yields tokens as they become
@@ -236,7 +237,7 @@ interface TranscriptionEngine {
      * couple hundred ms to a couple seconds each) rather than one big
      * buffer per utterance: that's what makes the result "live".
      */
-    fun stream(languageCode: String, audio: Sequence<FloatArray>): Sequence<TranscriptToken>
+    fun stream(languageCode: String, audio: Flow<FloatArray>): Flow<TranscriptToken>
 
     /**
      * How much [prepare] would have to download first, in megabytes, or
@@ -244,14 +245,14 @@ interface TranscriptionEngine {
      * or the engine doesn't download). Asked before [prepare] so a large
      * download can wait for Wi-Fi.
      */
-    fun pendingDownloadMegabytes(): Int? = null
+    suspend fun pendingDownloadMegabytes(): Int? = null
 
     /**
      * The free space that download needs at its peak, in megabytes: more
      * than the download when the model is compiled on the phone beside its
      * packages. Defaults to the download itself.
      */
-    fun pendingInstallMegabytes(): Int? = pendingDownloadMegabytes()
+    suspend fun pendingInstallMegabytes(): Int? = pendingDownloadMegabytes()
 
     /**
      * Whether a download that [prepare] starts may use cellular data or
@@ -260,7 +261,7 @@ interface TranscriptionEngine {
      * that began on Wi-Fi must stop, not move to the phone plan, when
      * Wi-Fi drops. Engines that download nothing ignore it.
      */
-    fun setCellularDownloadAllowed(allowed: Boolean) {}
+    suspend fun setCellularDownloadAllowed(allowed: Boolean) {}
 
     /**
      * Stops a model download [prepare] has running, if any, so that a
@@ -268,22 +269,22 @@ interface TranscriptionEngine {
      * download first. A model already loading is left to finish. Engines
      * that download nothing ignore it.
      */
-    fun cancelDownload() {}
+    suspend fun cancelDownload() {}
 
     /**
      * Names and words to bias recognition towards (see `VocabularyHints`).
      * Called before every [stream] and again whenever the user edits the
      * list mid-conversation; engines that can't use hints ignore it.
      */
-    fun setVocabulary(terms: List<String>) {}
+    suspend fun setVocabulary(terms: List<String>) {}
 
     /**
      * What the engine knows about how its work has gone (how long passes
      * take, how much it threw away), for the journal when a problem is
      * marked. Null from engines that keep no such count.
      */
-    fun diagnosticsSummary(): String? = null
+    suspend fun diagnosticsSummary(): String? = null
 
     /** [prepare] without caring about progress, for callers (and tests) that only want the yes/no answer. */
-    fun checkAvailability(languageCode: String): EngineAvailability = prepare(languageCode) {}
+    suspend fun checkAvailability(languageCode: String): EngineAvailability = prepare(languageCode) {}
 }
