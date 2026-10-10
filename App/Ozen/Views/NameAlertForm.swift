@@ -39,7 +39,7 @@ struct NameAlertForm: View {
                     suggestionButton(word)
                 }
             }
-            if !viewModel.settings.keywordAlerts.isEmpty {
+            if let addedText = AlertSuggestions.vibrationNote(for: viewModel.settings.keywordAlerts, in: viewModel.uiLanguage) {
                 Label(addedText, systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.readable(.green))
             }
@@ -51,10 +51,6 @@ struct NameAlertForm: View {
 
     private var otherLettersNote: String {
         tr("הכתוביות באותיות עבריות, ולכן מילה שנכתבה באותיות אחרות עלולה לא להימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found.")
-    }
-
-    private var addedText: String {
-        tr("הטלפון ירטוט על: ", "The phone will vibrate for: ") + viewModel.settings.keywordAlerts.filter(\.isEnabled).map { AlertSuggestions.shown($0.phrase, in: viewModel.uiLanguage) }.joined(separator: ", ")
     }
 
     private func suggestionButton(_ word: String) -> some View {

@@ -40,6 +40,15 @@ struct AlertSuggestionsTests {
         }
     }
 
+    @Test("the note under the name form lists only the words that will buzz, and is gone when none will")
+    func vibrationNote() {
+        let alerts = [KeywordAlert(phrase: "סבתא"), KeywordAlert(phrase: "Dani", isEnabled: false), KeywordAlert(phrase: "Ruti")]
+        #expect(AlertSuggestions.vibrationNote(for: alerts, in: .english) == "The phone will vibrate for: Grandma, Ruti")
+        #expect(AlertSuggestions.vibrationNote(for: alerts, in: .hebrew) == "הטלפון ירטוט על: סבתא, Ruti")
+        #expect(AlertSuggestions.vibrationNote(for: [KeywordAlert(phrase: "Dani", isEnabled: false)], in: .english) == nil)
+        #expect(AlertSuggestions.vibrationNote(for: [], in: .english) == nil)
+    }
+
     private static func hasHebrew(_ text: String) -> Bool {
         text.unicodeScalars.contains { (0x0590...0x05FF).contains($0.value) }
     }
