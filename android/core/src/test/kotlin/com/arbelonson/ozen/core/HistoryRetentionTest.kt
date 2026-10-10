@@ -4,10 +4,16 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.UUID
+import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 private const val DAY = 86_400.0
 private const val NOW = 2_000_000_000.0
@@ -104,6 +110,38 @@ class HistoryRetentionTest {
 
             assertEquals(0, store.deleteConversations(inactiveBefore = NOW - 30 * DAY, protecting = setOf(live.id)))
             assertNotNull(store.load(live.id))
+        }
+    }
+
+    @Test
+    fun `the writer does nothing when set to keep forever, and prunes behind queued saves otherwise`() {
+        withRetentionStore { store ->
+            val queue = SerialQueue("test.retention")
+            val writer = TranscriptHistoryWriter(store, queue)
+            val old = conversation(startedDaysAgo = 400.0, endedDaysAgo = 400.0)
+            writer.saveNow(old)
+
+            assertEquals(0, writer.deleteExpiredNow(HistoryRetention.Forever, NOW, emptySet()))
+            assertNotNull(store.load(old.id))
+
+            // An autosave of the same old conversation is still waiting to be
+            // written; pruning must run after it, not before.
+            queue.suspend()
+            writer.saveInBackground(old)
+            val pruned = Semaphore(0)
+            val count = AtomicInteger()
+            thread {
+                count.set(writer.deleteExpiredNow(HistoryRetention.Year, NOW, emptySet()))
+                pruned.release()
+            }
+            val returnedEarly = pruned.tryAcquire(200, TimeUnit.MILLISECONDS)
+            queue.resume()
+            if (!returnedEarly) pruned.acquire()
+            writer.waitUntilIdle()
+
+            assertFalse(returnedEarly)
+            assertEquals(1, count.get())
+            assertTrue(store.listSummaries().isEmpty())
         }
     }
 
