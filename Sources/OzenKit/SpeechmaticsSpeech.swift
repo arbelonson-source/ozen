@@ -77,21 +77,25 @@ public enum SpeechmaticsSpeech: CloudStreamService {
     }
 
     /// A session that ran out of time ends like a dropped connection, so
-    /// the phone's model carries on until the next one opens.
+    /// the phone's model carries on until the next one opens. A time limit
+    /// is not one: Speechmatics calls the account's usage quota used up
+    /// `timelimit_exceeded`, and too many connections `quota_exceeded`.
     static func failure(type: String, code: Int?) -> CloudSpeechError {
         switch type {
         case "not_authorised", "not_allowed": .keyRejected
         case "quota_exceeded": .rateLimited
-        case "timelimit_exceeded", "idle_timeout", "session_timeout": .offline
+        case "timelimit_exceeded": .outOfCredit
+        case "idle_timeout", "session_timeout": .offline
         default: .serverTrouble(status: code ?? 500)
         }
     }
 
     public static func failure(closedWith code: Int, reason: String) -> CloudSpeechError? {
         switch code {
-        case 4001: .keyRejected
+        case 4001, 4003: .keyRejected
         case 4005: .rateLimited
-        case 4013, 1011: .serverTrouble(status: code)
+        case 4006: .outOfCredit
+        case 4004, 4013, 1011: .serverTrouble(status: code)
         default: nil
         }
     }

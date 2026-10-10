@@ -122,6 +122,7 @@ struct AssemblyAISpeechTests {
         #expect(error("This feature is paid-only and requires you to add a credit card") == .failure(.outOfCredit))
         #expect(error("Session Expired") == .failure(.offline))
         #expect(error("Client sent audio too fast") == .failure(.serverTrouble(status: 500)))
+        #expect(error("Unauthorized Connection: Too many concurrent sessions") == .failure(.rateLimited))
         #expect(AssemblyAISpeech.reply(from: #"{"type":"Error","error":"Not Authorized"}"#, languageCode: "he") == .failure(.keyRejected))
     }
 
@@ -133,6 +134,7 @@ struct AssemblyAISpeechTests {
         #expect(AssemblyAISpeech.failure(closedWith: 1008, reason: "Unauthorized Connection: insufficient account balance") == .outOfCredit)
         #expect(AssemblyAISpeech.failure(closedWith: 1008, reason: "Unauthorized Connection: Missing Authorization header") == .keyRejected)
         #expect(AssemblyAISpeech.failure(closedWith: 3005, reason: "Internal error") == .serverTrouble(status: 3005))
+        #expect(AssemblyAISpeech.failure(closedWith: 3009, reason: "Unauthorized Connection: Too many concurrent sessions") == .rateLimited)
         #expect(AssemblyAISpeech.failure(closedWith: 4008, reason: "Session Expired") == nil)
         #expect(AssemblyAISpeech.failure(closedWith: 1000, reason: "") == nil)
     }

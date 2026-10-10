@@ -59,10 +59,12 @@ public enum AssemblyAISpeech: CloudStreamService {
     }
 
     /// Read by the reasons AssemblyAI documents for closing a session.
-    /// Money comes first: an empty balance is also called unauthorized.
+    /// Money and too many sessions come first: both are also called
+    /// unauthorized.
     static func failure(saying text: String) -> CloudSpeechError {
         let said = text.lowercased()
         if said.contains("insufficient") || said.contains("paid-only") { return .outOfCredit }
+        if said.contains("too many concurrent sessions") { return .rateLimited }
         if said.contains("unauthorized") || said.contains("not authorized") { return .keyRejected }
         if said.contains("session expired") { return .offline }
         return .serverTrouble(status: 500)
@@ -75,6 +77,7 @@ public enum AssemblyAISpeech: CloudStreamService {
         case 4001: .keyRejected
         case 4002, 4003: .outOfCredit
         case 1008: failure(saying: reason) == .outOfCredit ? .outOfCredit : .keyRejected
+        case 3009: .rateLimited
         case 3005: .serverTrouble(status: code)
         default: nil
         }

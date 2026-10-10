@@ -96,7 +96,7 @@ struct SpeechmaticsSpeechTests {
         #expect(SpeechmaticsSpeech.reply(from: "<html>", languageCode: "he") == nil)
     }
 
-    @Test("a refused key is a key to fix, too many connections a busy service, a session that ran out of time no connection, anything else the service's trouble")
+    @Test("a refused key is a key to fix, too many connections a busy service, the account's usage quota used up no credit, a session that ran out of time no connection, anything else the service's trouble")
     func errors() {
         func error(_ type: String, code: Int? = nil) -> CloudStreamReply? {
             let number = code.map { #","code":\#($0)"# } ?? ""
@@ -105,20 +105,23 @@ struct SpeechmaticsSpeechTests {
         #expect(error("not_authorised", code: 4001) == .failure(.keyRejected))
         #expect(error("not_allowed") == .failure(.keyRejected))
         #expect(error("quota_exceeded", code: 4005) == .failure(.rateLimited))
-        #expect(error("timelimit_exceeded", code: 4006) == .failure(.offline))
+        // Speechmatics: timelimit_exceeded is "Usage quota for the contract has been reached."
+        #expect(error("timelimit_exceeded", code: 4006) == .failure(.outOfCredit))
         #expect(error("idle_timeout") == .failure(.offline))
         #expect(error("session_timeout") == .failure(.offline))
         #expect(error("invalid_language", code: 4003) == .failure(.serverTrouble(status: 4003)))
         #expect(error("job_error") == .failure(.serverTrouble(status: 500)))
     }
 
-    @Test("a session Speechmatics closes says why by its documented codes; a time limit or a normal close is no connection")
+    @Test("a session Speechmatics closes says why by its documented codes; a normal close is no connection")
     func closeReasons() {
         #expect(SpeechmaticsSpeech.failure(closedWith: 4001, reason: "not_authorised") == .keyRejected)
         #expect(SpeechmaticsSpeech.failure(closedWith: 4005, reason: "quota_exceeded") == .rateLimited)
         #expect(SpeechmaticsSpeech.failure(closedWith: 4013, reason: "job_error") == .serverTrouble(status: 4013))
         #expect(SpeechmaticsSpeech.failure(closedWith: 1011, reason: "internal_error") == .serverTrouble(status: 1011))
-        #expect(SpeechmaticsSpeech.failure(closedWith: 4006, reason: "timelimit_exceeded") == nil)
+        #expect(SpeechmaticsSpeech.failure(closedWith: 4006, reason: "timelimit_exceeded") == .outOfCredit)
+        #expect(SpeechmaticsSpeech.failure(closedWith: 4003, reason: "not_allowed") == .keyRejected)
+        #expect(SpeechmaticsSpeech.failure(closedWith: 4004, reason: "invalid_model") == .serverTrouble(status: 4004))
         #expect(SpeechmaticsSpeech.failure(closedWith: 1000, reason: "") == nil)
         #expect(SonioxSpeech.failure(closedWith: 1008, reason: "x") == nil)
     }
