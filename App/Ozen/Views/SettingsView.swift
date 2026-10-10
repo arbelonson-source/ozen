@@ -1047,7 +1047,7 @@ struct SettingsView: View {
                             // Voices saved before the September 2026 voice
                             // model are never matched again, silently.
                             if viewModel.needsNewRecording(speaker) {
-                                Text(tr("נשמר בגרסה ישנה ולא מזוהה. כדי לתקן: \"הוספת דובר\" באותו שם.", "Saved by an older version and not recognized. To fix: \"Add speaker\" with the same name."))
+                                Text(tr("נשמר בגרסה ישנה ולא מזוהה. כדי לתקן: \"הוספת דובר\" באותו שם.", "Saved by an older version and not recognized. To fix: “Add speaker” with the same name."))
                                     .font(.footnote)
                                     .foregroundStyle(.readable(.orange))
                             }

@@ -373,6 +373,37 @@ def check_chinese_punctuation():
             for path, key, value in texts if ASCII_BESIDE_CHINESE.search(value)]
 
 
+TR_PAIR = re.compile(r'tr\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"')
+
+
+def check_quoted_labels(keys):
+    """A message that names another of the app's labels in quotes (To fix:
+    "Add speaker" ...) names it in each language as that label reads
+    there, or the reader looks for a button that isn't on the screen."""
+    table = json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))
+    hebrew = {}
+    for path in sorted(p for root in ROOTS for p in Path(root).rglob("*.swift")):
+        for he, en in TR_PAIR.findall(path.read_text(encoding="utf-8")):
+            hebrew[unescape(en)] = unescape(he)
+    languages = {"hebrew": hebrew} | {language: table[language] for language in TRANSLATED_LANGUAGES}
+    # iOS lists the app by this name in every language (searching Control
+    # Center for it, say), so it stays as it is inside any translation.
+    display_name = re.search(r'CFBundleDisplayName: "([^"]*)"', Path("project.yml").read_text(encoding="utf-8")).group(1)
+    # Hebrew writes its quotes, and the gershayim of an abbreviation, as a
+    # straight mark; the other languages use their curly or angled ones.
+    problems = [f"{language}: {key[:50]!r} has a straight double quote; this language's text uses curly ones: {text!r}"
+                for language, entries in [("english", {key: key for key in keys})] + list(languages.items())[1:]
+                for key, text in entries.items() if '"' in text]
+    for key in sorted(keys):
+        for quoted in re.findall(r'["\u201c]([^"\u201d]+)["\u201d]', key):
+            if quoted not in keys or quoted == display_name:
+                continue
+            for language, entries in languages.items():
+                if key in entries and quoted in entries and entries[quoted] not in entries[key]:
+                    problems.append(f"{language}: {key[:50]!r} quotes {quoted!r}, not as that label reads there ({entries[quoted]!r}): {entries[key]!r}")
+    return problems
+
+
 def check_system_wording():
     """Controls that bring their own words show them in the phone's
     language, not the one picked in Ozen: SwiftUI's EditButton, and a
@@ -451,6 +482,7 @@ def main():
         all_problems += check_permission_prompts()
         all_problems += check_system_wording()
         all_problems += check_chinese_punctuation()
+        all_problems += check_quoted_labels(keys)
         all_problems += check_system_names_in_help(keys)
     for problem in all_problems:
         print(problem)
