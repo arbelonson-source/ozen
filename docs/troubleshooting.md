@@ -47,8 +47,8 @@ computer backup when that is on.
 | "No microphone access" (ein gisha la-mikrofon) | Microphone permission was turned off for Ozen. | Tap it: it opens iOS Settings. Turn Microphone on. |
 | "No speech recognition permission" (ein ishur le-zihuy dibur) | Speech recognition permission is off (Apple's engine only). | Tap it: it opens iOS Settings. |
 | "… isn't available in Hebrew on this device" (… lo zamin be-ivrit ba-machshir ha-ze) | Apple's engine has no on-device Hebrew on this iPhone. | Tap to switch to Whisper in Settings. |
-| "Cloud transcription isn't set up" (ha-timlul ba-anan lo mugdar) | Cloud captions are chosen but there is no key, or OpenRouter turned it down, and no Whisper model is on the phone to take over. | Tap it: Settings opens. Paste the key from openrouter.ai (Keys) and tap Save. |
-| "Cloud transcription's budget ran out" (nigmar ha-taktziv le-timlul ba-anan) | The key used up its credit or its spending limit, and no Whisper model is on the phone to take over. | Add credit on openrouter.ai, or tap and switch back to Whisper. |
+| "Cloud transcription isn't set up" (ha-timlul ba-anan lo mugdar) | Cloud captions are chosen but there is no key for the chosen service, or the service turned it down, and no Whisper model is on the phone to take over. | Tap it: Settings opens. Paste a key from the chosen service's site and tap Save; [Cloud services](cloud-services.md#getting-a-key) says where each one keeps its keys. |
+| "Cloud transcription's budget ran out" (nigmar ha-taktziv le-timlul ba-anan) | The key used up its credit or its spending limit, and no Whisper model is on the phone to take over. | Add credit on the chosen service's site, or tap and switch back to Whisper. |
 | "No internet connection" (ein chibur la-internet) | Cloud captions can't reach the internet, and no Whisper model is on the phone to take over. | Check Wi-Fi or cellular data. It retries by itself; or switch to Whisper, which works offline. |
 | "Trying again on its own · Tap to try now" (menase shuv le-vad · hakishu kedei lenasot achshav) | Something failed and a retry is already scheduled. | Wait a few seconds, or tap to retry now. |
 
