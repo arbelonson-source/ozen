@@ -23,4 +23,13 @@ done
 for variant in x64 sse42 sandybridge ivybridge piledriver haswell skylakex cannonlake cascadelake icelake cooperlake zen4 alderlake sapphirerapids; do
     need "lib/x86_64/libggml-cpu-$variant.so"
 done
+sdk=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$(sed -n 's/^sdk.dir=//p' local.properties 2>/dev/null)}}
+aapt2=$(ls "$sdk"/build-tools/*/aapt2 | sort -V | tail -1)
+permissions=$("$aapt2" dump permissions "$apk")
+for permission in INTERNET RECORD_AUDIO FOREGROUND_SERVICE_MICROPHONE POST_NOTIFICATIONS; do
+    if ! grep -q "name='android.permission.$permission'" <<< "$permissions"; then
+        echo "$apk does not ask for android.permission.$permission" >&2
+        missing=1
+    fi
+done
 exit $missing
