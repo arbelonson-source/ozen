@@ -277,6 +277,20 @@ class CaptionConfidenceTest {
         assertTrue(CaptionConfidence.isUncertain(confidence = doubtful, isCommitted = true, text = "כן", engine = TranscriptionEngineKind.WhisperKit))
         assertNull(CaptionConfidence.whisperConfidence(emptyList()))
     }
+
+    @Test
+    fun `confidence is saved with the line, and older saved lines have none`() {
+        val live = TranscriptSegment(id = UUID.randomUUID(), text = "אולי", isCommitted = true, speakerClusterID = null, startTimestamp = 0.0, lastUpdateTimestamp = 0.0, confidence = 0.25f)
+        val record = TranscriptSessionRecord.make(
+            from = listOf(live), speakerName = { null }, id = UUID.randomUUID(), startedAt = 0.0, endedAt = null,
+            engine = TranscriptionEngineKind.WhisperKit, modelVariant = null, inputName = null,
+        )
+        val decoded = TranscriptSessionRecord.fromJson(record.toJson())
+        assertEquals(0.25f, decoded.segments.firstOrNull()?.confidence)
+
+        val old = """{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","text":"ישן","startTimestamp":1,"isCommitted":true}"""
+        assertNull(SavedSegment.fromJson(old).confidence)
+    }
 }
 
 class CaptionStabilizerCommitAllTest {

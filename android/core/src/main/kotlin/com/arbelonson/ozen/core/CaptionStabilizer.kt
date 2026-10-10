@@ -168,6 +168,12 @@ object CaptionConfidence {
             engine = segment.scoredBy?.engine ?: engine, model = if (segment.scoredBy != null) segment.scoredBy.model else model,
         )
 
+    fun isUncertain(segment: SavedSegment, engine: TranscriptionEngineKind, model: String? = null): Boolean =
+        isUncertain(
+            confidence = segment.confidence, isCommitted = segment.isCommitted, text = segment.text,
+            engine = segment.scoredBy?.engine ?: engine, model = if (segment.scoredBy != null) segment.scoredBy.model else model,
+        )
+
     /**
      * Only finished lines: a line still being written changes its mind.
      * Exactly 0 means "no score" (Apple reports that on partial results).
