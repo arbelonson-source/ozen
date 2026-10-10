@@ -1151,7 +1151,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(tr("״היי סירי, התחל כתוביות באוזן״", "Hey Siri, start captions in Ozen"))
                 Text(tr("״היי סירי, עצור כתוביות באוזן״", "Hey Siri, stop captions in Ozen"))
-                Text(tr("״היי סירי, תגיד באוזן שאני כבר באה״", "Hey Siri, tell Ozen I’m already on my way"))
+                Text(tr("״היי סירי, תגיד באוזן״ (סירי תשאל מה להגיד)", "Hey Siri, say with Ozen (Siri then asks what to say)"))
             }
             .font(.callout)
             ShortcutsLink()

@@ -396,17 +396,47 @@ def arrow_labels(key, keys):
     return labels
 
 
+def hebrew_texts():
+    """English key -> Hebrew text, from the tr("he", "en") calls whose
+    arguments are plain literals."""
+    hebrew = {}
+    for path in sorted(p for root in ROOTS for p in Path(root).rglob("*.swift")):
+        for he, en in TR_PAIR.findall(path.read_text(encoding="utf-8")):
+            hebrew[unescape(en)] = unescape(he)
+    return hebrew
+
+
+def check_siri_examples(keys):
+    """The Siri commands Settings gives as examples ("Hey Siri, start
+    captions in Ozen") carry, in each language, a phrase the app gives Siri
+    in that language, or the reader says one Siri doesn't know."""
+    catalog = json.loads(SHORTCUTS_CATALOG.read_text(encoding="utf-8"))["strings"]
+    sources = [re.sub(r"\\\(\.(\w+)\)", r"${\1}", phrase) for phrase in re.findall(r'"([^"]*\\\(\.applicationName\)[^"]*)"', SHORTCUTS_FILE.read_text(encoding="utf-8"))]
+    table = json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))
+    hebrew = hebrew_texts()
+    problems = []
+    for key in sorted(k for k in keys if k.startswith("Hey Siri, ")):
+        texts = [("he", hebrew.get(key)), ("en", key)] + [(code, table.get(language, {}).get(key)) for code, language in zip(SYSTEM_LANGUAGES[1:], TRANSLATED_LANGUAGES)]
+        for code, text in texts:
+            if code == "he":
+                phrases = [source.replace("${applicationName}", "\u05d0\u05d5\u05d6\u05df") for source in sources]
+            else:
+                phrases = [catalog[source]["localizations"][code]["stringUnit"]["value"].replace("${applicationName}", "Ozen")
+                           for source in sources if code in catalog.get(source, {}).get("localizations", {})]
+            # Siri doesn't hear spaces: Chinese spaces a Latin name ("在 Ozen 中").
+            squeezed = "".join((text or "").lower().split())
+            if text is not None and not any("".join(phrase.lower().split()) in squeezed for phrase in phrases):
+                problems.append(f"{code}: Siri example {key!r} has none of the phrases Siri knows in that language: {text!r}")
+    return problems
+
+
 def check_quoted_labels(keys):
     """A message that names another of the app's labels, in quotes (To fix:
     "Add speaker" ...) or along a path (Settings → Diagnostics), names it in
     each language as that label reads there, or the reader looks for a
     button that isn't on the screen."""
     table = json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))
-    hebrew = {}
-    for path in sorted(p for root in ROOTS for p in Path(root).rglob("*.swift")):
-        for he, en in TR_PAIR.findall(path.read_text(encoding="utf-8")):
-            hebrew[unescape(en)] = unescape(he)
-    languages = {"hebrew": hebrew} | {language: table[language] for language in TRANSLATED_LANGUAGES}
+    languages = {"hebrew": hebrew_texts()} | {language: table[language] for language in TRANSLATED_LANGUAGES}
     # iOS lists the app by this name in every language (searching Control
     # Center for it, say), so it stays as it is inside any translation.
     display_name = re.search(r'CFBundleDisplayName: "([^"]*)"', Path("project.yml").read_text(encoding="utf-8"))
@@ -505,6 +535,7 @@ def main():
         all_problems += check_system_wording()
         all_problems += check_chinese_punctuation()
         all_problems += check_quoted_labels(keys)
+        all_problems += check_siri_examples(keys)
         all_problems += check_system_names_in_help(keys)
     for problem in all_problems:
         print(problem)
