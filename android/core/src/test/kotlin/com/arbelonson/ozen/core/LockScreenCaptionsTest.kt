@@ -10,8 +10,6 @@ class PipelineCaptionsChangedTest {
     @Test
     fun `each new or changed line, and clearing, calls the hook`() = runTest {
         val engine = FakeEngine()
-        // As the tokens' times, or the stale-commit safety net can finish
-        // the line between them on a slow machine: one call too many.
         val pipeline = captionPipeline(audio = FakeAudioCapturer(), engineFactory = { engine }, embedder = FakeEmbedder(), now = { 1_001.0 })
         var calls = 0
         pipeline.onCaptionsChanged = { calls += 1 }

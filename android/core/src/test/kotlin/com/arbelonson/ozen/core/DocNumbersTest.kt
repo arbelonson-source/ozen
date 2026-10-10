@@ -8,12 +8,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
-/**
- * The numbers the README and the troubleshooting guide promise her,
- * checked against the code that keeps them. Each phrase is built from the
- * code's value where it can be, so changing one without the other fails
- * here. Whitespace is flattened, so rewrapping a paragraph changes nothing.
- */
 class DocNumbersTest {
     private val root = File(System.getProperty("ozen.fixtures")).parentFile.parentFile
     private val words = mapOf(
