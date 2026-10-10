@@ -124,10 +124,15 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
                     "לא נמצא מיקרופון. פתחו את אוזן כדי להמשיך.",
                     "No microphone was found. Open Ozen to continue."
                 )
-            case (_, .cloudKeyNeeded?), (_, .cloudOutOfCredit?):
+            case (_, .cloudKeyNeeded?):
                 return tr(
                     "יש בעיה במפתח של התמלול בענן. פתחו את אוזן לפרטים.",
                     "There's a problem with the cloud transcription key. Open Ozen for details."
+                )
+            case (_, .cloudOutOfCredit?):
+                return tr(
+                    "נגמר התקציב לתמלול בענן. פתחו את אוזן לפרטים.",
+                    "Cloud transcription’s budget ran out. Open Ozen for details."
                 )
             case (_, .noInternet?):
                 return tr(
