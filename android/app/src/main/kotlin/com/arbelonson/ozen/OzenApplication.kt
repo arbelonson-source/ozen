@@ -20,7 +20,7 @@ class OzenApplication : Application() {
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         if (MemoryPressure.isWarning(level) && session.isInitialized()) {
-            captions.pipeline.handleMemoryWarning(footprintBytes = Debug.getPss() * 1_024)
+            captions.memoryShort(footprintBytes = Debug.getPss() * 1_024)
         }
     }
 }

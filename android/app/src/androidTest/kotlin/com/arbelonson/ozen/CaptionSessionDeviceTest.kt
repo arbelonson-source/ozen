@@ -11,6 +11,7 @@ import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SettingsStore
+import com.arbelonson.ozen.core.TranscriptHistoryStore
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -51,6 +52,7 @@ class CaptionSessionDeviceTest {
                 HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
                 CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
                 audio,
+                historyFolder = File(work, "history"),
             )
         }
         val started = SystemClock.elapsedRealtime()
@@ -71,6 +73,11 @@ class CaptionSessionDeviceTest {
         Log.i("OzenSession", "%.1f s, phase %s, %d lines, %.0f%% words wrong | %s".format(seconds, screen.phase, screen.lines.size, wrong * 100, heard))
         assertTrue("the pipeline stopped: ${screen.phase}", screen.phase !is PipelinePhase.Failed)
         assertTrue("%.0f%% of the words wrong: $heard".format(wrong * 100), wrong < 0.35)
+        val history = TranscriptHistoryStore(File(work, "history"))
+        val conversation = history.listSummaries().single()
+        assertNotNull("captions stopped, so the conversation has an end", conversation.endedAt)
+        val kept = history.load(conversation.id)!!.segments.joinToString(" ") { it.text }
+        assertTrue("History kept: $kept", DeviceClips.wordErrorRate(said, kept) < 0.35)
     }
 
     @Test
@@ -88,6 +95,7 @@ class CaptionSessionDeviceTest {
                 HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
                 CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
                 ClipAudio(speech),
+                historyFolder = File(work, "history"),
             )
         }
         val started = SystemClock.elapsedRealtime()
@@ -128,6 +136,7 @@ class CaptionSessionDeviceTest {
                 CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
                 ClipAudio(FloatArray(16_000)),
                 File(work, "not-downloaded.bin"),
+                File(work, "history"),
             )
         }
         val pairing = PairingRequests(settings, codes::save).apply { onPaired = session::settingsChanged }

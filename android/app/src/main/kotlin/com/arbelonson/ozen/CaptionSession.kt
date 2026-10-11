@@ -10,6 +10,8 @@ import com.arbelonson.ozen.core.HomeServerEngine
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SpeakerEmbedding
+import com.arbelonson.ozen.core.TranscriptHistoryStore
+import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptionEngine
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.WebSocketConnector
@@ -29,6 +31,7 @@ class CaptionSession(
     private val cloudKeys: CloudKeyStore,
     val audio: AudioCapturing = AndroidAudioCapture(context),
     private val modelFile: File = File(context.filesDir, MODEL_FILE),
+    historyFolder: File = File(context.filesDir, HISTORY_FOLDER),
 ) {
     private val scope = MainScope()
     private val connector = WebSocketConnector()
@@ -41,6 +44,17 @@ class CaptionSession(
         embedder = NoVoicePrints,
         availableStorageBytes = { context.filesDir.usableSpace },
     )
+    private val conversations = ConversationSaver(
+        writer = TranscriptHistoryWriter(TranscriptHistoryStore(historyFolder)),
+        lines = { pipeline.segments },
+        isListening = { pipeline.phase.isListening },
+        settings = { settings.current.value },
+        transcribing = { pipeline.activeSettings.takeIf { pipeline.isCoveringForCloud } ?: settings.current.value },
+        speakerName = pipeline::displayName,
+        inputName = { audio.availableInputs.firstOrNull { it.uid == audio.selectedInputUID }?.portName },
+        startNewConversation = pipeline::startNewConversation,
+        scope = scope,
+    )
 
     init {
         (audio as? AndroidAudioCapture)?.onInterruption = { active ->
@@ -48,7 +62,10 @@ class CaptionSession(
             pipeline.systemInterruptionChanged(active)
             publish()
         }
-        pipeline.onPhaseChange = { publish() }
+        pipeline.onPhaseChange = {
+            conversations.listeningChanged()
+            publish()
+        }
         pipeline.onCaptionsChanged = ::publish
     }
 
@@ -65,6 +82,11 @@ class CaptionSession(
     }
 
     fun pause() = pipeline.pause()
+
+    fun memoryShort(footprintBytes: Long) {
+        pipeline.handleMemoryWarning(footprintBytes)
+        conversations.memoryShort()
+    }
 
     fun close() {
         pipeline.close()
@@ -132,5 +154,6 @@ class CaptionSession(
 
     companion object {
         const val MODEL_FILE = "ggml-ozen-a3-q5_0.bin"
+        const val HISTORY_FOLDER = "ozen-history"
     }
 }
