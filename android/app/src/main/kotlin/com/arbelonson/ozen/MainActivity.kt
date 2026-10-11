@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,6 +52,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -263,7 +265,8 @@ private fun CaptionLines(lines: List<CaptionLine>, display: DisplayPreferences) 
     LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(lines, key = { it.id }) { line ->
             Text(
-                text = line.text,
+                text = captionText(line.text, display.emphasizeNumbers, numberColor = if (line.isFinal) NUMBER_YELLOW else null),
+                style = LocalTextStyle.current.copy(textDirection = TextDirection.Content),
                 color = if (line.isFinal) Color.White else Color.White.copy(alpha = 0.75f),
                 fontSize = display.fontSize.sp,
                 lineHeight = (display.fontSize * 1.25).sp,

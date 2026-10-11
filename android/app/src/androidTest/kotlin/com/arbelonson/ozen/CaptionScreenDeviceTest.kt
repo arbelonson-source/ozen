@@ -5,13 +5,16 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptSegment
 import java.util.UUID
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -42,5 +45,38 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithText("\u05E0\u05EA\u05D7\u05D9\u05DC", substring = true)
             .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
         assertEquals(ResolvedTextDirection.Rtl, layouts.single().getParagraphDirection(0))
+    }
+
+    @Test
+    fun aTimeInAFinishedLineIsDrawnHeavierInYellowUnlessBoldNumbersAreOff() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.display
+        try {
+            app.settings.change { it.display = it.display.copy(emphasizeNumbers = true) }
+            showLine("Meet at 10:30 by the door")
+            val numbers = layoutOf("Meet at").layoutInput.text.spanStyles
+            assertEquals(1, numbers.size)
+            assertEquals(FontWeight.ExtraBold, numbers.single().item.fontWeight)
+            assertEquals(NUMBER_YELLOW, numbers.single().item.color)
+
+            app.settings.change { it.display = it.display.copy(emphasizeNumbers = false) }
+            compose.waitForIdle()
+            assertTrue(layoutOf("Meet at").layoutInput.text.spanStyles.isEmpty())
+        } finally {
+            app.settings.change { it.display = before }
+        }
+    }
+
+    private fun showLine(text: String) {
+        val line = TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+        compose.runOnUiThread {
+            CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line))
+        }
+    }
+
+    private fun layoutOf(text: String): TextLayoutResult {
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(text, substring = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        return layouts.single()
     }
 }

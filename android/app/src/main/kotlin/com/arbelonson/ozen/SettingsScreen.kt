@@ -136,7 +136,11 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
         ) { Text(tr("חזרה לגודל הרגיל", "Back to the usual size")) }
     }
     Text(
-        tr("שלום סבתא, נגיע בשש עם שלושה ילדים.", "Hello grandma, we’ll arrive at six with three kids."),
+        captionText(
+            tr("שלום סבתא, נגיע בשש עם שלושה ילדים.", "Hello grandma, we’ll arrive at six with three kids."),
+            display.emphasizeNumbers,
+            NUMBER_YELLOW,
+        ),
         color = Color.White,
         fontSize = size.sp,
         lineHeight = (size * 1.25f).sp,
@@ -149,6 +153,9 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
     SwitchRow(tr("טקסט מודגש", "Bold text"), display.boldText) { on -> settings.change { it.display = it.display.copy(boldText = on) } }
     SwitchRow(tr("המסך לא נכבה בזמן האזנה", "Screen doesn’t turn off while listening"), display.keepScreenAwake) { on ->
         settings.change { it.display = it.display.copy(keepScreenAwake = on) }
+    }
+    SwitchRow(tr("מספרים בולטים (שעות, כמויות, טלפונים)", "Bold numbers (times, amounts, phone numbers)"), display.emphasizeNumbers) { on ->
+        settings.change { it.display = it.display.copy(emphasizeNumbers = on) }
     }
 }
 
