@@ -98,6 +98,7 @@ fun SettingsScreen(
     onImportantWords: (List<KeywordAlert>) -> Unit,
     canSay: (String) -> Boolean,
     onSpeak: (String) -> Unit,
+    diagnostics: () -> DiagnosticsFacts,
     heard: List<KeywordHit> = emptyList(),
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
@@ -113,6 +114,11 @@ fun SettingsScreen(
     var showingWords by rememberSaveable { mutableStateOf(false) }
     if (showingWords) {
         WordsScreen(current.vocabulary, onWords, onClose = { showingWords = false })
+        return
+    }
+    var showingDiagnostics by rememberSaveable { mutableStateOf(false) }
+    if (showingDiagnostics) {
+        DiagnosticsScreen(diagnostics, onClose = { showingDiagnostics = false })
         return
     }
     var showingImportantWords by rememberSaveable { mutableStateOf(false) }
@@ -143,6 +149,7 @@ fun SettingsScreen(
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
             if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
             WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
+            DiagnosticsRow(onOpen = { showingDiagnostics = true })
         }
     }
 }
@@ -738,6 +745,16 @@ private fun SpeechSection(rate: Float, onRate: (Float) -> Unit, canSay: (String)
     val sample = tr("שלום, זה קול הטלפון. ככה אני נשמע.", "Hello, this is the phone's voice. This is how I sound.")
     TextButton(onClick = { onSpeak(sample) }, enabled = canSay(sample)) { Text(tr("להשמיע דוגמה", "Play a sample")) }
     Footnote(tr("הכתוביות מושהות בזמן שהטלפון מדבר, ומתחדשות לבד.", "Captions pause while the phone is speaking, and resume on their own."))
+}
+
+/** Last, as on the iPhone, for whoever helps her: what the captions are doing and the report to send. */
+@Composable
+private fun DiagnosticsRow(onOpen: () -> Unit) {
+    Text(
+        tr("אבחון", "Diagnostics"),
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clickable(onClick = onOpen).padding(vertical = 12.dp),
+    )
 }
 
 @Composable

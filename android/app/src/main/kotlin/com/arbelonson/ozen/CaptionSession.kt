@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import android.content.Context
 import android.os.Build
+import androidx.core.content.pm.PackageInfoCompat
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.CaptionPipeline
@@ -253,6 +254,29 @@ class CaptionSession(
             recentlyHeard = pipeline.keywordHits,
         )
         refreshSavingTrouble()
+    }
+
+    /** What the diagnostics screen shows and its report says, as things stand now. */
+    fun diagnostics(): DiagnosticsFacts {
+        val app = context.packageManager.getPackageInfo(context.packageName, 0)
+        return DiagnosticsFacts(
+            phase = pipeline.phase,
+            activeEngine = pipeline.activeEngineKind,
+            settings = settings.current.value.copy(),
+            showing = Localization.language,
+            homeServerCodeSaved = homeServerCode.read() != null,
+            selectedInput = pipeline.availableInputs.firstOrNull { it.uid == pipeline.selectedInputUID },
+            availableInputs = pipeline.availableInputs,
+            stats = pipeline.stats,
+            linesOnScreen = pipeline.segments.size,
+            scheduledRetry = pipeline.scheduledRetry,
+            interruptedBySystem = interruptedBySystem,
+            settingsSaveFailed = settings.saveFailed.value,
+            historySaveFailure = conversations.lastSaveFailure,
+            events = pipeline.eventLog.reportLines { at -> TimeZone.getDefault().getOffset((at * 1_000).toLong()) / 1_000 },
+            device = "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE}",
+            appVersion = "${app.versionName} (${PackageInfoCompat.getLongVersionCode(app)})",
+        )
     }
 
     /** Hides the saving-failed banner until saving works and then fails again. */

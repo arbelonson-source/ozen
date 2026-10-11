@@ -1,0 +1,191 @@
+package com.arbelonson.ozen
+
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import com.arbelonson.ozen.core.AudioLevelHistogram
+import com.arbelonson.ozen.core.AudioPortType
+import com.arbelonson.ozen.core.TranscriptHistoryStore
+import com.arbelonson.ozen.core.tr
+import java.util.Locale
+import java.util.TimeZone
+import kotlinx.coroutines.delay
+
+/**
+ * The iPhone's Diagnostics screen, for whoever helps her with the phone:
+ * what the captions are doing, what went wrong lately, and the report to
+ * send or copy. Its words are technical on purpose. Kept current while it
+ * is open, so the report sent is the one on screen.
+ */
+@Composable
+internal fun DiagnosticsScreen(facts: () -> DiagnosticsFacts, onClose: () -> Unit) {
+    BackHandler(onBack = onClose)
+    var now by remember { mutableStateOf(facts()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(2_000)
+            now = facts()
+        }
+    }
+    var copied by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val stats = now.stats
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(tr("אבחון", "Diagnostics"), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f).semantics { heading() })
+                TextButton(onClick = onClose) { Text(tr("חזרה", "Back")) }
+            }
+            Header(tr("מצב", "Status"))
+            Value(tr("שלב", "Stage"), DiagnosticsReport.stage(now.phase))
+            Value(tr("מנוע פעיל", "Active engine"), now.activeEngine?.displayName ?: "—")
+            Value(tr("מודל Whisper", "Whisper model"), now.settings.whisperModelVariant)
+            Value(tr("שפה", "Language"), now.settings.languageCode)
+            now.phase.failure?.let { Value(tr("פרטי תקלה", "Failure details"), it.detail) }
+
+            Header(tr("אודיו", "Audio"))
+            Value(tr("מיקרופון נבחר", "Selected microphone"), now.selectedInput?.portName ?: "—")
+            Value(tr("מיקרופונים זמינים", "Available microphones"), "${now.availableInputs.size}")
+            for (input in now.availableInputs) {
+                Text("${input.portName} · ${typeName(input.portType)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Value(tr("חבילות אודיו", "Audio chunks"), "${stats.audioChunksReceived}")
+            Value(tr("שניות אודיו", "Audio seconds"), format("%.1f", stats.audioSecondsReceived))
+            Value(tr("החלפות מיקרופון", "Microphone changes"), "${stats.inputChanges}")
+            Value(tr("המיקרופון נתקע", "Microphone stalls"), "${stats.audioStalls}")
+            Value(tr("רמות קול (dBFS)", "Sound levels (dBFS)"), levels(stats.inputLevels))
+            Value(tr("נשמע כדיבור", "Sounded like speech"), stats.speechShare?.let { format("%.0f%%", it * 100) } ?: "—")
+
+            Header(tr("תמלול", "Transcription"))
+            Value(tr("עדכונים מהמנוע", "Updates from engine"), "${stats.tokensReceived}")
+            Value(tr("שורות שנסגרו", "Lines closed"), "${stats.segmentsCommitted}")
+            Value(tr("שורות על המסך", "Lines on screen"), "${now.linesOnScreen}")
+            Value(tr("פיגור כתוביות", "Caption lag"), stats.captionLagSeconds?.let { format(tr("%.1f שנ׳", "%.1f s"), it) } ?: "—")
+            Value(tr("הפעלות מחדש", "Restarts"), "${stats.engineRestarts}")
+            stats.sessionStartedAt?.let { started ->
+                Value(tr("ההאזנה התחילה", "Listening started"), TranscriptHistoryStore.formattedClockTime(started, TimeZone.getDefault().getOffset((started * 1_000).toLong()) / 1_000))
+            }
+
+            Header(tr("התאוששות", "Recovery"))
+            Value(tr("ניסיון חוזר אוטומטי", "Automatic retry"), DiagnosticsReport.retry(now.scheduledRetry, System.currentTimeMillis() / 1_000.0))
+            Value(tr("שיחת טלפון תופסת את האודיו", "Phone call is using the audio"), if (now.interruptedBySystem) tr("כן", "Yes") else tr("לא", "No"))
+            Value(tr("שמירת הגדרות", "Settings save"), if (now.settingsSaveFailed) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
+            Value(tr("שמירת שיחות", "Conversation history save"), if (now.historySaveFailure != null) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
+
+            Header(tr("אירועים אחרונים", "Recent events"))
+            if (now.events.isEmpty()) {
+                Text(tr("עוד לא קרה כלום", "Nothing has happened yet"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                // English, so left to right even with the app in Hebrew.
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Column {
+                        for (line in now.events.takeLast(RECENT_EVENTS).reversed()) {
+                            Text(line, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            }
+            Text(tr("החדש ביותר למעלה. הדוח המועתק כולל את כל הרשימה.", "Newest at the top. The copied report includes the full list."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            OutlinedButton(onClick = { context.startActivity(reportSheet(DiagnosticsReport.text(facts()))) }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+                Text(tr("שליחת הדוח", "Send report"))
+            }
+            OutlinedButton(
+                onClick = {
+                    copyReport(context, DiagnosticsReport.text(facts()))
+                    copied = true
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(if (copied) tr("הועתק", "Copied") else tr("העתקת הדוח", "Copy report"))
+            }
+        }
+    }
+}
+
+@Composable
+private fun Header(text: String) {
+    Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 16.dp).semantics { heading() })
+}
+
+@Composable
+private fun Value(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+private fun typeName(type: AudioPortType): String = when (type) {
+    AudioPortType.BuiltInMic -> tr("מובנה", "Built-in")
+    AudioPortType.Bluetooth -> "Bluetooth"
+    AudioPortType.Wired -> tr("חוטי", "Wired")
+    AudioPortType.Usb -> "USB"
+    AudioPortType.HearingAid -> tr("מכשיר שמיעה", "Hearing aid")
+    AudioPortType.RemoteMic -> tr("מיקרופון מרוחק", "Remote microphone")
+    AudioPortType.Other -> tr("אחר", "Other")
+}
+
+private fun levels(histogram: AudioLevelHistogram): String {
+    val quiet = histogram.decibels(0.1) ?: return "—"
+    val middle = histogram.decibels(0.5) ?: return "—"
+    val loud = histogram.decibels(0.9) ?: return "—"
+    return tr("שקט %1 · אמצע %2 · חזק %3", "quiet %1 · mid %2 · loud %3", listOf("$quiet", "$middle", "$loud"))
+}
+
+private fun reportSheet(report: String): Intent {
+    val send = Intent(Intent.ACTION_SEND)
+        .setType("text/plain")
+        .putExtra(Intent.EXTRA_SUBJECT, tr("דוח אבחון מאוזן", "Ozen diagnostics report"))
+        .putExtra(Intent.EXTRA_TEXT, report)
+    return Intent.createChooser(send, null)
+}
+
+private fun copyReport(context: Context, report: String) {
+    context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(tr("דוח אבחון מאוזן", "Ozen diagnostics report"), report))
+}
+
+private fun format(pattern: String, value: Double): String = String.format(Locale.ROOT, pattern, value)
+
+private const val RECENT_EVENTS = 12

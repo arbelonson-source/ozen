@@ -1,8 +1,12 @@
 package com.arbelonson.ozen
 
 import android.Manifest
+import android.app.Activity
+import android.app.Instrumentation
 import android.app.Notification
 import android.app.NotificationManager
+import android.content.ClipboardManager
+import android.content.Intent
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import androidx.compose.ui.semantics.SemanticsActions
@@ -49,6 +53,7 @@ import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -547,6 +552,66 @@ class SettingsScreenDeviceTest {
         rate.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0.20"))
         val slow = sampleMillis()
         assertTrue("the sample took $slow ms slow and $fast ms fast", slow > fast * 1.8)
+    }
+
+    @Test
+    fun diagnosticsShowWhatTheCaptionsAreDoingNewestEventFirstAndTheReportGoesOutWithoutThePairingCode() {
+        val started = CopyOnWriteArrayList<Intent>()
+        val sheet = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
+                started += intent
+                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+            }
+        }
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        app.homeServerCode.save("code-for-the-report")
+        app.settings.change { it.homeServerAddress = "192.168.1.20:8765" }
+        compose.runOnUiThread {
+            app.captions.pipeline.systemInterruptionChanged(true)
+            app.captions.pipeline.systemInterruptionChanged(false)
+        }
+        val clipboard = app.getSystemService(ClipboardManager::class.java)
+        compose.runOnUiThread { clipboard.clearPrimaryClip() }
+        instrumentation.addMonitor(sheet)
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
+            compose.onNodeWithText("Stage").assertExists()
+            compose.onNodeWithText(DiagnosticsReport.stage(app.captions.pipeline.phase)).assertExists()
+            val givenBack = compose.onNodeWithText("audio given back", substring = true).performScrollTo().fetchSemanticsNode().positionInRoot.y
+            val taken = compose.onAllNodesWithText("audio taken by a call or another app", substring = true).fetchSemanticsNodes().minOf { it.positionInRoot.y }
+            assertTrue("the newest event is not at the top", givenBack < taken)
+            val calls = { compose.onAllNodesWithText("audio taken by a call or another app", substring = true).fetchSemanticsNodes().size }
+            val before = calls()
+            compose.runOnUiThread { app.captions.pipeline.systemInterruptionChanged(true) }
+            compose.waitUntil(5_000) { calls() == before + 1 }
+            compose.runOnUiThread { app.captions.pipeline.systemInterruptionChanged(false) }
+
+            compose.onNodeWithText("Copy report").performScrollTo().performClick()
+            compose.onNodeWithText("Copied").assertExists()
+            var copied = ""
+            compose.runOnUiThread { copied = clipboard.primaryClip?.getItemAt(0)?.text.toString() }
+            assertTrue(copied, copied.startsWith("Ozen diagnostics\nphase: "))
+            assertTrue(copied, copied.contains("home server: 192.168.1.20:8765 code saved: true"))
+            assertTrue("events not oldest first", copied.lastIndexOf("audio taken by a call or another app") < copied.lastIndexOf("audio given back"))
+            assertFalse("the pairing code went into the report", copied.contains("code-for-the-report"))
+
+            compose.onNodeWithText("Send report").performScrollTo().performClick()
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            assertEquals(Intent.ACTION_CHOOSER, started.single().action)
+            @Suppress("DEPRECATION")
+            val send = started.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+            assertEquals(Intent.ACTION_SEND, send.action)
+            assertEquals("Ozen diagnostics report", send.getStringExtra(Intent.EXTRA_SUBJECT))
+            val sent = send.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+            assertTrue(sent, sent.startsWith("Ozen diagnostics\nphase: ") && sent.contains("audio given back"))
+            assertFalse("the pairing code went into the report", sent.contains("code-for-the-report"))
+
+            compose.onNodeWithText("Back").performClick()
+            compose.onNodeWithText("Diagnostics").assertExists()
+        } finally {
+            instrumentation.removeMonitor(sheet)
+        }
     }
 
     private fun sampleMillis(): Long {
