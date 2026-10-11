@@ -84,6 +84,15 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `a failed save stays on the screen through new captions until it is cleared`() {
+        CaptionState.savingTrouble(true)
+        show(PipelinePhase.Listening, listOf(line("Hello", committed = true)))
+        assertTrue(CaptionState.screen.value.savingTrouble)
+        CaptionState.savingTrouble(false)
+        assertFalse(CaptionState.screen.value.savingTrouble)
+    }
+
+    @Test
     fun `the important words heard lately are the last ten, newest first`() {
         val grandma = UUID.randomUUID()
         val hits = (1..12).map { KeywordHit(segmentID = UUID.randomUUID(), match = KeywordMatch(grandma, "סבתא", "סבתא", 0), timestamp = it.toDouble()) }

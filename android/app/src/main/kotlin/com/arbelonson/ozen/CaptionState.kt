@@ -43,6 +43,7 @@ data class CaptionScreenState(
     val heard: HeardWord? = null,
     val recentlyHeard: List<KeywordHit> = emptyList(),
     val speaking: Boolean = false,
+    val savingTrouble: Boolean = false,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
@@ -117,6 +118,7 @@ object CaptionState {
             heard = state.value.heard,
             recentlyHeard = recentlyHeard.takeLast(10).reversed(),
             speaking = state.value.speaking,
+            savingTrouble = state.value.savingTrouble,
         )
     }
 
@@ -128,6 +130,11 @@ object CaptionState {
     /** The phone started or stopped saying something for her: the caption screen's Say button stops it meanwhile. */
     fun speaking(on: Boolean) {
         state.value = state.value.copy(speaking = on)
+    }
+
+    /** Saving on the phone failed: the caption screen says so until she taps it away. */
+    fun savingTrouble(show: Boolean) {
+        state.value = state.value.copy(savingTrouble = show)
     }
 
     /** A star given or taken away shows on the line at once, before the next captions. */

@@ -105,6 +105,7 @@ import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.UncertainWords
 import com.arbelonson.ozen.core.tr
 import java.text.Bidi
@@ -268,6 +269,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     onAddWord = { app.captions.addWord(it) },
                     onAskToRepeat = { app.captions.askToRepeat() }.takeIf { app.captions.canAskToRepeat() },
                     onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
+                    onDismissSavingTrouble = app.captions::dismissSavingTrouble,
                 )
             }
             PairingDialogs(app.pairing)
@@ -351,6 +353,7 @@ private fun CaptionScreen(
     onAddWord: (String) -> Unit,
     onAskToRepeat: (() -> Unit)?,
     onSay: () -> Unit,
+    onDismissSavingTrouble: () -> Unit,
 ) {
     val list = rememberLazyListState()
     val context = LocalContext.current
@@ -433,7 +436,14 @@ private fun CaptionScreen(
                     }
                 }
             }
-            shownWord?.let { HeardPill(it.said, Modifier.align(Alignment.TopCenter)) }
+            Column(
+                modifier = Modifier.align(Alignment.TopCenter).padding(horizontal = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                shownWord?.let { HeardPill(it.said, Modifier) }
+                if (state.savingTrouble) SavingTroubleBanner(onDismissSavingTrouble)
+            }
         }
         AnimatedVisibility(visible = !hidden) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -462,6 +472,9 @@ private fun CaptionScreen(
 private fun secondsNow() = System.currentTimeMillis() / 1_000.0
 
 private const val HEARD_SHOWN_SECONDS = 5.0
+
+// A deep orange as on the iPhone, with white words on it at 5.5:1.
+private val TROUBLE_ORANGE = Color(red = 0.7f, green = 0.28f, blue = 0f)
 
 @Composable
 private fun screenReaderOn(): Boolean {
@@ -697,6 +710,39 @@ private fun BellMark(fontSize: Double, colour: Color) {
         }
         drawPath(bell, colour)
         drawCircle(colour, radius = w * 0.1f, center = Offset(w * 0.5f, h * 0.86f))
+    }
+}
+
+/**
+ * "Saving on the phone failed" over the captions, as on the iPhone, until
+ * she taps it away; it comes back only once saving has worked and then
+ * failed again. The iPhone's way to free space is left out of the words.
+ */
+@Composable
+private fun SavingTroubleBanner(onDismiss: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(TROUBLE_ORANGE, RoundedCornerShape(16.dp))
+            .clickable(onClickLabel = tr("סגירה", "Close"), onClick = onDismiss)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Text("⚠", color = Color.White, fontSize = 26.sp, modifier = Modifier.clearAndSetSemantics {})
+        Column(Modifier.weight(1f)) {
+            Text(SavingTroubleNotice.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                tr(
+                    "כנראה שהטלפון מלא. שיחות והגדרות חדשות לא יישמרו עד שיתפנה מקום. בקשו ממי שעוזר לך עם הטלפון לפנות מקום.",
+                    "The phone is probably full. New conversations and settings won't be saved until space frees up. Ask whoever helps you with the phone to free some.",
+                ),
+                color = Color.White,
+                fontSize = 16.sp,
+            )
+        }
+        Text("✕", color = Color.White.copy(alpha = 0.7f), fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics {})
     }
 }
 

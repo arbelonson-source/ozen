@@ -486,6 +486,80 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithText("Say something").assertDoesNotExist()
     }
 
+    @Test
+    fun aSaveThatFailsShowsTheSavingTroubleBannerUntilTappedAwayAndAgainOnlyAfterSavingWorked() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val settingsFile = File(app.filesDir, "ozen-settings.json")
+        val settingsBefore = settingsFile.readBytes()
+        val folder = File(app.filesDir, CaptionSession.HISTORY_FOLDER)
+        val store = TranscriptHistoryStore(folder)
+        val savingBefore = app.settings.current.value.saveHistory
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 600
+        val line = SavedSegment(UUID.randomUUID(), "The pharmacy closes early on Friday", null, null, startedAt, true)
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 60,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(line),
+        )
+        val title = "Saving on the phone failed"
+        val banner = { compose.onAllNodesWithText(title, substring = true).fetchSemanticsNodes().isNotEmpty() }
+        val breakSettings = {
+            settingsFile.delete()
+            settingsFile.mkdir()
+            File(settingsFile, "in the way").writeText("")
+        }
+        val fixSettings = {
+            settingsFile.deleteRecursively()
+            settingsFile.writeBytes(settingsBefore)
+        }
+        val save = { app.settings.change { it.display = it.display.copy() } }
+        store.save(record)
+        try {
+            app.settings.change { it.saveHistory = true }
+            assertFalse(within(1_000) { banner() })
+
+            breakSettings()
+            save()
+            compose.waitUntil(5_000) { banner() }
+            compose.onNodeWithText("The phone is probably full. New conversations and settings won't be saved until space frees up. Ask whoever helps you with the phone to free some.", substring = true).assertExists()
+            compose.onNodeWithText(title, substring = true).performClick()
+            compose.waitUntil(5_000) { !banner() }
+            save()
+            assertFalse("back while saving still fails", within(1_500) { banner() })
+            fixSettings()
+            save()
+            breakSettings()
+            save()
+            compose.waitUntil(5_000) { banner() }
+            fixSettings()
+            save()
+            compose.waitUntil(5_000) { !banner() }
+
+            folder.setWritable(false, false)
+            app.captions.savedConversations.rename(record.id, "Pharmacy")
+            compose.waitUntil(5_000) { banner() }
+            app.settings.change { it.saveHistory = false }
+            compose.waitUntil(5_000) { !banner() }
+            app.settings.change { it.saveHistory = true }
+            compose.waitUntil(5_000) { banner() }
+            folder.setWritable(true, false)
+            app.captions.savedConversations.rename(record.id, "Pharmacy")
+            compose.waitUntil(5_000) { !banner() }
+            folder.setWritable(false, false)
+            app.captions.savedConversations.toggleStar(record.id, line.id)
+            compose.waitUntil(5_000) { banner() }
+        } finally {
+            folder.setWritable(true, false)
+            if (settingsFile.isDirectory) fixSettings()
+            app.captions.savedConversations.rename(record.id, "")
+            app.settings.change { it.saveHistory = savingBefore }
+            store.delete(record.id)
+        }
+    }
+
     private fun within(millis: Long, condition: () -> Boolean): Boolean {
         val until = System.currentTimeMillis() + millis
         while (System.currentTimeMillis() < until) {

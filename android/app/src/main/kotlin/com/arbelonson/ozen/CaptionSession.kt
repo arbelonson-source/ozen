@@ -13,6 +13,7 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SpeakerEmbedding
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
@@ -30,6 +31,7 @@ import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class CaptionSession(
@@ -56,6 +58,7 @@ class CaptionSession(
     private val attention = KeywordAttention()
     private val awayAlerts = AwayAlerts()
     private val notifier = AlertNotifier(context)
+    private val savingTrouble = SavingTroubleNotice()
 
     /**
      * The phone saying something for her, as on the iPhone: captions pause
@@ -121,9 +124,12 @@ class CaptionSession(
             publish()
         }
 
-        override fun rename(id: UUID, title: String) = conversations.rename(id, title)
+        override fun rename(id: UUID, title: String) {
+            conversations.rename(id, title)
+            refreshSavingTrouble()
+        }
 
-        override fun toggleStar(sessionID: UUID, segmentID: UUID) = conversations.toggleStar(sessionID, segmentID)
+        override fun toggleStar(sessionID: UUID, segmentID: UUID) = conversations.toggleStar(sessionID, segmentID).also { refreshSavingTrouble() }
 
         override fun switchSaving(on: Boolean) {
             conversations.switchSaving(on)
@@ -163,6 +169,7 @@ class CaptionSession(
         pipeline.onCaptionsChanged = ::publish
         pipeline.onKeywordHits = ::wordsHeard
         replies.onSpeaking = CaptionState::speaking
+        scope.launch { combine(settings.current, settings.saveFailed) { _, _ -> }.collect { refreshSavingTrouble() } }
     }
 
     fun listen() {
@@ -245,6 +252,21 @@ class CaptionSession(
             keywordHits = pipeline.keywordHitSegmentIDs,
             recentlyHeard = pipeline.keywordHits,
         )
+        refreshSavingTrouble()
+    }
+
+    /** Hides the saving-failed banner until saving works and then fails again. */
+    fun dismissSavingTrouble() {
+        savingTrouble.dismiss()
+        refreshSavingTrouble()
+    }
+
+    private fun refreshSavingTrouble() {
+        savingTrouble.update(
+            settingsFailed = settings.saveFailed.value,
+            historyFailed = settings.current.value.saveHistory && conversations.lastSaveFailure != null,
+        )
+        CaptionState.savingTrouble(savingTrouble.shouldShow)
     }
 
     /** What was said since the last autosave is written first, so a conversation opened from the captions has every line. */
