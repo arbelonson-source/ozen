@@ -291,6 +291,46 @@ class CaptionSessionDeviceTest {
         }
     }
 
+    @Test
+    fun aSoundMutedWhileListeningStaysQuietAndAlertsAgainOnceSwitchedBackOn() = runBlocking {
+        val work = File(context.cacheDir, "sound-mute-test").apply { deleteRecursively(); mkdirs() }
+        val rate = 16_000
+        val beep = FloatArray(rate / 2) { (0.3 * sin(2 * PI * 3_100.0 * it / rate)).toFloat() }
+        val alarm = (beep + FloatArray(rate / 2)).let { it + it + it } + FloatArray(rate)
+        val audio = ClipAudio(FloatArray(6 * rate) + alarm + alarm + alarm + alarm + FloatArray(14 * rate) + alarm + alarm + alarm + alarm)
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        settings.change {
+            it.engine = TranscriptionEngineKind.HomeServer
+            it.homeServerAddress = "127.0.0.1:9"
+        }
+        val code = HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()).apply { save("code-for-the-test") }
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, settings, code, CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), audio, historyFolder = File(work, "history"))
+        }
+        try {
+            withContext(Dispatchers.Main) { session.listen() }
+            val started = SystemClock.elapsedRealtime()
+            val soundsOnly = suspend { withContext(Dispatchers.Main) { session.pipeline.isListeningForSoundsOnly } }
+            while (!soundsOnly() && SystemClock.elapsedRealtime() - started < 30_000) delay(100)
+            assertTrue("never listened for sounds alone", soundsOnly())
+            val sounds = settings.current.value.soundAlerts
+            withContext(Dispatchers.Main) { session.setSoundAlerts(sounds.withMuted("smoke_detector", true)) }
+            delay(26_000)
+            assertEquals(null, CaptionState.screen.value.sound)
+
+            withContext(Dispatchers.Main) { session.setSoundAlerts(sounds) }
+            val unmuted = SystemClock.elapsedRealtime()
+            while (CaptionState.screen.value.sound == null && SystemClock.elapsedRealtime() - unmuted < 40_000) delay(500)
+            assertEquals("smoke_detector", CaptionState.screen.value.sound?.event?.identifier)
+        } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+        }
+    }
+
     private class ClipAudio(private val samples: FloatArray) : AudioCapturing {
         @Volatile
         var fedAll = false
