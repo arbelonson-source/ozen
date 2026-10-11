@@ -2,11 +2,13 @@ package com.arbelonson.ozen
 
 import android.Manifest
 import android.media.AudioManager
+import android.media.AudioRecord
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AudioPermission
 import com.arbelonson.ozen.core.AudioPortType
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +70,32 @@ class AndroidAudioCaptureDeviceTest {
             capture.silencedChanged(true)
             capture.stopCapture()
         }
+        Thread.sleep(AndroidAudioCapture.CALL_CHECK_MS * 3)
+        assertEquals("told while the call is still on", listOf(true), told.toList())
+        mode.set(AudioManager.MODE_NORMAL)
+        val deadline = System.currentTimeMillis() + AndroidAudioCapture.CALL_CHECK_MS * 5
+        while (told.size < 2 && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        assertEquals(listOf(true, false), told.toList())
+    }
+
+    @Test
+    fun aCallThatEndsAfterTheMicrophoneFailedDuringItIsStillToldEnded(): Unit = runBlocking {
+        val capture = AndroidAudioCapture(context)
+        val told = CopyOnWriteArrayList<Boolean>()
+        val mode = AtomicInteger(AudioManager.MODE_IN_CALL)
+        val broken = AtomicBoolean(false)
+        withContext(Dispatchers.Main) { capture.prepareSession(null) }
+        capture.readChunk = { record, buffer -> if (broken.get()) AudioRecord.ERROR_INVALID_OPERATION else record.read(buffer, 0, buffer.size) }
+        val recording = CompletableDeferred<Unit>()
+        val heard = async(Dispatchers.Default) { capture.startCapture().onEach { recording.complete(Unit) }.toList() }
+        withTimeout(10_000) { recording.await() }
+        instrumentation.runOnMainSync {
+            capture.onInterruption = { told += it }
+            capture.audioMode = { mode.get() }
+            capture.silencedChanged(true)
+        }
+        broken.set(true)
+        withTimeout(3_000) { heard.await() }
         Thread.sleep(AndroidAudioCapture.CALL_CHECK_MS * 3)
         assertEquals("told while the call is still on", listOf(true), told.toList())
         mode.set(AudioManager.MODE_NORMAL)

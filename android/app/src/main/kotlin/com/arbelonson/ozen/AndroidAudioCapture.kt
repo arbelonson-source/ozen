@@ -66,6 +66,9 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     /** The phone's audio mode, read to tell a call's end with nothing recording; a seam for tests. */
     internal var audioMode: () -> Int = { manager.mode }
 
+    /** One read from the recording; a seam for tests to make it fail. */
+    internal var readChunk: (AudioRecord, ShortArray) -> Int = { record, buffer -> record.read(buffer, 0, buffer.size) }
+
     // With no recording the silencing can't be heard to lift, so the call's
     // end is told by the phone leaving call mode, as the iPhone tells it
     // whether or not it is recording: captions that failed or were stopped
@@ -155,7 +158,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
             var lost = false
             try {
                 while (running) {
-                    val read = made.read(buffer, 0, CHUNK)
+                    val read = readChunk(made, buffer)
                     if (read < 0) {
                         lost = true
                         break
