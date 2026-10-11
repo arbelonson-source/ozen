@@ -10,6 +10,7 @@ import com.arbelonson.ozen.core.WhisperLoadedModel
 import com.arbelonson.ozen.core.WhisperModelLoader
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,12 @@ class ModelFileLoader(
     override suspend fun pendingDownloadMegabytes(): Int? = if (file.isFile) null else download?.pendingMegabytes()
 
     override suspend fun hasModelOnPhone(): Boolean = file.isFile
+
+    @Volatile private var downloading: AtomicBoolean? = null
+
+    override suspend fun cancelDownload() {
+        downloading?.set(true)
+    }
 
     override suspend fun load(
         languageCode: String,
@@ -53,12 +60,15 @@ class ModelFileLoader(
     }
 
     private suspend fun fetch(download: PhoneModelDownloader, cellularAllowed: Boolean, progress: (EnginePreparationProgress) -> Unit) {
+        val stopped = AtomicBoolean(false)
+        downloading = stopped
         try {
             withContext(Dispatchers.IO) {
                 val job = coroutineContext.job
                 var shown = -1.0
                 download.download { fraction ->
                     job.ensureActive()
+                    if (stopped.get()) throw IOException("stopped: another model was chosen")
                     if (ModelDownloadGate.decide(network(), cellularAllowed) == ModelDownloadGate.Decision.WaitForWiFi) {
                         throw IOException("Wi-Fi went, and downloads on cellular data are off")
                     }
@@ -72,6 +82,8 @@ class ModelFileLoader(
             throw stopped
         } catch (error: Exception) {
             throw EngineUnavailability(EngineUnavailability.Kind.ModelDownloadFailed, "${file.name}: $error")
+        } finally {
+            downloading = null
         }
     }
 }

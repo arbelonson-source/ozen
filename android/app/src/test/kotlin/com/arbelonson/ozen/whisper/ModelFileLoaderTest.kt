@@ -22,6 +22,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -149,6 +150,23 @@ class ModelFileLoaderTest {
         }
         assertEquals(EngineUnavailability.Kind.ModelLoadFailed, failure.kind)
         assertContentEquals(data, file.readBytes())
+    }
+
+    @Test
+    fun `a download of a model no longer chosen is stopped when asked, ends as a download that did not finish, and keeps what came`() = runBlocking {
+        val served = ChunkedModel(data, pause = 20)
+        val loader = loader(served)
+        val started = CompletableDeferred<Unit>()
+        val loading = async(Dispatchers.Default) {
+            runCatching { loader.load("en", cellularDownloadAllowed = true) { if ((it.fraction ?: 0.0) > 0.0) started.complete(Unit) } }.exceptionOrNull()
+        }
+        withTimeout(10_000) { started.await() }
+        loader.cancelDownload()
+        val failure = withTimeout(10_000) { loading.await() }
+        assertEquals(EngineUnavailability.Kind.ModelDownloadFailed, (failure as? EngineUnavailability)?.kind, "ended with $failure")
+        val kept = File(file.path + ".part").length()
+        assertTrue(kept in 1 until data.size, "kept $kept of ${data.size}")
+        assertFalse(file.exists())
     }
 
     @Test
