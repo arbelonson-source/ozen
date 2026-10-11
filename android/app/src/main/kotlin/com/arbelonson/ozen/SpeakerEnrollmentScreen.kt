@@ -65,7 +65,9 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
             }
         }
     }
-    BackHandler(onBack = cancel)
+    // As the iPhone's sheet, which can't be swiped away mid-recording: a
+    // stray back gesture would throw away half a minute of her voice.
+    BackHandler { if (recording == null) cancel() }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier

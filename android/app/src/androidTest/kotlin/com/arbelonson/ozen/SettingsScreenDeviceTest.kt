@@ -335,6 +335,31 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun backWhileAVoiceIsRecordingKeepsRecordingAsOnTheIPhoneButCancelStillStopsIt() {
+        val book = RecordingBook()
+        val closed = CompletableDeferred<Unit>()
+        compose.runOnUiThread { compose.activity.setContent { SpeakerEnrollmentScreen(book, onClose = { closed.complete(Unit) }) } }
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.EditableText)).performTextInput("Grandma")
+        keyboardAway()
+        compose.onNodeWithText("Record and save (30 seconds)").performClick()
+        compose.waitUntil(5_000) { book.asked.size == 1 }
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
+        assertFalse(book.stopped)
+        assertFalse(closed.isCompleted)
+        compose.onNodeWithText("Recording… 0/30 seconds").assertExists()
+
+        compose.onNodeWithText("Cancel").performClick()
+        compose.waitUntil(5_000) { book.stopped && closed.isCompleted }
+
+        val closedAgain = CompletableDeferred<Unit>()
+        compose.runOnUiThread { compose.activity.setContent { SpeakerEnrollmentScreen(RecordingBook(), onClose = { closedAgain.complete(Unit) }) } }
+        compose.onNodeWithText("New speaker").assertExists()
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntil(5_000) { closedAgain.isCompleted }
+    }
+
+    @Test
     fun recordingAVoiceShowsHowFarItIsCanBeStoppedWithoutSavingAndSaysWhenItWasTooQuiet() {
         val book = RecordingBook()
         val closed = CompletableDeferred<Unit>()
