@@ -591,7 +591,7 @@ class CaptionScreenDeviceTest {
 
             compose.onNodeWithText("Done").performScrollTo().performClick()
             val said = compose.onAllNodes(hasClickAction() and hasAnyAncestor(hasScrollAction())).fetchSemanticsNodes()
-                .mapNotNull { node -> node.config.getOrNull(SemanticsProperties.Text)?.joinToString("")?.takeIf { it in english } }
+                .mapNotNull { node -> runCatching { node.config[SemanticsProperties.Text] }.getOrNull()?.joinToString("")?.takeIf { it in english } }
             assertEquals(english.dropLast(2) + english.last() + english[english.size - 2], said)
         } finally {
             app.settings.change { it.quickPhrases = phrasesBefore }
