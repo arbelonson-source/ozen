@@ -128,12 +128,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Turning the phone or a new theme rebuilds the activity; the
+        // screens below Settings are kept by rememberSaveable already.
+        showingSettings.value = savedInstanceState?.getBoolean(SHOWING_SETTINGS) == true
         val phoneLanguages = LocaleList.getDefault().let { list -> (0 until list.size()).map { list[it].toLanguageTag() } }
         Localization.language = AppLanguage.System.resolved(phoneLanguages)
         enableEdgeToEdge()
         val app = application as OzenApplication
         setContent { OzenApp(app, showingSettings, onStatusTap = ::statusTapped, onLightScreen = ::systemBarsFor) }
         openLink(intent)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(SHOWING_SETTINGS, showingSettings.value)
     }
 
     override fun onStart() {
@@ -193,6 +201,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private companion object {
+        const val SHOWING_SETTINGS = "showingSettings"
         const val TRANSPARENT = android.graphics.Color.TRANSPARENT
         // The scrims enableEdgeToEdge draws behind three-button navigation by default.
         val LIGHT_SCRIM = android.graphics.Color.argb(0xe6, 0xff, 0xff, 0xff)
