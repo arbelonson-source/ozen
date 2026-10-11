@@ -4,6 +4,9 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -15,6 +18,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +57,7 @@ class SettingsScreenDeviceTest {
     private var beamBefore = 0
     private lateinit var modelBefore: String
     private lateinit var displayBefore: DisplayPreferences
+    private lateinit var wordsBefore: List<String>
 
     @Before
     fun remember() {
@@ -62,6 +68,7 @@ class SettingsScreenDeviceTest {
         beamBefore = app.settings.current.value.homeServerBeam
         modelBefore = app.settings.current.value.cloudModel
         displayBefore = app.settings.current.value.display
+        wordsBefore = app.settings.current.value.vocabulary
         app.cloudKeys.remove(CloudProvider.Deepgram)
         app.homeServerCode.remove()
         app.settings.change { it.homeServerAddress = "" }
@@ -78,6 +85,7 @@ class SettingsScreenDeviceTest {
             it.homeServerBeam = beamBefore
             it.cloudModel = modelBefore
             it.display = displayBefore
+            it.vocabulary = wordsBefore
         }
         compose.runOnUiThread { CaptionState.clear() }
     }
@@ -259,6 +267,60 @@ class SettingsScreenDeviceTest {
             compose.onAllNodesWithText("No answer from the computer", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         assertReadableOnWhite("No answer from the computer")
+    }
+
+    @Test
+    fun namesAndWordsAreAddedFirstListedOnceAndDeletedInSettings() {
+        app.settings.change { it.vocabulary = emptyList() }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Names and special words").performScrollTo()
+        compose.onNode(hasText("Names and special words") and hasText("Empty")).assertExists()
+        compose.onNodeWithText("Names and special words").performClick()
+        compose.onNodeWithText("No names yet").assertExists()
+        val field = compose.onNode(hasSetTextAction())
+        field.performTextInput("Shira")
+        compose.onNodeWithText("Add").performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.vocabulary == listOf("Shira") }
+        field.performTextInput("Dr. Levi")
+        field.performImeAction()
+        compose.waitUntil(5_000) { app.settings.current.value.vocabulary == listOf("Dr. Levi", "Shira") }
+        compose.onNodeWithText("2 / 200").assertExists()
+
+        field.performTextInput("shira")
+        compose.onNodeWithText("\u201CShira\u201D is already in the list.").assertExists()
+        compose.onNodeWithText("Add").assertIsNotEnabled()
+        field.performImeAction()
+        assertEquals(listOf("Dr. Levi", "Shira"), app.settings.current.value.vocabulary)
+        field.performTextClearance()
+
+        compose.onNodeWithText("Shira").performTouchInput { longClick() }
+        compose.onNodeWithText("Delete").performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.vocabulary == listOf("Dr. Levi") }
+        compose.onNodeWithText("Back").performClick()
+        compose.onNodeWithText("Names and special words").performScrollTo()
+        compose.onNode(hasText("Names and special words") and hasText("1")).assertExists()
+
+        compose.onNodeWithText("Names and special words").performClick()
+        val word = compose.onNode(hasText("Dr. Levi") and SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)).fetchSemanticsNode()
+        val delete = word.config[SemanticsActions.CustomActions].single { it.label == "Delete" }
+        compose.runOnUiThread { delete.action() }
+        compose.waitUntil(5_000) { app.settings.current.value.vocabulary.isEmpty() }
+        compose.onNodeWithText("No names yet").assertExists()
+    }
+
+    @Test
+    fun aFullWordListSaysSoAndTakesNoMore() {
+        val full = (1..200).map { "Name number $it" }
+        app.settings.change { it.vocabulary = full }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Names and special words").performScrollTo().performClick()
+        compose.onNodeWithText("200 / 200").assertExists()
+        compose.onNode(hasSetTextAction()).performTextInput("One more")
+        compose.onNodeWithText("The list is full. Delete a word to add another.").assertExists()
+        compose.onNodeWithText("Add").assertIsNotEnabled()
+        compose.onNode(hasSetTextAction()).performImeAction()
+        compose.waitForIdle()
+        assertEquals(full, app.settings.current.value.vocabulary)
     }
 
     private fun assertReadableOnWhite(text: String) {

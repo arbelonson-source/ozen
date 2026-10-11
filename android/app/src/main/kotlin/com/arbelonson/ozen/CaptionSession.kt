@@ -177,9 +177,12 @@ class CaptionSession(
     /** What was said since the last autosave is written first, so a conversation opened from the captions has every line. */
     fun saveBeforeReading() = conversations.save(ended = false)
 
-    /** A word the captions got wrong goes first in the word list, and the engine has it from the next sentence. */
-    fun addWord(word: String) {
-        settings.change { it.vocabulary = VocabularyHints.normalized(listOf(word) + it.vocabulary) }
+    /** A word the captions got wrong goes first in the word list. */
+    fun addWord(word: String) = setWords(listOf(word) + settings.current.value.vocabulary)
+
+    /** The names and words the engines are given, in order; a running engine has them from the next sentence. */
+    fun setWords(words: List<String>) {
+        settings.change { it.vocabulary = VocabularyHints.normalized(words) }
         val terms = settings.current.value.vocabulary
         scope.launch { pipeline.setVocabulary(terms) }
     }

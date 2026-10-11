@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -74,7 +75,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onClose: () -> Unit) {
+fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onClose: () -> Unit, onWords: (List<String>) -> Unit) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
     val addressDraft = rememberSaveable(current.homeServerAddress) { mutableStateOf(current.homeServerAddress) }
@@ -84,6 +85,11 @@ fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onC
     val close = {
         engineSettings.saveUnsavedEntries(cloudKeyDraft.value, addressDraft.value, codeDraft.value)
         onClose()
+    }
+    var showingWords by rememberSaveable { mutableStateOf(false) }
+    if (showingWords) {
+        WordsScreen(current.vocabulary, onWords, onClose = { showingWords = false })
+        return
     }
     BackHandler(onBack = close)
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -103,6 +109,7 @@ fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onC
             EngineSection(engineSettings, current)
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
             if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
+            WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
         }
     }
 }
@@ -539,6 +546,19 @@ private fun ChoiceRow(title: String, summary: String?, selected: Boolean, onSele
             summary?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
+}
+
+/** The names and words every engine is given as a hint, after the engine as on the iPhone. */
+@Composable
+private fun WordsSection(count: Int, onOpen: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clickable(onClick = onOpen).padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(tr("שמות ומילים מיוחדות", "Names and special words"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(if (count == 0) tr("ריק", "Empty") else "$count", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Footnote(tr("כל המנועים מקבלים את הרשימה כרמז, כדי ששמות של בני משפחה ייכתבו נכון.", "Every engine gets the list as a hint, so family members’ names are spelled correctly."))
 }
 
 @Composable
