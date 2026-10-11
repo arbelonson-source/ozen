@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,6 +45,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -103,12 +105,12 @@ interface SavedConversations {
  * to read it back, or delete it. Everything stays on the phone.
  */
 @Composable
-fun HistoryScreen(conversations: SavedConversations, saving: Boolean, retention: HistoryRetention, onClose: () -> Unit) {
+fun HistoryScreen(conversations: SavedConversations, saving: Boolean, retention: HistoryRetention, marksUncertain: Boolean, onClose: () -> Unit) {
     var openID by rememberSaveable { mutableStateOf<String?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     val open = openID
     if (open != null) {
-        ConversationScreen(conversations, UUID.fromString(open), query, onClose = { openID = null })
+        ConversationScreen(conversations, UUID.fromString(open), query, marksUncertain, onClose = { openID = null })
         return
     }
     BackHandler(onBack = onClose)
@@ -311,10 +313,12 @@ private class OpenConversation(
  * One saved conversation read back; the one still being captioned is read
  * again every twenty seconds, as it keeps growing on disk. Opened from a
  * search, it opens at the first line that matched, the matching lines are
- * marked, and a button steps through them, as on the iPhone.
+ * marked, and a button steps through them, as on the iPhone. Share sends
+ * it as text, with the lines that may have been misheard saying so in
+ * words while the caption screen marks them.
  */
 @Composable
-private fun ConversationScreen(conversations: SavedConversations, id: UUID, query: String, onClose: () -> Unit) {
+private fun ConversationScreen(conversations: SavedConversations, id: UUID, query: String, marksUncertain: Boolean, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     DisposableEffect(id) {
         conversations.opened(id)
@@ -348,6 +352,7 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
         }
     }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var confirmingDelete by remember { mutableStateOf(false) }
     var deleteError by remember { mutableStateOf<String?>(null) }
     val record = loaded?.record
@@ -358,6 +363,9 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
             shown.record == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"))
             else -> {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { context.startActivity(shareSheet(shown.record, marksUncertain)) }) {
+                        Text(tr("שיתוף", "Share"))
+                    }
                     TextButton(onClick = { confirmingDelete = true }) {
                         Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error)
                     }
@@ -508,6 +516,14 @@ private fun Heading(text: String) {
 
 // The iPhone's mark for a line a search found: its yellow at 30%.
 private val SEARCH_MATCH = Color(red = 1f, green = 0.84f, blue = 0.04f, alpha = 0.3f)
+
+private fun shareSheet(record: TranscriptSessionRecord, marksUncertain: Boolean): Intent = Intent.createChooser(
+    Intent(Intent.ACTION_SEND)
+        .setType("text/plain")
+        .putExtra(Intent.EXTRA_SUBJECT, tr("שיחה מאוזן", "Conversation from Ozen"))
+        .putExtra(Intent.EXTRA_TEXT, TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain)),
+    null,
+)
 
 private fun localOffset(at: Double): Int =
     ZoneId.systemDefault().rules.getOffset(Instant.ofEpochMilli((at * 1_000).toLong())).totalSeconds

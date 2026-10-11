@@ -1,5 +1,8 @@
 package com.arbelonson.ozen
 
+import android.app.Activity
+import android.app.Instrumentation
+import android.content.Intent
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -22,7 +25,10 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
+import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -43,6 +49,7 @@ class HistoryScreenDeviceTest {
     private val seeded = mutableListOf<UUID>()
     private val savingBefore = app.settings.current.value.saveHistory
     private val retentionBefore = app.settings.current.value.historyRetention
+    private val displayBefore = app.settings.current.value.display
 
     @After
     fun restore() {
@@ -50,6 +57,7 @@ class HistoryScreenDeviceTest {
         app.settings.change {
             it.saveHistory = savingBefore
             it.historyRetention = retentionBefore
+            it.display = displayBefore
         }
     }
 
@@ -126,6 +134,66 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Come back at 10:30", substring = true).performClick()
         compose.waitUntil(5_000) { shownLine("Come back at 10:30 on Sunday") }
     }
+
+    @Test
+    fun shareOffersTheWholeConversationAsTextAndSaysWhichLinesMayBeMisheard() {
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 30,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(
+                SavedSegment(UUID.randomUUID(), "Pharmacy test it closes at nine", "Dana", null, startedAt, true),
+                SavedSegment(UUID.randomUUID(), "Pharmacy test two pills after dinner", null, null, startedAt + 5, true, confidence = 0.05f),
+            ),
+        )
+        store.save(record)
+        seeded += record.id
+        val started = CopyOnWriteArrayList<Intent>()
+        val sheet = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
+                started += intent
+                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+            }
+        }
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.addMonitor(sheet)
+        try {
+            app.settings.change { it.display = it.display.copy(markUncertainLines = true) }
+            compose.onNodeWithText("History").performClick()
+            compose.onNodeWithText("Pharmacy test it closes", substring = true).performClick()
+            compose.waitUntil(5_000) { shownLine("Pharmacy test two pills") }
+            compose.onNodeWithText("Share").performClick()
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            val chooser = started.single()
+            assertEquals(Intent.ACTION_CHOOSER, chooser.action)
+            @Suppress("DEPRECATION")
+            val send = chooser.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+            assertEquals(Intent.ACTION_SEND, send.action)
+            assertEquals("text/plain", send.type)
+            assertEquals("Conversation from Ozen", send.getStringExtra(Intent.EXTRA_SUBJECT))
+            val marked = send.getStringExtra(Intent.EXTRA_TEXT)!!
+            assertEquals(TranscriptHistoryStore.exportText(record, ::offsetHere, marksUncertain = true), marked)
+            assertTrue(marked, marked.contains("Dana: Pharmacy test it closes at nine"))
+            assertTrue(marked, marked.contains("May not have been heard correctly. Pharmacy test two pills after dinner"))
+
+            started.clear()
+            app.settings.change { it.display = it.display.copy(markUncertainLines = false) }
+            compose.waitForIdle()
+            compose.onNodeWithText("Share").performClick()
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            @Suppress("DEPRECATION")
+            val plain = started.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!.getStringExtra(Intent.EXTRA_TEXT)!!
+            assertFalse(plain, plain.contains("May not have been heard correctly"))
+            assertTrue(plain, plain.contains("Pharmacy test two pills after dinner"))
+        } finally {
+            instrumentation.removeMonitor(sheet)
+        }
+    }
+
+    private fun offsetHere(at: Double) = ZoneId.systemDefault().rules.getOffset(Instant.ofEpochMilli((at * 1_000).toLong())).totalSeconds
 
     private fun shownLine(text: String) =
         compose.onAllNodesWithContentDescription(text, substring = true).fetchSemanticsNodes().isNotEmpty() &&
