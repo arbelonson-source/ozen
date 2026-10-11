@@ -33,6 +33,7 @@ import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ProblemSnapshot
+import com.arbelonson.ozen.core.RecentConversation
 import com.arbelonson.ozen.core.RecordingImport
 import com.arbelonson.ozen.core.ReleaseFileFetching
 import com.arbelonson.ozen.core.SavedSpeaker
@@ -188,6 +189,7 @@ class CaptionSession(
         override fun delete(id: UUID) {
             conversations.delete(id)
             forgetSharedCopy()
+            if (CaptionState.screen.value.recentConversation?.id == id) dismissRecentConversation()
             publish()
         }
 
@@ -199,6 +201,7 @@ class CaptionSession(
             forgetSharedCopy()
             deleteMarkedCaptionLines()
             problemAudio.deleteAll()
+            dismissRecentConversation()
             publish()
         }
 
@@ -254,7 +257,25 @@ class CaptionSession(
         started.speakerProfiles.forEach(pipeline::enroll)
         note("APP STARTED: ${appVersion()} Android ${Build.VERSION.RELEASE} engine ${started.engine.rawValue} model ${started.modelDescription(started.engine) ?: "-"} ${deviceState()}")
         scope.launch { combine(settings.current, settings.saveFailed) { _, _ -> }.collect { refreshSavingTrouble() } }
+        loadRecentConversation()
     }
+
+    /**
+     * Looks for a conversation cut off moments ago, as the iPhone does as
+     * it opens: Android can close the app mid-conversation too. Found
+     * after she took the offer away or another was put up meanwhile, it
+     * is dropped.
+     */
+    fun loadRecentConversation(now: Double = System.currentTimeMillis() / 1_000.0) {
+        val before = CaptionState.screen.value.recentConversation
+        scope.launch {
+            val summaries = withContext(Dispatchers.IO) { historyStore.summariesModifiedSince(RecentConversation.oldestQualifyingSave(now)) }
+            val found = RecentConversation.resumable(summaries.filterNot { conversations.isCurrent(it.id) }, now)
+            if (CaptionState.screen.value.recentConversation == before) CaptionState.recentConversation(found)
+        }
+    }
+
+    fun dismissRecentConversation() = CaptionState.recentConversation(null)
 
     fun listen() {
         replies.userTookControl()
@@ -276,6 +297,7 @@ class CaptionSession(
 
     /** Settings' "Clear captions from the screen": the conversation so far is saved first. */
     fun clearCaptions() {
+        dismissRecentConversation()
         conversations.clear(pipeline::clearTranscript)
         publish()
     }

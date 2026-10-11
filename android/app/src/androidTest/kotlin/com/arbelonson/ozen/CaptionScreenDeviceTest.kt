@@ -1262,6 +1262,47 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun aConversationCutOffMinutesAgoIsOfferedOnTheEmptyScreenOpensWithATapAndCanBeTakenAway() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val store = TranscriptHistoryStore(File(app.filesDir, CaptionSession.HISTORY_FOLDER))
+        val endedAt = System.currentTimeMillis() / 1_000.0 - 150
+        val record = TranscriptSessionRecord(
+            startedAt = endedAt - 60,
+            endedAt = endedAt,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = null,
+            inputName = null,
+            segments = listOf(SavedSegment(UUID.randomUUID(), "The pharmacy closes at nine tonight", null, null, endedAt - 60, true)),
+        )
+        store.save(record)
+        try {
+            val summary = store.listSummaries().single { it.id == record.id }
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList())
+                CaptionState.recentConversation(summary)
+            }
+            compose.onNodeWithText("The conversation from 2 minutes ago was saved").assertExists()
+            compose.onNodeWithText("The pharmacy closes at nine tonight").assertExists()
+            compose.onNodeWithText("Have the phone buzz", substring = true).assertDoesNotExist()
+            compose.onNodeWithText("Tap to read it").performClick()
+            compose.onNodeWithText("Tap to read it").assertDoesNotExist()
+            compose.onNodeWithText("The pharmacy closes at nine tonight", substring = true).assertExists()
+            compose.onNodeWithText("Back").performClick()
+
+            compose.onNodeWithText("Tap to read it").assertExists()
+            compose.onNodeWithContentDescription("Close").performClick()
+            compose.onNodeWithText("Tap to read it").assertDoesNotExist()
+            compose.waitForIdle()
+            Thread.sleep(500)
+            assertNull(CaptionState.screen.value.recentConversation)
+        } finally {
+            store.delete(record.id)
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
     fun theSaidPillNamesWhoSaidTheWordWhileSpeakerNamesAreShown() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val displayBefore = app.settings.current.value.display

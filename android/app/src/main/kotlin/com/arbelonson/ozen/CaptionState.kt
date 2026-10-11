@@ -14,6 +14,7 @@ import com.arbelonson.ozen.core.ScheduledRetry
 import com.arbelonson.ozen.core.ScreenAwakePolicy
 import com.arbelonson.ozen.core.SpeechResume
 import com.arbelonson.ozen.core.TranscriptSegment
+import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.tr
 import java.util.UUID
@@ -70,6 +71,8 @@ data class CaptionScreenState(
     val selectedInput: AudioInputDescriptor? = null,
     /** A microphone placed near the talker came out while captions were on; see `MicrophoneDropNotice`. */
     val dropped: AudioInputDescriptor? = null,
+    /** A conversation still going moments before the app last closed, offered on the empty screen; see `RecentConversation`. */
+    val recentConversation: TranscriptSessionSummary? = null,
     /**
      * How many times talk has started again after a quiet stretch (see
      * `SpeechResume`). Only goes up, so the caption screen can buzz for
@@ -180,6 +183,7 @@ object CaptionState {
             inputs = state.value.inputs,
             selectedInput = state.value.selectedInput,
             dropped = state.value.dropped,
+            recentConversation = state.value.recentConversation,
             speechResumed = state.value.speechResumed + if (resumed) 1 else 0,
             away = awayMark(segments),
         )
@@ -229,6 +233,10 @@ object CaptionState {
     /** The phone started or stopped saying something for her: the caption screen's Say button stops it meanwhile. */
     fun speaking(on: Boolean) {
         state.value = state.value.copy(speaking = on)
+    }
+
+    fun recentConversation(summary: TranscriptSessionSummary?) {
+        state.value = state.value.copy(recentConversation = summary)
     }
 
     /** Saving on the phone failed: the caption screen says so until she taps it away. */

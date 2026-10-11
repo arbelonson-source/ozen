@@ -114,11 +114,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.AppLanguage
+import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.DisplayPreferences
+import com.arbelonson.ozen.core.HebrewTime
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.MicrophoneDropNotice
+import com.arbelonson.ozen.core.RecentConversation
 import com.arbelonson.ozen.core.SavingTroubleNotice
+import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.UncertainWords
 import com.arbelonson.ozen.core.tr
 import java.text.Bidi
@@ -286,7 +290,7 @@ private fun OzenApp(
     val current by app.settings.current.collectAsStateWithLifecycle()
     val voices by app.captions.voice.installed.collectAsStateWithLifecycle()
     var showingHistory by rememberSaveable { mutableStateOf(false) }
-    var reading by rememberSaveable { mutableStateOf<Pair<UUID, UUID>?>(null) }
+    var reading by rememberSaveable { mutableStateOf<Pair<UUID, UUID?>?>(null) }
     var saying by rememberSaveable { mutableStateOf(false) }
     var choosingMicrophone by rememberSaveable { mutableStateOf(false) }
     var namingAlert by rememberSaveable { mutableStateOf(false) }
@@ -332,7 +336,11 @@ private fun OzenApp(
                     query = "",
                     marksUncertain = current.display.markUncertainLines,
                     emphasizeNumbers = current.display.emphasizeNumbers,
-                    onClose = { reading = null },
+                    // Renamed or deleted inside: the empty screen's offer follows.
+                    onClose = {
+                        reading = null
+                        app.captions.loadRecentConversation()
+                    },
                     line = opened.second,
                 )
                 namingAlert -> NameAlertScreen(current, onAddName = app.captions::addNameAlert, onAddAlert = app.captions::addAlert, onClose = { namingAlert = false })
@@ -402,6 +410,8 @@ private fun OzenApp(
                         soundSecondsLeft = app.captions::soundBannerSecondsLeft,
                         onDismissSound = app.captions::dismissSoundAlert,
                         onFontSize = { size -> app.settings.change { it.display = it.display.copy(fontSize = size) } },
+                        onOpenConversation = { reading = it to null },
+                        onDismissRecent = app.captions::dismissRecentConversation,
                     )
                 }
             }
@@ -523,6 +533,8 @@ private fun CaptionScreen(
     soundSecondsLeft: (SoundAlert) -> Double,
     onDismissSound: (UUID) -> Unit,
     onFontSize: (Double) -> Unit,
+    onOpenConversation: (UUID) -> Unit,
+    onDismissRecent: () -> Unit,
 ) {
     val list = rememberLazyListState()
     // As on the iPhone: the text grows under the fingers and only the
@@ -682,7 +694,12 @@ private fun CaptionScreen(
                         color = look.pendingText,
                         fontSize = maxOf(17.0, pinchedSize * 0.6).sp,
                     )
-                    if (offersNameAlert) NameAlertOffer(look, onNameAlert, onDismissNameAlert)
+                    val recent = state.recentConversation
+                    if (recent != null) {
+                        RecentConversationCard(recent, look, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent)
+                    } else if (offersNameAlert) {
+                        NameAlertOffer(look, onNameAlert, onDismissNameAlert)
+                    }
                 }
             } else {
                 CaptionLines(state.lines, state.away, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onName = { naming = it }, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
@@ -1308,6 +1325,35 @@ private fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: ()
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.size(48.dp).clickable(role = Role.Button, onClick = onDismiss).semantics { contentDescription = notNow },
+        ) {
+            Text("✕", color = look.chrome, fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics {})
+        }
+    }
+}
+
+/** The conversation the app closed in the middle of, a tap away, as on the iPhone. */
+@Composable
+private fun RecentConversationCard(recent: TranscriptSessionSummary, look: CaptionTheme, onOpen: () -> Unit, onDismiss: () -> Unit) {
+    val minutes = RecentConversation.minutesAgo(recent, now = secondsNow())
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = Modifier.padding(top = 8.dp).fillMaxWidth().background(look.chrome.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.weight(1f).clickable(onClick = onOpen).padding(start = 14.dp, top = 14.dp, bottom = 14.dp),
+        ) {
+            Text("💬", fontSize = 24.sp, modifier = Modifier.clearAndSetSemantics {})
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(tr("השיחה מ%1 נשמרה", "The conversation from %1 was saved", listOf(HebrewTime.minutesAgo(minutes))), color = look.chrome, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(CaptionLayout.directed(recent.title ?: recent.preview), color = look.chrome.copy(alpha = 0.8f), fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(tr("הקישו כדי לקרוא אותה", "Tap to read it"), color = look.chrome, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        val close = tr("סגירה", "Close")
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(48.dp).clickable(role = Role.Button, onClick = onDismiss).semantics { contentDescription = close },
         ) {
             Text("✕", color = look.chrome, fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics {})
         }

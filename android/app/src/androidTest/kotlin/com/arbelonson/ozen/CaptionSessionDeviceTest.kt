@@ -14,14 +14,17 @@ import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
+import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSegment
+import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
+import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.PI
 import kotlin.math.sin
@@ -37,6 +40,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -92,6 +96,49 @@ class CaptionSessionDeviceTest {
         assertNotNull("captions stopped, so the conversation has an end", conversation.endedAt)
         val kept = history.load(conversation.id)!!.segments.joinToString(" ") { it.text }
         assertTrue("History kept: $kept", DeviceClips.wordErrorRate(said, kept) < 0.35)
+    }
+
+    @Test
+    fun aConversationCutOffMinutesBeforeTheAppOpenedIsOfferedUntilTakenAwayAndOneFromHoursAgoIsNot() = runBlocking {
+        val work = File(context.cacheDir, "recent-conversation-test").apply { deleteRecursively(); mkdirs() }
+        val history = TranscriptHistoryStore(File(work, "history"))
+        val now = System.currentTimeMillis() / 1_000.0
+        fun saved(text: String, endedAt: Double) = TranscriptSessionRecord(
+            startedAt = endedAt - 60,
+            endedAt = endedAt,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = null,
+            inputName = null,
+            segments = listOf(SavedSegment(UUID.randomUUID(), text, null, null, endedAt - 60, true)),
+        ).also { history.save(it) }
+        saved("From this morning", now - 3 * 3_600)
+        val cutOff = saved("The doctor said twice a day", now - 120)
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, SettingsHolder(SettingsStore(File(work, "settings.json"))), HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))
+        }
+        try {
+            val offered = withTimeoutOrNull(5_000) { CaptionState.screen.first { it.recentConversation != null } }?.recentConversation
+            assertEquals(cutOff.id, offered?.id)
+            withContext(Dispatchers.Main) { session.dismissRecentConversation() }
+            assertNull(CaptionState.screen.value.recentConversation)
+
+            withContext(Dispatchers.Main) { session.loadRecentConversation() }
+            assertEquals(cutOff.id, withTimeoutOrNull(5_000) { CaptionState.screen.first { it.recentConversation != null } }?.recentConversation?.id)
+            withContext(Dispatchers.Main) { session.savedConversations.delete(cutOff.id) }
+            assertNull(CaptionState.screen.value.recentConversation)
+
+            val another = saved("The bus leaves at four", now - 60)
+            withContext(Dispatchers.Main) { session.loadRecentConversation() }
+            assertEquals(another.id, withTimeoutOrNull(5_000) { CaptionState.screen.first { it.recentConversation != null } }?.recentConversation?.id)
+            withContext(Dispatchers.Main) { session.clearCaptions() }
+            assertNull(CaptionState.screen.value.recentConversation)
+        } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+        }
     }
 
     @Test
