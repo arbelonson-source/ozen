@@ -297,4 +297,23 @@ class CaptionStateTest {
         assertEquals(PipelinePhase.Idle, CaptionState.screen.value.phase)
         assertEquals(emptyList(), CaptionState.screen.value.lines)
     }
+
+    @Test
+    fun `talk starting again after more than eight quiet seconds is counted for the screen to buzz, and clearing never is`() {
+        fun showAt(now: Double, vararg lines: TranscriptSegment) =
+            CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines.toList(), now = now)
+        CaptionState.clear()
+        val start = CaptionState.screen.value.speechResumed
+        val hello = line("Hello", committed = true)
+        val dinner = line("Dinner", committed = true)
+        showAt(100.0, hello)
+        showAt(120.0, hello)
+        assertEquals(start, CaptionState.screen.value.speechResumed)
+        showAt(121.0, hello, dinner)
+        assertEquals(start + 1, CaptionState.screen.value.speechResumed)
+        CaptionState.clear()
+        assertEquals(start + 1, CaptionState.screen.value.speechResumed)
+        showAt(200.0, dinner)
+        assertEquals(start + 1, CaptionState.screen.value.speechResumed)
+    }
 }

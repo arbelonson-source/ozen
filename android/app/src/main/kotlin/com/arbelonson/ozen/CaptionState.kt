@@ -10,6 +10,7 @@ import com.arbelonson.ozen.core.PhoneNumbers
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ScheduledRetry
 import com.arbelonson.ozen.core.ScreenAwakePolicy
+import com.arbelonson.ozen.core.SpeechResume
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.tr
@@ -49,6 +50,12 @@ data class CaptionScreenState(
     val selectedInput: AudioInputDescriptor? = null,
     /** A microphone placed near the talker came out while captions were on; see `MicrophoneDropNotice`. */
     val dropped: AudioInputDescriptor? = null,
+    /**
+     * How many times talk has started again after a quiet stretch (see
+     * `SpeechResume`). Only goes up, so the caption screen can buzz for
+     * the ones that happen while it is showing and not for older ones.
+     */
+    val speechResumed: Int = 0,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
@@ -89,6 +96,7 @@ fun jumpToLatestTitle(newLines: Int): String =
 object CaptionState {
     private val state = MutableStateFlow(CaptionScreenState())
     val screen: StateFlow<CaptionScreenState> = state.asStateFlow()
+    private var speechResume = SpeechResume()
 
     fun show(
         phase: PipelinePhase,
@@ -104,7 +112,9 @@ object CaptionState {
         keywordHits: Set<UUID> = emptySet(),
         recentlyHeard: List<KeywordHit> = emptyList(),
         languageCode: String = "he",
+        now: Double = System.currentTimeMillis() / 1_000.0,
     ) {
+        val resumed = speechResume.noteCaptions(segments, now)
         state.value = CaptionScreenState(
             phase = phase,
             engine = engine,
@@ -132,6 +142,7 @@ object CaptionState {
             inputs = state.value.inputs,
             selectedInput = state.value.selectedInput,
             dropped = state.value.dropped,
+            speechResumed = state.value.speechResumed + if (resumed) 1 else 0,
         )
     }
 
@@ -161,7 +172,8 @@ object CaptionState {
     }
 
     fun clear() {
-        state.value = CaptionScreenState()
+        speechResume = SpeechResume()
+        state.value = CaptionScreenState(speechResumed = state.value.speechResumed)
     }
 
     private const val MAXIMUM_LINES = 200

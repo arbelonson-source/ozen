@@ -833,6 +833,42 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun talkStartingAgainAfterAQuietStretchBuzzesWhileTheCaptionsAreOnScreenUnlessSheTurnedItOff() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val wanted = app.settings.current.value.hapticOnSpeechResume
+        val buzzed = CopyOnWriteArrayList<AlertVibration>()
+        val before = Buzz.play
+        Buzz.play = { _, vibration -> buzzed += vibration }
+        try {
+            app.settings.change { it.hapticOnSpeechResume = true }
+            val hello = committed("Hello")
+            val dinner = committed("Dinner is ready")
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(hello), now = 100.0)
+            }
+            compose.waitForIdle()
+            assertTrue(buzzed.isEmpty())
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(hello, dinner), now = 110.0)
+            }
+            compose.waitUntil(5_000) { buzzed.isNotEmpty() }
+            assertEquals(listOf(AlertVibration.speechResumed), buzzed)
+
+            app.settings.change { it.hapticOnSpeechResume = false }
+            compose.waitForIdle()
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(hello, dinner, committed("Coming")), now = 120.0)
+            }
+            compose.waitForIdle()
+            assertEquals(1, buzzed.size)
+        } finally {
+            Buzz.play = before
+            app.settings.change { it.hapticOnSpeechResume = wanted }
+        }
+    }
+
+    @Test
     fun aLineWithAnImportantWordIsMarkedAndAFreshMentionBuzzesAndSaysSoForFiveSeconds() {
         val buzzed = CopyOnWriteArrayList<AlertVibration>()
         val before = Buzz.play
@@ -841,6 +877,7 @@ class CaptionScreenDeviceTest {
             val name = committed("Grandma, dinner is ready")
             val other = committed("Pass the salt")
             compose.runOnUiThread {
+                CaptionState.clear()
                 CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(name, other), keywordHits = setOf(name.id))
             }
             compose.waitForIdle()

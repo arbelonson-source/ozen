@@ -150,6 +150,9 @@ fun SettingsScreen(
             AlertsSection(current.keywordAlerts.count { it.isEnabled }, listed = current.keywordAlerts.isNotEmpty(), onOpen = { showingImportantWords = true })
             AwayAlertsRow(current.notifyWhenInBackground) { on -> settings.change { it.notifyWhenInBackground = on } }
             if (current.notifyWhenInBackground) QuietHoursRows(current.quietHours) { hours -> settings.change { it.quietHours = hours } }
+            SwitchRow(tr("רטט כשמישהו מתחיל לדבר אחרי שקט", "Vibrate when someone starts talking after silence"), current.hapticOnSpeechResume) { on ->
+                settings.change { it.hapticOnSpeechResume = on }
+            }
             SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak)
             SpokenLanguageSection(current.spokenLanguage, engineSettings::chooseSpokenLanguage)
             LanguageSection(current.appLanguage, onAppLanguage)

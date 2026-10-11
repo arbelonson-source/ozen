@@ -421,6 +421,22 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun theBuzzWhenSomeoneStartsTalkingAfterSilenceIsSwitchedWithTheAlerts() {
+        val before = app.settings.current.value.hapticOnSpeechResume
+        try {
+            app.settings.change { it.hapticOnSpeechResume = true }
+            compose.onNodeWithText("Settings").performClick()
+            val row = compose.onNode(hasText("Vibrate when someone starts talking after silence") and isToggleable())
+            row.performScrollTo().assertIsOn().performClick()
+            compose.waitUntil(5_000) { !app.settings.current.value.hapticOnSpeechResume }
+            row.assertIsOff().performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.hapticOnSpeechResume }
+        } finally {
+            app.settings.change { it.hapticOnSpeechResume = before }
+        }
+    }
+
+    @Test
     fun quietHoursAreSetOnlyWithAlertsWhileTheScreenIsOffAndEqualHoursAreCalledTheWholeDay() {
         app.settings.change {
             it.notifyWhenInBackground = true

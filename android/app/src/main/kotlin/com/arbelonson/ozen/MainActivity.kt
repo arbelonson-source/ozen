@@ -375,6 +375,7 @@ private fun OzenApp(
                         offersNameAlert = current.offersNameAlert,
                         onNameAlert = { namingAlert = true },
                         onDismissNameAlert = app.captions::dismissNameAlertOffer,
+                        buzzWhenTalkResumes = current.hapticOnSpeechResume,
                     )
                 }
             }
@@ -466,11 +467,18 @@ private fun CaptionScreen(
     offersNameAlert: Boolean,
     onNameAlert: () -> Unit,
     onDismissNameAlert: () -> Unit,
+    buzzWhenTalkResumes: Boolean,
 ) {
     val list = rememberLazyListState()
     var problemMarked by remember { mutableStateOf<Boolean?>(null) }
     val context = LocalContext.current
     var shownWord by remember { mutableStateOf<HeardWord?>(null) }
+    // Counted from when this screen appeared: talk that resumed while she
+    // was in Settings or away is long over by the time she is back.
+    val resumedBefore = remember { state.speechResumed }
+    LaunchedEffect(state.speechResumed) {
+        if (state.speechResumed > resumedBefore && buzzWhenTalkResumes) Buzz.play(context, AlertVibration.speechResumed)
+    }
     // Only a word said just now: one heard while the screen was away buzzing
     // on coming back would send her looking for something long over.
     LaunchedEffect(state.heard?.id) {
