@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +39,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -115,12 +118,14 @@ class MainActivity : ComponentActivity() {
 private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>, onStatusTap: () -> Unit) {
     val direction = if (Localization.language.isRightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr
     val state by CaptionState.screen.collectAsStateWithLifecycle()
+    val current by app.settings.current.collectAsStateWithLifecycle()
+    var showingHistory by rememberSaveable { mutableStateOf(false) }
     MaterialTheme(colorScheme = darkColorScheme()) {
         CompositionLocalProvider(LocalLayoutDirection provides direction) {
-            if (showingSettings.value) {
-                SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false })
-            } else {
-                CaptionScreen(state, onStatusTap, onSettings = { showingSettings.value = true })
+            when {
+                showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false })
+                showingHistory -> HistoryScreen(app.captions.savedConversations, saving = current.saveHistory, onClose = { showingHistory = false })
+                else -> CaptionScreen(state, onStatusTap, onSettings = { showingSettings.value = true }, onHistory = { showingHistory = true })
             }
             PairingDialogs(app.pairing)
         }
@@ -182,7 +187,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
 }
 
 @Composable
-private fun CaptionScreen(state: CaptionScreenState, onStatusTap: () -> Unit, onSettings: () -> Unit) {
+private fun CaptionScreen(state: CaptionScreenState, onStatusTap: () -> Unit, onSettings: () -> Unit, onHistory: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -205,8 +210,13 @@ private fun CaptionScreen(state: CaptionScreenState, onStatusTap: () -> Unit, on
             }
         }
         StatusButton(state.status, onStatusTap)
-        TextButton(onClick = onSettings, modifier = Modifier.align(Alignment.End)) {
-            Text(tr("הגדרות", "Settings"), fontSize = 18.sp)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            TextButton(onClick = onHistory) {
+                Text(tr("היסטוריה", "History"), fontSize = 18.sp)
+            }
+            TextButton(onClick = onSettings) {
+                Text(tr("הגדרות", "Settings"), fontSize = 18.sp)
+            }
         }
     }
 }

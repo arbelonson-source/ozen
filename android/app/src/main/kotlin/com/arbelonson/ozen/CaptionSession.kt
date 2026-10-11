@@ -18,6 +18,7 @@ import com.arbelonson.ozen.core.WebSocketConnector
 import com.arbelonson.ozen.whisper.ModelFileLoader
 import com.arbelonson.ozen.whisper.SileroVoiceScorer
 import java.io.File
+import java.util.UUID
 import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 import kotlinx.coroutines.MainScope
@@ -44,8 +45,9 @@ class CaptionSession(
         embedder = NoVoicePrints,
         availableStorageBytes = { context.filesDir.usableSpace },
     )
+    private val historyStore = TranscriptHistoryStore(historyFolder)
     private val conversations = ConversationSaver(
-        writer = TranscriptHistoryWriter(TranscriptHistoryStore(historyFolder)),
+        writer = TranscriptHistoryWriter(historyStore),
         lines = { pipeline.segments },
         isListening = { pipeline.phase.isListening },
         settings = { settings.current.value },
@@ -55,6 +57,19 @@ class CaptionSession(
         startNewConversation = pipeline::startNewConversation,
         scope = scope,
     )
+    val savedConversations = object : SavedConversations {
+        override fun list() = historyStore.listSummaries()
+
+        override fun load(id: UUID) = historyStore.load(id)
+
+        override fun delete(id: UUID) = conversations.delete(id)
+
+        override fun opened(id: UUID) = conversations.opened(id)
+
+        override fun doneWith(id: UUID) = conversations.doneWith(id)
+
+        override fun isCurrent(id: UUID) = conversations.isCurrent(id)
+    }
 
     init {
         (audio as? AndroidAudioCapture)?.onInterruption = { active ->

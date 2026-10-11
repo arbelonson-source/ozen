@@ -39,6 +39,7 @@ class ConversationSaver(
     private var end: Pair<UUID, Double>? = null
     private var offset = 0
     private val closed = mutableListOf<UUID>()
+    private val reading = mutableSetOf<UUID>()
     private var sawListening = false
     private var autosave: Job? = null
     private var lastRetentionCheck = 0.0
@@ -104,11 +105,37 @@ class ConversationSaver(
             save(ended = true, endedAt = lastCaptionAt)
             closed += id
         }
+        forgetCurrent()
+        startNewConversation()
+        return true
+    }
+
+    /**
+     * Deletes a saved conversation. If it is the one still being
+     * captioned, its lines stay on screen but the next words start a new
+     * conversation, so an autosave can't bring the deleted one back.
+     */
+    fun delete(id: UUID) {
+        writer.deleteNow(id)
+        closed.remove(id)
+        if (id == this.id) forgetCurrent()
+    }
+
+    fun isCurrent(id: UUID): Boolean = id == this.id
+
+    /** A conversation open for reading is not deleted as old while it is read. */
+    fun opened(id: UUID) {
+        reading += id
+    }
+
+    fun doneWith(id: UUID) {
+        reading -= id
+    }
+
+    private fun forgetCurrent() {
         id = UUID.randomUUID()
         offset = lines().size
         startedAt = null
-        startNewConversation()
-        return true
     }
 
     /** Android may end the app next: what was said since the last autosave is written now. */
@@ -120,7 +147,7 @@ class ConversationSaver(
         lastRetentionCheck = at
         val retention = settings().historyRetention
         if (retention == HistoryRetention.Forever) return
-        val onScreen = closed.toSet() + id
+        val onScreen = closed.toSet() + reading + id
         scope.launch(io) { writer.deleteExpiredNow(retention, at, onScreen) }
     }
 

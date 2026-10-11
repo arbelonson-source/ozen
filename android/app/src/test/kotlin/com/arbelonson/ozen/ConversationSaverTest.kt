@@ -229,6 +229,48 @@ class ConversationSaverTest {
         assertEquals(setOf("A month ago", "Hello"), saved().map { it.preview }.toSet())
     }
 
+    @Test
+    fun `deleting the conversation still being captioned keeps it deleted through autosaves and stopping`() {
+        start()
+        say("Between us")
+        saver.save(ended = false)
+        val deleted = saved().single().id
+        assertTrue(saver.isCurrent(deleted))
+
+        saver.delete(deleted)
+        assertFalse(saver.isCurrent(deleted))
+        scope.advanceTimeBy(20_001)
+        scope.runCurrent()
+        stop()
+        assertTrue(saved().isEmpty())
+        assertEquals(1, lines.size)
+
+        start()
+        say("How are you")
+        saver.save(ended = false)
+        val next = saved().single()
+        assertEquals("How are you", next.preview)
+        assertEquals(1, next.segmentCount)
+    }
+
+    @Test
+    fun `a conversation open for reading is not deleted as old until it is closed`() {
+        settings.historyRetention = HistoryRetention.Week
+        val reading = oldConversation(clock - 30 * 86_400)
+        saver.opened(reading)
+        start()
+        say("Hello")
+        saver.save(ended = false)
+        scope.runCurrent()
+        assertTrue(saved().any { it.id == reading })
+
+        saver.doneWith(reading)
+        clock += 6 * 3_600 + 1
+        saver.save(ended = false)
+        scope.runCurrent()
+        assertFalse(saved().any { it.id == reading })
+    }
+
     private fun oldConversation(at: Double): UUID {
         val record = TranscriptSessionRecord(
             startedAt = at,
