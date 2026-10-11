@@ -308,6 +308,7 @@ class CaptionSession(
             appVersion = appVersion(),
             journal = journal.reportLines(::utcOffsetAt),
             hasMarkedCaptionLines = journal.entries().any { ProblemSnapshot.isCaptionLine(it.text) },
+            problemClips = problemAudio.clips(),
         )
     }
 
@@ -331,6 +332,8 @@ class CaptionSession(
     }
 
     override fun deleteMarkedCaptionLines() = journal.removeEntries(ProblemSnapshot::isCaptionLine)
+
+    override fun deleteProblemClip(clip: File) = problemAudio.remove(clip)
 
     private fun note(text: String) = journal.append(text, System.currentTimeMillis() / 1_000.0)
 

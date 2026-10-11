@@ -2,12 +2,18 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.PipelineStats
 import com.arbelonson.ozen.core.ScheduledRetry
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
+import java.io.File
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.time.format.FormatStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -33,6 +39,8 @@ data class DiagnosticsFacts(
     /** The journal kept on the phone as report lines, oldest first, earlier runs of the app included. */
     val journal: List<String>,
     val hasMarkedCaptionLines: Boolean,
+    /** The sound kept with marked problems, newest first. */
+    val problemClips: List<File> = emptyList(),
 )
 
 /** Where the diagnostics screen reads from, and what its buttons do. */
@@ -48,6 +56,8 @@ interface DiagnosticsSource {
 
     /** Takes the caption lines marked problems kept out of the journal, and nothing else. */
     fun deleteMarkedCaptionLines()
+
+    fun deleteProblemClip(clip: File)
 }
 
 /**
@@ -104,6 +114,17 @@ object DiagnosticsReport {
         retry ?: return "—"
         val seconds = maxOf(0, (retry.at - now).roundToInt())
         return tr("ניסיון %1, בעוד %2 שנ׳", "Attempt %1, in %2 s", listOf("${retry.attempt}", "$seconds"))
+    }
+
+    /** A kept sound's file name read back as its moment, in her language: "Oct 11, 2026, 1:05:07 PM". */
+    fun clipTitle(name: String): String {
+        val stamp = name.removeSuffix(".wav").removePrefix("problem-")
+        val at = try {
+            LocalDateTime.parse(stamp, DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss", Locale.ROOT))
+        } catch (_: DateTimeParseException) {
+            return stamp
+        }
+        return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Localization.locale).format(at)
     }
 
     private fun format(pattern: String, value: Double): String = String.format(Locale.ROOT, pattern, value)

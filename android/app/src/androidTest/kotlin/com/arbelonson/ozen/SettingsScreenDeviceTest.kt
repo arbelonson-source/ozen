@@ -7,6 +7,7 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.content.ClipboardManager
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.Process
@@ -53,16 +54,19 @@ import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ProblemSnapshot
 import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -671,6 +675,59 @@ class SettingsScreenDeviceTest {
         val copied = compose.runOnUiThread { clipboard.primaryClip?.getItemAt(0)?.text.toString() }
         val inReport = copied.substringAfter("journal, previous runs included (oldest first):\n", missingDelimiterValue = "")
         assertTrue(copied, inReport.indexOf(backOnScreen) in 0 until inReport.indexOf(problem))
+    }
+
+    @Test
+    fun soundKeptWithMarkedProblemsIsListedNewestFirstSentOnTapAndDeletedByHoldingOrTheScreenReader() {
+        val store = ProblemAudioStore(File(app.filesDir, CaptionSession.PROBLEM_AUDIO_FOLDER))
+        store.deleteAll()
+        val older = store.save(floatArrayOf(0.1f, 0.2f), 16_000, Instant.parse("2026-03-04T05:06:07Z"))!!
+        val newer = store.save(floatArrayOf(0.3f), 16_000, Instant.parse("2026-03-05T05:06:07Z"))!!
+        val olderTitle = DiagnosticsReport.clipTitle(older.name)
+        val newerTitle = DiagnosticsReport.clipTitle(newer.name)
+        val started = CopyOnWriteArrayList<Intent>()
+        val sheet = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
+                started += intent
+                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+            }
+        }
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.addMonitor(sheet)
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
+            compose.onNodeWithText("Sound from marked problems").performScrollTo()
+            val newerAt = compose.onNodeWithText(newerTitle).fetchSemanticsNode().positionInRoot.y
+            val olderAt = compose.onNodeWithText(olderTitle).fetchSemanticsNode().positionInRoot.y
+            assertTrue("the newest sound is not at the top", newerAt < olderAt)
+
+            compose.onNodeWithText(newerTitle).performScrollTo().performClick()
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            assertEquals(Intent.ACTION_CHOOSER, started.single().action)
+            @Suppress("DEPRECATION")
+            val send = started.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+            assertEquals(Intent.ACTION_SEND, send.action)
+            assertEquals("audio/wav", send.type)
+            assertTrue(send.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+            @Suppress("DEPRECATION")
+            val uri = send.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)!!
+            assertArrayEquals(newer.readBytes(), app.contentResolver.openInputStream(uri)!!.use { it.readBytes() })
+
+            compose.onNodeWithText(olderTitle).performScrollTo().performTouchInput { longClick() }
+            compose.onNodeWithText("Delete").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(olderTitle).fetchSemanticsNodes().isEmpty() }
+            assertFalse(older.exists())
+            assertTrue(newer.exists())
+
+            val delete = compose.onNodeWithText(newerTitle).fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Delete" }
+            compose.runOnUiThread { delete.action() }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Sound from marked problems").fetchSemanticsNodes().isEmpty() }
+            assertTrue(store.clips().isEmpty())
+        } finally {
+            instrumentation.removeMonitor(sheet)
+            store.deleteAll()
+        }
     }
 
     private fun sampleMillis(): Long {

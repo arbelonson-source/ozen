@@ -13,8 +13,12 @@ import com.arbelonson.ozen.core.PipelineStats
 import com.arbelonson.ozen.core.ScheduledRetry
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class DiagnosticsReportTest {
     private val phone = AudioInputDescriptor("mic-1", "Phone microphone", AudioPortType.BuiltInMic)
@@ -107,6 +111,16 @@ class DiagnosticsReportTest {
         assertEquals("requesting mic permission", DiagnosticsReport.stage(PipelinePhase.RequestingMicrophonePermission))
         val download = EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.42, detail = "large-v3")
         assertEquals("preparing engine: downloadingModel 42% large-v3", DiagnosticsReport.stage(PipelinePhase.PreparingEngine(download)))
+    }
+
+    @Test
+    fun `a kept sound is named by its moment in her language, or by its file name when that can't be read`() {
+        Localization.withLanguage(UILanguage.English) {
+            val shown = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Localization.locale).format(LocalDateTime.of(2026, 10, 11, 13, 5, 7))
+            assertTrue(shown.contains("2026") && shown.contains("1:05:07"), shown)
+            assertEquals(shown, DiagnosticsReport.clipTitle("problem-2026-10-11-130507.wav"))
+            assertEquals("not-a-moment", DiagnosticsReport.clipTitle("problem-not-a-moment.wav"))
+        }
     }
 
     @Test

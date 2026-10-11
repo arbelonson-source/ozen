@@ -5,7 +5,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -16,6 +18,8 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -33,15 +37,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.AudioLevelHistogram
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.tr
+import java.io.File
 import java.util.Locale
 import java.util.TimeZone
 import kotlinx.coroutines.delay
@@ -163,6 +171,25 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
+            if (now.problemClips.isNotEmpty()) {
+                Header(tr("הקול מהבעיות שסומנו", "Sound from marked problems"))
+                for (clip in now.problemClips) {
+                    ClipRow(
+                        DiagnosticsReport.clipTitle(clip.name),
+                        onSend = { context.startActivity(clipSheet(context, clip)) },
+                        onDelete = {
+                            source.deleteProblemClip(clip)
+                            now = facts()
+                        },
+                    )
+                }
+                Text(
+                    tr("כשמסמנים בעיה נשמרות 30 השניות האחרונות של הקול, רק בטלפון, כדי להשוות מה נאמר למה שנכתב. נשמרות עד 5; שליחה רק כשלוחצים עליהן. לחיצה ארוכה מוחקת.", "Marking a problem keeps the last 30 seconds of sound, on the phone only, to compare what was said with what was shown. Up to 5 are kept, and they’re sent only when you tap one. Hold one to delete it."),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
             OutlinedButton(onClick = { context.startActivity(reportSheet(DiagnosticsReport.text(facts()))) }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
                 Text(tr("שליחת הדוח", "Send report"))
             }
@@ -207,6 +234,37 @@ private fun levels(histogram: AudioLevelHistogram): String {
     val middle = histogram.decibels(0.5) ?: return "—"
     val loud = histogram.decibels(0.9) ?: return "—"
     return tr("שקט %1 · אמצע %2 · חזק %3", "quiet %1 · mid %2 · loud %3", listOf("$quiet", "$middle", "$loud"))
+}
+
+/** A kept sound: tapped, it goes out through the share sheet; held, or from a screen reader, it can be deleted. */
+@Composable
+private fun ClipRow(title: String, onSend: () -> Unit, onDelete: () -> Unit) {
+    val delete = tr("מחיקה", "Delete")
+    var menu by remember { mutableStateOf(false) }
+    Box {
+        Text(
+            title,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onHold { menu = true }
+                .clickable(onClick = onSend)
+                .semantics { customActions = listOf(CustomAccessibilityAction(delete) { onDelete(); true }) }
+                .padding(vertical = 10.dp),
+        )
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            DropdownMenuItem(text = { Text(delete) }, onClick = { menu = false; onDelete() })
+        }
+    }
+}
+
+private fun clipSheet(context: Context, clip: File): Intent {
+    val uri = FileProvider.getUriForFile(context, context.packageName + ".share", clip)
+    val send = Intent(Intent.ACTION_SEND)
+        .setType("audio/wav")
+        .putExtra(Intent.EXTRA_STREAM, uri)
+        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    send.clipData = ClipData.newRawUri(null, uri)
+    return Intent.createChooser(send, null)
 }
 
 private fun reportSheet(report: String): Intent {
