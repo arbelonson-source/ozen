@@ -30,8 +30,10 @@ import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngine
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.VocabularyHints
 import com.arbelonson.ozen.core.WebSocketConnector
+import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.whisper.ModelFileLoader
 import com.arbelonson.ozen.whisper.SileroVoiceScorer
 import java.io.File
@@ -51,7 +53,6 @@ class CaptionSession(
     private val homeServerCode: HomeServerCodeStore,
     private val cloudKeys: CloudKeyStore,
     val audio: AudioCapturing = AndroidAudioCapture(context),
-    private val modelFile: File = File(context.filesDir, MODEL_FILE),
     historyFolder: File = File(context.filesDir, HISTORY_FOLDER),
     journalFile: File = File(context.filesDir, JOURNAL_FILE),
     problemAudioFolder: File = File(context.filesDir, PROBLEM_AUDIO_FOLDER),
@@ -363,7 +364,7 @@ class CaptionSession(
             notificationsAllowed = AlertNotifier.allowed(context),
             canVibrate = phoneVibrator(context)?.hasVibrator() == true,
             network = pipeline.networkConditions,
-            modelInstalled = modelFile.exists(),
+            modelInstalled = modelFile(settings.current.value).exists(),
             thermalStatus = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) power.currentThermalStatus else null,
             batterySaver = power.isPowerSaveMode,
             batteryPercent = battery?.let { it.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) * 100 / it.getIntExtra(BatteryManager.EXTRA_SCALE, 100) }?.takeIf { it >= 0 },
@@ -495,12 +496,17 @@ class CaptionSession(
                 apiKey = { cloudKeys.read(provider) },
             )
         }
-        TranscriptionEngineKind.WhisperKit, TranscriptionEngineKind.AppleSpeech -> OnDeviceWhisperEngine(
-            modelName = modelFile.name,
-            loader = ModelFileLoader(modelFile, context.applicationInfo.nativeLibraryDir),
-            voiceScorerFactory = ::voiceScore,
-        )
+        TranscriptionEngineKind.WhisperKit, TranscriptionEngineKind.AppleSpeech -> modelFile(settings).let { model ->
+            OnDeviceWhisperEngine(
+                modelName = model.name,
+                loader = ModelFileLoader(model, context.applicationInfo.nativeLibraryDir),
+                voiceScorerFactory = ::voiceScore,
+            )
+        }
     }
+
+    /** The phone's own model for the spoken language; see `WhisperModelCatalog.phoneModelFile`. */
+    private fun modelFile(settings: AppSettings) = File(context.filesDir, WhisperModelCatalog.phoneModelFile(settings.spokenLanguage))
 
     private fun voiceScore(): ((FloatArray) -> Float?)? {
         val scorer = voiceScorer ?: return null
@@ -513,7 +519,7 @@ class CaptionSession(
     }
 
     companion object {
-        const val MODEL_FILE = "ggml-ozen-a3-q5_0.bin"
+        val MODEL_FILE = WhisperModelCatalog.phoneModelFile(UILanguage.Hebrew)
         const val HISTORY_FOLDER = "ozen-history"
         const val JOURNAL_FILE = "ozen-journal.log"
         const val PROBLEM_AUDIO_FOLDER = "problem-audio"

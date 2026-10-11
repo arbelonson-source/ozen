@@ -217,6 +217,14 @@ object WhisperModelCatalog {
         return options.filter { it.variant == recommended } + rest.filter { !it.isHebrewOnly } + rest.filter { it.isHebrewOnly }
     }
 
+    /**
+     * The whisper.cpp file the phone's own engine runs for the spoken
+     * language on Android: Ozen's Hebrew model, or the general Turbo, as
+     * whisper.cpp names it on Hugging Face, for any other.
+     */
+    fun phoneModelFile(language: UILanguage): String =
+        if (language == UILanguage.Hebrew) "ggml-ozen-a3-q5_0.bin" else "ggml-large-v3-turbo-q5_0.bin"
+
     fun recommendedVariant(language: UILanguage): String = if (language == UILanguage.Hebrew) RECOMMENDED_VARIANT else GENERAL_VARIANT
 
     /**

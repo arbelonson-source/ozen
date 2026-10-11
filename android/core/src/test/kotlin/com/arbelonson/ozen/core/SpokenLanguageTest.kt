@@ -105,4 +105,12 @@ class SpokenLanguageTest {
         assertFalse(WhisperResultFilter().forSpeech("ru").accepts(sure))
         assertFalse(english.accepts(WhisperSegmentSummary(text = "Thanks for watching!", noSpeechProb = 0.05f, avgLogprob = -0.2f, compressionRatio = 1f)))
     }
+
+    @Test
+    fun `the phone's own model file is Ozen's Hebrew one for Hebrew and whisper cpp's general Turbo for every other language`() {
+        assertEquals("ggml-ozen-a3-q5_0.bin", WhisperModelCatalog.phoneModelFile(UILanguage.Hebrew))
+        for (language in UILanguage.entries.filter { it != UILanguage.Hebrew }) {
+            assertEquals("ggml-large-v3-turbo-q5_0.bin", WhisperModelCatalog.phoneModelFile(language))
+        }
+    }
 }

@@ -62,6 +62,7 @@ import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
+import com.arbelonson.ozen.core.WhisperModelCatalog
 import java.io.File
 import java.time.Instant
 import java.util.UUID
@@ -74,6 +75,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -806,6 +808,22 @@ class SettingsScreenDeviceTest {
             compose.waitUntil(5_000) { app.settings.current.value.languageCode == "en" }
             compose.onNodeWithText("English").performScrollTo().assertExists()
             compose.onNodeWithText("The language of the buttons and settings, not of the captions.").performScrollTo().assertExists()
+        } finally {
+            app.settings.change { it.languageCode = before }
+        }
+    }
+
+    @Test
+    fun diagnosticsReportTheModelForTheSpokenLanguageSoOzensHebrewModelDoesNotCountForEnglish() {
+        val hebrewModel = File(app.filesDir, CaptionSession.MODEL_FILE)
+        val englishModel = File(app.filesDir, WhisperModelCatalog.phoneModelFile(UILanguage.English))
+        assumeTrue("needs Ozen's Hebrew model on the phone and not the general one", hebrewModel.exists() && !englishModel.exists())
+        val before = app.settings.current.value.languageCode
+        try {
+            app.settings.change { it.languageCode = "en" }
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
+            row("Model state", "Not downloaded")
         } finally {
             app.settings.change { it.languageCode = before }
         }
