@@ -668,7 +668,10 @@ private fun CaptionScreen(
                         onDismissSound(alert.id)
                     }
                 }
-                shownWord?.let { HeardPill(it.said, Modifier) }
+                shownWord?.let { word ->
+                    val speaker = state.lines.firstOrNull { it.id == word.line }?.speaker?.takeIf { display.showSpeakerNames }
+                    HeardPill(word.said, speaker, Modifier)
+                }
                 state.away?.takeIf { it.offersJump && !awayMarkShowing && state.lines.isNotEmpty() }?.let { mark ->
                     AwayJump(mark.count, look) {
                         CaptionState.acknowledgeAwayLines()
@@ -1240,11 +1243,15 @@ private fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: ()
     }
 }
 
-/** "Said: grandma" for five seconds at the top, as the iPhone's pill; the screen reader reads it as it appears. */
+/**
+ * "Said: grandma" for five seconds at the top, as the iPhone's pill, with
+ * who said it when the line's voice is known; the screen reader reads it
+ * as it appears.
+ */
 @Composable
-private fun HeardPill(said: String, modifier: Modifier) {
+private fun HeardPill(said: String, speaker: String?, modifier: Modifier) {
     Text(
-        tr("נאמר: %1", "Said: %1", listOf(said)),
+        speaker?.let { tr("%1 — נאמר: %2", "%1 said: %2", listOf(it, said)) } ?: tr("נאמר: %1", "Said: %1", listOf(said)),
         color = Color.Black,
         fontSize = 18.sp,
         fontWeight = FontWeight.SemiBold,

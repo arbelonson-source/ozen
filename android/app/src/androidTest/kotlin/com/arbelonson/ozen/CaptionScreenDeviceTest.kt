@@ -1217,6 +1217,30 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun theSaidPillNamesWhoSaidTheWordWhileSpeakerNamesAreShown() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val displayBefore = app.settings.current.value.display
+        val line = committed("Grandma, dinner is ready").copy(speakerClusterID = 1)
+        try {
+            app.settings.change { it.display = it.display.copy(showSpeakerNames = true) }
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line), speakerName = { "Dana" })
+                CaptionState.heard(HeardWord(UUID.randomUUID(), "Grandma", System.currentTimeMillis() / 1_000.0, line = line.id))
+            }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Dana said: Grandma").fetchSemanticsNodes().isNotEmpty() }
+
+            app.settings.change { it.display = it.display.copy(showSpeakerNames = false) }
+            compose.runOnUiThread { CaptionState.heard(HeardWord(UUID.randomUUID(), "Grandma", System.currentTimeMillis() / 1_000.0, line = line.id)) }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Grandma").fetchSemanticsNodes().isNotEmpty() }
+            assertTrue(compose.onAllNodesWithText("Dana said: Grandma").fetchSemanticsNodes().isEmpty())
+        } finally {
+            app.settings.change { it.display = displayBefore }
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
     fun anImportantWordSaidWhileTheAppIsAwayBecomesAPhoneNotificationOnlyThen() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val instrumentation = InstrumentationRegistry.getInstrumentation()

@@ -24,7 +24,7 @@ class KeywordAttentionTest {
         val attention = KeywordAttention()
         Localization.withLanguage(UILanguage.English) {
             val first = hit(grandma, "סבתא", "לסבתא", 100.0)
-            assertEquals(HeardWord(first.id, "Grandma", 100.0), attention.claim(listOf(first)))
+            assertEquals(HeardWord(first.id, "Grandma", 100.0, line = first.segmentID), attention.claim(listOf(first)))
             assertNull(attention.claim(listOf(hit(grandma, "סבתא", "סבתא", 110.0))))
 
             val line = listOf(hit(doctor, "רופא", "רופא", 120.0), hit(nurse, "אחות", "אחות", 120.0))

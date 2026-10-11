@@ -14,13 +14,13 @@ import java.util.UUID
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
-data class HeardWord(val id: UUID, val said: String, val at: Double)
+data class HeardWord(val id: UUID, val said: String, val at: Double, val line: UUID? = null)
 
 class KeywordAttention(private val policy: KeywordAttentionPolicy = KeywordAttentionPolicy()) {
     fun claim(hits: List<KeywordHit>): HeardWord? =
         hits.filter { policy.claimAttention(it.match.alertID, it.timestamp) }
             .firstOrNull()
-            ?.let { HeardWord(it.id, AlertSuggestions.said(it.match, Localization.language), it.timestamp) }
+            ?.let { HeardWord(it.id, AlertSuggestions.said(it.match, Localization.language), it.timestamp, line = it.segmentID) }
 }
 
 fun AlertVibration.waveform(): Pair<LongArray, IntArray> {
