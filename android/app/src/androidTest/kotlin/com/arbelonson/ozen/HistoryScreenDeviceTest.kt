@@ -856,6 +856,18 @@ class HistoryScreenDeviceTest {
 
     @Test
     fun aPhoneNumberInASavedLineOpensTheDialerFromATapOrTheScreenReaderAction() {
+        // A line of digits alone sits on the spoken language's side, and the
+        // taps below land near the left edge, where an English line starts.
+        val spokenBefore = app.settings.current.value.languageCode
+        app.settings.change { it.languageCode = "en" }
+        try {
+            aSavedNumberOpensTheDialer()
+        } finally {
+            app.settings.change { it.languageCode = spokenBefore }
+        }
+    }
+
+    private fun aSavedNumberOpensTheDialer() {
         seed("Phone test opening line" to null, "050 123 4567" to null)
         val started = CopyOnWriteArrayList<Intent>()
         val dialer = startsHeldBack(started)

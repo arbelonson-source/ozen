@@ -1317,7 +1317,7 @@ class SettingsScreenDeviceTest {
             compose.waitUntil(5_000) { compose.onAllNodes(hasText("Phone notifications") and hasText("OK")).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Copy report").performScrollTo().performClick()
             val copied = compose.runOnUiThread { clipboard.primaryClip?.getItemAt(0)?.text.toString() }
-            assertTrue(copied, copied.contains(" notifications allowed: yes haptics: ") && copied.contains(" network: $connection\n"))
+            assertTrue(copied, copied.contains(" notifications allowed: yes haptics: ") && copied.contains(" network: $connection cellular downloads: "))
             assertTrue(copied, copied.contains("\nmodel state: ") && copied.contains(" vocabulary: 3\n"))
         } finally {
             AlertNotifier.allowed = allowedBefore
@@ -1494,7 +1494,10 @@ class SettingsScreenDeviceTest {
         assumeFalse("the English model is already on this phone", english.exists())
         val languageBefore = app.settings.current.value.spokenLanguage
         val cellularBefore = app.settings.current.value.allowCellularModelDownload
-        val offer = "Download a backup to the phone (575\u00A0MB)"
+        // The download button with its size, or without it under "Try
+        // again" when an earlier test's download stopped: the app remembers
+        // that for as long as it runs, as it should.
+        val offer = hasText("Download a backup to the phone", substring = true) and hasClickAction()
         try {
             app.settings.change {
                 it.engine = TranscriptionEngineKind.HomeServer
@@ -1510,13 +1513,13 @@ class SettingsScreenDeviceTest {
             compose.waitForIdle()
             assertEquals(PhasePresentation.Action.OpenBackupSettings, CaptionState.screen.value.status.action)
             compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction()).performClick()
-            compose.waitUntil(5_000) { compose.onAllNodesWithText(offer).fetchSemanticsNodes().isNotEmpty() }
-            compose.waitUntil(5_000) { compose.onNodeWithText(offer).isDisplayed() }
+            compose.waitUntil(5_000) { compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { compose.onNode(offer).isDisplayed() }
 
             compose.onNodeWithText("Close").performScrollTo().performClick()
             compose.onNodeWithText("Settings").performClick()
-            compose.waitUntil(5_000) { compose.onAllNodesWithText(offer).fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithText(offer).assertIsNotDisplayed()
+            compose.waitUntil(5_000) { compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNode(offer).assertIsNotDisplayed()
         } finally {
             app.settings.change {
                 it.spokenLanguage = languageBefore
