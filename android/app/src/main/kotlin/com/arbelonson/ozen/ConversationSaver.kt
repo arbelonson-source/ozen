@@ -149,6 +149,13 @@ class ConversationSaver(
         if (id == this.id) forgetCurrent()
     }
 
+    /**
+     * Names a saved conversation, or takes its name away with a blank one,
+     * queued with the saves so an autosave of the one still being captioned
+     * can't write it back without the name.
+     */
+    fun rename(id: UUID, title: String) = writer.renameNow(id, title)
+
     fun isCurrent(id: UUID): Boolean = id == this.id
 
     /** A conversation open for reading is not deleted as old while it is read. */

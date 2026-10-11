@@ -9,8 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -92,6 +93,9 @@ interface SavedConversations {
     val lastSaveFailure: String?
 
     fun delete(id: UUID)
+
+    /** Names a conversation, or takes its name away with a blank one. */
+    fun rename(id: UUID, title: String)
 
     fun switchSaving(on: Boolean)
 
@@ -319,8 +323,10 @@ private class OpenConversation(
  * search, it opens at the first line that matched, the matching lines are
  * marked, and a button steps through them, as on the iPhone. Share sends
  * it as text, with the lines that may have been misheard saying so in
- * words while the caption screen marks them.
+ * words while the caption screen marks them. A name given here shows in
+ * the list and is found by search.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ConversationScreen(conversations: SavedConversations, id: UUID, query: String, marksUncertain: Boolean, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
@@ -359,6 +365,7 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
     val context = LocalContext.current
     var confirmingDelete by remember { mutableStateOf(false) }
     var deleteError by remember { mutableStateOf<String?>(null) }
+    var naming by remember { mutableStateOf<String?>(null) }
     val record = loaded?.record
     Screen(title = record?.title ?: tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {
         val shown = loaded
@@ -366,14 +373,16 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
             shown == null -> CircularProgressIndicator(modifier = Modifier.padding(24.dp))
             shown.record == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"))
             else -> {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                FlowRow(modifier = Modifier.fillMaxWidth()) {
                     TextButton(onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { shareSheet(context, shown.record, marksUncertain) }) } }) {
                         Text(tr("שיתוף", "Share"))
+                    }
+                    TextButton(onClick = { naming = shown.record.title ?: "" }) {
+                        Text(tr("מתן שם לשיחה", "Name this conversation"))
                     }
                     TextButton(onClick = { confirmingDelete = true }) {
                         Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error)
                     }
-                    Spacer(modifier = Modifier.weight(1f))
                     if (shown.matches.size > 1) {
                         TextButton(
                             onClick = {
@@ -399,6 +408,38 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
                 }
             }
         }
+    }
+    naming?.let { draft ->
+        AlertDialog(
+            onDismissRequest = { naming = null },
+            title = { Text(tr("שם לשיחה", "Conversation name")) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(tr("השם יופיע ברשימת השיחות, ואפשר יהיה לחפש לפיו.", "The name will appear in the conversations list, and you’ll be able to search by it."))
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { naming = it },
+                        placeholder = { Text(tr("למשל: ביקור אצל הרופא", "For example: doctor’s visit")) },
+                        singleLine = true,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        naming = null
+                        scope.launch {
+                            val renamed = withContext(Dispatchers.IO) {
+                                conversations.rename(id, draft)
+                                conversations.load(id)
+                            }
+                            loaded?.let { loaded = OpenConversation(renamed, it.lines, it.matches, it.numbers) }
+                        }
+                    },
+                ) { Text(tr("שמירה", "Save")) }
+            },
+            dismissButton = { TextButton(onClick = { naming = null }) { Text(tr("ביטול", "Cancel")) } },
+        )
     }
     if (confirmingDelete) {
         AlertDialog(

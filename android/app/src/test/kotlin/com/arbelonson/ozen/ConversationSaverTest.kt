@@ -256,6 +256,28 @@ class ConversationSaverTest {
     }
 
     @Test
+    fun `a name given to the conversation still being captioned stays through autosaves and stopping`() {
+        start()
+        say("The doctor will see you now")
+        saver.save(ended = false)
+        val named = saved().single().id
+        saver.rename(named, "  Doctor visit  ")
+        assertEquals("Doctor visit", saved().single().title)
+
+        say("Take two pills after dinner")
+        scope.advanceTimeBy(20_001)
+        scope.runCurrent()
+        clock += 30
+        stop()
+        val conversation = saved().single()
+        assertEquals("Doctor visit", conversation.title)
+        assertEquals(2, conversation.segmentCount)
+
+        saver.rename(named, " ")
+        assertNull(saved().single().title)
+    }
+
+    @Test
     fun `a conversation open for reading is not deleted as old until it is closed`() {
         settings.historyRetention = HistoryRetention.Week
         val reading = oldConversation(clock - 30 * 86_400)

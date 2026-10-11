@@ -8,6 +8,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isDisplayed
@@ -17,6 +18,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -269,6 +271,40 @@ class HistoryScreenDeviceTest {
         } finally {
             instrumentation.removeMonitor(sheet)
         }
+    }
+
+    @Test
+    fun aNameGivenToAConversationIsListedFoundBySearchAndCanBeTakenAway() {
+        val id = seed("Naming test opening line" to null)
+        seed("Naming test other conversation" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Naming test opening line")
+        compose.onNodeWithText("Naming test opening line", substring = true).performClick()
+        waitFor("Name this conversation")
+        compose.onNodeWithText("Name this conversation").performClick()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.waitForIdle()
+        assertNull(store.load(id)!!.title)
+
+        compose.onNodeWithText("Name this conversation").performClick()
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextInput("  Dentist visit ")
+        compose.onNodeWithText("Save").performClick()
+        compose.waitUntil(5_000) { store.load(id)?.title == "Dentist visit" }
+        waitFor("Dentist visit")
+
+        compose.onNodeWithText("Back").performClick()
+        waitFor("Dentist visit")
+        compose.onNodeWithText("Search what was said").performTextInput("dentist visit")
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Naming test other conversation", substring = true).fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("Dentist visit", substring = true).performClick()
+
+        waitFor("Name this conversation")
+        compose.onNodeWithText("Name this conversation").performClick()
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).assert(hasText("Dentist visit"))
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextClearance()
+        compose.onNodeWithText("Save").performClick()
+        compose.waitUntil(5_000) { store.load(id)?.title == null }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Dentist visit", substring = true).fetchSemanticsNodes().isEmpty() }
     }
 
     private fun sharedCopies() = File(app.cacheDir, CaptionSession.SHARED_FOLDER).listFiles()?.toList() ?: emptyList()
