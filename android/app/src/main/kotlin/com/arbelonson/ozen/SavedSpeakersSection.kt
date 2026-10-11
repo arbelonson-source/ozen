@@ -18,11 +18,11 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,6 +41,8 @@ import com.arbelonson.ozen.core.tr
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 /** What Settings asks of the captions about the people saved by voice, as the iPhone's view model answers it. */
@@ -75,6 +77,29 @@ interface SpeakerBook {
 }
 
 /**
+ * Recordings being added, held by the app rather than the screen, as on
+ * the iPhone: closing Settings or turning the phone partway through used
+ * to stop it with only some of them saved and nothing said; now every
+ * recording is saved and the result waits for Settings to show it.
+ */
+internal object RecordingImports {
+    private val scope = MainScope()
+    val importing = MutableStateFlow(false)
+    val imported = MutableStateFlow<RecordingImport.Result?>(null)
+
+    fun start(speakers: SpeakerBook, recordings: List<Uri>) {
+        importing.value = true
+        scope.launch {
+            try {
+                imported.value = speakers.addRecordings(recordings)
+            } finally {
+                importing.value = false
+            }
+        }
+    }
+}
+
+/**
  * The saved people, each once however many recordings they have, as on
  * the iPhone: a tap renames the person everywhere, Delete asks first, and
  * a person only an older version recorded says how to fix it.
@@ -84,19 +109,10 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
     SectionHeader(tr("דוברים שמורים", "Saved speakers"))
     var renaming by rememberSaveable { mutableStateOf<String?>(null) }
     var removing by rememberSaveable { mutableStateOf<String?>(null) }
-    var importing by remember { mutableStateOf(false) }
-    var imported by remember { mutableStateOf<RecordingImport.Result?>(null) }
-    val scope = rememberCoroutineScope()
+    val importing by RecordingImports.importing.collectAsState()
+    val imported by RecordingImports.imported.collectAsState()
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { picked ->
-        if (picked.isEmpty()) return@rememberLauncherForActivityResult
-        importing = true
-        scope.launch {
-            try {
-                imported = speakers.addRecordings(picked)
-            } finally {
-                importing = false
-            }
-        }
+        if (picked.isNotEmpty()) RecordingImports.start(speakers, picked)
     }
     for (speaker in SavedSpeaker.grouping(profiles)) {
         Row(modifier = Modifier.fillMaxWidth().testTag("savedSpeaker:${speaker.name}"), verticalAlignment = Alignment.CenterVertically) {
@@ -133,10 +149,10 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
     )
     imported?.let { result ->
         AlertDialog(
-            onDismissRequest = { imported = null },
+            onDismissRequest = { RecordingImports.imported.value = null },
             title = { Text(tr("הקלטות", "Recordings")) },
             text = { Text(result.summary) },
-            confirmButton = { TextButton(onClick = { imported = null }) { Text(tr("אישור", "OK")) } },
+            confirmButton = { TextButton(onClick = { RecordingImports.imported.value = null }) { Text(tr("אישור", "OK")) } },
         )
     }
     renaming?.let { name ->

@@ -19,7 +19,9 @@ import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.app.ActivityOptionsCompat
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -445,6 +447,41 @@ class SettingsScreenDeviceTest {
         add.assertIsEnabled()
     }
 
+    @Test
+    fun recordingsBeingAddedCarryOnWhenSettingsClosesAndSayWhoWasAddedWhenItOpensAgain() {
+        val book = RecordingBook()
+        val files = listOf(Uri.parse("content://recordings/Savta%201.m4a"), Uri.parse("content://recordings/Savta%202.m4a"))
+        val registry = object : ActivityResultRegistry() {
+            override fun <I, O> onLaunch(requestCode: Int, contract: ActivityResultContract<I, O>, input: I, options: ActivityOptionsCompat?) {
+                @Suppress("UNCHECKED_CAST")
+                dispatchResult(requestCode, files as O)
+            }
+        }
+        val owner = object : ActivityResultRegistryOwner {
+            override val activityResultRegistry = registry
+        }
+        var showing by mutableStateOf(true)
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                CompositionLocalProvider(LocalActivityResultRegistryOwner provides owner) {
+                    if (showing) Column { SavedSpeakersSection(emptyList(), book, onAdd = {}) }
+                }
+            }
+        }
+        compose.onNodeWithText("Add from existing recordings").performClick()
+        compose.waitUntil(5_000) { book.picked.size == 1 }
+        compose.runOnUiThread { showing = false }
+        compose.waitForIdle()
+        val result = RecordingImport.Result(added = mapOf("Savta" to 2), unusable = emptyList())
+        book.finishImport(result)
+        compose.waitForIdle()
+        assertFalse("closing Settings stopped the recordings being added", book.importStopped)
+        compose.runOnUiThread { showing = true }
+        compose.onNodeWithText(result.summary).assertExists()
+        compose.onNodeWithText("OK").performClick()
+        compose.onNodeWithText("Add from existing recordings").assertIsEnabled()
+    }
+
     private class RecordingBook : SpeakerBook {
         val asked = CopyOnWriteArrayList<Pair<String, Double>>()
 
@@ -484,10 +521,18 @@ class SettingsScreenDeviceTest {
         @Volatile
         private var imported = CompletableDeferred<RecordingImport.Result>()
 
+        @Volatile
+        var importStopped = false
+
         override suspend fun addRecordings(recordings: List<Uri>): RecordingImport.Result {
             imported = CompletableDeferred()
             picked.add(recordings)
-            return imported.await()
+            return try {
+                imported.await()
+            } catch (stop: CancellationException) {
+                importStopped = true
+                throw stop
+            }
         }
 
         fun finishImport(result: RecordingImport.Result) = imported.complete(result)
