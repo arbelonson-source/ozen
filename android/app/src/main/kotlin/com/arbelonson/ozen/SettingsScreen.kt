@@ -113,6 +113,7 @@ fun SettingsScreen(
     onAppLanguage: (AppLanguage) -> Unit = {},
     onShowWalkthrough: () -> Unit = {},
     onClearCaptions: () -> Unit = {},
+    historySaveFailing: () -> Boolean = { false },
     voiceNotice: String? = null,
     onSoundAlerts: (SoundAlertPreferences) -> Unit = {},
     soundNearMiss: (SoundEvent) -> SoundNearMisses.Entry? = { null },
@@ -197,7 +198,7 @@ fun SettingsScreen(
             )
             DiagnosticsRow(onOpen = { showingDiagnostics = true })
             WalkthroughAgainRow(onShowWalkthrough)
-            ClearCaptionsRow(onClearCaptions)
+            ClearCaptionsRow(current.saveHistory, historySaveFailing, onClearCaptions)
             AboutSection(onSupport = { showingSupport = true })
         }
     }
@@ -957,7 +958,7 @@ private fun WalkthroughAgainRow(onShow: () -> Unit) {
 }
 
 @Composable
-private fun ClearCaptionsRow(onClear: () -> Unit) {
+internal fun ClearCaptionsRow(saving: Boolean, saveFailing: () -> Boolean, onClear: () -> Unit) {
     var asking by remember { mutableStateOf(false) }
     Text(
         tr("ניקוי הכתוביות מהמסך", "Clear captions from the screen"),
@@ -966,9 +967,11 @@ private fun ClearCaptionsRow(onClear: () -> Unit) {
         modifier = Modifier.fillMaxWidth().clickable { asking = true }.padding(vertical = 12.dp),
     )
     if (asking) {
+        val warning = remember { HistoryTexts.clearWarning(saving, saveFailing()) }
         AlertDialog(
             onDismissRequest = { asking = false },
             title = { Text(tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?")) },
+            text = warning?.let { { Text(it) } },
             confirmButton = {
                 TextButton(
                     onClick = {

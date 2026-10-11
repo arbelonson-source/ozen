@@ -1315,6 +1315,30 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun clearingTheCaptionsSaysTheyWillNotBeSavedWhileHistoryIsOffOrSavingFails() {
+        val savingBefore = app.settings.current.value.saveHistory
+        try {
+            app.settings.change { it.saveHistory = false }
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Clear captions from the screen").performScrollTo().performClick()
+            compose.onNodeWithText("History is off, so they won't be saved.").assertExists()
+            compose.onNodeWithText("Cancel").performClick()
+
+            app.settings.change { it.saveHistory = true }
+            compose.onNodeWithText("Clear captions from the screen").performScrollTo().performClick()
+            compose.onNodeWithText("Delete all captions from the screen?").assertExists()
+            compose.onNodeWithText("won't be saved", substring = true).assertDoesNotExist()
+            compose.onNodeWithText("Cancel").performClick()
+        } finally {
+            app.settings.change { it.saveHistory = savingBefore }
+        }
+
+        compose.runOnUiThread { compose.activity.setContent { Column { ClearCaptionsRow(saving = true, saveFailing = { true }, onClear = {}) } } }
+        compose.onNodeWithText("Clear captions from the screen").performClick()
+        compose.onNodeWithText("Saving to History isn't working right now, so they won't be saved.").assertExists()
+    }
+
+    @Test
     fun settingsAndDiagnosticsStayOpenWhenThePhoneRebuildsTheScreen() {
         compose.onNodeWithText("Settings").performClick()
         compose.onNodeWithText("Diagnostics").performScrollTo().assertExists()
