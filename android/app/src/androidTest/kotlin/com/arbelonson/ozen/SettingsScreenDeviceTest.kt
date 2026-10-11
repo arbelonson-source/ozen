@@ -43,6 +43,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -310,6 +313,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Settings").performClick()
         compose.onAllNodesWithText("Home computer").onFirst().performScrollTo().performClick()
         compose.onNodeWithText("Computer address").performScrollTo().performTextInput("ws://10.0.2.2:9")
+        keyboardAway()
         assertReadableOnWhite("Pairing code saved on the phone")
         compose.onNodeWithText("Test connection").performScrollTo().performClick()
         compose.waitUntil(timeoutMillis = 30_000) {
@@ -962,6 +966,20 @@ class SettingsScreenDeviceTest {
 
     private fun hour(title: String, shown: String) =
         compose.onNode(hasText(title) and SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, shown))
+
+    /**
+     * Typing raises the keyboard, and while it slides in the screen above it
+     * moves: a click on a button below the field landed where the button had
+     * been and did nothing, about one full run in three.
+     */
+    private fun keyboardAway() {
+        val window = compose.activity.window
+        compose.runOnUiThread { WindowCompat.getInsetsController(window, window.decorView).hide(WindowInsetsCompat.Type.ime()) }
+        compose.waitUntil(5_000) {
+            compose.runOnUiThread { ViewCompat.getRootWindowInsets(window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom == 0 }
+        }
+        compose.waitForIdle()
+    }
 
     private fun assertReadableOnWhite(text: String) {
         val layouts = mutableListOf<TextLayoutResult>()
