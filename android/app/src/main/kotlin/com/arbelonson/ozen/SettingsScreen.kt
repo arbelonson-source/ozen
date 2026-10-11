@@ -244,6 +244,9 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
     SwitchRow(tr("מספרים בולטים (שעות, כמויות, טלפונים)", "Bold numbers (times, amounts, phone numbers)"), display.emphasizeNumbers) { on ->
         settings.change { it.display = it.display.copy(emphasizeNumbers = on) }
     }
+    SwitchRow(tr("כתוביות גם במסך הנעילה", "Captions on the lock screen too"), display.lockScreenCaptions) { on ->
+        settings.change { it.display = it.display.copy(lockScreenCaptions = on) }
+    }
 }
 
 @Composable

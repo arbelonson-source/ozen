@@ -436,6 +436,22 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun captionsOnTheLockScreenAreSwitchedWithTheDisplay() {
+        val before = app.settings.current.value.display
+        try {
+            app.settings.change { it.display = it.display.copy(lockScreenCaptions = true) }
+            compose.onNodeWithText("Settings").performClick()
+            val row = compose.onNode(hasText("Captions on the lock screen too") and isToggleable())
+            row.performScrollTo().assertIsOn().performClick()
+            compose.waitUntil(5_000) { !app.settings.current.value.display.lockScreenCaptions }
+            row.assertIsOff().performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.display.lockScreenCaptions }
+        } finally {
+            app.settings.change { it.display = before }
+        }
+    }
+
+    @Test
     fun theBuzzWhenSomeoneStartsTalkingAfterSilenceIsSwitchedWithTheAlerts() {
         val before = app.settings.current.value.hapticOnSpeechResume
         try {

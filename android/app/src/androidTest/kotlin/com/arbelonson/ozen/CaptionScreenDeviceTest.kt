@@ -81,6 +81,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -662,6 +663,30 @@ class CaptionScreenDeviceTest {
             compose.onNode(hasSetTextAction()).assert(hasText(typed))
         } finally {
             app.settings.change { it.quickPhrases = phrasesBefore }
+        }
+    }
+
+    @Test
+    fun theListeningNotificationShowsTheNewestLineOnTheLockScreenOnlyWhileSheWantsCaptionsThere() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val manager = app.getSystemService(NotificationManager::class.java)
+        val listening = { manager.activeNotifications.firstOrNull { it.notification.channelId == ListeningService.CHANNEL_ID }?.notification }
+        val before = app.settings.current.value.display
+        try {
+            app.settings.change { it.display = it.display.copy(lockScreenCaptions = true) }
+            compose.runOnUiThread { ListeningService.start(app) }
+            assertTrue("never public: ${listening()?.visibility}", within(10_000) { listening()?.visibility == Notification.VISIBILITY_PUBLIC })
+
+            app.settings.change { it.display = it.display.copy(lockScreenCaptions = false) }
+            assertTrue("never private: ${listening()?.visibility}", within(5_000) { listening()?.visibility == Notification.VISIBILITY_PRIVATE })
+            val shown = listening()!!.publicVersion
+            assertNull(shown.extras.getCharSequence(Notification.EXTRA_TEXT))
+
+            app.settings.change { it.display = it.display.copy(lockScreenCaptions = true) }
+            assertTrue("never public again: ${listening()?.visibility}", within(5_000) { listening()?.visibility == Notification.VISIBILITY_PUBLIC })
+        } finally {
+            compose.runOnUiThread { app.captions.pipeline.stop() }
+            app.settings.change { it.display = before }
         }
     }
 

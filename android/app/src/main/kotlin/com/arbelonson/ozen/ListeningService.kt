@@ -15,6 +15,7 @@ import com.arbelonson.ozen.core.tr
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
@@ -53,10 +54,12 @@ class ListeningService : Service() {
     private suspend fun watch() {
         val manager = getSystemService(NotificationManager::class.java)
         CaptionState.screen
-            .drop(1)
             .map { screen -> Triple(screen.phase, screen.status.title, screen.lines.lastOrNull { it.isFinal }?.text) }
+            .combine((application as OzenApplication).settings.current.map { it.display.lockScreenCaptions }) { shown, onLockScreen -> shown to onLockScreen }
             .distinctUntilChanged()
-            .collect { (phase, _, _) ->
+            .drop(1)
+            .collect { (shown, _) ->
+                val phase = shown.first
                 if (phase == PipelinePhase.Idle || phase == PipelinePhase.Paused) {
                     finish()
                 } else {
@@ -80,18 +83,28 @@ class ListeningService : Service() {
         )
         val screen = CaptionState.screen.value
         val newest = screen.lines.lastOrNull { it.isFinal }?.text
-        return Notification.Builder(this, CHANNEL_ID)
+        val builder = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_listening)
             .setContentTitle(screen.status.title)
             .setContentText(newest ?: tr("הכתוביות יופיעו כאן.", "Captions will appear here."))
             .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .build()
+        // On the lock screen the newest line shows only while she wants
+        // captions there, as on the iPhone: anyone looking at the phone can
+        // read it. Otherwise the locked phone shows what Ozen is doing.
+        if ((application as OzenApplication).settings.current.value.display.lockScreenCaptions) {
+            builder.setVisibility(Notification.VISIBILITY_PUBLIC)
+        } else {
+            builder.setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(
+                Notification.Builder(this, CHANNEL_ID).setSmallIcon(R.drawable.ic_listening).setContentTitle(screen.status.title).build(),
+            )
+        }
+        return builder.build()
     }
 
     companion object {
-        private const val CHANNEL_ID = "listening"
+        const val CHANNEL_ID = "listening"
         private const val NOTIFICATION_ID = 1
         private const val ACTION_PAUSE = "com.arbelonson.ozen.PAUSE"
 
