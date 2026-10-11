@@ -94,6 +94,13 @@ class HistoryRowsTest {
     }
 
     @Test
+    fun `with no search the button leads to the starred lines, then says which of how many`() = Localization.withLanguage(UILanguage.English) {
+        assertEquals("To starred lines (3)", SearchMatches.starredTitle(current = 0, count = 3, jumped = false))
+        assertEquals("Next starred (1 of 3)", SearchMatches.starredTitle(current = 0, count = 3, jumped = true))
+        assertEquals("Next starred (3 of 3)", SearchMatches.starredTitle(current = 2, count = 3, jumped = true))
+    }
+
+    @Test
     fun `numbers mentioned lists the first twelve lines with a time, an amount or a phone number, and counts the rest`() = Localization.withLanguage(UILanguage.English) {
         val numbered = (1..14).map { line("Take $it pills at 8:00", at = morning + it) }
         val record = TranscriptSessionRecord(

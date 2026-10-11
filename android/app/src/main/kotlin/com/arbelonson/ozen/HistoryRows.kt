@@ -119,6 +119,13 @@ object SearchMatches {
 
     fun position(index: Int, old: List<UUID>, new: List<UUID>): Int? =
         old.getOrNull(index)?.let { new.indexOf(it) }?.takeIf { it >= 0 }
+
+    /** With no search the same button steps through the starred lines, from the first. */
+    fun starredTitle(current: Int, count: Int, jumped: Boolean): String = if (jumped) {
+        tr("הסימון הבא (%1 מתוך %2)", "Next starred (%1 of %2)", listOf("${current + 1}", "$count"))
+    } else {
+        tr("לשורות המסומנות (%1)", "To starred lines (%1)", listOf("$count"))
+    }
 }
 
 /**

@@ -323,6 +323,15 @@ private class OpenConversation(
     val lines: List<SavedLine>,
     val matches: List<UUID>,
     val numbers: NumbersMentioned?,
+    val starred: List<UUID>,
+)
+
+private fun opened(record: TranscriptSessionRecord?, query: String, marksUncertain: Boolean) = OpenConversation(
+    record = record,
+    lines = record?.let { SavedLine.of(it, markUncertain = marksUncertain) } ?: emptyList(),
+    matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
+    numbers = record?.takeIf { query.isBlank() }?.let(NumbersMentioned::of),
+    starred = record?.takeIf { query.isBlank() }?.segments?.filter { it.isStarred }?.map { it.id } ?: emptyList(),
 )
 
 /**
@@ -332,7 +341,8 @@ private class OpenConversation(
  * marked, and a button steps through them, as on the iPhone. Share sends
  * it as text, with the lines that may have been misheard saying so in
  * words while the caption screen marks them. A name given here shows in
- * the list and is found by search.
+ * the list and is found by search. With no search, the button steps
+ * through the starred lines instead.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -345,21 +355,23 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
     var loaded by remember { mutableStateOf<OpenConversation?>(null) }
     val list = rememberLazyListState()
     var current by remember { mutableIntStateOf(0) }
+    var starAt by remember { mutableIntStateOf(0) }
+    var jumpedToStar by remember { mutableStateOf(false) }
+    // Read again, the button stays on the line it showed while that is
+    // still one of them; otherwise its next tap starts from the first.
+    fun show(now: OpenConversation) {
+        val before = loaded
+        current = SearchMatches.position(current, before?.matches ?: emptyList(), now.matches) ?: 0
+        val star = SearchMatches.position(starAt, before?.starred ?: emptyList(), now.starred)
+        starAt = star ?: 0
+        if (star == null) jumpedToStar = false
+        loaded = now
+    }
     LaunchedEffect(id, marksUncertain) {
         var jumped = false
         while (true) {
-            val before = loaded?.matches ?: emptyList()
-            val now = withContext(Dispatchers.IO) {
-                val record = conversations.load(id)
-                OpenConversation(
-                    record = record,
-                    lines = record?.let { SavedLine.of(it, markUncertain = marksUncertain) } ?: emptyList(),
-                    matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
-                    numbers = record?.takeIf { query.isBlank() }?.let(NumbersMentioned::of),
-                )
-            }
-            current = SearchMatches.position(current, before, now.matches) ?: 0
-            loaded = now
+            val now = withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain) }
+            show(now)
             if (!jumped && now.matches.isNotEmpty()) {
                 jumped = true
                 withFrameNanos {}
@@ -381,6 +393,8 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
             shown == null -> CircularProgressIndicator(modifier = Modifier.padding(24.dp))
             shown.record == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"))
             else -> {
+                val numbers = shown.numbers?.takeIf { it.listed.isNotEmpty() }
+                val header = if (numbers != null) 1 else 0
                 FlowRow(modifier = Modifier.fillMaxWidth()) {
                     TextButton(onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { shareSheet(context, shown.record, marksUncertain) }) } }) {
                         Text(tr("שיתוף", "Share"))
@@ -400,15 +414,24 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
                             },
                         ) { Text(SearchMatches.nextTitle(current, shown.matches.size)) }
                     }
+                    if (shown.starred.isNotEmpty()) {
+                        TextButton(
+                            onClick = {
+                                starAt = if (jumpedToStar) (starAt + 1) % shown.starred.size else 0
+                                jumpedToStar = true
+                                val target = shown.lines.indexOfFirst { it.id == shown.starred[starAt] }
+                                if (target >= 0) scope.launch { list.scrollToItem(header + target) }
+                            },
+                        ) { Text(SearchMatches.starredTitle(starAt, shown.starred.size, jumpedToStar)) }
+                    }
                 }
                 val matched = shown.matches.toSet()
-                val numbers = shown.numbers?.takeIf { it.listed.isNotEmpty() }
                 LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (numbers != null) {
                         item(key = "numbers") {
                             NumbersSection(numbers) { said ->
                                 val target = shown.lines.indexOfFirst { it.id == said.id }
-                                if (target >= 0) scope.launch { list.scrollToItem(1 + target) }
+                                if (target >= 0) scope.launch { list.scrollToItem(header + target) }
                             }
                         }
                     }
@@ -416,10 +439,7 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
                         SavedLineView(line, isMatch = line.id in matched) {
                             scope.launch {
                                 conversations.toggleStar(id, line.id)
-                                val starred = withContext(Dispatchers.IO) { conversations.load(id) }
-                                loaded?.let {
-                                    loaded = OpenConversation(starred, starred?.let { record -> SavedLine.of(record, markUncertain = marksUncertain) } ?: emptyList(), it.matches, it.numbers)
-                                }
+                                show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain) })
                             }
                         }
                     }
@@ -447,11 +467,12 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
                     onClick = {
                         naming = null
                         scope.launch {
-                            val renamed = withContext(Dispatchers.IO) {
-                                conversations.rename(id, draft)
-                                conversations.load(id)
-                            }
-                            loaded?.let { loaded = OpenConversation(renamed, it.lines, it.matches, it.numbers) }
+                            show(
+                                withContext(Dispatchers.IO) {
+                                    conversations.rename(id, draft)
+                                    opened(conversations.load(id), query, marksUncertain)
+                                },
+                            )
                         }
                     },
                 ) { Text(tr("שמירה", "Save")) }

@@ -361,6 +361,47 @@ class HistoryScreenDeviceTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Marked as important", substring = true).fetchSemanticsNodes().isEmpty() }
     }
 
+    @Test
+    fun withNoSearchTheButtonLeadsToEachStarredLineInTurn() {
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 600
+        val texts = MutableList(120) { "Filler line about the weather" }
+        texts[0] = "Starred steps test opening"
+        texts[1] = "Come back at 10:30 on Sunday"
+        texts[34] = "The line just before the first star"
+        texts[35] = "First starred line about the pills"
+        texts[69] = "The line just before the second star"
+        texts[70] = "Second starred line about the pharmacy"
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 300,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = texts.mapIndexed { index, text ->
+                SavedSegment(UUID.randomUUID(), text, null, null, startedAt + index, true, isStarred = index == 35 || index == 70)
+            },
+        )
+        store.save(record)
+        seeded += record.id
+        compose.onNodeWithText("History").performClick()
+        waitFor("Starred steps test opening")
+        compose.onNodeWithText("Starred steps test opening", substring = true).performClick()
+        waitFor("Numbers mentioned")
+        assertFalse(shownLine("First starred line about the pills"))
+
+        compose.onNodeWithText("To starred lines (2)").performClick()
+        compose.waitUntil(5_000) { shownLine("First starred line about the pills") }
+        assertFalse(shownLine("The line just before the first star"))
+
+        compose.onNodeWithText("Next starred (1 of 2)").performClick()
+        compose.waitUntil(5_000) { shownLine("Second starred line about the pharmacy") }
+        assertFalse(shownLine("The line just before the second star"))
+
+        compose.onNodeWithText("Next starred (2 of 2)").performClick()
+        compose.waitUntil(5_000) { shownLine("First starred line about the pills") }
+        compose.onNodeWithText("Next starred (1 of 2)").assertExists()
+    }
+
     private fun sharedCopies() = File(app.cacheDir, CaptionSession.SHARED_FOLDER).listFiles()?.toList() ?: emptyList()
 
     private fun offsetHere(at: Double) = ZoneId.systemDefault().rules.getOffset(Instant.ofEpochMilli((at * 1_000).toLong())).totalSeconds
