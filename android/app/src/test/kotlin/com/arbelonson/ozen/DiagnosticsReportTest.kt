@@ -17,6 +17,7 @@ import com.arbelonson.ozen.core.SoundAlertPreferences
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.SoundNearMisses
 import com.arbelonson.ozen.core.SoundObservation
+import com.arbelonson.ozen.core.SpeakerProfile
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import java.time.LocalDateTime
@@ -37,13 +38,14 @@ class DiagnosticsReportTest {
         journal: List<String> = emptyList(),
         charging: Boolean = false,
         nearMisses: SoundNearMisses = SoundNearMisses(),
+        selected: AudioInputDescriptor? = headset,
     ) = DiagnosticsFacts(
         phase = PipelinePhase.Failed(PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, "the microphone is busy")),
         activeEngine = TranscriptionEngineKind.WhisperKit,
         settings = settings,
         showing = UILanguage.English,
         homeServerCodeSaved = codeSaved,
-        selectedInput = headset,
+        selectedInput = selected,
         availableInputs = listOf(phone, headset),
         stats = PipelineStats().apply {
             audioChunksReceived = 120
@@ -80,6 +82,7 @@ class DiagnosticsReportTest {
         memoryAvailableBytes = 1_800_000_000,
         soundNearMisses = nearMisses,
         soundAlertConfidence = 0.6,
+        coveringForCloud = true,
     )
 
     @Test
@@ -93,23 +96,26 @@ class DiagnosticsReportTest {
             historyRetention = HistoryRetention.Year
             soundAlerts = SoundAlertPreferences(minimumImportance = SoundEvent.Importance.High, mutedIdentifiers = setOf("dog_bark"), sensitiveIdentifiers = setOf("door_bell", "knock"))
             hapticOnSpeechResume = false
+            speakerProfiles = listOf(SpeakerProfile(name = "Dana", embedding = floatArrayOf(0.1f)), SpeakerProfile(name = "Avi", embedding = floatArrayOf(0.2f)))
+            speakerSimilarityThreshold = 0.7f
+            allowCellularModelDownload = true
         }
         val journal = listOf("10-10 21:02:11 APP STARTED: 0.2.40 Android 16", "10-10 21:40:03 PROBLEM MARKED: engine whisperKit")
         val lines = DiagnosticsReport.text(facts(settings, journal = journal)).lines()
         assertEquals("Ozen diagnostics", lines[0])
         assertEquals("phase: failed: audioSessionFailed", lines[1])
         assertEquals("failure: the microphone is busy", lines[2])
-        assertEquals("engine: whisperKit chosen: whisperKit model: ${settings.whisperModelVariant} lang: he", lines[3])
+        assertEquals("engine: whisperKit chosen: whisperKit covering for cloud: true model: ${settings.whisperModelVariant} lang: he", lines[3])
         assertEquals("app language: system showing: english home server: -", lines[4])
-        assertEquals("input: USB headset of Phone microphone [builtInMic], USB headset [usb]", lines[5])
+        assertEquals("input: USB headset chosen: - of Phone microphone [builtInMic], USB headset [usb]", lines[5])
         assertEquals("audio chunks: 120 seconds: 61.4 input changes: 2 stalls: 1 damaged: 0", lines[6])
         assertEquals("levels: - speech: - floor: - margin: -", lines[7])
         assertEquals("tokens: 340 committed: 12 on screen: 14 lag: -", lines[8])
         assertEquals("restarts: 1 clusters: 3 opened: 4 retry: attempt 2 interrupted: false sound detection: true", lines[9])
         assertEquals("sounds heard below the alert level: -", lines[10])
         assertEquals("alerts: sounds true from high muted 1 fainter 2 words on 1 of 2 when away: true buzz on speech: false", lines[11])
-        assertEquals("history: saving true keep year display: size ${settings.display.fontSize.toInt()} theme ${settings.display.theme.rawValue} awake ${settings.display.keepScreenAwake}", lines[12])
-        assertEquals("settings save error: failed history save error: - notifications allowed: no haptics: ok network: Cellular · Data saving", lines[13])
+        assertEquals("history: saving true keep year speakers saved 2 separation 0.70 display: size ${settings.display.fontSize.toInt()} theme ${settings.display.theme.rawValue} awake ${settings.display.keepScreenAwake}", lines[12])
+        assertEquals("settings save error: failed history save error: - notifications allowed: no haptics: ok network: Cellular · Data saving cellular downloads: true", lines[13])
         assertEquals("model state: unverified vocabulary: ${settings.vocabulary.size}", lines[14])
         assertEquals("thermal: 3 low power: true battery: 54% free space: ${ByteSize.text(12_300_000_000)}", lines[15])
         assertEquals("memory: used ${ByteSize.text(412_000_000)} left ${ByteSize.text(1_800_000_000)}", lines[16])
@@ -131,6 +137,17 @@ class DiagnosticsReportTest {
             assertEquals(lines[13], inHebrew[13])
             assertEquals("thermal: 3 low power: true battery: 54% charging free space: ${ByteSize.text(12_300_000_000)}", inHebrew[15])
         }
+    }
+
+    @Test
+    fun `the report says whether the microphone she chose is the one recording, as on the iPhone`() {
+        val chosen = { uid: String?, selected: AudioInputDescriptor? ->
+            DiagnosticsReport.text(facts(AppSettings.default.copy().apply { preferredInputUID = uid }, selected = selected)).lines()[5]
+        }
+        assertEquals("input: USB headset chosen: USB headset (recording) of Phone microphone [builtInMic], USB headset [usb]", chosen("mic-2", headset))
+        assertEquals("input: Phone microphone chosen: USB headset (here, not recording) of Phone microphone [builtInMic], USB headset [usb]", chosen("mic-2", phone))
+        assertEquals("input: Phone microphone chosen: away of Phone microphone [builtInMic], USB headset [usb]", chosen("mic-9", phone))
+        assertEquals("input: - chosen: - of Phone microphone [builtInMic], USB headset [usb]", chosen(null, null))
     }
 
     @Test

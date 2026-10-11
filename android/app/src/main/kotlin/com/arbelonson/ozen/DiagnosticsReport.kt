@@ -70,6 +70,8 @@ data class DiagnosticsFacts(
     val soundNearMisses: SoundNearMisses = SoundNearMisses(),
     /** How sure a sound has to be to alert, 0 to 1. */
     val soundAlertConfidence: Double = SoundEventPolicy().minimumConfidence,
+    /** The phone's own model carrying on while the cloud or the home computer is out of reach. */
+    val coveringForCloud: Boolean = false,
 )
 
 /** Where the diagnostics screen reads from, and what its buttons do. */
@@ -111,9 +113,9 @@ object DiagnosticsReport {
             "Ozen diagnostics",
             "phase: ${stage(facts.phase)}",
             "failure: ${facts.phase.failure?.detail ?: "-"}",
-            "engine: ${facts.activeEngine?.rawValue ?: "-"} chosen: ${settings.engine.rawValue} model: ${settings.whisperModelVariant} lang: ${settings.languageCode}",
+            "engine: ${facts.activeEngine?.rawValue ?: "-"} chosen: ${settings.engine.rawValue} covering for cloud: ${facts.coveringForCloud} model: ${settings.whisperModelVariant} lang: ${settings.languageCode}",
             "app language: ${settings.appLanguage.rawValue} showing: ${facts.showing.rawValue} home server: $homeServer",
-            "input: ${facts.selectedInput?.portName ?: "-"} of $inputs",
+            "input: ${facts.selectedInput?.portName ?: "-"} chosen: ${chosenInput(facts)} of $inputs",
             "audio chunks: ${stats.audioChunksReceived} seconds: ${format("%.1f", stats.audioSecondsReceived)} input changes: ${stats.inputChanges} stalls: ${stats.audioStalls} damaged: ${stats.glitchedAudioChunks}",
             "levels: ${stats.inputLevels.summary ?: "-"} speech: ${stats.speechShare?.let { format("%.1f%%", it * 100) } ?: "-"} " +
                 "floor: ${stats.noiseFloorDecibels?.let { format("%.1f", it) } ?: "-"} margin: ${stats.noiseMarginDecibels?.let { format("%.1f dB", it) } ?: "-"}",
@@ -123,9 +125,11 @@ object DiagnosticsReport {
             "sounds heard below the alert level: ${facts.soundNearMisses.reportLine(utcOffsetSeconds) ?: "-"}",
             "alerts: sounds ${sounds.isEnabled} from ${sounds.minimumImportance.name.lowercase()} muted ${sounds.mutedIdentifiers.size} fainter ${sounds.sensitiveIdentifiers.size} " +
                 "words on ${alerts.count { it.isEnabled }} of ${alerts.size} when away: ${settings.notifyWhenInBackground} buzz on speech: ${settings.hapticOnSpeechResume}",
-            "history: saving ${settings.saveHistory} keep ${settings.historyRetention.rawValue} display: size ${display.fontSize.toInt()} theme ${display.theme.rawValue} awake ${display.keepScreenAwake}",
+            "history: saving ${settings.saveHistory} keep ${settings.historyRetention.rawValue} " +
+                "speakers saved ${settings.speakerProfiles.size} separation ${format("%.2f", settings.speakerSimilarityThreshold.toDouble())} display: size ${display.fontSize.toInt()} theme ${display.theme.rawValue} awake ${display.keepScreenAwake}",
             "settings save error: ${if (facts.settingsSaveFailed) "failed" else "-"} history save error: ${facts.historySaveFailure ?: "-"} " +
-                "notifications allowed: ${if (facts.notificationsAllowed) "yes" else "no"} haptics: ${if (facts.canVibrate) "ok" else "unsupported"} network: ${network(facts.network, "No connection", "Cellular", "Data saving") ?: "-"}",
+                "notifications allowed: ${if (facts.notificationsAllowed) "yes" else "no"} haptics: ${if (facts.canVibrate) "ok" else "unsupported"} network: ${network(facts.network, "No connection", "Cellular", "Data saving") ?: "-"} " +
+                "cellular downloads: ${settings.allowCellularModelDownload}",
             "model state: ${if (facts.modelInstalled) "unverified" else "missing"} vocabulary: ${settings.vocabulary.size}",
             "thermal: ${facts.thermalStatus ?: "-"} low power: ${facts.batterySaver} battery: ${facts.batteryPercent?.let { "$it%" + if (facts.charging) " charging" else "" } ?: "-"} free space: ${ByteSize.text(facts.freeBytes)}",
             "memory: used ${ByteSize.text(facts.memoryInUseBytes)} left ${facts.memoryAvailableBytes?.let(ByteSize::text) ?: "-"}",
@@ -214,6 +218,13 @@ object DiagnosticsReport {
             return stamp
         }
         return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Localization.locale).format(at)
+    }
+
+    /** "-" when she never picked a microphone, "away" when hers is not connected. */
+    private fun chosenInput(facts: DiagnosticsFacts): String {
+        val chosen = facts.settings.preferredInputUID ?: return "-"
+        val input = facts.availableInputs.firstOrNull { it.uid == chosen } ?: return "away"
+        return if (input.uid == facts.selectedInput?.uid) "${input.portName} (recording)" else "${input.portName} (here, not recording)"
     }
 
     private fun format(pattern: String, value: Double): String = String.format(Locale.ROOT, pattern, value)

@@ -650,6 +650,7 @@ class CaptionSession(
             speakersIdentified = pipeline.speakerClusters.size,
             soundNearMisses = pipeline.soundNearMisses.copy(),
             soundAlertConfidence = pipeline.soundAlertConfidence,
+            coveringForCloud = pipeline.isCoveringForCloud,
         )
     }
 
