@@ -105,9 +105,9 @@ object DiagnosticsReport {
             "alerts: words on ${alerts.count { it.isEnabled }} of ${alerts.size} when away: ${settings.notifyWhenInBackground}",
             "history: saving ${settings.saveHistory} keep ${settings.historyRetention.rawValue} display: size ${display.fontSize.toInt()} theme ${display.theme.rawValue} awake ${display.keepScreenAwake}",
             "settings save error: ${if (facts.settingsSaveFailed) "failed" else "-"} history save error: ${facts.historySaveFailure ?: "-"} " +
-                "notifications allowed: ${if (facts.notificationsAllowed) "yes" else "no"} haptics: ${if (facts.canVibrate) "ok" else "unsupported"} network: ${network(facts.network)}",
+                "notifications allowed: ${if (facts.notificationsAllowed) "yes" else "no"} haptics: ${if (facts.canVibrate) "ok" else "unsupported"} network: ${network(facts.network, "No connection", "Cellular", "Data saving") ?: "-"}",
             "model state: ${if (facts.modelInstalled) "unverified" else "missing"} vocabulary: ${settings.vocabulary.size}",
-            "thermal: ${facts.thermalStatus ?: "-"} low power: ${facts.batterySaver} battery: ${battery(facts.batteryPercent, facts.charging)} free space: ${ByteSize.text(facts.freeBytes)}",
+            "thermal: ${facts.thermalStatus ?: "-"} low power: ${facts.batterySaver} battery: ${facts.batteryPercent?.let { "$it%" + if (facts.charging) " charging" else "" } ?: "-"} free space: ${ByteSize.text(facts.freeBytes)}",
             "memory: used ${ByteSize.text(facts.memoryInUseBytes)} left ${facts.memoryAvailableBytes?.let(ByteSize::text) ?: "-"}",
             "device: ${facts.device} app ${facts.appVersion}",
             "events (oldest first):",
@@ -137,11 +137,15 @@ object DiagnosticsReport {
     }
 
     /** The phone's connection as the iPhone names it: "Wi-Fi", "Cellular · Data saving", "No connection". */
-    fun network(conditions: NetworkConditions?): String {
-        conditions ?: return "—"
-        if (!conditions.isConnected) return tr("אין חיבור", "No connection")
-        val kind = if (conditions.isExpensive) tr("סלולרי", "Cellular") else "Wi-Fi"
-        return if (conditions.isConstrained) "$kind · ${tr("חיסכון בנתונים", "Data saving")}" else kind
+    fun network(conditions: NetworkConditions?): String =
+        network(conditions, tr("אין חיבור", "No connection"), tr("סלולרי", "Cellular"), tr("חיסכון בנתונים", "Data saving")) ?: "—"
+
+    // The screen's words in her language; the report's stay English.
+    private fun network(conditions: NetworkConditions?, none: String, cellular: String, saving: String): String? {
+        conditions ?: return null
+        if (!conditions.isConnected) return none
+        val kind = if (conditions.isExpensive) cellular else "Wi-Fi"
+        return if (conditions.isConstrained) "$kind · $saving" else kind
     }
 
     /**

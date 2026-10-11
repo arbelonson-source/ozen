@@ -26,7 +26,7 @@ class DiagnosticsReportTest {
     private val phone = AudioInputDescriptor("mic-1", "Phone microphone", AudioPortType.BuiltInMic)
     private val headset = AudioInputDescriptor("mic-2", "USB headset", AudioPortType.Usb)
 
-    private fun facts(settings: AppSettings = AppSettings.default.copy(), codeSaved: Boolean = false, journal: List<String> = emptyList()) = DiagnosticsFacts(
+    private fun facts(settings: AppSettings = AppSettings.default.copy(), codeSaved: Boolean = false, journal: List<String> = emptyList(), charging: Boolean = false) = DiagnosticsFacts(
         phase = PipelinePhase.Failed(PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, "the microphone is busy")),
         activeEngine = TranscriptionEngineKind.WhisperKit,
         settings = settings,
@@ -60,7 +60,7 @@ class DiagnosticsReportTest {
         thermalStatus = 3,
         batterySaver = true,
         batteryPercent = 54,
-        charging = false,
+        charging = charging,
         freeBytes = 12_300_000_000,
         memoryInUseBytes = 412_000_000,
         memoryAvailableBytes = 1_800_000_000,
@@ -107,6 +107,11 @@ class DiagnosticsReportTest {
             lines.drop(17),
         )
         assertEquals(listOf("journal, previous runs included (oldest first):", "-"), DiagnosticsReport.text(facts()).lines().takeLast(2))
+        Localization.withLanguage(UILanguage.Hebrew) {
+            val inHebrew = DiagnosticsReport.text(facts(settings, journal = journal, charging = true)).lines()
+            assertEquals(lines[12], inHebrew[12])
+            assertEquals("thermal: 3 low power: true battery: 54% charging free space: ${ByteSize.text(12_300_000_000)}", inHebrew[14])
+        }
     }
 
     @Test
