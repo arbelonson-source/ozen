@@ -322,6 +322,30 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun openingTheAppStartsTheCaptionsOnceAndComingBackToTheCaptionScreenDoesNotStartThemAgain() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val stopped = { compose.runOnUiThread { app.captions.pipeline.stop() } }
+        try {
+            compose.runOnUiThread { app.captions.launchHandled = false }
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Close").performScrollTo().performClick()
+            compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
+            stopped()
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Close").performScrollTo().performClick()
+            compose.activityRule.scenario.recreate()
+            val until = System.currentTimeMillis() + 3_000
+            while (System.currentTimeMillis() < until) {
+                assertEquals("the captions started again", PipelinePhase.Idle, app.captions.pipeline.phase)
+                Thread.sleep(100)
+            }
+        } finally {
+            stopped()
+            app.captions.launchHandled = true
+        }
+    }
+
+    @Test
     fun theMicrophoneButtonShrinksItsWordToFitRatherThanCuttingItOff() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         compose.runOnUiThread { CaptionState.inputs(app.captions.pipeline.availableInputs, null) }

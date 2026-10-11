@@ -7,5 +7,6 @@ class OzenTestRunner : AndroidJUnitRunner() {
     override fun callApplicationOnCreate(app: Application) {
         super.callApplicationOnCreate(app)
         (app as OzenApplication).settings.change { it.hasCompletedOnboarding = true }
+        app.captions.launchHandled = true
     }
 }

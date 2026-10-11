@@ -50,6 +50,7 @@ class OnboardingDeviceTest {
         }
         AlertNotifier.allowed = { false }
         compose.runOnUiThread {
+            app.captions.launchHandled = false
             app.settings.change {
                 it.keywordAlerts = emptyList()
                 it.engine = TranscriptionEngineKind.WhisperKit
@@ -61,7 +62,10 @@ class OnboardingDeviceTest {
     @After
     fun putBack() {
         AlertNotifier.allowed = notificationsAllowed
-        compose.runOnUiThread { if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop() }
+        compose.runOnUiThread {
+            if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop()
+            app.captions.launchHandled = true
+        }
         app.settings.change {
             it.keywordAlerts = before.keywordAlerts
             it.engine = before.engine
@@ -100,13 +104,13 @@ class OnboardingDeviceTest {
     }
 
     @Test
-    fun theScreenStaysOnThroughTheWalkthroughAndSkipEndsItWithoutStartingTheCaptions() {
+    fun theScreenStaysOnThroughTheWalkthroughAndSkipEndsItIntoTheCaptionsAsOnTheIPhone() {
         compose.waitUntil(5_000) { screenKeptOn() }
         compose.onNodeWithText("Next").performClick()
+        assertEquals(PipelinePhase.Idle, app.captions.pipeline.phase)
         compose.onNodeWithText("Skip").performClick()
         compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
         compose.onNodeWithText("History").assertExists()
-        compose.waitUntil(5_000) { !screenKeptOn() }
-        assertEquals(PipelinePhase.Idle, app.captions.pipeline.phase)
+        compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
     }
 }

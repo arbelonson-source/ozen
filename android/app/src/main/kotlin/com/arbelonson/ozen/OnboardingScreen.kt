@@ -69,8 +69,8 @@ import kotlinx.coroutines.launch
  * phone downloads its model from is decided; Settings has the choice.
  *
  * [microphone] and [notifications] are null until asked, then whether the
- * phone said yes. [onFinish] is told whether to start the captions: Start
- * does, as its page says; Skip leaves the caption screen as any launch does.
+ * phone said yes. Skip and Start both finish; the caption screen then
+ * starts the captions on its first appearance, as on the iPhone.
  */
 @Composable
 internal fun OnboardingScreen(
@@ -81,7 +81,7 @@ internal fun OnboardingScreen(
     onApproveNotifications: () -> Unit,
     onOpenPhoneSettings: () -> Unit,
     onAddWord: (String) -> Unit,
-    onFinish: (startCaptions: Boolean) -> Unit,
+    onFinish: () -> Unit,
 ) {
     val pager = rememberPagerState(pageCount = { PAGES })
     val nameDraft = rememberSaveable { mutableStateOf("") }
@@ -128,9 +128,9 @@ internal fun OnboardingScreen(
                 }
             }
             Dots(pager)
-            Footer(pager, onFinish = { start ->
+            Footer(pager, onFinish = {
                 addDraft()
-                onFinish(start)
+                onFinish()
             })
         }
     }
@@ -279,7 +279,7 @@ private fun Dots(pager: PagerState) {
 }
 
 @Composable
-private fun Footer(pager: PagerState, onFinish: (startCaptions: Boolean) -> Unit) {
+private fun Footer(pager: PagerState, onFinish: () -> Unit) {
     val scope = rememberCoroutineScope()
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -288,7 +288,7 @@ private fun Footer(pager: PagerState, onFinish: (startCaptions: Boolean) -> Unit
         if (pager.currentPage < PAGES - 1) {
             // Bare text is too small a target beside Next, and a slip ends
             // the walkthrough.
-            TextButton(onClick = { onFinish(false) }, modifier = Modifier.heightIn(min = 48.dp)) {
+            TextButton(onClick = onFinish, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text(tr("דילוג", "Skip"), fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.weight(1f))
@@ -296,7 +296,7 @@ private fun Footer(pager: PagerState, onFinish: (startCaptions: Boolean) -> Unit
                 Text(tr("הבא", "Next"), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             }
         } else {
-            Button(onClick = { onFinish(true) }, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+            Button(onClick = onFinish, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
                 Text(tr("להתחיל", "Start"), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             }
         }

@@ -112,6 +112,19 @@ class CaptionSession(
     /** The last 30 seconds of sound kept with each marked problem; the app has no backups for it to leak into. */
     private val problemAudio = ProblemAudioStore(problemAudioFolder)
 
+    /**
+     * Whether this run of the app has started the captions on its own yet.
+     * As on the iPhone, the caption screen's first appearance starts them,
+     * once: coming back to it, or the screen being rebuilt, does not.
+     */
+    internal var launchHandled = false
+
+    fun takeFirstAppearance(): Boolean {
+        val first = !launchHandled
+        launchHandled = true
+        return first
+    }
+
     /** Whether the caption screen is in front: set as MainActivity starts and stops. */
     var appIsActive = false
         set(active) {

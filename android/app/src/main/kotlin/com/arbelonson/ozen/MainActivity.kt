@@ -141,7 +141,7 @@ class MainActivity : ComponentActivity() {
         Localization.language = AppLanguage.System.resolved(phoneLanguages)
         enableEdgeToEdge()
         val app = application as OzenApplication
-        setContent { OzenApp(app, showingSettings, onboarding(), onStatusTap = ::statusTapped, onLightScreen = ::systemBarsFor) }
+        setContent { OzenApp(app, showingSettings, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onLightScreen = ::systemBarsFor) }
         openLink(intent)
     }
 
@@ -201,10 +201,7 @@ class MainActivity : ComponentActivity() {
         approveMicrophone = { approveMicrophone.launch(Manifest.permission.RECORD_AUDIO) },
         approveNotifications = ::askForNotifications,
         openPhoneSettings = ::openAppSettings,
-        finish = { start ->
-            (application as OzenApplication).settings.change { it.hasCompletedOnboarding = true }
-            if (start) startListening()
-        },
+        finish = { (application as OzenApplication).settings.change { it.hasCompletedOnboarding = true } },
     )
 
     private fun askForNotifications() {
@@ -250,11 +247,11 @@ private class OnboardingHooks(
     val approveMicrophone: () -> Unit,
     val approveNotifications: () -> Unit,
     val openPhoneSettings: () -> Unit,
-    val finish: (startCaptions: Boolean) -> Unit,
+    val finish: () -> Unit,
 )
 
 @Composable
-private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>, onboarding: OnboardingHooks, onStatusTap: () -> Unit, onLightScreen: (Boolean) -> Unit) {
+private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>, onboarding: OnboardingHooks, onStatusTap: () -> Unit, onLaunch: () -> Unit, onLightScreen: (Boolean) -> Unit) {
     val direction = if (Localization.language.isRightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr
     val state by CaptionState.screen.collectAsStateWithLifecycle()
     val current by app.settings.current.collectAsStateWithLifecycle()
@@ -336,26 +333,29 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     emphasizeNumbers = current.display.emphasizeNumbers,
                     onClose = { showingHistory = false },
                 )
-                else -> CaptionScreen(
-                    state,
-                    current.display,
-                    look,
-                    onStatusTap,
-                    onSettings = { showingSettings.value = true },
-                    onHistory = { showingHistory = true },
-                    onStar = { app.captions.toggleStar(it) },
-                    onOpen = { conversation, line ->
-                        app.captions.saveBeforeReading()
-                        reading = conversation to line
-                    },
-                    onAddWord = { app.captions.addWord(it) },
-                    onAskToRepeat = { app.captions.askToRepeat() }.takeIf { app.captions.canAskToRepeat() },
-                    onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
-                    onDismissSavingTrouble = app.captions::dismissSavingTrouble,
-                    onDismissMicrophoneDrop = app.captions::dismissMicrophoneDrop,
-                    onMarkProblem = app.captions::markProblem,
-                    onMicrophone = { choosingMicrophone = true },
-                )
+                else -> {
+                    LaunchedEffect(Unit) { if (app.captions.takeFirstAppearance()) onLaunch() }
+                    CaptionScreen(
+                        state,
+                        current.display,
+                        look,
+                        onStatusTap,
+                        onSettings = { showingSettings.value = true },
+                        onHistory = { showingHistory = true },
+                        onStar = { app.captions.toggleStar(it) },
+                        onOpen = { conversation, line ->
+                            app.captions.saveBeforeReading()
+                            reading = conversation to line
+                        },
+                        onAddWord = { app.captions.addWord(it) },
+                        onAskToRepeat = { app.captions.askToRepeat() }.takeIf { app.captions.canAskToRepeat() },
+                        onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
+                        onDismissSavingTrouble = app.captions::dismissSavingTrouble,
+                        onDismissMicrophoneDrop = app.captions::dismissMicrophoneDrop,
+                        onMarkProblem = app.captions::markProblem,
+                        onMicrophone = { choosingMicrophone = true },
+                    )
+                }
             }
             PairingDialogs(app.pairing)
         }
