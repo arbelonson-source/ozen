@@ -956,9 +956,11 @@ private val SEARCH_MATCH = Color(red = 1f, green = 0.84f, blue = 0.04f, alpha = 
  */
 private const val LONGEST_SHARED_TEXT = 50_000
 
-private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksUncertain: Boolean): Intent {
-    val text = TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain)
-    val subject = tr("שיחה מאוזן", "Conversation from Ozen")
+private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksUncertain: Boolean): Intent =
+    textShareSheet(context, tr("שיחה מאוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain))
+
+/** The share sheet for a conversation or the starred lines: as a message, or past [LONGEST_SHARED_TEXT] as a file. */
+internal fun textShareSheet(context: Context, subject: String, text: String): Intent {
     val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, subject)
     if (text.length <= LONGEST_SHARED_TEXT) {
         send.putExtra(Intent.EXTRA_TEXT, text)

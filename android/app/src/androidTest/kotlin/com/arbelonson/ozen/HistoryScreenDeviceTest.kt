@@ -391,6 +391,48 @@ class HistoryScreenDeviceTest {
     }
 
     @Test
+    fun starredLinesTooLongForAChatMessageAreSharedAsATextFile() {
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 3_600
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 3_000,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = (0 until 600).map {
+                SavedSegment(UUID.randomUUID(), "Starred share test line $it about the history of medicine and the pharmacy", null, null, startedAt + it * 3, true, isStarred = true)
+            },
+        )
+        store.save(record)
+        seeded += record.id
+        val started = CopyOnWriteArrayList<Intent>()
+        val sheet = startsHeldBack(started)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.addMonitor(sheet)
+        try {
+            compose.onNodeWithText("History").performClick()
+            waitFor("Starred share test line 0")
+            val total = store.listSummaries().sumOf { it.starredCount }
+            compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
+            waitFor("Share")
+            compose.onNodeWithText("Share").performClick()
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            @Suppress("DEPRECATION")
+            val send = started.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+            assertEquals("Starred lines from Ozen", send.getStringExtra(Intent.EXTRA_SUBJECT))
+            assertNull(send.getStringExtra(Intent.EXTRA_TEXT))
+            @Suppress("DEPRECATION")
+            val file = send.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)!!
+            assertTrue(send.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+            val shared = app.contentResolver.openInputStream(file)!!.use { it.readBytes().toString(Charsets.UTF_8) }
+            assertTrue(shared.length > 50_000)
+            assertTrue(shared.contains("Starred share test line 599 about the history"))
+        } finally {
+            instrumentation.removeMonitor(sheet)
+        }
+    }
+
+    @Test
     fun deletingAConversationAlsoDeletesTheCopyLastSharedAsAFile() {
         val record = longConversation("Shared then deleted opening")
         val started = CopyOnWriteArrayList<Intent>()

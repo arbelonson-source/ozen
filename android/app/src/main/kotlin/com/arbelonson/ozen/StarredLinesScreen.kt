@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -25,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +42,7 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.tr
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** History's way in, shown only when some saved line has a star, as on the iPhone. */
@@ -79,6 +82,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
         lines = withContext(Dispatchers.IO) { conversations.starredLines() }
     }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val shown = lines
     Screen(
         title = tr("שורות מסומנות", "Starred lines"),
@@ -86,7 +90,9 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
         onClose = onClose,
         actions = {
             if (!shown.isNullOrEmpty()) {
-                TextButton(onClick = { context.startActivity(starredShareSheet(shown, marksUncertain)) }) { Text(tr("שיתוף", "Share")) }
+                TextButton(onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { starredShareSheet(context, shown, marksUncertain) }) } }) {
+                    Text(tr("שיתוף", "Share"))
+                }
             }
         },
     ) {
@@ -151,10 +157,6 @@ private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: 
     }
 }
 
-private fun starredShareSheet(lines: List<StarredLine>, marksUncertain: Boolean): Intent {
-    val send = Intent(Intent.ACTION_SEND)
-        .setType("text/plain")
-        .putExtra(Intent.EXTRA_SUBJECT, tr("שורות מסומנות מאוזן", "Starred lines from Ozen"))
-        .putExtra(Intent.EXTRA_TEXT, TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt = ::localOffset, marksUncertain = marksUncertain))
-    return Intent.createChooser(send, null)
-}
+// Years of stars can outgrow a message as a long conversation does.
+private fun starredShareSheet(context: Context, lines: List<StarredLine>, marksUncertain: Boolean): Intent =
+    textShareSheet(context, tr("שורות מסומנות מאוזן", "Starred lines from Ozen"), TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt = ::localOffset, marksUncertain = marksUncertain))
