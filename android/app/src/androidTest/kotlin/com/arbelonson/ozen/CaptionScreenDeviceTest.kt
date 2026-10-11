@@ -205,6 +205,8 @@ class CaptionScreenDeviceTest {
             assertTrue("mark $mark, line $line", mark.left >= line.right - 1f)
             assertEquals(1, layoutOf(doubted).layoutInput.text.let { it.getStringAnnotations(DOUBTFUL_WORD, 0, it.length) }.size)
             words.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Words that may be wrong: $doubted"))
+            words.assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("May not have been heard correctly. $hebrew")))
+            compose.onNodeWithContentDescription("May not have been heard correctly.").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.HideFromAccessibility))
             val dotted = words.captureToImage()
             showUnsure(hebrew, doubtful = emptyList())
             val plain = compose.onNodeWithText(doubted, substring = true).captureToImage()
@@ -219,6 +221,8 @@ class CaptionScreenDeviceTest {
             app.settings.change { it.display = it.display.copy(markUncertainLines = false) }
             compose.waitForIdle()
             compose.onNodeWithContentDescription("May not have been heard correctly.").assertDoesNotExist()
+            compose.onNodeWithText("see you at ten", substring = true)
+                .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
         } finally {
             app.settings.change { it.display = before }
         }
@@ -347,6 +351,9 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithText("Take two pills after dinner", substring = true).performTouchInput { longClick() }
         compose.onNodeWithText("Mark as important").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Marked as important.").fetchSemanticsNodes().size == 1 }
+        compose.onNodeWithText("Take two pills after dinner", substring = true)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Marked as important. Take two pills after dinner")))
+        compose.onNodeWithContentDescription("Marked as important.").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.HideFromAccessibility))
         assertTrue(CaptionState.screen.value.lines.single { it.id == pills.id }.starred)
         assertFalse(CaptionState.screen.value.lines.single { it.id == phone.id }.starred)
 
@@ -354,6 +361,8 @@ class CaptionScreenDeviceTest {
         val unmark = line.config[SemanticsActions.CustomActions].single { it.label == "Remove mark" }
         compose.runOnUiThread { unmark.action() }
         compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Marked as important.").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("Take two pills after dinner", substring = true)
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
 
         compose.onNodeWithText("תתקשרי", substring = true).performTouchInput { longClick() }
         compose.onNodeWithText("Copy").performClick()
@@ -1201,6 +1210,9 @@ class CaptionScreenDeviceTest {
             }
             compose.waitForIdle()
             assertEquals(1, compose.onAllNodesWithContentDescription("Contains an important word").fetchSemanticsNodes().size)
+            compose.onNodeWithText("Grandma, dinner is ready", substring = true)
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Contains an important word"))
+            compose.onNodeWithContentDescription("Contains an important word").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.HideFromAccessibility))
             assertTrue(buzzed.isEmpty())
 
             val now = System.currentTimeMillis() / 1_000.0

@@ -1205,11 +1205,12 @@ private fun CaptionLineWords(
                 .weight(1f, fill = false)
                 .then(if (line.important) Modifier.background(importantField(look.isLight), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp) else Modifier)
                 .drawBehind { layout?.let { drawDoubtDots(it, colour) } }
+                // One stop for a screen reader, as on the iPhone: the marks
+                // beside the words are heard here, not each on its own.
                 .semantics {
-                    if (speaker != null) contentDescription = "$speaker: ${line.text}"
-                    if (spoken.isNotEmpty()) {
-                        stateDescription = tr("מילים שאולי לא נשמעו נכון: %1", "Words that may be wrong: %1", listOf(spoken.joinToString(", ")))
-                    }
+                    val label = CaptionLineSpeech.label(line.text, speaker, line.starred, display.markUncertainLines && line.unsure)
+                    if (label != line.text) contentDescription = label
+                    CaptionLineSpeech.state(line.important, spoken)?.let { stateDescription = it }
                     customActions = actions
                 },
         )
@@ -1232,7 +1233,10 @@ private fun BellMark(fontSize: Double, colour: Color) {
             .padding(top = inset)
             .padding(end = 8.dp)
             .size(size)
-            .clearAndSetSemantics { contentDescription = tr("מכילה מילה חשובה", "Contains an important word") },
+            .clearAndSetSemantics {
+                contentDescription = tr("מכילה מילה חשובה", "Contains an important word")
+                hideFromAccessibility()
+            },
     ) {
         val w = this.size.width
         val h = this.size.height
@@ -1450,7 +1454,10 @@ private fun StarMark(fontSize: Double, colour: Color) {
         modifier = Modifier
             .padding(top = inset)
             .padding(end = 8.dp)
-            .clearAndSetSemantics { contentDescription = tr("מסומן כחשוב. ", "Marked as important. ").trim() },
+            .clearAndSetSemantics {
+                contentDescription = tr("מסומן כחשוב. ", "Marked as important. ").trim()
+                hideFromAccessibility()
+            },
     )
 }
 
@@ -1466,7 +1473,10 @@ internal fun UnsureMark(fontSize: Double, colour: Color) {
             .padding(end = 8.dp)
             .size(diameter)
             .border(width = 2.dp, color = colour, shape = CircleShape)
-            .clearAndSetSemantics { contentDescription = label },
+            .clearAndSetSemantics {
+                contentDescription = label
+                hideFromAccessibility()
+            },
         contentAlignment = Alignment.Center,
     ) {
         Text("?", color = colour, fontSize = (side * 0.7).sp, lineHeight = (side * 0.7).sp, fontWeight = FontWeight.Bold)
