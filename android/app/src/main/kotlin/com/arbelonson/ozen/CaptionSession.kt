@@ -21,6 +21,7 @@ import com.arbelonson.ozen.core.HTTPFileFetcher
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.BatteryAdvisor
 import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionsStopAnnouncer
 import com.arbelonson.ozen.core.HomeServerEngine
@@ -106,9 +107,8 @@ class CaptionSession(
     private val notifier = AlertNotifier(context)
     private val savingTrouble = SavingTroubleNotice()
 
-    // Readings count only while the microphone is on, for captions or for
-    // sounds alone: a night of either runs the battery down, as the iPhone
-    // found. Sounds alone can start with no publish, so each reading asks.
+    // Readings count from asking for captions until they are stopped or
+    // paused, failures and retries included (see `BatteryAdvisor.watches`).
     private val stopAnnouncer = CaptionsStopAnnouncer()
     private val batteryWatch = BatteryWatch(show = CaptionState::battery, warned = ::batteryWarningRaised)
     private val batteryReadings = object : BroadcastReceiver() {
@@ -427,7 +427,7 @@ class CaptionSession(
         if (appIsActive && ScreenReader.isOn(context)) ScreenReader.announce(context, text)
     }
 
-    private val microphoneOn: Boolean get() = pipeline.phase.isListening || pipeline.isListeningForSoundsOnly
+    private val microphoneOn: Boolean get() = BatteryAdvisor.watches(pipeline.phase)
 
     private fun readBattery(intent: Intent) {
         val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)

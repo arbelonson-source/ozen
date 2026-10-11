@@ -67,6 +67,18 @@ public struct BatteryAdvisor: Sendable, Equatable {
         self.rearmMargin = rearmMargin
     }
 
+    /// Whether battery readings count in `phase`: from asking for captions
+    /// until they are stopped or paused. A failure counts too: captions
+    /// retrying, or the microphone kept on for sounds alone, run the
+    /// battery down, and the moment between two attempts took the warning
+    /// down, never to come back once given.
+    public static func watches(_ phase: PipelinePhase) -> Bool {
+        switch phase {
+        case .idle, .paused: return false
+        case .requestingMicrophonePermission, .preparingEngine, .startingAudio, .listening, .failed: return true
+        }
+    }
+
     /// Feed every battery reading. `level` is 0...1, or nil / negative
     /// when unknown (the simulator reports -1). Returns a warning at most
     /// once per threshold per discharge.

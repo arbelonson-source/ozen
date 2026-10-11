@@ -2,6 +2,7 @@ package com.arbelonson.ozen.core
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -82,6 +83,18 @@ class BatteryAdvisorTest {
             assertEquals("Battery at 9%", critical.title)
             assertTrue(low.body.contains("plugging in"))
             assertTrue(critical.body.contains("Plug it in"))
+        }
+    }
+
+    @Test
+    fun `the battery is watched from asking for captions until they are stopped or paused, retries between attempts included`() {
+        val failed = PipelinePhase.Failed(PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "the home computer is off"))
+        val preparing = PipelinePhase.PreparingEngine(EnginePreparationProgress(stage = EnginePreparationProgress.Stage.LoadingModel))
+        for (phase in listOf(PipelinePhase.RequestingMicrophonePermission, preparing, PipelinePhase.StartingAudio, PipelinePhase.Listening, failed)) {
+            assertTrue(BatteryAdvisor.watches(phase), "$phase")
+        }
+        for (phase in listOf(PipelinePhase.Idle, PipelinePhase.Paused)) {
+            assertFalse(BatteryAdvisor.watches(phase), "$phase")
         }
     }
 }

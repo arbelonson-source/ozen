@@ -371,13 +371,14 @@ struct LiveCaptionView: View {
         .onChange(of: viewModel.segments.isEmpty) { _, _ in
             announceNewLines()
         }
-        // Also while captions wait to come back with the microphone on for
-        // sound alerts alone: a night of that runs the battery down too.
-        .onChange(of: viewModel.isListening || viewModel.isListeningForSoundsOnly, initial: true) { _, listening in
+        // Also while captions fail and retry, or wait to come back with the
+        // microphone on for sound alerts alone: a night of that runs the
+        // battery down too (see `BatteryAdvisor.watches`).
+        .onChange(of: BatteryAdvisor.watches(viewModel.phase), initial: true) { _, watching in
             battery.onWarning = { [viewModel] warning in
                 viewModel.batteryWarningRaised(warning)
             }
-            battery.setActive(listening)
+            battery.setActive(watching)
         }
         .onChange(of: keepsScreenAwake, initial: true) { _, keep in
             UIApplication.shared.isIdleTimerDisabled = keep

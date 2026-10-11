@@ -60,4 +60,18 @@ class BatteryAdvisor(
         }
         return null
     }
+
+    companion object {
+        /**
+         * Whether battery readings count in [phase]: from asking for
+         * captions until they are stopped or paused. A failure counts too:
+         * captions retrying, or the microphone kept on for sounds alone, run
+         * the battery down, and the moment between two attempts took the
+         * warning down, never to come back once given.
+         */
+        fun watches(phase: PipelinePhase): Boolean = when (phase) {
+            PipelinePhase.Idle, PipelinePhase.Paused -> false
+            PipelinePhase.RequestingMicrophonePermission, is PipelinePhase.PreparingEngine, PipelinePhase.StartingAudio, PipelinePhase.Listening, is PipelinePhase.Failed -> true
+        }
+    }
 }

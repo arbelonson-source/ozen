@@ -81,4 +81,16 @@ struct BatteryAdvisorTests {
             #expect(critical.body.contains("Plug it in"))
         }
     }
+
+    @Test("the battery is watched from asking for captions until they are stopped or paused, retries between attempts included")
+    func watchedPhases() {
+        let failed = PipelinePhase.failed(PipelineFailure(kind: .engineUnavailable, detail: "the home computer is off"))
+        let preparing = PipelinePhase.preparingEngine(EnginePreparationProgress(stage: .loadingModel))
+        for phase in [PipelinePhase.requestingMicrophonePermission, preparing, .startingAudio, .listening, failed] {
+            #expect(BatteryAdvisor.watches(phase), "\(phase)")
+        }
+        for phase in [PipelinePhase.idle, .paused] {
+            #expect(!BatteryAdvisor.watches(phase), "\(phase)")
+        }
+    }
 }

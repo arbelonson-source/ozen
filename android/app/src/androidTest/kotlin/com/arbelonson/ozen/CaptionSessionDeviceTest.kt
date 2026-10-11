@@ -186,6 +186,8 @@ class CaptionSessionDeviceTest {
             val warned = withTimeoutOrNull(10_000) { CaptionState.screen.first { it.battery != null } }?.battery
             assertTrue("warned $warned", warned is BatteryWarning.Low && warned.percent in 14..15)
             assertEquals("buzzed $buzzed", listOf(CaptionSession.BATTERY_BUZZ), buzzed.filter { it == CaptionSession.BATTERY_BUZZ })
+            delay(12_000)
+            assertEquals("the warning went while the captions kept retrying: ${CaptionState.screen.value.phase}", warned, CaptionState.screen.value.battery)
             shell("dumpsys battery set ac 1")
             assertNotNull("charging left the warning up", withTimeoutOrNull(10_000) { CaptionState.screen.first { it.battery == null } })
         } finally {
