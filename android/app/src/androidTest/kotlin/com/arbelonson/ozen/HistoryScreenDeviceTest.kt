@@ -26,6 +26,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
@@ -930,6 +931,22 @@ class HistoryScreenDeviceTest {
     }
 
     private fun near(a: Color, b: Color) = abs(a.red - b.red) < 0.03f && abs(a.green - b.green) < 0.03f && abs(a.blue - b.blue) < 0.03f
+
+    @Test
+    fun backFromAStarredLineFarDownFindsTheStarredListWhereItWas() {
+        val now = System.currentTimeMillis() / 1_000.0
+        (1..30).forEach { starredConversation("Starred place test line $it of thirty", now - it * 3_600.0) }
+        compose.onNodeWithText("History").performClick()
+        waitFor("Starred lines")
+        val total = store.listSummaries().sumOf { it.starredCount }
+        compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
+        compose.waitUntil(5_000) { shownLine("Starred place test line 1 of thirty") }
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasContentDescription("Starred place test line 25 of thirty", substring = true))
+        compose.onNodeWithContentDescription("Starred place test line 25 of thirty", substring = true).assertIsDisplayed().performClick()
+        compose.waitUntil(5_000) { shownLine("Marked as important. Starred place test line 25 of thirty") }
+        compose.onNodeWithText("Back").performClick()
+        compose.onNodeWithContentDescription("Starred place test line 25 of thirty", substring = true).assertIsDisplayed()
+    }
 
     @Test
     fun anOpenedConversationIsHeadedByItsDayAndTimeAndEndsWithWhatTranscribedIt() {

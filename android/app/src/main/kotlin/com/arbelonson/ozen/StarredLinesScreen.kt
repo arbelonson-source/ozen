@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -71,13 +72,16 @@ internal fun StarredLinesRow(count: Int, onOpen: () -> Unit) {
 @Composable
 internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertain: Boolean, emphasizeNumbers: Boolean, onClose: () -> Unit, languageCode: String = "he") {
     var opened by rememberSaveable { mutableStateOf<Pair<UUID, UUID>?>(null) }
+    // Kept while a line's conversation is open, so Back finds the list where
+    // it was; the lines are still read again behind it.
+    var lines by remember { mutableStateOf<List<StarredLine>?>(null) }
+    val place = rememberLazyListState()
     val open = opened
     if (open != null) {
         ConversationScreen(conversations, open.first, query = "", marksUncertain = marksUncertain, emphasizeNumbers = emphasizeNumbers, onClose = { opened = null }, line = open.second, languageCode = languageCode)
         return
     }
     BackHandler(onBack = onClose)
-    var lines by remember { mutableStateOf<List<StarredLine>?>(null) }
     LaunchedEffect(Unit) {
         lines = withContext(Dispatchers.IO) { conversations.starredLines() }
     }
@@ -107,7 +111,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
             }
             else -> {
                 val now = System.currentTimeMillis() / 1_000.0
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(modifier = Modifier.fillMaxSize(), state = place) {
                     for ((session, starred) in shown.groupBy { it.sessionID }) {
                         item(key = "conversation-$session") {
                             Heading(conversationHeading(starred.first().sessionStartedAt, now = now))
