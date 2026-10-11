@@ -542,6 +542,8 @@ internal fun ConversationScreen(
     var current by remember { mutableIntStateOf(0) }
     var starAt by remember { mutableIntStateOf(0) }
     var jumpedToStar by remember { mutableStateOf(false) }
+    var arrived by remember { mutableStateOf<UUID?>(null) }
+    val marking = rememberCoroutineScope()
     // Read again, the button stays on the line it showed while that is
     // still one of them; otherwise its next tap starts from the first.
     fun show(now: OpenConversation) {
@@ -565,8 +567,19 @@ internal fun ConversationScreen(
             val held = now.lines.indexOfFirst { it.id == line }
             if (!jumped && held >= 0) {
                 jumped = true
+                // As on the iPhone: "next starred" goes on from the line she
+                // came for, which is marked for a moment so she sees it.
+                now.starred.indexOf(line).takeIf { it >= 0 }?.let {
+                    starAt = it
+                    jumpedToStar = true
+                }
                 withFrameNanos {}
                 list.scrollToItem(now.headerItems + held)
+                marking.launch {
+                    arrived = line
+                    delay(2_000)
+                    arrived = null
+                }
             }
             if (!conversations.isCurrent(id)) break
             delay(20_000)
@@ -631,7 +644,7 @@ internal fun ConversationScreen(
                         Heading(conversationHeading(shown.record.startedAt, now = System.currentTimeMillis() / 1_000.0))
                     }
                     items(shown.lines, key = { it.id.toString() }) { line ->
-                        SavedLineView(line, isMatch = line.id in matched, emphasizeNumbers = emphasizeNumbers) {
+                        SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers) {
                             scope.launch {
                                 conversations.toggleStar(id, line.id)
                                 show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
@@ -799,7 +812,7 @@ private fun NumbersSection(numbers: NumbersMentioned, onJump: (SavedSegment) -> 
 }
 
 @Composable
-private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: Boolean, onStar: () -> Unit) {
+private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: Boolean, arrived: Boolean = false, onStar: () -> Unit) {
     val found = tr("מכילה את מה שחיפשת", "Contains what you searched for")
     val star = if (line.starred) tr("הסרת הסימון", "Remove the star") else tr("סימון כחשובה", "Mark as important")
     val copy = tr("העתקה", "Copy")
@@ -814,8 +827,8 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (isMatch) SEARCH_MATCH else Color.Transparent, RoundedCornerShape(8.dp))
-            .padding(horizontal = if (isMatch) 6.dp else 0.dp, vertical = if (isMatch) 4.dp else 0.dp)
+            .background(if (isMatch || arrived) SEARCH_MATCH else Color.Transparent, RoundedCornerShape(8.dp))
+            .padding(horizontal = if (isMatch || arrived) 6.dp else 0.dp, vertical = if (isMatch || arrived) 4.dp else 0.dp)
             .clearAndSetSemantics {
                 contentDescription = line.spoken
                 if (isMatch) stateDescription = found

@@ -643,6 +643,43 @@ class HistoryScreenDeviceTest {
     }
 
     @Test
+    fun aConversationOpenedAtAStarredLineMarksItForAMomentAndNextStarredGoesOnFromIt() {
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 300
+        val texts = listOf("Arrival test the first star", "Arrival test the second star", "Arrival test the third star")
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 60,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = texts.mapIndexed { index, text -> SavedSegment(UUID.randomUUID(), text, null, null, startedAt + index * 10, true, isStarred = true) },
+        )
+        store.save(record)
+        seeded += record.id
+        app.settings.change { it.display = it.display.copy(theme = DisplayPreferences.Theme.Dark, markUncertainLines = false) }
+        compose.onNodeWithText("History").performClick()
+        waitFor("Arrival test the first star")
+        val total = store.listSummaries().sumOf { it.starredCount }
+        compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
+        compose.waitUntil(5_000) { shownLine("Arrival test the second star") }
+        compose.onNodeWithContentDescription("Arrival test the second star", substring = true).performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Next starred (2 of 3)").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { highlighted("Arrival test the second star") }
+        assertFalse(highlighted("Arrival test the first star"))
+        compose.waitUntil(5_000) { !highlighted("Arrival test the second star") }
+
+        compose.onNodeWithText("Next starred (2 of 3)").performClick()
+        compose.onNodeWithText("Next starred (3 of 3)").assertExists()
+    }
+
+    // Beside the words, where only the line's background shows: the star is yellow too.
+    private fun highlighted(text: String): Boolean {
+        val image = compose.onNodeWithContentDescription(text, substring = true).captureToImage().toPixelMap()
+        val edge = image[image.width - 6, image.height / 2]
+        return minOf(edge.red, edge.green) - edge.blue > 0.15f
+    }
+
+    @Test
     fun conversationsFromThisDateInEarlierYearsComeFirstNewestFirstThreeAtMost() {
         val now = ZonedDateTime.now()
         assumeFalse(MonthDay.from(now) == MonthDay.of(2, 29))
