@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
+import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.SavedLineSpeech
 import com.arbelonson.ozen.core.TranscriptSessionRecord
@@ -60,3 +61,33 @@ fun clockTime(at: Double, zone: ZoneId = ZoneId.systemDefault()): String =
     DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
         .withLocale(Localization.locale)
         .format(Instant.ofEpochMilli((at * 1_000).toLong()).atZone(zone))
+
+object HistoryTexts {
+    fun savingFooter(saving: Boolean, size: String, retention: HistoryRetention): String {
+        val base = if (saving) {
+            tr("השיחות נשמרות בטלפון הזה (%1). אפשר למחוק אותן בכל רגע.", "Conversations are saved on this phone (%1). They can be deleted anytime.", listOf(size))
+        } else {
+            tr(
+                "שיחות חדשות לא נשמרות. השיחות שכבר נשמרו נשארות בטלפון הזה (%1). אפשר למחוק אותן בכל רגע.",
+                "New conversations are not being saved. Those saved before stay on this phone (%1). They can be deleted anytime.",
+                listOf(size),
+            )
+        }
+        if (retention == HistoryRetention.Forever) return base
+        return base + tr(" שיחות עם שורה מסומנת או עם שם נשמרות תמיד.", " Conversations with a starred line or a name are always kept.")
+    }
+
+    fun expiryWarning(count: Int): String = when (count) {
+        1 -> tr("שיחה ישנה אחת תימחק עכשיו", "1 old conversation will be deleted now")
+        2 -> tr("שתי שיחות ישנות יימחקו עכשיו", "2 old conversations will be deleted now")
+        else -> ConversationStats.oldConversationsDeletedText(count)
+    }
+
+    fun name(retention: HistoryRetention): String = when (retention) {
+        HistoryRetention.Forever -> tr("אף פעם", "Never")
+        HistoryRetention.Year -> tr("אחרי שנה", "After a year")
+        HistoryRetention.ThreeMonths -> tr("אחרי 3 חודשים", "After 3 months")
+        HistoryRetention.Month -> tr("אחרי חודש", "After a month")
+        HistoryRetention.Week -> tr("אחרי שבוע", "After a week")
+    }
+}

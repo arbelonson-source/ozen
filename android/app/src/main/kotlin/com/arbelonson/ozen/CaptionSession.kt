@@ -5,6 +5,7 @@ import android.os.Build
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.CaptionPipeline
+import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.HomeServerEngine
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
@@ -55,6 +56,7 @@ class CaptionSession(
         speakerName = pipeline::displayName,
         inputName = { audio.availableInputs.firstOrNull { it.uid == audio.selectedInputUID }?.portName },
         startNewConversation = pipeline::startNewConversation,
+        setSaveHistory = { on -> settings.change { it.saveHistory = on } },
         scope = scope,
     )
     val savedConversations = object : SavedConversations {
@@ -62,7 +64,18 @@ class CaptionSession(
 
         override fun load(id: UUID) = historyStore.load(id)
 
+        override fun sizeOnDisk() = historyStore.totalSizeOnDisk()
+
+        override val lastSaveFailure: String? get() = conversations.lastSaveFailure
+
         override fun delete(id: UUID) = conversations.delete(id)
+
+        override fun switchSaving(on: Boolean) = conversations.switchSaving(on)
+
+        override suspend fun keepFor(retention: HistoryRetention) {
+            settings.change { it.historyRetention = retention }
+            conversations.deleteExpired()
+        }
 
         override fun opened(id: UUID) = conversations.opened(id)
 

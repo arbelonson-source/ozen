@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Keeps what captions say as saved conversations, by the iPhone's rules
@@ -30,6 +31,7 @@ class ConversationSaver(
     private val speakerName: (TranscriptSegment) -> String?,
     private val inputName: () -> String?,
     private val startNewConversation: () -> Unit,
+    private val setSaveHistory: (Boolean) -> Unit,
     private val scope: CoroutineScope,
     private val now: () -> Double = { System.currentTimeMillis() / 1_000.0 },
     private val io: CoroutineContext = Dispatchers.IO,
@@ -101,13 +103,39 @@ class ConversationSaver(
     fun checkForConversationBreak(now: Double = this.now()): Boolean {
         val lastCaptionAt = currentLines.maxOfOrNull { it.lastUpdateTimestamp }
         if (!ConversationBreak.shouldStartNew(lastCaptionAt, now)) return false
+        close(endedAt = lastCaptionAt)
+        startNewConversation()
+        return true
+    }
+
+    /**
+     * Switched off, what was said until now is kept and nothing after it;
+     * switched back on, saving starts with the next line. Without this the
+     * next save after switching back on wrote every line said while it was off.
+     */
+    fun switchSaving(on: Boolean) {
+        if (on == settings().saveHistory) return
+        close(endedAt = currentLines.maxOfOrNull { it.lastUpdateTimestamp })
+        setSaveHistory(on)
+    }
+
+    val lastSaveFailure: String? get() = writer.lastFailure
+
+    /** Deletes what the retention setting says has expired, now, after any save in flight. */
+    suspend fun deleteExpired(now: Double = this.now()): Int {
+        lastRetentionCheck = now
+        val retention = settings().historyRetention
+        if (retention == HistoryRetention.Forever) return 0
+        val onScreen = closed.toSet() + reading + id
+        return withContext(io) { writer.deleteExpiredNow(retention, now, onScreen) }
+    }
+
+    private fun close(endedAt: Double?) {
         if (settings().saveHistory) {
-            save(ended = true, endedAt = lastCaptionAt)
+            save(ended = true, endedAt = endedAt)
             closed += id
         }
         forgetCurrent()
-        startNewConversation()
-        return true
     }
 
     /**

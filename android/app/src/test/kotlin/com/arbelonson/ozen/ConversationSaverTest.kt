@@ -18,6 +18,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -41,6 +42,7 @@ class ConversationSaverTest {
         speakerName = { null },
         inputName = { "Wired headset" },
         startNewConversation = { newConversations += 1 },
+        setSaveHistory = { settings.saveHistory = it },
         scope = scope,
         now = { clock },
         io = EmptyCoroutineContext,
@@ -269,6 +271,49 @@ class ConversationSaverTest {
         saver.save(ended = false)
         scope.runCurrent()
         assertFalse(saved().any { it.id == reading })
+    }
+
+    @Test
+    fun `lines said while saving was off stay out of every saved conversation after it is switched back on`() {
+        start()
+        say("How is everyone", at = clock - 20)
+        saver.switchSaving(false)
+        assertFalse(settings.saveHistory)
+        say("A secret between us", at = clock - 10)
+        saver.switchSaving(true)
+        assertTrue(settings.saveHistory)
+        say("See you tomorrow")
+        saver.save(ended = true)
+        val said = saved().mapNotNull { store.load(it.id) }.flatMap { it.segments }.map { it.text }
+        assertTrue("How is everyone" in said, said.toString())
+        assertTrue("See you tomorrow" in said, said.toString())
+        assertFalse("A secret between us" in said, said.toString())
+    }
+
+    @Test
+    fun `switching saving off keeps what was said until then, ending at its last line`() {
+        start()
+        say("Good morning", at = clock - 20)
+        saver.switchSaving(false)
+        val kept = saved().single()
+        assertEquals("Good morning", kept.preview)
+        assertEquals(clock - 20, kept.endedAt)
+    }
+
+    @Test
+    fun `old conversations are deleted at once when asked, never the one on screen`() {
+        val old = oldConversation(clock - 40 * 86_400)
+        start()
+        say("Today")
+        saver.save(ended = false)
+        val now = clock + 60 * 86_400
+        assertEquals(0, runBlocking { saver.deleteExpired(now) })
+
+        settings.historyRetention = HistoryRetention.Month
+        assertEquals(1, runBlocking { saver.deleteExpired(now) })
+        val left = saved()
+        assertFalse(left.any { it.id == old })
+        assertEquals(listOf("Today"), left.map { it.preview })
     }
 
     private fun oldConversation(at: Double): UUID {

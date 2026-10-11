@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
@@ -16,8 +17,11 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
 import java.util.UUID
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,14 +34,19 @@ class HistoryScreenDeviceTest {
     private val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
     private val store = TranscriptHistoryStore(File(app.filesDir, CaptionSession.HISTORY_FOLDER))
     private val seeded = mutableListOf<UUID>()
+    private val savingBefore = app.settings.current.value.saveHistory
+    private val retentionBefore = app.settings.current.value.historyRetention
 
     @After
-    fun removeSeeded() {
+    fun restore() {
         seeded.forEach(store::delete)
+        app.settings.change {
+            it.saveHistory = savingBefore
+            it.historyRetention = retentionBefore
+        }
     }
 
-    private fun seed(vararg lines: Pair<String, String?>): UUID {
-        val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+    private fun seed(vararg lines: Pair<String, String?>, startedAt: Double = System.currentTimeMillis() / 1_000.0 - 60): UUID {
         val record = TranscriptSessionRecord(
             startedAt = startedAt,
             endedAt = startedAt + 30,
@@ -65,6 +74,40 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Device history opening line", substring = true).assertExists()
         compose.onNodeWithText("Close").performClick()
         compose.onNodeWithText("Settings").assertExists()
+    }
+
+    @Test
+    fun savingConversationsSwitchesOffAndOnAndTheFooterSaysWhichItIs() {
+        app.settings.change { it.saveHistory = true }
+        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText("Conversations are saved on this phone", substring = true).assertExists()
+        compose.onNodeWithText("Save conversations").performClick()
+        compose.waitForIdle()
+        assertFalse(app.settings.current.value.saveHistory)
+        compose.onNodeWithText("New conversations are not being saved.", substring = true).assertExists()
+        compose.onNodeWithText("Save conversations").performClick()
+        compose.waitForIdle()
+        assertTrue(app.settings.current.value.saveHistory)
+    }
+
+    @Test
+    fun aShorterKeepingTimeAsksBeforeDeletingOldConversations() {
+        app.settings.change { it.historyRetention = HistoryRetention.Forever }
+        val old = seed("Device history from long ago" to null, startedAt = System.currentTimeMillis() / 1_000.0 - 40 * 86_400)
+        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText("Automatic deletion").performClick()
+        compose.onNodeWithText("After a month").performClick()
+        compose.onNodeWithText("old conversation", substring = true).assertExists()
+        compose.onNodeWithText("Cancel").performClick()
+        assertEquals(HistoryRetention.Forever, app.settings.current.value.historyRetention)
+        assertNotNull(store.load(old))
+
+        compose.onNodeWithText("Automatic deletion").performClick()
+        compose.onNodeWithText("After a month").performClick()
+        compose.onNodeWithText("Delete and continue this way").performClick()
+        compose.waitUntil(5_000) { store.load(old) == null }
+        assertEquals(HistoryRetention.Month, app.settings.current.value.historyRetention)
+        compose.onNodeWithText("Device history from long ago", substring = true).assertDoesNotExist()
     }
 
     @Test

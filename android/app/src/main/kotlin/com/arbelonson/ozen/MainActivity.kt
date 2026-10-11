@@ -137,7 +137,12 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
         CompositionLocalProvider(LocalLayoutDirection provides direction) {
             when {
                 showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false })
-                showingHistory -> HistoryScreen(app.captions.savedConversations, saving = current.saveHistory, onClose = { showingHistory = false })
+                showingHistory -> HistoryScreen(
+                    app.captions.savedConversations,
+                    saving = current.saveHistory,
+                    retention = current.historyRetention,
+                    onClose = { showingHistory = false },
+                )
                 else -> CaptionScreen(state, onStatusTap, onSettings = { showingSettings.value = true }, onHistory = { showingHistory = true })
             }
             PairingDialogs(app.pairing)

@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
@@ -48,6 +49,30 @@ class HistoryRowsTest {
         assertEquals(
             "Dana, Yossi, Ronit and more",
             ConversationRow.of(summary(listOf("Dana", "Yossi", "Ronit", "Avi")), jerusalem).speakers,
+        )
+    }
+
+    @Test
+    fun `the saving footer says where conversations are kept, without the iPhone's backups`() = Localization.withLanguage(UILanguage.English) {
+        assertEquals(
+            "Conversations are saved on this phone (2 MB). They can be deleted anytime.",
+            HistoryTexts.savingFooter(saving = true, size = "2 MB", retention = HistoryRetention.Forever),
+        )
+        assertEquals(
+            "New conversations are not being saved. Those saved before stay on this phone (2 MB). They can be deleted anytime." +
+                " Conversations with a starred line or a name are always kept.",
+            HistoryTexts.savingFooter(saving = false, size = "2 MB", retention = HistoryRetention.Week),
+        )
+    }
+
+    @Test
+    fun `a shorter keeping time says how many old conversations go now`() = Localization.withLanguage(UILanguage.English) {
+        assertEquals("1 old conversation will be deleted now", HistoryTexts.expiryWarning(1))
+        assertEquals("2 old conversations will be deleted now", HistoryTexts.expiryWarning(2))
+        assertEquals("5 old conversations will be deleted now", HistoryTexts.expiryWarning(5))
+        assertEquals(
+            listOf("Never", "After a year", "After 3 months", "After a month", "After a week"),
+            HistoryRetention.entries.map(HistoryTexts::name),
         )
     }
 
