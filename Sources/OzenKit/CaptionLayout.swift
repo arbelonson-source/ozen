@@ -147,6 +147,16 @@ public enum CaptionLayout {
         }
     }
 
+    /// Whether a caption line reads from the right: one with a
+    /// right-to-left letter does, one with only left-to-right letters
+    /// doesn't, and one with no letters at all (a time, a number) follows
+    /// the spoken language.
+    public static func readsRightToLeft(_ text: String, languageCode: String) -> Bool {
+        if text.unicodeScalars.contains(where: isRightToLeftLetter) { return true }
+        if hasOnlyLeftToRightLetters(text) { return false }
+        return isRightToLeft(languageCode: languageCode)
+    }
+
     static func isRightToLeft(languageCode: String) -> Bool {
         let base = languageCode.split(separator: "-").first.map { String($0).lowercased() } ?? ""
         return ["he", "iw", "yi", "ar", "fa", "ur"].contains(base)

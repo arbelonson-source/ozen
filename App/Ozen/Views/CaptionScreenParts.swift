@@ -17,6 +17,8 @@ struct CaptionRow: View {
     let isStarred: Bool
     let isUncertain: Bool
     var marksUncertainWords = false
+    /// The spoken language's code, for a line with no letters of its own.
+    var languageCode = "he"
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -53,7 +55,7 @@ struct CaptionRow: View {
                         .foregroundStyle(theme.pendingText)
                 }
                 Text(
-                    caption: CaptionLayout.displayText(segment.text),
+                    caption: CaptionLayout.displayText(segment.text, languageCode: languageCode),
                     emphasizingNumbers: display.emphasizeNumbers,
                     size: display.fontSize,
                     // A line still being written keeps its dimmer colour
@@ -84,9 +86,10 @@ struct CaptionRow: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        // Hebrew speech reads from the right, whatever language the
-        // buttons around it are in.
-        .environment(\.layoutDirection, .rightToLeft)
+        // Each line reads the way its own words do, whatever language the
+        // buttons around it are in: Hebrew from the right, English from
+        // the left.
+        .environment(\.layoutDirection, CaptionLayout.readsRightToLeft(segment.text, languageCode: languageCode) ? .rightToLeft : .leftToRight)
         .accessibilityElement(children: .ignore)
         // VoiceOver reads the speaker on every line, even where the
         // screen leaves the repeated name out.

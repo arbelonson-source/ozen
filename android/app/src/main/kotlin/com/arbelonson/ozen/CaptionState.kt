@@ -103,6 +103,7 @@ object CaptionState {
         conversation: (Int) -> UUID? = { null },
         keywordHits: Set<UUID> = emptySet(),
         recentlyHeard: List<KeywordHit> = emptyList(),
+        languageCode: String = "he",
     ) {
         state.value = CaptionScreenState(
             phase = phase,
@@ -112,7 +113,7 @@ object CaptionState {
             lines = segments.takeLast(MAXIMUM_LINES).mapIndexed { at, it ->
                 CaptionLine(
                     id = it.id,
-                    text = CaptionLayout.displayText(it.text),
+                    text = CaptionLayout.displayText(it.text, languageCode),
                     isFinal = it.isCommitted,
                     unsure = CaptionConfidence.isUncertain(it, scoringEngine, scoringModel),
                     doubtfulWords = if (it.isCommitted) it.uncertainWords else emptyList(),

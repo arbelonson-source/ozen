@@ -89,4 +89,14 @@ struct SpokenLanguageTests {
         #expect(AlertSuggestions.offeredWords(spoken: .english) == ["Grandma", "Mom", "Medicine", "Doctor"])
         #expect(AlertSuggestions.offeredNames(spoken: .russian) == ["Бабушка", "Мама"])
     }
+
+    @Test("a caption line reads from the right by its own letters, and one with none, a time or a number, follows the spoken language")
+    func lineDirection() {
+        #expect(CaptionLayout.readsRightToLeft("OK, مرحبا", languageCode: "en"))
+        #expect(!CaptionLayout.readsRightToLeft("How did you sleep?", languageCode: "he"))
+        #expect(!CaptionLayout.readsRightToLeft("Привет", languageCode: "he"))
+        #expect(CaptionLayout.readsRightToLeft("10:30", languageCode: "he"))
+        #expect(!CaptionLayout.readsRightToLeft("10:30", languageCode: "en"))
+        #expect(CaptionLayout.displayText("10:30", languageCode: "en") == "10:30")
+    }
 }

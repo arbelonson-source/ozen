@@ -608,7 +608,8 @@ struct LiveCaptionView: View {
             isKeywordHit: viewModel.keywordHitSegmentIDs.contains(segment.id),
             isStarred: viewModel.starredSegmentIDs.contains(segment.id),
             isUncertain: viewModel.display.markUncertainLines && CaptionConfidence.isUncertain(segment, engine: viewModel.transcribingSettings.engine, model: viewModel.transcribingSettings.whisperModelVariant),
-            marksUncertainWords: viewModel.display.markUncertainLines
+            marksUncertainWords: viewModel.display.markUncertainLines,
+            languageCode: viewModel.settings.languageCode
         )
         .id(segment.id)
         // No plain-tap action: a finger brushing the text while reading, or

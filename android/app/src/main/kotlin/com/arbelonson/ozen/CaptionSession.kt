@@ -313,6 +313,7 @@ class CaptionSession(
             conversation = conversations::savedConversation,
             keywordHits = pipeline.keywordHitSegmentIDs,
             recentlyHeard = pipeline.keywordHits,
+            languageCode = transcribing.languageCode,
         )
         refreshSavingTrouble()
     }

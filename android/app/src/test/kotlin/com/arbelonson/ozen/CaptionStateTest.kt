@@ -39,6 +39,16 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `a line of only numbers reads the way the spoken language does, not always from the right`() {
+        val time = line("10:30", committed = true)
+        CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(time), languageCode = "en")
+        assertEquals("10:30", CaptionState.screen.value.lines.single().text)
+        CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(time), languageCode = "he")
+        assertEquals(CaptionLayout.displayText("10:30", "he"), CaptionState.screen.value.lines.single().text)
+        assertTrue(CaptionState.screen.value.lines.single().text != "10:30")
+    }
+
+    @Test
     fun `a starred line shows starred, a star given shows at once, and a line copies as said`() {
         val pills = line("Take two pills after dinner", committed = true)
         val phone = line("תתקשרי למרפאה 050 123 4567", committed = true)

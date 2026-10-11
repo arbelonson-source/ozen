@@ -95,7 +95,8 @@ struct HistoryDetailView: View {
                             model: record.modelVariant,
                             fontSize: viewModel.display.fontSize,
                             emphasizeNumbers: viewModel.display.emphasizeNumbers,
-                            isMatch: isMatch
+                            isMatch: isMatch,
+                            languageCode: viewModel.settings.languageCode
                         )
                         .listRowBackground(isMatch || segment.id == arrivedLineID ? Color.yellow.opacity(0.3) : nil)
                         .id(segment.id)
@@ -469,6 +470,8 @@ private struct SavedLineRow: View {
     let fontSize: Double
     let emphasizeNumbers: Bool
     let isMatch: Bool
+    /// The spoken language's code, for a line with no letters of its own.
+    let languageCode: String
     @ScaledMetric(relativeTo: .body) private var bodySize: Double = 17
 
     private var lineSize: Double { DisplayPreferences.savedLineSize(captionSize: fontSize, bodySize: bodySize) }
@@ -495,7 +498,7 @@ private struct SavedLineRow: View {
                         .foregroundStyle(.secondary)
                 }
                 Text(
-                    caption: CaptionLayout.displayText(segment.text),
+                    caption: CaptionLayout.displayText(segment.text, languageCode: languageCode),
                     emphasizingNumbers: emphasizeNumbers,
                     size: lineSize,
                     numberColor: nil,
@@ -505,7 +508,7 @@ private struct SavedLineRow: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .environment(\.layoutDirection, .rightToLeft)
+        .environment(\.layoutDirection, CaptionLayout.readsRightToLeft(segment.text, languageCode: languageCode) ? .rightToLeft : .leftToRight)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
         .accessibilityHint(isMatch ? tr("מכילה את מה שחיפשת", "Contains what you searched for") : "")

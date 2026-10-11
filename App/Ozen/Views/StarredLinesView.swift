@@ -51,7 +51,7 @@ struct StarredLinesView: View {
                                                     .accessibilityLabel(tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. "))
                                             }
                                             Text(
-                                                caption: CaptionLayout.displayText(line.segment.text),
+                                                caption: CaptionLayout.displayText(line.segment.text, languageCode: viewModel.settings.languageCode),
                                                 emphasizingNumbers: viewModel.display.emphasizeNumbers,
                                                 size: lineSize,
                                                 numberColor: nil
@@ -60,7 +60,7 @@ struct StarredLinesView: View {
                                         }
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .environment(\.layoutDirection, .rightToLeft)
+                                    .environment(\.layoutDirection, CaptionLayout.readsRightToLeft(line.segment.text, languageCode: viewModel.settings.languageCode) ? .rightToLeft : .leftToRight)
                                 }
                                 .contextMenu { copyButton(line.segment.text) }
                                 .accessibilityActions { copyButton(line.segment.text) }
