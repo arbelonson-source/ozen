@@ -18,6 +18,7 @@ import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.CaptionAnnouncer
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionPipeline
+import com.arbelonson.ozen.core.DeviceHeat
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HTTPFileFetcher
 import com.arbelonson.ozen.core.HistoryRetention
@@ -137,9 +138,19 @@ class CaptionSession(
     // saying so: the journal notes each change, as on the iPhone.
     private val power = context.getSystemService(PowerManager::class.java)
     private val batterySaving = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) = note("power: ${deviceState()}")
+        override fun onReceive(context: Context, intent: Intent) {
+            savingPower = power.isPowerSaveMode
+            note("power: ${deviceState()}")
+        }
     }
     private var heat: Any? = null
+
+    // What the phone's model paces its live passes by, read between passes
+    // many times a second: kept from the heat listener and the battery saver
+    // broadcast rather than asked of the system each time.
+    @Volatile private var heatNow = DeviceHeat.Nominal
+
+    @Volatile private var savingPower = power.isPowerSaveMode
 
     /** The phone's own voice, and which languages it has one for. */
     val voice = PhoneVoice(context)
@@ -363,7 +374,12 @@ class CaptionSession(
     /** Android tells a new listener the heat as it is; only a change is noted. */
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun watchHeat() {
-        val listener = HeatListener(power.currentThermalStatus) { note("heat: ${deviceState()}") }
+        val now = power.currentThermalStatus
+        heatNow = deviceHeat(now)
+        val listener = HeatListener(now) { status ->
+            heatNow = deviceHeat(status)
+            note("heat: ${deviceState()}")
+        }
         power.addThermalStatusListener(context.mainExecutor, listener)
         heat = listener
     }
@@ -962,7 +978,7 @@ class CaptionSession(
         beam = settings.homeServerBeam,
     )
 
-    private fun engine(settings: AppSettings): TranscriptionEngine = when (settings.engine) {
+    internal fun engine(settings: AppSettings): TranscriptionEngine = when (settings.engine) {
         TranscriptionEngineKind.HomeServer -> homeComputerEngine(settings)
         TranscriptionEngineKind.Cloud -> settings.cloudProvider.let { provider ->
             provider.engine(
@@ -982,6 +998,8 @@ class CaptionSession(
                     freeBytes = { freeSpace() },
                 ),
                 voiceScorerFactory = ::voiceScore,
+                heat = { heatNow },
+                lowPowerMode = { savingPower },
             )
         }
     }
@@ -1103,9 +1121,23 @@ class CaptionSession(
  * session it reported to.
  */
 @RequiresApi(Build.VERSION_CODES.Q)
-private class HeatListener(private var last: Int, var changed: (() -> Unit)?) : PowerManager.OnThermalStatusChangedListener {
+private class HeatListener(private var last: Int, var changed: ((Int) -> Unit)?) : PowerManager.OnThermalStatusChangedListener {
     override fun onThermalStatusChanged(status: Int) {
-        if (status != last) changed?.invoke()
+        if (status != last) changed?.invoke(status)
         last = status
     }
+}
+
+/**
+ * Android's seven heat levels in the iPhone's four (`ProcessInfo.ThermalState`):
+ * light and moderate are the phone held back a little, which the passes'
+ * own slowing already follows; severe on is held back hard, where the
+ * iPhone spaces its live passes out. A level unknown here counts as hot,
+ * as the iPhone's does.
+ */
+internal fun deviceHeat(thermalStatus: Int): DeviceHeat = when (thermalStatus) {
+    PowerManager.THERMAL_STATUS_NONE -> DeviceHeat.Nominal
+    PowerManager.THERMAL_STATUS_LIGHT, PowerManager.THERMAL_STATUS_MODERATE -> DeviceHeat.Fair
+    PowerManager.THERMAL_STATUS_SEVERE -> DeviceHeat.Serious
+    else -> if (thermalStatus > PowerManager.THERMAL_STATUS_SEVERE) DeviceHeat.Critical else DeviceHeat.Serious
 }

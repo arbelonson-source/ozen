@@ -22,6 +22,7 @@ import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.NetworkConditions
+import com.arbelonson.ozen.core.OnDeviceWhisperEngine
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ReleaseFileFetching
@@ -885,6 +886,48 @@ class CaptionSessionDeviceTest {
             shell("cmd power set-mode 1")
             assertNotNull("battery saver never noted", withTimeoutOrNull(5_000) { while (noted("power:").isEmpty()) delay(100); true })
             assertTrue(noted("power:").toString(), noted("power:").last().contains("low power true"))
+        } finally {
+            withContext(Dispatchers.Main) { session.close() }
+            shell("cmd power set-mode 0")
+            shell("cmd thermalservice reset")
+            shell("dumpsys battery reset")
+            work.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun thePhonesModelSlowsItsLivePassesWhenThePhoneGetsHotOrSavesBatteryAsTheIPhoneDoes(): Unit = runBlocking {
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+        }
+        val work = File(context.cacheDir, "heat-pace-test").apply { deleteRecursively(); mkdirs() }
+        val session = withContext(Dispatchers.Main) {
+            CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(FloatArray(16_000)),
+                modelFolder = File(work, "no-models"),
+                historyFolder = File(work, "history"),
+                journalFile = File(work, "journal.log"),
+            )
+        }
+        val onPhone = AppSettings.default.copy().apply { engine = TranscriptionEngineKind.WhisperKit }
+        val pace = { (session.engine(onPhone) as OnDeviceWhisperEngine).secondsBetweenLivePasses(null) }
+        suspend fun settles(seconds: Double) = withTimeoutOrNull(5_000) { while (pace() != seconds) delay(100); true }
+        try {
+            shell("cmd thermalservice reset")
+            shell("cmd power set-mode 0")
+            assertNotNull("a cool phone not at the usual pace: ${pace()}", settles(0.6))
+            shell("cmd thermalservice override-status 3")
+            assertNotNull("a hot phone kept the pace: ${pace()}", settles(1.5))
+            shell("cmd thermalservice reset")
+            assertNotNull("never back to the usual pace: ${pace()}", settles(0.6))
+            shell("dumpsys battery unplug")
+            shell("cmd power set-mode 1")
+            assertNotNull("battery saver kept the pace: ${pace()}", settles(1.2))
         } finally {
             withContext(Dispatchers.Main) { session.close() }
             shell("cmd power set-mode 0")

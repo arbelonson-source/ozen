@@ -59,6 +59,10 @@ class OnDeviceWhisperEngine(
 
     class NotPrepared : IllegalStateException("the on-device model is not prepared")
 
+    /** How long the live preview waits between passes with the phone's heat and battery saver as they are now. */
+    fun secondsBetweenLivePasses(lastPassSeconds: Double?): Double =
+        InferenceCadence.secondsBetweenLivePasses(heat = heat(), lowPowerMode = lowPowerMode(), lastPassSeconds = lastPassSeconds)
+
     private val lock = Any()
     private var passes: WhisperPasses? = null
     private var model: WhisperLoadedModel? = null
@@ -305,11 +309,7 @@ class OnDeviceWhisperEngine(
             val pauseReached = total - speechEnd >= pauseSamples
             val tooLong = total >= maxSamples
             val isFinal = pauseReached || tooLong || status.finished
-            val interval = InferenceCadence.secondsBetweenLivePasses(
-                heat = heat(),
-                lowPowerMode = lowPowerMode(),
-                lastPassSeconds = lastLivePassSeconds,
-            )
+            val interval = secondsBetweenLivePasses(lastLivePassSeconds)
             val enoughNewAudio = total - samplesAtLastPass >= (interval * sampleRate).toInt()
             if (!isFinal && !enoughNewAudio) {
                 delay(50)
