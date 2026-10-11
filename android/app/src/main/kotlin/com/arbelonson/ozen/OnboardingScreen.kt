@@ -41,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -95,6 +96,10 @@ internal fun OnboardingScreen(
     LaunchedEffect(pager) {
         snapshotFlow { pager.currentPage }.collect { if (it != NAME_PAGE) addDraft() }
     }
+    // A focused name field pulls the pages back to itself, so a swipe away
+    // from it slid back; the field lets go as soon as the pages move.
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(pager.isScrollInProgress) { if (pager.isScrollInProgress) focusManager.clearFocus() }
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
@@ -281,6 +286,7 @@ private fun Dots(pager: PagerState) {
 @Composable
 private fun Footer(pager: PagerState, onFinish: () -> Unit) {
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
@@ -292,7 +298,15 @@ private fun Footer(pager: PagerState, onFinish: () -> Unit) {
                 Text(tr("דילוג", "Skip"), fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.weight(1f))
-            Button(onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } }, modifier = Modifier.widthIn(min = 120.dp).heightIn(min = 56.dp)) {
+            Button(
+                onClick = {
+                    // Let go of the name field first: focused, it pulled
+                    // the pages back to itself mid-slide.
+                    focusManager.clearFocus()
+                    scope.launch { pager.animateScrollToPage(pager.currentPage + 1) }
+                },
+                modifier = Modifier.widthIn(min = 120.dp).heightIn(min = 56.dp),
+            ) {
                 Text(tr("הבא", "Next"), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             }
         } else {
