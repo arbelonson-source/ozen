@@ -159,7 +159,10 @@ object CaptionState {
         segmentsShown = segments
         val firstShown = segments.size - minOf(segments.size, MAXIMUM_LINES)
         val named = { segment: TranscriptSegment -> segment.takeIf { it.speakerClusterID != null }?.let(speakerName) }
-        state.value = CaptionScreenState(
+        // A copy, so what the captions don't set (a sound alert, the battery,
+        // a banner) stays: a rebuilt state once dropped the smoke alarm's
+        // banner at the next word.
+        state.value = state.value.copy(
             phase = phase,
             engine = engine,
             interruptedBySystem = interruptedBySystem,
@@ -186,17 +189,7 @@ object CaptionState {
                 )
             },
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),
-            heard = state.value.heard,
             recentlyHeard = recentlyHeard.takeLast(10).reversed(),
-            speaking = state.value.speaking,
-            savingTrouble = state.value.savingTrouble,
-            inputs = state.value.inputs,
-            selectedInput = state.value.selectedInput,
-            dropped = state.value.dropped,
-            recentConversation = state.value.recentConversation,
-            battery = state.value.battery,
-            sound = state.value.sound,
-            heardSound = state.value.heardSound,
             speechResumed = state.value.speechResumed + if (resumed) 1 else 0,
             away = awayMark(segments),
             earlier = segments.getOrNull(firstShown - 1)?.let { EarlierLines(conversation(firstShown - 1), it.id) },
