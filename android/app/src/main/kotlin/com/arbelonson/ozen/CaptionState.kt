@@ -73,6 +73,8 @@ data class CaptionScreenState(
     val away: AwayMark? = null,
     /** The sound alert the banner shows while its time lasts; see `CaptionPipeline.currentBannerSoundAlert`. */
     val sound: SoundAlert? = null,
+    /** The newest sound alert raised, which flashes the screen's edge when it is new to the screen. */
+    val heardSound: SoundAlert? = null,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
@@ -206,6 +208,10 @@ object CaptionState {
 
     fun sound(alert: SoundAlert?) {
         state.value = state.value.copy(sound = alert)
+    }
+
+    fun soundHeard(banner: SoundAlert?, heard: SoundAlert) {
+        state.value = state.value.copy(sound = banner, heardSound = heard)
     }
 
     /** The phone started or stopped saying something for her: the caption screen's Say button stops it meanwhile. */

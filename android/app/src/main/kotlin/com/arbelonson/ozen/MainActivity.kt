@@ -72,6 +72,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -573,9 +574,17 @@ private fun CaptionScreen(
         lastTouchAt = lastTouchAt,
         now = clock,
     )
+    val (flashColour, flashStrength) = alertFlash(state.heardSound)
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .drawWithContent {
+                drawContent()
+                if (flashStrength > 0f) {
+                    drawRect(flashColour, alpha = 0.2f * flashStrength)
+                    drawRect(flashColour, alpha = flashStrength, style = Stroke(width = 44.dp.toPx()))
+                }
+            }
             .background(look.background)
             .pointerInput(Unit) {
                 awaitEachGesture {

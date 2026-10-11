@@ -1,5 +1,8 @@
 package com.arbelonson.ozen
 
+import android.animation.ValueAnimator
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -21,9 +29,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.arbelonson.ozen.core.AlertFlash
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.tr
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun SoundAlertBanner(alert: SoundAlert, onDismiss: () -> Unit) {
@@ -50,6 +60,49 @@ internal fun SoundAlertBanner(alert: SoundAlert, onDismiss: () -> Unit) {
         }
         Text("✕", color = Color.White.copy(alpha = 0.7f), fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics { })
     }
+}
+
+/**
+ * The colour and strength of the screen-edge flash for a safety or door
+ * sound (see `AlertFlash`), as on the iPhone, so it is noticed without
+ * looking at the banner. Only a sound raised while the screen is showing
+ * flashes, not one already there when it appeared; a weaker sound heard
+ * during a siren's flash does not cut it short.
+ */
+@Composable
+internal fun alertFlash(heard: SoundAlert?): Pair<Color, Float> {
+    val reduceMotion = !ValueAnimator.areAnimatorsEnabled()
+    val before = remember { heard?.id }
+    var flashing by remember { mutableStateOf<SoundAlert?>(null) }
+    var tint by remember { mutableStateOf(SoundEvent.Importance.Critical) }
+    var lit by remember { mutableStateOf(false) }
+    LaunchedEffect(heard?.id) {
+        val alert = heard ?: return@LaunchedEffect
+        if (alert.id == before || !AlertFlash.takesOver(flashing?.event?.importance, alert.event.importance, reduceMotion)) return@LaunchedEffect
+        flashing = alert
+        tint = alert.event.importance
+    }
+    LaunchedEffect(flashing?.id) {
+        val alert = flashing ?: return@LaunchedEffect
+        val flash = AlertFlash.pattern(alert.event.importance, reduceMotion) ?: return@LaunchedEffect
+        // A newer sound cancels this run, and a cancelled run still ends:
+        // only the run for the sound still flashing may touch the light.
+        try {
+            repeat(flash.count) {
+                lit = true
+                delay((flash.litSeconds * 1_000).toLong())
+                lit = false
+                delay((flash.darkSeconds * 1_000).toLong())
+            }
+        } finally {
+            if (flashing?.id == alert.id) {
+                lit = false
+                flashing = null
+            }
+        }
+    }
+    val strength by animateFloatAsState(if (lit) 1f else 0f, tween(if (lit) 80 else 150), label = "alert flash")
+    return soundTint(tint) to strength
 }
 
 internal fun soundTint(importance: SoundEvent.Importance): Color = when (importance) {

@@ -1034,6 +1034,39 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun aSafetySoundFlashesTheScreensEdgeRedOnlyWhenHeardWithTheCaptionsShowing() {
+        val smoke = { SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = System.currentTimeMillis() / 1_000.0) }
+        val edgeIsRed = {
+            val edge = compose.onRoot().captureToImage().toPixelMap().let { it[2, it.height / 2] }
+            edge.red > 0.6f && edge.green < 0.3f && edge.blue < 0.3f
+        }
+        compose.runOnUiThread { CaptionState.clear() }
+        compose.onNodeWithText("Settings").performClick()
+        val before = smoke()
+        compose.runOnUiThread { CaptionState.soundHeard(before, before) }
+        compose.onNodeWithText("Close").performClick()
+        compose.onNodeWithText("History").assertExists()
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.mainClock.advanceTimeBy(500)
+            assertFalse("a sound from before the screen appeared flashed", edgeIsRed())
+
+            val now = smoke()
+            compose.runOnUiThread { CaptionState.soundHeard(now, now) }
+            compose.mainClock.advanceTimeBy(120)
+            assertTrue("a smoke alarm never flashed the edge", edgeIsRed())
+
+            compose.mainClock.advanceTimeBy(6_000)
+            Thread.sleep(5_500)
+            compose.mainClock.advanceTimeBy(300)
+            assertFalse("still flashing long after", edgeIsRed())
+        } finally {
+            compose.mainClock.autoAdvance = true
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
     fun talkStartingAgainAfterAQuietStretchBuzzesWhileTheCaptionsAreOnScreenUnlessSheTurnedItOff() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val wanted = app.settings.current.value.hapticOnSpeechResume

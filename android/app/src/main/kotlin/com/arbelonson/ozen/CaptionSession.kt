@@ -552,7 +552,7 @@ class CaptionSession(
      * screen shows its banner; with the app away it is a notification.
      */
     private fun soundHeard(alert: SoundAlert) {
-        CaptionState.sound(pipeline.currentBannerSoundAlert)
+        CaptionState.soundHeard(pipeline.currentBannerSoundAlert, alert)
         if (appIsActive) {
             buzz(AlertVibration.pattern(alert.event.importance))
             val critical = alert.event.importance == SoundEvent.Importance.Critical
