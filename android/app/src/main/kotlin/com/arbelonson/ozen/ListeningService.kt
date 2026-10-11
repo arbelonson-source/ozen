@@ -100,9 +100,15 @@ class ListeningService : Service() {
         CaptionState.screen.combine(settings.current) { _, _ -> }.collect { refresh() }
     }
 
+    /**
+     * Captions stopped or paused by her end the notification. Paused while
+     * the phone talks does not, as on the iPhone's lock screen: captions come
+     * back by themselves, and Android gives an app out of sight the
+     * microphone only while this notification is up.
+     */
     private fun refresh() {
-        val phase = CaptionState.screen.value.phase
-        if (phase == PipelinePhase.Idle || phase == PipelinePhase.Paused) {
+        val screen = CaptionState.screen.value
+        if (screen.phase == PipelinePhase.Idle || (screen.phase == PipelinePhase.Paused && !screen.pausedForSpeech)) {
             finish()
             return
         }

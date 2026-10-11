@@ -715,6 +715,35 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    // Android lets an app out of sight use the microphone only while its
+    // listening notification is up, so the phone talking must not end it.
+    @Test
+    fun whileThePhoneTalksTheListeningNotificationStaysAndSaysSoAndOnlyAPauseSheChoseEndsIt() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val manager = app.getSystemService(NotificationManager::class.java)
+        val listening = { manager.activeNotifications.firstOrNull { it.notification.channelId == ListeningService.CHANNEL_ID }?.notification }
+        val title = { listening()?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString() }
+        val paused = { forSpeech: Boolean ->
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), pausedForSpeech = forSpeech)
+            }
+        }
+        try {
+            compose.runOnUiThread { ListeningService.start(app) }
+            assertTrue("never shown", within(10_000) { listening() != null })
+            paused(true)
+            assertTrue("not the phone talking: ${title()}", within(5_000) { title() == "The phone is talking" })
+            assertFalse("the phone talking took the notification away", within(2_000) { listening() == null })
+            paused(false)
+            assertTrue("a pause she chose kept it", within(5_000) { listening() == null })
+        } finally {
+            compose.runOnUiThread {
+                app.captions.pipeline.stop()
+                CaptionState.clear()
+            }
+        }
+    }
+
     @Test
     fun withNoHebrewVoiceTheSayScreenSaysSoAndOpensThePhonesVoiceSettings() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
