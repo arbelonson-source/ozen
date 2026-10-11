@@ -23,6 +23,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -400,6 +401,7 @@ private fun OzenApp(
                         onBuzz = app.captions::buzz,
                         soundSecondsLeft = app.captions::soundBannerSecondsLeft,
                         onDismissSound = app.captions::dismissSoundAlert,
+                        onFontSize = { size -> app.settings.change { it.display = it.display.copy(fontSize = size) } },
                     )
                 }
             }
@@ -520,8 +522,14 @@ private fun CaptionScreen(
     onBuzz: (AlertVibration) -> Unit,
     soundSecondsLeft: (SoundAlert) -> Double,
     onDismissSound: (UUID) -> Unit,
+    onFontSize: (Double) -> Unit,
 ) {
     val list = rememberLazyListState()
+    // As on the iPhone: the text grows under the fingers and only the
+    // final size is saved.
+    var pinchScale by remember { mutableDoubleStateOf(1.0) }
+    val pinchedSize = DisplayPreferences.fontSize(display.fontSize, pinchScale)
+    val savedSize by rememberUpdatedState(display.fontSize)
     var problemMarked by remember { mutableStateOf<Boolean?>(null) }
     val context = LocalContext.current
     var shownWord by remember { mutableStateOf<HeardWord?>(null) }
@@ -637,7 +645,17 @@ private fun CaptionScreen(
             .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.weight(1f).fillMaxWidth().pinchToResize(
+                onScale = { pinchScale *= it },
+                onEnd = {
+                    val size = DisplayPreferences.fontSize(savedSize, pinchScale)
+                    pinchScale = 1.0
+                    if (size != savedSize) onFontSize(size)
+                },
+            ),
+            contentAlignment = Alignment.Center,
+        ) {
             if (state.lines.isEmpty()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
@@ -650,12 +668,24 @@ private fun CaptionScreen(
                     if (offersNameAlert) NameAlertOffer(look, onNameAlert, onDismissNameAlert)
                 }
             } else {
-                CaptionLines(state.lines, state.away, display, look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onName = { naming = it }, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
+                CaptionLines(state.lines, state.away, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onName = { naming = it }, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
                 if (!following) {
                     JumpToLatest(jumpToLatestTitle(linesSince(state.lines, lastWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                         following = true
                     }
                 }
+            }
+            if (pinchScale != 1.0) {
+                Text(
+                    tr("גודל טקסט %1", "Text size %1", listOf("${pinchedSize.toInt()}")),
+                    color = look.chrome,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .background(look.background.copy(alpha = 0.9f), RoundedCornerShape(50))
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                        .clearAndSetSemantics {},
+                )
             }
             Column(
                 modifier = Modifier.align(Alignment.TopCenter).padding(horizontal = 8.dp),
@@ -732,6 +762,30 @@ private fun CaptionScreen(
             }
         }
         if (hidden) ShowButtonsButton(look.chrome) { lastTouchAt = secondsNow() }
+    }
+}
+
+/**
+ * Two fingers spreading or closing anywhere over the captions; one finger
+ * still scrolls and holds lines. Seen before the lines see it, so a pinch
+ * neither scrolls the list nor opens a line's menu.
+ */
+private fun Modifier.pinchToResize(onScale: (Double) -> Unit, onEnd: () -> Unit): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        var pinching = false
+        do {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            if (event.changes.count { it.pressed } >= 2) {
+                val zoom = event.calculateZoom()
+                if (zoom != 1f) {
+                    pinching = true
+                    onScale(zoom.toDouble())
+                }
+                event.changes.forEach { it.consume() }
+            }
+        } while (event.changes.any { it.pressed })
+        if (pinching) onEnd()
     }
 }
 

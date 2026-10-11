@@ -35,6 +35,7 @@ import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.pinch
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -1213,6 +1214,30 @@ class CaptionScreenDeviceTest {
             assertEquals(1, buzzed.size)
         } finally {
             Buzz.play = before
+        }
+    }
+
+    @Test
+    fun pinchingTheCaptionsWithTwoFingersMakesTheTextBiggerOrSmallerAndKeepsTheSize() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val displayBefore = app.settings.current.value.display
+        try {
+            app.settings.change { it.display = it.display.copy(fontSize = 30.0) }
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = (1..4).map { committed("Line $it of the conversation") })
+            }
+            val line = compose.onNodeWithText("Line 1 of the conversation")
+            line.performTouchInput { pinch(center + Offset(-30f, 0f), center + Offset(-300f, 0f), center + Offset(30f, 0f), center + Offset(300f, 0f), 400) }
+            compose.waitUntil(5_000) { app.settings.current.value.display.fontSize >= 45.0 }
+            val bigger = app.settings.current.value.display.fontSize
+            line.performTouchInput { pinch(center + Offset(-300f, 0f), center + Offset(-30f, 0f), center + Offset(300f, 0f), center + Offset(30f, 0f), 400) }
+            compose.waitUntil(5_000) { app.settings.current.value.display.fontSize <= bigger - 15.0 }
+            assertTrue(app.settings.current.value.display.fontSize >= DisplayPreferences.minimumFontSize)
+            compose.onNodeWithText("Text size", substring = true).assertDoesNotExist()
+        } finally {
+            app.settings.change { it.display = displayBefore }
+            compose.runOnUiThread { CaptionState.clear() }
         }
     }
 
