@@ -7,6 +7,8 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.SoundEventCatalog
+import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
@@ -190,6 +192,16 @@ class CaptionStateTest {
         assertEquals(EarlierLines(conversation = null, line = segments[4].id), CaptionState.screen.value.earlier)
         show(PipelinePhase.Listening, segments.take(200))
         assertNull(CaptionState.screen.value.earlier)
+    }
+
+    @Test
+    fun `a sound alert heard stays on screen while the captions keep changing`() {
+        val smoke = SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = 100.0)
+        show(PipelinePhase.Listening, listOf(line("שלום", committed = false)))
+        CaptionState.soundHeard(smoke, smoke)
+        show(PipelinePhase.Listening, listOf(line("שלום לכולם", committed = true)))
+        assertEquals(smoke, CaptionState.screen.value.sound)
+        assertEquals(smoke, CaptionState.screen.value.heardSound)
     }
 
     @Test

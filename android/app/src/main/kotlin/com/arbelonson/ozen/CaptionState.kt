@@ -195,6 +195,8 @@ object CaptionState {
             dropped = state.value.dropped,
             recentConversation = state.value.recentConversation,
             battery = state.value.battery,
+            sound = state.value.sound,
+            heardSound = state.value.heardSound,
             speechResumed = state.value.speechResumed + if (resumed) 1 else 0,
             away = awayMark(segments),
             earlier = segments.getOrNull(firstShown - 1)?.let { EarlierLines(conversation(firstShown - 1), it.id) },
