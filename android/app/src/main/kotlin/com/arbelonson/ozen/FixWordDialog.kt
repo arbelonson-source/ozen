@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -26,7 +27,7 @@ import com.arbelonson.ozen.core.tr
 
 @Composable
 internal fun FixWordDialog(shown: String, onAdd: (String) -> Unit, onDismiss: () -> Unit) {
-    var word by remember { mutableStateOf("") }
+    var word by rememberSaveable { mutableStateOf("") }
     val typing = remember { FocusRequester() }
     LaunchedEffect(Unit) { typing.requestFocus() }
     val add = { if (word.isNotBlank()) onAdd(word) }

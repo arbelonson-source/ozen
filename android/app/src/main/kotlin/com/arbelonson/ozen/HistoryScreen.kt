@@ -591,7 +591,7 @@ internal fun ConversationScreen(
     val context = LocalContext.current
     var confirmingDelete by remember { mutableStateOf(false) }
     var deleteError by remember { mutableStateOf<String?>(null) }
-    var naming by remember { mutableStateOf<String?>(null) }
+    var naming by rememberSaveable { mutableStateOf<String?>(null) }
     val record = loaded?.record
     Screen(title = record?.title ?: tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {
         val shown = loaded

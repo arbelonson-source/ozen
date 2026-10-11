@@ -548,6 +548,24 @@ class HistoryScreenDeviceTest {
     }
 
     @Test
+    fun turningThePhoneKeepsTheConversationsNameBeingTyped() {
+        val id = seed("Turning test opening line" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Turning test opening line")
+        compose.onNodeWithText("Turning test opening line", substring = true).performClick()
+        waitFor("Name this conversation")
+        compose.onNodeWithText("Name this conversation").performClick()
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextInput("Eye doctor")
+        val first = compose.activity
+        compose.activityRule.scenario.recreate()
+        compose.waitUntil(5_000) { first.isDestroyed }
+        compose.waitForIdle()
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).assert(hasText("Eye doctor"))
+        compose.onNodeWithText("Save").performClick()
+        compose.waitUntil(5_000) { store.load(id)?.title == "Eye doctor" }
+    }
+
+    @Test
     fun savedLinesSayWhichWereStarredAndWhichMayBeMisheardWhileTheMarksAreOn() {
         val startedAt = System.currentTimeMillis() / 1_000.0 - 60
         val record = TranscriptSessionRecord(

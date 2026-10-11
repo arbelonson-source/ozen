@@ -591,12 +591,13 @@ private fun CaptionScreen(
         delay((soundSecondsLeft(alert) * 1_000).toLong())
         shownSound = null
     }
-    var fixing by remember { mutableStateOf<CaptionLine?>(null) }
-    fixing?.let { line ->
+    // Kept by the line's id, so turning the phone leaves the dialog open.
+    var fixing by rememberSaveable { mutableStateOf<UUID?>(null) }
+    fixing?.let { id -> state.lines.firstOrNull { it.id == id } }?.let { line ->
         FixWordDialog(line.text, onAdd = { onAddWord(it); fixing = null }, onDismiss = { fixing = null })
     }
-    var naming by remember { mutableStateOf<CaptionLine?>(null) }
-    naming?.let { line ->
+    var naming by rememberSaveable { mutableStateOf<UUID?>(null) }
+    naming?.let { id -> state.lines.firstOrNull { it.id == id } }?.let { line ->
         NameSpeakerDialog(
             line.text,
             hasVoice = line.speakerCluster != null,
@@ -722,7 +723,7 @@ private fun CaptionScreen(
                     }
                 }
             } else {
-                CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onName = { naming = it }, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
+                CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it.id }, onName = { naming = it.id }, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
                 if (!following) {
                     JumpToLatest(jumpToLatestTitle(linesSince(state.lines, lastWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                         following = true

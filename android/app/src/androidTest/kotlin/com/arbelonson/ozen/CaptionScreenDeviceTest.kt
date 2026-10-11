@@ -1855,6 +1855,38 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    @Test
+    fun turningThePhoneKeepsFixAWordAndNameTheSpeakerOpenWithWhatWasTyped() {
+        val voiced = TranscriptSegment(id = UUID.randomUUID(), text = "Good evening", isCommitted = true, speakerClusterID = 0, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+        compose.runOnUiThread {
+            CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(voiced), speakerName = { "Speaker 1" })
+        }
+        lineText("Good evening").performTouchInput { longClick() }
+        compose.onNodeWithText("Fix a word for next time").performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("Shira")
+        turnThePhone()
+        compose.onNodeWithText("What the captions showed").assertExists()
+        compose.onNode(hasSetTextAction()).assert(hasText("Shira"))
+        compose.onNodeWithText("Cancel").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("What the captions showed").fetchSemanticsNodes().isEmpty() }
+
+        lineText("Good evening").performTouchInput { longClick() }
+        compose.onNodeWithText("Who is speaking?").performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("Dana")
+        turnThePhone()
+        compose.onNodeWithText("Name the speaker").assertExists()
+        compose.onNode(hasSetTextAction()).assert(hasText("Dana"))
+        compose.onNodeWithText("Cancel").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Name the speaker").fetchSemanticsNodes().isEmpty() }
+    }
+
+    private fun turnThePhone() {
+        val first = compose.activity
+        compose.activityRule.scenario.recreate()
+        compose.waitUntil(5_000) { first.isDestroyed }
+        compose.waitForIdle()
+    }
+
     private fun labelColour(name: String): Color {
         val layouts = mutableListOf<TextLayoutResult>()
         compose.onNodeWithText(name, useUnmergedTree = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
