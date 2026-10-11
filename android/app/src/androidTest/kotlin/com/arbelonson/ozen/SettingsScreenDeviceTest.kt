@@ -72,6 +72,7 @@ import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.PipelineStats
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ProblemSnapshot
 import com.arbelonson.ozen.core.QuietHours
@@ -1429,6 +1430,32 @@ class SettingsScreenDeviceTest {
         compose.onNode(hasText("whisper.cpp (MIT) — Whisper engine") and hasClickAction()).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Ozen is free, open-source software (AGPL-3.0)", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("all processing happens on the phone and nothing is sent out", substring = true).assertExists()
+    }
+
+    @Test
+    fun diagnosticsSayHowLoudTheMicrophoneIsNowWhetherSoundsAreListenedForAndHowManyVoicesWereToldApart() {
+        var phase: PipelinePhase = PipelinePhase.Listening
+        var detecting = true
+        val source = object : DiagnosticsSource by app.captions {
+            override fun diagnostics() = app.captions.diagnostics().copy(
+                phase = phase,
+                inputLevel = 0.42f,
+                speakersIdentified = 3,
+                stats = PipelineStats().apply {
+                    soundDetectionRunning = detecting
+                    speakerClustersOpened = 4
+                },
+            )
+        }
+        compose.runOnUiThread { compose.activity.setContent { DiagnosticsScreen(source, onClose = {}) } }
+        row("Level now", "42%")
+        row("Sound detection", "Running")
+        row("Speakers identified", "3")
+        row("New speakers since the app opened", "4")
+        detecting = false
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText("Sound detection") and hasText("Stopped")).fetchSemanticsNodes().isNotEmpty() }
+        phase = PipelinePhase.Idle
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText("Sound detection") and hasText("—")).fetchSemanticsNodes().isNotEmpty() }
     }
 
     private fun within(millis: Long, condition: () -> Boolean): Boolean {

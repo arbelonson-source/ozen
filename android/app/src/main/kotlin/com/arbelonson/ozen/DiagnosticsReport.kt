@@ -57,6 +57,10 @@ data class DiagnosticsFacts(
     val memoryAvailableBytes: Long?,
     /** The sound kept with marked problems, newest first. */
     val problemClips: List<File> = emptyList(),
+    /** The microphone's level now, 0 to 1. */
+    val inputLevel: Float = 0f,
+    /** The voices told apart in the conversation on screen. */
+    val speakersIdentified: Int = 0,
 )
 
 /** Where the diagnostics screen reads from, and what its buttons do. */
@@ -104,7 +108,8 @@ object DiagnosticsReport {
             "levels: ${stats.inputLevels.summary ?: "-"} speech: ${stats.speechShare?.let { format("%.1f%%", it * 100) } ?: "-"} " +
                 "floor: ${stats.noiseFloorDecibels?.let { format("%.1f", it) } ?: "-"} margin: ${stats.noiseMarginDecibels?.let { format("%.1f dB", it) } ?: "-"}",
             "tokens: ${stats.tokensReceived} committed: ${stats.segmentsCommitted} on screen: ${facts.linesOnScreen} lag: ${stats.captionLagSeconds?.let { format("%.2f", it) } ?: "-"}",
-            "restarts: ${stats.engineRestarts} retry: ${facts.scheduledRetry?.let { "attempt ${it.attempt}" } ?: "-"} interrupted: ${facts.interruptedBySystem}",
+            "restarts: ${stats.engineRestarts} clusters: ${facts.speakersIdentified} opened: ${stats.speakerClustersOpened} " +
+                "retry: ${facts.scheduledRetry?.let { "attempt ${it.attempt}" } ?: "-"} interrupted: ${facts.interruptedBySystem} sound detection: ${stats.soundDetectionRunning}",
             "alerts: words on ${alerts.count { it.isEnabled }} of ${alerts.size} when away: ${settings.notifyWhenInBackground}",
             "history: saving ${settings.saveHistory} keep ${settings.historyRetention.rawValue} display: size ${display.fontSize.toInt()} theme ${display.theme.rawValue} awake ${display.keepScreenAwake}",
             "settings save error: ${if (facts.settingsSaveFailed) "failed" else "-"} history save error: ${facts.historySaveFailure ?: "-"} " +

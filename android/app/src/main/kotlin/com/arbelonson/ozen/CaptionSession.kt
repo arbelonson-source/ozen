@@ -516,6 +516,8 @@ class CaptionSession(
             memoryInUseBytes = Debug.getPss() * 1_024,
             memoryAvailableBytes = ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java).getMemoryInfo(it) }.availMem,
             problemClips = problemAudio.clips(),
+            inputLevel = pipeline.inputLevel,
+            speakersIdentified = pipeline.speakerClusters.size,
         )
     }
 

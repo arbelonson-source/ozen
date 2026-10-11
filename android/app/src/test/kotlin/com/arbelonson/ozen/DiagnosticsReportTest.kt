@@ -42,7 +42,10 @@ class DiagnosticsReportTest {
             tokensReceived = 340
             segmentsCommitted = 12
             engineRestarts = 1
+            speakerClustersOpened = 4
+            soundDetectionRunning = true
         },
+        speakersIdentified = 3,
         linesOnScreen = 14,
         scheduledRetry = ScheduledRetry(at = 1_000.0, attempt = 2),
         interruptedBySystem = false,
@@ -87,7 +90,7 @@ class DiagnosticsReportTest {
         assertEquals("audio chunks: 120 seconds: 61.4 input changes: 2 stalls: 1 damaged: 0", lines[6])
         assertEquals("levels: - speech: - floor: - margin: -", lines[7])
         assertEquals("tokens: 340 committed: 12 on screen: 14 lag: -", lines[8])
-        assertEquals("restarts: 1 retry: attempt 2 interrupted: false", lines[9])
+        assertEquals("restarts: 1 clusters: 3 opened: 4 retry: attempt 2 interrupted: false sound detection: true", lines[9])
         assertEquals("alerts: words on 1 of 2 when away: true", lines[10])
         assertEquals("history: saving true keep year display: size ${settings.display.fontSize.toInt()} theme ${settings.display.theme.rawValue} awake ${settings.display.keepScreenAwake}", lines[11])
         assertEquals("settings save error: failed history save error: - notifications allowed: no haptics: ok network: Cellular · Data saving", lines[12])

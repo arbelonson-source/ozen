@@ -112,7 +112,16 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             Value(tr("החלפות מיקרופון", "Microphone changes"), "${stats.inputChanges}")
             Value(tr("המיקרופון נתקע", "Microphone stalls"), "${stats.audioStalls}")
             Value(tr("רמות קול (dBFS)", "Sound levels (dBFS)"), levels(stats.inputLevels))
+            Value(tr("עוצמה עכשיו", "Level now"), format("%.0f%%", now.inputLevel * 100.0))
             Value(tr("נשמע כדיבור", "Sounded like speech"), stats.speechShare?.let { format("%.0f%%", it * 100) } ?: "—")
+            Value(
+                tr("זיהוי צלילים", "Sound detection"),
+                when {
+                    stats.soundDetectionRunning -> tr("פועל", "Running")
+                    now.phase.isListening -> tr("נעצר", "Stopped")
+                    else -> "—"
+                },
+            )
 
             Header(tr("תמלול", "Transcription"))
             Value(tr("עדכונים מהמנוע", "Updates from engine"), "${stats.tokensReceived}")
@@ -120,6 +129,8 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             Value(tr("שורות על המסך", "Lines on screen"), "${now.linesOnScreen}")
             Value(tr("פיגור כתוביות", "Caption lag"), stats.captionLagSeconds?.let { format(tr("%.1f שנ׳", "%.1f s"), it) } ?: "—")
             Value(tr("הפעלות מחדש", "Restarts"), "${stats.engineRestarts}")
+            Value(tr("דוברים שזוהו", "Speakers identified"), "${now.speakersIdentified}")
+            Value(tr("דוברים חדשים מאז שהאפליקציה נפתחה", "New speakers since the app opened"), "${stats.speakerClustersOpened}")
             stats.sessionStartedAt?.let { started ->
                 Value(tr("ההאזנה התחילה", "Listening started"), TranscriptHistoryStore.formattedClockTime(started, TimeZone.getDefault().getOffset((started * 1_000).toLong()) / 1_000))
             }
