@@ -181,6 +181,18 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `past the lines kept, the top of the screen says where the earlier ones went`() {
+        val segments = (1..205).map { line("line $it", committed = true) }
+        val saved = UUID.randomUUID()
+        CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = segments, conversation = { if (it == 4) saved else null })
+        assertEquals(EarlierLines(conversation = saved, line = segments[4].id), CaptionState.screen.value.earlier)
+        show(PipelinePhase.Listening, segments)
+        assertEquals(EarlierLines(conversation = null, line = segments[4].id), CaptionState.screen.value.earlier)
+        show(PipelinePhase.Listening, segments.take(200))
+        assertNull(CaptionState.screen.value.earlier)
+    }
+
+    @Test
     fun `each line on screen opens the saved conversation of its place in the whole transcript`() {
         val segments = (1..205).map { line("line $it", committed = true) }
         val conversations = segments.indices.map { if (it % 3 == 0) null else UUID.randomUUID() }

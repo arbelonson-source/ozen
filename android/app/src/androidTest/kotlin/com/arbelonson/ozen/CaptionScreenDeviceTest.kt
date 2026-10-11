@@ -48,6 +48,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onParent
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
@@ -1299,6 +1300,36 @@ class CaptionScreenDeviceTest {
         } finally {
             store.delete(record.id)
             compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
+    fun pastTheLinesKeptTheTopSaysEarlierLinesWereSavedAndOpensThemAtTheLastOneNoLongerShown() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val store = TranscriptHistoryStore(File(app.filesDir, CaptionSession.HISTORY_FOLDER))
+        val segments = (1..205).map { committed("Line $it of the long talk") }
+        val record = TranscriptSessionRecord(
+            startedAt = 0.0,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = null,
+            inputName = null,
+            segments = segments.map { SavedSegment(it.id, it.text, null, null, it.startTimestamp, true) },
+        )
+        store.save(record)
+        try {
+            showLines(segments) { record.id }
+            compose.onNode(hasScrollAction()).performScrollToIndex(0)
+            compose.onNodeWithText("Earlier lines are no longer shown").assertDoesNotExist()
+            compose.onNodeWithText("Earlier lines were saved. Tap to read them").performClick()
+            compose.onNodeWithText("Line 5 of the long talk").assertIsDisplayed()
+            compose.onNodeWithText("Back").performClick()
+
+            showLines(segments)
+            compose.onNode(hasScrollAction()).performScrollToIndex(0)
+            compose.onNodeWithText("Earlier lines are no longer shown").assertExists()
+            compose.onNodeWithText("Earlier lines were saved", substring = true).assertDoesNotExist()
+        } finally {
+            store.delete(record.id)
         }
     }
 

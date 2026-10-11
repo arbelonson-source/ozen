@@ -702,7 +702,7 @@ private fun CaptionScreen(
                     }
                 }
             } else {
-                CaptionLines(state.lines, state.away, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onName = { naming = it }, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
+                CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onName = { naming = it }, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
                 if (!following) {
                     JumpToLatest(jumpToLatestTitle(linesSince(state.lines, lastWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                         following = true
@@ -877,6 +877,7 @@ private fun ShowButtonsButton(chrome: Color, onTap: () -> Unit) {
 private fun CaptionLines(
     lines: List<CaptionLine>,
     away: AwayMark?,
+    earlier: EarlierLines?,
     display: DisplayPreferences,
     look: CaptionTheme,
     list: LazyListState,
@@ -908,14 +909,12 @@ private fun CaptionLines(
                 )
             }
             val gap = line.afterQuiet
-            if (away != null && line.id == away.line) {
+            val note = earlier?.takeIf { line.id == lines.first().id }
+            val missed = away?.takeIf { line.id == it.line }
+            if (note != null || missed != null || gap != null) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    AwayDivider(away.count, display.fontSize, look)
-                    row()
-                }
-            } else if (gap != null) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    QuietGapDivider(gap, display.fontSize, look)
+                    if (note != null) EarlierLinesNote(note, display.fontSize, look) { conversation -> onOpen(conversation, note.line) }
+                    if (missed != null) AwayDivider(missed.count, display.fontSize, look) else if (gap != null) QuietGapDivider(gap, display.fontSize, look)
                     row()
                 }
             } else {
@@ -957,6 +956,28 @@ private fun JumpToLatest(title: String, look: CaptionTheme, modifier: Modifier, 
  * Above the first line said while the screen was away, as on the iPhone:
  * how many lines she missed, so she knows where she stopped reading.
  */
+/**
+ * Above the oldest line kept, as on the iPhone: the earlier ones are a
+ * tap away while they are saved, opened at the newest of them.
+ */
+@Composable
+private fun EarlierLinesNote(earlier: EarlierLines, captionSize: Double, look: CaptionTheme, onOpen: (UUID) -> Unit) {
+    val size = maxOf(15.0, captionSize * 0.5).sp
+    val saved = earlier.conversation
+    if (saved == null) {
+        Text(tr("שורות מוקדמות יותר כבר לא מוצגות", "Earlier lines are no longer shown"), color = look.pendingText, fontSize = size, modifier = Modifier.fillMaxWidth())
+        return
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { onOpen(saved) },
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("💬", fontSize = size, modifier = Modifier.clearAndSetSemantics {})
+        Text(tr("שורות מוקדמות יותר נשמרו. הקישו כדי לקרוא אותן", "Earlier lines were saved. Tap to read them"), color = look.chrome, fontSize = size, fontWeight = FontWeight.SemiBold)
+    }
+}
+
 @Composable
 private fun AwayDivider(count: Int, captionSize: Double, look: CaptionTheme) {
     val lines = ConversationStats.linesText(count)

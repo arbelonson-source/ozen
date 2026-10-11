@@ -56,6 +56,12 @@ data class QuietGap(val lastWordsAt: Double, val resumedAt: Double)
  */
 data class AwayMark(val line: UUID, val count: Int, val offersJump: Boolean)
 
+/**
+ * Lines older than the screen keeps: the newest of them, and the saved
+ * conversation that holds it, null when it was not saved.
+ */
+data class EarlierLines(val conversation: UUID?, val line: UUID)
+
 data class CaptionScreenState(
     val phase: PipelinePhase = PipelinePhase.Idle,
     val engine: TranscriptionEngineKind? = null,
@@ -80,6 +86,7 @@ data class CaptionScreenState(
      */
     val speechResumed: Int = 0,
     val away: AwayMark? = null,
+    val earlier: EarlierLines? = null,
     /** The sound alert the banner shows while its time lasts; see `CaptionPipeline.currentBannerSoundAlert`. */
     val sound: SoundAlert? = null,
     /** The newest sound alert raised, which flashes the screen's edge when it is new to the screen. */
@@ -186,6 +193,7 @@ object CaptionState {
             recentConversation = state.value.recentConversation,
             speechResumed = state.value.speechResumed + if (resumed) 1 else 0,
             away = awayMark(segments),
+            earlier = segments.getOrNull(firstShown - 1)?.let { EarlierLines(conversation(firstShown - 1), it.id) },
         )
     }
 
