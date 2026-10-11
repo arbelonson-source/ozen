@@ -1511,6 +1511,32 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    // A link opened from another app's task can start a second caption
+    // screen; Android starts it before it stops the first one.
+    @Test
+    fun aSecondCaptionScreenOpeningOverTheFirstKeepsTheAppOnScreen() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        compose.waitUntil(5_000) { app.captions.appIsActive }
+        val first = compose.activity
+        val second = instrumentation.startActivitySync(
+            Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK),
+        )
+        try {
+            compose.waitUntil(5_000) { first.lifecycle.currentState == Lifecycle.State.CREATED }
+            instrumentation.waitForIdleSync()
+            assertTrue("the app counted as away while the second screen showed", app.captions.appIsActive)
+        } finally {
+            instrumentation.runOnMainSync { second.finish() }
+            compose.waitUntil(5_000) { second.isDestroyed }
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        }
+        compose.waitUntil(5_000) { app.captions.appIsActive }
+        compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        compose.waitUntil(5_000) { !app.captions.appIsActive }
+        compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+    }
+
     // The line's own text, which carries its actions; a linked number may have a node of its own.
     @Test
     fun aSpeakersNameHeadsTheirRunOfLinesInTheirColourIsSaidOnEveryLineAndGoesWithNamesOff() {

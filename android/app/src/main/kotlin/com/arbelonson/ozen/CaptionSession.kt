@@ -169,6 +169,25 @@ class CaptionSession(
         return first
     }
 
+    private var screensInFront = 0
+
+    /** A caption screen came to the front. */
+    fun screenStarted() {
+        screensInFront += 1
+        appIsActive = true
+    }
+
+    /**
+     * A caption screen went away; true once none is left in front. A link
+     * opened from another app's task can start a second one, and Android
+     * starts it before it stops the first.
+     */
+    fun screenStopped(): Boolean {
+        screensInFront = maxOf(0, screensInFront - 1)
+        appIsActive = screensInFront > 0
+        return !appIsActive
+    }
+
     /** Whether the caption screen is in front: set as MainActivity starts and stops. */
     var appIsActive = false
         set(active) {
