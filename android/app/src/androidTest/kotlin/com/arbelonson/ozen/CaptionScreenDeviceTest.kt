@@ -820,7 +820,11 @@ class CaptionScreenDeviceTest {
         }
         try {
             compose.runOnUiThread { ListeningService.start(app) }
-            assertTrue("never shown", within(10_000) { listening() != null })
+            val lately = { SessionJournal(File(app.filesDir, CaptionSession.JOURNAL_FILE)).entries().takeLast(8).joinToString(" | ") { it.text } }
+            assertTrue(
+                "never shown: phase ${app.captions.pipeline.phase}, busy ${app.captions.voice.isBusy}, screen ${CaptionState.screen.value.phase} ${CaptionState.screen.value.pausedForSpeech}, journal ${lately()}",
+                within(10_000) { listening() != null },
+            )
             paused(true)
             assertTrue("not the phone talking: ${title()}", within(5_000) { title() == "The phone is talking" })
             assertFalse("the phone talking took the notification away", within(2_000) { listening() == null })
