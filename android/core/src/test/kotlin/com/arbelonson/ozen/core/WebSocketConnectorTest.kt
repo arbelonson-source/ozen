@@ -30,14 +30,14 @@ private class WireFrame(val isFinal: Boolean, val opcode: Int, val payload: Byte
     val text: String get() = payload.toString(Charsets.UTF_8)
 }
 
-/** A WebSocket server on the loopback address that runs one scripted conversation. */
+/** A WebSocket server on 127.0.0.1 (Android's loopback address is ::1) that runs one scripted conversation. */
 private class ScriptedWebSocketServer(
     private val status: Int = 101,
     private val forgeAccept: Boolean = false,
     private val answerAfterMillis: Long = 0,
     private val script: ScriptedWebSocketServer.Peer.() -> Unit,
 ) : AutoCloseable {
-    private val server = ServerSocket(0, 1, InetAddress.getLoopbackAddress())
+    private val server = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
     val port: Int get() = server.localPort
     val requestLines = CopyOnWriteArrayList<String>()
     val failures = CopyOnWriteArrayList<Throwable>()
