@@ -94,6 +94,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -1444,15 +1445,21 @@ class CaptionScreenDeviceTest {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         compose.runOnUiThread { if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop() }
         compose.waitUntil(10_000) { app.captions.pipeline.phase == PipelinePhase.Idle }
+        val long = "This is a long sentence the phone reads aloud, slowly enough that there is time to stop it before it ends, and then a few more words."
+        assumeTrue("no voice on this phone to say it", app.captions.canSay(long))
         try {
+            compose.runOnUiThread { app.captions.speak(long) }
+            compose.waitUntil(10_000) { CaptionState.screen.value.speaking }
             compose.runOnUiThread {
                 CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), pausedForSpeech = true)
             }
             compose.onNodeWithText("The phone is talking").performClick()
+            compose.waitUntil(3_000) { !CaptionState.screen.value.speaking }
             Thread.sleep(2_000)
             assertEquals(PipelinePhase.Idle, app.captions.pipeline.phase)
         } finally {
             compose.runOnUiThread {
+                app.captions.stopSpeaking()
                 if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop()
                 CaptionState.clear()
             }
