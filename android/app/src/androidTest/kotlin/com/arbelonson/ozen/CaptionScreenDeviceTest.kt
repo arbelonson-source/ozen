@@ -1229,11 +1229,12 @@ class CaptionScreenDeviceTest {
                 CaptionState.clear()
                 CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = (1..4).map { committed("Line $it of the conversation") })
             }
-            val line = compose.onNodeWithText("Line 1 of the conversation")
-            line.performTouchInput { pinch(center + Offset(-30f, 0f), center + Offset(-300f, 0f), center + Offset(30f, 0f), center + Offset(300f, 0f), 400) }
+            compose.onNodeWithText("Line 1 of the conversation").assertExists()
+            val captions = compose.onNode(hasScrollAction())
+            captions.performTouchInput { pinch(center + Offset(-30f, 0f), center + Offset(-300f, 0f), center + Offset(30f, 0f), center + Offset(300f, 0f), 400) }
             compose.waitUntil(5_000) { app.settings.current.value.display.fontSize >= 45.0 }
             val bigger = app.settings.current.value.display.fontSize
-            line.performTouchInput { pinch(center + Offset(-300f, 0f), center + Offset(-30f, 0f), center + Offset(300f, 0f), center + Offset(30f, 0f), 400) }
+            captions.performTouchInput { pinch(center + Offset(-300f, 0f), center + Offset(-30f, 0f), center + Offset(300f, 0f), center + Offset(30f, 0f), 400) }
             compose.waitUntil(5_000) { app.settings.current.value.display.fontSize <= bigger - 15.0 }
             assertTrue(app.settings.current.value.display.fontSize >= DisplayPreferences.minimumFontSize)
             compose.onNodeWithText("Text size", substring = true).assertDoesNotExist()
@@ -1322,7 +1323,9 @@ class CaptionScreenDeviceTest {
             compose.onNode(hasScrollAction()).performScrollToIndex(0)
             compose.onNodeWithText("Earlier lines are no longer shown").assertDoesNotExist()
             compose.onNodeWithText("Earlier lines were saved. Tap to read them").performClick()
-            compose.onNodeWithText("Line 5 of the long talk").assertIsDisplayed()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Share").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { savedLine("Line 5 of the long talk") }
+            assertFalse("the conversation opened at its start", savedLine("Line 1 of the long talk"))
             compose.onNodeWithText("Back").performClick()
 
             showLines(segments)
