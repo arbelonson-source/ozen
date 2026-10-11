@@ -7,7 +7,12 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.test.onNodeWithTag
+import com.arbelonson.ozen.core.DisplayPreferences
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
@@ -787,6 +792,30 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Back").performClick()
         compose.onNodeWithText("Row 25 of the scroll test", substring = true).assertIsDisplayed()
     }
+
+    @Test
+    fun savedLinesAndTheSummaryGiveEachSpeakerTheColourTheyHadLive() {
+        app.settings.change { it.display = it.display.copy(theme = DisplayPreferences.Theme.Dark) }
+        seed("Colour test good morning" to "Dana", "Colour test how did you sleep" to "Avi", "Colour test fine thanks" to "Dana")
+        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText("Colour test good morning", substring = true).performClick()
+        waitFor("Colour test fine thanks")
+        for (name in listOf("Dana", "Avi")) {
+            val expected = SpeakerColour.of(null, name, light = false)
+            assertTrue("$name's lines not in their colour: ${nameColours(name)}", expected in nameColours(name))
+            val bar = compose.onNodeWithTag("$SPEAKER_SHARE$name").captureToImage().toPixelMap()
+            val found = (0 until bar.width).any { x -> (0 until bar.height).any { y -> near(bar[x, y], expected) } }
+            assertTrue("$name's share of the talk not drawn in their colour", found)
+        }
+    }
+
+    private fun nameColours(name: String): List<Color> = compose.onAllNodesWithText(name, useUnmergedTree = true).fetchSemanticsNodes().mapNotNull { node ->
+        val layouts = mutableListOf<TextLayoutResult>()
+        node.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(layouts)
+        layouts.firstOrNull()?.layoutInput?.style?.color
+    }
+
+    private fun near(a: Color, b: Color) = abs(a.red - b.red) < 0.03f && abs(a.green - b.green) < 0.03f && abs(a.blue - b.blue) < 0.03f
 
     @Test
     fun anOpenedConversationIsHeadedByItsDayAndTimeAndEndsWithWhatTranscribedIt() {

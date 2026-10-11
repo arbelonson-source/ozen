@@ -1098,4 +1098,4 @@ private fun savedGreen() = if (onLightScreen()) Color(red = 0f, green = 0.45f, b
 internal fun cautionOrange() = if (onLightScreen()) Color(red = 0.7f, green = 0.3f, blue = 0f) else Color(0xFFFFB74D)
 
 @Composable
-private fun onLightScreen() = MaterialTheme.colorScheme.background.luminance() > 0.5f
+internal fun onLightScreen() = MaterialTheme.colorScheme.background.luminance() > 0.5f

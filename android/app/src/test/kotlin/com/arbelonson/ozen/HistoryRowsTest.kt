@@ -220,6 +220,21 @@ class HistoryRowsTest {
     }
 
     @Test
+    fun `a saved line and a starred one keep the voice they were heard in, for the speaker's colour`() {
+        val heard = SavedSegment(UUID.randomUUID(), "Good morning", "Speaker 3", 2, morning, true, isStarred = true)
+        val record = TranscriptSessionRecord(
+            startedAt = morning,
+            endedAt = morning + 60,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(heard),
+        )
+        assertEquals(2, SavedLine.of(record, jerusalem).single().cluster)
+        assertEquals(2, SavedLine.of(StarredLine(record.id, morning, heard, engine = TranscriptionEngineKind.HomeServer, model = "home server"), jerusalem).cluster)
+    }
+
+    @Test
     fun `a saved line copies as said, its phone number kept in order for a Hebrew chat`() {
         val record = TranscriptSessionRecord(
             startedAt = morning,

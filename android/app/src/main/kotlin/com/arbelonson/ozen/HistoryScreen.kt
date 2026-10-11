@@ -371,6 +371,7 @@ private fun SpeakerFilterChips(names: List<String>, chosen: String?, onChoose: (
  * which this tag tells apart.
  */
 internal const val ON_THIS_DATE = "onThisDate"
+internal const val SPEAKER_SHARE = "speakerShare:"
 
 @Composable
 private fun SearchField(query: String, onChange: (String) -> Unit) {
@@ -740,7 +741,11 @@ private fun SummarySection(stats: ConversationStats) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                LinearProgressIndicator(progress = { share.toFloat() }, modifier = Modifier.fillMaxWidth().clearAndSetSemantics {})
+                LinearProgressIndicator(
+                    progress = { share.toFloat() },
+                    modifier = Modifier.fillMaxWidth().testTag("$SPEAKER_SHARE${speaker.name}").clearAndSetSemantics {},
+                    color = SpeakerColour.of(speaker.clusterID, speaker.name, onLightScreen()),
+                )
             }
         }
         if (stats.wordsPerMinute > 0) SummaryRow(tr("קצב דיבור", "Speaking pace"), ConversationStats.paceText(stats.wordsPerMinute))
@@ -828,7 +833,7 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
         LineDirection(line.rightToLeft) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
+                line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = SpeakerColour.of(line.cluster, it, onLightScreen())) }
                 Row {
                     if (line.starred) Text("★", color = starColour(), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 6.dp))
                     if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)

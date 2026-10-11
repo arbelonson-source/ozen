@@ -140,7 +140,7 @@ private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: 
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
+                    line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = SpeakerColour.of(line.cluster, it, onLightScreen())) }
                 }
                 Row {
                     if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)

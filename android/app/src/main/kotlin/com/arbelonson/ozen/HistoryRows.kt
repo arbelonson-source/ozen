@@ -56,6 +56,8 @@ data class SavedLine(
     val phones: List<PhoneNumbers.Match> = emptyList(),
     /** Laid out from the right, as `CaptionLayout.readsRightToLeft` says for its words. */
     val rightToLeft: Boolean = true,
+    /** The voice it was heard in, which with the name picks the speaker's colour. */
+    val cluster: Int? = null,
 ) {
     companion object {
         /** [markUncertain]: the caption screen's question mark, kept on saved lines as on the iPhone. */
@@ -76,6 +78,7 @@ data class SavedLine(
                     copied = CaptionLayout.copiedText(segment.text),
                     phones = PhoneNumbers.matches(segment.text),
                     rightToLeft = CaptionLayout.readsRightToLeft(segment.text, languageCode),
+                    cluster = segment.speakerClusterID,
                 )
             }
         }
@@ -100,6 +103,7 @@ data class SavedLine(
                 unsure = unsure,
                 copied = CaptionLayout.copiedText(segment.text),
                 rightToLeft = CaptionLayout.readsRightToLeft(segment.text, languageCode),
+                cluster = segment.speakerClusterID,
             )
         }
     }
