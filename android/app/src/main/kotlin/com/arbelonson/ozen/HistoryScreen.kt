@@ -56,6 +56,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -74,6 +75,7 @@ import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.HistoryDay
 import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.HistoryRetention
+import com.arbelonson.ozen.core.OnThisDay
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
@@ -162,10 +164,12 @@ fun HistoryScreen(
         if (searching) delay(250)
         loaded = withContext(Dispatchers.IO) {
             val summaries = if (searching) conversations.search(query) else conversations.list()
+            val now = System.currentTimeMillis() / 1_000.0
             HistoryList(
                 summaries = summaries,
-                days = HistoryDays.grouped(summaries, now = System.currentTimeMillis() / 1_000.0, utcOffsetSeconds = ::localOffset),
+                days = HistoryDays.grouped(summaries, now = now, utcOffsetSeconds = ::localOffset),
                 size = ByteSize.text(conversations.sizeOnDisk()),
+                onThisDate = if (searching) emptyList() else OnThisDay.matches(summaries, now, ::localOffset).take(3),
             )
         }
     }
@@ -222,6 +226,15 @@ fun HistoryScreen(
                 val stars = shown.summaries.sumOf { it.starredCount }
                 if (!searching && stars > 0) item(key = "starred") {
                     StarredLinesRow(stars, onOpen = { showingStarred = true })
+                }
+                if (shown.onThisDate.isNotEmpty()) item(key = "on-this-date") {
+                    Column(modifier = Modifier.testTag(ON_THIS_DATE)) {
+                        Heading(tr("בתאריך הזה בשנים קודמות", "On this date in earlier years"))
+                        for (session in shown.onThisDate) {
+                            ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletion = session })
+                            HorizontalDivider()
+                        }
+                    }
                 }
                 if (shown.days.isEmpty()) {
                     item(key = "empty") {
@@ -294,7 +307,20 @@ fun HistoryScreen(
     deleteError?.let { error -> DeletionFailed(error, onClose = { deleteError = null }) }
 }
 
-private class HistoryList(val summaries: List<TranscriptSessionSummary>, val days: List<HistoryDay>, val size: String)
+private class HistoryList(
+    val summaries: List<TranscriptSessionSummary>,
+    val days: List<HistoryDay>,
+    val size: String,
+    val onThisDate: List<TranscriptSessionSummary>,
+)
+
+/**
+ * The iPhone's "On this date in earlier years": a year-old conversation
+ * with the same person, surfaced without her having to remember it
+ * happened. Its rows are also listed under their own day further down,
+ * which this tag tells apart.
+ */
+internal const val ON_THIS_DATE = "onThisDate"
 
 @Composable
 private fun SearchField(query: String, onChange: (String) -> Unit) {

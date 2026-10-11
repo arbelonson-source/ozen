@@ -15,6 +15,7 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isDisplayed
@@ -38,7 +39,9 @@ import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
 import java.time.Instant
+import java.time.MonthDay
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
@@ -47,6 +50,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -482,6 +486,34 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Back").performClick()
         compose.waitUntil(5_000) { shownLine("Starred list test call the pharmacy") }
         assertTrue(compose.onAllNodesWithContentDescription("Starred list test two pills", substring = true).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun conversationsFromThisDateInEarlierYearsComeFirstNewestFirstThreeAtMost() {
+        val now = ZonedDateTime.now()
+        assumeFalse(MonthDay.from(now) == MonthDay.of(2, 29))
+        fun ago(years: Long, days: Long = 0) = now.minusYears(years).minusDays(days).toEpochSecond().toDouble()
+        seed("Anniversary test one year ago" to null, startedAt = ago(1))
+        seed("Anniversary test two years ago" to null, startedAt = ago(2))
+        seed("Anniversary test three years ago" to null, startedAt = ago(3))
+        seed("Anniversary test four years ago" to null, startedAt = ago(4))
+        seed("Anniversary test a year and a day ago" to null, startedAt = ago(1, days = 1))
+        compose.onNodeWithText("History").performClick()
+        waitFor("On this date in earlier years")
+        val section = hasAnyAncestor(hasTestTag(ON_THIS_DATE))
+        val tops = listOf("one year", "two years", "three years").map {
+            compose.onNode(hasText("Anniversary test $it ago", substring = true) and section).getUnclippedBoundsInRoot().top
+        }
+        assertEquals(tops.sorted(), tops)
+        compose.onNode(hasText("Anniversary test four years ago", substring = true) and section).assertDoesNotExist()
+        compose.onNode(hasText("Anniversary test a year and a day ago", substring = true) and section).assertDoesNotExist()
+
+        compose.onNode(hasText("Anniversary test two years ago", substring = true) and section).performClick()
+        compose.waitUntil(5_000) { shownLine("Anniversary test two years ago") }
+        compose.onNodeWithText("Back").performClick()
+        waitFor("On this date in earlier years")
+        compose.onNodeWithText("Search what was said").performTextInput("Anniversary")
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("On this date in earlier years").fetchSemanticsNodes().isEmpty() }
     }
 
     @Test
