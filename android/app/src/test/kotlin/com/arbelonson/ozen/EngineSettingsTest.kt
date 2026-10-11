@@ -65,6 +65,19 @@ class EngineSettingsTest {
     }
 
     @Test
+    fun `choosing another spoken language saves it and restarts captions once, whatever the engine, and the same one does nothing`() {
+        engineSettings.chooseSpokenLanguage(UILanguage.Hebrew)
+        assertEquals(0, restarts)
+        engineSettings.chooseSpokenLanguage(UILanguage.English)
+        assertEquals("en", saved().languageCode)
+        assertEquals(1, restarts)
+        engineSettings.chooseEngine(TranscriptionEngineKind.Cloud)
+        engineSettings.chooseSpokenLanguage(UILanguage.Arabic)
+        assertEquals("ar", saved().languageCode)
+        assertEquals(3, restarts)
+    }
+
+    @Test
     fun `a settings file that names apple's recognizer shows the phone's own model, which is what android runs for it`() {
         settings.change { it.engine = TranscriptionEngineKind.AppleSpeech }
         assertEquals(TranscriptionEngineKind.WhisperKit, engineSettings.chosenEngine)

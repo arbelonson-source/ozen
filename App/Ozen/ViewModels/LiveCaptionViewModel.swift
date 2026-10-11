@@ -962,6 +962,15 @@ public final class LiveCaptionViewModel {
         await restartIfRunning()
     }
 
+    /// Every engine is told the language, so captions running on any of
+    /// them start again in the new one.
+    public func setSpokenLanguage(_ language: UILanguage) async {
+        guard settings.spokenLanguage != language else { return }
+        settings.spokenLanguage = language
+        persist()
+        await restartIfRunning()
+    }
+
     public func setWhisperModel(_ variant: String) async {
         guard settings.whisperModelVariant != variant else { return }
         settings.whisperModelVariant = variant

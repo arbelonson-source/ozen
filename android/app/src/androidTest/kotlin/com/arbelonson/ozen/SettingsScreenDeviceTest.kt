@@ -61,6 +61,7 @@ import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.UILanguage
 import java.io.File
 import java.time.Instant
 import java.util.UUID
@@ -768,7 +769,9 @@ class SettingsScreenDeviceTest {
     @Test
     fun theAppLanguageIsChosenByEachLanguagesOwnNameAndTheScreensFollowItAtOnce() {
         val before = app.settings.current.value.appLanguage
+        val spokenBefore = app.settings.current.value.languageCode
         try {
+            app.settings.change { it.languageCode = "en" }
             compose.onNodeWithText("Settings").performClick()
             compose.onNodeWithText("Same as the phone").performScrollTo().performClick()
             compose.onNodeWithText("العربية").assertExists()
@@ -782,7 +785,29 @@ class SettingsScreenDeviceTest {
             compose.waitUntil(5_000) { app.settings.current.value.appLanguage == AppLanguage.System }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("App language").fetchSemanticsNodes().isNotEmpty() }
         } finally {
-            app.settings.change { it.appLanguage = before }
+            app.settings.change {
+                it.appLanguage = before
+                it.languageCode = spokenBefore
+            }
+        }
+    }
+
+    @Test
+    fun theSpokenLanguageIsChosenByItsSpokenNameAndIsWhatTheEnginesAreGiven() {
+        val before = app.settings.current.value.languageCode
+        try {
+            app.settings.change { it.languageCode = "he" }
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Spoken language").performScrollTo().assertExists()
+            compose.onNodeWithText("The language people around you speak. The captions are written in it.").performScrollTo().assertExists()
+            compose.onNodeWithText(UILanguage.Hebrew.spokenName).performScrollTo().performClick()
+            compose.onNodeWithText("中文").assertExists()
+            compose.onNodeWithText("English").performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.languageCode == "en" }
+            compose.onNodeWithText("English").performScrollTo().assertExists()
+            compose.onNodeWithText("The language of the buttons and settings, not of the captions.").performScrollTo().assertExists()
+        } finally {
+            app.settings.change { it.languageCode = before }
         }
     }
 

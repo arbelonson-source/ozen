@@ -6,6 +6,7 @@ import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -36,6 +37,13 @@ class EngineSettings(
     fun chooseEngine(kind: TranscriptionEngineKind) {
         if (settings.current.value.engine == kind) return
         settings.change { it.engine = kind }
+        restartIfRunning()
+    }
+
+    /** Every engine is told the language, so captions running on any of them start again in the new one. */
+    fun chooseSpokenLanguage(language: UILanguage) {
+        if (settings.current.value.spokenLanguage == language) return
+        settings.change { it.spokenLanguage = language }
         restartIfRunning()
     }
 

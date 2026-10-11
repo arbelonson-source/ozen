@@ -102,6 +102,7 @@ struct SettingsView: View {
                 displaySection
                 alertsSection
                 speechSection
+                spokenLanguageSection
                 languageSection
                 historySection
                 helperSettingsNote
@@ -714,7 +715,32 @@ struct SettingsView: View {
                 Text(tr("שפת האפליקציה", "App language"))
             }
         } footer: {
-            Text(tr("השפה של הכפתורים וההגדרות. הכתוביות נכתבות לדיבור בעברית, בכל שפה שתיבחר כאן.", "The language of the buttons and settings. Captions are written for Hebrew speech, whichever language is chosen here."))
+            Text(tr("השפה של הכפתורים וההגדרות, לא של הכתוביות.", "The language of the buttons and settings, not of the captions."))
+        }
+    }
+
+    private var spokenLanguageBinding: Binding<UILanguage> {
+        Binding(
+            get: { viewModel.settings.spokenLanguage },
+            set: { language in Task { await viewModel.setSpokenLanguage(language) } }
+        )
+    }
+
+    /// The language people around her speak, which every engine is given:
+    /// each by the name it is spoken by, as the app language is chosen.
+    private var spokenLanguageSection: some View {
+        Section {
+            menuRow(tr("שפת הדיבור", "Spoken language"), selection: spokenLanguageBinding, value: viewModel.settings.spokenLanguage.spokenName) {
+                ForEach(UILanguage.allCases, id: \.self) { language in
+                    Text(language.spokenName).tag(language)
+                }
+            }
+        } header: {
+            if dynamicTypeSize.isAccessibilitySize {
+                Text(tr("שפת הדיבור", "Spoken language"))
+            }
+        } footer: {
+            Text(tr("השפה שמדברים סביבך. הכתוביות נכתבות בה.", "The language people around you speak. The captions are written in it."))
         }
     }
 

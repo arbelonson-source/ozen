@@ -256,6 +256,14 @@ public struct AppSettings: Codable, Sendable, Equatable {
 
     public static let betterModelOfferSnoozeDays = [3, 14, 60]
 
+    /// The language people around her speak, which the captions are written
+    /// in: `languageCode` as one of the interface's languages, and Hebrew
+    /// for a code none of them has, as before there was a choice.
+    public var spokenLanguage: UILanguage {
+        get { UILanguage.match(languageTag: languageCode) ?? .hebrew }
+        set { languageCode = newValue.languageCode.identifier }
+    }
+
     /// Whether the phone runs a Whisper model clearly worse in Hebrew than
     /// the recommended one. Settings says so for as long as it is true.
     public var runsWeakerModel: Bool {

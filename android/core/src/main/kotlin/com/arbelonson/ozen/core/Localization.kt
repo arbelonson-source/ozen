@@ -23,6 +23,9 @@ enum class UILanguage(
 
     val isRightToLeft: Boolean get() = this == Hebrew || this == Arabic
 
+    /** Its name as a spoken language: the menus name Chinese by its simplified writing, which speech doesn't have. */
+    val spokenName: String get() = if (this == ChineseSimplified) "中文" else nativeName
+
     internal val writesInLatinLetters: Boolean
         get() = this == English || this == French || this == Spanish || this == German || this == Portuguese
 

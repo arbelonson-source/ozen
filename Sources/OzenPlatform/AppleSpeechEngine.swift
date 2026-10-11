@@ -107,7 +107,8 @@ public final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
     }
 
     static func localeIdentifier(for languageCode: String) -> String {
-        languageCode == "he" ? "he-IL" : languageCode
+        guard !languageCode.contains("-"), let language = UILanguage.match(languageTag: languageCode) else { return languageCode }
+        return language.speechVoiceCode
     }
 
     enum EngineError: Error {

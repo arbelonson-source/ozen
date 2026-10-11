@@ -292,6 +292,25 @@ struct LiveCaptionViewModelTests {
         #expect(viewModel.stats.engineRestarts == 2)
     }
 
+    @Test("choosing another spoken language persists and restarts the captions on whichever engine runs; the same one does nothing")
+    func spokenLanguageChoice() async {
+        let store = temporaryStore()
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: fakePipeline())
+        await viewModel.start()
+
+        await viewModel.setSpokenLanguage(.hebrew)
+        #expect(viewModel.stats.engineRestarts == 0)
+        await viewModel.setSpokenLanguage(.english)
+        #expect(store.load().languageCode == "en")
+        #expect(viewModel.stats.engineRestarts == 1)
+        #expect(viewModel.isListening)
+
+        await viewModel.setEngine(.appleSpeech)
+        await viewModel.setSpokenLanguage(.arabic)
+        #expect(store.load().languageCode == "ar")
+        #expect(viewModel.stats.engineRestarts == 3)
+    }
+
     @Test("display preferences persist without touching the pipeline")
     func displayPersists() async {
         let store = temporaryStore()

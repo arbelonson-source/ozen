@@ -124,6 +124,12 @@ public enum UILanguage: String, Codable, Sendable, CaseIterable {
         }
     }
 
+    /// Its name as a spoken language: the menus name Chinese by its
+    /// simplified writing, which speech doesn't have.
+    public var spokenName: String {
+        self == .chineseSimplified ? "中文" : nativeName
+    }
+
     public func locale(keepingRegionOf base: Locale) -> Locale {
         var components = Locale.Components(locale: base)
         components.languageComponents = Locale.Language.Components(
@@ -137,7 +143,7 @@ public enum UILanguage: String, Codable, Sendable, CaseIterable {
     /// Matches a phone preferred-language tag (`"pt-BR"`, `"zh-Hans-US"`,
     /// `"iw"`...) to a supported language by its leading subtag, ignoring
     /// script and region. `nil` when nothing supported matches.
-    static func match(languageTag: String) -> UILanguage? {
+    public static func match(languageTag: String) -> UILanguage? {
         let code = languageTag.lowercased().split(separator: "-").first.map(String.init) ?? languageTag.lowercased()
         switch code {
         case "he", "iw": return .hebrew

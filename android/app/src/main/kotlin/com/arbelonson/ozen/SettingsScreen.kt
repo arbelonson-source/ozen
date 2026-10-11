@@ -88,6 +88,7 @@ import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -150,6 +151,7 @@ fun SettingsScreen(
             AwayAlertsRow(current.notifyWhenInBackground) { on -> settings.change { it.notifyWhenInBackground = on } }
             if (current.notifyWhenInBackground) QuietHoursRows(current.quietHours) { hours -> settings.change { it.quietHours = hours } }
             SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak)
+            SpokenLanguageSection(current.spokenLanguage, engineSettings::chooseSpokenLanguage)
             LanguageSection(current.appLanguage, onAppLanguage)
             EngineSection(engineSettings, current)
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
@@ -783,7 +785,35 @@ private fun LanguageSection(chosen: AppLanguage, onChoose: (AppLanguage) -> Unit
             }
         }
     }
-    Footnote(tr("השפה של הכפתורים וההגדרות. הכתוביות נכתבות לדיבור בעברית, בכל שפה שתיבחר כאן.", "The language of the buttons and settings. Captions are written for Hebrew speech, whichever language is chosen here."))
+    Footnote(tr("השפה של הכפתורים וההגדרות, לא של הכתוביות.", "The language of the buttons and settings, not of the captions."))
+}
+
+/** The language people around her speak, which every engine is given, each named as it is spoken. */
+@Composable
+private fun SpokenLanguageSection(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
+    SectionHeader(tr("שפת הדיבור", "Spoken language"))
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().clickable(onClickLabel = tr("שפת הדיבור", "Spoken language")) { open = true }.padding(vertical = 12.dp),
+        ) {
+            Text(chosen.spokenName, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text("▾", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.clearAndSetSemantics {})
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            for (language in UILanguage.entries) {
+                DropdownMenuItem(
+                    text = { Text(language.spokenName) },
+                    onClick = {
+                        open = false
+                        onChoose(language)
+                    },
+                )
+            }
+        }
+    }
+    Footnote(tr("השפה שמדברים סביבך. הכתוביות נכתבות בה.", "The language people around you speak. The captions are written in it."))
 }
 
 private fun languageName(language: AppLanguage): String =

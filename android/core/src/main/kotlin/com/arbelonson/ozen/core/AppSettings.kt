@@ -376,6 +376,17 @@ class AppSettings(
      * Whether the phone runs a Whisper model clearly worse in Hebrew than
      * the recommended one. Settings says so for as long as it is true.
      */
+    /**
+     * The language people around her speak, which the captions are written
+     * in: [languageCode] as one of the interface's languages, and Hebrew for
+     * a code none of them has, as before there was a choice.
+     */
+    var spokenLanguage: UILanguage
+        get() = UILanguage.match(languageCode) ?: UILanguage.Hebrew
+        set(language) {
+            languageCode = language.languageCode
+        }
+
     val runsWeakerModel: Boolean
         get() = engine == TranscriptionEngineKind.WhisperKit && WhisperModelCatalog.recommendedImproves(whisperModelVariant)
 
