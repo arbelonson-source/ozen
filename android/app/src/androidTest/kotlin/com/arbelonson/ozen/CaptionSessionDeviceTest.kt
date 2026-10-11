@@ -15,6 +15,7 @@ import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.EngineUnavailability
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ReleaseFileFetching
@@ -279,6 +280,9 @@ class CaptionSessionDeviceTest {
         val announced = CopyOnWriteArrayList<String>()
         val readerBefore = ScreenReader.isOn
         val announceBefore = ScreenReader.announce
+        // Run by itself, no screen has set the app's language yet.
+        val languageBefore = Localization.language
+        Localization.language = UILanguage.English
         ScreenReader.isOn = { true }
         ScreenReader.announce = { _, text -> announced += text }
         val clip = ClipAudio(FloatArray(16_000 * 120))
@@ -319,6 +323,7 @@ class CaptionSessionDeviceTest {
             }
             ScreenReader.isOn = readerBefore
             ScreenReader.announce = announceBefore
+            Localization.language = languageBefore
         }
     }
 
