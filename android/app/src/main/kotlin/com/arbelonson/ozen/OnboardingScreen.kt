@@ -61,6 +61,7 @@ import com.arbelonson.ozen.core.HebrewText
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
+import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.core.audioLeavesPhone
 import com.arbelonson.ozen.core.firstRunNote
 import com.arbelonson.ozen.core.tr
@@ -127,9 +128,12 @@ internal fun OnboardingScreen(
                     3 -> MicrophonePage(settings, microphone, notifications, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
                     NAME_PAGE -> NamePage(settings, nameDraft, addDraft, onAddAlert)
                     else -> Page("✅", tr("מוכן", "Ready")) {
-                        // The app does not download the phone's model yet, so
-                        // the iPhone's note about that first download would be
-                        // untrue here.
+                        // The app downloads only the general model, not Ozen's
+                        // Hebrew one, so the iPhone's note about that first
+                        // download is for the other languages.
+                        if (settings.engine.firstRunNote == FirstRunNote.ModelDownload && WhisperModelCatalog.phoneModelSource(settings.spokenLanguage) != null) {
+                            Body(tr("בהפעלה הראשונה אוזן תוריד את מודל השפה. זה לוקח כמה דקות ומוצג על המסך. אחר כך — מיד.", "The first time it runs, Ozen will download the language model. This takes a few minutes and shows on the screen. After that — instantly."))
+                        }
                         if (settings.engine.firstRunNote == FirstRunNote.HomeComputer) {
                             Body(tr("מחובר בקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home."))
                         }

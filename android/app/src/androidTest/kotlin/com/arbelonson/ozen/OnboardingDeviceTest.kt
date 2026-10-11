@@ -110,6 +110,7 @@ class OnboardingDeviceTest {
         assertFalse("סבתא" in app.settings.current.value.vocabulary)
 
         compose.onNodeWithText("The button below starts the captions. Good luck, Grandma.").assertExists()
+        compose.onNodeWithText(DOWNLOAD_NOTE).assertDoesNotExist()
         compose.onNodeWithText("Skip").assertDoesNotExist()
         compose.onNodeWithText("Start").performClick()
         compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
@@ -143,5 +144,20 @@ class OnboardingDeviceTest {
         compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
         compose.onNodeWithText("History").assertExists()
         compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
+    }
+
+    @Test
+    fun theReadyPageSaysTheFirstStartDownloadsTheModelForALanguageWhoseModelTheAppDownloads() {
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("English").performScrollTo().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.languageCode == "en" }
+        repeat(3) { compose.onNodeWithText("Next").performClick() }
+        compose.onNodeWithText("The button below starts the captions. Good luck, Grandma.").assertExists()
+        compose.onNodeWithText(DOWNLOAD_NOTE).assertExists()
+    }
+
+    private companion object {
+        const val DOWNLOAD_NOTE = "The first time it runs, Ozen will download the language model. This takes a few minutes and shows on the screen. After that — instantly."
     }
 }

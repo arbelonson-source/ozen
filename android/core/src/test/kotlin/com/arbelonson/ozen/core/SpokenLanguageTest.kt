@@ -3,6 +3,8 @@ package com.arbelonson.ozen.core
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SpokenLanguageTest {
@@ -111,6 +113,20 @@ class SpokenLanguageTest {
         assertEquals("ggml-ozen-a3-q5_0.bin", WhisperModelCatalog.phoneModelFile(UILanguage.Hebrew))
         for (language in UILanguage.entries.filter { it != UILanguage.Hebrew }) {
             assertEquals("ggml-large-v3-turbo-q5_0.bin", WhisperModelCatalog.phoneModelFile(language))
+        }
+    }
+
+    @Test
+    fun `only the general model is downloaded, from one fixed revision of whisper cpp's public models, at the size and checksum it was published with`() {
+        assertNull(WhisperModelCatalog.phoneModelSource(UILanguage.Hebrew))
+        for (language in UILanguage.entries.filter { it != UILanguage.Hebrew }) {
+            val source = assertNotNull(WhisperModelCatalog.phoneModelSource(language))
+            assertEquals(
+                "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-large-v3-turbo-q5_0.bin",
+                source.url.toString(),
+            )
+            assertEquals(574_041_195L, source.bytes)
+            assertEquals("394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2", source.sha256)
         }
     }
 }

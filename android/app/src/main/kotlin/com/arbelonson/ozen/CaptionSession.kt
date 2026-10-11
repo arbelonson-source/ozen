@@ -12,6 +12,7 @@ import androidx.core.content.pm.PackageInfoCompat
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.CaptionPipeline
+import com.arbelonson.ozen.core.HTTPFileFetcher
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.HomeServerEngine
@@ -19,9 +20,11 @@ import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
+import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ProblemSnapshot
+import com.arbelonson.ozen.core.ReleaseFileFetching
 import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SpeakerEmbedding
@@ -499,11 +502,18 @@ class CaptionSession(
         TranscriptionEngineKind.WhisperKit, TranscriptionEngineKind.AppleSpeech -> modelFile(settings).let { model ->
             OnDeviceWhisperEngine(
                 modelName = model.name,
-                loader = ModelFileLoader(model, context.applicationInfo.nativeLibraryDir),
+                loader = ModelFileLoader(
+                    model,
+                    context.applicationInfo.nativeLibraryDir,
+                    download = WhisperModelCatalog.phoneModelSource(settings.spokenLanguage)?.let { PhoneModelDownloader(model, it, modelFetcher) },
+                ),
                 voiceScorerFactory = ::voiceScore,
             )
         }
     }
+
+    /** Where a missing model is fetched from; device tests put one in that never downloads. */
+    var modelFetcher: ReleaseFileFetching = HTTPFileFetcher()
 
     /** The phone's own model for the spoken language; see `WhisperModelCatalog.phoneModelFile`. */
     private fun modelFile(settings: AppSettings) = File(context.filesDir, WhisperModelCatalog.phoneModelFile(settings.spokenLanguage))

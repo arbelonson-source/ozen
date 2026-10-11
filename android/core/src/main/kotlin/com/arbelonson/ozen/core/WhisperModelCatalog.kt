@@ -2,6 +2,7 @@ package com.arbelonson.ozen.core
 
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.net.URI
 
 /**
  * One Whisper model the app offers. Sizes were measured from the actual
@@ -224,6 +225,25 @@ object WhisperModelCatalog {
      */
     fun phoneModelFile(language: UILanguage): String =
         if (language == UILanguage.Hebrew) "ggml-ozen-a3-q5_0.bin" else "ggml-large-v3-turbo-q5_0.bin"
+
+    /**
+     * Where the phone downloads [phoneModelFile] from: one fixed revision of
+     * whisper.cpp's public models on Hugging Face, so the size and checksum
+     * it was published with keep holding. Null for Ozen's Hebrew model,
+     * which the Android app has nowhere to download from yet.
+     */
+    fun phoneModelSource(language: UILanguage): PhoneModelSource? =
+        if (language == UILanguage.Hebrew) {
+            null
+        } else {
+            PhoneModelSource(
+                url = URI("$WHISPER_CPP_MODELS/${phoneModelFile(language)}"),
+                bytes = 574_041_195,
+                sha256 = "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2",
+            )
+        }
+
+    private const val WHISPER_CPP_MODELS = "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1"
 
     fun recommendedVariant(language: UILanguage): String = if (language == UILanguage.Hebrew) RECOMMENDED_VARIANT else GENERAL_VARIANT
 
