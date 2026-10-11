@@ -408,6 +408,12 @@ class CaptionSession(
 
     fun dismissMicrophoneDrop() = pipeline.dismissMicrophoneDrop()
 
+    /** The Settings switch: models may download over cellular data, and one waiting for Wi-Fi starts now. */
+    fun allowCellularModelDownload(allowed: Boolean) {
+        settings.change { it.allowCellularModelDownload = allowed }
+        scope.launch { pipeline.setAllowCellularModelDownload(allowed) }
+    }
+
     /** "Download now" while the model waits for Wi-Fi: this session's model may use cellular data. */
     fun approveCellularDownload() {
         scope.launch { pipeline.approveCellularDownload() }

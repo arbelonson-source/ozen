@@ -118,6 +118,7 @@ fun SettingsScreen(
     soundNearMiss: (SoundEvent) -> SoundNearMisses.Entry? = { null },
     onFeel: (AlertVibration) -> Unit = {},
     speakers: SpeakerBook,
+    onCellularDownloads: (Boolean) -> Unit,
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
@@ -181,6 +182,9 @@ fun SettingsScreen(
             SpokenLanguageSection(current.spokenLanguage, engineSettings::chooseSpokenLanguage)
             LanguageSection(current.appLanguage, onAppLanguage)
             EngineSection(engineSettings, current)
+            if (current.engine == TranscriptionEngineKind.WhisperKit || current.engine == TranscriptionEngineKind.AppleSpeech) {
+                SwitchRow(tr("להוריד מודלים גם בחבילת הגלישה", "Download models on cellular data too"), current.allowCellularModelDownload, onChange = onCellularDownloads)
+            }
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
             if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
             WordsSection(current.vocabulary.size, onOpen = { showingWords = true })

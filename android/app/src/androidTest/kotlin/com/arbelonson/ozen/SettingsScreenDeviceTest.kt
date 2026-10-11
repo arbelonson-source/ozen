@@ -132,6 +132,7 @@ class SettingsScreenDeviceTest {
     private var soundsBefore = SoundAlertPreferences.default
     private var speakersBefore = emptyList<SpeakerProfile>()
     private var separationBefore = 0.45f
+    private var cellularBefore = false
 
     @Before
     fun remember() {
@@ -150,6 +151,7 @@ class SettingsScreenDeviceTest {
         soundsBefore = app.settings.current.value.soundAlerts
         speakersBefore = app.settings.current.value.speakerProfiles
         separationBefore = app.settings.current.value.speakerSimilarityThreshold
+        cellularBefore = app.settings.current.value.allowCellularModelDownload
         app.cloudKeys.remove(CloudProvider.Deepgram)
         app.homeServerCode.remove()
         app.settings.change { it.homeServerAddress = "" }
@@ -174,11 +176,31 @@ class SettingsScreenDeviceTest {
             it.soundAlerts = soundsBefore
             it.speakerProfiles = speakersBefore
             it.speakerSimilarityThreshold = separationBefore
+            it.allowCellularModelDownload = cellularBefore
         }
         compose.runOnUiThread {
             app.captions.pipeline.setSpeakerSimilarityThreshold(separationBefore)
             CaptionState.clear()
         }
+    }
+
+    @Test
+    fun withThePhonesOwnModelSettingsOffersToDownloadModelsOverCellularDataAndKeepsTheChoice() {
+        app.settings.change {
+            it.engine = TranscriptionEngineKind.WhisperKit
+            it.allowCellularModelDownload = false
+        }
+        compose.onNodeWithText("Settings").performClick()
+        val cellular = compose.onNode(hasText("Download models on cellular data too") and isToggleable())
+        cellular.performScrollTo().assertIsOff()
+        cellular.performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.allowCellularModelDownload }
+        cellular.assertIsOn()
+        cellular.performClick()
+        compose.waitUntil(5_000) { !app.settings.current.value.allowCellularModelDownload }
+
+        compose.onNodeWithText("Cloud transcription").performScrollTo().performClick()
+        compose.onNodeWithText("Download models on cellular data too").assertDoesNotExist()
     }
 
     @Test
