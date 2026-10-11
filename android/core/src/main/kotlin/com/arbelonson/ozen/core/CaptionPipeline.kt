@@ -1619,7 +1619,7 @@ class CaptionPipeline(
         coveredSettings?.speakerSimilarityThreshold = threshold
     }
 
-    internal val speakerSimilarityThreshold: Float get() = clusterer.similarityThreshold
+    val speakerSimilarityThreshold: Float get() = clusterer.similarityThreshold
 
     /**
      * The phone's model chosen while captions come from the home computer

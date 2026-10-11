@@ -156,7 +156,7 @@ private fun InputRow(input: AudioInputDescriptor, isSelected: Boolean, onChoose:
 
 /** Read every 50 ms while captions run; empty, and said so, while they don't. */
 @Composable
-private fun LevelMeter(level: () -> Float, active: Boolean) {
+internal fun LevelMeter(level: () -> Float, active: Boolean) {
     var shown by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(active) {
         while (active) {

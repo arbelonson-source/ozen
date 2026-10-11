@@ -117,6 +117,7 @@ fun SettingsScreen(
     onSoundAlerts: (SoundAlertPreferences) -> Unit = {},
     soundNearMiss: (SoundEvent) -> SoundNearMisses.Entry? = { null },
     onFeel: (AlertVibration) -> Unit = {},
+    speakers: SpeakerBook,
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
@@ -153,6 +154,11 @@ fun SettingsScreen(
         ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, current.spokenLanguage, heard, onImportantWords, onClose = { showingImportantWords = false })
         return
     }
+    var showingEnrollment by rememberSaveable { mutableStateOf(false) }
+    if (showingEnrollment) {
+        SpeakerEnrollmentScreen(speakers, onClose = { showingEnrollment = false })
+        return
+    }
     BackHandler(onBack = close)
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -171,9 +177,6 @@ fun SettingsScreen(
             AlertsSection(current.keywordAlerts.count { it.isEnabled }, listed = current.keywordAlerts.isNotEmpty(), onOpen = { showingImportantWords = true }, sounds = current.soundAlerts, onSounds = { showingSounds = true })
             AwayAlertsRow(current.notifyWhenInBackground) { on -> settings.change { it.notifyWhenInBackground = on } }
             if (current.notifyWhenInBackground) QuietHoursRows(current.quietHours) { hours -> settings.change { it.quietHours = hours } }
-            SwitchRow(tr("רטט כשמישהו מתחיל לדבר אחרי שקט", "Vibrate when someone starts talking after silence"), current.hapticOnSpeechResume) { on ->
-                settings.change { it.hapticOnSpeechResume = on }
-            }
             SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak, voiceNotice)
             SpokenLanguageSection(current.spokenLanguage, engineSettings::chooseSpokenLanguage)
             LanguageSection(current.appLanguage, onAppLanguage)
@@ -181,6 +184,13 @@ fun SettingsScreen(
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
             if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
             WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
+            SavedSpeakersSection(current.speakerProfiles, speakers, onAdd = { showingEnrollment = true })
+            BehaviourSection(
+                current.hapticOnSpeechResume,
+                onBuzz = { on -> settings.change { it.hapticOnSpeechResume = on } },
+                current.speakerSimilarityThreshold,
+                onSeparation = speakers::setSpeakerSeparation,
+            )
             DiagnosticsRow(onOpen = { showingDiagnostics = true })
             WalkthroughAgainRow(onShowWalkthrough)
             ClearCaptionsRow(onClearCaptions)

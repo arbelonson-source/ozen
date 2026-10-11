@@ -13,6 +13,7 @@ import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
+import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.SoundEvent
@@ -383,7 +384,8 @@ class CaptionSessionDeviceTest {
         val model = File(context.filesDir, CaptionSession.MODEL_FILE)
         assumeTrue("put the model at ${model.path}", model.exists())
         val work = File(context.cacheDir, "name-speaker-test").apply { deleteRecursively(); mkdirs() }
-        val speech = DeviceClips.asset("speakerA_clip1.wav") + DeviceClips.asset("speakerA_clip2.wav")
+        val pair = DeviceClips.asset("speakerA_clip1.wav") + DeviceClips.asset("speakerA_clip2.wav")
+        val speech = pair + pair + pair
         val audio = ClipAudio(FloatArray(8_000) + speech + FloatArray(32_000) + speech + FloatArray(32_000))
         val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
         val session = withContext(Dispatchers.Main) {
@@ -407,7 +409,7 @@ class CaptionSessionDeviceTest {
                 }
                 found
             }
-            assertNotNull("no line got a voice: ${CaptionState.screen.value.phase} ${session.pipeline.segments.map { it.text }}", voiced)
+            assertNotNull("no line got a voice: ${CaptionState.screen.value.phase} ${session.pipeline.segments.map { it.text }}, voices heard ${session.pipeline.speakerClusters.size}", voiced)
             withContext(Dispatchers.Main) { session.nameSpeaker(voiced!!.id, "Dana") }
             val saved = settings.current.value.speakerProfiles
             assertEquals(listOf("Dana"), saved.map { it.name })
@@ -424,6 +426,56 @@ class CaptionSessionDeviceTest {
                 session.close()
                 CaptionState.clear()
             }
+        }
+    }
+
+    @Test
+    fun aVoiceRecordedInSettingsIsSavedUnderItsNameAndListenedForAndOneTooShortIsNot() = runBlocking {
+        val work = File(context.cacheDir, "record-speaker-test").apply { deleteRecursively(); mkdirs() }
+        val first = DeviceClips.asset("speakerA_clip1.wav")
+        val second = DeviceClips.asset("speakerA_clip2.wav")
+        val voice = first + second + first + second
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        val session = withContext(Dispatchers.Main) {
+            CaptionSession(
+                context,
+                settings,
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(voice),
+                modelFolder = File(work, "no-model"),
+                historyFolder = File(work, "history"),
+            )
+        }
+        try {
+            val progress = CopyOnWriteArrayList<Double>()
+            val saved = withContext(Dispatchers.Main) { session.recordSpeaker("Dana", voice.size / 16_000.0) { progress.add(it) } }
+            assertTrue("the recording was refused", saved)
+            assertEquals(1.0, progress.last(), 0.0)
+            assertTrue(progress.zipWithNext().all { (a, b) -> a <= b })
+            val profile = settings.current.value.speakerProfiles.single()
+            assertEquals("Dana", profile.name)
+            assertEquals(512, profile.embedding.size)
+            assertFalse(withContext(Dispatchers.Main) { session.needsNewRecording(SavedSpeaker.grouping(settings.current.value.speakerProfiles).single()) })
+            assertTrue(withContext(Dispatchers.Main) { session.pipeline.speakerClusters.any { it.name == "Dana" } })
+            val other = DeviceClips.asset("speakerB_clip1.wav")
+            val otherPrint = session.pipeline.embeddingInBackground(other + other + other)!!
+            val samePrint = session.pipeline.embeddingInBackground(second + second + second)!!
+            val threshold = AppSettings.default.speakerSimilarityThreshold
+            assertTrue("her own voice scored ${DeviceClips.cosine(profile.embedding, samePrint)}", DeviceClips.cosine(profile.embedding, samePrint) >= threshold)
+            assertTrue("another voice scored ${DeviceClips.cosine(profile.embedding, otherPrint)}", DeviceClips.cosine(profile.embedding, otherPrint) < threshold)
+
+            assertFalse(withContext(Dispatchers.Main) { session.recordSpeaker("Nobody", 1.0) {} })
+            assertEquals(listOf("Dana"), settings.current.value.speakerProfiles.map { it.name })
+
+            val stopped = launch(Dispatchers.Main) { session.recordSpeaker("Stopped", voice.size / 16_000.0) {} }
+            delay(6_000)
+            stopped.cancel()
+            stopped.join()
+            assertEquals(listOf("Dana"), settings.current.value.speakerProfiles.map { it.name })
+            assertFalse(withContext(Dispatchers.Main) { session.pipeline.speakerClusters.any { it.name == "Stopped" } })
+        } finally {
+            withContext(Dispatchers.Main) { session.close() }
         }
     }
 

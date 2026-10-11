@@ -12,12 +12,14 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.os.SystemClock
+import androidx.activity.compose.setContent
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -74,11 +76,14 @@ import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.SoundAlertPreferences
 import com.arbelonson.ozen.core.SoundEvent
+import com.arbelonson.ozen.core.SavedSpeaker
+import com.arbelonson.ozen.core.SpeakerProfile
 import androidx.compose.ui.test.assertIsEnabled
 import java.io.File
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlin.math.abs
 import com.google.zxing.BinaryBitmap
@@ -117,6 +122,8 @@ class SettingsScreenDeviceTest {
     private var quietHoursBefore = QuietHours.default
     private var speechRateBefore = 0.45f
     private var soundsBefore = SoundAlertPreferences.default
+    private var speakersBefore = emptyList<SpeakerProfile>()
+    private var separationBefore = 0.45f
 
     @Before
     fun remember() {
@@ -133,6 +140,8 @@ class SettingsScreenDeviceTest {
         quietHoursBefore = app.settings.current.value.quietHours
         speechRateBefore = app.settings.current.value.speechRate
         soundsBefore = app.settings.current.value.soundAlerts
+        speakersBefore = app.settings.current.value.speakerProfiles
+        separationBefore = app.settings.current.value.speakerSimilarityThreshold
         app.cloudKeys.remove(CloudProvider.Deepgram)
         app.homeServerCode.remove()
         app.settings.change { it.homeServerAddress = "" }
@@ -155,8 +164,189 @@ class SettingsScreenDeviceTest {
             it.quietHours = quietHoursBefore
             it.speechRate = speechRateBefore
             it.soundAlerts = soundsBefore
+            it.speakerProfiles = speakersBefore
+            it.speakerSimilarityThreshold = separationBefore
         }
-        compose.runOnUiThread { CaptionState.clear() }
+        compose.runOnUiThread {
+            app.captions.pipeline.setSpeakerSimilarityThreshold(separationBefore)
+            CaptionState.clear()
+        }
+    }
+
+    @Test
+    fun eachSavedPersonIsListedOnceAndARenameReachesEveryOneOfTheirVoicePrints() {
+        val print = FloatArray(512) { 0.1f }
+        app.settings.change {
+            it.speakerProfiles = listOf(SpeakerProfile(name = "Grandma", embedding = print), SpeakerProfile(name = "Grandma", embedding = print), SpeakerProfile(name = "Yossi", embedding = print))
+        }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Saved speakers").performScrollTo()
+        compose.onAllNodesWithText("Grandma").assertCountEquals(1)
+        compose.onNodeWithText("Yossi").performScrollTo()
+        compose.onNodeWithText(OLDER_PRINT).assertDoesNotExist()
+
+        compose.onNodeWithText("Grandma").performScrollTo().performClick()
+        compose.onNodeWithText("The new name will also appear on lines already in the captions.").assertExists()
+        val name = compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog()))
+        name.assert(hasText("Grandma"))
+        name.performTextClearance()
+        name.performTextInput("  Savta ")
+        compose.onNode(hasText("Save") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.speakerProfiles.map { it.name } == listOf("Savta", "Savta", "Yossi") }
+        compose.onNodeWithText("Savta").performScrollTo()
+        compose.onNodeWithText("Grandma").assertDoesNotExist()
+
+        compose.onNodeWithText("Savta").performScrollTo().performClick()
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+        compose.onNode(isDialog()).assertDoesNotExist()
+        assertEquals(listOf("Savta", "Savta", "Yossi"), app.settings.current.value.speakerProfiles.map { it.name })
+    }
+
+    @Test
+    fun deletingASavedPersonAsksFirstAndThenForgetsEveryVoicePrintOfThem() {
+        val print = FloatArray(512) { 0.1f }
+        app.settings.change {
+            it.speakerProfiles = listOf(SpeakerProfile(name = "Grandma", embedding = print), SpeakerProfile(name = "Yossi", embedding = print), SpeakerProfile(name = "Grandma", embedding = print))
+        }
+        compose.onNodeWithText("Settings").performClick()
+        val delete = compose.onNode(hasText("Delete") and hasAnyAncestor(hasTestTag("savedSpeaker:Grandma")))
+        delete.performScrollTo().performClick()
+        compose.onNodeWithText("Delete Grandma from saved speakers?").assertExists()
+        compose.onNodeWithText("To be recognized by name again, their voice needs to be recorded again.").assertExists()
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+        assertEquals(listOf("Grandma", "Yossi", "Grandma"), app.settings.current.value.speakerProfiles.map { it.name })
+
+        delete.performScrollTo().performClick()
+        compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.speakerProfiles.map { it.name } == listOf("Yossi") }
+        compose.onNodeWithText("Grandma").assertDoesNotExist()
+        compose.onNodeWithText("Yossi").performScrollTo()
+    }
+
+    @Test
+    fun aPersonWhoseVoicePrintsAreAllFromAnOlderVersionIsMarkedAsNeedingANewRecording() {
+        app.settings.change {
+            it.speakerProfiles = listOf(SpeakerProfile(name = "Grandma", embedding = FloatArray(192) { 0.1f }), SpeakerProfile(name = "Yossi", embedding = FloatArray(192) { 0.1f }), SpeakerProfile(name = "Yossi", embedding = FloatArray(512) { 0.1f }))
+        }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText(OLDER_PRINT).performScrollTo()
+        compose.onAllNodesWithText(OLDER_PRINT).assertCountEquals(1)
+        compose.onNode(hasText(OLDER_PRINT) and hasAnyAncestor(hasTestTag("savedSpeaker:Grandma"))).assertExists()
+    }
+
+    @Test
+    fun theSpeakerSeparationSliderKeepsItsSettingTellsTheCaptionsAndOffersTheUsualOneBack() {
+        compose.onNodeWithText("Settings").performClick()
+        val slider = compose.onNodeWithContentDescription("Speaker separation sensitivity")
+        slider.performScrollTo().assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0.45"))
+        compose.onNodeWithText("More merging").assertExists()
+        compose.onNodeWithText("More separating").assertExists()
+        compose.onNodeWithText("Back to the usual setting").assertDoesNotExist()
+
+        slider.performSemanticsAction(SemanticsActions.SetProgress) { it(0.6f) }
+        compose.waitUntil(5_000) { abs(app.settings.current.value.speakerSimilarityThreshold - 0.6f) < 0.001f }
+        assertEquals(0.6f, compose.runOnUiThread { app.captions.pipeline.speakerSimilarityThreshold }, 0.001f)
+        slider.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0.60"))
+
+        compose.onNodeWithText("Back to the usual setting").performScrollTo().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.speakerSimilarityThreshold == 0.45f }
+        assertEquals(0.45f, compose.runOnUiThread { app.captions.pipeline.speakerSimilarityThreshold }, 0.001f)
+        compose.onNodeWithText("Back to the usual setting").assertDoesNotExist()
+    }
+
+    @Test
+    fun addSpeakerOpensTheRecordingScreenWhichWaitsForANameAndCancelGoesBack() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Add speaker").performScrollTo().performClick()
+        compose.onNodeWithText("New speaker").assertExists()
+        compose.onNodeWithText("Record and save (30 seconds)").assertIsNotEnabled()
+        compose.onNodeWithText("For better recognition, record each person 3–4 times", substring = true).performScrollTo()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Saved speakers").performScrollTo()
+        compose.onNodeWithText("New speaker").assertDoesNotExist()
+    }
+
+    @Test
+    fun recordingAVoiceShowsHowFarItIsCanBeStoppedWithoutSavingAndSaysWhenItWasTooQuiet() {
+        val book = RecordingBook()
+        val closed = CompletableDeferred<Unit>()
+        compose.runOnUiThread { compose.activity.setContent { SpeakerEnrollmentScreen(book, onClose = { closed.complete(Unit) }) } }
+        val record = compose.onNodeWithText("Record and save (30 seconds)")
+        val name = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.EditableText))
+        record.assertIsNotEnabled()
+        name.performTextInput("   ")
+        record.assertIsNotEnabled()
+        name.performTextClearance()
+        name.performTextInput(" Grandma ")
+        keyboardAway()
+
+        record.performClick()
+        compose.waitUntil(5_000) { book.asked.size == 1 }
+        assertEquals("Grandma" to 30.0, book.asked.single())
+        compose.onNodeWithText("Recording… 0/30 seconds").assertExists()
+        compose.onNodeWithText("Ask the person to speak naturally", substring = true).assertExists()
+        compose.onNodeWithContentDescription("Input level").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "30 percent"))
+        name.assertIsNotEnabled()
+        compose.runOnUiThread { book.progress(0.5) }
+        compose.onNodeWithText("Recording… 15/30 seconds").assertExists()
+        compose.onNodeWithText("Stop without saving").performClick()
+        compose.waitUntil(5_000) { book.stopped }
+        record.assertIsEnabled()
+        compose.onNodeWithText("The recording is too short or too quiet").assertDoesNotExist()
+        assertFalse(closed.isCompleted)
+
+        record.performClick()
+        compose.waitUntil(5_000) { book.asked.size == 2 }
+        book.finish(false)
+        compose.onNodeWithText("The recording is too short or too quiet").assertExists()
+        compose.onNodeWithText("We couldn’t produce a voiceprint", substring = true).assertExists()
+        compose.onNodeWithText("Try again").performClick()
+        compose.onNodeWithText("The recording is too short or too quiet").assertDoesNotExist()
+        assertFalse(closed.isCompleted)
+
+        record.performClick()
+        compose.waitUntil(5_000) { book.asked.size == 3 }
+        book.finish(true)
+        compose.waitUntil(5_000) { closed.isCompleted }
+    }
+
+    private class RecordingBook : SpeakerBook {
+        val asked = CopyOnWriteArrayList<Pair<String, Double>>()
+
+        @Volatile
+        var stopped = false
+
+        @Volatile
+        private var result = CompletableDeferred<Boolean>()
+
+        @Volatile
+        private var onProgress: (Double) -> Unit = {}
+
+        override val inputLevel = 0.3f
+
+        override fun needsNewRecording(speaker: SavedSpeaker) = false
+
+        override fun renameSpeaker(name: String, to: String) {}
+
+        override fun removeSpeaker(name: String) {}
+
+        override fun setSpeakerSeparation(threshold: Float) {}
+
+        override suspend fun recordSpeaker(name: String, seconds: Double, onProgress: (Double) -> Unit): Boolean {
+            result = CompletableDeferred()
+            this.onProgress = onProgress
+            asked.add(name to seconds)
+            return try {
+                result.await()
+            } catch (stop: CancellationException) {
+                stopped = true
+                false
+            }
+        }
+
+        fun progress(fraction: Double) = onProgress(fraction)
+
+        fun finish(saved: Boolean) = result.complete(saved)
     }
 
     @Test
@@ -1158,6 +1348,7 @@ class SettingsScreenDeviceTest {
     }
 
     private companion object {
+        const val OLDER_PRINT = "Saved by an older version and not recognized. To fix: “Add speaker” with the same name."
         const val BLOCKED = "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."
     }
 }

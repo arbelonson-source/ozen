@@ -55,7 +55,9 @@ import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class CaptionSession(
@@ -68,7 +70,7 @@ class CaptionSession(
     historyFolder: File = File(context.filesDir, HISTORY_FOLDER),
     journalFile: File = File(context.filesDir, JOURNAL_FILE),
     problemAudioFolder: File = File(context.filesDir, PROBLEM_AUDIO_FOLDER),
-) : DiagnosticsSource {
+) : DiagnosticsSource, SpeakerBook {
     private val scope = MainScope()
     private val connector = WebSocketConnector()
     private val voiceScorer by lazy { SileroVoiceScorer.fromAssets(context) }
@@ -535,7 +537,6 @@ class CaptionSession(
 
     fun soundNearMiss(event: SoundEvent) = pipeline.soundNearMisses.entry(event)
 
-    /** The names and words the engines are given, in order; a running engine has them from the next sentence. */
     /** The saved people, each once however many voice prints they have, for the naming dialog's one-tap list. */
     val savedSpeakerNames: List<String> get() = SavedSpeaker.grouping(settings.current.value.speakerProfiles).map { it.name }
 
@@ -577,6 +578,48 @@ class CaptionSession(
         publish()
     }
 
+    override val inputLevel: Float get() = pipeline.inputLevel
+
+    override fun needsNewRecording(speaker: SavedSpeaker): Boolean {
+        val prints = settings.current.value.speakerProfiles.filter { it.id in speaker.profileIDs }
+        return prints.isNotEmpty() && prints.none(pipeline::canRecognize)
+    }
+
+    override fun renameSpeaker(name: String, to: String) {
+        val trimmed = to.trim()
+        if (trimmed.isEmpty() || trimmed == name || settings.current.value.speakerProfiles.none { it.name == name }) return
+        renamePerson(name, trimmed)
+    }
+
+    override fun removeSpeaker(name: String) {
+        if (settings.current.value.speakerProfiles.none { it.name == name }) return
+        settings.change { current -> current.speakerProfiles = current.speakerProfiles.filter { it.name != name } }
+        pipeline.forgetSpeakerName(name)
+        speakerLabelsChanged()
+    }
+
+    /** Running captions judge the next voice by it; every later start reads it from the settings. */
+    override fun setSpeakerSeparation(threshold: Float) {
+        settings.change { it.speakerSimilarityThreshold = threshold }
+        pipeline.setSpeakerSimilarityThreshold(threshold)
+    }
+
+    /**
+     * As on the iPhone, through the captions' own microphone and format,
+     * which the voice prints of live speech are compared in. A recording
+     * stopped midway is not kept as the person's voice.
+     */
+    override suspend fun recordSpeaker(name: String, seconds: Double, onProgress: (Double) -> Unit): Boolean {
+        val samples = pipeline.captureEnrollmentSamples(seconds, onProgress)
+        if (!currentCoroutineContext().isActive) return false
+        val print = pipeline.embeddingInBackground(samples) ?: return false
+        val profile = SpeakerProfile(name = name, embedding = print)
+        pipeline.enroll(profile)
+        settings.change { it.speakerProfiles = it.speakerProfiles + profile }
+        return true
+    }
+
+    /** The names and words the engines are given, in order; a running engine has them from the next sentence. */
     fun setWords(words: List<String>) {
         settings.change { it.vocabulary = VocabularyHints.normalized(words) }
         val terms = settings.current.value.vocabulary
