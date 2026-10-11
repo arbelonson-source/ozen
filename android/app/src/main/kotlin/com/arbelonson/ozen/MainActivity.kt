@@ -97,12 +97,14 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
@@ -1528,6 +1530,9 @@ private fun StatusButton(status: PhasePresentation, chrome: Color, onTap: () -> 
             .background(chrome.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
             // As on the iPhone, no button while a tap would do nothing.
             .clickable(enabled = status.action != PhasePresentation.Action.None, onClick = onTap)
+            // A download's bar is read with the button, in one stop: the
+            // bar alone is an item of its own to TalkBack.
+            .semantics { status.progress?.let { progressBarRangeInfo = ProgressBarRangeInfo(it.toFloat(), 0f..1f) } }
             .padding(vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -1540,7 +1545,7 @@ private fun StatusButton(status: PhasePresentation, chrome: Color, onTap: () -> 
             Text(text = detail, color = chrome.copy(alpha = 0.7f), fontSize = 16.sp, textAlign = TextAlign.Center)
         }
         status.progress?.let { progress ->
-            LinearProgressIndicator(progress = { progress.toFloat() }, color = chrome, trackColor = chrome.copy(alpha = 0.2f), modifier = Modifier.padding(top = 6.dp).widthIn(max = 160.dp))
+            LinearProgressIndicator(progress = { progress.toFloat() }, color = chrome, trackColor = chrome.copy(alpha = 0.2f), modifier = Modifier.padding(top = 6.dp).widthIn(max = 160.dp).clearAndSetSemantics {})
         }
     }
 }
