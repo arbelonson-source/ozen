@@ -294,7 +294,8 @@ class ConversationSaver(
         save(ended = false)
     }
 
-    private fun deleteExpiredIfDue() {
+    /** After each save, and as the app comes back: with saving off nothing else sweeps. */
+    fun deleteExpiredIfDue() {
         val at = now()
         if (at - lastRetentionCheck <= RETENTION_CHECK_SECONDS) return
         lastRetentionCheck = at

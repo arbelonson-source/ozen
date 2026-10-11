@@ -301,6 +301,32 @@ class ConversationSaverTest {
     }
 
     @Test
+    fun `old conversations expire with saving off too when the app comes back, at most every six hours`() {
+        settings.historyRetention = HistoryRetention.Week
+        settings.saveHistory = false
+        val monthAgo = clock - 30 * 86_400
+        val old = oldConversation(monthAgo)
+        val oldClip = clipAt(monthAgo)
+        val recent = oldConversation(clock - 86_400)
+
+        saver.deleteExpiredIfDue()
+        scope.runCurrent()
+        assertEquals(listOf(recent), saved().map { it.id })
+        assertFalse(old in saved().map { it.id })
+        assertFalse(oldClip in clips.clips().map { it.name })
+
+        val another = oldConversation(monthAgo)
+        clock += 6 * 3_600
+        saver.deleteExpiredIfDue()
+        scope.runCurrent()
+        assertTrue(saved().any { it.id == another })
+        clock += 1
+        saver.deleteExpiredIfDue()
+        scope.runCurrent()
+        assertEquals(listOf(recent), saved().map { it.id })
+    }
+
+    @Test
     fun `deleting the conversation still being captioned keeps it deleted through autosaves and stopping`() {
         start()
         say("Between us")

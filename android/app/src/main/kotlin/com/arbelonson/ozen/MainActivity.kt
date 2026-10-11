@@ -174,13 +174,14 @@ class MainActivity : ComponentActivity() {
         // Back from the phone's settings, where the walkthrough sent her.
         if (microphoneAnswer.value == false && hasMicrophone()) microphoneAnswer.value = true
         if (notificationsAnswer.value != true && AlertNotifier.allowed(this)) notificationsAnswer.value = true
-        (application as OzenApplication).captions.screenStarted()
-        (application as OzenApplication).captions.refreshVoice()
+        val captions = (application as OzenApplication).captions
+        if (captions.screenStarted() && captions.retriesOnReturn && hasMicrophone()) ListeningService.start(this)
+        captions.refreshVoice()
         CaptionState.screenReturned()
     }
 
     override fun onStop() {
-        if ((application as OzenApplication).captions.screenStopped()) CaptionState.screenLeft()
+        if ((application as OzenApplication).captions.screenStopped(rebuilding = isChangingConfigurations)) CaptionState.screenLeft()
         super.onStop()
     }
 

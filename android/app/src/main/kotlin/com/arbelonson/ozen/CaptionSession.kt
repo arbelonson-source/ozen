@@ -98,13 +98,16 @@ class CaptionSession(
     // only while their half-minute of retries lasts. A home computer on
     // the same Wi-Fi needs no internet, so any network counts as connected.
     private val network = AndroidNetworkMonitor(context)
+
+    /** The phone's free space, as the model download sees it. */
+    var freeSpace: () -> Long = { context.filesDir.usableSpace }
     val pipeline = CaptionPipeline(
         scope = scope,
         audio = audio,
         engineFactory = ::engine,
         embedder = CamPlusPlusEmbedder(context),
         soundDetector = YamnetSoundDetector(context),
-        availableStorageBytes = { context.filesDir.usableSpace },
+        availableStorageBytes = { freeSpace() },
         network = network,
     )
     private val historyStore = TranscriptHistoryStore(historyFolder)
@@ -173,30 +176,59 @@ class CaptionSession(
 
     private var screensInFront = 0
 
-    /** A caption screen came to the front. */
-    fun screenStarted() {
+    /** A caption screen came to the front; true if the app was away until now. */
+    fun screenStarted(): Boolean {
         screensInFront += 1
+        val cameBack = !appIsActive
         appIsActive = true
+        return cameBack
     }
 
     /**
      * A caption screen went away; true once none is left in front. A link
      * opened from another app's task can start a second one, and Android
-     * starts it before it stops the first.
+     * starts it before it stops the first. One [rebuilding] for a turn of
+     * the phone comes straight back, and the iPhone never counts that as
+     * leaving.
      */
-    fun screenStopped(): Boolean {
+    fun screenStopped(rebuilding: Boolean = false): Boolean {
         screensInFront = maxOf(0, screensInFront - 1)
+        if (rebuilding) return false
         appIsActive = screensInFront > 0
         return !appIsActive
     }
+
+    /**
+     * Captions that stopped are tried again as she comes back, as on the
+     * iPhone: back from the phone's settings with the microphone allowed,
+     * she should not have to tap. A full phone waits for room instead.
+     */
+    val retriesOnReturn: Boolean
+        get() = pipeline.phase.failure.let { it != null && it.engineUnavailability?.kind != EngineUnavailability.Kind.NotEnoughStorage }
 
     /** Whether the caption screen is in front: set as MainActivity starts and stops. */
     var appIsActive = false
         set(active) {
             if (active != field) note(if (active) "app back on screen" else "app left the screen (phase ${if (pipeline.phase.isListening) "listening" else "not listening"})")
+            val changed = active != field
             field = active
             checkCaptionsStillRunning()
+            if (changed && active) cameBack()
+            // Android may end an app that is out of sight before the next autosave.
+            if (changed && !active) conversations.save(ended = false)
         }
+
+    /**
+     * Back on screen, as on the iPhone: conversations past their keeping
+     * time go even with saving off, which no save would sweep; and a phone
+     * that was too full downloads its model by itself once there is room.
+     */
+    private fun cameBack() {
+        conversations.deleteExpiredIfDue()
+        if (pipeline.phase.failure?.engineUnavailability?.kind == EngineUnavailability.Kind.NotEnoughStorage) {
+            scope.launch { pipeline.appDidBecomeActive() }
+        }
+    }
 
     private val conversations = ConversationSaver(
         writer = TranscriptHistoryWriter(historyStore),

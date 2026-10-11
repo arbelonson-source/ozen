@@ -19,6 +19,7 @@ import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.EngineUnavailability
+import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
@@ -43,6 +44,7 @@ import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
@@ -591,6 +593,7 @@ class CaptionSessionDeviceTest {
             assertNotNull(withTimeoutOrNull(30_000) { CaptionState.screen.first { it.phase.modelMissing } })
             assertNotNull("never posted", withTimeoutOrNull(5_000) { while (notices().isEmpty()) delay(100) })
             assertEquals("Captions stopped", notices().single().notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
+            assertTrue("not tried again on coming back", withContext(Dispatchers.Main) { session.retriesOnReturn })
 
             withContext(Dispatchers.Main) { session.appIsActive = true }
             assertNotNull("never taken away", withTimeoutOrNull(5_000) { while (notices().isNotEmpty()) delay(100) })
@@ -604,6 +607,152 @@ class CaptionSessionDeviceTest {
             }
             manager.cancel(StoppedCaptionsNotice.IDENTIFIER, 0)
             Localization.language = languageBefore
+            work.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun comingBackToTheAppDeletesConversationsPastTheirKeepingTimeEvenWithSavingOff(): Unit = runBlocking {
+        val work = File(context.cacheDir, "return-sweep-test").apply { deleteRecursively(); mkdirs() }
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        settings.change {
+            it.saveHistory = false
+            it.historyRetention = HistoryRetention.Week
+        }
+        val history = TranscriptHistoryStore(File(work, "history"))
+        val now = System.currentTimeMillis() / 1_000.0
+        val conversation = { at: Double ->
+            val record = TranscriptSessionRecord(
+                startedAt = at,
+                endedAt = at + 60,
+                engine = TranscriptionEngineKind.WhisperKit,
+                modelVariant = null,
+                inputName = null,
+                segments = listOf(SavedSegment(UUID.randomUUID(), "Said at ${at.toLong()}", null, null, at, true)),
+            )
+            assertTrue(history.save(record))
+            record.id
+        }
+        val old = conversation(now - 30 * 86_400)
+        val recent = conversation(now - 86_400)
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(
+                context,
+                settings,
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(FloatArray(16_000)),
+                modelFolder = File(work, "no-models"),
+                historyFolder = File(work, "history"),
+            )
+        }
+        try {
+            delay(1_000)
+            assertEquals("deleted before she came back", setOf(old, recent), history.listSummaries().map { it.id }.toSet())
+            withContext(Dispatchers.Main) { session.appIsActive = true }
+            assertNotNull("the month-old conversation stayed", withTimeoutOrNull(5_000) { while (history.listSummaries().any { it.id == old }) delay(100); true })
+            assertEquals(listOf(recent), history.listSummaries().map { it.id })
+        } finally {
+            withContext(Dispatchers.Main) { session.close() }
+            work.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun leavingTheAppWritesTheLinesSoFarStraightAwayNotAtTheNextAutosave() = runBlocking {
+        val folder = File(context.filesDir, "device-test")
+        val clip = File(folder, "clip.wav")
+        val model = File(context.filesDir, CaptionSession.MODEL_FILE)
+        assumeTrue("put clip.wav in ${folder.path} and the model at ${model.path}", clip.exists() && model.exists())
+        val work = File(context.cacheDir, "leave-save-test").apply { deleteRecursively(); mkdirs() }
+        val history = TranscriptHistoryStore(File(work, "history"))
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(DeviceClips.readWav(clip)),
+                historyFolder = File(work, "history"),
+            )
+        }
+        try {
+            withContext(Dispatchers.Main) {
+                session.appIsActive = true
+                session.listen()
+            }
+            val finished = withTimeoutOrNull(300_000) { CaptionState.screen.first { screen -> screen.lines.any { it.isFinal } } }
+            assertNotNull("no line was finished: ${CaptionState.screen.value.phase}", finished)
+            val (said, kept) = withContext(Dispatchers.Main) {
+                val said = session.pipeline.segments.filter { it.isCommitted }.map { it.text }
+                session.appIsActive = false
+                said to history.listSummaries().singleOrNull()?.let { history.load(it.id) }
+            }
+            assertNotNull("nothing written on leaving the app", kept)
+            val keptLines = kept!!.segments.map { it.text }
+            assertTrue("said $said, kept $keptLines", keptLines.containsAll(said))
+            assertNull("captions are still running, so the conversation has no end", kept.endedAt)
+        } finally {
+            withContext(Dispatchers.Main) { session.close() }
+            work.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun aPhoneTooFullForItsModelDownloadsItOnComingBackOnceThereIsRoomAndNotBefore(): Unit = runBlocking {
+        val work = File(context.cacheDir, "full-phone-test").apply { deleteRecursively(); mkdirs() }
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        settings.change {
+            it.spokenLanguage = UILanguage.English
+            it.allowCellularModelDownload = true
+        }
+        val free = AtomicLong(1_000_000)
+        val fetches = CopyOnWriteArrayList<Long>()
+        val phases = CopyOnWriteArrayList<PipelinePhase>()
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(
+                context,
+                settings,
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(FloatArray(16_000)),
+                modelFolder = File(work, "no-models"),
+                historyFolder = File(work, "history"),
+            ).apply {
+                freeSpace = { free.get() }
+                modelFetcher = object : ReleaseFileFetching {
+                    override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
+                        fetches += from
+                        throw IOException("the test stops the download here")
+                    }
+
+                    override fun sha256(file: File): String = ""
+                }
+                val shown = pipeline.onPhaseChange
+                pipeline.onPhaseChange = { phases += it; shown?.invoke(it) }
+            }
+        }
+        val tooFull = { phase: PipelinePhase -> phase is PipelinePhase.Failed && phase.reason.engineUnavailability?.kind == EngineUnavailability.Kind.NotEnoughStorage }
+        try {
+            assertFalse(withContext(Dispatchers.Main) { session.retriesOnReturn })
+            withContext(Dispatchers.Main) { session.listen() }
+            assertNotNull("never stopped for want of room: ${CaptionState.screen.value.phase}", withTimeoutOrNull(30_000) { CaptionState.screen.first { tooFull(it.phase) } })
+            assertFalse("a full phone retried the way other stops do", withContext(Dispatchers.Main) { session.retriesOnReturn })
+            phases.clear()
+            withContext(Dispatchers.Main) { session.appIsActive = true }
+            delay(2_000)
+            assertTrue("tried again with the phone still full: $phases", phases.isEmpty())
+            assertTrue(fetches.isEmpty())
+
+            withContext(Dispatchers.Main) { session.appIsActive = false }
+            free.set(Long.MAX_VALUE / 4)
+            withContext(Dispatchers.Main) { session.appIsActive = true }
+            assertNotNull("the download did not start once there was room: $phases", withTimeoutOrNull(30_000) { while (fetches.isEmpty()) delay(100); true })
+        } finally {
+            withContext(Dispatchers.Main) { session.close() }
             work.deleteRecursively()
         }
     }

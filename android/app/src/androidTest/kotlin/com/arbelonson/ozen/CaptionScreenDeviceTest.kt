@@ -1562,6 +1562,21 @@ class CaptionScreenDeviceTest {
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
     }
 
+    @Test
+    fun turningThePhoneRebuildsTheScreenWithoutCountingAsLeavingTheApp() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        compose.waitUntil(5_000) { app.captions.appIsActive }
+        val journal = SessionJournal(File(app.filesDir, CaptionSession.JOURNAL_FILE))
+        val leaves = { journal.entries().count { it.text.startsWith("app left the screen") } }
+        val before = leaves()
+        val first = compose.activity
+        compose.activityRule.scenario.recreate()
+        compose.waitUntil(5_000) { first.isDestroyed }
+        compose.waitForIdle()
+        assertTrue(app.captions.appIsActive)
+        assertEquals("turning the phone counted as leaving the app", before, leaves())
+    }
+
     // The line's own text, which carries its actions; a linked number may have a node of its own.
     @Test
     fun aSpeakersNameHeadsTheirRunOfLinesInTheirColourIsSaidOnEveryLineAndGoesWithNamesOff() {
