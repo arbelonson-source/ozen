@@ -896,6 +896,7 @@ class CaptionScreenDeviceTest {
             assertTrue(posted.extras.getCharSequence(Notification.EXTRA_TEXT).toString().contains("Grandma, dinner is ready"))
 
             clearAlerts()
+            assertTrue("the first alert was never taken down", waitFor { alerts().isEmpty() })
             app.settings.change { it.notifyWhenInBackground = false }
             instrumentation.runOnMainSync { app.captions.wordsHeard(listOf(hit(UUID.randomUUID())), line) }
             assertFalse(waitFor { alerts().isNotEmpty() })
