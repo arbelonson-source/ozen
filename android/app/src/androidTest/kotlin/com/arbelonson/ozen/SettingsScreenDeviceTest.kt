@@ -865,6 +865,7 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Skip").performClick()
             compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
             compose.onNodeWithText("History").assertExists()
+            compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
         } finally {
             compose.runOnUiThread {
                 if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop()
