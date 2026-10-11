@@ -716,6 +716,58 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    // Android's speech engine refuses more than a few thousand characters at
+    // once, and refused, nothing was said; the iPhone says any length.
+    @Test
+    fun aReplyLongerThanThePhonesSpeechEngineTakesAtOnceIsStillSaid() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        assertTrue("no voice on the phone", within(15_000) { app.captions.canAskToRepeat() })
+        val limit = TextToSpeech.getMaxSpeechInputLength()
+        val reply = "Please read this sentence aloud slowly. ".repeat(limit / 40 + 5).trim()
+        assertTrue(reply.length > limit)
+        try {
+            compose.runOnUiThread { app.captions.speak(reply) }
+            assertTrue("a reply of ${reply.length} characters was never said", within(10_000) { app.captions.isSpeaking })
+        } finally {
+            compose.runOnUiThread { app.captions.stopSpeaking() }
+        }
+        assertTrue("never stopped", within(1_500) { !app.captions.isSpeaking })
+    }
+
+    // Said in pieces, a reply is one reply: the Stop button and the paused
+    // captions must not see it end between them.
+    @Test
+    fun aReplySaidInPiecesStaysSpeakingFromTheFirstToTheLast() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        assertTrue("no voice on the phone", within(15_000) { app.captions.canAskToRepeat() })
+        val voice = app.captions.voice
+        val limitBefore = voice.pieceLimit
+        val listener = voice.onSpeakingChanged
+        // Every change as it happens: the next piece starts within a few
+        // milliseconds, too soon for looking now and then to see a gap.
+        val changes = CopyOnWriteArrayList<Boolean>()
+        try {
+            voice.pieceLimit = 20
+            compose.runOnUiThread {
+                voice.onSpeakingChanged = { speaking ->
+                    changes += speaking
+                    listener?.invoke(speaking)
+                }
+                app.captions.speak("One two three. Four five six. Seven eight nine.")
+            }
+            assertTrue("never spoke", within(10_000) { app.captions.isSpeaking })
+            assertTrue("never finished", within(30_000) { !voice.isBusy && !app.captions.isSpeaking })
+            assertEquals("not quiet at the end: $changes", false, changes.lastOrNull())
+            assertTrue("seemed to stop between the pieces: $changes", changes.dropLast(1).all { it })
+        } finally {
+            compose.runOnUiThread {
+                voice.onSpeakingChanged = listener
+                app.captions.stopSpeaking()
+            }
+            voice.pieceLimit = limitBefore
+        }
+    }
+
     // The lines keep their names either way and the screen leaves them out
     // as it draws, so the locked phone has to leave them out too.
     @Test

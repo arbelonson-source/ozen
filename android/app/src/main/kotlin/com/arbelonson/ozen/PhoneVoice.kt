@@ -81,14 +81,22 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         }
     }
 
+    /** The most the phone's speech engine takes in one go; tests make it small. */
+    @Volatile internal var pieceLimit = TextToSpeech.getMaxSpeechInputLength()
+
     override fun speak(text: String, rate: Float) {
         val language = UILanguage.forSpeaking(text, otherwise = Localization.language)
         engine.setLanguage(Locale.forLanguageTag(language.speechVoiceCode))
         engine.setSpeechRate(rate / NORMAL_RATE)
-        val id = UUID.randomUUID().toString()
         pending.clear()
-        pending += id
-        if (engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, id) != TextToSpeech.SUCCESS) main.post { ended(id) }
+        // The engine refuses a longer text outright, and nothing was said:
+        // it goes in pieces, one after another, as one reply.
+        SpeechChunks.of(text, pieceLimit).forEachIndexed { at, piece ->
+            val id = UUID.randomUUID().toString()
+            pending += id
+            val queue = if (at == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+            if (engine.speak(piece, queue, null, id) != TextToSpeech.SUCCESS) main.post { ended(id) }
+        }
     }
 
     override fun stop() {
@@ -109,9 +117,11 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         engine.shutdown()
     }
 
+    // A piece of a longer reply, or a reply replaced by the next one, ends
+    // the speaking only once nothing more is waiting to be said.
     private fun ended(utteranceId: String) {
         pending.remove(utteranceId)
-        quiet()
+        if (pending.isEmpty()) quiet()
     }
 
     private fun quiet() {
