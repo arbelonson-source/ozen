@@ -103,6 +103,9 @@ interface SavedConversations {
 
     fun delete(id: UUID)
 
+    /** Deletes every saved conversation, the one still being captioned too. */
+    fun deleteAll()
+
     /** Names a conversation, or takes its name away with a blank one. */
     fun rename(id: UUID, title: String)
 
@@ -159,6 +162,17 @@ fun HistoryScreen(
     }
     val scope = rememberCoroutineScope()
     var pendingRetention by remember { mutableStateOf<HistoryRetention?>(null) }
+    var pendingDeletion by remember { mutableStateOf<TranscriptSessionSummary?>(null) }
+    var confirmingDeleteAll by remember { mutableStateOf(false) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
+    val deleting = { delete: () -> Unit ->
+        try {
+            delete()
+        } catch (failure: Exception) {
+            deleteError = failure.message ?: failure.toString()
+        }
+        reloads += 1
+    }
     val keepFor = { choice: HistoryRetention ->
         scope.launch {
             conversations.keepFor(choice)
@@ -166,7 +180,16 @@ fun HistoryScreen(
         }
         Unit
     }
-    Screen(title = tr("היסטוריה", "History"), close = tr("סגירה", "Close"), onClose = onClose) {
+    Screen(
+        title = tr("היסטוריה", "History"),
+        close = tr("סגירה", "Close"),
+        onClose = onClose,
+        actions = {
+            TextButton(onClick = { confirmingDeleteAll = true }, enabled = loaded?.let { searching || it.summaries.isNotEmpty() } == true) {
+                Text(tr("מחיקת הכול", "Delete all"))
+            }
+        },
+    ) {
         val shown = loaded
         if (shown == null) {
             CircularProgressIndicator(modifier = Modifier.padding(24.dp))
@@ -201,7 +224,7 @@ fun HistoryScreen(
                 for (day in shown.days) {
                     item(key = "day-${day.id}") { Heading(day.title) }
                     items(day.sessions, key = { it.id.toString() }) { session ->
-                        ConversationRowView(ConversationRow.of(session)) { openID = session.id.toString() }
+                        ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletion = session })
                         HorizontalDivider()
                     }
                 }
@@ -224,6 +247,38 @@ fun HistoryScreen(
             dismissButton = { TextButton(onClick = { pendingRetention = null }) { Text(tr("ביטול", "Cancel")) } },
         )
     }
+    pendingDeletion?.let { session ->
+        AlertDialog(
+            onDismissRequest = { pendingDeletion = null },
+            title = { Text(tr("למחוק את השיחה הזו?", "Delete this conversation?")) },
+            text = { Text(session.title ?: CaptionLayout.directed(session.preview)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDeletion = null
+                        deleting { conversations.delete(session.id) }
+                    },
+                ) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { pendingDeletion = null }) { Text(tr("ביטול", "Cancel")) } },
+        )
+    }
+    if (confirmingDeleteAll) {
+        AlertDialog(
+            onDismissRequest = { confirmingDeleteAll = false },
+            title = { Text(tr("למחוק את כל השיחות השמורות?", "Delete all saved conversations?")) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmingDeleteAll = false
+                        deleting { conversations.deleteAll() }
+                    },
+                ) { Text(tr("מחיקת הכול", "Delete all"), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmingDeleteAll = false }) { Text(tr("ביטול", "Cancel")) } },
+        )
+    }
+    deleteError?.let { error -> DeletionFailed(error, onClose = { deleteError = null }) }
 }
 
 private class HistoryList(val summaries: List<TranscriptSessionSummary>, val days: List<HistoryDay>, val size: String)
@@ -305,11 +360,25 @@ private fun SavingSection(
 }
 
 @Composable
-private fun ConversationRowView(row: ConversationRow, onOpen: () -> Unit) {
+private fun ConversationRowView(row: ConversationRow, onOpen: () -> Unit, onDelete: () -> Unit) {
+    val delete = tr("מחיקה", "Delete")
+    var menu by remember { mutableStateOf(false) }
+    Box {
+        ConversationRowContent(row, onOpen, onHold = { menu = true }, actions = listOf(CustomAccessibilityAction(delete) { onDelete(); true }))
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            DropdownMenuItem(text = { Text(delete) }, onClick = { menu = false; onDelete() })
+        }
+    }
+}
+
+@Composable
+private fun ConversationRowContent(row: ConversationRow, onOpen: () -> Unit, onHold: () -> Unit, actions: List<CustomAccessibilityAction>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .onHold(onHold)
             .clickable(onClick = onOpen)
+            .semantics { customActions = actions }
             .padding(vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -526,22 +595,25 @@ internal fun ConversationScreen(
             dismissButton = { TextButton(onClick = { confirmingDelete = false }) { Text(tr("ביטול", "Cancel")) } },
         )
     }
-    deleteError?.let { error ->
-        AlertDialog(
-            onDismissRequest = { deleteError = null },
-            title = { Text(tr("המחיקה נכשלה", "Deletion failed")) },
-            text = {
-                Text(
-                    tr(
-                        "מה שלא נמחק עדיין שמור בטלפון. אפשר לנסות שוב.\n%1",
-                        "What wasn’t deleted is still saved on the phone. You can try again.\n%1",
-                        listOf(error),
-                    ),
-                )
-            },
-            confirmButton = { TextButton(onClick = { deleteError = null }) { Text(tr("סגירה", "Close")) } },
-        )
-    }
+    deleteError?.let { error -> DeletionFailed(error, onClose = { deleteError = null }) }
+}
+
+@Composable
+private fun DeletionFailed(error: String, onClose: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(tr("המחיקה נכשלה", "Deletion failed")) },
+        text = {
+            Text(
+                tr(
+                    "מה שלא נמחק עדיין שמור בטלפון. אפשר לנסות שוב.\n%1",
+                    "What wasn’t deleted is still saved on the phone. You can try again.\n%1",
+                    listOf(error),
+                ),
+            )
+        },
+        confirmButton = { TextButton(onClick = onClose) { Text(tr("סגירה", "Close")) } },
+    )
 }
 
 /** Above the conversation, as on the iPhone: each line with a number in it, a tap away from where it was said. */
@@ -650,7 +722,7 @@ private fun starColour() = starColour(light = MaterialTheme.colorScheme.backgrou
 internal fun starColour(light: Boolean) = if (light) Color(red = 0.6f, green = 0.42f, blue = 0f) else Color(red = 1f, green = 0.84f, blue = 0.04f)
 
 @Composable
-private fun Screen(title: String, close: String, onClose: () -> Unit, content: @Composable () -> Unit) {
+private fun Screen(title: String, close: String, onClose: () -> Unit, actions: @Composable () -> Unit = {}, content: @Composable () -> Unit) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
@@ -661,6 +733,7 @@ private fun Screen(title: String, close: String, onClose: () -> Unit, content: @
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f).semantics { heading() })
+                actions()
                 TextButton(onClick = onClose) { Text(close) }
             }
             content()

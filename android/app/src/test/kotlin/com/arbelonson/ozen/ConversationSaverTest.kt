@@ -342,6 +342,24 @@ class ConversationSaverTest {
     }
 
     @Test
+    fun `deleting all conversations deletes every saved one, and lines already on screen stay out of the next`() {
+        oldConversation(clock - 3_600)
+        start()
+        say("Good morning", at = clock - 30 * 60)
+        assertTrue(saver.checkForConversationBreak())
+        say("Good evening")
+        saver.save(ended = false)
+        assertEquals(3, saved().size)
+
+        saver.deleteAll()
+        assertTrue(saved().isEmpty())
+        assertEquals(listOf(null, null), (0..1).map(saver::savedConversation))
+        say("Good night")
+        stop()
+        assertEquals(listOf("Good night"), saved().map { it.preview })
+    }
+
+    @Test
     fun `a line starred while it is said shows starred and is saved starred`() {
         start()
         say("Take two pills after dinner")

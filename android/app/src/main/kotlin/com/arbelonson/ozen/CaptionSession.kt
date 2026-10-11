@@ -79,6 +79,12 @@ class CaptionSession(
             publish()
         }
 
+        override fun deleteAll() {
+            conversations.deleteAll()
+            forgetSharedCopy()
+            publish()
+        }
+
         override fun rename(id: UUID, title: String) = conversations.rename(id, title)
 
         override fun toggleStar(sessionID: UUID, segmentID: UUID) = conversations.toggleStar(sessionID, segmentID)

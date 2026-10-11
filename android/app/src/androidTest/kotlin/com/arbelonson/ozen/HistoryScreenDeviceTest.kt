@@ -10,6 +10,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
@@ -278,6 +279,56 @@ class HistoryScreenDeviceTest {
         } finally {
             instrumentation.removeMonitor(sheet)
         }
+    }
+
+    @Test
+    fun deleteAllAsksFirstThenDeletesEverySavedConversation() {
+        seed("Delete all test first" to null)
+        seed("Delete all test second" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Delete all test second")
+        compose.onNodeWithText("Delete all").performClick()
+        compose.onNodeWithText("Delete all saved conversations?").assertExists()
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitForIdle()
+        assertEquals(2, seeded.count { store.load(it) != null })
+
+        compose.onNodeWithText("Delete all").performClick()
+        compose.onNode(hasText("Delete all") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(5_000) { store.listSummaries().isEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Delete all test", substring = true).fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("Delete all").assertIsNotEnabled()
+    }
+
+    @Test
+    fun aConversationIsDeletedFromTheListByHoldingItOrByTheScreenReaderAfterAskingFirst() {
+        val kept = seed("Row delete test kept" to null)
+        val held = seed("Row delete test held" to null)
+        val read = seed("Row delete test read" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Row delete test held")
+        compose.onNodeWithText("Row delete test held", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText("Delete").performClick()
+        compose.onNodeWithText("Delete this conversation?").assertExists()
+        compose.onNode(hasText("Row delete test held", substring = true) and hasAnyAncestor(isDialog())).assertExists()
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitForIdle()
+        assertNotNull(store.load(held))
+
+        compose.onNodeWithText("Row delete test held", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText("Delete").performClick()
+        compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(5_000) { store.load(held) == null }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Row delete test held", substring = true).fetchSemanticsNodes().isEmpty() }
+        assertNotNull(store.load(kept))
+        assertNotNull(store.load(read))
+
+        val row = compose.onNode(hasText("Row delete test read", substring = true) and SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)).fetchSemanticsNode()
+        val delete = row.config[SemanticsActions.CustomActions].single { it.label == "Delete" }
+        compose.runOnUiThread { delete.action() }
+        compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(5_000) { store.load(read) == null }
+        assertNotNull(store.load(kept))
     }
 
     @Test

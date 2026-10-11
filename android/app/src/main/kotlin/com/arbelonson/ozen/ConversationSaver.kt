@@ -151,6 +151,13 @@ class ConversationSaver(
         if (id == this.id) forgetCurrent()
     }
 
+    /** Deletes every saved conversation; the lines on screen stay, and the next words start a new one. */
+    fun deleteAll() {
+        writer.deleteAllNow()
+        closed.clear()
+        forgetCurrent()
+    }
+
     /**
      * Names a saved conversation, or takes its name away with a blank one,
      * queued with the saves so an autosave of the one still being captioned
