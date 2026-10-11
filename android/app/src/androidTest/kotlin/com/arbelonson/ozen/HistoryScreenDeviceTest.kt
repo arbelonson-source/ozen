@@ -153,12 +153,7 @@ class HistoryScreenDeviceTest {
         store.save(record)
         seeded += record.id
         val started = CopyOnWriteArrayList<Intent>()
-        val sheet = object : Instrumentation.ActivityMonitor() {
-            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
-                started += intent
-                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
-            }
-        }
+        val sheet = shareSheetMonitor(started)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.addMonitor(sheet)
         try {
@@ -194,8 +189,7 @@ class HistoryScreenDeviceTest {
         }
     }
 
-    @Test
-    fun aConversationTooLongForAChatMessageIsSharedAsATextFile() {
+    private fun longConversation(opening: String): TranscriptSessionRecord {
         val startedAt = System.currentTimeMillis() / 1_000.0 - 3_600
         val record = TranscriptSessionRecord(
             startedAt = startedAt,
@@ -204,28 +198,40 @@ class HistoryScreenDeviceTest {
             modelVariant = "home server",
             inputName = null,
             segments = (0 until 1_000).map {
-                val text = if (it == 0) "Long share test opening" else "A long lecture about the history of medicine and the pharmacy"
+                val text = if (it == 0) opening else "A long lecture about the history of medicine and the pharmacy"
                 SavedSegment(UUID.randomUUID(), text, null, null, startedAt + it * 3, true)
             },
         )
         store.save(record)
         seeded += record.id
-        val started = CopyOnWriteArrayList<Intent>()
-        val sheet = object : Instrumentation.ActivityMonitor() {
-            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
-                started += intent
-                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
-            }
+        return record
+    }
+
+    private fun shareSheetMonitor(started: MutableList<Intent>) = object : Instrumentation.ActivityMonitor() {
+        override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
+            started += intent
+            return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
         }
+    }
+
+    private fun openAndShare(opening: String, started: List<Intent>) {
+        compose.onNodeWithText("History").performClick()
+        waitFor(opening)
+        compose.onNodeWithText(opening, substring = true).performClick()
+        waitFor("Share")
+        compose.onNodeWithText("Share").performClick()
+        compose.waitUntil(5_000) { started.isNotEmpty() }
+    }
+
+    @Test
+    fun aConversationTooLongForAChatMessageIsSharedAsATextFile() {
+        val record = longConversation("Long share test opening")
+        val started = CopyOnWriteArrayList<Intent>()
+        val sheet = shareSheetMonitor(started)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.addMonitor(sheet)
         try {
-            compose.onNodeWithText("History").performClick()
-            waitFor("Long share test opening")
-            compose.onNodeWithText("Long share test opening", substring = true).performClick()
-            waitFor("Share")
-            compose.onNodeWithText("Share").performClick()
-            compose.waitUntil(5_000) { started.isNotEmpty() }
+            openAndShare("Long share test opening", started)
             @Suppress("DEPRECATION")
             val send = started.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
             assertEquals(Intent.ACTION_SEND, send.action)
@@ -244,6 +250,28 @@ class HistoryScreenDeviceTest {
             instrumentation.removeMonitor(sheet)
         }
     }
+
+    @Test
+    fun deletingAConversationAlsoDeletesTheCopyLastSharedAsAFile() {
+        val record = longConversation("Shared then deleted opening")
+        val started = CopyOnWriteArrayList<Intent>()
+        val sheet = shareSheetMonitor(started)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.addMonitor(sheet)
+        try {
+            openAndShare("Shared then deleted opening", started)
+            assertEquals(1, sharedCopies().size)
+
+            compose.onNodeWithText("Delete").performClick()
+            compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
+            compose.waitUntil(5_000) { store.load(record.id) == null }
+            assertEquals(emptyList<File>(), sharedCopies())
+        } finally {
+            instrumentation.removeMonitor(sheet)
+        }
+    }
+
+    private fun sharedCopies() = File(app.cacheDir, CaptionSession.SHARED_FOLDER).listFiles()?.toList() ?: emptyList()
 
     private fun offsetHere(at: Double) = ZoneId.systemDefault().rules.getOffset(Instant.ofEpochMilli((at * 1_000).toLong())).totalSeconds
 
@@ -295,10 +323,13 @@ class HistoryScreenDeviceTest {
         assertEquals(HistoryRetention.Forever, app.settings.current.value.historyRetention)
         assertNotNull(store.load(old))
 
+        val shared = File(app.cacheDir, CaptionSession.SHARED_FOLDER).also { it.mkdirs() }.resolve("Conversation from Ozen.txt")
+        shared.writeText("Device history from long ago")
         compose.onNodeWithText("Automatic deletion").performClick()
         compose.onNodeWithText("After a month").performClick()
         compose.onNodeWithText("Delete and continue this way").performClick()
         compose.waitUntil(5_000) { store.load(old) == null }
+        compose.waitUntil(5_000) { !shared.exists() }
         assertEquals(HistoryRetention.Month, app.settings.current.value.historyRetention)
         compose.onNodeWithText("Device history from long ago", substring = true).assertDoesNotExist()
     }

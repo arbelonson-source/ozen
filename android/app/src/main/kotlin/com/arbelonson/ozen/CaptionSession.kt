@@ -70,13 +70,19 @@ class CaptionSession(
 
         override val lastSaveFailure: String? get() = conversations.lastSaveFailure
 
-        override fun delete(id: UUID) = conversations.delete(id)
+        // A conversation deleted is gone from the phone, so the copy last
+        // shared as a file goes with it, whichever conversation that was.
+        override fun delete(id: UUID) {
+            conversations.delete(id)
+            forgetSharedCopy()
+        }
 
         override fun switchSaving(on: Boolean) = conversations.switchSaving(on)
 
         override suspend fun keepFor(retention: HistoryRetention) {
             settings.change { it.historyRetention = retention }
             conversations.deleteExpired()
+            forgetSharedCopy()
         }
 
         override fun opened(id: UUID) = conversations.opened(id)
@@ -84,6 +90,10 @@ class CaptionSession(
         override fun doneWith(id: UUID) = conversations.doneWith(id)
 
         override fun isCurrent(id: UUID) = conversations.isCurrent(id)
+    }
+
+    private fun forgetSharedCopy() {
+        File(context.cacheDir, SHARED_FOLDER).deleteRecursively()
     }
 
     init {
@@ -191,5 +201,8 @@ class CaptionSession(
     companion object {
         const val MODEL_FILE = "ggml-ozen-a3-q5_0.bin"
         const val HISTORY_FOLDER = "ozen-history"
+
+        /** In the cache: the conversation last shared as a file, kept for the app it went to. */
+        const val SHARED_FOLDER = "shared"
     }
 }

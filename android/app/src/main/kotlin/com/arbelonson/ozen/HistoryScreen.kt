@@ -536,7 +536,7 @@ private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksU
     if (text.length <= LONGEST_SHARED_TEXT) {
         send.putExtra(Intent.EXTRA_TEXT, text)
     } else {
-        val folder = File(context.cacheDir, "shared")
+        val folder = File(context.cacheDir, CaptionSession.SHARED_FOLDER)
         folder.deleteRecursively()
         folder.mkdirs()
         val file = File(folder, "$subject.txt")
