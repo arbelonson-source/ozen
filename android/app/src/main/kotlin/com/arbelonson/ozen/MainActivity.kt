@@ -82,6 +82,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -480,6 +481,7 @@ private fun CaptionLineRow(line: CaptionLine, display: DisplayPreferences, look:
     val copy = tr("העתקה", "Copy")
     val context = LocalContext.current
     val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, line.copied)) }
+    val uris = LocalUriHandler.current
     var menu by remember { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxWidth().onHold { menu = true }) {
         CaptionLineContent(
@@ -494,7 +496,9 @@ private fun CaptionLineRow(line: CaptionLine, display: DisplayPreferences, look:
             actions = listOf(
                 CustomAccessibilityAction(star) { onStar(); true },
                 CustomAccessibilityAction(copy) { copyLine(); true },
-            ),
+            ) + line.phones.map { phone ->
+                CustomAccessibilityAction(tr("להתקשר ל־%1", "Call %1", listOf(phone.dialable))) { uris.openUri(phone.url); true }
+            },
         )
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { Text(star) }, onClick = { menu = false; onStar() })
@@ -520,7 +524,13 @@ private fun CaptionLineContent(
             if (line.starred) StarMark(display.fontSize, starColour(look.isLight))
             if (display.markUncertainLines && line.unsure) UnsureMark(display.fontSize, look.pendingText)
             Text(
-                text = captionText(line.text, display.emphasizeNumbers, numberColor = if (line.isFinal) look.numberText else null, doubtfulWords = doubtful),
+                text = captionText(
+                    line.text,
+                    display.emphasizeNumbers,
+                    numberColor = if (line.isFinal) look.numberText else null,
+                    doubtfulWords = doubtful,
+                    linkingPhoneNumbers = line.phones.isNotEmpty(),
+                ),
                 style = LocalTextStyle.current.copy(textDirection = TextDirection.Content),
                 color = colour,
                 fontSize = display.fontSize.sp,

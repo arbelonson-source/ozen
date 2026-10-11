@@ -1,6 +1,11 @@
 package com.arbelonson.ozen
 
+import android.app.Activity
+import android.app.Instrumentation
 import android.content.ClipboardManager
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
@@ -9,6 +14,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.longClick
@@ -18,6 +25,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
@@ -32,6 +40,7 @@ import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptSegment
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -221,6 +230,45 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithText("Copy").performClick()
         compose.waitUntil(5_000) { copied() == CaptionLayout.copiedText("תתקשרי למרפאה 050 123 4567") }
     }
+
+    @Test
+    fun aSettledPhoneNumberOnTheCaptionScreenOpensTheDialerAndOneStillBeingHeardDoesNot() {
+        val settled = committed("050 123 4567")
+        val growing = TranscriptSegment(id = UUID.randomUUID(), text = "052 765 4321", isCommitted = false, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+        val started = CopyOnWriteArrayList<Intent>()
+        val dialer = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
+                started += intent
+                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+            }
+        }
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.addMonitor(dialer)
+        try {
+            showLines(listOf(settled, growing))
+            lineText("052 765 4321").performTouchInput { click(Offset(40f, centerY)) }
+            compose.waitForIdle()
+            assertTrue(started.isEmpty())
+            assertTrue(lineText("052 765 4321").fetchSemanticsNode().config[SemanticsActions.CustomActions].none { it.label.startsWith("Call") })
+
+            lineText("050 123 4567").performTouchInput { click(Offset(40f, centerY)) }
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            assertEquals(Intent.ACTION_VIEW, started.single().action)
+            assertEquals(Uri.parse("tel:0501234567"), started.single().data)
+
+            started.clear()
+            val call = lineText("050 123 4567").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Call 0501234567" }
+            compose.runOnUiThread { call.action() }
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            assertEquals(Uri.parse("tel:0501234567"), started.single().data)
+        } finally {
+            instrumentation.removeMonitor(dialer)
+        }
+    }
+
+    // The line's own text, which carries its actions; a linked number may have a node of its own.
+    private fun lineText(text: String) =
+        compose.onAllNodes(hasText(text, substring = true) and SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)).onFirst()
 
     private fun copied(): String? {
         var text: String? = null

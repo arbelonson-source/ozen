@@ -4,6 +4,7 @@ import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ControlBarAutoHide
 import com.arbelonson.ozen.core.ConversationStats
+import com.arbelonson.ozen.core.PhoneNumbers
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ScheduledRetry
 import com.arbelonson.ozen.core.ScreenAwakePolicy
@@ -23,6 +24,8 @@ data class CaptionLine(
     val doubtfulWords: List<String> = emptyList(),
     val starred: Boolean = false,
     val copied: String = text,
+    /** Only once the engine has settled the line: a number still being heard can change under the finger. */
+    val phones: List<PhoneNumbers.Match> = emptyList(),
 )
 
 data class CaptionScreenState(
@@ -94,6 +97,7 @@ object CaptionState {
                     doubtfulWords = if (it.isCommitted) it.uncertainWords else emptyList(),
                     starred = starred(it.id),
                     copied = CaptionLayout.copiedText(it.text),
+                    phones = if (it.isSettled) PhoneNumbers.matches(it.text) else emptyList(),
                 )
             },
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),

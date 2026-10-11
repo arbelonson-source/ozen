@@ -47,6 +47,17 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `a phone number becomes callable only once the engine has settled its line`() {
+        val settled = line("Call the clinic on 050 123 4567", committed = true)
+        val provisional = TranscriptSegment(
+            id = UUID.randomUUID(), text = "Or the office on 03 123 4567", isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 0.0, isProvisionalCommit = true,
+        )
+        val growing = line("And the pharmacy on 052 765 4321", committed = false)
+        show(PipelinePhase.Listening, listOf(settled, provisional, growing))
+        assertEquals(listOf(listOf("0501234567"), emptyList(), emptyList()), CaptionState.screen.value.lines.map { line -> line.phones.map { it.dialable } })
+    }
+
+    @Test
     fun `only the newest two hundred lines are kept on the screen`() {
         val segments = (1..205).map { line("line $it", committed = true) }
         show(PipelinePhase.Listening, segments)
