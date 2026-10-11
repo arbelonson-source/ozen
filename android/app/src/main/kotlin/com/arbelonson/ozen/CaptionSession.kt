@@ -350,11 +350,7 @@ class CaptionSession(
     /** Android tells a new listener the heat as it is; only a change is noted. */
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun watchHeat() {
-        var last = power.currentThermalStatus
-        val listener = PowerManager.OnThermalStatusChangedListener { status ->
-            if (status != last) note("heat: ${deviceState()}")
-            last = status
-        }
+        val listener = HeatListener(power.currentThermalStatus) { note("heat: ${deviceState()}") }
         power.addThermalStatusListener(context.mainExecutor, listener)
         heat = listener
     }
@@ -457,7 +453,12 @@ class CaptionSession(
     fun close() {
         runCatching { context.unregisterReceiver(batteryReadings) }
         runCatching { context.unregisterReceiver(batterySaving) }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) (heat as? PowerManager.OnThermalStatusChangedListener)?.let(power::removeThermalStatusListener)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            (heat as? HeatListener)?.let {
+                it.changed = null
+                power.removeThermalStatusListener(it)
+            }
+        }
         pipeline.close()
         network.close()
         voice.shutdown()
@@ -1050,5 +1051,18 @@ class CaptionSession(
 
         /** In the cache: the conversation last shared as a file, kept for the app it went to. */
         const val SHARED_FOLDER = "shared"
+    }
+}
+
+/**
+ * Android's thermal service keeps hold of a listener until its own memory
+ * is collected, long after it was removed: only this goes with it, not the
+ * session it reported to.
+ */
+@RequiresApi(Build.VERSION_CODES.Q)
+private class HeatListener(private var last: Int, var changed: (() -> Unit)?) : PowerManager.OnThermalStatusChangedListener {
+    override fun onThermalStatusChanged(status: Int) {
+        if (status != last) changed?.invoke()
+        last = status
     }
 }
