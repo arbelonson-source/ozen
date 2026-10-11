@@ -3,7 +3,7 @@
 ## Problem
 
 Grandmother has hearing loss, wears hearing aids, uses an iPhone. Existing live
-transcription apps (evaluated: Nagish) are unreliable: inconsistent handling of
+transcription apps are unreliable: inconsistent handling of
 external microphones (a USB-C lavalier mic didn't work, AirPods worked but
 inconsistently), no way to explicitly pick an audio input, and live
 transcription is a minor feature bolted onto a bigger product rather than the

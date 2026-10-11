@@ -74,8 +74,8 @@ captions Hebrew speech; the interface comes in twelve languages.</sub>
 
 ## Why this exists
 
-Existing apps (evaluated: Nagish) had three concrete problems: inconsistent
-handling of external microphones (no explicit input picker, a USB-C
+Existing apps had three concrete problems: inconsistent handling of
+external microphones (no explicit input picker, a USB-C
 lavalier mic didn't work at all, AirPods worked but not reliably), live
 transcription treated as a minor feature rather than the point of the app,
 and no real speaker detection. Ozen exists to fix specifically those three
