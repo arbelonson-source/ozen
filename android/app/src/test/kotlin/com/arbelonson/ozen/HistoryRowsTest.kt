@@ -87,6 +87,14 @@ class HistoryRowsTest {
     }
 
     @Test
+    fun `an empty list under a chosen name says nobody by that name was found, unless a search said nothing matched first`() = Localization.withLanguage(UILanguage.English) {
+        assertEquals("No conversations with Grandma.", HistoryTexts.emptyMessage(query = "", saving = true, speakerFilter = "Grandma"))
+        assertEquals("No conversations with Grandma.", HistoryTexts.emptyMessage(query = " ", saving = false, speakerFilter = "Grandma"))
+        assertEquals("Nothing found for “dentist”.", HistoryTexts.emptyMessage(query = "dentist", saving = true, speakerFilter = "Grandma"))
+        assertEquals("No saved conversations yet.", HistoryTexts.emptyMessage(query = "", saving = true, speakerFilter = null))
+    }
+
+    @Test
     fun `the next match says which of how many, and keeps its place when the conversation grows`() = Localization.withLanguage(UILanguage.English) {
         assertEquals("Next match (2 of 5)", SearchMatches.nextTitle(current = 1, count = 5))
         val first = UUID.randomUUID()

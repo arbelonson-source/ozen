@@ -11,6 +11,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
@@ -29,6 +31,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.CaptionLayout
@@ -113,6 +116,59 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Clear").performClick()
         waitFor("Search test other conversation")
         compose.onNodeWithText("Automatic deletion").assertExists()
+    }
+
+    @Test
+    fun aNameAboveTheListShowsOnlyThatPersonsConversationsAndStaysChosenWhileSearchingAndReading() {
+        seed("Chip test soup recipe" to "Grandma Chip", "Chip test more soup" to null)
+        seed("Chip test football scores" to "Uncle Chip")
+        seed("Chip test nobody named" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Chip test nobody named")
+        val grandma = compose.onNode(hasTestTag("speakerChip:Grandma Chip"))
+        grandma.assertIsNotSelected()
+        val bounds = grandma.getUnclippedBoundsInRoot()
+        assertTrue(bounds.bottom - bounds.top >= 48.dp)
+
+        grandma.performClick()
+        grandma.assertIsSelected()
+        compose.onNodeWithText("Chip test soup recipe", substring = true).assertExists()
+        compose.onNodeWithText("Chip test football scores", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Chip test nobody named", substring = true).assertDoesNotExist()
+
+        compose.onNodeWithText("Search what was said").performTextInput("football")
+        waitFor("Nothing found for “football”.")
+        grandma.assertIsSelected()
+
+        compose.onNodeWithText("Clear").performClick()
+        waitFor("Chip test soup recipe")
+        compose.onNodeWithText("Chip test soup recipe", substring = true).performClick()
+        waitFor("Share")
+        compose.onNodeWithText("Back").performClick()
+        waitFor("Chip test soup recipe")
+        compose.onNodeWithText("Chip test football scores", substring = true).assertDoesNotExist()
+
+        grandma.performClick()
+        waitFor("Chip test football scores")
+        grandma.assertIsNotSelected()
+    }
+
+    @Test
+    fun aChosenNameWhoseLastConversationWasDeletedLetsGoInsteadOfHidingEveryConversation() {
+        seed("Chip gone soup recipe" to "Grandma Gone")
+        seed("Chip gone other talk" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Chip gone other talk")
+        compose.onNode(hasTestTag("speakerChip:Grandma Gone")).performClick()
+        compose.onNodeWithText("Chip gone other talk", substring = true).assertDoesNotExist()
+
+        compose.onNodeWithText("Chip gone soup recipe", substring = true).performClick()
+        waitFor("Share")
+        compose.onNodeWithText("Delete").performClick()
+        compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
+        waitFor("Chip gone other talk")
+        compose.onNode(hasTestTag("speakerChip:Grandma Gone")).assertDoesNotExist()
+        compose.onNodeWithText("No conversations with", substring = true).assertDoesNotExist()
     }
 
     @Test

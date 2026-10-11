@@ -134,8 +134,9 @@ object HistoryTexts {
         else -> ConversationStats.oldConversationsDeletedText(count)
     }
 
-    fun emptyMessage(query: String, saving: Boolean): String = when {
+    fun emptyMessage(query: String, saving: Boolean, speakerFilter: String? = null): String = when {
         query.isNotBlank() -> tr("לא נמצא כלום עבור \"%1\".", "Nothing found for “%1”.", listOf(query.trim()))
+        speakerFilter != null -> tr("אין שיחות עם %1.", "No conversations with %1.", listOf(speakerFilter))
         saving -> tr("עדיין אין שיחות שמורות.", "No saved conversations yet.")
         else -> tr("שמירת שיחות כבויה.", "Saving conversations is off.")
     }

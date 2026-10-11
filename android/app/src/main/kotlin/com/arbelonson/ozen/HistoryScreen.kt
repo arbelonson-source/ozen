@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,12 +25,14 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -74,7 +77,6 @@ import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
-import com.arbelonson.ozen.core.HistoryDay
 import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.OnThisDay
@@ -147,6 +149,7 @@ fun HistoryScreen(
 ) {
     var openID by rememberSaveable { mutableStateOf<String?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
+    var speakerFilter by rememberSaveable { mutableStateOf<String?>(null) }
     val open = openID
     if (open != null) {
         ConversationScreen(conversations, UUID.fromString(open), query, marksUncertain, emphasizeNumbers, onClose = { openID = null })
@@ -165,16 +168,18 @@ fun HistoryScreen(
     // in typing and runs off the main thread; a newer search cancels this one.
     LaunchedEffect(reloads, query) {
         if (searching) delay(250)
-        loaded = withContext(Dispatchers.IO) {
+        val list = withContext(Dispatchers.IO) {
             val summaries = if (searching) conversations.search(query) else conversations.list()
             val now = System.currentTimeMillis() / 1_000.0
             HistoryList(
                 summaries = summaries,
-                days = HistoryDays.grouped(summaries, now = now, utcOffsetSeconds = ::localOffset),
+                now = now,
                 size = ByteSize.text(conversations.sizeOnDisk()),
                 onThisDate = if (searching) emptyList() else OnThisDay.matches(summaries, now, ::localOffset).take(3),
             )
         }
+        loaded = list
+        speakerFilter = TranscriptSessionSummary.speakerFilter(speakerFilter, keptAfterLoading = list.summaries, everyConversation = !searching)
     }
     val scope = rememberCoroutineScope()
     var pendingRetention by remember { mutableStateOf<HistoryRetention?>(null) }
@@ -210,6 +215,15 @@ fun HistoryScreen(
         if (shown == null) {
             CircularProgressIndicator(modifier = Modifier.padding(24.dp))
         } else {
+            val chosen = speakerFilter
+            val days = remember(shown, chosen) {
+                val withChosen = if (chosen == null) shown.summaries else shown.summaries.filter { chosen in it.speakerNames }
+                HistoryDays.grouped(withChosen, now = shown.now, utcOffsetSeconds = ::localOffset)
+            }
+            val names = remember(shown, chosen) {
+                val top = TranscriptSessionSummary.topSpeakerNames(shown.summaries)
+                if (chosen == null || chosen in top) top else listOf(chosen) + top
+            }
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 item(key = "search") {
                     SearchField(query, onChange = { query = it })
@@ -239,18 +253,24 @@ fun HistoryScreen(
                         }
                     }
                 }
-                if (shown.days.isEmpty()) {
+                // A chosen name keeps filtering while she searches, so its
+                // chip stays too: hidden, it would drop every other
+                // conversation from the results with no way to clear it.
+                if ((!searching || chosen != null) && names.isNotEmpty()) item(key = "speakers") {
+                    SpeakerFilterChips(names, chosen, onChoose = { name -> speakerFilter = if (name == chosen) null else name })
+                }
+                if (days.isEmpty()) {
                     item(key = "empty") {
                         Column {
                             Heading(tr("שיחות", "Conversations"))
                             Text(
-                                HistoryTexts.emptyMessage(query, saving),
+                                HistoryTexts.emptyMessage(query, saving, chosen),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
                 }
-                for (day in shown.days) {
+                for (day in days) {
                     item(key = "day-${day.id}") { Heading(day.title) }
                     items(day.sessions, key = { it.id.toString() }) { session ->
                         ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletion = session })
@@ -312,10 +332,28 @@ fun HistoryScreen(
 
 private class HistoryList(
     val summaries: List<TranscriptSessionSummary>,
-    val days: List<HistoryDay>,
+    val now: Double,
     val size: String,
     val onThisDate: List<TranscriptSessionSummary>,
 )
+
+/** The people most often in these conversations; a tap shows only the conversations with that person, a second tap everyone again. */
+@Composable
+private fun SpeakerFilterChips(names: List<String>, chosen: String?, onChoose: (String) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        for (name in names) {
+            FilterChip(
+                selected = name == chosen,
+                onClick = { onChoose(name) },
+                label = { Text(name) },
+                modifier = Modifier.testTag("speakerChip:$name"),
+            )
+        }
+    }
+}
 
 /**
  * The iPhone's "On this date in earlier years": a year-old conversation
