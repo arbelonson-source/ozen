@@ -757,6 +757,47 @@ class CaptionSessionDeviceTest {
         }
     }
 
+    @Test
+    fun theBackupRowLooksAgainForRoomAsTheAppComesBack(): Unit = runBlocking {
+        val work = File(context.cacheDir, "backup-room-test").apply { deleteRecursively(); mkdirs() }
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        settings.change {
+            it.engine = TranscriptionEngineKind.HomeServer
+            it.homeServerAddress = "127.0.0.1:9"
+            it.spokenLanguage = UILanguage.English
+            it.allowCellularModelDownload = true
+        }
+        val free = AtomicLong(1_000_000)
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(
+                context,
+                settings,
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(FloatArray(16_000)),
+                modelFolder = File(work, "models"),
+                historyFolder = File(work, "history"),
+            ).apply { freeSpace = { free.get() } }
+        }
+        try {
+            withContext(Dispatchers.Main) {
+                session.appIsActive = true
+                session.refreshBackup()
+            }
+            assertTrue("${session.backupStatus.value}", session.backupStatus.value is BackupModelStatus.NotEnoughRoom)
+            free.set(Long.MAX_VALUE / 4)
+            withContext(Dispatchers.Main) {
+                session.appIsActive = false
+                session.appIsActive = true
+            }
+            assertTrue("still short of room after she made some: ${session.backupStatus.value}", session.backupStatus.value is BackupModelStatus.Missing)
+        } finally {
+            withContext(Dispatchers.Main) { session.close() }
+            work.deleteRecursively()
+        }
+    }
+
     private val PipelinePhase.modelMissing: Boolean
         get() = this is PipelinePhase.Failed && reason.engineUnavailability?.kind == EngineUnavailability.Kind.ModelNotOnDevice
 

@@ -99,7 +99,7 @@ class CaptionSession(
     // the same Wi-Fi needs no internet, so any network counts as connected.
     private val network = AndroidNetworkMonitor(context)
 
-    /** The phone's free space, as the model download sees it. */
+    /** The phone's free space, as the model downloads see it. */
     var freeSpace: () -> Long = { context.filesDir.usableSpace }
     val pipeline = CaptionPipeline(
         scope = scope,
@@ -220,11 +220,13 @@ class CaptionSession(
 
     /**
      * Back on screen, as on the iPhone: conversations past their keeping
-     * time go even with saving off, which no save would sweep; and a phone
-     * that was too full downloads its model by itself once there is room.
+     * time go even with saving off, which no save would sweep; a phone
+     * that was too full downloads its model by itself once there is room,
+     * and the backup's row stops asking for room she made meanwhile.
      */
     private fun cameBack() {
         conversations.deleteExpiredIfDue()
+        refreshBackup()
         if (pipeline.phase.failure?.engineUnavailability?.kind == EngineUnavailability.Kind.NotEnoughStorage) {
             scope.launch { pipeline.appDidBecomeActive() }
         }
@@ -948,7 +950,7 @@ class CaptionSession(
                 sizeMegabytes = ((source.bytes + 999_999) / 1_000_000).toInt(),
                 downloading = backupProgress.takeIf { backupLanguage == language },
                 failed = backupFailedLanguage == language,
-                shortfallMegabytes = StorageSpaceGate.shortfallMegabytes(PhoneModelDownloader(model, source, modelFetcher).pendingMegabytes() ?: 0, context.filesDir.usableSpace),
+                shortfallMegabytes = StorageSpaceGate.shortfallMegabytes(PhoneModelDownloader(model, source, modelFetcher).pendingMegabytes() ?: 0, freeSpace()),
                 network = pipeline.networkConditions,
                 allowCellular = current.allowCellularModelDownload,
             )
