@@ -38,6 +38,7 @@ class YamnetSoundDetectorDeviceTest {
 
     @Test
     fun aSteadyToneAndSilenceAreNoSoundToAlertFor() {
-        assertEquals(emptyList<SoundObservation>(), heard(tone(440.0, 4.0) + quiet(4.0)))
+        assertEquals(emptyList<SoundObservation>(), heard(tone(440.0, 8.0)))
+        assertEquals(emptyList<SoundObservation>(), heard(quiet(8.0)))
     }
 }

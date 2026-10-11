@@ -59,8 +59,10 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
+import com.arbelonson.ozen.core.AlertFlash
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.SoundAlert
+import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.SoundEventCatalog
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
@@ -1034,34 +1036,68 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithContentDescription("Alert: Doorbell").assertDoesNotExist()
     }
 
+    private fun heardSmoke() = SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = System.currentTimeMillis() / 1_000.0)
+
+    private fun edgeIsRed(): Boolean {
+        val edge = compose.onRoot().captureToImage().toPixelMap().let { it[2, it.height / 2] }
+        return edge.red > 0.6f && edge.green < 0.3f && edge.blue < 0.3f
+    }
+
+    /** The edge every 150 ms of the test clock for six seconds after a smoke alarm is heard: lit or not. */
+    private fun edgeAfterSmoke(): List<Boolean> {
+        val now = heardSmoke()
+        compose.runOnUiThread { CaptionState.soundHeard(now, now) }
+        return List(40) {
+            compose.mainClock.advanceTimeBy(150)
+            edgeIsRed()
+        }
+    }
+
+    private fun litStretches(edge: List<Boolean>) = edge.indices.count { edge[it] && (it == 0 || !edge[it - 1]) }
+
     @Test
     fun aSafetySoundFlashesTheScreensEdgeRedOnlyWhenHeardWithTheCaptionsShowing() {
-        val smoke = { SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = System.currentTimeMillis() / 1_000.0) }
-        val edgeIsRed = {
-            val edge = compose.onRoot().captureToImage().toPixelMap().let { it[2, it.height / 2] }
-            edge.red > 0.6f && edge.green < 0.3f && edge.blue < 0.3f
-        }
+        val motion = ReducedMotion.isOn
+        ReducedMotion.isOn = { false }
         compose.runOnUiThread { CaptionState.clear() }
         compose.onNodeWithText("Settings").performClick()
-        val before = smoke()
+        val before = heardSmoke()
         compose.runOnUiThread { CaptionState.soundHeard(before, before) }
-        compose.onNodeWithText("Close").performClick()
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.onNodeWithText("Close").performClick()
+            compose.mainClock.advanceTimeBy(100)
+            compose.onNodeWithText("History").assertExists()
+            repeat(12) {
+                compose.mainClock.advanceTimeBy(100)
+                assertFalse("a sound from before the screen appeared flashed", edgeIsRed())
+            }
+
+            val edge = edgeAfterSmoke()
+            assertTrue("a smoke alarm never flashed the edge: $edge", edge.take(2).any { it })
+            assertEquals("flashes: $edge", AlertFlash.pattern(SoundEvent.Importance.Critical, reduceMotion = false)!!.count, litStretches(edge))
+            assertFalse("still flashing long after: $edge", edge.takeLast(5).any { it })
+        } finally {
+            ReducedMotion.isOn = motion
+            compose.mainClock.autoAdvance = true
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
+    fun withAnimationsOffASafetySoundHoldsTheEdgeRedSteadilyInsteadOfFlashing() {
+        val motion = ReducedMotion.isOn
+        ReducedMotion.isOn = { true }
+        compose.runOnUiThread { CaptionState.clear() }
         compose.onNodeWithText("History").assertExists()
         compose.mainClock.autoAdvance = false
         try {
-            compose.mainClock.advanceTimeBy(500)
-            assertFalse("a sound from before the screen appeared flashed", edgeIsRed())
-
-            val now = smoke()
-            compose.runOnUiThread { CaptionState.soundHeard(now, now) }
-            compose.mainClock.advanceTimeBy(120)
-            assertTrue("a smoke alarm never flashed the edge", edgeIsRed())
-
-            compose.mainClock.advanceTimeBy(6_000)
-            Thread.sleep(5_500)
-            compose.mainClock.advanceTimeBy(300)
-            assertFalse("still flashing long after", edgeIsRed())
+            val edge = edgeAfterSmoke()
+            assertEquals("lit stretches: $edge", 1, litStretches(edge))
+            assertTrue("lit for only ${edge.count { it }} of every 150 ms: $edge", edge.count { it } >= 24)
+            assertFalse("still lit long after: $edge", edge.takeLast(5).any { it })
         } finally {
+            ReducedMotion.isOn = motion
             compose.mainClock.autoAdvance = true
             compose.runOnUiThread { CaptionState.clear() }
         }

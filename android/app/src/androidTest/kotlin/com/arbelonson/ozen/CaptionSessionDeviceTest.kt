@@ -273,15 +273,24 @@ class CaptionSessionDeviceTest {
         Buzz.play = { _, vibration -> buzzed += vibration }
         val session = withContext(Dispatchers.Main) {
             CaptionState.clear()
-            CaptionSession(context, settings, code, CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), audio, historyFolder = File(work, "history"))
+            CaptionSession(context, settings, code, CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), audio, modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))
                 .also { it.appIsActive = true }
         }
         try {
             withContext(Dispatchers.Main) { session.listen() }
             val started = SystemClock.elapsedRealtime()
-            while (CaptionState.screen.value.sound == null && SystemClock.elapsedRealtime() - started < 60_000) delay(500)
+            var firstBanner: Long? = null
+            var soundsOnly = false
+            while (CaptionState.screen.value.sound?.event?.identifier != "smoke_detector" && SystemClock.elapsedRealtime() - started < 60_000) {
+                soundsOnly = soundsOnly || withContext(Dispatchers.Main) { session.pipeline.isListeningForSoundsOnly }
+                if (firstBanner == null && CaptionState.screen.value.sound != null) firstBanner = SystemClock.elapsedRealtime()
+                delay(100)
+            }
+            val named = SystemClock.elapsedRealtime()
             assertEquals("smoke_detector", CaptionState.screen.value.sound?.event?.identifier)
-            assertEquals(AlertVibration.pattern(SoundEvent.Importance.Critical), buzzed.firstOrNull())
+            assertTrue("the captions ran: ${CaptionState.screen.value.phase}", soundsOnly)
+            assertTrue("named ${named - (firstBanner ?: named)} ms after the first banner", named - (firstBanner ?: named) < 10_000)
+            assertTrue("buzzed $buzzed", AlertVibration.pattern(SoundEvent.Importance.Critical) in buzzed)
         } finally {
             Buzz.play = before
             withContext(Dispatchers.Main) {
@@ -306,22 +315,28 @@ class CaptionSessionDeviceTest {
         val code = HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()).apply { save("code-for-the-test") }
         val session = withContext(Dispatchers.Main) {
             CaptionState.clear()
-            CaptionSession(context, settings, code, CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), audio, historyFolder = File(work, "history"))
+            CaptionSession(context, settings, code, CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), audio, modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))
         }
         try {
             withContext(Dispatchers.Main) { session.listen() }
             val started = SystemClock.elapsedRealtime()
             val soundsOnly = suspend { withContext(Dispatchers.Main) { session.pipeline.isListeningForSoundsOnly } }
             while (!soundsOnly() && SystemClock.elapsedRealtime() - started < 30_000) delay(100)
-            assertTrue("never listened for sounds alone", soundsOnly())
+            assertTrue("never listened for sounds alone: ${CaptionState.screen.value.phase}", soundsOnly())
             val sounds = settings.current.value.soundAlerts
             withContext(Dispatchers.Main) { session.setSoundAlerts(sounds.withMuted("smoke_detector", true)) }
-            delay(26_000)
-            assertEquals(null, CaptionState.screen.value.sound)
+            val muted = SystemClock.elapsedRealtime()
+            val heardWhileMuted = mutableSetOf<String>()
+            while (SystemClock.elapsedRealtime() - muted < 26_000) {
+                CaptionState.screen.value.sound?.let { heardWhileMuted += it.event.identifier }
+                delay(100)
+            }
+            assertFalse("a muted smoke alarm alerted", "smoke_detector" in heardWhileMuted)
+            assertTrue("the alarm's beeps went unheard while muted: $heardWhileMuted", "beep" in heardWhileMuted)
 
             withContext(Dispatchers.Main) { session.setSoundAlerts(sounds) }
             val unmuted = SystemClock.elapsedRealtime()
-            while (CaptionState.screen.value.sound == null && SystemClock.elapsedRealtime() - unmuted < 40_000) delay(500)
+            while (CaptionState.screen.value.sound?.event?.identifier != "smoke_detector" && SystemClock.elapsedRealtime() - unmuted < 40_000) delay(100)
             assertEquals("smoke_detector", CaptionState.screen.value.sound?.event?.identifier)
         } finally {
             withContext(Dispatchers.Main) {

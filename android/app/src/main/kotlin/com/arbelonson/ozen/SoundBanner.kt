@@ -62,6 +62,11 @@ internal fun SoundAlertBanner(alert: SoundAlert, onDismiss: () -> Unit) {
     }
 }
 
+/** Whether the phone asks for less motion: animations switched off in its settings. */
+internal object ReducedMotion {
+    var isOn: () -> Boolean = { !ValueAnimator.areAnimatorsEnabled() }
+}
+
 /**
  * The colour and strength of the screen-edge flash for a safety or door
  * sound (see `AlertFlash`), as on the iPhone, so it is noticed without
@@ -71,7 +76,7 @@ internal fun SoundAlertBanner(alert: SoundAlert, onDismiss: () -> Unit) {
  */
 @Composable
 internal fun alertFlash(heard: SoundAlert?): Pair<Color, Float> {
-    val reduceMotion = !ValueAnimator.areAnimatorsEnabled()
+    val reduceMotion = ReducedMotion.isOn()
     val before = remember { heard?.id }
     var flashing by remember { mutableStateOf<SoundAlert?>(null) }
     var tint by remember { mutableStateOf(SoundEvent.Importance.Critical) }
