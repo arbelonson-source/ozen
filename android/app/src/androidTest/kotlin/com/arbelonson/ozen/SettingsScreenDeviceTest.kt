@@ -1436,7 +1436,7 @@ class SettingsScreenDeviceTest {
         val status = mutableStateOf<BackupModelStatus>(BackupModelStatus.Missing(575))
         var downloads = 0
         compose.runOnUiThread { compose.activity.setContent { Column { PhoneBackupRow(status.value, onDownload = { downloads += 1 }) } } }
-        compose.onNodeWithText("Download a backup to the phone (575 MB)").performClick()
+        compose.onNodeWithText("Download a backup to the phone (575\u00A0MB)").performClick()
         assertEquals(1, downloads)
         compose.onNodeWithText("Without the backup, captions stop when the computer can’t be reached.").assertExists()
 
@@ -1449,7 +1449,7 @@ class SettingsScreenDeviceTest {
         status.value = BackupModelStatus.Offline
         compose.onNodeWithText("There’s no internet, so the backup can’t be downloaded now.").assertExists()
         status.value = BackupModelStatus.NotEnoughRoom(1_250)
-        compose.onNodeWithText("Not enough room on the phone for the backup. 1.3 GB more needs to be freed up.").assertExists()
+        compose.onNodeWithText("Not enough room on the phone for the backup. 1.3\u00A0GB more needs to be freed up.").assertExists()
         compose.onNodeWithText("Download a backup to the phone", substring = true).assertDoesNotExist()
 
         status.value = BackupModelStatus.Failed
@@ -1494,7 +1494,7 @@ class SettingsScreenDeviceTest {
         assumeFalse("the English model is already on this phone", english.exists())
         val languageBefore = app.settings.current.value.spokenLanguage
         val cellularBefore = app.settings.current.value.allowCellularModelDownload
-        val offer = "Download a backup to the phone (575 MB)"
+        val offer = "Download a backup to the phone (575\u00A0MB)"
         try {
             app.settings.change {
                 it.engine = TranscriptionEngineKind.HomeServer
@@ -1513,7 +1513,7 @@ class SettingsScreenDeviceTest {
             compose.waitUntil(5_000) { compose.onAllNodesWithText(offer).fetchSemanticsNodes().isNotEmpty() }
             compose.waitUntil(5_000) { compose.onNodeWithText(offer).isDisplayed() }
 
-            compose.onNodeWithText("Close").performClick()
+            compose.onNodeWithText("Close").performScrollTo().performClick()
             compose.onNodeWithText("Settings").performClick()
             compose.waitUntil(5_000) { compose.onAllNodesWithText(offer).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText(offer).assertIsNotDisplayed()
@@ -1538,7 +1538,7 @@ class SettingsScreenDeviceTest {
                 it.allowCellularModelDownload = true
             }
             compose.onNodeWithText("Settings").performClick()
-            val offer = compose.onNodeWithText("Download a backup to the phone (575 MB)")
+            val offer = compose.onNodeWithText("Download a backup to the phone (575\u00A0MB)")
             offer.performScrollTo().performClick()
             compose.waitUntil(5_000) { compose.onAllNodesWithText("The backup download stopped. Try again.").fetchSemanticsNodes().isNotEmpty() }
 
