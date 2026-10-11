@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import android.Manifest
+import android.accessibilityservice.AccessibilityService
 import android.app.Activity
 import android.app.Instrumentation
 import android.app.Notification
@@ -1573,9 +1574,18 @@ class CaptionScreenDeviceTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         compose.waitUntil(5_000) { app.captions.appIsActive }
         val first = compose.activity
-        val second = instrumentation.startActivitySync(
-            Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK),
-        )
+        // Android hands a start to the caption screen when it is on top, so
+        // the link comes while a small window of another app is in front of
+        // it, the caption screen still showing behind, and opens in a task
+        // of its own, as a link in another app's window over Ozen can.
+        compose.activityRule.scenario.moveToState(Lifecycle.State.STARTED)
+        app.startActivity(Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK))
+        var opened: Activity? = null
+        compose.waitUntil(10_000) {
+            instrumentation.runOnMainSync { opened = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).firstOrNull { it is MainActivity && it !== first } }
+            opened != null
+        }
+        val second = opened!!
         try {
             compose.waitUntil(5_000) { first.lifecycle.currentState == Lifecycle.State.CREATED }
             instrumentation.waitForIdleSync()
@@ -1583,7 +1593,11 @@ class CaptionScreenDeviceTest {
         } finally {
             instrumentation.runOnMainSync { second.finish() }
             compose.waitUntil(5_000) { second.isDestroyed }
-            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            // Android brings the caption screen back started behind the
+            // other window, a step the scenario does not count as settled,
+            // so Back closes that window instead of the scenario.
+            instrumentation.uiAutomation.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+            compose.waitUntil(5_000) { first.lifecycle.currentState == Lifecycle.State.RESUMED }
         }
         compose.waitUntil(5_000) { app.captions.appIsActive }
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
