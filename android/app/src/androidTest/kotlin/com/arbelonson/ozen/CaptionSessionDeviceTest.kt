@@ -39,6 +39,7 @@ import com.arbelonson.ozen.core.WhisperModelCatalog
 import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
+import java.lang.ref.WeakReference
 import java.net.URI
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
@@ -834,6 +835,37 @@ class CaptionSessionDeviceTest {
             shell("cmd power set-mode 0")
             shell("cmd thermalservice reset")
             shell("dumpsys battery reset")
+            work.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun aClosedSessionLetsGoOfEverythingSoItCanBeFreed(): Unit = runBlocking {
+        val work = File(context.cacheDir, "closed-session-test").apply { deleteRecursively(); mkdirs() }
+        val closed = withContext(Dispatchers.Main) {
+            val session = CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(FloatArray(16_000)),
+                modelFolder = File(work, "no-models"),
+                historyFolder = File(work, "history"),
+            )
+            session.close()
+            WeakReference(session)
+        }
+        try {
+            val freed = withTimeoutOrNull(15_000) {
+                while (closed.get() != null) {
+                    Runtime.getRuntime().gc()
+                    System.runFinalization()
+                    delay(200)
+                }
+                true
+            }
+            assertNotNull("a closed session was still held", freed)
+        } finally {
             work.deleteRecursively()
         }
     }

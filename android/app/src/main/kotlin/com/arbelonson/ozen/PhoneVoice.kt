@@ -98,6 +98,17 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         if (talking) quiet()
     }
 
+    /**
+     * Lets go of the phone's speech engine for good. Android holds the
+     * connection to it, and through its listener this voice and whoever
+     * listens to it, until it is shut down.
+     */
+    fun shutdown() {
+        onSpeakingChanged = null
+        pending.clear()
+        engine.shutdown()
+    }
+
     private fun ended(utteranceId: String) {
         pending.remove(utteranceId)
         quiet()

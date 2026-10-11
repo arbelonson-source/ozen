@@ -460,6 +460,7 @@ class CaptionSession(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) (heat as? PowerManager.OnThermalStatusChangedListener)?.let(power::removeThermalStatusListener)
         pipeline.close()
         network.close()
+        voice.shutdown()
         scope.cancel()
     }
 
