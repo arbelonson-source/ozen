@@ -127,6 +127,7 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val showingSettings = mutableStateOf(false)
+    private val confirmingCellular = mutableStateOf(false)
     private val microphoneAnswer = mutableStateOf<Boolean?>(null)
     private val notificationsAnswer = mutableStateOf<Boolean?>(null)
     private val approveMicrophone = registerForActivityResult(ActivityResultContracts.RequestPermission()) { microphoneAnswer.value = it }
@@ -149,7 +150,7 @@ class MainActivity : ComponentActivity() {
         val phoneLanguages = LocaleList.getDefault().let { list -> (0 until list.size()).map { list[it].toLanguageTag() } }
         Localization.language = app.settings.current.value.appLanguage.resolved(phoneLanguages)
         enableEdgeToEdge()
-        setContent { OzenApp(app, showingSettings, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
+        setContent { OzenApp(app, showingSettings, confirmingCellular, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
         openLink(intent)
     }
 
@@ -197,7 +198,8 @@ class MainActivity : ComponentActivity() {
             PhasePresentation.Action.Pause -> ListeningService.pause(this)
             PhasePresentation.Action.OpenSystemSettings -> if (hasMicrophone()) startListening() else openAppSettings()
             PhasePresentation.Action.Start, PhasePresentation.Action.Resume, PhasePresentation.Action.Retry -> startListening()
-            PhasePresentation.Action.OpenEngineSettings -> showingSettings.value = true
+            PhasePresentation.Action.OpenEngineSettings, PhasePresentation.Action.OpenBackupSettings -> showingSettings.value = true
+            PhasePresentation.Action.ConfirmCellularDownload -> confirmingCellular.value = true
             else -> Unit
         }
     }
@@ -271,6 +273,7 @@ private class OnboardingHooks(
 private fun OzenApp(
     app: OzenApplication,
     showingSettings: MutableState<Boolean>,
+    confirmingCellular: MutableState<Boolean>,
     onboarding: OnboardingHooks,
     onStatusTap: () -> Unit,
     onLaunch: () -> Unit,
@@ -400,9 +403,32 @@ private fun OzenApp(
                     )
                 }
             }
+            if (confirmingCellular.value) {
+                CellularDownloadDialog(
+                    state.phase.failure?.engineUnavailability?.downloadMegabytes,
+                    onDownload = {
+                        confirmingCellular.value = false
+                        app.captions.approveCellularDownload()
+                    },
+                    onWait = { confirmingCellular.value = false },
+                )
+            }
             PairingDialogs(app.pairing)
         }
     }
+}
+
+/** As on the iPhone: "Tap to download now" on the waiting-for-Wi-Fi status asks first, saying what cellular data may cost. */
+@Composable
+private fun CellularDownloadDialog(megabytes: Int?, onDownload: () -> Unit, onWait: () -> Unit) {
+    val size = megabytes?.takeIf { it > 0 }?.let { "$it\u00A0MB" } ?: tr("כמה מאות MB", "A few hundred MB")
+    AlertDialog(
+        onDismissRequest = onWait,
+        title = { Text(tr("להוריד את המודל בחבילת הגלישה?", "Download the model over cellular data?")) },
+        text = { Text(tr("המודל שוקל %1. בחבילת גלישה זה יכול לעלות כסף או לגמור את נפח הגלישה. ב-Wi-Fi ההורדה תתחיל לבד.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", listOf(size))) },
+        confirmButton = { TextButton(onClick = onDownload) { Text(tr("להוריד עכשיו", "Download now")) } },
+        dismissButton = { TextButton(onClick = onWait) { Text(tr("לחכות ל-Wi-Fi", "Wait for Wi‑Fi")) } },
+    )
 }
 
 @Composable

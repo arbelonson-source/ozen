@@ -73,6 +73,8 @@ import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
+import com.arbelonson.ozen.core.EngineUnavailability
+import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.SessionJournal
@@ -1056,6 +1058,36 @@ class CaptionScreenDeviceTest {
     }
 
     private fun litStretches(edge: List<Boolean>) = edge.indices.count { edge[it] && (it == 0 || !edge[it - 1]) }
+
+    @Test
+    fun tappingWaitingForWiFiAsksBeforeDownloadingOverCellularAndDownloadNowLetsTheModelUseIt() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val waiting = PipelinePhase.Failed(
+            PipelineFailure(
+                PipelineFailure.Kind.EngineUnavailable,
+                "test",
+                EngineUnavailability(EngineUnavailability.Kind.WaitingForWiFi, "test", downloadMegabytes = 550),
+            ),
+        )
+        try {
+            compose.runOnUiThread { CaptionState.show(waiting, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
+            val status = compose.onNodeWithText("Waiting for Wi", substring = true)
+            status.performClick()
+            compose.onNodeWithText("Download the model over cellular data?").assertExists()
+            compose.onNodeWithText("The model is about 550", substring = true).assertExists()
+            compose.onNodeWithText("Over cellular data this can cost money", substring = true).assertExists()
+            compose.onNodeWithText("Wait for Wi", substring = true).performClick()
+            compose.onNodeWithText("Download the model over cellular data?").assertDoesNotExist()
+            assertFalse(compose.runOnUiThread { app.captions.pipeline.cellularDownloadApproved })
+
+            status.performClick()
+            compose.onNodeWithText("Download now").performClick()
+            compose.onNodeWithText("Download the model over cellular data?").assertDoesNotExist()
+            compose.waitUntil(5_000) { compose.runOnUiThread { app.captions.pipeline.cellularDownloadApproved } }
+        } finally {
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
 
     @Test
     fun aSafetySoundFlashesTheScreensEdgeRedOnlyWhenHeardWithTheCaptionsShowing() {

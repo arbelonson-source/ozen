@@ -515,7 +515,8 @@ class CaptionPipeline(
     private var restartAfterRecording: AppSettings? = null
 
     /** The person said this session's model may download over cellular. */
-    private var cellularDownloadApproved = false
+    var cellularDownloadApproved = false
+        private set
     private var lastNetwork: NetworkConditions? = null
     private var networkRetryTask: Job? = null
     private var microphoneRetryTask: Job? = null

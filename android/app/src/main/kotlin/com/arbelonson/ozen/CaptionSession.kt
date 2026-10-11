@@ -408,6 +408,11 @@ class CaptionSession(
 
     fun dismissMicrophoneDrop() = pipeline.dismissMicrophoneDrop()
 
+    /** "Download now" while the model waits for Wi-Fi: this session's model may use cellular data. */
+    fun approveCellularDownload() {
+        scope.launch { pipeline.approveCellularDownload() }
+    }
+
     private fun publishInputs() = CaptionState.inputs(pipeline.availableInputs, pipeline.selectedInputUID, pipeline.microphoneDrop.lost)
 
     /** What the diagnostics screen shows and its report says, as things stand now. */
