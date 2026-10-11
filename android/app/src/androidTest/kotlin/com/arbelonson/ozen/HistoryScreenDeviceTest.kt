@@ -5,10 +5,12 @@ import android.app.Instrumentation
 import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -160,7 +162,7 @@ class HistoryScreenDeviceTest {
         store.save(record)
         seeded += record.id
         val started = CopyOnWriteArrayList<Intent>()
-        val sheet = shareSheetMonitor(started)
+        val sheet = startsHeldBack(started)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.addMonitor(sheet)
         try {
@@ -214,7 +216,7 @@ class HistoryScreenDeviceTest {
         return record
     }
 
-    private fun shareSheetMonitor(started: MutableList<Intent>) = object : Instrumentation.ActivityMonitor() {
+    private fun startsHeldBack(started: MutableList<Intent>) = object : Instrumentation.ActivityMonitor() {
         override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
             started += intent
             return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
@@ -234,7 +236,7 @@ class HistoryScreenDeviceTest {
     fun aConversationTooLongForAChatMessageIsSharedAsATextFile() {
         val record = longConversation("Long share test opening")
         val started = CopyOnWriteArrayList<Intent>()
-        val sheet = shareSheetMonitor(started)
+        val sheet = startsHeldBack(started)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.addMonitor(sheet)
         try {
@@ -262,7 +264,7 @@ class HistoryScreenDeviceTest {
     fun deletingAConversationAlsoDeletesTheCopyLastSharedAsAFile() {
         val record = longConversation("Shared then deleted opening")
         val started = CopyOnWriteArrayList<Intent>()
-        val sheet = shareSheetMonitor(started)
+        val sheet = startsHeldBack(started)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.addMonitor(sheet)
         try {
@@ -419,6 +421,41 @@ class HistoryScreenDeviceTest {
         val copy = address.config[SemanticsActions.CustomActions].single { it.label == "Copy" }
         compose.runOnUiThread { copy.action() }
         compose.waitUntil(5_000) { copied() == CaptionLayout.copiedText("The address is 12 Herzl Street") }
+    }
+
+    @Test
+    fun aPhoneNumberInASavedLineOpensTheDialerFromATapOrTheScreenReaderAction() {
+        seed("Phone test opening line" to null, "050 123 4567" to null)
+        val started = CopyOnWriteArrayList<Intent>()
+        val dialer = startsHeldBack(started)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.addMonitor(dialer)
+        try {
+            compose.onNodeWithText("History").performClick()
+            waitFor("Phone test opening line")
+            compose.onNodeWithText("Phone test opening line", substring = true).performClick()
+            compose.waitUntil(5_000) { shownLine("050 123 4567") }
+            compose.onNodeWithContentDescription("050 123 4567", substring = true).performTouchInput { longClick(Offset(40f, centerY)) }
+            waitFor("Mark as important")
+            assertTrue(started.isEmpty())
+            compose.onNodeWithText("Copy").performClick()
+            compose.waitForIdle()
+            assertTrue(started.isEmpty())
+
+            compose.onNodeWithContentDescription("050 123 4567", substring = true).performTouchInput { click(Offset(40f, centerY)) }
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            assertEquals(Intent.ACTION_VIEW, started.single().action)
+            assertEquals(Uri.parse("tel:0501234567"), started.single().data)
+
+            started.clear()
+            val line = compose.onNodeWithContentDescription("050 123 4567", substring = true).fetchSemanticsNode()
+            val call = line.config[SemanticsActions.CustomActions].single { it.label == "Call 0501234567" }
+            compose.runOnUiThread { call.action() }
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            assertEquals(Uri.parse("tel:0501234567"), started.single().data)
+        } finally {
+            instrumentation.removeMonitor(dialer)
+        }
     }
 
     private fun copied(): String? {

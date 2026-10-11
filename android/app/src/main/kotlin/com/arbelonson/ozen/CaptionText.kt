@@ -2,20 +2,31 @@ package com.arbelonson.ozen
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import com.arbelonson.ozen.core.NumberEmphasis
+import com.arbelonson.ozen.core.PhoneNumbers
 import com.arbelonson.ozen.core.UncertainWords
 
 val NUMBER_YELLOW = Color(red = 1.0f, green = 0.88f, blue = 0.2f)
 
 const val DOUBTFUL_WORD = "doubtful"
 
-fun captionText(shown: String, emphasizeNumbers: Boolean, numberColor: Color?, doubtfulWords: List<String> = emptyList()): AnnotatedString {
+fun captionText(
+    shown: String,
+    emphasizeNumbers: Boolean,
+    numberColor: Color?,
+    doubtfulWords: List<String> = emptyList(),
+    linkingPhoneNumbers: Boolean = false,
+): AnnotatedString {
     val ranges = if (emphasizeNumbers) NumberEmphasis.ranges(shown) else emptyList()
     val doubted = if (doubtfulWords.isEmpty()) emptyList() else UncertainWords.ranges(shown, doubtfulWords)
-    if (ranges.isEmpty() && doubted.isEmpty()) return AnnotatedString(shown)
+    val phones = if (linkingPhoneNumbers) PhoneNumbers.matches(shown) else emptyList()
+    if (ranges.isEmpty() && doubted.isEmpty() && phones.isEmpty()) return AnnotatedString(shown)
     return buildAnnotatedString {
         append(shown)
         for (range in ranges) {
@@ -23,6 +34,9 @@ fun captionText(shown: String, emphasizeNumbers: Boolean, numberColor: Color?, d
         }
         for (range in doubted) {
             addStringAnnotation(DOUBTFUL_WORD, "", range.start, range.endExclusive)
+        }
+        for (phone in phones) {
+            addLink(LinkAnnotation.Url(phone.url, TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline))), phone.start, phone.end)
         }
     }
 }

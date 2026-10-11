@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.font.FontWeight
 import com.arbelonson.ozen.core.CaptionLayout
 import kotlin.test.Test
@@ -46,5 +47,16 @@ class CaptionTextTest {
     fun `a line without doubted words carries no marks`() {
         val text = captionText(shown, emphasizeNumbers = true, numberColor = NUMBER_YELLOW)
         assertTrue(text.getStringAnnotations(DOUBTFUL_WORD, 0, text.length).isEmpty())
+    }
+
+    @Test
+    fun `a phone number in a finished line links to the dialer, and only when asked`() {
+        val line = CaptionLayout.displayText("Call the clinic on 050 123 4567 tomorrow")
+        val text = captionText(line, emphasizeNumbers = false, numberColor = null, linkingPhoneNumbers = true)
+        assertEquals(line, text.text)
+        val link = text.getLinkAnnotations(0, text.length).single()
+        assertEquals("tel:0501234567", (link.item as LinkAnnotation.Url).url)
+        assertEquals("0501234567", line.substring(link.start, link.end).filter { it.isDigit() })
+        assertTrue(captionText(line, emphasizeNumbers = false, numberColor = null).getLinkAnnotations(0, line.length).isEmpty())
     }
 }

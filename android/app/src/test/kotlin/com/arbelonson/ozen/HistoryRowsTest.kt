@@ -192,5 +192,6 @@ class HistoryRowsTest {
         assertEquals(CaptionLayout.copiedText("תתקשרי למרפאה 050 123 4567"), copied)
         assertTrue(copied.contains("050 123 4567"), copied)
         assertTrue(copied != "תתקשרי למרפאה 050 123 4567", copied)
+        assertEquals(listOf("0501234567"), SavedLine.of(record, jerusalem).single().phones.map { it.dialable })
     }
 }

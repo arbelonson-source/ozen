@@ -6,6 +6,7 @@ import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.NumberEmphasis
+import com.arbelonson.ozen.core.PhoneNumbers
 import com.arbelonson.ozen.core.SavedLineSpeech
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
@@ -50,6 +51,7 @@ data class SavedLine(
     val starred: Boolean = false,
     val unsure: Boolean = false,
     val copied: String = text,
+    val phones: List<PhoneNumbers.Match> = emptyList(),
 ) {
     companion object {
         /** [markUncertain]: the caption screen's question mark, kept on saved lines as on the iPhone. */
@@ -68,6 +70,7 @@ data class SavedLine(
                     starred = segment.isStarred,
                     unsure = unsure,
                     copied = CaptionLayout.copiedText(segment.text),
+                    phones = PhoneNumbers.matches(segment.text),
                 )
             }
         }

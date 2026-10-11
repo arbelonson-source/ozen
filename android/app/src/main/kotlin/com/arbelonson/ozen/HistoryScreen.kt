@@ -7,7 +7,8 @@ import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,8 +52,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -122,12 +125,19 @@ interface SavedConversations {
  * to read it back, or delete it. Everything stays on the phone.
  */
 @Composable
-fun HistoryScreen(conversations: SavedConversations, saving: Boolean, retention: HistoryRetention, marksUncertain: Boolean, onClose: () -> Unit) {
+fun HistoryScreen(
+    conversations: SavedConversations,
+    saving: Boolean,
+    retention: HistoryRetention,
+    marksUncertain: Boolean,
+    emphasizeNumbers: Boolean,
+    onClose: () -> Unit,
+) {
     var openID by rememberSaveable { mutableStateOf<String?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     val open = openID
     if (open != null) {
-        ConversationScreen(conversations, UUID.fromString(open), query, marksUncertain, onClose = { openID = null })
+        ConversationScreen(conversations, UUID.fromString(open), query, marksUncertain, emphasizeNumbers, onClose = { openID = null })
         return
     }
     BackHandler(onBack = onClose)
@@ -347,7 +357,14 @@ private fun opened(record: TranscriptSessionRecord?, query: String, marksUncerta
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ConversationScreen(conversations: SavedConversations, id: UUID, query: String, marksUncertain: Boolean, onClose: () -> Unit) {
+private fun ConversationScreen(
+    conversations: SavedConversations,
+    id: UUID,
+    query: String,
+    marksUncertain: Boolean,
+    emphasizeNumbers: Boolean,
+    onClose: () -> Unit,
+) {
     BackHandler(onBack = onClose)
     DisposableEffect(id) {
         conversations.opened(id)
@@ -437,7 +454,7 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
                         }
                     }
                     items(shown.lines, key = { it.id.toString() }) { line ->
-                        SavedLineView(line, isMatch = line.id in matched) {
+                        SavedLineView(line, isMatch = line.id in matched, emphasizeNumbers = emphasizeNumbers) {
                             scope.launch {
                                 conversations.toggleStar(id, line.id)
                                 show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain) })
@@ -552,13 +569,17 @@ private fun NumbersSection(numbers: NumbersMentioned, onJump: (SavedSegment) -> 
 }
 
 @Composable
-private fun SavedLineView(line: SavedLine, isMatch: Boolean, onStar: () -> Unit) {
+private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: Boolean, onStar: () -> Unit) {
     val found = tr("מכילה את מה שחיפשת", "Contains what you searched for")
     val star = if (line.starred) tr("הסרת הסימון", "Remove the star") else tr("סימון כחשובה", "Mark as important")
     val copy = tr("העתקה", "Copy")
     val context = LocalContext.current
     // A phone number or an address said, to paste somewhere else.
     val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, line.copied)) }
+    val uris = LocalUriHandler.current
+    val calls = line.phones.map { phone ->
+        CustomAccessibilityAction(tr("להתקשר ל־%1", "Call %1", listOf(phone.dialable))) { uris.openUri(phone.url); true }
+    }
     var menu by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
@@ -571,9 +592,9 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, onStar: () -> Unit)
                 customActions = listOf(
                     CustomAccessibilityAction(star) { onStar(); true },
                     CustomAccessibilityAction(copy) { copyLine(); true },
-                )
+                ) + calls
             }
-            .pointerInput(Unit) { detectTapGestures(onLongPress = { menu = true }) },
+            .onHold { menu = true },
     ) {
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { Text(star) }, onClick = { menu = false; onStar() })
@@ -584,7 +605,32 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, onStar: () -> Unit)
         Row {
             if (line.starred) Text("★", color = starColour(), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 6.dp))
             if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(line.text, style = MaterialTheme.typography.bodyLarge)
+            Text(captionText(line.text, emphasizeNumbers, numberColor = null, linkingPhoneNumbers = true), style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+}
+
+/**
+ * A finger held still on the line. Watched before the text inside sees the
+ * touch: a phone number there takes the touch as its own, so a hold that
+ * began on it never opened the menu, and lifting the finger dialed it.
+ * Once held, the rest of the touch is kept from the number.
+ */
+private fun Modifier.onHold(action: () -> Unit) = pointerInput(Unit) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        val ended = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+            while (true) {
+                val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id }
+                if (change == null || !change.pressed || (change.position - down.position).getDistance() > viewConfiguration.touchSlop) break
+            }
+        }
+        if (ended == null) {
+            action()
+            do {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                event.changes.forEach { it.consume() }
+            } while (event.changes.any { it.pressed })
         }
     }
 }

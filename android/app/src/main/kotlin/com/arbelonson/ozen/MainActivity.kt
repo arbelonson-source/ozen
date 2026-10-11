@@ -201,6 +201,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     saving = current.saveHistory,
                     retention = current.historyRetention,
                     marksUncertain = current.display.markUncertainLines,
+                    emphasizeNumbers = current.display.emphasizeNumbers,
                     onClose = { showingHistory = false },
                 )
                 else -> CaptionScreen(state, current.display, look, onStatusTap, onSettings = { showingSettings.value = true }, onHistory = { showingHistory = true })
