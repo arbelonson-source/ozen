@@ -35,6 +35,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +45,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.core.view.WindowCompat
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.KeywordHit
@@ -54,6 +56,7 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.UILanguage
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
@@ -339,6 +342,55 @@ class CaptionScreenDeviceTest {
         compose.runOnUiThread { action.action() }
         assertTrue("never spoke for the screen reader", within(10_000) { app.captions.isSpeaking })
         assertTrue(within(15_000) { !app.captions.isSpeaking })
+    }
+
+    @Test
+    fun theSayScreenSaysWhatSheTypesOrTapsStopsItAndKeepsWhatSheTyped() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val phrasesBefore = app.settings.current.value.quickPhrases
+        val typed = "Thank you very much for coming to see me today, I will read everything you say on my phone, so please speak slowly and clearly"
+        app.settings.change { it.quickPhrases = AppSettings.defaultQuickPhrases(UILanguage.Hebrew) }
+        try {
+            assertTrue("no voice on the phone", within(15_000) { app.captions.canAskToRepeat() })
+            compose.onNodeWithContentDescription("Say something out loud").performClick()
+            compose.onNodeWithText("Say something").assertExists()
+            compose.onNodeWithText("Slower, please").performScrollTo()
+            compose.onNodeWithText("Play").performScrollTo().assertIsNotEnabled()
+            compose.onNode(hasSetTextAction()).performTextInput(typed)
+            compose.onNodeWithText("Play").performClick()
+            assertTrue("never spoke", within(10_000) { app.captions.isSpeaking })
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Stop").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Stop").performClick()
+            assertTrue("never stopped", within(1_500) { !app.captions.isSpeaking })
+            compose.onNodeWithContentDescription("Play again: $typed").assertExists()
+            compose.onNodeWithContentDescription("Add to quick phrases").performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.quickPhrases == AppSettings.defaultQuickPhrases(UILanguage.English) + typed }
+            compose.onNodeWithContentDescription("Add to quick phrases").assertDoesNotExist()
+
+            compose.onNodeWithText("Slower, please").performScrollTo().performClick()
+            assertTrue("the quick phrase was never said", within(10_000) { app.captions.isSpeaking })
+            assertTrue(within(15_000) { !app.captions.isSpeaking })
+
+            compose.onNodeWithText("Close").performScrollTo().performClick()
+            compose.onNodeWithText("Say something").assertDoesNotExist()
+            compose.onNodeWithContentDescription("Say something out loud").performClick()
+            compose.onNode(hasSetTextAction()).assert(hasText(typed))
+        } finally {
+            app.settings.change { it.quickPhrases = phrasesBefore }
+        }
+    }
+
+    @Test
+    fun whileThePhoneTalksTheCaptionScreensSayButtonStopsItInsteadOfOpening() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        assertTrue("no voice on the phone", within(15_000) { app.captions.canAskToRepeat() })
+        compose.runOnUiThread { app.captions.askToRepeat() }
+        assertTrue("never spoke", within(10_000) { app.captions.isSpeaking })
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Stop speaking").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithContentDescription("Stop speaking").performClick()
+        assertTrue("never stopped", within(5_000) { !app.captions.isSpeaking })
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Say something out loud").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Say something").assertDoesNotExist()
     }
 
     private fun within(millis: Long, condition: () -> Boolean): Boolean {

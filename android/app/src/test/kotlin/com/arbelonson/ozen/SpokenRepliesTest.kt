@@ -166,6 +166,16 @@ class SpokenRepliesTest {
     }
 
     @Test
+    fun `the screen hears when the phone starts and stops talking`() = runTest {
+        val replies = SpokenReplies(voice, this, captions)
+        val heard = mutableListOf<Boolean>()
+        replies.onSpeaking = { heard += it }
+        replies.speak("Hello", rate = 0.45f)
+        voice.finish()
+        assertEquals(listOf(true, false), heard)
+    }
+
+    @Test
     fun `asking them to repeat says it in the app's language`() = runTest {
         val replies = SpokenReplies(voice, this, captions)
         Localization.withLanguage(UILanguage.English) { replies.askToRepeat(rate = 0.5f) }

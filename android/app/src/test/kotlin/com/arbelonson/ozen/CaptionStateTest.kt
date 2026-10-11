@@ -75,6 +75,15 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `the phone speaking stays known through new captions until it stops`() {
+        CaptionState.speaking(true)
+        show(PipelinePhase.Paused, listOf(line("Hello", committed = true)))
+        assertTrue(CaptionState.screen.value.speaking)
+        CaptionState.speaking(false)
+        assertFalse(CaptionState.screen.value.speaking)
+    }
+
+    @Test
     fun `the important words heard lately are the last ten, newest first`() {
         val grandma = UUID.randomUUID()
         val hits = (1..12).map { KeywordHit(segmentID = UUID.randomUUID(), match = KeywordMatch(grandma, "סבתא", "סבתא", 0), timestamp = it.toDouble()) }

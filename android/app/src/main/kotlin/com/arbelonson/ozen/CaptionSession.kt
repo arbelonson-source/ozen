@@ -10,6 +10,7 @@ import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.HomeServerEngine
 import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SpeakerEmbedding
@@ -161,6 +162,7 @@ class CaptionSession(
         }
         pipeline.onCaptionsChanged = ::publish
         pipeline.onKeywordHits = ::wordsHeard
+        replies.onSpeaking = CaptionState::speaking
     }
 
     fun listen() {
@@ -187,6 +189,16 @@ class CaptionSession(
 
     fun askToRepeat() {
         replies.askToRepeat(settings.current.value.speechRate)
+    }
+
+    fun canSay(text: String) = replies.canSay(text)
+
+    fun speak(text: String) = replies.speak(text, settings.current.value.speechRate)
+
+    fun stopSpeaking() = replies.stop()
+
+    fun addQuickPhrase(phrase: String) {
+        settings.change { it.quickPhrases = QuickPhrases.adding(phrase, it.quickPhrases, Localization.language) }
     }
 
     fun memoryShort(footprintBytes: Long) {

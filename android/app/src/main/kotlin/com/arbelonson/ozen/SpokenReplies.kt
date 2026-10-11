@@ -20,6 +20,8 @@ class SpokenReplies(private val voice: SpeechSynthesizing, private val scope: Co
 
     private val hold = SpeechPauseCoordinator()
 
+    var onSpeaking: ((Boolean) -> Unit)? = null
+
     init {
         voice.onSpeakingChanged = ::speakingChanged
     }
@@ -52,6 +54,7 @@ class SpokenReplies(private val voice: SpeechSynthesizing, private val scope: Co
     }
 
     private fun speakingChanged(speaking: Boolean) {
+        onSpeaking?.invoke(speaking)
         if (speaking) return
         val generation = hold.speechWentQuiet() ?: return
         scope.launch {

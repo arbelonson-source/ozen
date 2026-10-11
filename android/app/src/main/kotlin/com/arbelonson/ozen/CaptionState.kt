@@ -42,6 +42,7 @@ data class CaptionScreenState(
     val lastActivityAt: Double? = null,
     val heard: HeardWord? = null,
     val recentlyHeard: List<KeywordHit> = emptyList(),
+    val speaking: Boolean = false,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
@@ -115,12 +116,18 @@ object CaptionState {
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),
             heard = state.value.heard,
             recentlyHeard = recentlyHeard.takeLast(10).reversed(),
+            speaking = state.value.speaking,
         )
     }
 
     /** An important word was said, and should buzz and show for a moment; kept through new captions. */
     fun heard(word: HeardWord) {
         state.value = state.value.copy(heard = word)
+    }
+
+    /** The phone started or stopped saying something for her: the caption screen's Say button stops it meanwhile. */
+    fun speaking(on: Boolean) {
+        state.value = state.value.copy(speaking = on)
     }
 
     /** A star given or taken away shows on the line at once, before the next captions. */

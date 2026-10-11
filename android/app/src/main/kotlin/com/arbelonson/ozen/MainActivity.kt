@@ -203,6 +203,8 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
     val current by app.settings.current.collectAsStateWithLifecycle()
     var showingHistory by rememberSaveable { mutableStateOf(false) }
     var reading by rememberSaveable { mutableStateOf<Pair<UUID, UUID>?>(null) }
+    var saying by rememberSaveable { mutableStateOf(false) }
+    var sayDraft by rememberSaveable { mutableStateOf("") }
     var awakeClock by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1_000.0) }
     LaunchedEffect(state.phase.isListening) {
         while (true) {
@@ -227,6 +229,17 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     onClose = { reading = null },
                     line = opened.second,
                 )
+                saying -> SayScreen(
+                    draft = sayDraft,
+                    onDraft = { sayDraft = it },
+                    speaking = state.speaking,
+                    phrases = QuickPhrases.shown(current.quickPhrases, Localization.language),
+                    canSay = app.captions::canSay,
+                    onSpeak = app.captions::speak,
+                    onStop = app.captions::stopSpeaking,
+                    onAddPhrase = app.captions::addQuickPhrase,
+                    onClose = { saying = false },
+                )
                 showingHistory -> HistoryScreen(
                     app.captions.savedConversations,
                     saving = current.saveHistory,
@@ -249,6 +262,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     },
                     onAddWord = { app.captions.addWord(it) },
                     onAskToRepeat = { app.captions.askToRepeat() }.takeIf { app.captions.canAskToRepeat() },
+                    onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
                 )
             }
             PairingDialogs(app.pairing)
@@ -331,6 +345,7 @@ private fun CaptionScreen(
     onOpen: (conversation: UUID, line: UUID) -> Unit,
     onAddWord: (String) -> Unit,
     onAskToRepeat: (() -> Unit)?,
+    onSay: () -> Unit,
 ) {
     val list = rememberLazyListState()
     val context = LocalContext.current
@@ -421,6 +436,13 @@ private fun CaptionScreen(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     TextButton(onClick = onHistory) {
                         Text(tr("היסטוריה", "History"), fontSize = 18.sp)
+                    }
+                    // While the phone talks, this stops it at once instead of
+                    // opening the Say screen, as on the iPhone: captions stay
+                    // paused for as long as it talks.
+                    val say = if (state.speaking) tr("עצירת הדיבור", "Stop speaking") else tr("להגיד משהו בקול", "Say something out loud")
+                    TextButton(onClick = onSay, modifier = Modifier.semantics { contentDescription = say }) {
+                        Text(if (state.speaking) "■ " + tr("להגיד", "Say") else tr("להגיד", "Say"), fontSize = 18.sp)
                     }
                     TextButton(onClick = onSettings) {
                         Text(tr("הגדרות", "Settings"), fontSize = 18.sp)
