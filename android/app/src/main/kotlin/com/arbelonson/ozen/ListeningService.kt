@@ -17,7 +17,7 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -34,13 +34,14 @@ class ListeningService : Service() {
             finish()
             return START_NOT_STICKY
         }
+        val drawn = shown()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
         } else {
             startForeground(NOTIFICATION_ID, notification())
         }
         captions.listen()
-        if (watching == null) watching = scope.launch { watch() }
+        if (watching == null) watching = scope.launch { watch(drawn) }
         return START_NOT_STICKY
     }
 
@@ -51,13 +52,21 @@ class ListeningService : Service() {
         super.onDestroy()
     }
 
-    private suspend fun watch() {
+    private fun shown(screen: CaptionScreenState = CaptionState.screen.value, onLockScreen: Boolean = (application as OzenApplication).settings.current.value.display.lockScreenCaptions) =
+        Triple(screen.phase, screen.status.title, screen.lines.lastOrNull { it.isFinal }?.text) to onLockScreen
+
+    /**
+     * Skips only what the first notification already shows: the watcher
+     * starts a moment after it, and a lock-screen switch made in between
+     * was the first value seen and skipped, leaving the line on the locked
+     * phone she had just hidden.
+     */
+    private suspend fun watch(drawn: Pair<Triple<PipelinePhase, String, String?>, Boolean>) {
         val manager = getSystemService(NotificationManager::class.java)
         CaptionState.screen
-            .map { screen -> Triple(screen.phase, screen.status.title, screen.lines.lastOrNull { it.isFinal }?.text) }
-            .combine((application as OzenApplication).settings.current.map { it.display.lockScreenCaptions }) { shown, onLockScreen -> shown to onLockScreen }
+            .combine((application as OzenApplication).settings.current.map { it.display.lockScreenCaptions }) { screen, onLockScreen -> shown(screen, onLockScreen) }
             .distinctUntilChanged()
-            .drop(1)
+            .dropWhile { it == drawn }
             .collect { (shown, _) ->
                 val phase = shown.first
                 if (phase == PipelinePhase.Idle || phase == PipelinePhase.Paused) {
