@@ -69,8 +69,9 @@ either unreliable with external microphones or too shallow to trust.
   </tr>
 </table>
 
-<sub>Shown in English, the sample conversation too, so it reads here. Ozen
-captions Hebrew speech; the interface comes in twelve languages.</sub>
+<sub>Shown in English, the sample conversation too, so it reads here. Ozen is
+built around Hebrew speech and can caption any of its twelve interface
+languages instead, chosen on first launch or in Settings.</sub>
 
 ## Why this exists
 
@@ -102,7 +103,7 @@ things, for Hebrew conversation, on the phone by default.
   <tr>
     <td width="33%" valign="top"><img src="docs/assets/icons/recover.svg" width="44" alt=""><br><b>Recovers by itself</b><br>A dropped recognizer, a failed audio session or a stalled download is retried, and the status line says so.</td>
     <td width="33%" valign="top"><img src="docs/assets/icons/computer.svg" width="44" alt=""><br><b>Home computer, optional</b><br>A PC with an NVIDIA card can write the captions instead, paired with a QR code.</td>
-    <td width="33%" valign="top"><img src="docs/assets/icons/globe.svg" width="44" alt=""><br><b>Twelve languages</b><br>Buttons and settings follow the phone's language, or the one picked in Settings. The captions are of Hebrew speech.</td>
+    <td width="33%" valign="top"><img src="docs/assets/icons/globe.svg" width="44" alt=""><br><b>Twelve languages</b><br>Buttons and settings follow the phone's language or the one picked in Settings. The captions are of the language people around you speak, Hebrew unless you pick another.</td>
   </tr>
 </table>
 
@@ -513,8 +514,17 @@ Open a section for the details.
   Every piece of text is written as `tr(hebrew, english)`, with every other
   language drawn from a translation table keyed by the English text
   (`scripts/check-translations.py` checks both); Hebrew and Arabic read
-  right to left, and caption lines stay right to left for Hebrew speech
-  either way.
+  right to left, and each caption line reads the way its own words do.
+- **The spoken language**, chosen in the first-launch walkthrough and in
+  Settings apart from the interface language, from the same twelve. Hebrew
+  keeps Ozen's Hebrew-trained model; the other eleven use the general
+  Whisper Turbo model from its public page on Hugging Face (on Android,
+  whisper.cpp's version, downloaded the first time captions start), and a
+  home computer loads the general model while such a phone is connected.
+  The suggested alert names are offered as said in the spoken language, and
+  a lone English "you" is kept when the model is sure of it. Amharic
+  captions are weak, as the general model handles it poorly, and tappable
+  phone numbers are Israeli formats.
 - **Diagnostics screen** with every pipeline counter (audio chunks, tokens,
   caption lag, restarts, speaker clusters), free space, memory use, a
   timeline of the last failures, retries, microphone stalls, phone calls
@@ -689,7 +699,8 @@ room, has been the recommended model since 9 October 2026; see
 An Android version is being built in `android/`, started on 10 October
 2026 as a full Kotlin rewrite. The portable core and the caption pipeline
 are ported (about 1,600 tests on the JVM), and whisper.cpp runs on the
-phone with the same Hebrew model as the iPhone. The main screens work on
+phone with the same Hebrew model as the iPhone, or with its general Turbo
+model, downloaded on first use, for the other spoken languages. The main screens work on
 an emulator (the first-launch walkthrough, captions, History, Settings,
 Diagnostics, and typing a reply for the phone to say), but there is no
 build to install yet. The plan and how far it has got are in

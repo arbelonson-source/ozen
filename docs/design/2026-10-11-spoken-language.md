@@ -56,6 +56,13 @@ computer receives it when captions start. Nothing on screen sets it yet.
 7. **Docs**: the README says Ozen captions Hebrew speech; it changes once
    the choice works on both apps.
 
+## Where it stands
+
+All seven steps were done on 11 October, on both apps and the home
+computer. Android downloads only the general model, pinned to one revision
+of whisper.cpp's models with its published size and checksum; Ozen's
+Hebrew model still has to be put on an Android phone by hand.
+
 ## Known limits
 
 - Amharic captions will be weak: the general models handle it poorly.
