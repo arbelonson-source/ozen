@@ -67,11 +67,11 @@ internal fun StarredLinesRow(count: Int, onOpen: () -> Unit) {
  * conversation deleted there takes its lines off this list too.
  */
 @Composable
-internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertain: Boolean, emphasizeNumbers: Boolean, onClose: () -> Unit) {
+internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertain: Boolean, emphasizeNumbers: Boolean, onClose: () -> Unit, languageCode: String = "he") {
     var opened by rememberSaveable { mutableStateOf<Pair<UUID, UUID>?>(null) }
     val open = opened
     if (open != null) {
-        ConversationScreen(conversations, open.first, query = "", marksUncertain = marksUncertain, emphasizeNumbers = emphasizeNumbers, onClose = { opened = null }, line = open.second)
+        ConversationScreen(conversations, open.first, query = "", marksUncertain = marksUncertain, emphasizeNumbers = emphasizeNumbers, onClose = { opened = null }, line = open.second, languageCode = languageCode)
         return
     }
     BackHandler(onBack = onClose)
@@ -108,7 +108,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
                             Heading(HistoryDays.title(of = starred.first().sessionStartedAt, now = now, utcOffsetSeconds = ::localOffset))
                         }
                         items(starred, key = { it.id.toString() }) { line ->
-                            StarredLineView(SavedLine.of(line, markUncertain = marksUncertain), emphasizeNumbers, onOpen = { opened = line.sessionID to line.id })
+                            StarredLineView(SavedLine.of(line, markUncertain = marksUncertain, languageCode = languageCode), emphasizeNumbers, onOpen = { opened = line.sessionID to line.id })
                         }
                     }
                 }
@@ -137,13 +137,17 @@ private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: 
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
-        }
-        Row {
-            if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(captionText(line.text, emphasizeNumbers, numberColor = null), style = MaterialTheme.typography.bodyLarge)
+        LineDirection(line.rightToLeft) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
+                }
+                Row {
+                    if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(captionText(line.text, emphasizeNumbers, numberColor = null), style = MaterialTheme.typography.bodyLarge)
+                }
+            }
         }
     }
 }

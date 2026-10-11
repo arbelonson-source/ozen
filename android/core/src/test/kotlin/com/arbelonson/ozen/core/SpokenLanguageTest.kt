@@ -9,6 +9,16 @@ import kotlin.test.assertTrue
 
 class SpokenLanguageTest {
     @Test
+    fun `a caption line reads from the right by its own letters, and one with none, a time or a number, follows the spoken language`() {
+        assertTrue(CaptionLayout.readsRightToLeft("OK, مرحبا", languageCode = "en"))
+        assertFalse(CaptionLayout.readsRightToLeft("How did you sleep?", languageCode = "he"))
+        assertFalse(CaptionLayout.readsRightToLeft("Привет", languageCode = "he"))
+        assertTrue(CaptionLayout.readsRightToLeft("10:30", languageCode = "he"))
+        assertFalse(CaptionLayout.readsRightToLeft("10:30", languageCode = "en"))
+        assertEquals("10:30", CaptionLayout.displayText("10:30", languageCode = "en"))
+    }
+
+    @Test
     fun `Hebrew until she chooses, as before there was a choice`() {
         assertEquals(UILanguage.Hebrew, AppSettings.default.spokenLanguage)
     }

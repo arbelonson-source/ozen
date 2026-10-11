@@ -196,6 +196,30 @@ class HistoryRowsTest {
     }
 
     @Test
+    fun `a saved line reads from the side its own words do, and a time alone follows the spoken language, as on the iPhone`() {
+        val record = TranscriptSessionRecord(
+            startedAt = morning,
+            endedAt = morning + 60,
+            engine = TranscriptionEngineKind.WhisperKit,
+            modelVariant = null,
+            inputName = null,
+            segments = listOf(line("How did you sleep?", morning), line("10:30", morning + 10), line("שלום לכולם", morning + 20)),
+        )
+        val english = SavedLine.of(record, jerusalem, languageCode = "en")
+        assertEquals(listOf(false, false, true), english.map { it.rightToLeft })
+        assertEquals("10:30", english[1].text)
+
+        val hebrew = SavedLine.of(record, jerusalem, languageCode = "he")
+        assertEquals(listOf(false, true, true), hebrew.map { it.rightToLeft })
+        assertEquals(CaptionLayout.displayText("10:30", "he"), hebrew[1].text)
+
+        val starred = StarredLine(UUID.randomUUID(), morning, line("10:30", morning).copy(isStarred = true))
+        assertFalse(SavedLine.of(starred, jerusalem, languageCode = "en").rightToLeft)
+        assertEquals("10:30", SavedLine.of(starred, jerusalem, languageCode = "en").text)
+        assertTrue(SavedLine.of(starred, jerusalem, languageCode = "he").rightToLeft)
+    }
+
+    @Test
     fun `a saved line copies as said, its phone number kept in order for a Hebrew chat`() {
         val record = TranscriptSessionRecord(
             startedAt = morning,

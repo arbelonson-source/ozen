@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
@@ -48,6 +50,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.math.abs
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -486,6 +489,32 @@ class HistoryScreenDeviceTest {
         compose.waitUntil(5_000) { shownLine("Marks test two pills after dinner") }
         assertTrue(compose.onAllNodesWithContentDescription("May not have been heard", substring = true).fetchSemanticsNodes().isEmpty())
         compose.onNodeWithContentDescription("Marked as important. Marks test call the pharmacy", substring = true).assertExists()
+    }
+
+    @Test
+    fun aSavedLineSitsOnTheSideItsOwnWordsReadFromWhateverTheAppsLanguage() {
+        seed("Side test how did you sleep" to null, "שלום לכולם" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Side test how did you sleep")
+        compose.onNodeWithText("Side test how did you sleep", substring = true).performClick()
+        compose.waitUntil(5_000) { shownLine("שלום לכולם") }
+        val english = inkMiddle("Side test how did you sleep")
+        val hebrew = inkMiddle("שלום לכולם")
+        assertTrue("English ink centred at $english of the line", english < 0.4f)
+        assertTrue("Hebrew ink centred at $hebrew of the line", hebrew > 0.6f)
+    }
+
+    private fun inkMiddle(line: String): Float {
+        val pixels = compose.onNodeWithContentDescription(line, substring = true).captureToImage().toPixelMap()
+        val background = pixels[0, 0]
+        val inked = (0 until pixels.width).filter { x ->
+            (0 until pixels.height).any { y ->
+                val pixel = pixels[x, y]
+                maxOf(abs(pixel.red - background.red), abs(pixel.green - background.green), abs(pixel.blue - background.blue)) > 0.3f
+            }
+        }
+        assertTrue("no ink drawn for $line", inked.isNotEmpty())
+        return (inked.first() + inked.last()) / 2f / pixels.width
     }
 
     @Test

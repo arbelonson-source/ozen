@@ -53,10 +53,12 @@ data class SavedLine(
     val unsure: Boolean = false,
     val copied: String = text,
     val phones: List<PhoneNumbers.Match> = emptyList(),
+    /** Laid out from the right, as `CaptionLayout.readsRightToLeft` says for its words. */
+    val rightToLeft: Boolean = true,
 ) {
     companion object {
         /** [markUncertain]: the caption screen's question mark, kept on saved lines as on the iPhone. */
-        fun of(record: TranscriptSessionRecord, zone: ZoneId = ZoneId.systemDefault(), markUncertain: Boolean = false): List<SavedLine> {
+        fun of(record: TranscriptSessionRecord, zone: ZoneId = ZoneId.systemDefault(), markUncertain: Boolean = false, languageCode: String = "he"): List<SavedLine> {
             val timed = CaptionLayout.timeMarkedLineIDs(record.segments)
             return record.segments.mapIndexed { index, segment ->
                 val previous = record.segments.getOrNull(index - 1)
@@ -66,12 +68,13 @@ data class SavedLine(
                     id = segment.id,
                     time = time,
                     speaker = segment.speakerName.takeIf { CaptionLayout.showsSpeakerLabel(segment, previous) },
-                    text = CaptionLayout.displayText(segment.text),
+                    text = CaptionLayout.displayText(segment.text, languageCode),
                     spoken = SavedLineSpeech.label(segment, time, uncertain = unsure),
                     starred = segment.isStarred,
                     unsure = unsure,
                     copied = CaptionLayout.copiedText(segment.text),
                     phones = PhoneNumbers.matches(segment.text),
+                    rightToLeft = CaptionLayout.readsRightToLeft(segment.text, languageCode),
                 )
             }
         }
@@ -81,7 +84,7 @@ data class SavedLine(
          * a "Speaker 2" left out, and not read as starred, which the list
          * already says.
          */
-        fun of(line: StarredLine, zone: ZoneId = ZoneId.systemDefault(), markUncertain: Boolean = false): SavedLine {
+        fun of(line: StarredLine, zone: ZoneId = ZoneId.systemDefault(), markUncertain: Boolean = false, languageCode: String = "he"): SavedLine {
             val segment = line.segment
             val time = clockTime(segment.startTimestamp, zone)
             val speaker = segment.speakerName?.takeUnless { it.isBlank() || TranscriptSessionSummary.isGenericLabel(it) }
@@ -90,11 +93,12 @@ data class SavedLine(
                 id = segment.id,
                 time = time,
                 speaker = speaker,
-                text = CaptionLayout.displayText(segment.text),
+                text = CaptionLayout.displayText(segment.text, languageCode),
                 spoken = SavedLineSpeech.label(segment.copy(speakerName = speaker, isStarred = false), time, uncertain = unsure),
                 starred = true,
                 unsure = unsure,
                 copied = CaptionLayout.copiedText(segment.text),
+                rightToLeft = CaptionLayout.readsRightToLeft(segment.text, languageCode),
             )
         }
     }

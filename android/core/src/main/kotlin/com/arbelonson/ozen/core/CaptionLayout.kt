@@ -163,6 +163,22 @@ object CaptionLayout {
 
     internal fun isRightToLeft(languageCode: String): Boolean = TextDirection.isRightToLeft(languageCode)
 
+    /**
+     * Whether a caption line reads from the right: one with a right-to-left
+     * letter does, one with only left-to-right letters doesn't, and one with
+     * no letters at all (a time, a number) follows the spoken language.
+     */
+    fun readsRightToLeft(text: String, languageCode: String): Boolean {
+        var index = 0
+        while (index < text.length) {
+            val codePoint = text.codePointAt(index)
+            if (TextDirection.isRightToLeftLetter(codePoint)) return true
+            index += Character.charCount(codePoint)
+        }
+        if (hasOnlyLeftToRightLetters(text)) return false
+        return isRightToLeft(languageCode)
+    }
+
     private val enders = setOf(".", "?", "!", "…")
     private val closers = setOf("\"", "'", "”", "’", ")", "]", "״", "׳")
 

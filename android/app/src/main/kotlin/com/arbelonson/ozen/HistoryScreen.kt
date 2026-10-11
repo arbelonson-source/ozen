@@ -43,6 +43,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,6 +61,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -73,6 +75,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.ByteSize
@@ -147,18 +150,19 @@ fun HistoryScreen(
     marksUncertain: Boolean,
     emphasizeNumbers: Boolean,
     onClose: () -> Unit,
+    languageCode: String = "he",
 ) {
     var openID by rememberSaveable { mutableStateOf<String?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var speakerFilter by rememberSaveable { mutableStateOf<String?>(null) }
     val open = openID
     if (open != null) {
-        ConversationScreen(conversations, UUID.fromString(open), query, marksUncertain, emphasizeNumbers, onClose = { openID = null })
+        ConversationScreen(conversations, UUID.fromString(open), query, marksUncertain, emphasizeNumbers, onClose = { openID = null }, languageCode = languageCode)
         return
     }
     var showingStarred by rememberSaveable { mutableStateOf(false) }
     if (showingStarred) {
-        StarredLinesScreen(conversations, marksUncertain, emphasizeNumbers, onClose = { showingStarred = false })
+        StarredLinesScreen(conversations, marksUncertain, emphasizeNumbers, onClose = { showingStarred = false }, languageCode = languageCode)
         return
     }
     BackHandler(onBack = onClose)
@@ -492,9 +496,9 @@ private class OpenConversation(
     val headerItems: Int get() = (if (stats != null) 1 else 0) + (if (numbers?.listed?.isNotEmpty() == true) 1 else 0)
 }
 
-private fun opened(record: TranscriptSessionRecord?, query: String, marksUncertain: Boolean) = OpenConversation(
+private fun opened(record: TranscriptSessionRecord?, query: String, marksUncertain: Boolean, languageCode: String) = OpenConversation(
     record = record,
-    lines = record?.let { SavedLine.of(it, markUncertain = marksUncertain) } ?: emptyList(),
+    lines = record?.let { SavedLine.of(it, markUncertain = marksUncertain, languageCode = languageCode) } ?: emptyList(),
     matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
     numbers = record?.takeIf { query.isBlank() }?.let(NumbersMentioned::of),
     starred = record?.takeIf { query.isBlank() }?.segments?.filter { it.isStarred }?.map { it.id } ?: emptyList(),
@@ -522,6 +526,7 @@ internal fun ConversationScreen(
     emphasizeNumbers: Boolean,
     onClose: () -> Unit,
     line: UUID? = null,
+    languageCode: String = "he",
 ) {
     BackHandler(onBack = onClose)
     DisposableEffect(id) {
@@ -546,7 +551,7 @@ internal fun ConversationScreen(
     LaunchedEffect(id, marksUncertain) {
         var jumped = false
         while (true) {
-            val now = withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain) }
+            val now = withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) }
             show(now)
             if (!jumped && now.matches.isNotEmpty()) {
                 jumped = true
@@ -622,7 +627,7 @@ internal fun ConversationScreen(
                         SavedLineView(line, isMatch = line.id in matched, emphasizeNumbers = emphasizeNumbers) {
                             scope.launch {
                                 conversations.toggleStar(id, line.id)
-                                show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain) })
+                                show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
                             }
                         }
                     }
@@ -653,7 +658,7 @@ internal fun ConversationScreen(
                             show(
                                 withContext(Dispatchers.IO) {
                                     conversations.rename(id, draft)
-                                    opened(conversations.load(id), query, marksUncertain)
+                                    opened(conversations.load(id), query, marksUncertain, languageCode)
                                 },
                             )
                         }
@@ -811,15 +816,24 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
             DropdownMenuItem(text = { Text(star) }, onClick = { menu = false; onStar() })
             DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
         }
-        line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
-        Row {
-            if (line.starred) Text("★", color = starColour(), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 6.dp))
-            if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(captionText(line.text, emphasizeNumbers, numberColor = null, linkingPhoneNumbers = true), style = MaterialTheme.typography.bodyLarge)
+        LineDirection(line.rightToLeft) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
+                Row {
+                    if (line.starred) Text("★", color = starColour(), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 6.dp))
+                    if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(captionText(line.text, emphasizeNumbers, numberColor = null, linkingPhoneNumbers = true), style = MaterialTheme.typography.bodyLarge)
+                }
+            }
         }
     }
 }
+
+/** A saved line laid out from the side its own words read from, as on the iPhone, whatever the app's language. */
+@Composable
+internal fun LineDirection(rightToLeft: Boolean, content: @Composable () -> Unit) =
+    CompositionLocalProvider(LocalLayoutDirection provides if (rightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr, content = content)
 
 /**
  * A finger held still on the line. Watched before the text inside sees the

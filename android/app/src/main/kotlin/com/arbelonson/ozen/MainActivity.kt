@@ -344,6 +344,7 @@ private fun OzenApp(
                         app.captions.loadRecentConversation()
                     },
                     line = opened.second,
+                    languageCode = current.languageCode,
                 )
                 namingAlert -> NameAlertScreen(current, onAddName = app.captions::addNameAlert, onAddAlert = app.captions::addAlert, onClose = { namingAlert = false })
                 choosingMicrophone -> MicPickerScreen(
@@ -380,6 +381,7 @@ private fun OzenApp(
                     marksUncertain = current.display.markUncertainLines,
                     emphasizeNumbers = current.display.emphasizeNumbers,
                     onClose = { showingHistory = false },
+                    languageCode = current.languageCode,
                 )
                 else -> {
                     LaunchedEffect(Unit) { if (app.captions.takeFirstAppearance()) onLaunch() }
