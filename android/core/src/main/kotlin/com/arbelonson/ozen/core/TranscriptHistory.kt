@@ -852,17 +852,12 @@ class TranscriptHistoryStore(private val directory: File) {
         }
     }
 
-    /** Bytes used by conversations and their summaries. */
-    fun totalSizeOnDisk(): Long {
-        if (!directory.exists()) return 0
-        var total = 0L
-        Files.walk(directory.toPath()).use { paths ->
-            for (path in paths) {
-                if (Files.isRegularFile(path)) total += Files.size(path)
-            }
-        }
-        return total
-    }
+    /**
+     * Bytes used by conversations and their summaries. A file deleted or
+     * replaced while this counts is passed over, as on the iPhone: walking
+     * with java.nio threw then, and History's opening went with it.
+     */
+    fun totalSizeOnDisk(): Long = directory.walkTopDown().filter { it.isFile }.sumOf { it.length() }
 
     /**
      * One word of a search. Saved text is searched for the word as typed,

@@ -6,6 +6,8 @@ import java.nio.file.attribute.FileTime
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.TimeZone
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -722,6 +724,36 @@ class TranscriptHistoryTest {
 
             store.deleteAll()
             assertEquals(0L, store.totalSizeOnDisk())
+        }
+    }
+
+    @Test
+    fun `counting what is saved goes past a conversation deleted or replaced while it counts, as the iPhone's does`() {
+        withHistoryDirectory("ozen-history") { dir ->
+            val store = TranscriptHistoryStore(dir)
+            store.save(record(startedAt = 100.0, segments = listOf(segment(text = "kept"))))
+            val churning = AtomicBoolean(true)
+            val churn = thread {
+                var round = 0
+                while (churning.get()) {
+                    val files = (0 until 50).map { File(dir, "${UUID(0, (round * 50 + it).toLong())}.json") }
+                    files.forEach { it.writeText("{}") }
+                    files.forEach { it.delete() }
+                    round += 1
+                }
+            }
+            try {
+                val deadline = System.nanoTime() + 1_500_000_000L
+                var counts = 0
+                while (System.nanoTime() < deadline) {
+                    val failure = runCatching { store.totalSizeOnDisk() }.exceptionOrNull()
+                    assertNull(failure, "count $counts failed: $failure")
+                    counts += 1
+                }
+            } finally {
+                churning.set(false)
+                churn.join()
+            }
         }
     }
 
