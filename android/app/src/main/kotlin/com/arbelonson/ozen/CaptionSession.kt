@@ -79,6 +79,8 @@ class CaptionSession(
 
         override fun rename(id: UUID, title: String) = conversations.rename(id, title)
 
+        override fun toggleStar(sessionID: UUID, segmentID: UUID) = conversations.toggleStar(sessionID, segmentID)
+
         override fun switchSaving(on: Boolean) = conversations.switchSaving(on)
 
         override suspend fun keepFor(retention: HistoryRetention) {

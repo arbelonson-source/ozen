@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -12,6 +13,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isDisplayed
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -20,6 +22,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.HistoryRetention
@@ -337,6 +340,25 @@ class HistoryScreenDeviceTest {
         compose.waitUntil(5_000) { shownLine("Marks test two pills after dinner") }
         assertTrue(compose.onAllNodesWithContentDescription("May not have been heard", substring = true).fetchSemanticsNodes().isEmpty())
         compose.onNodeWithContentDescription("Marked as important. Marks test call the pharmacy", substring = true).assertExists()
+    }
+
+    @Test
+    fun aSavedLineIsStarredByHoldingItAndTheStarTakenAwayByTheScreenReaderAction() {
+        val id = seed("Star test opening line" to null, "Star test the pharmacy closes at nine" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Star test opening line")
+        compose.onNodeWithText("Star test opening line", substring = true).performClick()
+        compose.waitUntil(5_000) { shownLine("Star test the pharmacy closes at nine") }
+        compose.onNodeWithContentDescription("Star test the pharmacy closes at nine", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText("Mark as important").performClick()
+        compose.waitUntil(5_000) { store.load(id)!!.segments.map { it.isStarred } == listOf(false, true) }
+        compose.waitUntil(5_000) { shownLine("Marked as important. Star test the pharmacy closes at nine") }
+
+        val line = compose.onNodeWithContentDescription("Star test the pharmacy closes at nine", substring = true).fetchSemanticsNode()
+        val remove = line.config[SemanticsActions.CustomActions].single { it.label == "Remove the star" }
+        compose.runOnUiThread { remove.action() }
+        compose.waitUntil(5_000) { store.load(id)!!.segments.none { it.isStarred } }
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Marked as important", substring = true).fetchSemanticsNodes().isEmpty() }
     }
 
     private fun sharedCopies() = File(app.cacheDir, CaptionSession.SHARED_FOLDER).listFiles()?.toList() ?: emptyList()

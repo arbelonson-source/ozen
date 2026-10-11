@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,10 +50,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -97,6 +101,9 @@ interface SavedConversations {
 
     /** Names a conversation, or takes its name away with a blank one. */
     fun rename(id: UUID, title: String)
+
+    /** Stars a saved line or takes its star away: its new state, or null when it is gone. */
+    fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean?
 
     fun switchSaving(on: Boolean)
 
@@ -405,7 +412,17 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
                             }
                         }
                     }
-                    items(shown.lines, key = { it.id.toString() }) { line -> SavedLineView(line, isMatch = line.id in matched) }
+                    items(shown.lines, key = { it.id.toString() }) { line ->
+                        SavedLineView(line, isMatch = line.id in matched) {
+                            scope.launch {
+                                conversations.toggleStar(id, line.id)
+                                val starred = withContext(Dispatchers.IO) { conversations.load(id) }
+                                loaded?.let {
+                                    loaded = OpenConversation(starred, starred?.let { record -> SavedLine.of(record, markUncertain = marksUncertain) } ?: emptyList(), it.matches, it.numbers)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -513,8 +530,10 @@ private fun NumbersSection(numbers: NumbersMentioned, onJump: (SavedSegment) -> 
 }
 
 @Composable
-private fun SavedLineView(line: SavedLine, isMatch: Boolean) {
+private fun SavedLineView(line: SavedLine, isMatch: Boolean, onStar: () -> Unit) {
     val found = tr("מכילה את מה שחיפשת", "Contains what you searched for")
+    val star = if (line.starred) tr("הסרת הסימון", "Remove the star") else tr("סימון כחשובה", "Mark as important")
+    var menu by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -523,8 +542,13 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean) {
             .clearAndSetSemantics {
                 contentDescription = line.spoken
                 if (isMatch) stateDescription = found
-            },
+                customActions = listOf(CustomAccessibilityAction(star) { onStar(); true })
+            }
+            .pointerInput(Unit) { detectTapGestures(onLongPress = { menu = true }) },
     ) {
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            DropdownMenuItem(text = { Text(star) }, onClick = { menu = false; onStar() })
+        }
         line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
         Row {

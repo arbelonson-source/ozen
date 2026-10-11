@@ -42,6 +42,7 @@ class ConversationSaver(
     private var offset = 0
     private val closed = mutableListOf<UUID>()
     private val reading = mutableSetOf<UUID>()
+    private val starred = mutableSetOf<UUID>()
     private var sawListening = false
     private var autosave: Job? = null
     private var lastRetentionCheck = 0.0
@@ -94,6 +95,7 @@ class ConversationSaver(
             engine = using.engine,
             modelVariant = using.modelDescription,
             inputName = inputName(),
+            starred = starred.toSet(),
         )
         if (inBackground) writer.saveInBackground(record) else writer.saveNow(record)
         deleteExpiredIfDue()
@@ -156,6 +158,20 @@ class ConversationSaver(
      */
     fun rename(id: UUID, title: String) = writer.renameNow(id, title)
 
+    /**
+     * Stars a saved line, or takes its star away; the line's new state, or
+     * null when it is gone. A line of the conversation still being captioned
+     * keeps its star here, since every autosave writes that conversation
+     * afresh, and it is saved at once so it reads back starred.
+     */
+    fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean? {
+        if (sessionID != id || currentLines.none { it.id == segmentID }) return writer.toggleStarNow(sessionID, segmentID)
+        val starring = segmentID !in starred
+        if (starring) starred += segmentID else starred -= segmentID
+        save(ended = false)
+        return starring
+    }
+
     fun isCurrent(id: UUID): Boolean = id == this.id
 
     /** A conversation open for reading is not deleted as old while it is read. */
@@ -169,6 +185,7 @@ class ConversationSaver(
 
     private fun forgetCurrent() {
         id = UUID.randomUUID()
+        starred.clear()
         offset = lines().size
         startedAt = null
     }

@@ -278,6 +278,44 @@ class ConversationSaverTest {
     }
 
     @Test
+    fun `a star given in History to a line still being captioned stays through autosaves and stopping`() {
+        start()
+        say("Take two pills after dinner")
+        say("Call the pharmacy")
+        saver.save(ended = false)
+        val conversation = saved().single().id
+        val pills = lines[0].id
+        assertEquals(true, saver.toggleStar(conversation, pills))
+        assertEquals(listOf(true, false), store.load(conversation)!!.segments.map { it.isStarred })
+
+        say("See you next week")
+        scope.advanceTimeBy(20_001)
+        scope.runCurrent()
+        clock += 30
+        stop()
+        assertEquals(listOf(true, false, false), store.load(conversation)!!.segments.map { it.isStarred })
+        assertEquals(1, saved().single().starredCount)
+
+        assertEquals(false, saver.toggleStar(conversation, pills))
+        saver.save(ended = true)
+        assertEquals(listOf(false, false, false), store.load(conversation)!!.segments.map { it.isStarred })
+    }
+
+    @Test
+    fun `a star given to a line of an earlier conversation is written to that conversation`() {
+        val earlier = oldConversation(clock - 3_600)
+        val line = store.load(earlier)!!.segments.single().id
+        start()
+        say("Something else entirely")
+        saver.save(ended = false)
+
+        assertEquals(true, saver.toggleStar(earlier, line))
+        assertTrue(store.load(earlier)!!.segments.single().isStarred)
+        assertTrue(saved().none { it.id != earlier && it.starredCount > 0 })
+        assertNull(saver.toggleStar(earlier, UUID.randomUUID()))
+    }
+
+    @Test
     fun `a conversation open for reading is not deleted as old until it is closed`() {
         settings.historyRetention = HistoryRetention.Week
         val reading = oldConversation(clock - 30 * 86_400)
