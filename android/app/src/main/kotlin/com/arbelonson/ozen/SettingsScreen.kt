@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -56,6 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -127,6 +130,7 @@ fun SettingsScreen(
     speakers: SpeakerBook,
     onCellularDownloads: (Boolean) -> Unit,
     backup: PhoneBackup? = null,
+    scrollToBackup: Boolean = false,
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
@@ -194,7 +198,7 @@ fun SettingsScreen(
                 SwitchRow(tr("להוריד מודלים גם בחבילת הגלישה", "Download models on cellular data too"), current.allowCellularModelDownload, onChange = onCellularDownloads)
             }
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
-            if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft, backup)
+            if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft, backup, scrollToBackup)
             WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
             SavedSpeakersSection(current.speakerProfiles, speakers, onAdd = { showingEnrollment = true })
             BehaviourSection(
@@ -429,6 +433,7 @@ private fun HomeComputerSection(
     addressDraft: MutableState<String>,
     codeDraft: MutableState<String>,
     backup: PhoneBackup?,
+    scrollToBackup: Boolean,
 ) {
     val saved = current.homeServerAddress
     var address by addressDraft
@@ -526,7 +531,15 @@ private fun HomeComputerSection(
     if (backup != null) {
         LaunchedEffect(current.spokenLanguage, current.allowCellularModelDownload) { backup.refreshBackup() }
         val status by backup.backupStatus.collectAsStateWithLifecycle()
-        PhoneBackupRow(status, onDownload = backup::downloadBackup)
+        // Opened from the status's offer of a backup: there, as on the iPhone.
+        val shown = remember { BringIntoViewRequester() }
+        if (scrollToBackup) {
+            LaunchedEffect(Unit) {
+                withFrameNanos {}
+                shown.bringIntoView()
+            }
+        }
+        Box(modifier = Modifier.bringIntoViewRequester(shown)) { PhoneBackupRow(status, onDownload = backup::downloadBackup) }
     }
     HomeComputerBeam(engineSettings, current.homeServerBeam, onMoved = forgetCheck)
     if (hasCode) {

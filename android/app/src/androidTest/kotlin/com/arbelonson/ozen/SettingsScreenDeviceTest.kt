@@ -36,6 +36,8 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.isDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isHeading
@@ -74,6 +76,8 @@ import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
+import com.arbelonson.ozen.core.EngineUnavailability
+import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.PipelineStats
 import com.arbelonson.ozen.core.ProblemAudioStore
@@ -1421,6 +1425,44 @@ class SettingsScreenDeviceTest {
 
         status.value = BackupModelStatus.NotNeeded
         compose.onNodeWithText("Backup on the phone is ready: when the computer can’t be reached, the phone carries on by itself.").assertDoesNotExist()
+    }
+
+    @Test
+    fun theStatusOfferingTheBackupOpensSettingsAtTheBackupAndTheSettingsButtonAtTheTop() {
+        val english = File(app.filesDir, WhisperModelCatalog.phoneModelFile(UILanguage.English))
+        assumeFalse("the English model is already on this phone", english.exists())
+        val languageBefore = app.settings.current.value.spokenLanguage
+        val cellularBefore = app.settings.current.value.allowCellularModelDownload
+        val offer = "Download a backup to the phone (575 MB)"
+        try {
+            app.settings.change {
+                it.engine = TranscriptionEngineKind.HomeServer
+                it.spokenLanguage = UILanguage.English
+                it.allowCellularModelDownload = true
+            }
+            val unreachable = PipelinePhase.Failed(
+                PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "")),
+            )
+            compose.runOnUiThread {
+                CaptionState.show(unreachable, engine = TranscriptionEngineKind.HomeServer, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), offerBackup = true)
+            }
+            compose.waitForIdle()
+            assertEquals(PhasePresentation.Action.OpenBackupSettings, CaptionState.screen.value.status.action)
+            compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction()).performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(offer).fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { compose.onNodeWithText(offer).isDisplayed() }
+
+            compose.onNodeWithText("Close").performClick()
+            compose.onNodeWithText("Settings").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(offer).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(offer).assertIsNotDisplayed()
+        } finally {
+            app.settings.change {
+                it.spokenLanguage = languageBefore
+                it.allowCellularModelDownload = cellularBefore
+            }
+            compose.runOnUiThread { CaptionState.clear() }
+        }
     }
 
     @Test

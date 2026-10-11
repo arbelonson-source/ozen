@@ -136,6 +136,7 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val showingSettings = mutableStateOf(false)
+    private val settingsAtBackup = mutableStateOf(false)
     private val confirmingCellular = mutableStateOf(false)
     private val microphoneAnswer = mutableStateOf<Boolean?>(null)
     private val notificationsAnswer = mutableStateOf<Boolean?>(null)
@@ -159,7 +160,7 @@ class MainActivity : ComponentActivity() {
         val phoneLanguages = LocaleList.getDefault().let { list -> (0 until list.size()).map { list[it].toLanguageTag() } }
         Localization.language = app.settings.current.value.appLanguage.resolved(phoneLanguages)
         enableEdgeToEdge()
-        setContent { OzenApp(app, showingSettings, confirmingCellular, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
+        setContent { OzenApp(app, showingSettings, settingsAtBackup, confirmingCellular, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
         openLink(intent)
     }
 
@@ -206,7 +207,11 @@ class MainActivity : ComponentActivity() {
             PhasePresentation.Action.Pause -> ListeningService.pause(this)
             PhasePresentation.Action.OpenSystemSettings -> if (hasMicrophone()) startListening() else openAppSettings()
             PhasePresentation.Action.Start, PhasePresentation.Action.Resume, PhasePresentation.Action.Retry -> startListening()
-            PhasePresentation.Action.OpenEngineSettings, PhasePresentation.Action.OpenBackupSettings -> showingSettings.value = true
+            PhasePresentation.Action.OpenEngineSettings -> showingSettings.value = true
+            PhasePresentation.Action.OpenBackupSettings -> {
+                settingsAtBackup.value = true
+                showingSettings.value = true
+            }
             PhasePresentation.Action.ConfirmCellularDownload -> confirmingCellular.value = true
             PhasePresentation.Action.StopSpeaking -> (application as OzenApplication).captions.stopSpeaking()
             else -> Unit
@@ -282,6 +287,7 @@ private class OnboardingHooks(
 private fun OzenApp(
     app: OzenApplication,
     showingSettings: MutableState<Boolean>,
+    settingsAtBackup: MutableState<Boolean>,
     confirmingCellular: MutableState<Boolean>,
     onboarding: OnboardingHooks,
     onStatusTap: () -> Unit,
@@ -330,10 +336,10 @@ private fun OzenApp(
                         onFinish = onboarding.finish,
                     )
                 }
-                showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, heardBy = { state.recentlyHeardBy[it.id]?.takeIf { current.display.showSpeakerNames } }, onAppLanguage = onAppLanguage, onShowWalkthrough = {
+                showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false; settingsAtBackup.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, heardBy = { state.recentlyHeardBy[it.id]?.takeIf { current.display.showSpeakerNames } }, onAppLanguage = onAppLanguage, onShowWalkthrough = {
                     app.captions.showWalkthroughAgain()
                     showingSettings.value = false
-                }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions)
+                }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value)
                 opened != null -> ConversationScreen(
                     app.captions.savedConversations,
                     opened.first,
@@ -392,7 +398,10 @@ private fun OzenApp(
                         current.display,
                         look,
                         onStatusTap,
-                        onSettings = { showingSettings.value = true },
+                        onSettings = {
+                            settingsAtBackup.value = false
+                            showingSettings.value = true
+                        },
                         onHistory = { showingHistory = true },
                         onStar = { app.captions.toggleStar(it) },
                         onOpen = { conversation, line ->
