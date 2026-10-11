@@ -154,6 +154,11 @@ class OnDeviceWhisperEngine(
         return loader.pendingInstallMegabytes()
     }
 
+    override suspend fun hasModelOnPhone(): Boolean {
+        if (synchronized(lock) { passes } != null) return true
+        return loader.hasModelOnPhone()
+    }
+
     override suspend fun diagnosticsSummary(): String? = synchronized(lock) { "$modelName: ${tally.summary}" }
 
     override suspend fun prepare(languageCode: String, progress: (EnginePreparationProgress) -> Unit): EngineAvailability {

@@ -196,6 +196,11 @@ class FakeEngine(
 
     /** Megabytes `prepare` would still download; null when the model is there. */
     var pendingDownload: Int? = null
+
+    /** False for a model missing with nowhere to fetch it from: nothing to download, yet not on the phone. */
+    var modelOnPhone: Boolean? = null
+
+    override suspend fun hasModelOnPhone(): Boolean = modelOnPhone ?: (pendingDownloadMegabytes() == null)
     var prepareCount = 0
         private set
 

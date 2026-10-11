@@ -62,5 +62,7 @@ interface WhisperModelLoader {
 
     suspend fun pendingInstallMegabytes(): Int? = pendingDownloadMegabytes()
 
+    suspend fun hasModelOnPhone(): Boolean = pendingDownloadMegabytes() == null
+
     suspend fun cancelDownload() {}
 }

@@ -82,6 +82,24 @@ private suspend fun TestScope.waitingCaptions(soundAlerts: Boolean = true): Wait
 
 class HomeServerCoverTest {
     @Test
+    fun `a phone model missing with nowhere to fetch it from never takes over - captions wait for the computer and sounds still alert`() = runTest {
+        val server = unreachableServer()
+        val phone = FakeEngine(kind = phoneKind)
+        phone.modelOnPhone = false
+        val detector = FakeSoundDetector()
+        val captions = serverPipeline(server, phone, FakeAudioCapturer(), detector, oneQuickRetry())
+        captions.homeServerRecheckSeconds = 1000.0
+        captions.homeServerWaitSeconds = 0.05
+        captions.start(serverSettings())
+        assertTrue(eventually { server.prepareCount >= 4 && captions.scheduledRetry == null })
+        assertEquals(0, phone.prepareCount, "the missing model was tried")
+        assertFalse(captions.isCoveringForCloud)
+        assertTrue(captions.isListeningForSoundsOnly)
+        val waiting = captions.phase
+        assertTrue(waiting is PipelinePhase.Failed && waiting.reason.engineUnavailability?.kind == EngineUnavailability.Kind.HomeServerUnreachable, "$waiting")
+    }
+
+    @Test
     fun `an unreachable server or a refused code is covered by the downloaded phone model`() = runTest {
         for (kind in listOf(EngineUnavailability.Kind.HomeServerUnreachable, EngineUnavailability.Kind.HomeServerRejected)) {
             val server = FakeEngine(kind = homeKind, availability = EngineAvailability.unavailable(kind, "test"))

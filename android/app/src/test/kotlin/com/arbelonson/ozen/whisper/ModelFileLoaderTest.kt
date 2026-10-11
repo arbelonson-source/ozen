@@ -84,6 +84,14 @@ class ModelFileLoaderTest {
     }
 
     @Test
+    fun `only a model whose file is there is on the phone, with or without a place to fetch it from`() = runBlocking {
+        assertFalse(loader(null).hasModelOnPhone())
+        assertFalse(loader(ChunkedModel(data)).hasModelOnPhone())
+        file.writeBytes(data)
+        assertTrue(loader(null).hasModelOnPhone())
+    }
+
+    @Test
     fun `a missing model with a source is counted, downloaded with its progress shown, then opened under its own name`() = runBlocking {
         val loader = loader(ChunkedModel(data))
         assertEquals(1, loader.pendingDownloadMegabytes())

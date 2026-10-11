@@ -23,6 +23,8 @@ class ModelFileLoader(
 ) : WhisperModelLoader {
     override suspend fun pendingDownloadMegabytes(): Int? = if (file.isFile) null else download?.pendingMegabytes()
 
+    override suspend fun hasModelOnPhone(): Boolean = file.isFile
+
     override suspend fun load(
         languageCode: String,
         cellularDownloadAllowed: Boolean,

@@ -255,6 +255,16 @@ interface TranscriptionEngine {
     suspend fun pendingDownloadMegabytes(): Int? = null
 
     /**
+     * Whether it could start right now with everything it needs already
+     * on the phone: what a backup taking over for the home computer or the
+     * cloud must be. Not the same as nothing to download: a model that is
+     * missing with nowhere to fetch it from has no download either, and
+     * taking it for ready tried it, failed, and left sound alerts off
+     * while the computer slept.
+     */
+    suspend fun hasModelOnPhone(): Boolean = pendingDownloadMegabytes() == null
+
+    /**
      * The free space that download needs at its peak, in megabytes: more
      * than the download when the model is compiled on the phone beside its
      * packages. Defaults to the download itself.

@@ -2065,7 +2065,7 @@ class CaptionPipeline(
             val before = phase
             if (before !is PipelinePhase.Failed || before.reason != failure) return
             val engine = cachedEngine(settings)
-            val needsDownload = engine.pendingDownloadMegabytes() != null
+            val needsDownload = !engine.hasModelOnPhone()
             val current = phase
             if (current !is PipelinePhase.Failed || current.reason != failure) return
             // Read again after the check: a name added or a microphone picked
@@ -2545,7 +2545,7 @@ class CaptionPipeline(
         val chosen = settingsInUse ?: return false
         if (chosen.engine != TranscriptionEngineKind.HomeServer) return false
         val onPhone = CloudCover.phoneSettings(chosen, failure) ?: return false
-        if (probeEngine(onPhone).pendingDownloadMegabytes() != null) return false
+        if (!probeEngine(onPhone).hasModelOnPhone()) return false
         val still = phase
         if (!currentCoroutineContext().isActive || systemInterrupted || isRecordingVoice ||
             still !is PipelinePhase.Failed || still.reason != failure
