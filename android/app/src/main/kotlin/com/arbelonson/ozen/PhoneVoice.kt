@@ -13,17 +13,44 @@ import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class PhoneVoice(context: Context) : SpeechSynthesizing {
+    private val appContext = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
     private val pending = mutableSetOf<String>()
     @Volatile private var ready = false
     @Volatile private var answered = false
-    private val engine: TextToSpeech = TextToSpeech(context.applicationContext) { status ->
-        main.post {
-            ready = status == TextToSpeech.SUCCESS
-            answered = true
-            refreshVoice()
+
+    private val progress = object : UtteranceProgressListener() {
+        override fun onStart(utteranceId: String) {
+            main.post {
+                if (utteranceId in pending) {
+                    isSpeaking = true
+                    onSpeakingChanged?.invoke(true)
+                }
+            }
+        }
+
+        override fun onDone(utteranceId: String) {
+            main.post { ended(utteranceId) }
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun onError(utteranceId: String) {
+            main.post { ended(utteranceId) }
+        }
+
+        override fun onError(utteranceId: String, errorCode: Int) {
+            main.post { ended(utteranceId) }
+        }
+
+        override fun onStop(utteranceId: String, interrupted: Boolean) {
+            main.post { ended(utteranceId) }
         }
     }
+
+    private var engine: TextToSpeech = connect()
+
+    // A reply asked for while the engine was being connected, said once it answers.
+    private var waiting: (() -> Unit)? = null
 
     /**
      * The languages the phone has a voice for, once its speech engine has
@@ -38,70 +65,39 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
     override val hasHebrewVoice: Boolean get() = hasVoice(UILanguage.Hebrew)
     override var onSpeakingChanged: ((Boolean) -> Unit)? = null
 
-    init {
-        engine.setOnUtteranceProgressListener(
-            object : UtteranceProgressListener() {
-                override fun onStart(utteranceId: String) {
-                    main.post {
-                        if (utteranceId in pending) {
-                            isSpeaking = true
-                            onSpeakingChanged?.invoke(true)
-                        }
-                    }
-                }
-
-                override fun onDone(utteranceId: String) {
-                    main.post { ended(utteranceId) }
-                }
-
-                @Deprecated("Deprecated in Java")
-                override fun onError(utteranceId: String) {
-                    main.post { ended(utteranceId) }
-                }
-
-                override fun onError(utteranceId: String, errorCode: Int) {
-                    main.post { ended(utteranceId) }
-                }
-
-                override fun onStop(utteranceId: String, interrupted: Boolean) {
-                    main.post { ended(utteranceId) }
-                }
-            },
-        )
-    }
-
     override fun hasVoice(language: UILanguage): Boolean = installed.value?.contains(language) == true
 
     override fun refreshVoice() {
         if (!answered) return
-        installed.value = if (!ready) {
-            emptySet()
-        } else {
-            UILanguage.entries.filterTo(HashSet()) { engine.isLanguageAvailable(Locale.forLanguageTag(it.speechVoiceCode)) >= TextToSpeech.LANG_AVAILABLE }
-        }
+        // The phone's speech engine, updated or stopped while the app was
+        // away, lets go of it for good and never binds again by itself, and
+        // one that failed to start stays failed: either is connected again
+        // rather than saying no voice is installed until the app restarts.
+        if (!ready || engine.voices == null) reconnect() else listVoices()
     }
 
     /** The most the phone's speech engine takes in one go; tests make it small. */
     @Volatile internal var pieceLimit = TextToSpeech.getMaxSpeechInputLength()
 
     override fun speak(text: String, rate: Float) {
-        val language = UILanguage.forSpeaking(text, otherwise = Localization.language)
-        engine.setLanguage(Locale.forLanguageTag(language.speechVoiceCode))
-        engine.setSpeechRate(rate / NORMAL_RATE)
         pending.clear()
-        // The engine refuses a longer text outright, and nothing was said:
-        // it goes in pieces, one after another, as one reply.
-        SpeechChunks.of(text, pieceLimit).forEachIndexed { at, piece ->
-            val id = UUID.randomUUID().toString()
-            pending += id
-            val queue = if (at == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-            if (engine.speak(piece, queue, null, id) != TextToSpeech.SUCCESS) main.post { ended(id) }
+        waiting = null
+        if (answered && say(text, rate)) return
+        // Not taken because the engine let go of the app, or before it has
+        // answered: said once it is connected, the reply held busy meanwhile.
+        val holding = UUID.randomUUID().toString()
+        pending += holding
+        waiting = {
+            pending.remove(holding)
+            if (!ready || !say(text, rate)) quiet()
         }
+        if (answered) reconnect()
     }
 
     override fun stop() {
         val talking = pending.isNotEmpty()
         pending.clear()
+        waiting = null
         engine.stop()
         if (talking) quiet()
     }
@@ -114,7 +110,60 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
     fun shutdown() {
         onSpeakingChanged = null
         pending.clear()
+        waiting = null
         engine.shutdown()
+    }
+
+    private fun connect(): TextToSpeech {
+        lateinit var made: TextToSpeech
+        made = TextToSpeech(appContext) { status ->
+            main.post {
+                if (made !== engine) return@post
+                ready = status == TextToSpeech.SUCCESS
+                answered = true
+                listVoices()
+                waiting?.let { say ->
+                    waiting = null
+                    say()
+                }
+            }
+        }
+        made.setOnUtteranceProgressListener(progress)
+        return made
+    }
+
+    private fun reconnect() {
+        engine.shutdown()
+        ready = false
+        answered = false
+        engine = connect()
+    }
+
+    private fun listVoices() {
+        installed.value = if (!ready) {
+            emptySet()
+        } else {
+            UILanguage.entries.filterTo(HashSet()) { engine.isLanguageAvailable(Locale.forLanguageTag(it.speechVoiceCode)) >= TextToSpeech.LANG_AVAILABLE }
+        }
+    }
+
+    // False when the engine wouldn't take the reply's first piece.
+    private fun say(text: String, rate: Float): Boolean {
+        val language = UILanguage.forSpeaking(text, otherwise = Localization.language)
+        engine.setLanguage(Locale.forLanguageTag(language.speechVoiceCode))
+        engine.setSpeechRate(rate / NORMAL_RATE)
+        // The engine refuses a longer text outright, and nothing was said:
+        // it goes in pieces, one after another, as one reply.
+        SpeechChunks.of(text, pieceLimit).forEachIndexed { at, piece ->
+            val id = UUID.randomUUID().toString()
+            val queue = if (at == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+            if (engine.speak(piece, queue, null, id) == TextToSpeech.SUCCESS) {
+                pending += id
+            } else if (at == 0) {
+                return false
+            }
+        }
+        return true
     }
 
     // A piece of a longer reply, or a reply replaced by the next one, ends
