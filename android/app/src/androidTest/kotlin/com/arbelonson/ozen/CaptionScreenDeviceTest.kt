@@ -56,6 +56,7 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SavedSegment
+import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
@@ -252,6 +253,29 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithText("תתקשרי", substring = true).performTouchInput { longClick() }
         compose.onNodeWithText("Copy").performClick()
         compose.waitUntil(5_000) { copied() == CaptionLayout.copiedText("תתקשרי למרפאה 050 123 4567") }
+    }
+
+    @Test
+    fun captionsNotGoodMarksAProblemInTheJournalFromTheHoldMenuOrTheScreenReaderAndSaysWhereItWent() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val kept = SessionJournal(File(app.filesDir, CaptionSession.JOURNAL_FILE))
+        val held = System.currentTimeMillis() / 1_000.0
+        val marks = { kept.entries().count { it.at >= held - 0.01 && it.text.startsWith("PROBLEM MARKED: engine ") } }
+        val problem = "Captions not good? Mark a problem"
+        showLines(listOf(committed("The bus leaves at noon")))
+        lineText("The bus leaves at noon").performTouchInput { longClick() }
+        compose.onNodeWithText(problem).performClick()
+        compose.onNodeWithText("Problem marked").assertExists()
+        compose.onNodeWithText("The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.").assertExists()
+        assertEquals(1, marks())
+        compose.onNodeWithText("OK").performClick()
+        compose.onNodeWithText("Problem marked").assertDoesNotExist()
+
+        val mark = lineText("The bus leaves at noon").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == problem }
+        compose.runOnUiThread { mark.action() }
+        compose.onNodeWithText("Problem marked").assertExists()
+        assertEquals(2, marks())
+        compose.onNodeWithText("OK").performClick()
     }
 
     @Test

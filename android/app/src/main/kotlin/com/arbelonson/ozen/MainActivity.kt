@@ -270,6 +270,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     onAskToRepeat = { app.captions.askToRepeat() }.takeIf { app.captions.canAskToRepeat() },
                     onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
                     onDismissSavingTrouble = app.captions::dismissSavingTrouble,
+                    onMarkProblem = app.captions::markProblem,
                 )
             }
             PairingDialogs(app.pairing)
@@ -354,8 +355,10 @@ private fun CaptionScreen(
     onAskToRepeat: (() -> Unit)?,
     onSay: () -> Unit,
     onDismissSavingTrouble: () -> Unit,
+    onMarkProblem: () -> Unit,
 ) {
     val list = rememberLazyListState()
+    var problemMarked by remember { mutableStateOf(false) }
     val context = LocalContext.current
     var shownWord by remember { mutableStateOf<HeardWord?>(null) }
     // Only a word said just now: one heard while the screen was away buzzing
@@ -372,6 +375,7 @@ private fun CaptionScreen(
     fixing?.let { line ->
         FixWordDialog(line.text, onAdd = { onAddWord(it); fixing = null }, onDismiss = { fixing = null })
     }
+    if (problemMarked) ProblemMarkedDialog(onDismiss = { problemMarked = false })
     var following by remember { mutableStateOf(true) }
     var lastWhenLeft by remember { mutableStateOf<UUID?>(null) }
     val newest by rememberUpdatedState(state.lines.lastOrNull()?.id)
@@ -429,7 +433,7 @@ private fun CaptionScreen(
                     textAlign = TextAlign.Center,
                 )
             } else {
-                CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onAskToRepeat)
+                CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onAskToRepeat, onMarkProblem = { onMarkProblem(); problemMarked = true })
                 if (!following) {
                     JumpToLatest(jumpToLatestTitle(linesSince(state.lines, lastWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                         following = true
@@ -529,12 +533,13 @@ private fun CaptionLines(
     onOpen: (conversation: UUID, line: UUID) -> Unit,
     onFix: (CaptionLine) -> Unit,
     onAskToRepeat: (() -> Unit)?,
+    onMarkProblem: () -> Unit,
 ) {
     LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize) {
         if (following) list.scrollToEnd(lines.lastIndex)
     }
     LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(lines, key = { it.id }) { line -> CaptionLineRow(line, display, look, onStar = { onStar(line.id) }, onOpen = { conversation -> onOpen(conversation, line.id) }, onFix = { onFix(line) }, onAskToRepeat) }
+        items(lines, key = { it.id }) { line -> CaptionLineRow(line, display, look, onStar = { onStar(line.id) }, onOpen = { conversation -> onOpen(conversation, line.id) }, onFix = { onFix(line) }, onAskToRepeat, onMarkProblem) }
     }
 }
 
@@ -573,7 +578,8 @@ private fun JumpToLatest(title: String, look: CaptionTheme, modifier: Modifier, 
  * and dots under the words it doubted, without changing their colour: the
  * words stay as readable as any other line. Held, as on the iPhone, it can
  * be marked as important (a star) or copied, and, with a voice on the phone
- * for it, the phone asks them aloud to repeat it; a screen reader has these too.
+ * for it, the phone asks them aloud to repeat it; "Captions not good?" keeps
+ * what was running in the diagnostics journal. A screen reader has these too.
  */
 @Composable
 private fun CaptionLineRow(
@@ -584,6 +590,7 @@ private fun CaptionLineRow(
     onOpen: (UUID) -> Unit,
     onFix: () -> Unit,
     onAskToRepeat: (() -> Unit)?,
+    onMarkProblem: () -> Unit,
 ) {
     val doubtful = if (display.markUncertainLines) line.doubtfulWords else emptyList()
     val spoken = UncertainWords.spoken(line.text, doubtful)
@@ -594,6 +601,7 @@ private fun CaptionLineRow(
     val fix = tr("תיקון מילה למילון", "Fix a word for next time")
     val ask = tr("לבקש שיחזרו על זה", "Ask them to repeat that")
     val open = tr("פתיחת השיחה כולה, לשיתוף או לחיפוש", "Open the whole conversation, to share or search")
+    val problem = tr("הכתוביות לא טובות? לסמן בעיה", "Captions not good? Mark a problem")
     val context = LocalContext.current
     val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, line.copied)) }
     val uris = LocalUriHandler.current
@@ -617,7 +625,9 @@ private fun CaptionLineRow(
                 CustomAccessibilityAction(copy) { copyLine(); true },
             ) + listOfNotNull(line.conversation).map { conversation ->
                 CustomAccessibilityAction(open) { onOpen(conversation); true }
-            } + line.phones.map { phone ->
+            } + listOf(
+                CustomAccessibilityAction(problem) { onMarkProblem(); true },
+            ) + line.phones.map { phone ->
                 CustomAccessibilityAction(tr("להתקשר ל־%1", "Call %1", listOf(phone.dialable))) { uris.openUri(phone.url); true }
             },
         )
@@ -629,6 +639,7 @@ private fun CaptionLineRow(
             line.conversation?.let { conversation ->
                 DropdownMenuItem(text = { Text(open) }, onClick = { menu = false; onOpen(conversation) })
             }
+            DropdownMenuItem(text = { Text(problem) }, onClick = { menu = false; onMarkProblem() })
         }
     }
 }
@@ -718,6 +729,17 @@ private fun BellMark(fontSize: Double, colour: Color) {
  * she taps it away; it comes back only once saving has worked and then
  * failed again. The iPhone's way to free space is left out of the words.
  */
+/** Where a problem marked from a caption line went, and how it reaches whoever helps her. */
+@Composable
+private fun ProblemMarkedDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("הבעיה סומנה", "Problem marked")) },
+        text = { Text(tr("פרטי התקלה והשורות האחרונות נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לך: הגדרות ← אבחון ← שליחת הדוח.", "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.")) },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("אישור", "OK")) } },
+    )
+}
+
 @Composable
 private fun SavingTroubleBanner(onDismiss: () -> Unit) {
     Row(
