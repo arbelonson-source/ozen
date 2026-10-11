@@ -21,6 +21,7 @@ import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.HomeServerEngine
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.core.SoundAlert
+import com.arbelonson.ozen.core.SoundAlertPreferences
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
@@ -520,6 +521,14 @@ class CaptionSession(
         settings.change { it.keywordAlerts = alerts }
         pipeline.setKeywordAlerts(alerts)
     }
+
+    /** Which sounds alert, and from how faint; a running pipeline judges the next sound by them. */
+    fun setSoundAlerts(preferences: SoundAlertPreferences) {
+        settings.change { it.soundAlerts = preferences }
+        pipeline.setSoundAlertPreferences(preferences)
+    }
+
+    fun soundNearMiss(event: SoundEvent) = pipeline.soundNearMisses.entry(event)
 
     /** The names and words the engines are given, in order; a running engine has them from the next sentence. */
     fun setWords(words: List<String>) {

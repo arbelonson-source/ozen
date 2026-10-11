@@ -71,6 +71,10 @@ import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.WhisperModelCatalog
+import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.SoundAlertPreferences
+import com.arbelonson.ozen.core.SoundEvent
+import androidx.compose.ui.test.assertIsEnabled
 import java.io.File
 import java.time.Instant
 import java.util.UUID
@@ -112,6 +116,7 @@ class SettingsScreenDeviceTest {
     private var awayAlertsBefore = true
     private var quietHoursBefore = QuietHours.default
     private var speechRateBefore = 0.45f
+    private var soundsBefore = SoundAlertPreferences.default
 
     @Before
     fun remember() {
@@ -127,6 +132,7 @@ class SettingsScreenDeviceTest {
         awayAlertsBefore = app.settings.current.value.notifyWhenInBackground
         quietHoursBefore = app.settings.current.value.quietHours
         speechRateBefore = app.settings.current.value.speechRate
+        soundsBefore = app.settings.current.value.soundAlerts
         app.cloudKeys.remove(CloudProvider.Deepgram)
         app.homeServerCode.remove()
         app.settings.change { it.homeServerAddress = "" }
@@ -148,6 +154,7 @@ class SettingsScreenDeviceTest {
             it.notifyWhenInBackground = awayAlertsBefore
             it.quietHours = quietHoursBefore
             it.speechRate = speechRateBefore
+            it.soundAlerts = soundsBefore
         }
         compose.runOnUiThread { CaptionState.clear() }
     }
@@ -686,6 +693,41 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Diagnostics").assertExists()
         } finally {
             instrumentation.removeMonitor(sheet)
+        }
+    }
+
+    @Test
+    fun soundsAtHomeSwitchEachSoundTheFloorAndAllOfThemAndLetHerFeelEachBuzz() {
+        val buzzed = CopyOnWriteArrayList<AlertVibration>()
+        val before = Buzz.play
+        Buzz.play = { _, vibration -> buzzed += vibration }
+        app.settings.change { it.soundAlerts = SoundAlertPreferences.default }
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNode(hasText("Sounds at home") and hasText("Home sounds and above")).performScrollTo().assertExists()
+            compose.onNodeWithText("Sounds at home").performScrollTo().performClick()
+
+            compose.onNodeWithText("Doorbell").performScrollTo().performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.soundAlerts.isMuted("door_bell") }
+            compose.onNodeWithText("Doorbell").performClick()
+            compose.waitUntil(5_000) { !app.settings.current.value.soundAlerts.isMuted("door_bell") }
+
+            compose.onNodeWithText("Emergency: alarm, smoke detector").performScrollTo().performClick()
+            compose.waitUntil(5_000) { buzzed.isNotEmpty() }
+            assertEquals(listOf(AlertVibration.pattern(SoundEvent.Importance.Critical)), buzzed)
+
+            compose.onNodeWithText("Emergency only").performScrollTo().performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.soundAlerts.minimumImportance == SoundEvent.Importance.Critical }
+            compose.onNodeWithText("Doorbell").performScrollTo().assertIsNotEnabled()
+            compose.onNodeWithText("Smoke detector").performScrollTo().assertIsEnabled()
+
+            compose.onNodeWithText("Sound alerts").performScrollTo().performClick()
+            compose.waitUntil(5_000) { !app.settings.current.value.soundAlerts.isEnabled }
+            compose.onNodeWithText("Smoke detector").performScrollTo().assertIsNotEnabled()
+            compose.onNodeWithText("Back").performScrollTo().performClick()
+            compose.onNode(hasText("Sounds at home") and hasText("Off")).performScrollTo().assertExists()
+        } finally {
+            Buzz.play = before
         }
     }
 

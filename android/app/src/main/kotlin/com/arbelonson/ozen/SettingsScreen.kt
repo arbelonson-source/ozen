@@ -78,6 +78,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.SoundAlertPreferences
+import com.arbelonson.ozen.core.SoundEvent
+import com.arbelonson.ozen.core.SoundNearMisses
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.CloudProvider
@@ -110,6 +114,9 @@ fun SettingsScreen(
     onShowWalkthrough: () -> Unit = {},
     onClearCaptions: () -> Unit = {},
     voiceNotice: String? = null,
+    onSoundAlerts: (SoundAlertPreferences) -> Unit = {},
+    soundNearMiss: (SoundEvent) -> SoundNearMisses.Entry? = { null },
+    onFeel: (AlertVibration) -> Unit = {},
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
@@ -136,6 +143,11 @@ fun SettingsScreen(
         SupportScreen(onClose = { showingSupport = false })
         return
     }
+    var showingSounds by rememberSaveable { mutableStateOf(false) }
+    if (showingSounds) {
+        SoundAlertsScreen(current.soundAlerts, onSoundAlerts, soundNearMiss, onFeel, onClose = { showingSounds = false })
+        return
+    }
     var showingImportantWords by rememberSaveable { mutableStateOf(false) }
     if (showingImportantWords) {
         ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, current.spokenLanguage, heard, onImportantWords, onClose = { showingImportantWords = false })
@@ -156,7 +168,7 @@ fun SettingsScreen(
                 TextButton(onClick = close) { Text(tr("סגירה", "Close")) }
             }
             DisplaySection(settings, current.display, current.engine)
-            AlertsSection(current.keywordAlerts.count { it.isEnabled }, listed = current.keywordAlerts.isNotEmpty(), onOpen = { showingImportantWords = true })
+            AlertsSection(current.keywordAlerts.count { it.isEnabled }, listed = current.keywordAlerts.isNotEmpty(), onOpen = { showingImportantWords = true }, sounds = current.soundAlerts, onSounds = { showingSounds = true })
             AwayAlertsRow(current.notifyWhenInBackground) { on -> settings.change { it.notifyWhenInBackground = on } }
             if (current.notifyWhenInBackground) QuietHoursRows(current.quietHours) { hours -> settings.change { it.quietHours = hours } }
             SwitchRow(tr("רטט כשמישהו מתחיל לדבר אחרי שקט", "Vibrate when someone starts talking after silence"), current.hapticOnSpeechResume) { on ->
@@ -257,16 +269,16 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
 }
 
 @Composable
-private fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun SwitchRow(title: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }
 
@@ -601,15 +613,15 @@ private fun cloudServiceFooter(service: CloudProvider): String = when (service) 
 }
 
 @Composable
-private fun ChoiceRow(title: String, summary: String?, selected: Boolean, onSelect: () -> Unit) {
+internal fun ChoiceRow(title: String, summary: String?, selected: Boolean, enabled: Boolean = true, onSelect: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton)
+            .selectable(selected = selected, enabled = enabled, onClick = onSelect, role = Role.RadioButton)
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = selected, onClick = null)
+        RadioButton(selected = selected, onClick = null, enabled = enabled)
         Column(modifier = Modifier.padding(start = 12.dp)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             summary?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -619,7 +631,7 @@ private fun ChoiceRow(title: String, summary: String?, selected: Boolean, onSele
 
 /** Right after how captions look, as on the iPhone: the words that buzz when said. */
 @Composable
-private fun AlertsSection(enabled: Int, listed: Boolean, onOpen: () -> Unit) {
+private fun AlertsSection(enabled: Int, listed: Boolean, onOpen: () -> Unit, sounds: SoundAlertPreferences, onSounds: () -> Unit) {
     SectionHeader(tr("התראות", "Alerts"))
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 12.dp),
@@ -627,6 +639,13 @@ private fun AlertsSection(enabled: Int, listed: Boolean, onOpen: () -> Unit) {
     ) {
         Text(tr("מילים חשובות", "Important words"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text(if (listed) "$enabled" else tr("אין", "None"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onSounds).padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(tr("צלילים בבית", "Sounds at home"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(if (sounds.isEnabled) soundFloorName(sounds.minimumImportance) else tr("כבוי", "Off"), color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -933,12 +952,12 @@ private fun ClearCaptionsRow(onClear: () -> Unit) {
 }
 
 @Composable
-private fun SectionHeader(text: String) {
+internal fun SectionHeader(text: String) {
     Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 16.dp))
 }
 
 @Composable
-private fun Footnote(text: String) {
+internal fun Footnote(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
