@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,12 +49,14 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.AudioLevelHistogram
 import com.arbelonson.ozen.core.ByteSize
+import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.tr
 import java.io.File
 import java.util.Locale
 import java.util.TimeZone
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * The iPhone's Diagnostics screen, for whoever helps her with the phone:
@@ -73,6 +76,9 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
         }
     }
     var copied by remember { mutableStateOf(false) }
+    var sendingHome by remember { mutableStateOf(false) }
+    var sentHome by remember { mutableStateOf<Boolean?>(null) }
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val stats = now.stats
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -220,6 +226,31 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(if (copied) tr("הועתק", "Copied") else tr("העתקת הדוח", "Copy report"))
+            }
+            if (HomeServer.url(now.settings.homeServerAddress) != null && now.homeServerCodeSaved) {
+                OutlinedButton(
+                    onClick = {
+                        sendingHome = true
+                        val report = DiagnosticsReport.text(facts())
+                        scope.launch {
+                            try {
+                                sentHome = source.sendReportHome(report)
+                            } finally {
+                                sendingHome = false
+                            }
+                        }
+                    },
+                    enabled = !sendingHome,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        when (sentHome) {
+                            true -> tr("הדוח נשמר במחשב בבית", "Saved on the home computer")
+                            false -> tr("המחשב בבית לא קיבל את הדוח. נסו שוב", "The home computer didn’t get it. Try again")
+                            null -> tr("שליחת הדוח למחשב בבית", "Send the report to the home computer")
+                        },
+                    )
+                }
             }
         }
     }

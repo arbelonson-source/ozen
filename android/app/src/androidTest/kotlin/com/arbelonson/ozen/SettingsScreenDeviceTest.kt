@@ -75,6 +75,7 @@ import java.io.File
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.CompletableDeferred
 import kotlin.math.abs
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.RGBLuminanceSource
@@ -685,6 +686,44 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Diagnostics").assertExists()
         } finally {
             instrumentation.removeMonitor(sheet)
+        }
+    }
+
+    @Test
+    fun theReportGoesToTheHomeComputerOnlyWithItsAddressAndCodeSavedAndSaysWhetherItGotThere() {
+        val sendHome = "Send the report to the home computer"
+        val notThere = "The home computer didn’t get it. Try again"
+        val shown = { text: String -> compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
+        compose.onNodeWithText("Copy report").performScrollTo().assertExists()
+        compose.onNodeWithText(sendHome).assertDoesNotExist()
+        compose.onNodeWithText("Back").performClick()
+
+        app.homeServerCode.save("code-for-the-report")
+        app.settings.change { it.homeServerAddress = "127.0.0.1:9" }
+        val realSender = app.captions.reportSender
+        try {
+            compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
+            compose.onNodeWithText(sendHome).performScrollTo().performClick()
+            compose.waitUntil(15_000) { shown(notThere) }
+
+            val sent = CopyOnWriteArrayList<String>()
+            val saved = CompletableDeferred<Boolean>()
+            app.captions.reportSender = { text ->
+                sent += text
+                saved.await()
+            }
+            compose.onNodeWithText(notThere).performScrollTo().performClick()
+            compose.waitUntil(5_000) { sent.isNotEmpty() }
+            compose.onNodeWithText(notThere).assertIsNotEnabled()
+            saved.complete(true)
+            compose.waitUntil(5_000) { shown("Saved on the home computer") }
+            val report = sent.single()
+            assertTrue(report, report.startsWith("Ozen diagnostics\nphase: ") && report.contains("home server: 127.0.0.1:9 code saved: true"))
+            assertFalse("the pairing code went into the report", report.contains("code-for-the-report"))
+        } finally {
+            app.captions.reportSender = realSender
         }
     }
 

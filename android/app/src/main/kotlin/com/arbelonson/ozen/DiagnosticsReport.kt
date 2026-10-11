@@ -74,6 +74,9 @@ interface DiagnosticsSource {
     fun deleteMarkedCaptionLines()
 
     fun deleteProblemClip(clip: File)
+
+    /** Sends the report to the home computer, which keeps it; true once it said so. */
+    suspend fun sendReportHome(text: String): Boolean
 }
 
 /**

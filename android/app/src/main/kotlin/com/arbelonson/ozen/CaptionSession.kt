@@ -456,6 +456,13 @@ class CaptionSession(
 
     override fun deleteProblemClip(clip: File) = problemAudio.remove(clip)
 
+    override suspend fun sendReportHome(text: String) = reportSender(text)
+
+    /** Where a report sent home goes; device tests put in one that says it was saved. */
+    var reportSender: suspend (String) -> Boolean = { text ->
+        settings.current.value.let { homeComputerEngine(it).sendReport(text, it.languageCode) }
+    }
+
     private fun note(text: String) = journal.append(text, System.currentTimeMillis() / 1_000.0)
 
     private fun appVersion(): String {
