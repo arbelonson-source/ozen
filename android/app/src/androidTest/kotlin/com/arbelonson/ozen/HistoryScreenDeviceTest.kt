@@ -1,9 +1,14 @@
 package com.arbelonson.ozen
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -84,6 +89,33 @@ class HistoryScreenDeviceTest {
         waitFor("Search test other conversation")
         compose.onNodeWithText("Automatic deletion").assertExists()
     }
+
+    @Test
+    fun aSearchResultOpensAtTheFirstLineThatMatchedAndStepsToTheNext() {
+        val lines = (1..60).map { "Filler line number $it" to null as String? }.toMutableList()
+        lines[0] = "The very first line" to null
+        lines[20] = "The dentist said Thursday" to null
+        lines[50] = "Remind me about the dentist" to null
+        seed(*lines.toTypedArray())
+        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText("Search what was said").performTextInput("dentist")
+        waitFor("The dentist said Thursday")
+        compose.onNodeWithText("The dentist said Thursday", substring = true).performClick()
+
+        compose.waitUntil(5_000) { shownLine("The dentist said Thursday") }
+        assertFalse(shownLine("The very first line"))
+        assertFalse(shownLine("Remind me about the dentist"))
+        compose.onNodeWithContentDescription("The dentist said Thursday", substring = true)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Contains what you searched for"))
+
+        compose.onNodeWithText("Next match (1 of 2)").performClick()
+        compose.waitUntil(5_000) { shownLine("Remind me about the dentist") }
+        compose.onNodeWithText("Next match (2 of 2)").assertExists()
+    }
+
+    private fun shownLine(text: String) =
+        compose.onAllNodesWithContentDescription(text, substring = true).fetchSemanticsNodes().isNotEmpty() &&
+            compose.onNodeWithContentDescription(text, substring = true).isDisplayed()
 
     private fun waitFor(text: String) = compose.waitUntil(5_000) {
         compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()

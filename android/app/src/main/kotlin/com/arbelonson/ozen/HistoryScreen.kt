@@ -1,11 +1,13 @@
 package com.arbelonson.ozen
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,7 +16,9 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -36,13 +40,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,6 +57,7 @@ import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.HistoryDay
 import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.HistoryRetention
+import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.tr
@@ -94,15 +102,15 @@ interface SavedConversations {
 @Composable
 fun HistoryScreen(conversations: SavedConversations, saving: Boolean, retention: HistoryRetention, onClose: () -> Unit) {
     var openID by rememberSaveable { mutableStateOf<String?>(null) }
+    var query by rememberSaveable { mutableStateOf("") }
     val open = openID
     if (open != null) {
-        ConversationScreen(conversations, UUID.fromString(open), onClose = { openID = null })
+        ConversationScreen(conversations, UUID.fromString(open), query, onClose = { openID = null })
         return
     }
     BackHandler(onBack = onClose)
     var reloads by remember { mutableIntStateOf(0) }
     var loaded by remember { mutableStateOf<HistoryList?>(null) }
-    var query by rememberSaveable { mutableStateOf("") }
     val searching = query.isNotBlank()
     // Every search reads every saved conversation, so it waits for a pause
     // in typing and runs off the main thread; a newer search cancels this one.
@@ -289,36 +297,75 @@ private fun ConversationRowView(row: ConversationRow, onOpen: () -> Unit) {
     }
 }
 
-/** One saved conversation read back; the one still being captioned is read again every twenty seconds, as it keeps growing on disk. */
+private class OpenConversation(val record: TranscriptSessionRecord?, val lines: List<SavedLine>, val matches: List<UUID>)
+
+/**
+ * One saved conversation read back; the one still being captioned is read
+ * again every twenty seconds, as it keeps growing on disk. Opened from a
+ * search, it opens at the first line that matched, the matching lines are
+ * marked, and a button steps through them, as on the iPhone.
+ */
 @Composable
-private fun ConversationScreen(conversations: SavedConversations, id: UUID, onClose: () -> Unit) {
+private fun ConversationScreen(conversations: SavedConversations, id: UUID, query: String, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     DisposableEffect(id) {
         conversations.opened(id)
         onDispose { conversations.doneWith(id) }
     }
-    var loaded by remember { mutableStateOf<Pair<TranscriptSessionRecord?, List<SavedLine>>?>(null) }
+    var loaded by remember { mutableStateOf<OpenConversation?>(null) }
+    val list = rememberLazyListState()
+    var current by remember { mutableIntStateOf(0) }
     LaunchedEffect(id) {
+        var jumped = false
         while (true) {
-            loaded = withContext(Dispatchers.IO) { conversations.load(id).let { it to (it?.let { record -> SavedLine.of(record) } ?: emptyList()) } }
+            val before = loaded?.matches ?: emptyList()
+            val now = withContext(Dispatchers.IO) {
+                val record = conversations.load(id)
+                OpenConversation(
+                    record = record,
+                    lines = record?.let { SavedLine.of(it) } ?: emptyList(),
+                    matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
+                )
+            }
+            current = SearchMatches.position(current, before, now.matches) ?: 0
+            loaded = now
+            if (!jumped && now.matches.isNotEmpty()) {
+                jumped = true
+                withFrameNanos {}
+                list.scrollToItem(now.lines.indexOfFirst { it.id == now.matches.first() }.coerceAtLeast(0))
+            }
             if (!conversations.isCurrent(id)) break
             delay(20_000)
         }
     }
+    val scope = rememberCoroutineScope()
     var confirmingDelete by remember { mutableStateOf(false) }
     var deleteError by remember { mutableStateOf<String?>(null) }
-    val record = loaded?.first
+    val record = loaded?.record
     Screen(title = record?.title ?: tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {
         val shown = loaded
         when {
             shown == null -> CircularProgressIndicator(modifier = Modifier.padding(24.dp))
-            shown.first == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"))
+            shown.record == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"))
             else -> {
-                TextButton(onClick = { confirmingDelete = true }) {
-                    Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error)
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { confirmingDelete = true }) {
+                        Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error)
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    if (shown.matches.size > 1) {
+                        TextButton(
+                            onClick = {
+                                current = (current + 1) % shown.matches.size
+                                val target = shown.lines.indexOfFirst { it.id == shown.matches[current] }
+                                if (target >= 0) scope.launch { list.scrollToItem(target) }
+                            },
+                        ) { Text(SearchMatches.nextTitle(current, shown.matches.size)) }
+                    }
                 }
-                LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(shown.second, key = { it.id.toString() }) { line -> SavedLineView(line) }
+                val matched = shown.matches.toSet()
+                LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(shown.lines, key = { it.id.toString() }) { line -> SavedLineView(line, isMatch = line.id in matched) }
                 }
             }
         }
@@ -362,8 +409,18 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, onCl
 }
 
 @Composable
-private fun SavedLineView(line: SavedLine) {
-    Column(modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = line.spoken }) {
+private fun SavedLineView(line: SavedLine, isMatch: Boolean) {
+    val found = tr("מכילה את מה שחיפשת", "Contains what you searched for")
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (isMatch) SEARCH_MATCH else Color.Transparent, RoundedCornerShape(8.dp))
+            .padding(horizontal = if (isMatch) 6.dp else 0.dp, vertical = if (isMatch) 4.dp else 0.dp)
+            .clearAndSetSemantics {
+                contentDescription = line.spoken
+                if (isMatch) stateDescription = found
+            },
+    ) {
         line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
         Text(line.text, style = MaterialTheme.typography.bodyLarge)
@@ -398,6 +455,9 @@ private fun Heading(text: String) {
         modifier = Modifier.padding(top = 16.dp, bottom = 4.dp).semantics { heading() },
     )
 }
+
+// The iPhone's mark for a line a search found: its yellow at 30%.
+private val SEARCH_MATCH = Color(red = 1f, green = 0.84f, blue = 0.04f, alpha = 0.3f)
 
 private fun localOffset(at: Double): Int =
     ZoneId.systemDefault().rules.getOffset(Instant.ofEpochMilli((at * 1_000).toLong())).totalSeconds

@@ -84,6 +84,15 @@ class HistoryRowsTest {
     }
 
     @Test
+    fun `the next match says which of how many, and keeps its place when the conversation grows`() = Localization.withLanguage(UILanguage.English) {
+        assertEquals("Next match (2 of 5)", SearchMatches.nextTitle(current = 1, count = 5))
+        val first = UUID.randomUUID()
+        val second = UUID.randomUUID()
+        assertEquals(2, SearchMatches.position(1, old = listOf(first, second), new = listOf(UUID.randomUUID(), first, second)))
+        assertNull(SearchMatches.position(1, old = listOf(first, second), new = listOf(first)))
+    }
+
+    @Test
     fun `a named conversation keeps its name`() = Localization.withLanguage(UILanguage.English) {
         assertEquals("Doctor's visit", ConversationRow.of(summary(title = "Doctor's visit"), jerusalem).title)
     }

@@ -97,3 +97,11 @@ object HistoryTexts {
         HistoryRetention.Week -> tr("אחרי שבוע", "After a week")
     }
 }
+
+object SearchMatches {
+    fun nextTitle(current: Int, count: Int): String =
+        tr("המקום הבא (%1 מתוך %2)", "Next match (%1 of %2)", listOf("${current + 1}", "$count"))
+
+    fun position(index: Int, old: List<UUID>, new: List<UUID>): Int? =
+        old.getOrNull(index)?.let { new.indexOf(it) }?.takeIf { it >= 0 }
+}
