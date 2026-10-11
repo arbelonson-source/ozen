@@ -38,6 +38,8 @@ import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
+import com.arbelonson.ozen.core.ModelDownloadGate
+import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
@@ -62,6 +64,7 @@ import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.whisper.ModelFileLoader
 import com.arbelonson.ozen.whisper.SileroVoiceScorer
 import java.io.File
+import java.io.IOException
 import java.time.Instant
 import java.util.TimeZone
 import java.util.UUID
@@ -99,6 +102,9 @@ class CaptionSession(
     // only while their half-minute of retries lasts. A home computer on
     // the same Wi-Fi needs no internet, so any network counts as connected.
     private val network = AndroidNetworkMonitor(context)
+
+    /** The connection as the model downloads see it piece by piece; a seam for tests. */
+    internal var networkNow: () -> NetworkConditions? = { network.current }
 
     /** The phone's free space, as the model downloads see it. */
     var freeSpace: () -> Long = { context.filesDir.usableSpace }
@@ -972,7 +978,7 @@ class CaptionSession(
                     model,
                     context.applicationInfo.nativeLibraryDir,
                     download = WhisperModelCatalog.phoneModelSource(settings.spokenLanguage)?.let { PhoneModelDownloader(model, it, modelFetcher) },
-                    network = { network.current },
+                    network = { networkNow() },
                 ),
                 voiceScorerFactory = ::voiceScore,
             )
@@ -1032,10 +1038,19 @@ class CaptionSession(
         backupProgress = 0.0
         backupLanguage = language
         refreshBackup()
+        var stoppedForWiFi = false
         scope.launch {
             val done = withContext(Dispatchers.IO) {
                 runCatching {
                     download.download { fraction ->
+                        // As the captions' own download: started on Wi-Fi, it
+                        // stops when only the phone plan is left and cellular
+                        // downloads are off, keeping what came. Not a failure:
+                        // the row waits for Wi-Fi and offers it again after.
+                        if (ModelDownloadGate.decide(networkNow(), settings.current.value.allowCellularModelDownload) == ModelDownloadGate.Decision.WaitForWiFi) {
+                            stoppedForWiFi = true
+                            throw IOException("Wi-Fi went, and downloads on cellular data are off")
+                        }
                         // Whole percents, all the row shows: every chunk
                         // off the network would redraw Settings otherwise.
                         val shown = (fraction * 100).toInt() / 100.0
@@ -1052,7 +1067,7 @@ class CaptionSession(
                 backupProgress = null
                 backupLanguage = null
             }
-            if (!done) backupFailedLanguage = language
+            if (!done && !stoppedForWiFi) backupFailedLanguage = language
             refreshBackup()
         }
     }

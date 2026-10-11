@@ -21,6 +21,7 @@ import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ReleaseFileFetching
@@ -46,6 +47,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
@@ -59,6 +61,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -275,6 +278,58 @@ class CaptionSessionDeviceTest {
             assertEquals(BackupModelStatus.NotNeeded, session.backupStatus.value)
         } finally {
             goOn.countDown()
+            withContext(Dispatchers.Main) { session.close() }
+            work.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun theBackupDownloadStopsWhenWiFiGoesWithCellularDownloadsOffAndIsNotCalledFailed(): Unit = runBlocking {
+        val work = File(context.cacheDir, "backup-wifi-test").apply { deleteRecursively(); mkdirs() }
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        settings.change {
+            it.engine = TranscriptionEngineKind.HomeServer
+            it.homeServerAddress = "127.0.0.1:9"
+            it.spokenLanguage = UILanguage.English
+            it.allowCellularModelDownload = false
+        }
+        val source = WhisperModelCatalog.phoneModelSource(UILanguage.English)!!
+        val tenth = source.bytes / 10
+        val network = AtomicReference(NetworkConditions.wifi)
+        val served = AtomicLong()
+        val fetcher = object : ReleaseFileFetching {
+            override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
+                var at = from
+                while (at < source.bytes) {
+                    val next = minOf(at + tenth, source.bytes)
+                    RandomAccessFile(appendingTo, "rw").use { it.setLength(next) }
+                    served.set(next)
+                    network.set(NetworkConditions.cellular)
+                    received(next - at)
+                    at = next
+                }
+            }
+
+            override fun sha256(file: File): String = source.sha256
+        }
+        val models = File(work, "models")
+        val session = withContext(Dispatchers.Main) {
+            CaptionSession(context, settings, HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = models, historyFolder = File(work, "history"))
+                .also {
+                    it.modelFetcher = fetcher
+                    it.networkNow = { network.get() }
+                }
+        }
+        try {
+            withContext(Dispatchers.Main) {
+                session.refreshBackup()
+                session.downloadBackup()
+            }
+            assertNotNull("never ended: ${session.backupStatus.value}", withTimeoutOrNull(10_000) { session.backupStatus.first { it !is BackupModelStatus.Downloading } })
+            assertTrue("went on over cellular data: ${served.get()} of ${source.bytes}", served.get() < source.bytes)
+            assertFalse(File(models, WhisperModelCatalog.phoneModelFile(UILanguage.English)).exists())
+            assertNotEquals(BackupModelStatus.Failed, session.backupStatus.value)
+        } finally {
             withContext(Dispatchers.Main) { session.close() }
             work.deleteRecursively()
         }
