@@ -56,6 +56,7 @@ class CaptionSession(
     private val homeServerCode: HomeServerCodeStore,
     private val cloudKeys: CloudKeyStore,
     val audio: AudioCapturing = AndroidAudioCapture(context),
+    private val modelFolder: File = context.filesDir,
     historyFolder: File = File(context.filesDir, HISTORY_FOLDER),
     journalFile: File = File(context.filesDir, JOURNAL_FILE),
     problemAudioFolder: File = File(context.filesDir, PROBLEM_AUDIO_FOLDER),
@@ -516,7 +517,7 @@ class CaptionSession(
     var modelFetcher: ReleaseFileFetching = HTTPFileFetcher()
 
     /** The phone's own model for the spoken language; see `WhisperModelCatalog.phoneModelFile`. */
-    private fun modelFile(settings: AppSettings) = File(context.filesDir, WhisperModelCatalog.phoneModelFile(settings.spokenLanguage))
+    private fun modelFile(settings: AppSettings) = File(modelFolder, WhisperModelCatalog.phoneModelFile(settings.spokenLanguage))
 
     private fun voiceScore(): ((FloatArray) -> Float?)? {
         val scorer = voiceScorer ?: return null

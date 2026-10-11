@@ -140,8 +140,8 @@ class CaptionSessionDeviceTest {
                 codes,
                 CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
                 ClipAudio(FloatArray(16_000)),
-                File(work, "not-downloaded.bin"),
-                File(work, "history"),
+                modelFolder = File(work, "no-models"),
+                historyFolder = File(work, "history"),
             )
         }
         val pairing = PairingRequests(settings, codes::save).apply { onPaired = session::settingsChanged }
