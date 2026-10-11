@@ -876,6 +876,22 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun clearingTheCaptionsFromSettingsAsksFirstThenEmptiesTheScreen() {
+        val line = TranscriptSegment(id = UUID.randomUUID(), text = "Dinner is ready", isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+        compose.runOnUiThread {
+            CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line))
+        }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Clear captions from the screen").performScrollTo().performClick()
+        compose.onNodeWithText("Delete all captions from the screen?").assertExists()
+        compose.onNodeWithText("Cancel").performClick()
+        assertEquals(1, CaptionState.screen.value.lines.size)
+        compose.onNodeWithText("Clear captions from the screen").performScrollTo().performClick()
+        compose.onNodeWithText("Delete").performClick()
+        compose.waitUntil(5_000) { CaptionState.screen.value.lines.isEmpty() }
+    }
+
+    @Test
     fun settingsAndDiagnosticsStayOpenWhenThePhoneRebuildsTheScreen() {
         compose.onNodeWithText("Settings").performClick()
         compose.onNodeWithText("Diagnostics").performScrollTo().assertExists()

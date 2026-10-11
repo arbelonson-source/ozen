@@ -156,6 +156,21 @@ class ConversationSaver(
         if (id == this.id) forgetCurrent()
     }
 
+    /**
+     * "Clear captions from the screen", as on the iPhone: what was said is
+     * saved as one ended conversation before [clearLines] takes the lines
+     * away, and the next words start a new one from the top of the screen.
+     */
+    fun clear(clearLines: () -> Unit) {
+        if (settings().saveHistory) save(ended = true)
+        clearLines()
+        closed.clear()
+        starred.clear()
+        id = UUID.randomUUID()
+        offset = 0
+        startedAt = if (isListening()) now() else null
+    }
+
     /** Deletes every saved conversation; the lines on screen stay, and the next words start a new one. */
     fun deleteAll() {
         writer.deleteAllNow()

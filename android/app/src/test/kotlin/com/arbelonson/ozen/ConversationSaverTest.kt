@@ -154,6 +154,23 @@ class ConversationSaverTest {
     }
 
     @Test
+    fun `clearing the screen keeps what was said as one ended conversation, and the next words start a new one from the top`() {
+        start()
+        say("Hello", at = clock - 60)
+        say("How are you", at = clock - 30)
+        saver.clear { lines.clear() }
+        assertEquals(clock, saved().single().endedAt)
+        clock += 5
+        say("New topic")
+        saver.save(ended = false)
+        val conversations = saved()
+        assertEquals(2, conversations.single { it.preview == "Hello" }.segmentCount)
+        val next = conversations.single { it.preview == "New topic" }
+        assertEquals(1, next.segmentCount)
+        assertNull(next.endedAt)
+    }
+
+    @Test
     fun `a conversation begun after a break keeps its first line's time when captions pause and resume`() {
         start()
         say("Good morning", at = clock - 30 * 60)

@@ -252,6 +252,12 @@ class CaptionSession(
         pipeline.pause()
     }
 
+    /** Settings' "Clear captions from the screen": the conversation so far is saved first. */
+    fun clearCaptions() {
+        conversations.clear(pipeline::clearTranscript)
+        publish()
+    }
+
     /**
      * Settings' "Show the initial walkthrough again", as on the iPhone:
      * captions stop (the conversation so far is kept) rather than keep the

@@ -107,6 +107,7 @@ fun SettingsScreen(
     heard: List<KeywordHit> = emptyList(),
     onAppLanguage: (AppLanguage) -> Unit = {},
     onShowWalkthrough: () -> Unit = {},
+    onClearCaptions: () -> Unit = {},
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
@@ -163,6 +164,7 @@ fun SettingsScreen(
             WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
             DiagnosticsRow(onOpen = { showingDiagnostics = true })
             WalkthroughAgainRow(onShowWalkthrough)
+            ClearCaptionsRow(onClearCaptions)
         }
     }
 }
@@ -853,6 +855,32 @@ private fun WalkthroughAgainRow(onShow: () -> Unit) {
                         onShow()
                     },
                 ) { Text(tr("להציג", "Show it")) }
+            },
+            dismissButton = { TextButton(onClick = { asking = false }) { Text(tr("ביטול", "Cancel")) } },
+        )
+    }
+}
+
+@Composable
+private fun ClearCaptionsRow(onClear: () -> Unit) {
+    var asking by remember { mutableStateOf(false) }
+    Text(
+        tr("ניקוי הכתוביות מהמסך", "Clear captions from the screen"),
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.fillMaxWidth().clickable { asking = true }.padding(vertical = 12.dp),
+    )
+    if (asking) {
+        AlertDialog(
+            onDismissRequest = { asking = false },
+            title = { Text(tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?")) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        asking = false
+                        onClear()
+                    },
+                ) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { asking = false }) { Text(tr("ביטול", "Cancel")) } },
         )

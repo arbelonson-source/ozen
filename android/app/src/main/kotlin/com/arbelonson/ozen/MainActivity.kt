@@ -309,7 +309,7 @@ private fun OzenApp(
                 showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, onAppLanguage = onAppLanguage, onShowWalkthrough = {
                     app.captions.showWalkthroughAgain()
                     showingSettings.value = false
-                })
+                }, onClearCaptions = app.captions::clearCaptions)
                 opened != null -> ConversationScreen(
                     app.captions.savedConversations,
                     opened.first,
