@@ -129,7 +129,7 @@ fun SettingsScreen(
     }
     var showingImportantWords by rememberSaveable { mutableStateOf(false) }
     if (showingImportantWords) {
-        ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, heard, onImportantWords, onClose = { showingImportantWords = false })
+        ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, current.spokenLanguage, heard, onImportantWords, onClose = { showingImportantWords = false })
         return
     }
     BackHandler(onBack = close)

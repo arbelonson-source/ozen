@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.AlertSuggestions
 import com.arbelonson.ozen.core.HebrewText
 import com.arbelonson.ozen.core.KeywordAlert
+import com.arbelonson.ozen.core.UILanguage
 import java.util.UUID
 
 object ImportantWords {
@@ -24,9 +25,9 @@ object ImportantWords {
 
     fun removing(id: UUID, alerts: List<KeywordAlert>): List<KeywordAlert> = alerts.filter { it.id != id }
 
-    fun suggestions(vocabulary: List<String>, alerts: List<KeywordAlert>): List<String> {
+    fun suggestions(vocabulary: List<String>, alerts: List<KeywordAlert>, spoken: UILanguage): List<String> {
         val seen = mutableSetOf<String>()
-        return (vocabulary + AlertSuggestions.words).filter { word ->
+        return (vocabulary + AlertSuggestions.offeredWords(spoken)).filter { word ->
             val normalized = HebrewText.normalize(word)
             seen.add(normalized) && alerts.none { HebrewText.normalize(it.phrase) == normalized }
         }.take(8)

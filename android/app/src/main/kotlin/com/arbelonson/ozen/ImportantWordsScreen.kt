@@ -47,6 +47,7 @@ import com.arbelonson.ozen.core.HebrewText
 import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 
 /**
@@ -61,6 +62,7 @@ internal fun ImportantWordsScreen(
     alerts: List<KeywordAlert>,
     vocabulary: List<String>,
     captionLanguage: String,
+    spoken: UILanguage,
     heard: List<KeywordHit>,
     onChange: (List<KeywordAlert>) -> Unit,
     onClose: () -> Unit,
@@ -141,7 +143,7 @@ internal fun ImportantWordsScreen(
                     onDelete = { pendingDelete = alert },
                 )
             }
-            for (word in ImportantWords.suggestions(vocabulary, alerts)) {
+            for (word in ImportantWords.suggestions(vocabulary, alerts, spoken)) {
                 TextButton(onClick = { onChange(ImportantWords.adding(word, alerts)) }) {
                     Text(tr("להוסיף: %1", "Add: %1", listOf(AlertSuggestions.label(word, Localization.language))))
                 }

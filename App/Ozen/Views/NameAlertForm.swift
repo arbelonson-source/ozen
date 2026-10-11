@@ -35,7 +35,7 @@ struct NameAlertForm: View {
                     .foregroundStyle(.secondary)
             }
             formLayout {
-                ForEach(AlertSuggestions.names, id: \.self) { word in
+                ForEach(AlertSuggestions.offeredNames(spoken: viewModel.settings.spokenLanguage), id: \.self) { word in
                     suggestionButton(word)
                 }
             }

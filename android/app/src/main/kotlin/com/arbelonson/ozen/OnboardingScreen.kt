@@ -235,7 +235,7 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (word in AlertSuggestions.names) {
+            for (word in AlertSuggestions.offeredNames(settings.spokenLanguage)) {
                 val added = settings.keywordAlerts.any { it.isEnabled && HebrewText.normalize(it.phrase) == HebrewText.normalize(word) }
                 OutlinedButton(onClick = { onAddAlert(word) }, enabled = !added, modifier = Modifier.heightIn(min = 56.dp)) {
                     Text((if (added) "✓ " else "+ ") + AlertSuggestions.label(word, Localization.language), fontSize = 18.sp)

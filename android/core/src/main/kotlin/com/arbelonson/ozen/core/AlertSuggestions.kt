@@ -4,6 +4,17 @@ object AlertSuggestions {
     val names = listOf("סבתא", "אמא")
     val words = listOf("סבתא", "אמא", "תרופה", "רופא")
 
+    /**
+     * The suggested names as said in the spoken language: Hebrew's own
+     * words, or what each means in that language, so the alert listens for
+     * what is said.
+     */
+    fun offeredNames(spoken: UILanguage): List<String> = names.map { spokenForm(it, spoken) }
+
+    fun offeredWords(spoken: UILanguage): List<String> = words.map { spokenForm(it, spoken) }
+
+    private fun spokenForm(word: String, spoken: UILanguage): String = if (spoken == UILanguage.Hebrew) word else meaning(word, spoken) ?: word
+
     fun label(word: String, language: UILanguage): String = shown(word, language)
 
     fun shown(phrase: String, language: UILanguage): String {

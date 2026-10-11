@@ -80,4 +80,13 @@ struct SpokenLanguageTests {
         #expect(Array(english.suffix(2)) == ["ozen-turbo-hebrew-a3-8bit", "ivrit-large-v3-turbo-8bit"])
         #expect(english.sorted() == WhisperModelCatalog.options.map(\.variant).sorted())
     }
+
+    @Test("the suggested names and words are offered as said in the spoken language: Hebrew's own, or what each means in it")
+    func suggestionsAsSaid() {
+        #expect(AlertSuggestions.offeredNames(spoken: .hebrew) == AlertSuggestions.names)
+        #expect(AlertSuggestions.offeredWords(spoken: .hebrew) == AlertSuggestions.words)
+        #expect(AlertSuggestions.offeredNames(spoken: .english) == ["Grandma", "Mom"])
+        #expect(AlertSuggestions.offeredWords(spoken: .english) == ["Grandma", "Mom", "Medicine", "Doctor"])
+        #expect(AlertSuggestions.offeredNames(spoken: .russian) == ["Бабушка", "Мама"])
+    }
 }

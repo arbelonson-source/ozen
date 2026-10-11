@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.KeywordAlert
+import com.arbelonson.ozen.core.UILanguage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -28,7 +29,13 @@ class ImportantWordsTest {
     @Test
     fun `suggestions are her own words first, then the usual ones, none listed or repeated, at most eight`() {
         val vocabulary = listOf("Shira", "אמא", "Dr. Levi", "shira", "Noa", "Avi", "Dana", "Yoni", "Tal")
-        assertEquals(listOf("Shira", "אמא", "Dr. Levi", "Noa", "Avi", "Dana", "Yoni", "Tal"), ImportantWords.suggestions(vocabulary, emptyList()))
-        assertEquals(listOf("אמא", "תרופה", "רופא"), ImportantWords.suggestions(emptyList(), listOf(grandma)))
+        assertEquals(listOf("Shira", "אמא", "Dr. Levi", "Noa", "Avi", "Dana", "Yoni", "Tal"), ImportantWords.suggestions(vocabulary, emptyList(), UILanguage.Hebrew))
+        assertEquals(listOf("אמא", "תרופה", "רופא"), ImportantWords.suggestions(emptyList(), listOf(grandma), UILanguage.Hebrew))
+    }
+
+    @Test
+    fun `for another spoken language the usual suggestions are the words as said in it, none already listed`() {
+        assertEquals(listOf("Shira", "Grandma", "Mom", "Medicine", "Doctor"), ImportantWords.suggestions(listOf("Shira"), emptyList(), UILanguage.English))
+        assertEquals(listOf("Mom", "Medicine", "Doctor"), ImportantWords.suggestions(emptyList(), listOf(KeywordAlert(phrase = "grandma")), UILanguage.English))
     }
 }

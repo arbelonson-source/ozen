@@ -150,7 +150,7 @@ struct KeywordAlertsView: View {
     /// a suggestion row here.
     private var unusedSuggestions: [String] {
         var seen = Set<String>()
-        let candidates = (viewModel.vocabulary + AlertSuggestions.words).filter { word in
+        let candidates = (viewModel.vocabulary + AlertSuggestions.offeredWords(spoken: viewModel.settings.spokenLanguage)).filter { word in
             let normalized = HebrewText.normalize(word)
             guard seen.insert(normalized).inserted else { return false }
             return !viewModel.keywordAlerts.contains { HebrewText.normalize($0.phrase) == normalized }

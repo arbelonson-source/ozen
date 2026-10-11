@@ -4,6 +4,21 @@ public enum AlertSuggestions {
     public static let names = ["סבתא", "אמא"]
     public static let words = ["סבתא", "אמא", "תרופה", "רופא"]
 
+    /// The suggested names as said in the spoken language: Hebrew's own
+    /// words, or what each means in that language, so the alert listens
+    /// for what is said.
+    public static func offeredNames(spoken: UILanguage) -> [String] {
+        names.map { spokenForm(of: $0, in: spoken) }
+    }
+
+    public static func offeredWords(spoken: UILanguage) -> [String] {
+        words.map { spokenForm(of: $0, in: spoken) }
+    }
+
+    private static func spokenForm(of word: String, in spoken: UILanguage) -> String {
+        spoken == .hebrew ? word : meaning(of: word, in: spoken) ?? word
+    }
+
     public static func label(for word: String, in language: UILanguage) -> String {
         shown(word, in: language)
     }

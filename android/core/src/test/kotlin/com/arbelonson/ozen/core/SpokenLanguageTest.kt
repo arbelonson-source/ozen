@@ -84,4 +84,13 @@ class SpokenLanguageTest {
         assertEquals(listOf("ozen-turbo-hebrew-a3-8bit", "ivrit-large-v3-turbo-8bit"), english.takeLast(2))
         assertEquals(WhisperModelCatalog.options.map { it.variant }.sorted(), english.sorted())
     }
+
+    @Test
+    fun `the suggested names and words are offered as said in the spoken language, Hebrew's own or what each means in it`() {
+        assertEquals(AlertSuggestions.names, AlertSuggestions.offeredNames(UILanguage.Hebrew))
+        assertEquals(AlertSuggestions.words, AlertSuggestions.offeredWords(UILanguage.Hebrew))
+        assertEquals(listOf("Grandma", "Mom"), AlertSuggestions.offeredNames(UILanguage.English))
+        assertEquals(listOf("Grandma", "Mom", "Medicine", "Doctor"), AlertSuggestions.offeredWords(UILanguage.English))
+        assertEquals(listOf("Бабушка", "Мама"), AlertSuggestions.offeredNames(UILanguage.Russian))
+    }
 }
