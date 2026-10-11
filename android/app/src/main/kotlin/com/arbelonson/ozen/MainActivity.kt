@@ -59,6 +59,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -118,6 +119,10 @@ import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     private val showingSettings = mutableStateOf(false)
+    private val microphoneAnswer = mutableStateOf<Boolean?>(null)
+    private val notificationsAnswer = mutableStateOf<Boolean?>(null)
+    private val approveMicrophone = registerForActivityResult(ActivityResultContracts.RequestPermission()) { microphoneAnswer.value = it }
+    private val approveNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { notificationsAnswer.value = it }
 
     private val askForMicrophone = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
         if (granted[Manifest.permission.RECORD_AUDIO] == true) {
@@ -136,7 +141,7 @@ class MainActivity : ComponentActivity() {
         Localization.language = AppLanguage.System.resolved(phoneLanguages)
         enableEdgeToEdge()
         val app = application as OzenApplication
-        setContent { OzenApp(app, showingSettings, onStatusTap = ::statusTapped, onLightScreen = ::systemBarsFor) }
+        setContent { OzenApp(app, showingSettings, onboarding(), onStatusTap = ::statusTapped, onLightScreen = ::systemBarsFor) }
         openLink(intent)
     }
 
@@ -147,6 +152,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        // Back from the phone's settings, where the walkthrough sent her.
+        if (microphoneAnswer.value == false && hasMicrophone()) microphoneAnswer.value = true
+        if (notificationsAnswer.value != true && AlertNotifier.allowed(this)) notificationsAnswer.value = true
         (application as OzenApplication).captions.appIsActive = true
     }
 
@@ -183,6 +191,30 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun onboarding() = OnboardingHooks(
+        microphone = microphoneAnswer,
+        notifications = notificationsAnswer,
+        shown = {
+            microphoneAnswer.value = if (hasMicrophone()) true else null
+            notificationsAnswer.value = if (AlertNotifier.allowed(this)) true else null
+        },
+        approveMicrophone = { approveMicrophone.launch(Manifest.permission.RECORD_AUDIO) },
+        approveNotifications = ::askForNotifications,
+        openPhoneSettings = ::openAppSettings,
+        finish = { start ->
+            (application as OzenApplication).settings.change { it.hasCompletedOnboarding = true }
+            if (start) startListening()
+        },
+    )
+
+    private fun askForNotifications() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            approveNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+        }
+    }
+
     private fun startListening() {
         if (hasMicrophone()) {
             ListeningService.start(this)
@@ -210,8 +242,19 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/** What the walkthrough needs from the activity: the two permissions it asks for, their answers, and finishing. */
+private class OnboardingHooks(
+    val microphone: State<Boolean?>,
+    val notifications: State<Boolean?>,
+    val shown: () -> Unit,
+    val approveMicrophone: () -> Unit,
+    val approveNotifications: () -> Unit,
+    val openPhoneSettings: () -> Unit,
+    val finish: (startCaptions: Boolean) -> Unit,
+)
+
 @Composable
-private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>, onStatusTap: () -> Unit, onLightScreen: (Boolean) -> Unit) {
+private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>, onboarding: OnboardingHooks, onStatusTap: () -> Unit, onLightScreen: (Boolean) -> Unit) {
     val direction = if (Localization.language.isRightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr
     val state by CaptionState.screen.collectAsStateWithLifecycle()
     val current by app.settings.current.collectAsStateWithLifecycle()
@@ -227,13 +270,28 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
             delay(30_000)
         }
     }
-    KeepScreenOn(state.keepsScreenOn(current.display.keepScreenAwake, awakeClock))
+    // The walkthrough is long enough for the phone's own lock timeout to
+    // end it partway, as the iPhone found.
+    KeepScreenOn(!current.hasCompletedOnboarding || state.keepsScreenOn(current.display.keepScreenAwake, awakeClock))
     val look = CaptionTheme.of(current.display.theme, isSystemInDarkTheme())
     LaunchedEffect(look.isLight) { onLightScreen(look.isLight) }
     MaterialTheme(colorScheme = if (look.isLight) lightColorScheme() else darkColorScheme()) {
         CompositionLocalProvider(LocalLayoutDirection provides direction) {
             val opened = reading
             when {
+                !current.hasCompletedOnboarding -> {
+                    LaunchedEffect(Unit) { onboarding.shown() }
+                    OnboardingScreen(
+                        settings = current,
+                        microphone = onboarding.microphone.value,
+                        notifications = onboarding.notifications.value,
+                        onApproveMicrophone = onboarding.approveMicrophone,
+                        onApproveNotifications = onboarding.approveNotifications,
+                        onOpenPhoneSettings = onboarding.openPhoneSettings,
+                        onAddWord = { app.captions.setImportantWords(ImportantWords.adding(it, app.settings.current.value.keywordAlerts)) },
+                        onFinish = onboarding.finish,
+                    )
+                }
                 showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard)
                 opened != null -> ConversationScreen(
                     app.captions.savedConversations,
