@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -94,6 +96,12 @@ internal fun OnboardingScreen(
     onFinish: () -> Unit,
 ) {
     val pager = rememberPagerState(pageCount = { PAGES })
+    val turning = rememberCoroutineScope()
+    // The iPhone's pages swipe back to the one before; Back does the same
+    // here, and only on the first page leaves the app.
+    BackHandler(enabled = pager.currentPage > 0) {
+        turning.launch { pager.animateScrollToPage(pager.currentPage - 1) }
+    }
     val nameDraft = rememberSaveable { mutableStateOf("") }
     val addName by rememberUpdatedState(onAddName)
     val addDraft = {
@@ -317,7 +325,9 @@ private fun Status(text: String, good: Boolean) {
 private fun Dots(pager: PagerState) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clearAndSetSemantics {},
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clearAndSetSemantics {
+            contentDescription = tr("%1 מתוך %2", "%1 of %2", listOf("${pager.currentPage + 1}", "$PAGES"))
+        },
     ) {
         repeat(PAGES) { page ->
             val colour = if (page == pager.currentPage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant

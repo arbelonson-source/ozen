@@ -6,6 +6,7 @@ import android.os.ParcelFileDescriptor
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -79,6 +80,25 @@ class OnboardingDeviceTest {
             it.languageCode = before.languageCode
             it.hasCompletedOnboarding = true
         }
+    }
+
+    @Test
+    fun backInTheWalkthroughGoesToThePageBeforeAndTheScreenReaderHearsWhichPageItIs() {
+        val back = { InstrumentationRegistry.getInstrumentation().runOnMainSync { compose.activity.onBackPressedDispatcher.onBackPressed() } }
+        compose.onNode(hasContentDescription("1 of 6")).assertExists()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Which language do people around you speak?").assertExists()
+        compose.onNode(hasContentDescription("3 of 6")).assertExists()
+
+        back()
+        compose.waitForIdle()
+        compose.onNodeWithText("How it works").assertExists()
+        compose.onNode(hasContentDescription("2 of 6")).assertExists()
+        back()
+        compose.waitForIdle()
+        compose.onNodeWithText("Live captions for conversation.").assertExists()
+        assertFalse("Back left the walkthrough", compose.activity.isFinishing)
     }
 
     @Test
