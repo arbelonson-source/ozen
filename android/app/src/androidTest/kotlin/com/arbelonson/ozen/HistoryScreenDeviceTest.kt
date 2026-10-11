@@ -243,8 +243,10 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Numbers row test at 10:30", substring = true).performClick()
         waitFor("Numbers mentioned")
         val row = { text: String -> compose.onNode(hasText(text, substring = true) and hasClickAction()) }
-        val unsure = "May not have been heard correctly"
+        val unsure = "May not have been heard correctly."
         row("at 10:30 on Sunday").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, unsure))
+        // Said once, as on the iPhone: the question mark's own label is not read too.
+        row("at 10:30 on Sunday").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
         row("bring 3 forms").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
 
         val copy = row("bring 3 forms").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Copy" }

@@ -815,7 +815,8 @@ private fun NumbersSection(numbers: NumbersMentioned, isUncertain: (SavedSegment
                     Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row {
-                    if (unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
+                    // The row's state says it once; the mark's own label would say it twice.
+                    if (unsure) Box(Modifier.clearAndSetSemantics {}) { UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text(
                         captionText(CaptionLayout.directed(said.text), emphasizeNumbers = true, numberColor = null),
                         style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
