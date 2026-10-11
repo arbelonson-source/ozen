@@ -32,7 +32,7 @@ struct LiveCaptionView: View {
     /// How many lines there were when she scrolled up, so the way back down
     /// can say how many came since.
     @State private var lineCountWhenUnpinned = 0
-    @State private var lastSegmentUpdate: TimeInterval = 0
+    @State private var speechResume = SpeechResume()
     /// Advanced every half minute, so a long quiet can let the phone lock
     /// (see `ScreenAwakePolicy`) and the install-expiry warning appears on
     /// time.
@@ -1127,11 +1127,11 @@ struct LiveCaptionView: View {
     }
 
     /// A gentle buzz when speech starts again after a long quiet stretch —
-    /// the reader may have looked away from the screen.
+    /// the reader may have looked away from the screen. Clearing the
+    /// captions is her own doing and never counts as talk.
     private func noteSpeechActivity() {
-        let now = Date().timeIntervalSince1970
-        defer { lastSegmentUpdate = now }
-        guard viewModel.hapticOnSpeechResume, lastSegmentUpdate > 0, now - lastSegmentUpdate > 8 else { return }
+        guard speechResume.noteCaptions(viewModel.segments, now: Date().timeIntervalSince1970),
+              viewModel.hapticOnSpeechResume else { return }
         vibrate(.speechResumed)
     }
 
