@@ -10,7 +10,7 @@ class OzenApplication : Application() {
     val homeServerCode by lazy { HomeServerCodeStore(File(noBackupFilesDir, "home-server-code"), KeystoreCodeCipher()) }
     val cloudKeys by lazy { CloudKeyStore(File(noBackupFilesDir, "cloud-keys"), KeystoreCodeCipher("ozen-cloud-keys")) }
     val pairing by lazy { PairingRequests(settings, homeServerCode::save).also { it.onPaired = { captions.settingsChanged() } } }
-    val engineSettings by lazy { EngineSettings(settings, cloudKeys, homeServerCode) { captions.settingsChanged() } }
+    val engineSettings by lazy { EngineSettings(settings, cloudKeys, homeServerCode, { captions.checkHomeComputer() }) { captions.settingsChanged() } }
     private val session = lazy { CaptionSession(this, settings, homeServerCode, cloudKeys) }
     val captions by session
 

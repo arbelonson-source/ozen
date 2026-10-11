@@ -5,6 +5,7 @@ import android.os.Build
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.CaptionPipeline
+import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.HomeServerEngine
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
 import com.arbelonson.ozen.core.PipelinePhase
@@ -15,6 +16,8 @@ import com.arbelonson.ozen.core.WebSocketConnector
 import com.arbelonson.ozen.whisper.ModelFileLoader
 import com.arbelonson.ozen.whisper.SileroVoiceScorer
 import java.io.File
+import kotlin.time.DurationUnit
+import kotlin.time.TimeSource
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -86,14 +89,23 @@ class CaptionSession(
         segments = pipeline.segments,
     )
 
+    suspend fun checkHomeComputer(): HomeServerCheck {
+        val current = settings.current.value
+        val started = TimeSource.Monotonic.markNow()
+        val availability = homeComputerEngine(current).checkAvailability(current.languageCode)
+        return HomeServerCheck.of(availability, started.elapsedNow().toDouble(DurationUnit.SECONDS))
+    }
+
+    private fun homeComputerEngine(settings: AppSettings) = HomeServerEngine(
+        address = settings.homeServerAddress,
+        token = homeServerCode::read,
+        connector = connector,
+        client = "Ozen ${context.packageManager.getPackageInfo(context.packageName, 0).versionName}, Android ${Build.VERSION.RELEASE}",
+        beam = settings.homeServerBeam,
+    )
+
     private fun engine(settings: AppSettings): TranscriptionEngine = when (settings.engine) {
-        TranscriptionEngineKind.HomeServer -> HomeServerEngine(
-            address = settings.homeServerAddress,
-            token = homeServerCode::read,
-            connector = connector,
-            client = "Ozen ${context.packageManager.getPackageInfo(context.packageName, 0).versionName}, Android ${Build.VERSION.RELEASE}",
-            beam = settings.homeServerBeam,
-        )
+        TranscriptionEngineKind.HomeServer -> homeComputerEngine(settings)
         TranscriptionEngineKind.Cloud -> settings.cloudProvider.let { provider ->
             provider.engine(
                 model = settings.chosenCloudModel,

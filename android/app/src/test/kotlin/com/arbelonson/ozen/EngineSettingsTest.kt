@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.CloudProvider
+import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
@@ -11,6 +12,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
 
 class EngineSettingsTest {
     private val folder = Files.createTempDirectory("ozen-engine-settings").toFile()
@@ -19,7 +21,16 @@ class EngineSettingsTest {
     private val keys = CloudKeyStore(File(folder, "cloud-keys"), ReversingCipher())
     private val codes = HomeServerCodeStore(File(folder, "home-server-code"), ReversingCipher())
     private var restarts = 0
-    private val engineSettings = EngineSettings(settings, keys, codes) { restarts += 1 }
+    private var addressWhenChecked: String? = null
+    private val engineSettings = EngineSettings(
+        settings,
+        keys,
+        codes,
+        checkHomeComputer = {
+            addressWhenChecked = settings.current.value.homeServerAddress
+            HomeServerCheck.Connected(12)
+        },
+    ) { restarts += 1 }
 
     @AfterTest
     fun removeFolder() {
@@ -89,7 +100,7 @@ class EngineSettingsTest {
 
     @Test
     fun `a key the phone could not seal is reported and does not restart captions`() {
-        val failing = EngineSettings(settings, CloudKeyStore(File(folder, "cloud-keys"), ReversingCipher(failsToSeal = true)), codes) { restarts += 1 }
+        val failing = EngineSettings(settings, CloudKeyStore(File(folder, "cloud-keys"), ReversingCipher(failsToSeal = true)), codes, { HomeServerCheck.Unreachable }) { restarts += 1 }
         failing.chooseEngine(TranscriptionEngineKind.Cloud)
         assertFalse(failing.saveCloudKey("sx-test-key"))
         assertFalse(failing.hasCloudKey())
@@ -160,8 +171,29 @@ class EngineSettingsTest {
     }
 
     @Test
+    fun `test connection is offered once there is a code and an address that could connect, saved or typed`() {
+        assertFalse(engineSettings.canTestConnection(addressDraft = "ws://192.168.1.20:8765", codeDraft = " ", codeSaved = false))
+        assertTrue(engineSettings.canTestConnection(addressDraft = "ws://192.168.1.20:8765", codeDraft = "code-typed", codeSaved = false))
+        assertTrue(engineSettings.canTestConnection(addressDraft = "ws://192.168.1.20:8765", codeDraft = "", codeSaved = true))
+        assertFalse(engineSettings.canTestConnection(addressDraft = "ws://pc.example.net", codeDraft = "code-typed", codeSaved = true))
+        assertFalse(engineSettings.canTestConnection(addressDraft = "", codeDraft = "code-typed", codeSaved = true))
+        engineSettings.saveHomeComputerAddress("wss://pc.example.net")
+        assertTrue(engineSettings.canTestConnection(addressDraft = "ws://bad host", codeDraft = "", codeSaved = true))
+        assertFalse(engineSettings.canTestConnection(addressDraft = "ws://bad host", codeDraft = "", codeSaved = false))
+    }
+
+    @Test
+    fun `testing the connection first saves a typed address that could connect, so what is on screen is what gets tested`() = runBlocking {
+        engineSettings.saveHomeComputerAddress("ws://192.168.1.20:8765")
+        assertEquals(HomeServerCheck.Connected(12), engineSettings.testConnection(addressDraft = " ws://192.168.1.21:8765 "))
+        assertEquals("ws://192.168.1.21:8765", addressWhenChecked)
+        engineSettings.testConnection(addressDraft = "ws://pc.example.net")
+        assertEquals("ws://192.168.1.21:8765", addressWhenChecked)
+    }
+
+    @Test
     fun `a pairing code the phone could not seal is reported and does not restart captions`() {
-        val failing = EngineSettings(settings, keys, HomeServerCodeStore(File(folder, "home-server-code"), ReversingCipher(failsToSeal = true))) { restarts += 1 }
+        val failing = EngineSettings(settings, keys, HomeServerCodeStore(File(folder, "home-server-code"), ReversingCipher(failsToSeal = true)), { HomeServerCheck.Unreachable }) { restarts += 1 }
         failing.chooseEngine(TranscriptionEngineKind.HomeServer)
         assertFalse(failing.savePairingCode("code-one"))
         assertFalse(failing.hasPairingCode())

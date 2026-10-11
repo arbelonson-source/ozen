@@ -2,12 +2,14 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.HomeServer
+import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 
 class EngineSettings(
     private val settings: SettingsHolder,
     private val cloudKeys: CloudKeyStore,
     private val homeServerCode: HomeServerCodeStore,
+    private val checkHomeComputer: suspend () -> HomeServerCheck,
     private val restartIfRunning: () -> Unit,
 ) {
     val engines = listOf(TranscriptionEngineKind.WhisperKit, TranscriptionEngineKind.HomeServer, TranscriptionEngineKind.Cloud)
@@ -61,6 +63,17 @@ class EngineSettings(
         if (code.isEmpty() || !homeServerCode.save(code)) return false
         if (homeComputerIsTheEngine) restartIfRunning()
         return true
+    }
+
+    fun canTestConnection(addressDraft: String, codeDraft: String, codeSaved: Boolean): Boolean {
+        val saved = settings.current.value.homeServerAddress
+        val address = HomeServer.url(saved) != null || HomeServer.unsavedAddress(addressDraft, saved) != null
+        return address && (codeSaved || codeDraft.isNotBlank())
+    }
+
+    suspend fun testConnection(addressDraft: String): HomeServerCheck {
+        HomeServer.unsavedAddress(addressDraft, settings.current.value.homeServerAddress)?.let { saveHomeComputerAddress(it) }
+        return checkHomeComputer()
     }
 
     fun saveUnsavedEntries(cloudKeyDraft: String, addressDraft: String, pairingCodeDraft: String) {

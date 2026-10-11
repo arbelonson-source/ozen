@@ -112,4 +112,18 @@ class SettingsScreenDeviceTest {
         assertEquals("ws://192.168.1.21:8765", app.settings.current.value.homeServerAddress)
         assertEquals("code-kept-on-back", app.homeServerCode.read())
     }
+
+    @Test
+    fun testingAComputerThatDoesNotAnswerSavesWhatWasTypedAndSaysSo() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onAllNodesWithText("Home computer").onFirst().performClick()
+        compose.onNodeWithText("Computer address").performScrollTo().performTextInput("ws://10.0.2.2:9")
+        compose.onNodeWithText("The pairing code from the computer").performScrollTo().performTextInput("code-for-the-test")
+        compose.onNodeWithText("Test connection").performScrollTo().performClick()
+        compose.waitUntil(timeoutMillis = 30_000) {
+            compose.onAllNodesWithText("No answer from the computer", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals("ws://10.0.2.2:9", app.settings.current.value.homeServerAddress)
+        assertEquals("code-for-the-test", app.homeServerCode.read())
+    }
 }

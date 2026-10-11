@@ -4,11 +4,14 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -18,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -27,14 +31,20 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -43,8 +53,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.HomeServer
+import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.tr
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onClose: () -> Unit) {
@@ -197,7 +209,18 @@ private fun HomeComputerSection(
     var hasCode by remember { mutableStateOf(engineSettings.hasPairingCode()) }
     var code by codeDraft
     var codeSaveFailed by remember { mutableStateOf(false) }
-    val saveAddress = { engineSettings.saveHomeComputerAddress(address) }
+    val scope = rememberCoroutineScope()
+    var checking by remember { mutableStateOf(false) }
+    var check by remember { mutableStateOf<HomeServerCheck?>(null) }
+    var checkGeneration by remember { mutableIntStateOf(0) }
+    val forgetCheck = {
+        check = null
+        checkGeneration += 1
+    }
+    val saveAddress = {
+        forgetCheck()
+        engineSettings.saveHomeComputerAddress(address)
+    }
     val saveCode = {
         if (code.isNotBlank()) {
             val stored = engineSettings.savePairingCode(code)
@@ -205,7 +228,22 @@ private fun HomeComputerSection(
             if (stored) {
                 code = ""
                 hasCode = true
+                forgetCheck()
             }
+        }
+    }
+    // As on the iPhone, what is on screen is what gets tested: a code or
+    // address typed but not saved yet is saved first.
+    val testConnection = {
+        checking = true
+        saveCode()
+        forgetCheck()
+        val generation = checkGeneration
+        val typed = address
+        scope.launch {
+            val result = engineSettings.testConnection(typed)
+            checking = false
+            if (generation == checkGeneration) check = result
         }
     }
 
@@ -243,6 +281,32 @@ private fun HomeComputerSection(
     )
     if (code.isNotBlank()) Button(onClick = saveCode) { Text(tr("שמירת הקוד", "Save code")) }
     if (codeSaveFailed) Warning(tr("הקוד לא נשמר. נסו שוב.", "The code wasn’t saved. Try again."))
+    if (engineSettings.canTestConnection(address, code, hasCode)) {
+        val checkingText = tr("בודק…", "Checking…")
+        Button(
+            onClick = { testConnection() },
+            enabled = !checking,
+            modifier = Modifier.semantics { if (checking) stateDescription = checkingText },
+        ) {
+            Text(tr("בדיקת חיבור", "Test connection"))
+            if (checking) {
+                Spacer(Modifier.width(8.dp))
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            }
+        }
+    }
+    check?.let { HomeComputerCheckLabel(it) }
+}
+
+@Composable
+private fun HomeComputerCheckLabel(check: HomeServerCheck) {
+    val (text, color) = when (check) {
+        is HomeServerCheck.Connected -> tr("מחובר: המחשב ענה תוך %1 אלפיות שנייה", "Connected: the computer answered in %1 ms", listOf("${check.milliseconds}")) to SAVED_GREEN
+        HomeServerCheck.CodeRefused -> tr("המחשב ענה, אבל לא קיבל את הקוד. סרקו שוב את קוד ה‑QR או הקלידו את הקוד מחדש.", "The computer answered but didn’t accept the code. Scan the QR code again or retype the code.") to MaterialTheme.colorScheme.error
+        HomeServerCheck.Unreachable -> tr("אין תשובה מהמחשב. בדקו שהוא דלוק, ער (לא במצב שינה) ומחובר לאינטרנט.", "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.") to CAUTION_ORANGE
+        HomeServerCheck.NotSetUp -> tr("חסרים כתובת או קוד", "The address or code is missing") to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Text(text, color = color, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
 }
 
 private fun cloudServiceFooter(service: CloudProvider): String = when (service) {
