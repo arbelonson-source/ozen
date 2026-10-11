@@ -96,10 +96,6 @@ internal fun OnboardingScreen(
     LaunchedEffect(pager) {
         snapshotFlow { pager.currentPage }.collect { if (it != NAME_PAGE) addDraft() }
     }
-    // A focused name field pulls the pages back to itself, so a swipe away
-    // from it slid back; the field lets go as soon as the pages move.
-    val focusManager = LocalFocusManager.current
-    LaunchedEffect(pager.isScrollInProgress) { if (pager.isScrollInProgress) focusManager.clearFocus() }
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
