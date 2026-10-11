@@ -6,6 +6,7 @@ import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ControlBarAutoHide
 import com.arbelonson.ozen.core.KeywordHit
+import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.PhoneNumbers
 import com.arbelonson.ozen.core.PipelinePhase
@@ -70,6 +71,8 @@ data class CaptionScreenState(
      */
     val speechResumed: Int = 0,
     val away: AwayMark? = null,
+    /** The sound alert the banner shows while its time lasts; see `CaptionPipeline.currentBannerSoundAlert`. */
+    val sound: SoundAlert? = null,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
@@ -199,6 +202,10 @@ object CaptionState {
     /** An important word was said, and should buzz and show for a moment; kept through new captions. */
     fun heard(word: HeardWord) {
         state.value = state.value.copy(heard = word)
+    }
+
+    fun sound(alert: SoundAlert?) {
+        state.value = state.value.copy(sound = alert)
     }
 
     /** The phone started or stopped saying something for her: the caption screen's Say button stops it meanwhile. */

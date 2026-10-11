@@ -60,6 +60,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.SoundAlert
+import com.arbelonson.ozen.core.SoundEventCatalog
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
@@ -1003,6 +1005,32 @@ class CaptionScreenDeviceTest {
         } finally {
             app.settings.change { it.vocabulary = before }
         }
+    }
+
+    @Test
+    fun aSoundHeardShowsItsBannerUntilTappedAwayAndAgainOnComingBackFromSettingsWithinItsTime() {
+        val heardAt = System.currentTimeMillis() / 1_000.0
+        val smoke = SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = heardAt)
+        compose.runOnUiThread {
+            CaptionState.clear()
+            CaptionState.sound(smoke)
+        }
+        compose.onNodeWithContentDescription("Alert: Smoke detector").assertIsDisplayed()
+        compose.onNodeWithText("Attention!", useUnmergedTree = true).assertExists()
+
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Close").performClick()
+        compose.onNodeWithContentDescription("Alert: Smoke detector").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Alert: Smoke detector").performClick()
+        compose.onNodeWithContentDescription("Alert: Smoke detector").assertDoesNotExist()
+        assertNull(CaptionState.screen.value.sound)
+
+        val door = SoundAlert(event = SoundEventCatalog.event("door_bell")!!, confidence = 0.7, timestamp = heardAt)
+        compose.runOnUiThread { CaptionState.sound(door) }
+        compose.onNodeWithContentDescription("Alert: Doorbell").assertIsDisplayed()
+        compose.onNodeWithText("Heard just now", useUnmergedTree = true).assertExists()
+        compose.runOnUiThread { CaptionState.clear() }
+        compose.onNodeWithContentDescription("Alert: Doorbell").assertDoesNotExist()
     }
 
     @Test

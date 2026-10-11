@@ -13,6 +13,7 @@ import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.BackgroundAlertPolicy
 import com.arbelonson.ozen.core.KeywordHit
+import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.tr
 
 class AwayAlerts(private val policy: BackgroundAlertPolicy = BackgroundAlertPolicy()) {
@@ -27,6 +28,12 @@ class AwayAlerts(private val policy: BackgroundAlertPolicy = BackgroundAlertPoli
         policy.isEnabled = settings.notifyWhenInBackground
         policy.quietHours = settings.quietHours
         return hits.mapNotNull { policy.notification(it, line, appIsActive, now, utcOffsetSeconds) }
+    }
+
+    fun forSound(alert: SoundAlert, appIsActive: Boolean, settings: AppSettings, now: Double, utcOffsetSeconds: Int): AlertNotificationContent? {
+        policy.isEnabled = settings.notifyWhenInBackground
+        policy.quietHours = settings.quietHours
+        return policy.notification(alert, appIsActive, now, utcOffsetSeconds)
     }
 }
 

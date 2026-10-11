@@ -109,6 +109,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.DisplayPreferences
@@ -389,6 +390,9 @@ private fun OzenApp(
                         onNameAlert = { namingAlert = true },
                         onDismissNameAlert = app.captions::dismissNameAlertOffer,
                         buzzWhenTalkResumes = current.hapticOnSpeechResume,
+                        onBuzz = app.captions::buzz,
+                        soundSecondsLeft = app.captions::soundBannerSecondsLeft,
+                        onDismissSound = app.captions::dismissSoundAlert,
                     )
                 }
             }
@@ -481,6 +485,9 @@ private fun CaptionScreen(
     onNameAlert: () -> Unit,
     onDismissNameAlert: () -> Unit,
     buzzWhenTalkResumes: Boolean,
+    onBuzz: (AlertVibration) -> Unit,
+    soundSecondsLeft: (SoundAlert) -> Double,
+    onDismissSound: (UUID) -> Unit,
 ) {
     val list = rememberLazyListState()
     var problemMarked by remember { mutableStateOf<Boolean?>(null) }
@@ -490,17 +497,27 @@ private fun CaptionScreen(
     // was in Settings or away is long over by the time she is back.
     val resumedBefore = remember { state.speechResumed }
     LaunchedEffect(state.speechResumed) {
-        if (state.speechResumed > resumedBefore && buzzWhenTalkResumes) Buzz.play(context, AlertVibration.speechResumed)
+        if (state.speechResumed > resumedBefore && buzzWhenTalkResumes) onBuzz(AlertVibration.speechResumed)
     }
     // Only a word said just now: one heard while the screen was away buzzing
     // on coming back would send her looking for something long over.
     LaunchedEffect(state.heard?.id) {
         val word = state.heard ?: return@LaunchedEffect
         if (secondsNow() - word.at > HEARD_SHOWN_SECONDS) return@LaunchedEffect
-        Buzz.play(context, AlertVibration.keyword)
+        onBuzz(AlertVibration.keyword)
         shownWord = word
         delay((HEARD_SHOWN_SECONDS * 1_000).toLong())
         if (shownWord?.id == word.id) shownWord = null
+    }
+    // The banner keeps what is left of its time: back from Settings within
+    // it, the banner is there again, and one whose time is up is not.
+    var shownSound by remember { mutableStateOf<SoundAlert?>(null) }
+    LaunchedEffect(state.sound?.id) {
+        val alert = state.sound?.takeIf { soundSecondsLeft(it) > 0 }
+        shownSound = alert
+        if (alert == null) return@LaunchedEffect
+        delay((soundSecondsLeft(alert) * 1_000).toLong())
+        shownSound = null
     }
     var fixing by remember { mutableStateOf<CaptionLine?>(null) }
     fixing?.let { line ->
@@ -595,6 +612,12 @@ private fun CaptionScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                shownSound?.let { alert ->
+                    SoundAlertBanner(alert) {
+                        shownSound = null
+                        onDismissSound(alert.id)
+                    }
+                }
                 shownWord?.let { HeardPill(it.said, Modifier) }
                 state.away?.takeIf { it.offersJump && !awayMarkShowing && state.lines.isNotEmpty() }?.let { mark ->
                     AwayJump(mark.count, look) {

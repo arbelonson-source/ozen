@@ -17,7 +17,11 @@ import com.arbelonson.ozen.core.CaptionPipeline
 import com.arbelonson.ozen.core.HTTPFileFetcher
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.HomeServerCheck
+import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.HomeServerEngine
+import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.core.SoundAlert
+import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.Localization
@@ -78,6 +82,7 @@ class CaptionSession(
         audio = audio,
         engineFactory = ::engine,
         embedder = NoVoicePrints,
+        soundDetector = YamnetSoundDetector(context),
         availableStorageBytes = { context.filesDir.usableSpace },
         network = network,
     )
@@ -233,6 +238,7 @@ class CaptionSession(
         pipeline.onCaptionsChanged = ::publish
         pipeline.onInputsChanged = ::publishInputs
         pipeline.onKeywordHits = ::wordsHeard
+        pipeline.onSoundAlert = ::soundHeard
         replies.onSpeaking = CaptionState::speaking
         pipeline.onEvent = { journal.append(it.description, it.at) }
         val started = settings.current.value
@@ -529,6 +535,37 @@ class CaptionSession(
         val utcOffsetSeconds = TimeZone.getDefault().getOffset((now * 1_000).toLong()) / 1_000
         awayAlerts.forWords(hits, line.text, appIsActive, settings.current.value, now, utcOffsetSeconds).forEach(notifier::post)
         publish()
+    }
+
+    /**
+     * A sound heard: with the app in front the phone buzzes and TalkBack
+     * says it, as on the iPhone, whichever screen is open, and the caption
+     * screen shows its banner; with the app away it is a notification.
+     */
+    private fun soundHeard(alert: SoundAlert) {
+        CaptionState.sound(pipeline.currentBannerSoundAlert)
+        if (appIsActive) {
+            buzz(AlertVibration.pattern(alert.event.importance))
+            val critical = alert.event.importance == SoundEvent.Importance.Critical
+            val said = if (critical) tr("שימו לב! %1", "Attention! %1", listOf(alert.event.name)) else tr("התראה: %1", "Alert: %1", listOf(alert.event.name))
+            if (ScreenReader.isOn(context)) ScreenReader.announce(context, said)
+        }
+        val now = System.currentTimeMillis() / 1_000.0
+        val utcOffsetSeconds = TimeZone.getDefault().getOffset((now * 1_000).toLong()) / 1_000
+        awayAlerts.forSound(alert, appIsActive, settings.current.value, now, utcOffsetSeconds)?.let(notifier::post)
+    }
+
+    fun dismissSoundAlert(id: UUID) {
+        pipeline.dismissSoundAlert(id)
+        CaptionState.sound(pipeline.currentBannerSoundAlert)
+    }
+
+    fun soundBannerSecondsLeft(alert: SoundAlert) = pipeline.bannerSecondsLeft(alert)
+
+    /** Buzzes with sounds that could be the buzz ignored meanwhile, so the phone on a table isn't heard ringing. */
+    fun buzz(vibration: AlertVibration) {
+        pipeline.ignoreSounds(vibration)
+        Buzz.play(context, vibration)
     }
 
     /** Stars a caption line or takes its star away, in its conversation and on screen. */

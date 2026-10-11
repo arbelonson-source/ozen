@@ -4,6 +4,7 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPermission
@@ -13,7 +14,9 @@ import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SettingsStore
+import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.TranscriptHistoryStore
+import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.PI
@@ -27,6 +30,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -250,6 +254,42 @@ class CaptionSessionDeviceTest {
 
     private val PipelinePhase.modelMissing: Boolean
         get() = this is PipelinePhase.Failed && reason.engineUnavailability?.kind == EngineUnavailability.Kind.ModelNotOnDevice
+
+    @Test
+    fun aSmokeAlarmNearThePhoneBuzzesAndTakesTheBannerEvenWhileTheCaptionsCannotRun() = runBlocking {
+        val work = File(context.cacheDir, "sound-alert-test").apply { deleteRecursively(); mkdirs() }
+        val rate = 16_000
+        val beep = FloatArray(rate / 2) { (0.3 * sin(2 * PI * 3_100.0 * it / rate)).toFloat() }
+        val beeps = (beep + FloatArray(rate / 2)).let { it + it + it } + FloatArray(rate)
+        val audio = ClipAudio(beeps + beeps + beeps + beeps)
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        settings.change {
+            it.engine = TranscriptionEngineKind.HomeServer
+            it.homeServerAddress = "127.0.0.1:9"
+        }
+        val code = HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()).apply { save("code-for-the-test") }
+        val buzzed = CopyOnWriteArrayList<AlertVibration>()
+        val before = Buzz.play
+        Buzz.play = { _, vibration -> buzzed += vibration }
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, settings, code, CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), audio, historyFolder = File(work, "history"))
+                .also { it.appIsActive = true }
+        }
+        try {
+            withContext(Dispatchers.Main) { session.listen() }
+            val started = SystemClock.elapsedRealtime()
+            while (CaptionState.screen.value.sound == null && SystemClock.elapsedRealtime() - started < 60_000) delay(500)
+            assertEquals("smoke_detector", CaptionState.screen.value.sound?.event?.identifier)
+            assertEquals(AlertVibration.pattern(SoundEvent.Importance.Critical), buzzed.firstOrNull())
+        } finally {
+            Buzz.play = before
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+        }
+    }
 
     private class ClipAudio(private val samples: FloatArray) : AudioCapturing {
         @Volatile
