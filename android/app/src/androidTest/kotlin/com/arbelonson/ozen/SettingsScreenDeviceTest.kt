@@ -764,6 +764,39 @@ class SettingsScreenDeviceTest {
         }
     }
 
+    @Test
+    fun diagnosticsShowThePhonesHeatBatteryAndBatterySaverAsTheyAre() {
+        val shell = { command: String -> InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command).close() }
+        val shown = { label: String, value: String -> compose.onAllNodes(hasText(label) and hasText(value)).fetchSemanticsNodes().isNotEmpty() }
+        try {
+            shell("dumpsys battery unplug")
+            shell("dumpsys battery set level 37")
+            shell("cmd thermalservice override-status 3")
+            shell("cmd power set-mode 1")
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
+            compose.waitUntil(10_000) { shown("Battery", "37%") && shown("Battery Saver", "On") }
+            row("Temperature", "Hot · captions are slowing down")
+            row("Model", "${Build.MANUFACTURER} ${Build.MODEL}")
+            row("Android", Build.VERSION.RELEASE)
+            compose.onNode(hasText("Free space") and textMatching(Regex("^[0-9.]+ (KB|MB|GB)$"))).performScrollTo().assertExists()
+            compose.onNode(hasText("Memory") and textMatching(Regex("^[0-9.]+ (KB|MB|GB) in use · [0-9.]+ (KB|MB|GB) more$"))).performScrollTo().assertExists()
+
+            shell("dumpsys battery set ac 1")
+            shell("cmd power set-mode 0")
+            shell("cmd thermalservice override-status 0")
+            compose.waitUntil(10_000) { shown("Battery", "37% · charging") && shown("Battery Saver", "Off") && shown("Temperature", "Normal") }
+        } finally {
+            shell("cmd power set-mode 0")
+            shell("cmd thermalservice reset")
+            shell("dumpsys battery reset")
+        }
+    }
+
+    private fun textMatching(pattern: Regex) = SemanticsMatcher("text matching $pattern") { node ->
+        runCatching { node.config[SemanticsProperties.Text] }.getOrNull()?.any { pattern.matches(it.text) } == true
+    }
+
     private fun row(label: String, value: String) {
         compose.onNode(hasText(label) and hasText(value)).performScrollTo().assertExists()
     }

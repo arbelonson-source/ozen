@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.AudioLevelHistogram
 import com.arbelonson.ozen.core.AudioPortType
+import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.tr
 import java.io.File
@@ -197,6 +199,16 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             Value(tr("מצב המודל", "Model state"), if (now.modelInstalled) tr("מותקן (לא אומת)", "Installed (unverified)") else tr("לא הורד", "Not downloaded"))
             Value(tr("שמות ומילים", "Names and words"), "${now.settings.vocabulary.size}")
             Value(tr("התראות מילים", "Word alerts"), "${now.settings.keywordAlerts.count { it.isEnabled }}")
+
+            Header(tr("מכשיר", "Device"))
+            Value(tr("חום", "Temperature"), DiagnosticsReport.temperature(now.thermalStatus))
+            Value(tr("חיסכון בסוללה", "Battery Saver"), if (now.batterySaver) tr("פעיל", "On") else tr("כבוי", "Off"))
+            Value(tr("סוללה", "Battery"), DiagnosticsReport.battery(now.batteryPercent, now.charging))
+            Value(tr("מקום פנוי", "Free space"), ByteSize.text(now.freeBytes))
+            Value(tr("זיכרון", "Memory"), DiagnosticsReport.memory(now.memoryInUseBytes, now.memoryAvailableBytes))
+            Value(tr("דגם", "Model"), "${Build.MANUFACTURER} ${Build.MODEL}")
+            Value("Android", Build.VERSION.RELEASE)
+            Value(tr("אפליקציה", "App"), now.appVersion)
 
             OutlinedButton(onClick = { context.startActivity(reportSheet(DiagnosticsReport.text(facts()))) }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
                 Text(tr("שליחת הדוח", "Send report"))

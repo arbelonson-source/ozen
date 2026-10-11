@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
+import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.KeywordAlert
@@ -56,6 +57,13 @@ class DiagnosticsReportTest {
         canVibrate = true,
         network = NetworkConditions.cellular.copy(isConstrained = true),
         modelInstalled = true,
+        thermalStatus = 3,
+        batterySaver = true,
+        batteryPercent = 54,
+        charging = false,
+        freeBytes = 12_300_000_000,
+        memoryInUseBytes = 412_000_000,
+        memoryAvailableBytes = 1_800_000_000,
     )
 
     @Test
@@ -84,7 +92,9 @@ class DiagnosticsReportTest {
         assertEquals("history: saving true keep year display: size ${settings.display.fontSize.toInt()} theme ${settings.display.theme.rawValue} awake ${settings.display.keepScreenAwake}", lines[11])
         assertEquals("settings save error: failed history save error: - notifications allowed: no haptics: ok network: Cellular · Data saving", lines[12])
         assertEquals("model state: unverified vocabulary: ${settings.vocabulary.size}", lines[13])
-        assertEquals("device: Google Pixel 8, Android 16 app 0.2.40 (40)", lines[14])
+        assertEquals("thermal: 3 low power: true battery: 54% free space: ${ByteSize.text(12_300_000_000)}", lines[14])
+        assertEquals("memory: used ${ByteSize.text(412_000_000)} left ${ByteSize.text(1_800_000_000)}", lines[15])
+        assertEquals("device: Google Pixel 8, Android 16 app 0.2.40 (40)", lines[16])
         assertEquals(
             listOf(
                 "events (oldest first):",
@@ -94,7 +104,7 @@ class DiagnosticsReportTest {
                 "10-10 21:02:11 APP STARTED: 0.2.40 Android 16",
                 "10-10 21:40:03 PROBLEM MARKED: engine whisperKit",
             ),
-            lines.drop(15),
+            lines.drop(17),
         )
         assertEquals(listOf("journal, previous runs included (oldest first):", "-"), DiagnosticsReport.text(facts()).lines().takeLast(2))
     }
@@ -127,6 +137,21 @@ class DiagnosticsReportTest {
             assertEquals("Wi-Fi", DiagnosticsReport.network(NetworkConditions.wifi))
             assertEquals("Cellular", DiagnosticsReport.network(NetworkConditions.cellular))
             assertEquals("Wi-Fi · Data saving", DiagnosticsReport.network(NetworkConditions.wifi.copy(isConstrained = true)))
+        }
+    }
+
+    @Test
+    fun `the phone's heat, battery and memory read as on the iPhone, in her language`() {
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals(
+                listOf("—", "Normal", "Warm", "Hot · captions are slowing down", "Hot · captions are slowing down", "Very hot · captions are slowing a lot", "Very hot · captions are slowing a lot", "Unknown"),
+                listOf(null, 0, 1, 2, 3, 4, 6, -1).map(DiagnosticsReport::temperature),
+            )
+            assertEquals("54%", DiagnosticsReport.battery(54, charging = false))
+            assertEquals("100% · charging", DiagnosticsReport.battery(100, charging = true))
+            assertEquals("—", DiagnosticsReport.battery(null, charging = true))
+            assertEquals("${ByteSize.text(412_000_000)} in use · ${ByteSize.text(1_800_000_000)} more", DiagnosticsReport.memory(412_000_000, 1_800_000_000))
+            assertEquals("${ByteSize.text(412_000_000)} in use", DiagnosticsReport.memory(412_000_000, null))
         }
     }
 

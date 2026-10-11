@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
+import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PipelinePhase
@@ -45,6 +46,15 @@ data class DiagnosticsFacts(
     val network: NetworkConditions?,
     /** Whether the model file is there; nothing checks it on Android yet, so never "verified". */
     val modelInstalled: Boolean,
+    /** Android's thermal status, 0 (none) to 6 (shutdown); null before Android 10. */
+    val thermalStatus: Int?,
+    val batterySaver: Boolean,
+    val batteryPercent: Int?,
+    /** Plugged in, charging or full, as the iPhone's "charging" means. */
+    val charging: Boolean,
+    val freeBytes: Long,
+    val memoryInUseBytes: Long,
+    val memoryAvailableBytes: Long?,
     /** The sound kept with marked problems, newest first. */
     val problemClips: List<File> = emptyList(),
 )
@@ -97,6 +107,8 @@ object DiagnosticsReport {
             "settings save error: ${if (facts.settingsSaveFailed) "failed" else "-"} history save error: ${facts.historySaveFailure ?: "-"} " +
                 "notifications allowed: ${if (facts.notificationsAllowed) "yes" else "no"} haptics: ${if (facts.canVibrate) "ok" else "unsupported"} network: ${network(facts.network)}",
             "model state: ${if (facts.modelInstalled) "unverified" else "missing"} vocabulary: ${settings.vocabulary.size}",
+            "thermal: ${facts.thermalStatus ?: "-"} low power: ${facts.batterySaver} battery: ${battery(facts.batteryPercent, facts.charging)} free space: ${ByteSize.text(facts.freeBytes)}",
+            "memory: used ${ByteSize.text(facts.memoryInUseBytes)} left ${facts.memoryAvailableBytes?.let(ByteSize::text) ?: "-"}",
             "device: ${facts.device} app ${facts.appVersion}",
             "events (oldest first):",
         )
@@ -130,6 +142,30 @@ object DiagnosticsReport {
         if (!conditions.isConnected) return tr("אין חיבור", "No connection")
         val kind = if (conditions.isExpensive) tr("סלולרי", "Cellular") else "Wi-Fi"
         return if (conditions.isConstrained) "$kind · ${tr("חיסכון בנתונים", "Data saving")}" else kind
+    }
+
+    /**
+     * Android's thermal status in the iPhone's words: its "fair" is
+     * Android's light, "serious" moderate to severe, and "critical"
+     * everything past that.
+     */
+    fun temperature(status: Int?): String = when (status) {
+        null -> "—"
+        0 -> tr("רגיל", "Normal")
+        1 -> tr("חמים", "Warm")
+        2, 3 -> tr("חם · הכתוביות מאטות", "Hot · captions are slowing down")
+        4, 5, 6 -> tr("חם מאוד · הכתוביות מאטות מאוד", "Very hot · captions are slowing a lot")
+        else -> tr("לא ידוע", "Unknown")
+    }
+
+    fun battery(percent: Int?, charging: Boolean): String {
+        percent ?: return "—"
+        return "$percent%" + if (charging) tr(" · בטעינה", " · charging") else ""
+    }
+
+    fun memory(inUse: Long, available: Long?): String {
+        val used = tr("%1 בשימוש", "%1 in use", listOf(ByteSize.text(inUse)))
+        return available?.let { "$used · ${tr("עוד %1", "%1 more", listOf(ByteSize.text(it)))}" } ?: used
     }
 
     /** A kept sound's file name read back as its moment, in her language: "Oct 11, 2026, 1:05:07 PM". */

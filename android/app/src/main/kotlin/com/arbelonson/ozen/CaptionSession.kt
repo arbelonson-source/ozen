@@ -1,6 +1,10 @@
 package com.arbelonson.ozen
 
+import android.app.ActivityManager
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.os.Build
 import android.os.Debug
 import android.os.PowerManager
@@ -297,6 +301,10 @@ class CaptionSession(
 
     /** What the diagnostics screen shows and its report says, as things stand now. */
     override fun diagnostics(): DiagnosticsFacts {
+        val power = context.getSystemService(PowerManager::class.java)
+        // The sticky broadcast, not BatteryManager's properties: it is what
+        // Android itself shows, test overrides included.
+        val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         return DiagnosticsFacts(
             phase = pipeline.phase,
             activeEngine = pipeline.activeEngineKind,
@@ -320,6 +328,13 @@ class CaptionSession(
             canVibrate = phoneVibrator(context)?.hasVibrator() == true,
             network = pipeline.networkConditions,
             modelInstalled = modelFile.exists(),
+            thermalStatus = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) power.currentThermalStatus else null,
+            batterySaver = power.isPowerSaveMode,
+            batteryPercent = battery?.let { it.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) * 100 / it.getIntExtra(BatteryManager.EXTRA_SCALE, 100) }?.takeIf { it >= 0 },
+            charging = (battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0,
+            freeBytes = context.filesDir.usableSpace,
+            memoryInUseBytes = Debug.getPss() * 1_024,
+            memoryAvailableBytes = ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java).getMemoryInfo(it) }.availMem,
             problemClips = problemAudio.clips(),
         )
     }
