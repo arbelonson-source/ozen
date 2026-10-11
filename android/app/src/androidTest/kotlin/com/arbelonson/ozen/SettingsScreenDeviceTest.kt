@@ -219,7 +219,7 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
-    fun theUsualTextSizeComesBackWithOneTapAndTheScreenAndButtonSwitchesAreSaved() {
+    fun theUsualTextSizeComesBackWithOneTapAndTheDisplaySwitchesAreSaved() {
         app.settings.change { it.display = DisplayPreferences.default.copy(fontSize = 50.0) }
         compose.onNodeWithText("Settings").performClick()
         compose.onNodeWithText("Back to the usual size").performScrollTo().performClick()
@@ -229,6 +229,8 @@ class SettingsScreenDeviceTest {
         assertFalse(app.settings.current.value.display.keepScreenAwake)
         compose.onNodeWithText("Hide the buttons while captions are running").performScrollTo().performClick()
         assertFalse(app.settings.current.value.display.autoHideControls)
+        compose.onNodeWithText("Question mark next to lines", substring = true).performScrollTo().performClick()
+        assertFalse(app.settings.current.value.display.markUncertainLines)
     }
 
     @Test

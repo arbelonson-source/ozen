@@ -33,4 +33,18 @@ class CaptionTextTest {
     fun `with bold numbers switched off nothing stands out`() {
         assertTrue(captionText(shown, emphasizeNumbers = false, numberColor = NUMBER_YELLOW).spanStyles.isEmpty())
     }
+
+    @Test
+    fun `the words the engine doubted are marked for their dots, the rest of the line is not`() {
+        val text = captionText(shown, emphasizeNumbers = false, numberColor = null, doubtfulWords = listOf("\u05D4\u05E8\u05D5\u05E4\u05D0"))
+        assertEquals(shown, text.text)
+        val marked = text.getStringAnnotations(DOUBTFUL_WORD, 0, text.length).map { shown.substring(it.start, it.end) }
+        assertEquals(listOf("\u05D4\u05E8\u05D5\u05E4\u05D0"), marked)
+    }
+
+    @Test
+    fun `a line without doubted words carries no marks`() {
+        val text = captionText(shown, emphasizeNumbers = true, numberColor = NUMBER_YELLOW)
+        assertTrue(text.getStringAnnotations(DOUBTFUL_WORD, 0, text.length).isEmpty())
+    }
 }

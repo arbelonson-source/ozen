@@ -131,14 +131,19 @@ class CaptionSession(
         }
     }
 
-    private fun publish() = CaptionState.show(
-        phase = pipeline.phase,
-        engine = pipeline.activeEngineKind,
-        interruptedBySystem = interruptedBySystem,
-        scheduledRetry = pipeline.scheduledRetry,
-        segments = pipeline.segments,
-        listeningStartedAt = pipeline.listeningStartedAt,
-    )
+    private fun publish() {
+        val transcribing = pipeline.activeSettings.takeIf { pipeline.isCoveringForCloud } ?: settings.current.value
+        CaptionState.show(
+            phase = pipeline.phase,
+            engine = pipeline.activeEngineKind,
+            interruptedBySystem = interruptedBySystem,
+            scheduledRetry = pipeline.scheduledRetry,
+            segments = pipeline.segments,
+            listeningStartedAt = pipeline.listeningStartedAt,
+            scoringEngine = transcribing.engine,
+            scoringModel = transcribing.whisperModelVariant,
+        )
+    }
 
     suspend fun checkHomeComputer(): HomeServerCheck {
         val current = settings.current.value

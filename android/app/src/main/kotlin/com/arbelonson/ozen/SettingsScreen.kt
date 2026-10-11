@@ -99,7 +99,7 @@ fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onC
                 Text(tr("הגדרות", "Settings"), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
                 TextButton(onClick = close) { Text(tr("סגירה", "Close")) }
             }
-            DisplaySection(settings, current.display)
+            DisplaySection(settings, current.display, current.engine)
             EngineSection(engineSettings, current)
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
             if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
@@ -113,7 +113,7 @@ fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onC
  * the size, weight and colours as they will be.
  */
 @Composable
-private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences) {
+private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences, engine: TranscriptionEngineKind) {
     SectionHeader(tr("תצוגה", "Display"))
     var size by remember(display.fontSize) { mutableFloatStateOf(display.fontSize.toFloat()) }
     val sizeLabel = tr("גודל טקסט", "Text size")
@@ -167,6 +167,13 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
     }
     SwitchRow(tr("להסתיר את הכפתורים בזמן האזנה", "Hide the buttons while captions are running"), display.autoHideControls) { on ->
         settings.change { it.display = it.display.copy(autoHideControls = on) }
+    }
+    SwitchRow(
+        tr("סימן שאלה ליד שורות שהמנוע לא בטוח בהן, ונקודות מתחת למילים שבספק", "Question mark next to lines the engine isn’t sure about, and dots under the doubtful words"),
+        display.markUncertainLines,
+    ) { on -> settings.change { it.display = it.display.copy(markUncertainLines = on) } }
+    if (display.markUncertainLines && engine == TranscriptionEngineKind.Cloud) {
+        Footnote(tr("התמלול בענן לא מדווח כמה הוא בטוח, ולכן איתו שום דבר לא מסומן.", "Cloud transcription doesn’t report how sure it is, so with it nothing is marked."))
     }
     SwitchRow(tr("מספרים בולטים (שעות, כמויות, טלפונים)", "Bold numbers (times, amounts, phone numbers)"), display.emphasizeNumbers) { on ->
         settings.change { it.display = it.display.copy(emphasizeNumbers = on) }

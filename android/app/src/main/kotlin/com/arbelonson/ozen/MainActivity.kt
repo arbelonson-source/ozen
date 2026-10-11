@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -36,6 +37,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LocalTextStyle
@@ -57,19 +59,26 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
@@ -80,7 +89,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.UncertainWords
 import com.arbelonson.ozen.core.tr
+import java.text.Bidi
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -371,16 +382,88 @@ private fun ShowButtonsButton(chrome: Color, onTap: () -> Unit) {
 private fun CaptionLines(lines: List<CaptionLine>, display: DisplayPreferences, look: CaptionTheme, list: LazyListState) {
     LaunchedEffect(lines.size, lines.lastOrNull()?.text) { list.scrollToItem(lines.size - 1) }
     LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(lines, key = { it.id }) { line ->
+        items(lines, key = { it.id }) { line -> CaptionLineRow(line, display, look) }
+    }
+}
+
+/**
+ * One caption line, laid out in its own reading direction as on the iPhone,
+ * so a Hebrew line starts at the right whatever language the buttons are
+ * in. A line the engine wasn't sure of gets a question mark at its start
+ * and dots under the words it doubted, without changing their colour: the
+ * words stay as readable as any other line.
+ */
+@Composable
+private fun CaptionLineRow(line: CaptionLine, display: DisplayPreferences, look: CaptionTheme) {
+    val doubtful = if (display.markUncertainLines) line.doubtfulWords else emptyList()
+    val spoken = UncertainWords.spoken(line.text, doubtful)
+    val colour = if (line.isFinal) look.text else look.pendingText
+    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    CompositionLocalProvider(LocalLayoutDirection provides readingDirection(line.text)) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            if (display.markUncertainLines && line.unsure) UnsureMark(display.fontSize, look.pendingText)
             Text(
-                text = captionText(line.text, display.emphasizeNumbers, numberColor = if (line.isFinal) look.numberText else null),
+                text = captionText(line.text, display.emphasizeNumbers, numberColor = if (line.isFinal) look.numberText else null, doubtfulWords = doubtful),
                 style = LocalTextStyle.current.copy(textDirection = TextDirection.Content),
-                color = if (line.isFinal) look.text else look.pendingText,
+                color = colour,
                 fontSize = display.fontSize.sp,
                 lineHeight = (display.fontSize * 1.25).sp,
                 fontWeight = if (display.boldText) FontWeight.Bold else FontWeight.Medium,
+                onTextLayout = { layout = it },
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .drawBehind { layout?.let { drawDoubtDots(it, colour) } }
+                    .semantics {
+                        if (spoken.isNotEmpty()) {
+                            stateDescription = tr("מילים שאולי לא נשמעו נכון: %1", "Words that may be wrong: %1", listOf(spoken.joinToString(", ")))
+                        }
+                    },
             )
         }
+    }
+}
+
+private fun readingDirection(shown: String) =
+    if (Bidi(shown, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight()) LayoutDirection.Ltr else LayoutDirection.Rtl
+
+@Composable
+private fun UnsureMark(fontSize: Double, colour: Color) {
+    val label = tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ").trim()
+    val side = maxOf(14.0, fontSize * 0.6)
+    val inset = with(LocalDensity.current) { ((fontSize * 1.25 - side) / 2).sp.toDp() }
+    val diameter = with(LocalDensity.current) { side.sp.toDp() }
+    Box(
+        modifier = Modifier
+            .padding(top = inset)
+            .padding(end = 8.dp)
+            .size(diameter)
+            .border(width = 2.dp, color = colour, shape = CircleShape)
+            .clearAndSetSemantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("?", color = colour, fontSize = (side * 0.7).sp, lineHeight = (side * 0.7).sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+/** A row of dots under each doubted word, line by line where a word wraps. */
+private fun DrawScope.drawDoubtDots(layout: TextLayoutResult, colour: Color) {
+    val text = layout.layoutInput.text
+    val radius = 1.5.dp.toPx()
+    for (word in text.getStringAnnotations(DOUBTFUL_WORD, 0, text.length)) {
+        (word.start until word.end)
+            .filterNot { text[it].isWhitespace() }
+            .groupBy { layout.getLineForOffset(it) }
+            .forEach { (row, offsets) ->
+                val boxes = offsets.map { layout.getBoundingBox(it) }
+                val left = boxes.minOf { it.left }
+                val right = boxes.maxOf { it.right }
+                val y = minOf(layout.getLineBaseline(row) + radius * 3, layout.getLineBottom(row) - radius)
+                var x = left + radius
+                while (x <= right - radius) {
+                    drawCircle(colour, radius, Offset(x, y))
+                    x += radius * 3.5f
+                }
+            }
     }
 }
 

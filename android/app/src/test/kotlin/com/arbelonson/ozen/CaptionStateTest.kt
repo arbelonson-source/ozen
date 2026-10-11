@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptSegment
+import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -122,6 +123,31 @@ class CaptionStateTest {
         assertFalse(CaptionState.screen.value.hidesButtons(autoHide = true, followingLatest = true, screenReaderOn = false, lastTouchAt = 100.0, now = 160.0))
         show(PipelinePhase.Listening, listOf(line("Hello", committed = true)), interrupted = true)
         assertFalse(CaptionState.screen.value.hidesButtons(autoHide = true, followingLatest = true, screenReaderOn = false, lastTouchAt = 100.0, now = 160.0))
+    }
+
+    @Test
+    fun `a finished line the engine doubted is marked with the words it doubted, a sure or growing one is not`() {
+        val doubted = line("we will meet at the clinic at ten", committed = true).copy(confidence = 0.5f, uncertainWords = listOf("ten"))
+        val sure = line("see you there then", committed = true).copy(confidence = 0.95f)
+        val growing = line("and bring the letter from", committed = false).copy(confidence = 0.3f, uncertainWords = listOf("letter"))
+        show(PipelinePhase.Listening, listOf(doubted, sure, growing))
+        val lines = CaptionState.screen.value.lines
+        assertEquals(listOf(true, false, false), lines.map { it.unsure })
+        assertEquals(listOf(listOf("ten"), emptyList(), emptyList()), lines.map { it.doubtfulWords })
+    }
+
+    @Test
+    fun `a line without its own scorer is judged by the model transcribing now`() {
+        val segment = line("we will meet at the clinic at ten", committed = true).copy(confidence = 0.82f)
+        fun unsureWith(model: String): Boolean {
+            CaptionState.show(
+                PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(segment),
+                scoringEngine = TranscriptionEngineKind.WhisperKit, scoringModel = model,
+            )
+            return CaptionState.screen.value.lines.single().unsure
+        }
+        assertTrue(unsureWith("ozen-turbo-hebrew-a3-8bit"))
+        assertFalse(unsureWith("ivrit-large-v3-turbo-8bit"))
     }
 
     @Test

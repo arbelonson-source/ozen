@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ControlBarAutoHide
 import com.arbelonson.ozen.core.PipelinePhase
@@ -12,7 +13,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-data class CaptionLine(val id: UUID, val text: String, val isFinal: Boolean)
+data class CaptionLine(
+    val id: UUID,
+    val text: String,
+    val isFinal: Boolean,
+    val unsure: Boolean = false,
+    val doubtfulWords: List<String> = emptyList(),
+)
 
 data class CaptionScreenState(
     val phase: PipelinePhase = PipelinePhase.Idle,
@@ -56,13 +63,23 @@ object CaptionState {
         scheduledRetry: ScheduledRetry?,
         segments: List<TranscriptSegment>,
         listeningStartedAt: Double? = null,
+        scoringEngine: TranscriptionEngineKind = TranscriptionEngineKind.WhisperKit,
+        scoringModel: String? = null,
     ) {
         state.value = CaptionScreenState(
             phase = phase,
             engine = engine,
             interruptedBySystem = interruptedBySystem,
             scheduledRetry = scheduledRetry,
-            lines = segments.takeLast(MAXIMUM_LINES).map { CaptionLine(it.id, CaptionLayout.displayText(it.text), it.isCommitted) },
+            lines = segments.takeLast(MAXIMUM_LINES).map {
+                CaptionLine(
+                    id = it.id,
+                    text = CaptionLayout.displayText(it.text),
+                    isFinal = it.isCommitted,
+                    unsure = CaptionConfidence.isUncertain(it, scoringEngine, scoringModel),
+                    doubtfulWords = if (it.isCommitted) it.uncertainWords else emptyList(),
+                )
+            },
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),
         )
     }

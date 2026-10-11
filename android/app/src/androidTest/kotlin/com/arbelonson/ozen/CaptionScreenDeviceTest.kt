@@ -1,7 +1,13 @@
 package com.arbelonson.ozen
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -117,6 +123,53 @@ class CaptionScreenDeviceTest {
             app.settings.change { it.display = before }
         }
     }
+
+    @Test
+    fun anUnsureLineHasAQuestionMarkAtItsStartAndDotsUnderTheDoubtedWord() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.display
+        val doubted = "\u05D4\u05E8\u05D5\u05E4\u05D0"
+        val hebrew = "\u05D0\u05E6\u05DC $doubted"
+        try {
+            app.settings.change { it.display = it.display.copy(markUncertainLines = true) }
+            showUnsure(hebrew, doubtful = listOf(doubted))
+            val mark = compose.onNodeWithContentDescription("May not have been heard correctly.").fetchSemanticsNode().boundsInRoot
+            val words = compose.onNodeWithText(doubted, substring = true)
+            val line = words.fetchSemanticsNode().boundsInRoot
+            assertTrue("mark $mark, line $line", mark.left >= line.right - 1f)
+            assertEquals(1, layoutOf(doubted).layoutInput.text.let { it.getStringAnnotations(DOUBTFUL_WORD, 0, it.length) }.size)
+            words.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Words that may be wrong: $doubted"))
+            val dotted = words.captureToImage()
+            showUnsure(hebrew, doubtful = emptyList())
+            val plain = compose.onNodeWithText(doubted, substring = true).captureToImage()
+            assertEquals(dotted.width to dotted.height, plain.width to plain.height)
+            assertFalse("the dots changed nothing", pixels(dotted).contentEquals(pixels(plain)))
+
+            showUnsure("see you at ten", doubtful = emptyList())
+            val englishMark = compose.onNodeWithContentDescription("May not have been heard correctly.").fetchSemanticsNode().boundsInRoot
+            val english = compose.onNodeWithText("see you at ten", substring = true).fetchSemanticsNode().boundsInRoot
+            assertTrue("mark $englishMark, line $english", englishMark.right <= english.left + 1f)
+
+            app.settings.change { it.display = it.display.copy(markUncertainLines = false) }
+            compose.waitForIdle()
+            compose.onNodeWithContentDescription("May not have been heard correctly.").assertDoesNotExist()
+        } finally {
+            app.settings.change { it.display = before }
+        }
+    }
+
+    private fun showUnsure(text: String, doubtful: List<String>) {
+        val line = TranscriptSegment(
+            id = UUID.randomUUID(), text = text, isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 0.0,
+            confidence = 0.3f, uncertainWords = doubtful,
+        )
+        compose.runOnUiThread {
+            CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line))
+        }
+        compose.waitForIdle()
+    }
+
+    private fun pixels(image: ImageBitmap) = image.toPixelMap().buffer
 
     private fun darkBarIcons(): Boolean {
         var dark = false
