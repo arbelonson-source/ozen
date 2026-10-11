@@ -493,15 +493,41 @@ class HistoryScreenDeviceTest {
 
     @Test
     fun aSavedLineSitsOnTheSideItsOwnWordsReadFromWhateverTheAppsLanguage() {
-        seed("Side test how did you sleep" to null, "שלום לכולם" to null)
+        val english = "Side test how did you sleep"
+        val hebrew = "בדיקת צד שלום לכולם"
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 30,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(
+                SavedSegment(UUID.randomUUID(), english, null, null, startedAt, true, isStarred = true),
+                SavedSegment(UUID.randomUUID(), hebrew, null, null, startedAt + 5, true, isStarred = true),
+            ),
+        )
+        store.save(record)
+        seeded += record.id
         compose.onNodeWithText("History").performClick()
-        waitFor("Side test how did you sleep")
-        compose.onNodeWithText("Side test how did you sleep", substring = true).performClick()
-        compose.waitUntil(5_000) { shownLine("שלום לכולם") }
-        val english = inkMiddle("Side test how did you sleep")
-        val hebrew = inkMiddle("שלום לכולם")
-        assertTrue("English ink centred at $english of the line", english < 0.4f)
-        assertTrue("Hebrew ink centred at $hebrew of the line", hebrew > 0.6f)
+        waitFor(english)
+        compose.onNodeWithText(english, substring = true).performClick()
+        compose.waitUntil(5_000) { shownLine(hebrew) }
+        assertSides(english, hebrew)
+
+        compose.onNodeWithText("Back").performClick()
+        waitFor(english)
+        val total = store.listSummaries().sumOf { it.starredCount }
+        compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
+        compose.waitUntil(5_000) { shownLine(hebrew) }
+        assertSides(english, hebrew)
+    }
+
+    private fun assertSides(english: String, hebrew: String) {
+        val left = inkMiddle(english)
+        val right = inkMiddle(hebrew)
+        assertTrue("English ink centred at $left of the line", left < 0.4f)
+        assertTrue("Hebrew ink centred at $right of the line", right > 0.6f)
     }
 
     private fun inkMiddle(line: String): Float {
