@@ -493,8 +493,10 @@ class HistoryScreenDeviceTest {
 
     @Test
     fun aSavedLineSitsOnTheSideItsOwnWordsReadFromWhateverTheAppsLanguage() {
+        assertEquals("en", app.settings.current.value.languageCode)
         val english = "Side test how did you sleep"
         val hebrew = "בדיקת צד שלום לכולם"
+        val digits = "4417 2209"
         val startedAt = System.currentTimeMillis() / 1_000.0 - 60
         val record = TranscriptSessionRecord(
             startedAt = startedAt,
@@ -505,6 +507,7 @@ class HistoryScreenDeviceTest {
             segments = listOf(
                 SavedSegment(UUID.randomUUID(), english, null, null, startedAt, true, isStarred = true),
                 SavedSegment(UUID.randomUUID(), hebrew, null, null, startedAt + 5, true, isStarred = true),
+                SavedSegment(UUID.randomUUID(), digits, null, null, startedAt + 10, true, isStarred = true),
             ),
         )
         store.save(record)
@@ -512,22 +515,24 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("History").performClick()
         waitFor(english)
         compose.onNodeWithText(english, substring = true).performClick()
-        compose.waitUntil(5_000) { shownLine(hebrew) }
-        assertSides(english, hebrew)
+        compose.waitUntil(5_000) { shownLine(digits) }
+        assertSides(english, hebrew, digits)
 
         compose.onNodeWithText("Back").performClick()
         waitFor(english)
         val total = store.listSummaries().sumOf { it.starredCount }
         compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
-        compose.waitUntil(5_000) { shownLine(hebrew) }
-        assertSides(english, hebrew)
+        compose.waitUntil(5_000) { shownLine(digits) }
+        assertSides(english, hebrew, digits)
     }
 
-    private fun assertSides(english: String, hebrew: String) {
+    private fun assertSides(english: String, hebrew: String, digits: String) {
         val left = inkMiddle(english)
         val right = inkMiddle(hebrew)
+        val spokenSide = inkMiddle(digits)
         assertTrue("English ink centred at $left of the line", left < 0.4f)
         assertTrue("Hebrew ink centred at $right of the line", right > 0.6f)
+        assertTrue("digits said in English centred at $spokenSide of the line", spokenSide < 0.4f)
     }
 
     private fun inkMiddle(line: String): Float {
