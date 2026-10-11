@@ -972,6 +972,7 @@ class CaptionSession(
                     model,
                     context.applicationInfo.nativeLibraryDir,
                     download = WhisperModelCatalog.phoneModelSource(settings.spokenLanguage)?.let { PhoneModelDownloader(model, it, modelFetcher) },
+                    network = { network.current },
                 ),
                 voiceScorerFactory = ::voiceScore,
             )

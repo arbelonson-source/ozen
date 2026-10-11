@@ -2,6 +2,7 @@ package com.arbelonson.ozen.whisper
 
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
+import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PhoneModelSource
 import com.arbelonson.ozen.core.ReleaseFileFetching
@@ -113,6 +114,41 @@ class ModelFileLoaderTest {
         assertEquals(EngineUnavailability.Kind.ModelDownloadFailed, failure.kind)
         assertFalse(file.exists())
         assertTrue(opened.isEmpty())
+    }
+
+    @Test
+    fun `a download whose Wi-Fi drops stops rather than going on over the phone plan, and goes on from there on Wi-Fi`() = runBlocking {
+        var network = NetworkConditions.wifi
+        val served = ChunkedModel(data)
+        val loader = ModelFileLoader(file, "/lib", download = PhoneModelDownloader(file, source, served), network = { network }) { path, _ ->
+            opened.add(path)
+            null
+        }
+        val failure = assertFailsWith<EngineUnavailability> {
+            loader.load("en", cellularDownloadAllowed = false) { if ((it.fraction ?: 0.0) > 0.3) network = NetworkConditions.cellular }
+        }
+        assertEquals(EngineUnavailability.Kind.ModelDownloadFailed, failure.kind)
+        val kept = File(file.path + ".part").length()
+        assertTrue(kept in 1 until data.size, "went on over the phone plan: $kept of ${data.size}")
+        assertFalse(file.exists())
+
+        network = NetworkConditions.wifi
+        assertEquals(EngineUnavailability.Kind.ModelLoadFailed, assertFailsWith<EngineUnavailability> { loader.load("en", cellularDownloadAllowed = false) {} }.kind)
+        assertContentEquals(data, file.readBytes())
+    }
+
+    @Test
+    fun `with downloads on cellular data allowed, losing Wi-Fi does not stop the download`() = runBlocking {
+        var network = NetworkConditions.wifi
+        val loader = ModelFileLoader(file, "/lib", download = PhoneModelDownloader(file, source, ChunkedModel(data)), network = { network }) { path, _ ->
+            opened.add(path)
+            null
+        }
+        val failure = assertFailsWith<EngineUnavailability> {
+            loader.load("en", cellularDownloadAllowed = true) { if ((it.fraction ?: 0.0) > 0.3) network = NetworkConditions.cellular }
+        }
+        assertEquals(EngineUnavailability.Kind.ModelLoadFailed, failure.kind)
+        assertContentEquals(data, file.readBytes())
     }
 
     @Test

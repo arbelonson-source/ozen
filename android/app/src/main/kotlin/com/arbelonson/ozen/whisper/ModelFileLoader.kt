@@ -2,11 +2,14 @@ package com.arbelonson.ozen.whisper
 
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
+import com.arbelonson.ozen.core.ModelDownloadGate
+import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.WhisperFallbackPasses
 import com.arbelonson.ozen.core.WhisperLoadedModel
 import com.arbelonson.ozen.core.WhisperModelLoader
 import java.io.File
+import java.io.IOException
 import kotlin.concurrent.thread
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +22,7 @@ class ModelFileLoader(
     private val libraryDir: String,
     private val threads: Int = Runtime.getRuntime().availableProcessors().coerceIn(1, 4),
     private val download: PhoneModelDownloader? = null,
+    private val network: () -> NetworkConditions? = { null },
     private val open: (path: String, libraryDir: String) -> WhisperModel? = { path, libraryDir -> WhisperModel.load(path, libraryDir) },
 ) : WhisperModelLoader {
     override suspend fun pendingDownloadMegabytes(): Int? = if (file.isFile) null else download?.pendingMegabytes()
@@ -31,7 +35,7 @@ class ModelFileLoader(
         progress: (EnginePreparationProgress) -> Unit,
     ): WhisperLoadedModel {
         if (!file.isFile) {
-            fetch(download ?: throw EngineUnavailability(EngineUnavailability.Kind.ModelNotOnDevice, "${file.name} is not on this phone"), progress)
+            fetch(download ?: throw EngineUnavailability(EngineUnavailability.Kind.ModelNotOnDevice, "${file.name} is not on this phone"), cellularDownloadAllowed, progress)
         }
         progress(EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel, detail = file.name))
         var opened: WhisperModel? = null
@@ -48,13 +52,16 @@ class ModelFileLoader(
         )
     }
 
-    private suspend fun fetch(download: PhoneModelDownloader, progress: (EnginePreparationProgress) -> Unit) {
+    private suspend fun fetch(download: PhoneModelDownloader, cellularAllowed: Boolean, progress: (EnginePreparationProgress) -> Unit) {
         try {
             withContext(Dispatchers.IO) {
                 val job = coroutineContext.job
                 var shown = -1.0
                 download.download { fraction ->
                     job.ensureActive()
+                    if (ModelDownloadGate.decide(network(), cellularAllowed) == ModelDownloadGate.Decision.WaitForWiFi) {
+                        throw IOException("Wi-Fi went, and downloads on cellular data are off")
+                    }
                     if (fraction - shown >= 0.001 || (fraction == 1.0 && shown < 1.0)) {
                         shown = fraction
                         progress(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = fraction, detail = file.name))
