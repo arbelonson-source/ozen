@@ -1344,7 +1344,9 @@ class CaptionScreenDeviceTest {
             assertTrue(buzzed.isEmpty())
             assertTrue(compose.onAllNodesWithText("Said: Doctor").fetchSemanticsNodes().isEmpty())
 
-            compose.runOnUiThread { CaptionState.heard(HeardWord(UUID.randomUUID(), "Grandma", now)) }
+            val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+            val grandma = KeywordHit(segmentID = name.id, match = KeywordMatch(UUID.randomUUID(), "Grandma", "Grandma", 0), timestamp = now)
+            compose.runOnUiThread { app.captions.wordsHeard(listOf(grandma), name) }
             compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Grandma").fetchSemanticsNodes().isNotEmpty() }
             assertEquals(listOf(AlertVibration.keyword), buzzed)
             compose.waitUntil(8_000) { compose.onAllNodesWithText("Said: Grandma").fetchSemanticsNodes().isEmpty() }
@@ -1629,6 +1631,67 @@ class CaptionScreenDeviceTest {
         } finally {
             compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
             app.settings.change { it.notifyWhenInBackground = before }
+            clearAlerts()
+        }
+    }
+
+    // As on the iPhone, where the buzz comes from beneath every sheet: her
+    // name said while she is in Settings, History or the Say screen.
+    @Test
+    fun anImportantWordHeardWhileAnotherScreenIsOpenStillBuzzes() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val buzzed = CopyOnWriteArrayList<AlertVibration>()
+        val before = Buzz.play
+        Buzz.play = { _, vibration -> buzzed += vibration }
+        val line = committed("Doctor, the results are in")
+        val hit = KeywordHit(segmentID = line.id, match = KeywordMatch(UUID.randomUUID(), "Doctor", "Doctor", 0), timestamp = System.currentTimeMillis() / 1_000.0)
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Close").assertExists()
+            compose.runOnUiThread { app.captions.wordsHeard(listOf(hit), line) }
+            assertTrue("no buzz with Settings open: $buzzed", within(5_000) { AlertVibration.keyword in buzzed })
+        } finally {
+            Buzz.play = before
+            compose.onNodeWithText("Close").performScrollTo().performClick()
+        }
+    }
+
+    // As on the iPhone: a word that already reached her as a notification
+    // does not buzz again as she comes back, and one that never went out
+    // (alerts while away off, quiet hours) is news then, however long ago.
+    @Test
+    fun aWordToldByNotificationWhileAwayStaysQuietOnReturnAndOneNeverToldBuzzes() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        if (Build.VERSION.SDK_INT >= 33) instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.POST_NOTIFICATIONS)
+        val manager = app.getSystemService(NotificationManager::class.java)
+        val clearAlerts = { manager.activeNotifications.filter { it.notification.channelId == AlertNotifier.CHANNEL_ID }.forEach { manager.cancel(it.tag, it.id) } }
+        val buzzed = CopyOnWriteArrayList<AlertVibration>()
+        val before = Buzz.play
+        Buzz.play = { _, vibration -> buzzed += vibration }
+        val notifyBefore = app.settings.current.value.notifyWhenInBackground
+        val line = committed("Doctor, the results are in")
+        fun hit() = KeywordHit(segmentID = line.id, match = KeywordMatch(UUID.randomUUID(), "Doctor", "Doctor", 0), timestamp = System.currentTimeMillis() / 1_000.0)
+        try {
+            app.settings.change { it.notifyWhenInBackground = true }
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            instrumentation.runOnMainSync { app.captions.wordsHeard(listOf(hit()), line) }
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            assertFalse("a word already told by a notification buzzed again: $buzzed", within(2_000) { AlertVibration.keyword in buzzed })
+
+            app.settings.change { it.notifyWhenInBackground = false }
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            instrumentation.runOnMainSync { app.captions.wordsHeard(listOf(hit()), line) }
+            // Longer than the five seconds the word's pill shows for.
+            Thread.sleep(6_000)
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            assertTrue("a word nothing told her of never buzzed on her return: $buzzed", within(5_000) { AlertVibration.keyword in buzzed })
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Doctor").fetchSemanticsNodes().isNotEmpty() }
+            assertEquals(1, buzzed.count { it == AlertVibration.keyword })
+        } finally {
+            Buzz.play = before
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            app.settings.change { it.notifyWhenInBackground = notifyBefore }
             clearAlerts()
         }
     }

@@ -190,6 +190,13 @@ class CaptionSession(
         screensInFront += 1
         val cameBack = !appIsActive
         appIsActive = true
+        if (cameBack) {
+            untold?.let { word ->
+                untold = null
+                tell(word)
+                CaptionState.heard(word.copy(at = System.currentTimeMillis() / 1_000.0))
+            }
+        }
         return cameBack
     }
 
@@ -870,13 +877,32 @@ class CaptionSession(
         scope.launch { pipeline.setVocabulary(terms) }
     }
 
-    /** Important words just heard: they buzz on screen, or, with the app away, become a phone notification. */
+    /**
+     * Important words just heard. As on the iPhone, they buzz and TalkBack
+     * says them whichever screen is open, not only the captions; with the
+     * app away they become a phone notification. One that went out that way
+     * stays quiet as she comes back, and one that never did (alerts while
+     * away off, quiet hours) buzzes then, however long ago it was said.
+     */
     fun wordsHeard(hits: List<KeywordHit>, line: TranscriptSegment) {
-        attention.claim(hits)?.let(CaptionState::heard)
         val now = System.currentTimeMillis() / 1_000.0
         val utcOffsetSeconds = TimeZone.getDefault().getOffset((now * 1_000).toLong()) / 1_000
-        awayAlerts.forWords(hits, line.text, appIsActive, settings.current.value, now, utcOffsetSeconds).forEach(notifier::post)
+        val told = hits.filter { hit ->
+            awayAlerts.forWords(listOf(hit), line.text, appIsActive, settings.current.value, now, utcOffsetSeconds).onEach(notifier::post).isNotEmpty()
+        }
+        attention.claim(hits - told.toSet())?.let { word ->
+            CaptionState.heard(word)
+            if (appIsActive) tell(word) else untold = untold ?: word
+        }
         publish()
+    }
+
+    /** A word heard while she was away that nothing has told her of yet. */
+    private var untold: HeardWord? = null
+
+    private fun tell(word: HeardWord) {
+        buzz(AlertVibration.keyword)
+        if (ScreenReader.isOn(context)) ScreenReader.announce(context, tr("נאמר: %1", "Said: %1", listOf(word.said)))
     }
 
     /**

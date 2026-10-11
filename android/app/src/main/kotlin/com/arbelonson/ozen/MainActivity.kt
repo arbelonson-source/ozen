@@ -571,12 +571,12 @@ private fun CaptionScreen(
     LaunchedEffect(state.speechResumed) {
         if (state.speechResumed > resumedBefore && buzzWhenTalkResumes) onBuzz(AlertVibration.speechResumed)
     }
-    // Only a word said just now: one heard while the screen was away buzzing
-    // on coming back would send her looking for something long over.
-    LaunchedEffect(state.heard?.id) {
+    // The session buzzes and tells TalkBack, whichever screen is open; the
+    // pill is for a word said just now, or one the session tells her of as
+    // she comes back. Back from Settings, an old one does not show again.
+    LaunchedEffect(state.heard?.id, state.heard?.at) {
         val word = state.heard ?: return@LaunchedEffect
         if (secondsNow() - word.at > HEARD_SHOWN_SECONDS) return@LaunchedEffect
-        onBuzz(AlertVibration.keyword)
         shownWord = word
         delay((HEARD_SHOWN_SECONDS * 1_000).toLong())
         if (shownWord?.id == word.id) shownWord = null
@@ -1454,8 +1454,7 @@ private fun HeardPill(said: String, speaker: String?, modifier: Modifier) {
         fontWeight = FontWeight.SemiBold,
         modifier = modifier
             .background(Color.Yellow.copy(alpha = 0.9f), RoundedCornerShape(50))
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-            .semantics { liveRegion = LiveRegionMode.Polite },
+            .padding(horizontal = 16.dp, vertical = 10.dp),
     )
 }
 
