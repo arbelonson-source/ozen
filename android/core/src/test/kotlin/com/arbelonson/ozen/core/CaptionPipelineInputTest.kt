@@ -85,7 +85,7 @@ class CaptionPipelineInputTest {
     }
 
     @Test
-    fun `the app is told when the notice goes away: closed, captions stopped, or her own choice in the picker`() = runTest {
+    fun `the app is told when the notice goes away, whether closed, stopped with captions or by her own choice in the picker`() = runTest {
         val audio = lapelAudio()
         val (pipeline, _, _) = makePipeline(audio = audio)
         val told = mutableListOf<AudioInputDescriptor?>()
