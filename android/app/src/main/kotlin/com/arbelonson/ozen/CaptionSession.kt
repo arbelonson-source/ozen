@@ -11,6 +11,8 @@ import android.os.PowerManager
 import androidx.core.content.pm.PackageInfoCompat
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioCapturing
+import com.arbelonson.ozen.core.CaptionAnnouncer
+import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionPipeline
 import com.arbelonson.ozen.core.HTTPFileFetcher
 import com.arbelonson.ozen.core.HistoryRetention
@@ -81,6 +83,7 @@ class CaptionSession(
     )
     private val historyStore = TranscriptHistoryStore(historyFolder)
     private val attention = KeywordAttention()
+    private val announcer = CaptionAnnouncer()
     private val awayAlerts = AwayAlerts()
     private val notifier = AlertNotifier(context)
     private val savingTrouble = SavingTroubleNotice()
@@ -342,6 +345,29 @@ class CaptionSession(
             languageCode = transcribing.languageCode,
         )
         refreshSavingTrouble()
+        announceNewLines(transcribing)
+    }
+
+    /**
+     * Finished lines reach TalkBack (speech or a braille display) by
+     * themselves while the captions are in front, as VoiceOver gets them
+     * on the iPhone. Lines that finish while it is off, or the setting is,
+     * are skipped for good, so turning either on later doesn't read out
+     * the backlog.
+     */
+    private fun announceNewLines(transcribing: AppSettings) {
+        val segments = pipeline.segments
+        val display = settings.current.value.display
+        if (!appIsActive || !display.announceNewLines || !ScreenReader.isOn(context)) {
+            announcer.skipLinesSoFar(segments)
+            return
+        }
+        val text = announcer.announcement(
+            segments,
+            speakerName = { if (display.showSpeakerNames && it.speakerClusterID != null) pipeline.displayName(it) else null },
+            isUncertain = { display.markUncertainLines && CaptionConfidence.isUncertain(it, transcribing.engine, transcribing.whisperModelVariant) },
+        ) ?: return
+        ScreenReader.announce(context, text)
     }
 
     /**

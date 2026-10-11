@@ -234,6 +234,9 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
         tr("סימן שאלה ליד שורות שהמנוע לא בטוח בהן, ונקודות מתחת למילים שבספק", "Question mark next to lines the engine isn’t sure about, and dots under the doubtful words"),
         display.markUncertainLines,
     ) { on -> settings.change { it.display = it.display.copy(markUncertainLines = on) } }
+    SwitchRow(tr("TalkBack מקריא שורות חדשות", "TalkBack reads new lines aloud"), display.announceNewLines) { on ->
+        settings.change { it.display = it.display.copy(announceNewLines = on) }
+    }
     if (display.markUncertainLines && engine == TranscriptionEngineKind.Cloud) {
         Footnote(tr("התמלול בענן לא מדווח כמה הוא בטוח, ולכן איתו שום דבר לא מסומן.", "Cloud transcription doesn’t report how sure it is, so with it nothing is marked."))
     }

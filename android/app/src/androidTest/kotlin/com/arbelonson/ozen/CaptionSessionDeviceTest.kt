@@ -15,6 +15,7 @@ import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import java.io.File
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
@@ -125,6 +126,48 @@ class CaptionSessionDeviceTest {
         val live = liveAt
         assertNotNull("no live text in 20 seconds of speech", live)
         assertTrue("live text at $live ms came after the line was finished at $finishedAt ms", live!! < (finishedAt ?: Long.MAX_VALUE))
+    }
+
+    @Test
+    fun finishedLinesReachTheScreenReaderByThemselvesWhileTheCaptionsAreInFront(): Unit = runBlocking {
+        val clip = File(File(context.filesDir, "device-test"), "clip.wav")
+        val model = File(context.filesDir, CaptionSession.MODEL_FILE)
+        assumeTrue("put clip.wav in device-test and the model at ${model.path}", clip.exists() && model.exists())
+        val work = File(context.cacheDir, "caption-announce-test").apply { deleteRecursively(); mkdirs() }
+        val announced = CopyOnWriteArrayList<String>()
+        val readerBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        ScreenReader.isOn = { true }
+        ScreenReader.announce = { _, text -> announced += text }
+        val speech = DeviceClips.withoutPauses(DeviceClips.readWav(clip)).copyOf(20 * 16_000)
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(speech),
+                historyFolder = File(work, "history"),
+            ).also { it.appIsActive = true }
+        }
+        try {
+            withContext(Dispatchers.Main) { session.listen() }
+            val started = SystemClock.elapsedRealtime()
+            while (SystemClock.elapsedRealtime() - started < 180_000 && announced.isEmpty()) {
+                delay(500)
+                if (CaptionState.screen.value.phase is PipelinePhase.Failed) break
+            }
+            assertTrue("nothing was announced: ${CaptionState.screen.value.phase}", announced.isNotEmpty())
+            val finished = withContext(Dispatchers.Main) { session.pipeline.segments.filter { it.isCommitted }.map { it.text.trim() } }
+            for (part in announced.flatMap { it.split("\n") }) {
+                assertTrue("announced \"$part\", but the finished lines are $finished", finished.any { part.endsWith(it) })
+            }
+        } finally {
+            withContext(Dispatchers.Main) { session.close() }
+            ScreenReader.isOn = readerBefore
+            ScreenReader.announce = announceBefore
+        }
     }
 
     @Test

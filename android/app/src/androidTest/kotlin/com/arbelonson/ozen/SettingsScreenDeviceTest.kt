@@ -425,6 +425,17 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun talkBackReadingNewLinesAloudIsSwitchedWithTheDisplay() {
+        app.settings.change { it.display = it.display.copy(announceNewLines = true) }
+        compose.onNodeWithText("Settings").performClick()
+        val row = compose.onNode(hasText("TalkBack reads new lines aloud") and isToggleable())
+        row.performScrollTo().assertIsOn().performClick()
+        compose.waitUntil(5_000) { !app.settings.current.value.display.announceNewLines }
+        row.assertIsOff().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.display.announceNewLines }
+    }
+
+    @Test
     fun theBuzzWhenSomeoneStartsTalkingAfterSilenceIsSwitchedWithTheAlerts() {
         val before = app.settings.current.value.hapticOnSpeechResume
         try {
