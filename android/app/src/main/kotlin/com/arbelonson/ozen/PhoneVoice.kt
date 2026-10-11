@@ -73,7 +73,16 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         // away, lets go of it for good and never binds again by itself, and
         // one that failed to start stays failed: either is connected again
         // rather than saying no voice is installed until the app restarts.
-        if (!ready || engine.voices == null) reconnect() else listVoices()
+        if (ready && engine.voices != null) {
+            listVoices()
+            return
+        }
+        // A reply it was saying as it went is never finished by it.
+        if (pending.isNotEmpty()) {
+            pending.clear()
+            quiet()
+        }
+        reconnect()
     }
 
     /** The most the phone's speech engine takes in one go; tests make it small. */

@@ -41,6 +41,21 @@ class PhoneVoiceDeviceTest {
         assertTrue("voices after coming back: ${voice.installed.value}", within(10_000) { voice.installed.value == before })
     }
 
+    @Test
+    fun aReplyCutOffByTheSpeechEngineStoppingEndsOnComingBack() {
+        val voice = connected()
+        val events = CopyOnWriteArrayList<Boolean>()
+        instrumentation.runOnMainSync {
+            voice.onSpeakingChanged = { events += it }
+            voice.speak("Please read this sentence aloud slowly. ".repeat(20).trim(), 0.5f)
+        }
+        assertTrue("never spoke", within(10_000) { voice.isSpeaking })
+        speechEngineStopped()
+        instrumentation.runOnMainSync { voice.refreshVoice() }
+        assertTrue("still speaking after coming back: $events", within(10_000) { !voice.isBusy && !voice.isSpeaking })
+        assertEquals(false, events.last())
+    }
+
     private fun connected(): PhoneVoice {
         lateinit var voice: PhoneVoice
         instrumentation.runOnMainSync { voice = PhoneVoice(context) }
