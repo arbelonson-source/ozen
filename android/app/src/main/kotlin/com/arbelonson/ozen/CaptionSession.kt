@@ -56,12 +56,19 @@ class CaptionSession(
     private val connector = WebSocketConnector()
     private val voiceScorer by lazy { SileroVoiceScorer.fromAssets(context) }
     private var interruptedBySystem = false
+
+    // Captions from the home computer or the cloud that stopped when the
+    // internet went come back as soon as it does, as on the iPhone, not
+    // only while their half-minute of retries lasts. A home computer on
+    // the same Wi-Fi needs no internet, so any network counts as connected.
+    private val network = AndroidNetworkMonitor(context)
     val pipeline = CaptionPipeline(
         scope = scope,
         audio = audio,
         engineFactory = ::engine,
         embedder = NoVoicePrints,
         availableStorageBytes = { context.filesDir.usableSpace },
+        network = network,
     )
     private val historyStore = TranscriptHistoryStore(historyFolder)
     private val attention = KeywordAttention()
@@ -255,6 +262,7 @@ class CaptionSession(
 
     fun close() {
         pipeline.close()
+        network.close()
         scope.cancel()
     }
 
