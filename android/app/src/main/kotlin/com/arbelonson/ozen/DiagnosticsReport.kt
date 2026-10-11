@@ -39,8 +39,12 @@ data class DiagnosticsFacts(
 interface DiagnosticsSource {
     fun diagnostics(): DiagnosticsFacts
 
-    /** "Captions not good?": what was running and what the captions last said, kept in the journal. */
-    fun markProblem()
+    /**
+     * "Captions not good?": what was running and what the captions last
+     * said, kept in the journal, with the last stretch of sound while
+     * conversations are saved. True when the sound was kept.
+     */
+    fun markProblem(): Boolean
 
     /** Takes the caption lines marked problems kept out of the journal, and nothing else. */
     fun deleteMarkedCaptionLines()

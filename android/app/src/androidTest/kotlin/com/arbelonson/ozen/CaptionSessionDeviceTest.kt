@@ -10,9 +10,13 @@ import com.arbelonson.ozen.core.AudioPermission
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.ProblemAudioStore
+import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import java.io.File
+import kotlin.math.PI
+import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -152,6 +157,49 @@ class CaptionSessionDeviceTest {
                 CaptionState.screen.first { !it.phase.modelMissing && it.phase != PipelinePhase.Idle }
             }
             assertNotNull("captions stayed stopped on the missing model after pairing", tookOver)
+        } finally {
+            withContext(Dispatchers.Main) { session.close() }
+        }
+    }
+
+    @Test
+    fun aMarkedProblemKeepsTheLastSoundOnlyWhileConversationsAreSavedAndDeleteAllTakesItToo() = runBlocking {
+        val model = File(context.filesDir, CaptionSession.MODEL_FILE)
+        assumeTrue("put the model at ${model.path}", model.exists())
+        val work = File(context.cacheDir, "problem-sound-test").apply { deleteRecursively(); mkdirs() }
+        val clips = ProblemAudioStore(File(work, "problem-audio"))
+        val journal = File(work, "journal.log")
+        val tone = FloatArray(32_000) { (0.1 * sin(it * 2 * PI * 440 / 16_000)).toFloat() }
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(tone),
+                historyFolder = File(work, "history"),
+                journalFile = journal,
+                problemAudioFolder = clips.directory,
+            )
+        }
+        try {
+            withContext(Dispatchers.Main) { session.listen() }
+            val heard = withTimeoutOrNull(120_000) {
+                while (withContext(Dispatchers.Main) { session.pipeline.recentAudioSamples.isEmpty() }) delay(200)
+                true
+            }
+            assertNotNull("no sound reached the pipeline: ${CaptionState.screen.value.phase}", heard)
+            assertTrue("the sound was not kept", withContext(Dispatchers.Main) { session.markProblem() })
+            val kept = clips.clips().single()
+            assertTrue(SessionJournal(journal).entries().any { it.text == "  sound saved: ${kept.name}" })
+
+            withContext(Dispatchers.Main) { session.savedConversations.deleteAll() }
+            assertTrue("delete all left the sound behind", clips.clips().isEmpty())
+
+            withContext(Dispatchers.Main) { session.savedConversations.switchSaving(false) }
+            assertFalse("sound kept with saving conversations off", withContext(Dispatchers.Main) { session.markProblem() })
+            assertTrue(clips.clips().isEmpty())
         } finally {
             withContext(Dispatchers.Main) { session.close() }
         }

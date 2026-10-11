@@ -16,6 +16,7 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ProblemSnapshot
 import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SessionJournal
@@ -30,6 +31,7 @@ import com.arbelonson.ozen.core.WebSocketConnector
 import com.arbelonson.ozen.whisper.ModelFileLoader
 import com.arbelonson.ozen.whisper.SileroVoiceScorer
 import java.io.File
+import java.time.Instant
 import java.util.TimeZone
 import java.util.UUID
 import kotlin.time.DurationUnit
@@ -47,6 +49,8 @@ class CaptionSession(
     val audio: AudioCapturing = AndroidAudioCapture(context),
     private val modelFile: File = File(context.filesDir, MODEL_FILE),
     historyFolder: File = File(context.filesDir, HISTORY_FOLDER),
+    journalFile: File = File(context.filesDir, JOURNAL_FILE),
+    problemAudioFolder: File = File(context.filesDir, PROBLEM_AUDIO_FOLDER),
 ) : DiagnosticsSource {
     private val scope = MainScope()
     private val connector = WebSocketConnector()
@@ -92,7 +96,10 @@ class CaptionSession(
      * end, for the diagnostics report: the pipeline's events, the app
      * starting and leaving the screen, and the problems she marks.
      */
-    private val journal = SessionJournal(File(context.filesDir, JOURNAL_FILE))
+    private val journal = SessionJournal(journalFile)
+
+    /** The last 30 seconds of sound kept with each marked problem; the app has no backups for it to leak into. */
+    private val problemAudio = ProblemAudioStore(problemAudioFolder)
 
     /** Whether the caption screen is in front: set as MainActivity starts and stops. */
     var appIsActive = false
@@ -112,6 +119,7 @@ class CaptionSession(
         startNewConversation = pipeline::startNewConversation,
         setSaveHistory = { on -> settings.change { it.saveHistory = on } },
         scope = scope,
+        problemAudio = problemAudio,
     )
     val savedConversations = object : SavedConversations {
         override fun list() = historyStore.listSummaries()
@@ -134,12 +142,14 @@ class CaptionSession(
             publish()
         }
 
-        // Her words kept with a marked problem are part of what she asked
-        // to delete, so they leave the journal too; the rest of it stays.
+        // Her words and the room's sound kept with a marked problem are part
+        // of what she asked to delete: the caption lines leave the journal
+        // (the rest of it stays) and the clips go.
         override fun deleteAll() {
             conversations.deleteAll()
             forgetSharedCopy()
             deleteMarkedCaptionLines()
+            problemAudio.deleteAll()
             publish()
         }
 
@@ -301,7 +311,7 @@ class CaptionSession(
         )
     }
 
-    override fun markProblem() {
+    override fun markProblem(): Boolean {
         val now = System.currentTimeMillis() / 1_000.0
         val lines = ProblemSnapshot.lines(
             settings = settings.current.value,
@@ -313,7 +323,11 @@ class CaptionSession(
             utcOffsetSeconds = utcOffsetAt(now),
         )
         lines.forEach { journal.append(it, now) }
+        // With saving conversations off, the room's sound isn't kept either.
+        val clip = if (settings.current.value.saveHistory) problemAudio.save(pipeline.recentAudioSamples, SAMPLE_RATE, Instant.ofEpochMilli((now * 1_000).toLong())) else null
+        clip?.let { journal.append("  sound saved: ${it.name}", now) }
         scope.launch { pipeline.engineDiagnostics()?.let { journal.append("  engine: $it", now) } }
+        return clip != null
     }
 
     override fun deleteMarkedCaptionLines() = journal.removeEntries(ProblemSnapshot::isCaptionLine)
@@ -426,6 +440,8 @@ class CaptionSession(
         const val MODEL_FILE = "ggml-ozen-a3-q5_0.bin"
         const val HISTORY_FOLDER = "ozen-history"
         const val JOURNAL_FILE = "ozen-journal.log"
+        const val PROBLEM_AUDIO_FOLDER = "problem-audio"
+        private const val SAMPLE_RATE = 16_000
 
         /** In the cache: the conversation last shared as a file, kept for the app it went to. */
         const val SHARED_FOLDER = "shared"

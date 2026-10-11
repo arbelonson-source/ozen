@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.ConversationBreak
 import com.arbelonson.ozen.core.HistoryRetention
+import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
@@ -35,6 +36,7 @@ class ConversationSaver(
     private val scope: CoroutineScope,
     private val now: () -> Double = { System.currentTimeMillis() / 1_000.0 },
     private val io: CoroutineContext = Dispatchers.IO,
+    private val problemAudio: ProblemAudioStore? = null,
 ) {
     private var id = UUID.randomUUID()
     private var startedAt: Double? = null
@@ -129,7 +131,10 @@ class ConversationSaver(
         val retention = settings().historyRetention
         if (retention == HistoryRetention.Forever) return 0
         val onScreen = closed.keys + reading + id
-        return withContext(io) { writer.deleteExpiredNow(retention, now, onScreen) }
+        return withContext(io) {
+            deleteOldClips(retention, now)
+            writer.deleteExpiredNow(retention, now, onScreen)
+        }
     }
 
     private fun close(endedAt: Double?) {
@@ -244,7 +249,15 @@ class ConversationSaver(
         val retention = settings().historyRetention
         if (retention == HistoryRetention.Forever) return
         val onScreen = closed.keys + reading + id
-        scope.launch(io) { writer.deleteExpiredNow(retention, at, onScreen) }
+        scope.launch(io) {
+            deleteOldClips(retention, at)
+            writer.deleteExpiredNow(retention, at, onScreen)
+        }
+    }
+
+    /** A marked problem's sound is her voice: it keeps no longer than her conversations do. */
+    private fun deleteOldClips(retention: HistoryRetention, now: Double) {
+        retention.cutoff(now)?.let { problemAudio?.deleteClips(olderThan = it) }
     }
 
     private companion object {

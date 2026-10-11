@@ -355,10 +355,10 @@ private fun CaptionScreen(
     onAskToRepeat: (() -> Unit)?,
     onSay: () -> Unit,
     onDismissSavingTrouble: () -> Unit,
-    onMarkProblem: () -> Unit,
+    onMarkProblem: () -> Boolean,
 ) {
     val list = rememberLazyListState()
-    var problemMarked by remember { mutableStateOf(false) }
+    var problemMarked by remember { mutableStateOf<Boolean?>(null) }
     val context = LocalContext.current
     var shownWord by remember { mutableStateOf<HeardWord?>(null) }
     // Only a word said just now: one heard while the screen was away buzzing
@@ -375,7 +375,7 @@ private fun CaptionScreen(
     fixing?.let { line ->
         FixWordDialog(line.text, onAdd = { onAddWord(it); fixing = null }, onDismiss = { fixing = null })
     }
-    if (problemMarked) ProblemMarkedDialog(onDismiss = { problemMarked = false })
+    problemMarked?.let { keptSound -> ProblemMarkedDialog(keptSound, onDismiss = { problemMarked = null }) }
     var following by remember { mutableStateOf(true) }
     var lastWhenLeft by remember { mutableStateOf<UUID?>(null) }
     val newest by rememberUpdatedState(state.lines.lastOrNull()?.id)
@@ -433,7 +433,7 @@ private fun CaptionScreen(
                     textAlign = TextAlign.Center,
                 )
             } else {
-                CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onAskToRepeat, onMarkProblem = { onMarkProblem(); problemMarked = true })
+                CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
                 if (!following) {
                     JumpToLatest(jumpToLatestTitle(linesSince(state.lines, lastWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                         following = true
@@ -729,13 +729,16 @@ private fun BellMark(fontSize: Double, colour: Color) {
  * she taps it away; it comes back only once saving has worked and then
  * failed again. The iPhone's way to free space is left out of the words.
  */
-/** Where a problem marked from a caption line went, and how it reaches whoever helps her. */
+/**
+ * Where a problem marked from a caption line went, and how it reaches
+ * whoever helps her: a kept sound is sent from its own row in Diagnostics.
+ */
 @Composable
-private fun ProblemMarkedDialog(onDismiss: () -> Unit) {
+private fun ProblemMarkedDialog(keptSound: Boolean, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("הבעיה סומנה", "Problem marked")) },
-        text = { Text(tr("פרטי התקלה והשורות האחרונות נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לך: הגדרות ← אבחון ← שליחת הדוח.", "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.")) },
+        text = { Text(if (keptSound) tr("פרטי התקלה, השורות האחרונות ו-30 השניות האחרונות של הקול נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לך: הגדרות ← אבחון.", "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.") else tr("פרטי התקלה והשורות האחרונות נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לך: הגדרות ← אבחון ← שליחת הדוח.", "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.")) },
         confirmButton = { TextButton(onClick = onDismiss) { Text(tr("אישור", "OK")) } },
     )
 }

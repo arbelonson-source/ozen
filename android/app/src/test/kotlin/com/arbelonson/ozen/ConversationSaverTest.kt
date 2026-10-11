@@ -2,13 +2,16 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.HistoryRetention
+import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import java.io.File
 import java.nio.file.Files
+import java.time.Instant
 import java.util.UUID
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.AfterTest
@@ -33,6 +36,7 @@ class ConversationSaverTest {
     private val settings = AppSettings.default
     private var clock = 1_800_000_000.0
     private var newConversations = 0
+    private val clips = ProblemAudioStore(File(folder, "problem-audio"))
     private val saver = ConversationSaver(
         writer = writer,
         lines = { lines.toList() },
@@ -46,12 +50,16 @@ class ConversationSaverTest {
         scope = scope,
         now = { clock },
         io = EmptyCoroutineContext,
+        problemAudio = clips,
     )
 
     @AfterTest
     fun removeFolder() {
         folder.deleteRecursively()
     }
+
+    private fun clipAt(at: Double): String =
+        clips.save(floatArrayOf(0.1f, 0.2f), 16_000, Instant.ofEpochMilli((at * 1_000).toLong()))!!.name
 
     private fun say(text: String, at: Double = clock) {
         lines += TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, startTimestamp = at, lastUpdateTimestamp = at)
@@ -208,6 +216,8 @@ class ConversationSaverTest {
         val today = clock
         val monthAgo = clock - 30 * 86_400
         val old = oldConversation(monthAgo)
+        clipAt(monthAgo)
+        val todaysClip = clipAt(today)
         clock = monthAgo
         start()
         say("A month ago")
@@ -217,6 +227,7 @@ class ConversationSaverTest {
         val conversations = saved()
         assertFalse(conversations.any { it.id == old })
         assertTrue(conversations.any { it.preview == "A month ago" })
+        assertEquals(listOf(todaysClip), clips.clips().map { it.name })
 
         val another = oldConversation(monthAgo)
         clock += 6 * 3_600
@@ -469,10 +480,14 @@ class ConversationSaverTest {
         say("Today")
         saver.save(ended = false)
         val now = clock + 60 * 86_400
+        val oldClip = clipAt(clock - 40 * 86_400)
+        val recentClip = clipAt(now - 10 * 86_400)
         assertEquals(0, runBlocking { saver.deleteExpired(now) })
+        assertEquals(setOf(oldClip, recentClip), clips.clips().map { it.name }.toSet())
 
         settings.historyRetention = HistoryRetention.Month
         assertEquals(1, runBlocking { saver.deleteExpired(now) })
+        assertEquals(listOf(recentClip), clips.clips().map { it.name })
         val left = saved()
         assertFalse(left.any { it.id == old })
         assertEquals(listOf("Today"), left.map { it.preview })
