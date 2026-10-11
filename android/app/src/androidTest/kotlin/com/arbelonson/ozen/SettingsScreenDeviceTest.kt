@@ -37,6 +37,7 @@ import com.arbelonson.ozen.core.ContrastRatio
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.util.UUID
@@ -66,6 +67,7 @@ class SettingsScreenDeviceTest {
     private lateinit var wordsBefore: List<String>
     private lateinit var alertsBefore: List<KeywordAlert>
     private var awayAlertsBefore = true
+    private var quietHoursBefore = QuietHours.default
 
     @Before
     fun remember() {
@@ -79,6 +81,7 @@ class SettingsScreenDeviceTest {
         wordsBefore = app.settings.current.value.vocabulary
         alertsBefore = app.settings.current.value.keywordAlerts.map { it.copy() }
         awayAlertsBefore = app.settings.current.value.notifyWhenInBackground
+        quietHoursBefore = app.settings.current.value.quietHours
         app.cloudKeys.remove(CloudProvider.Deepgram)
         app.homeServerCode.remove()
         app.settings.change { it.homeServerAddress = "" }
@@ -98,6 +101,7 @@ class SettingsScreenDeviceTest {
             it.vocabulary = wordsBefore
             it.keywordAlerts = alertsBefore
             it.notifyWhenInBackground = awayAlertsBefore
+            it.quietHours = quietHoursBefore
         }
         compose.runOnUiThread { CaptionState.clear() }
     }
@@ -384,6 +388,39 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun quietHoursAreSetOnlyWithAlertsWhileTheScreenIsOffAndEqualHoursAreCalledTheWholeDay() {
+        app.settings.change {
+            it.notifyWhenInBackground = true
+            it.quietHours = QuietHours(isEnabled = false, startHour = 22, endHour = 7)
+        }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Starts").assertDoesNotExist()
+        compose.onNode(hasText("Quiet hours") and isToggleable()).performScrollTo().assertIsOff().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.quietHours.isEnabled }
+        hour("Starts", "22:00").performScrollTo()
+        hour("Ends", "07:00").assertExists()
+        compose.onNodeWithText("Urgent sounds like a siren still alert.").assertExists()
+
+        val laterStart = compose.onNode(hasText("+") and hasAnyAncestor(hasText("Starts")))
+        laterStart.performScrollTo().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.quietHours.startHour == 23 }
+        hour("Starts", "23:00").assertExists()
+        laterStart.assertIsNotEnabled()
+        compose.onNode(hasText("−") and hasAnyAncestor(hasText("Ends"))).performScrollTo().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.quietHours.endHour == 6 }
+        assertEquals(23, app.settings.current.value.quietHours.startHour)
+
+        hour("Ends", "06:00").performSemanticsAction(SemanticsActions.SetProgress) { it(23f) }
+        compose.waitUntil(5_000) { app.settings.current.value.quietHours.endHour == 23 }
+        compose.onNodeWithText("Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.").performScrollTo()
+        assertEquals(QuietHours(isEnabled = true, startHour = 23, endHour = 23), app.settings.current.value.quietHours)
+
+        compose.onNode(hasText("Alert on phone when the screen is off") and isToggleable()).performScrollTo().performClick()
+        compose.waitUntil(5_000) { !app.settings.current.value.notifyWhenInBackground }
+        compose.onNodeWithText("Quiet hours").assertDoesNotExist()
+    }
+
+    @Test
     fun aFullWordListSaysSoAndTakesNoMore() {
         val full = (1..200).map { "Name number $it" }
         app.settings.change { it.vocabulary = full }
@@ -397,6 +434,9 @@ class SettingsScreenDeviceTest {
         compose.waitForIdle()
         assertEquals(full, app.settings.current.value.vocabulary)
     }
+
+    private fun hour(title: String, shown: String) =
+        compose.onNode(hasText(title) and SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, shown))
 
     private fun assertReadableOnWhite(text: String) {
         val layouts = mutableListOf<TextLayoutResult>()

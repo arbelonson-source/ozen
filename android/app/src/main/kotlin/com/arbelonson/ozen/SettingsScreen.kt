@@ -56,11 +56,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -76,6 +79,7 @@ import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.KeywordAlert
+import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.tr
 import kotlin.math.roundToInt
@@ -126,6 +130,7 @@ fun SettingsScreen(
             DisplaySection(settings, current.display, current.engine)
             AlertsSection(current.keywordAlerts.count { it.isEnabled }, listed = current.keywordAlerts.isNotEmpty(), onOpen = { showingImportantWords = true })
             AwayAlertsRow(current.notifyWhenInBackground) { on -> settings.change { it.notifyWhenInBackground = on } }
+            if (current.notifyWhenInBackground) QuietHoursRows(current.quietHours) { hours -> settings.change { it.quietHours = hours } }
             EngineSection(engineSettings, current)
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
             if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
@@ -594,6 +599,57 @@ private fun AwayAlertsRow(on: Boolean, onChange: (Boolean) -> Unit) {
         onChange(switching)
         val allowed = Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         if (switching && !allowed) ask.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+}
+
+/**
+ * Quiet hours, offered only with alerts on while the screen is off, as on
+ * the iPhone. An equal start and end is the whole day, deliberately; two
+ * equal hours on screen don't say that, so the note under them does, and
+ * the screen reader reads it out when it changes.
+ */
+@Composable
+private fun QuietHoursRows(hours: QuietHours, onChange: (QuietHours) -> Unit) {
+    SwitchRow(tr("שעות שקטות", "Quiet hours"), hours.isEnabled) { on -> onChange(QuietHours(on, hours.startHour, hours.endHour)) }
+    if (!hours.isEnabled) return
+    HourStepper(tr("מתחילות", "Starts"), hours.startHour) { onChange(QuietHours(true, it, hours.endHour)) }
+    HourStepper(tr("מסתיימות", "Ends"), hours.endHour) { onChange(QuietHours(true, hours.startHour, it)) }
+    Text(
+        if (hours.startHour == hours.endHour) {
+            tr("כשהן מתחילות ומסתיימות באותה שעה, השעות השקטות נמשכות כל היום. צלילים דחופים כמו אזעקה עדיין יתריעו.", "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.")
+        } else {
+            tr("צלילים דחופים כמו אזעקה עדיין יתריעו.", "Urgent sounds like a siren still alert.")
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+    )
+}
+
+/**
+ * The iPhone's stepper: from 00:00 to 23:00 without wrapping round, the
+ * hour under its word so a large text size never breaks either, and a
+ * screen reader moves it by swiping up or down on the row.
+ */
+@Composable
+private fun HourStepper(title: String, hour: Int, onChange: (Int) -> Unit) {
+    val shown = hour.toString().padStart(2, '0') + ":00"
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {
+                stateDescription = shown
+                progressBarRangeInfo = ProgressBarRangeInfo(hour.toFloat(), 0f..23f, steps = 22)
+                setProgress { target -> onChange(target.roundToInt().coerceIn(0, 23)); true }
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(shown, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clearAndSetSemantics { })
+        }
+        TextButton(onClick = { onChange(hour - 1) }, enabled = hour > 0) { Text("−", fontSize = 24.sp) }
+        TextButton(onClick = { onChange(hour + 1) }, enabled = hour < 23) { Text("+", fontSize = 24.sp) }
     }
 }
 
