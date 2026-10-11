@@ -458,7 +458,7 @@ private fun opened(record: TranscriptSessionRecord?, query: String, marksUncerta
     matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
     numbers = record?.takeIf { query.isBlank() }?.let(NumbersMentioned::of),
     starred = record?.takeIf { query.isBlank() }?.segments?.filter { it.isStarred }?.map { it.id } ?: emptyList(),
-    stats = record?.let(ConversationStats::compute)?.takeIf { it.totalWords > 0 },
+    stats = record?.let { ConversationStats.compute(it) }?.takeIf { it.totalWords > 0 },
 )
 
 /**
