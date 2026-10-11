@@ -115,6 +115,7 @@ fun SettingsScreen(
     onSpeak: (String) -> Unit,
     diagnostics: DiagnosticsSource,
     heard: List<KeywordHit> = emptyList(),
+    heardBy: (KeywordHit) -> String? = { null },
     onAppLanguage: (AppLanguage) -> Unit = {},
     onShowWalkthrough: () -> Unit = {},
     onClearCaptions: () -> Unit = {},
@@ -159,7 +160,7 @@ fun SettingsScreen(
     }
     var showingImportantWords by rememberSaveable { mutableStateOf(false) }
     if (showingImportantWords) {
-        ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, current.spokenLanguage, heard, onImportantWords, onClose = { showingImportantWords = false })
+        ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, current.spokenLanguage, heard, onImportantWords, onClose = { showingImportantWords = false }, heardBy = heardBy)
         return
     }
     var showingEnrollment by rememberSaveable { mutableStateOf(false) }

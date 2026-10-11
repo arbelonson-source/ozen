@@ -847,6 +847,28 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun importantWordsHeardLatelySayWhoSaidThemWhileSpeakerNamesAreShown() {
+        val grandma = KeywordAlert(phrase = "סבתא")
+        app.settings.change {
+            it.keywordAlerts = listOf(grandma)
+            it.display = it.display.copy(showSpeakerNames = true)
+        }
+        val at = 1_800_000_000.0
+        val line = TranscriptSegment(id = UUID.randomUUID(), text = "Grandma is here", isCommitted = true, speakerClusterID = 7, startTimestamp = at, lastUpdateTimestamp = at)
+        val hit = KeywordHit(segmentID = line.id, match = KeywordMatch(grandma.id, "סבתא", "סבתא", 0), timestamp = at)
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Important words").performScrollTo().performClick()
+        compose.runOnUiThread {
+            CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line), recentlyHeard = listOf(hit), speakerName = { "Dana" })
+        }
+        compose.onNode(hasText("Grandma") and hasText("Dana") and hasText(clockTime(at))).performScrollTo()
+
+        app.settings.change { it.display = it.display.copy(showSpeakerNames = false) }
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText("Grandma") and hasText("Dana")).fetchSemanticsNodes().isEmpty() }
+        compose.onNode(hasText("Grandma") and hasText(clockTime(at))).assertExists()
+    }
+
+    @Test
     fun aTestNotificationAskedForInSettingsArrivesTenSecondsLater() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         if (Build.VERSION.SDK_INT >= 33) instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.POST_NOTIFICATIONS)

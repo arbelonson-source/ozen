@@ -55,7 +55,7 @@ import com.arbelonson.ozen.core.tr
  * the iPhone: added at the end, switched off without being lost, and
  * deleted only after asking, since losing the one that buzzes for her name
  * should take a second tap. The ten heard last follow, newest first, as on
- * the iPhone but without who said them: Android can't tell voices apart yet.
+ * the iPhone, each with who said it when their voice is known.
  */
 @Composable
 internal fun ImportantWordsScreen(
@@ -66,6 +66,7 @@ internal fun ImportantWordsScreen(
     heard: List<KeywordHit>,
     onChange: (List<KeywordAlert>) -> Unit,
     onClose: () -> Unit,
+    heardBy: (KeywordHit) -> String? = { null },
 ) {
     BackHandler(onBack = onClose)
     var draft by rememberSaveable { mutableStateOf("") }
@@ -152,7 +153,10 @@ internal fun ImportantWordsScreen(
                 Text(tr("נשמעו לאחרונה", "Recently heard"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp).semantics { heading() })
                 for (hit in heard) {
                     Row(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(AlertSuggestions.said(hit.match, Localization.language), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(AlertSuggestions.said(hit.match, Localization.language), style = MaterialTheme.typography.bodyLarge)
+                            heardBy(hit)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
                         Text(clockTime(hit.timestamp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }

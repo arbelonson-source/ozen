@@ -207,6 +207,20 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `who said each important word heard lately is kept when their voice is known`() {
+        val alert = UUID.randomUUID()
+        val known = TranscriptSegment(id = UUID.randomUUID(), text = "Grandma is here", isCommitted = true, speakerClusterID = 1, startTimestamp = 1.0, lastUpdateTimestamp = 1.0)
+        val unknown = TranscriptSegment(id = UUID.randomUUID(), text = "Grandma called", isCommitted = true, speakerClusterID = null, startTimestamp = 2.0, lastUpdateTimestamp = 2.0)
+        val hit = { line: UUID, at: Double -> KeywordHit(segmentID = line, match = KeywordMatch(alert, "סבתא", "סבתא", 0), timestamp = at) }
+        val hits = listOf(hit(known.id, 1.0), hit(unknown.id, 2.0), hit(UUID.randomUUID(), 3.0))
+        CaptionState.show(
+            PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null,
+            segments = listOf(known, unknown), recentlyHeard = hits, speakerName = { "Dana" },
+        )
+        assertEquals(mapOf(hits[0].id to "Dana"), CaptionState.screen.value.recentlyHeardBy)
+    }
+
+    @Test
     fun `only the newest two hundred lines are kept on the screen`() {
         val segments = (1..205).map { line("line $it", committed = true) }
         show(PipelinePhase.Listening, segments)

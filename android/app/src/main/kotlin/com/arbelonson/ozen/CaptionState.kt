@@ -75,6 +75,8 @@ data class CaptionScreenState(
     val lastActivityAt: Double? = null,
     val heard: HeardWord? = null,
     val recentlyHeard: List<KeywordHit> = emptyList(),
+    /** Who said each of [recentlyHeard], by the hit's id, when their voice is known. */
+    val recentlyHeardBy: Map<UUID, String> = emptyMap(),
     val speaking: Boolean = false,
     val savingTrouble: Boolean = false,
     val inputs: List<AudioInputDescriptor> = emptyList(),
@@ -180,6 +182,7 @@ object CaptionState {
         segmentsShown = segments
         val firstShown = segments.size - minOf(segments.size, MAXIMUM_LINES)
         val named = { segment: TranscriptSegment -> segment.takeIf { it.speakerClusterID != null }?.let(speakerName) }
+        val recent = recentlyHeard.takeLast(10).reversed()
         // A copy, so what the captions don't set (a sound alert, the battery,
         // a banner) stays: a rebuilt state once dropped the smoke alarm's
         // banner at the next word.
@@ -217,7 +220,8 @@ object CaptionState {
                 )
             },
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),
-            recentlyHeard = recentlyHeard.takeLast(10).reversed(),
+            recentlyHeard = recent,
+            recentlyHeardBy = recent.mapNotNull { hit -> segments.firstOrNull { it.id == hit.segmentID }?.let(named)?.let { hit.id to it } }.toMap(),
             speechResumed = state.value.speechResumed + if (resumed) 1 else 0,
             away = awayMark(segments),
             earlier = segments.getOrNull(firstShown - 1)?.let { EarlierLines(conversation(firstShown - 1), it.id) },
