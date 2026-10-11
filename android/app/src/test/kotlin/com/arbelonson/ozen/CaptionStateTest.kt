@@ -68,6 +68,14 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `each line on screen opens the saved conversation of its place in the whole transcript`() {
+        val segments = (1..205).map { line("line $it", committed = true) }
+        val conversations = segments.indices.map { if (it % 3 == 0) null else UUID.randomUUID() }
+        CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = segments, conversation = conversations::get)
+        assertEquals(conversations.takeLast(200), CaptionState.screen.value.lines.map { it.conversation })
+    }
+
+    @Test
     fun `the status button offers what the pipeline's phase allows`() {
         show(PipelinePhase.Listening)
         assertEquals(PhasePresentation.Action.Pause, CaptionState.screen.value.status.action)

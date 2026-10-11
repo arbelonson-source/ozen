@@ -302,6 +302,46 @@ class ConversationSaverTest {
     }
 
     @Test
+    fun `a caption line opens the saved conversation it belongs to, and none when it was said with saving off`() {
+        start()
+        say("Good morning", at = clock - 30 * 60)
+        assertTrue(saver.checkForConversationBreak())
+        say("Good evening")
+        saver.save(ended = false)
+        val morning = saved().single { it.preview == "Good morning" }.id
+        val evening = saved().single { it.preview == "Good evening" }.id
+        assertEquals(listOf(morning, evening, null), (0..2).map(saver::savedConversation))
+        assertTrue(saver.isCurrent(evening))
+
+        saver.switchSaving(false)
+        say("A secret between us")
+        assertEquals(listOf(null, null, null), (0..2).map(saver::savedConversation))
+        saver.switchSaving(true)
+        say("See you tomorrow")
+        val tomorrow = saver.savedConversation(3)
+        assertNotNull(tomorrow)
+        assertTrue(saver.isCurrent(tomorrow))
+        assertEquals(listOf(morning, evening, null), (0..2).map(saver::savedConversation))
+    }
+
+    @Test
+    fun `a caption line of a deleted conversation opens nothing, nor any line while saves fail`() {
+        start()
+        say("Good morning")
+        saver.save(ended = false)
+        saver.delete(saved().single().id)
+        assertNull(saver.savedConversation(0))
+        say("Good evening")
+        assertNotNull(saver.savedConversation(1))
+
+        folder.deleteRecursively()
+        folder.writeText("not a folder")
+        saver.save(ended = false)
+        assertNotNull(saver.lastSaveFailure)
+        assertNull(saver.savedConversation(1))
+    }
+
+    @Test
     fun `a line starred while it is said shows starred and is saved starred`() {
         start()
         say("Take two pills after dinner")

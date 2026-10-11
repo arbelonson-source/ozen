@@ -189,6 +189,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
     val state by CaptionState.screen.collectAsStateWithLifecycle()
     val current by app.settings.current.collectAsStateWithLifecycle()
     var showingHistory by rememberSaveable { mutableStateOf(false) }
+    var reading by rememberSaveable { mutableStateOf<Pair<UUID, UUID>?>(null) }
     var awakeClock by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1_000.0) }
     LaunchedEffect(state.phase.isListening) {
         while (true) {
@@ -201,8 +202,18 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
     LaunchedEffect(look.isLight) { onLightScreen(look.isLight) }
     MaterialTheme(colorScheme = if (look.isLight) lightColorScheme() else darkColorScheme()) {
         CompositionLocalProvider(LocalLayoutDirection provides direction) {
+            val opened = reading
             when {
                 showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false })
+                opened != null -> ConversationScreen(
+                    app.captions.savedConversations,
+                    opened.first,
+                    query = "",
+                    marksUncertain = current.display.markUncertainLines,
+                    emphasizeNumbers = current.display.emphasizeNumbers,
+                    onClose = { reading = null },
+                    line = opened.second,
+                )
                 showingHistory -> HistoryScreen(
                     app.captions.savedConversations,
                     saving = current.saveHistory,
@@ -211,7 +222,19 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     emphasizeNumbers = current.display.emphasizeNumbers,
                     onClose = { showingHistory = false },
                 )
-                else -> CaptionScreen(state, current.display, look, onStatusTap, onSettings = { showingSettings.value = true }, onHistory = { showingHistory = true }, onStar = { app.captions.toggleStar(it) })
+                else -> CaptionScreen(
+                    state,
+                    current.display,
+                    look,
+                    onStatusTap,
+                    onSettings = { showingSettings.value = true },
+                    onHistory = { showingHistory = true },
+                    onStar = { app.captions.toggleStar(it) },
+                    onOpen = { conversation, line ->
+                        app.captions.saveBeforeReading()
+                        reading = conversation to line
+                    },
+                )
             }
             PairingDialogs(app.pairing)
         }
@@ -290,6 +313,7 @@ private fun CaptionScreen(
     onSettings: () -> Unit,
     onHistory: () -> Unit,
     onStar: (UUID) -> Unit,
+    onOpen: (conversation: UUID, line: UUID) -> Unit,
 ) {
     val list = rememberLazyListState()
     var following by remember { mutableStateOf(true) }
@@ -349,7 +373,7 @@ private fun CaptionScreen(
                     textAlign = TextAlign.Center,
                 )
             } else {
-                CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading), onStar)
+                CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen)
                 if (!following) {
                     JumpToLatest(jumpToLatestTitle(linesSince(state.lines, lastWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                         following = true
@@ -426,12 +450,13 @@ private fun CaptionLines(
     following: Boolean,
     modifier: Modifier,
     onStar: (UUID) -> Unit,
+    onOpen: (conversation: UUID, line: UUID) -> Unit,
 ) {
     LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize) {
         if (following) list.scrollToEnd(lines.lastIndex)
     }
     LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(lines, key = { it.id }) { line -> CaptionLineRow(line, display, look) { onStar(line.id) } }
+        items(lines, key = { it.id }) { line -> CaptionLineRow(line, display, look, onStar = { onStar(line.id) }, onOpen = { conversation -> onOpen(conversation, line.id) }) }
     }
 }
 
@@ -472,13 +497,14 @@ private fun JumpToLatest(title: String, look: CaptionTheme, modifier: Modifier, 
  * be marked as important (a star) or copied; a screen reader has both too.
  */
 @Composable
-private fun CaptionLineRow(line: CaptionLine, display: DisplayPreferences, look: CaptionTheme, onStar: () -> Unit) {
+private fun CaptionLineRow(line: CaptionLine, display: DisplayPreferences, look: CaptionTheme, onStar: () -> Unit, onOpen: (UUID) -> Unit) {
     val doubtful = if (display.markUncertainLines) line.doubtfulWords else emptyList()
     val spoken = UncertainWords.spoken(line.text, doubtful)
     val colour = if (line.isFinal) look.text else look.pendingText
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val star = if (line.starred) tr("ביטול הסימון", "Remove mark") else tr("סימון כחשוב", "Mark as important")
     val copy = tr("העתקה", "Copy")
+    val open = tr("פתיחת השיחה כולה, לשיתוף או לחיפוש", "Open the whole conversation, to share or search")
     val context = LocalContext.current
     val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, line.copied)) }
     val uris = LocalUriHandler.current
@@ -496,13 +522,18 @@ private fun CaptionLineRow(line: CaptionLine, display: DisplayPreferences, look:
             actions = listOf(
                 CustomAccessibilityAction(star) { onStar(); true },
                 CustomAccessibilityAction(copy) { copyLine(); true },
-            ) + line.phones.map { phone ->
+            ) + listOfNotNull(line.conversation).map { conversation ->
+                CustomAccessibilityAction(open) { onOpen(conversation); true }
+            } + line.phones.map { phone ->
                 CustomAccessibilityAction(tr("להתקשר ל־%1", "Call %1", listOf(phone.dialable))) { uris.openUri(phone.url); true }
             },
         )
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { Text(star) }, onClick = { menu = false; onStar() })
             DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
+            line.conversation?.let { conversation ->
+                DropdownMenuItem(text = { Text(open) }, onClick = { menu = false; onOpen(conversation) })
+            }
         }
     }
 }

@@ -38,7 +38,12 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.SavedSegment
+import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSegment
+import com.arbelonson.ozen.core.TranscriptSessionRecord
+import com.arbelonson.ozen.core.TranscriptionEngineKind
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
@@ -266,6 +271,47 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    @Test
+    fun aCaptionLineOpensItsWholeSavedConversationAtThatLineAndBackReturnsToTheCaptions() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val store = TranscriptHistoryStore(File(app.filesDir, CaptionSession.HISTORY_FOLDER))
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 600
+        val said = (0 until 80).map { index ->
+            SavedSegment(UUID.randomUUID(), if (index == 60) "The pharmacy closes early on Friday" else "Small talk about the weather", null, null, startedAt + index, true)
+        }
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 90,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = said,
+        )
+        store.save(record)
+        try {
+            val held = committed("The pharmacy closes early on Friday").copy(id = said[60].id)
+            val unsaved = committed("Off the record")
+            showLines(listOf(held, unsaved), conversation = { index -> if (index == 0) record.id else null })
+            val open = "Open the whole conversation, to share or search"
+            assertTrue(lineText("Off the record").fetchSemanticsNode().config[SemanticsActions.CustomActions].none { it.label == open })
+
+            lineText("The pharmacy closes early").performTouchInput { longClick() }
+            compose.onNodeWithText(open).performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Share").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { savedLine("The pharmacy closes early on Friday") }
+            compose.onNodeWithText("Back").performClick()
+            compose.waitUntil(5_000) { displayed("Off the record") }
+
+            val action = lineText("The pharmacy closes early").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == open }
+            compose.runOnUiThread { action.action() }
+            compose.waitUntil(5_000) { savedLine("The pharmacy closes early on Friday") && compose.onAllNodesWithText("Share").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Back").performClick()
+            compose.waitUntil(5_000) { displayed("Off the record") }
+        } finally {
+            store.delete(record.id)
+        }
+    }
+
     // The line's own text, which carries its actions; a linked number may have a node of its own.
     private fun lineText(text: String) =
         compose.onAllNodes(hasText(text, substring = true) and SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)).onFirst()
@@ -280,12 +326,16 @@ class CaptionScreenDeviceTest {
     private fun committed(text: String) =
         TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
 
-    private fun showLines(lines: List<TranscriptSegment>) {
+    private fun showLines(lines: List<TranscriptSegment>, conversation: (Int) -> UUID? = { null }) {
         compose.runOnUiThread {
-            CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines)
+            CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines, conversation = conversation)
         }
         compose.waitForIdle()
     }
+
+    private fun savedLine(text: String) =
+        compose.onAllNodesWithContentDescription(text, substring = true).fetchSemanticsNodes().isNotEmpty() &&
+            compose.onNodeWithContentDescription(text, substring = true).isDisplayed()
 
     private fun displayed(text: String) =
         compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty() &&

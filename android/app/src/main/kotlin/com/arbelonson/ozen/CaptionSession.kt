@@ -75,13 +75,17 @@ class CaptionSession(
         override fun delete(id: UUID) {
             conversations.delete(id)
             forgetSharedCopy()
+            publish()
         }
 
         override fun rename(id: UUID, title: String) = conversations.rename(id, title)
 
         override fun toggleStar(sessionID: UUID, segmentID: UUID) = conversations.toggleStar(sessionID, segmentID)
 
-        override fun switchSaving(on: Boolean) = conversations.switchSaving(on)
+        override fun switchSaving(on: Boolean) {
+            conversations.switchSaving(on)
+            publish()
+        }
 
         override suspend fun keepFor(retention: HistoryRetention) {
             settings.change { it.historyRetention = retention }
@@ -159,8 +163,12 @@ class CaptionSession(
             scoringEngine = transcribing.engine,
             scoringModel = transcribing.whisperModelVariant,
             starred = conversations::isStarred,
+            conversation = conversations::savedConversation,
         )
     }
+
+    /** What was said since the last autosave is written first, so a conversation opened from the captions has every line. */
+    fun saveBeforeReading() = conversations.save(ended = false)
 
     /** Stars a caption line or takes its star away, in its conversation and on screen. */
     fun toggleStar(line: UUID) {

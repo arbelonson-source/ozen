@@ -40,7 +40,7 @@ class ConversationSaver(
     private var startedAt: Double? = null
     private var end: Pair<UUID, Double>? = null
     private var offset = 0
-    private val closed = mutableListOf<UUID>()
+    private val closed = linkedMapOf<UUID, IntRange>()
     private val reading = mutableSetOf<UUID>()
     private val starred = mutableSetOf<UUID>()
     private var sawListening = false
@@ -128,14 +128,14 @@ class ConversationSaver(
         lastRetentionCheck = now
         val retention = settings().historyRetention
         if (retention == HistoryRetention.Forever) return 0
-        val onScreen = closed.toSet() + reading + id
+        val onScreen = closed.keys + reading + id
         return withContext(io) { writer.deleteExpiredNow(retention, now, onScreen) }
     }
 
     private fun close(endedAt: Double?) {
         if (settings().saveHistory) {
             save(ended = true, endedAt = endedAt)
-            closed += id
+            closed[id] = offset until lines().size
         }
         forgetCurrent()
     }
@@ -182,7 +182,7 @@ class ConversationSaver(
      */
     fun toggleLiveStar(segmentID: UUID): Boolean {
         if (currentLines.any { it.id == segmentID }) return toggleStar(id, segmentID) ?: false
-        for (conversation in closed.asReversed()) {
+        for (conversation in closed.keys.reversed()) {
             writer.toggleStarNow(conversation, segmentID)?.let { starring ->
                 mark(segmentID, starring)
                 return starring
@@ -200,6 +200,17 @@ class ConversationSaver(
     }
 
     fun isCurrent(id: UUID): Boolean = id == this.id
+
+    /**
+     * The saved conversation a caption line belongs to, by its place among
+     * the lines: the one being captioned or one a long quiet closed. None
+     * for a line said while saving was off, or while saves are failing.
+     */
+    fun savedConversation(index: Int): UUID? {
+        if (!settings().saveHistory || writer.lastFailure != null || index !in lines().indices) return null
+        if (index >= offset) return id
+        return closed.entries.lastOrNull { index in it.value }?.key
+    }
 
     /** A conversation open for reading is not deleted as old while it is read. */
     fun opened(id: UUID) {
@@ -225,7 +236,7 @@ class ConversationSaver(
         lastRetentionCheck = at
         val retention = settings().historyRetention
         if (retention == HistoryRetention.Forever) return
-        val onScreen = closed.toSet() + reading + id
+        val onScreen = closed.keys + reading + id
         scope.launch(io) { writer.deleteExpiredNow(retention, at, onScreen) }
     }
 

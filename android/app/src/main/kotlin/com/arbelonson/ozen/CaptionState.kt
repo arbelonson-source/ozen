@@ -26,6 +26,8 @@ data class CaptionLine(
     val copied: String = text,
     /** Only once the engine has settled the line: a number still being heard can change under the finger. */
     val phones: List<PhoneNumbers.Match> = emptyList(),
+    /** The saved conversation it belongs to, to open from the line; none while saving is off. */
+    val conversation: UUID? = null,
 )
 
 data class CaptionScreenState(
@@ -82,13 +84,14 @@ object CaptionState {
         scoringEngine: TranscriptionEngineKind = TranscriptionEngineKind.WhisperKit,
         scoringModel: String? = null,
         starred: (UUID) -> Boolean = { false },
+        conversation: (Int) -> UUID? = { null },
     ) {
         state.value = CaptionScreenState(
             phase = phase,
             engine = engine,
             interruptedBySystem = interruptedBySystem,
             scheduledRetry = scheduledRetry,
-            lines = segments.takeLast(MAXIMUM_LINES).map {
+            lines = segments.takeLast(MAXIMUM_LINES).mapIndexed { at, it ->
                 CaptionLine(
                     id = it.id,
                     text = CaptionLayout.displayText(it.text),
@@ -98,6 +101,7 @@ object CaptionState {
                     starred = starred(it.id),
                     copied = CaptionLayout.copiedText(it.text),
                     phones = if (it.isSettled) PhoneNumbers.matches(it.text) else emptyList(),
+                    conversation = conversation(segments.size - minOf(segments.size, MAXIMUM_LINES) + at),
                 )
             },
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),

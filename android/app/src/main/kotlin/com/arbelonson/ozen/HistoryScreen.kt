@@ -353,17 +353,19 @@ private fun opened(record: TranscriptSessionRecord?, query: String, marksUncerta
  * it as text, with the lines that may have been misheard saying so in
  * words while the caption screen marks them. A name given here shows in
  * the list and is found by search. With no search, the button steps
- * through the starred lines instead.
+ * through the starred lines instead. Opened from a caption line held on
+ * the caption screen, it opens at that line.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ConversationScreen(
+internal fun ConversationScreen(
     conversations: SavedConversations,
     id: UUID,
     query: String,
     marksUncertain: Boolean,
     emphasizeNumbers: Boolean,
     onClose: () -> Unit,
+    line: UUID? = null,
 ) {
     BackHandler(onBack = onClose)
     DisposableEffect(id) {
@@ -394,6 +396,12 @@ private fun ConversationScreen(
                 jumped = true
                 withFrameNanos {}
                 list.scrollToItem(now.lines.indexOfFirst { it.id == now.matches.first() }.coerceAtLeast(0))
+            }
+            val held = now.lines.indexOfFirst { it.id == line }
+            if (!jumped && held >= 0) {
+                jumped = true
+                withFrameNanos {}
+                list.scrollToItem(held)
             }
             if (!conversations.isCurrent(id)) break
             delay(20_000)
