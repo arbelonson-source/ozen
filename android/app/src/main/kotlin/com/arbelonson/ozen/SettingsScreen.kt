@@ -36,6 +36,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -45,6 +46,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -83,6 +85,7 @@ import com.arbelonson.ozen.core.SoundAlertPreferences
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.SoundNearMisses
 import com.arbelonson.ozen.core.AppLanguage
+import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.CloudSpeech
@@ -97,6 +100,7 @@ import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 @Composable
@@ -120,6 +124,7 @@ fun SettingsScreen(
     onFeel: (AlertVibration) -> Unit = {},
     speakers: SpeakerBook,
     onCellularDownloads: (Boolean) -> Unit,
+    backup: PhoneBackup? = null,
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
@@ -187,7 +192,7 @@ fun SettingsScreen(
                 SwitchRow(tr("להוריד מודלים גם בחבילת הגלישה", "Download models on cellular data too"), current.allowCellularModelDownload, onChange = onCellularDownloads)
             }
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
-            if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
+            if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft, backup)
             WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
             SavedSpeakersSection(current.speakerProfiles, speakers, onAdd = { showingEnrollment = true })
             BehaviourSection(
@@ -411,15 +416,16 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
     Footnote(cloudServiceFooter(service))
 }
 
-// The iPhone's footer for this section speaks of its camera, the backup
-// model and the speed slider, none of which Android has yet, so there is
-// none here.
+// The iPhone's footer for this section tells her to point the iPhone's
+// camera at the computer's code; Android has no words of its own for that
+// in every language yet, so there is none here.
 @Composable
 private fun HomeComputerSection(
     engineSettings: EngineSettings,
     current: AppSettings,
     addressDraft: MutableState<String>,
     codeDraft: MutableState<String>,
+    backup: PhoneBackup?,
 ) {
     val saved = current.homeServerAddress
     var address by addressDraft
@@ -514,6 +520,11 @@ private fun HomeComputerSection(
         }
     }
     check?.let { HomeComputerCheckLabel(it) }
+    if (backup != null) {
+        LaunchedEffect(current.spokenLanguage, current.allowCellularModelDownload) { backup.refreshBackup() }
+        val status by backup.backupStatus.collectAsStateWithLifecycle()
+        PhoneBackupRow(status, onDownload = backup::downloadBackup)
+    }
     HomeComputerBeam(engineSettings, current.homeServerBeam, onMoved = forgetCheck)
     if (hasCode) {
         TextButton(onClick = { confirmingCodeDelete = true }) {
@@ -538,6 +549,52 @@ private fun HomeComputerSection(
             dismissButton = { TextButton(onClick = { confirmingCodeDelete = false }) { Text(tr("ביטול", "Cancel")) } },
         )
     }
+}
+
+/** The phone's own model, kept for when the home computer can't be reached, as on the iPhone. */
+interface PhoneBackup {
+    val backupStatus: StateFlow<BackupModelStatus>
+
+    /** Looks again: the model on the phone, the room left and the network change while Settings is closed. */
+    fun refreshBackup()
+
+    fun downloadBackup()
+}
+
+/** The iPhone's backup row: whether the phone can carry on by itself, and how the download is going. */
+@Composable
+internal fun PhoneBackupRow(status: BackupModelStatus, onDownload: () -> Unit) {
+    when (status) {
+        BackupModelStatus.NotNeeded -> Unit
+        BackupModelStatus.Ready -> Text(tr("גיבוי בטלפון מוכן: כשאין חיבור למחשב, הטלפון ממשיך לבד.", "Backup on the phone is ready: when the computer can’t be reached, the phone carries on by itself."), color = savedGreen())
+        is BackupModelStatus.Missing -> {
+            BackupDownloadButton(status.megabytes, onDownload)
+            BackupNote(tr("בלי הגיבוי, הכתוביות נעצרות כשאין חיבור למחשב.", "Without the backup, captions stop when the computer can’t be reached."))
+        }
+        is BackupModelStatus.Downloading -> {
+            Text(tr("מוריד את הגיבוי · %1%", "Downloading the backup · %1%", listOf("${(status.fraction * 100).roundToInt()}")))
+            LinearProgressIndicator(progress = { status.fraction.toFloat() }, modifier = Modifier.fillMaxWidth())
+        }
+        BackupModelStatus.WaitingForWiFi -> BackupNote(tr("הגיבוי יורד רק ב‑Wi‑Fi. התחברו ל‑Wi‑Fi כדי להוריד אותו.", "The backup downloads only on Wi‑Fi. Connect to Wi‑Fi to download it."))
+        BackupModelStatus.Offline -> BackupNote(tr("אין אינטרנט, אז אי אפשר להוריד את הגיבוי עכשיו.", "There’s no internet, so the backup can’t be downloaded now."))
+        is BackupModelStatus.NotEnoughRoom -> Text(tr("אין מספיק מקום בטלפון לגיבוי. צריך לפנות עוד %1.", "Not enough room on the phone for the backup. %1 more needs to be freed up.", listOf(PhasePresentation.sizeText(status.megabytes))), color = MaterialTheme.colorScheme.error)
+        BackupModelStatus.Failed -> {
+            BackupDownloadButton(null, onDownload)
+            Text(tr("ההורדה של הגיבוי נעצרה. נסו שוב.", "The backup download stopped. Try again."), color = cautionOrange())
+        }
+    }
+}
+
+@Composable
+private fun BackupDownloadButton(megabytes: Int?, onDownload: () -> Unit) {
+    TextButton(onClick = onDownload) {
+        Text(if (megabytes != null) tr("הורדת גיבוי לטלפון (%1)", "Download a backup to the phone (%1)", listOf(PhasePresentation.sizeText(megabytes))) else tr("הורדת גיבוי לטלפון", "Download a backup to the phone"))
+    }
+}
+
+@Composable
+private fun BackupNote(text: String) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable

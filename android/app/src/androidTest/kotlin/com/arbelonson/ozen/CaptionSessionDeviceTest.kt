@@ -12,10 +12,12 @@ import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPermission
 import com.arbelonson.ozen.core.AudioPortType
+import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
+import com.arbelonson.ozen.core.ReleaseFileFetching
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SessionJournal
@@ -25,9 +27,16 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.UILanguage
+import com.arbelonson.ozen.core.WhisperModelCatalog
 import java.io.File
+import java.io.IOException
+import java.io.RandomAccessFile
+import java.net.URI
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
@@ -197,6 +206,68 @@ class CaptionSessionDeviceTest {
                 session.close()
                 CaptionState.clear()
             }
+        }
+    }
+
+    @Test
+    fun theHomeComputersBackupDownloadsToThePhoneSaysHowFarItGotPicksUpAfterAFailureAndThenIsReady(): Unit = runBlocking {
+        val work = File(context.cacheDir, "backup-test").apply { deleteRecursively(); mkdirs() }
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        settings.change {
+            it.engine = TranscriptionEngineKind.HomeServer
+            it.homeServerAddress = "127.0.0.1:9"
+            it.spokenLanguage = UILanguage.English
+            it.allowCellularModelDownload = true
+        }
+        val source = WhisperModelCatalog.phoneModelSource(UILanguage.English)!!
+        val half = source.bytes / 2
+        val halfway = CountDownLatch(1)
+        val goOn = CountDownLatch(1)
+        val starts = CopyOnWriteArrayList<Long>()
+        val fetcher = object : ReleaseFileFetching {
+            override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
+                starts += from
+                if (from == 0L) {
+                    RandomAccessFile(appendingTo, "rw").use { it.setLength(half) }
+                    received(half)
+                    throw IOException("the connection dropped halfway")
+                }
+                halfway.countDown()
+                goOn.await(30, TimeUnit.SECONDS)
+                RandomAccessFile(appendingTo, "rw").use { it.setLength(source.bytes) }
+                received(source.bytes - from)
+            }
+
+            override fun sha256(file: File): String = source.sha256
+        }
+        val models = File(work, "models")
+        val session = withContext(Dispatchers.Main) {
+            CaptionSession(context, settings, HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = models, historyFolder = File(work, "history"))
+                .also { it.modelFetcher = fetcher }
+        }
+        try {
+            withContext(Dispatchers.Main) { session.refreshBackup() }
+            assertEquals(BackupModelStatus.Missing(575), session.backupStatus.value)
+
+            withContext(Dispatchers.Main) { session.downloadBackup() }
+            assertNotNull("never failed: ${session.backupStatus.value}", withTimeoutOrNull(10_000) { session.backupStatus.first { it == BackupModelStatus.Failed } })
+
+            withContext(Dispatchers.Main) { session.downloadBackup() }
+            assertTrue("the second try never started", halfway.await(10, TimeUnit.SECONDS))
+            val shown = withTimeoutOrNull(5_000) { session.backupStatus.first { it == BackupModelStatus.Downloading(0.49) } }
+            assertNotNull("never showed how far the first try got: ${session.backupStatus.value}", shown)
+            goOn.countDown()
+            assertNotNull("never ready: ${session.backupStatus.value}", withTimeoutOrNull(10_000) { session.backupStatus.first { it == BackupModelStatus.Ready } })
+            assertEquals(listOf(0L, half), starts.toList())
+            assertTrue(File(models, WhisperModelCatalog.phoneModelFile(UILanguage.English)).isFile)
+
+            settings.change { it.engine = TranscriptionEngineKind.WhisperKit }
+            withContext(Dispatchers.Main) { session.refreshBackup() }
+            assertEquals(BackupModelStatus.NotNeeded, session.backupStatus.value)
+        } finally {
+            goOn.countDown()
+            withContext(Dispatchers.Main) { session.close() }
+            work.deleteRecursively()
         }
     }
 

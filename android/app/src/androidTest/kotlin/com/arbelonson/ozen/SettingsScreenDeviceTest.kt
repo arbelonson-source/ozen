@@ -19,6 +19,7 @@ import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityOptionsCompat
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -64,6 +65,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AppLanguage
+import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.ContrastRatio
@@ -107,6 +109,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeFalse
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
@@ -1312,6 +1315,65 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Clear captions from the screen").performScrollTo().performClick()
         compose.onNodeWithText("Delete").performClick()
         compose.waitUntil(5_000) { CaptionState.screen.value.lines.isEmpty() }
+    }
+
+    @Test
+    fun theHomeComputersBackupRowSaysHowTheDownloadIsGoingAndOffersItWhenItCanStart() {
+        val status = mutableStateOf<BackupModelStatus>(BackupModelStatus.Missing(575))
+        var downloads = 0
+        compose.runOnUiThread { compose.activity.setContent { Column { PhoneBackupRow(status.value, onDownload = { downloads += 1 }) } } }
+        compose.onNodeWithText("Download a backup to the phone (575 MB)").performClick()
+        assertEquals(1, downloads)
+        compose.onNodeWithText("Without the backup, captions stop when the computer can’t be reached.").assertExists()
+
+        status.value = BackupModelStatus.Downloading(0.42)
+        compose.onNodeWithText("Downloading the backup · 42%").assertExists()
+        compose.onNodeWithText("Download a backup to the phone", substring = true).assertDoesNotExist()
+
+        status.value = BackupModelStatus.WaitingForWiFi
+        compose.onNodeWithText("The backup downloads only on Wi‑Fi. Connect to Wi‑Fi to download it.").assertExists()
+        status.value = BackupModelStatus.Offline
+        compose.onNodeWithText("There’s no internet, so the backup can’t be downloaded now.").assertExists()
+        status.value = BackupModelStatus.NotEnoughRoom(1_250)
+        compose.onNodeWithText("Not enough room on the phone for the backup. 1.3 GB more needs to be freed up.").assertExists()
+        compose.onNodeWithText("Download a backup to the phone", substring = true).assertDoesNotExist()
+
+        status.value = BackupModelStatus.Failed
+        compose.onNodeWithText("The backup download stopped. Try again.").assertExists()
+        compose.onNodeWithText("Download a backup to the phone").performClick()
+        assertEquals(2, downloads)
+
+        status.value = BackupModelStatus.Ready
+        compose.onNodeWithText("Backup on the phone is ready: when the computer can’t be reached, the phone carries on by itself.").assertExists()
+        compose.onNodeWithText("Download a backup to the phone", substring = true).assertDoesNotExist()
+
+        status.value = BackupModelStatus.NotNeeded
+        compose.onNodeWithText("Backup on the phone is ready: when the computer can’t be reached, the phone carries on by itself.").assertDoesNotExist()
+    }
+
+    @Test
+    fun withTheHomeComputerChosenSettingsOffersTheBackupForALanguageThePhoneCanDownloadAndTapsReachTheDownload() {
+        val languageBefore = app.settings.current.value.spokenLanguage
+        val english = File(app.filesDir, WhisperModelCatalog.phoneModelFile(UILanguage.English))
+        assumeFalse("the English model is already on this phone", english.exists())
+        try {
+            app.settings.change {
+                it.engine = TranscriptionEngineKind.HomeServer
+                it.spokenLanguage = UILanguage.English
+                it.allowCellularModelDownload = true
+            }
+            compose.onNodeWithText("Settings").performClick()
+            val offer = compose.onNodeWithText("Download a backup to the phone (575 MB)")
+            offer.performScrollTo().performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("The backup download stopped. Try again.").fetchSemanticsNodes().isNotEmpty() }
+
+            app.settings.change { it.spokenLanguage = UILanguage.Hebrew }
+            compose.waitForIdle()
+            compose.onNodeWithText("Download a backup to the phone", substring = true).assertDoesNotExist()
+            compose.onNodeWithText("The backup download stopped. Try again.").assertDoesNotExist()
+        } finally {
+            app.settings.change { it.spokenLanguage = languageBefore }
+        }
     }
 
     @Test

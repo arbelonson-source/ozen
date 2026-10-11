@@ -21,6 +21,8 @@ import com.arbelonson.ozen.core.HTTPFileFetcher
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.BackupModel
+import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.BatteryAdvisor
 import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionsStopAnnouncer
@@ -44,6 +46,7 @@ import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SpeakerProfile
+import com.arbelonson.ozen.core.StorageSpaceGate
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -65,6 +68,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -80,7 +85,7 @@ class CaptionSession(
     historyFolder: File = File(context.filesDir, HISTORY_FOLDER),
     journalFile: File = File(context.filesDir, JOURNAL_FILE),
     problemAudioFolder: File = File(context.filesDir, PROBLEM_AUDIO_FOLDER),
-) : DiagnosticsSource, SpeakerBook {
+) : DiagnosticsSource, SpeakerBook, PhoneBackup {
     private val scope = MainScope()
     private val connector = WebSocketConnector()
     private val voiceScorer by lazy { SileroVoiceScorer.fromAssets(context) }
@@ -839,6 +844,73 @@ class CaptionSession(
 
     /** Where a missing model is fetched from; device tests put one in that never downloads. */
     var modelFetcher: ReleaseFileFetching = HTTPFileFetcher()
+
+    private val backupState = MutableStateFlow<BackupModelStatus>(BackupModelStatus.NotNeeded)
+    override val backupStatus: StateFlow<BackupModelStatus> = backupState
+
+    // As on the iPhone: the language whose model the download fetches, so
+    // another language picked meanwhile shows neither its progress nor its
+    // failure.
+    private var backupProgress: Double? = null
+    private var backupLanguage: UILanguage? = null
+    private var backupFailedLanguage: UILanguage? = null
+
+    override fun refreshBackup() {
+        val current = settings.current.value
+        val language = current.spokenLanguage
+        val source = WhisperModelCatalog.phoneModelSource(language)
+        val model = modelFile(current)
+        backupState.value = if (source == null) {
+            BackupModelStatus.NotNeeded
+        } else {
+            BackupModel.status(
+                engine = current.engine,
+                installed = model.isFile,
+                sizeMegabytes = ((source.bytes + 999_999) / 1_000_000).toInt(),
+                downloading = backupProgress.takeIf { backupLanguage == language },
+                failed = backupFailedLanguage == language,
+                shortfallMegabytes = StorageSpaceGate.shortfallMegabytes(PhoneModelDownloader(model, source, modelFetcher).pendingMegabytes() ?: 0, context.filesDir.usableSpace),
+                network = pipeline.networkConditions,
+                allowCellular = current.allowCellularModelDownload,
+            )
+        }
+    }
+
+    override fun downloadBackup() {
+        refreshBackup()
+        if (!BackupModel.canStart(backupState.value)) return
+        val current = settings.current.value
+        val language = current.spokenLanguage
+        val source = WhisperModelCatalog.phoneModelSource(language) ?: return
+        val download = PhoneModelDownloader(modelFile(current), source, modelFetcher)
+        backupFailedLanguage = null
+        backupProgress = 0.0
+        backupLanguage = language
+        refreshBackup()
+        scope.launch {
+            val done = withContext(Dispatchers.IO) {
+                runCatching {
+                    download.download { fraction ->
+                        // Whole percents, all the row shows: every chunk
+                        // off the network would redraw Settings otherwise.
+                        val shown = (fraction * 100).toInt() / 100.0
+                        scope.launch {
+                            if (backupLanguage == language && backupProgress != null && shown != backupProgress) {
+                                backupProgress = shown
+                                refreshBackup()
+                            }
+                        }
+                    }
+                }.isSuccess
+            }
+            if (backupLanguage == language) {
+                backupProgress = null
+                backupLanguage = null
+            }
+            if (!done) backupFailedLanguage = language
+            refreshBackup()
+        }
+    }
 
     /** The phone's own model for the spoken language; see `WhisperModelCatalog.phoneModelFile`. */
     private fun modelFile(settings: AppSettings) = File(modelFolder, WhisperModelCatalog.phoneModelFile(settings.spokenLanguage))
