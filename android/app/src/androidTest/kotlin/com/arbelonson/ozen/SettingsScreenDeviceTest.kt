@@ -689,7 +689,8 @@ class SettingsScreenDeviceTest {
             assertTrue(sent, sent.startsWith("Ozen diagnostics\nphase: ") && sent.contains("audio given back"))
             assertFalse("the pairing code went into the report", sent.contains("code-for-the-report"))
 
-            compose.onNodeWithText("Back").performClick()
+            compose.onNodeWithText("Back").performScrollTo().performClick()
+            compose.onNodeWithText("Stage").assertDoesNotExist()
             compose.onNodeWithText("Diagnostics").assertExists()
         } finally {
             instrumentation.removeMonitor(sheet)
@@ -740,7 +741,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
         compose.onNodeWithText("Copy report").performScrollTo().assertExists()
         compose.onNodeWithText(sendHome).assertDoesNotExist()
-        compose.onNodeWithText("Back").performClick()
+        compose.onNodeWithText("Back").performScrollTo().performClick()
 
         app.homeServerCode.save("code-for-the-report")
         app.settings.change { it.homeServerAddress = "127.0.0.1:9" }
@@ -1021,7 +1022,8 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Recent events").assertExists()
         compose.activityRule.scenario.recreate()
         compose.onNodeWithText("Recent events").assertExists()
-        compose.onNodeWithText("Back").performClick()
+        compose.onNodeWithText("Back").performScrollTo().performClick()
+        compose.onNodeWithText("Recent events").assertDoesNotExist()
         compose.onNodeWithText("Diagnostics").performScrollTo().assertExists()
     }
 
@@ -1117,7 +1119,7 @@ class SettingsScreenDeviceTest {
             assertEquals(donation.address, copied)
             compose.onNodeWithText("Copy the ${donation.coin} address").assertDoesNotExist()
         }
-        compose.onNodeWithText("Back").performClick()
+        compose.onNodeWithText("Back").performScrollTo().performClick()
         compose.onNodeWithText("Made by", substring = true).assertExists()
     }
 
