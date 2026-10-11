@@ -10,6 +10,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.PipelinePhase
@@ -101,6 +103,16 @@ class OnboardingDeviceTest {
         compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
         compose.onNodeWithText("History").assertExists()
         compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
+    }
+
+    @Test
+    fun aNameTypedAndThenSwipedAwayFromIsKeptAndThePagesStayWhereTheSwipeTookThem() {
+        repeat(3) { compose.onNodeWithText("Next").performClick() }
+        compose.onNodeWithText("Your name").performTextInput("Dana")
+        compose.onNodeWithText("When you’re called").performTouchInput { swipeLeft() }
+        compose.waitUntil(5_000) { alerts() == listOf("Dana") }
+        compose.waitForIdle()
+        compose.onNodeWithText("The button below starts the captions. Good luck, Grandma.").assertExists()
     }
 
     @Test
