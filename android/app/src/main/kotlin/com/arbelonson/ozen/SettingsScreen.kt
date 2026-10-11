@@ -59,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
@@ -130,6 +131,11 @@ fun SettingsScreen(
         DiagnosticsScreen(diagnostics, onClose = { showingDiagnostics = false })
         return
     }
+    var showingSupport by rememberSaveable { mutableStateOf(false) }
+    if (showingSupport) {
+        SupportScreen(onClose = { showingSupport = false })
+        return
+    }
     var showingImportantWords by rememberSaveable { mutableStateOf(false) }
     if (showingImportantWords) {
         ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, current.spokenLanguage, heard, onImportantWords, onClose = { showingImportantWords = false })
@@ -166,6 +172,7 @@ fun SettingsScreen(
             DiagnosticsRow(onOpen = { showingDiagnostics = true })
             WalkthroughAgainRow(onShowWalkthrough)
             ClearCaptionsRow(onClearCaptions)
+            AboutSection(onSupport = { showingSupport = true })
         }
     }
 }
@@ -833,6 +840,36 @@ private fun SpokenLanguageSection(chosen: UILanguage, onChoose: (UILanguage) -> 
 
 private fun languageName(language: AppLanguage): String =
     if (language == AppLanguage.System) tr("כמו בטלפון", "Same as the phone") else language.resolved(emptyList()).nativeName
+
+/** Last, as on the iPhone: who made Ozen, which version this is, giving to it, and where its code is. */
+@Composable
+private fun AboutSection(onSupport: () -> Unit) {
+    val context = LocalContext.current
+    val uris = LocalUriHandler.current
+    SectionHeader(tr("אודות", "About"))
+    AboutRow(tr("נוצר על ידי", "Made by"), "Arbel")
+    AboutRow(tr("גרסה", "Version"), context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "")
+    Text(
+        tr("תמיכה באוזן (רק אם תרצו)", "Support Ozen (only if you want to)"),
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onSupport).padding(vertical = 12.dp),
+    )
+    Text(
+        tr("קוד המקור בגיטהאב", "Source code on GitHub"),
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.fillMaxWidth().clickable { uris.openUri(SOURCE_CODE) }.padding(vertical = 12.dp),
+    )
+}
+
+@Composable
+private fun AboutRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.padding(vertical = 8.dp)) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+private const val SOURCE_CODE = "https://github.com/arbelonson-source/ozen"
 
 @Composable
 private fun DiagnosticsRow(onOpen: () -> Unit) {

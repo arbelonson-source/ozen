@@ -15,7 +15,9 @@ import android.os.SystemClock
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -31,6 +33,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
@@ -40,6 +43,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -61,6 +65,7 @@ import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ProblemSnapshot
 import com.arbelonson.ozen.core.QuietHours
+import com.arbelonson.ozen.core.SupportOzen
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
@@ -71,6 +76,10 @@ import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.RGBLuminanceSource
+import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.qrcode.QRCodeReader
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -1002,6 +1011,33 @@ class SettingsScreenDeviceTest {
             app.settings.change { it.appLanguage = before }
             compose.activityRule.scenario.recreate()
         }
+    }
+
+    @Test
+    fun aboutSaysWhoMadeOzenAndItsVersionAndSupportShowsEachAddressAsACodeToScanAndToCopy() {
+        val version = app.packageManager.getPackageInfo(app.packageName, 0).versionName!!
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNode(hasText("Made by") and hasText("Arbel")).performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Version") and hasText(version)).assertExists()
+        compose.onNodeWithText("Source code on GitHub").assertExists()
+        compose.onNodeWithText("Support Ozen (only if you want to)").performScrollTo().performClick()
+        compose.onNodeWithText("How to donate").assertExists()
+        val clipboard = app.getSystemService(ClipboardManager::class.java)
+        for (donation in SupportOzen.addresses) {
+            compose.onNodeWithText(donation.address).performScrollTo().assertIsDisplayed()
+            val code = compose.onNodeWithTag("qr:${donation.id}").performScrollTo().captureToImage().asAndroidBitmap()
+            val pixels = IntArray(code.width * code.height).also { code.getPixels(it, 0, code.width, 0, 0, code.width, code.height) }
+            val read = QRCodeReader().decode(BinaryBitmap(HybridBinarizer(RGBLuminanceSource(code.width, code.height, pixels)))).text
+            assertEquals(donation.paymentURI, read)
+            compose.onNodeWithText("Copy the ${donation.coin} address").performScrollTo().performClick()
+            compose.waitForIdle()
+            var copied: String? = null
+            compose.runOnUiThread { copied = clipboard.primaryClip?.getItemAt(0)?.text?.toString() }
+            assertEquals(donation.address, copied)
+            compose.onNodeWithText("Copy the ${donation.coin} address").assertDoesNotExist()
+        }
+        compose.onNodeWithText("Back").performClick()
+        compose.onNodeWithText("Made by", substring = true).assertExists()
     }
 
     private fun within(millis: Long, condition: () -> Boolean): Boolean {
