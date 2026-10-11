@@ -154,6 +154,29 @@ class CaptionPipelineLifecycleTest {
     }
 
     @Test
+    fun `a spoken language with another model file on the phone is a different engine, and one sharing it is not`() = runTest {
+        val engines = ArrayList<FakeEngine>()
+        val pipeline = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { settings -> FakeEngine(kind = settings.engine).also { engines.add(it) } },
+            embedder = FakeEmbedder(),
+            recovery = AutoRecoveryPolicy.disabled(),
+        )
+        val hebrew = AppSettings.default
+        hebrew.spokenLanguage = UILanguage.Hebrew
+        pipeline.start(hebrew)
+        val english = AppSettings.default
+        english.spokenLanguage = UILanguage.English
+        pipeline.restart(english)
+        assertEquals(2, engines.size, "Hebrew's model kept for English")
+        assertEquals(listOf(1, 0), engines.map { it.releaseCount })
+        val french = AppSettings.default
+        french.spokenLanguage = UILanguage.French
+        pipeline.restart(french)
+        assertEquals(2, engines.size, "the same model loaded again for French")
+    }
+
+    @Test
     fun `an engine let go is told to give its model back, which on Android nothing else frees`() = runTest {
         val engines = ArrayList<FakeEngine>()
         val pipeline = captionPipeline(

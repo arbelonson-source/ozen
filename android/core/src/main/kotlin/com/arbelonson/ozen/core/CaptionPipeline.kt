@@ -1973,9 +1973,13 @@ class CaptionPipeline(
         return engine
     }
 
+    // The phone's model is the spoken language's own file on Android, not
+    // the variant as on the iPhone: switching to a language with another
+    // file kept captioning with the old language's model, or downloaded it.
     private fun engineCacheKey(settings: AppSettings): String =
         "${settings.engine.rawValue}|${settings.whisperModelVariant}|${settings.allowServerFallbackForAppleSpeech}|" +
-            "${settings.cloudProvider.rawValue}|${settings.chosenCloudModel}|${settings.homeServerAddress}|${settings.homeServerBeam}"
+            "${settings.cloudProvider.rawValue}|${settings.chosenCloudModel}|${settings.homeServerAddress}|${settings.homeServerBeam}|" +
+            WhisperModelCatalog.phoneModelFile(settings.spokenLanguage)
 
     /**
      * A tap that stopped delivering (see `AudioStallWatchdog`) becomes a
