@@ -10,23 +10,32 @@ import com.arbelonson.ozen.core.SpeechSynthesizing
 import com.arbelonson.ozen.core.UILanguage
 import java.util.Locale
 import java.util.UUID
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class PhoneVoice(context: Context) : SpeechSynthesizing {
     private val main = Handler(Looper.getMainLooper())
     private val pending = mutableSetOf<String>()
     @Volatile private var ready = false
+    @Volatile private var answered = false
     private val engine: TextToSpeech = TextToSpeech(context.applicationContext) { status ->
         main.post {
             ready = status == TextToSpeech.SUCCESS
+            answered = true
             refreshVoice()
         }
     }
 
+    /**
+     * The languages the phone has a voice for, once its speech engine has
+     * answered: the Say screen and Settings say when one is missing, as on
+     * the iPhone, rather than only greying out the buttons.
+     */
+    val installed = MutableStateFlow<Set<UILanguage>?>(null)
+
     @Volatile override var isSpeaking = false
         private set
     override val isBusy: Boolean get() = pending.isNotEmpty()
-    @Volatile override var hasHebrewVoice = false
-        private set
+    override val hasHebrewVoice: Boolean get() = hasVoice(UILanguage.Hebrew)
     override var onSpeakingChanged: ((Boolean) -> Unit)? = null
 
     init {
@@ -61,10 +70,15 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         )
     }
 
-    override fun hasVoice(language: UILanguage): Boolean = ready && (language != UILanguage.Hebrew || hasHebrewVoice)
+    override fun hasVoice(language: UILanguage): Boolean = installed.value?.contains(language) == true
 
     override fun refreshVoice() {
-        hasHebrewVoice = ready && engine.isLanguageAvailable(Locale.forLanguageTag(UILanguage.Hebrew.speechVoiceCode)) >= TextToSpeech.LANG_AVAILABLE
+        if (!answered) return
+        installed.value = if (!ready) {
+            emptySet()
+        } else {
+            UILanguage.entries.filterTo(HashSet()) { engine.isLanguageAvailable(Locale.forLanguageTag(it.speechVoiceCode)) >= TextToSpeech.LANG_AVAILABLE }
+        }
     }
 
     override fun speak(text: String, rate: Float) {

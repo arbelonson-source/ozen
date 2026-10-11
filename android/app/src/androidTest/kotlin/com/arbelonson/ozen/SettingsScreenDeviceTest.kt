@@ -966,6 +966,28 @@ class SettingsScreenDeviceTest {
         return System.currentTimeMillis() - start
     }
 
+    @Test
+    fun inHebrewWithNoHebrewVoiceSettingsSaysSoUnderTheSampleWithAWayToThePhonesVoiceSettings() {
+        val before = app.settings.current.value.appLanguage
+        assertTrue("the phone's speech engine never answered", within(15_000) { app.captions.voice.installed.value != null })
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            app.settings.change { it.appLanguage = AppLanguage.Hebrew }
+            compose.activityRule.scenario.recreate()
+            compose.runOnUiThread { app.captions.voice.installed.value = setOf(UILanguage.English) }
+            val notice = VoiceNotice.forSettings(UILanguage.Hebrew, setOf(UILanguage.English))!!
+            compose.onNodeWithText(notice).performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText(VoiceNotice.openSettings()).performScrollTo().assertIsDisplayed()
+
+            compose.runOnUiThread { app.captions.voice.installed.value = setOf(UILanguage.English, UILanguage.Hebrew) }
+            compose.waitForIdle()
+            compose.onNodeWithText(notice).assertDoesNotExist()
+        } finally {
+            app.settings.change { it.appLanguage = before }
+            compose.activityRule.scenario.recreate()
+        }
+    }
+
     private fun within(millis: Long, condition: () -> Boolean): Boolean {
         val until = System.currentTimeMillis() + millis
         while (System.currentTimeMillis() < until) {

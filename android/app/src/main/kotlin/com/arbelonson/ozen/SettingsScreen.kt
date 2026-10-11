@@ -108,6 +108,7 @@ fun SettingsScreen(
     onAppLanguage: (AppLanguage) -> Unit = {},
     onShowWalkthrough: () -> Unit = {},
     onClearCaptions: () -> Unit = {},
+    voiceNotice: String? = null,
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
@@ -155,7 +156,7 @@ fun SettingsScreen(
             SwitchRow(tr("רטט כשמישהו מתחיל לדבר אחרי שקט", "Vibrate when someone starts talking after silence"), current.hapticOnSpeechResume) { on ->
                 settings.change { it.hapticOnSpeechResume = on }
             }
-            SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak)
+            SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak, voiceNotice)
             SpokenLanguageSection(current.spokenLanguage, engineSettings::chooseSpokenLanguage)
             LanguageSection(current.appLanguage, onAppLanguage)
             EngineSection(engineSettings, current)
@@ -735,7 +736,7 @@ private fun WordsSection(count: Int, onOpen: () -> Unit) {
  * rate is kept when the slider is let go, and the sample is said at it.
  */
 @Composable
-private fun SpeechSection(rate: Float, onRate: (Float) -> Unit, canSay: (String) -> Boolean, onSpeak: (String) -> Unit) {
+private fun SpeechSection(rate: Float, onRate: (Float) -> Unit, canSay: (String) -> Boolean, onSpeak: (String) -> Unit, voiceNotice: String?) {
     SectionHeader(tr("להגיד משהו (הקלדה לדיבור)", "Say something (type to speak)"))
     var shown by remember(rate) { mutableFloatStateOf(rate) }
     val label = tr("מהירות דיבור", "Speech rate")
@@ -762,6 +763,7 @@ private fun SpeechSection(rate: Float, onRate: (Float) -> Unit, canSay: (String)
     }
     val sample = tr("שלום, זה קול הטלפון. ככה אני נשמע.", "Hello, this is the phone's voice. This is how I sound.")
     TextButton(onClick = { onSpeak(sample) }, enabled = canSay(sample)) { Text(tr("להשמיע דוגמה", "Play a sample")) }
+    VoiceNotices(listOfNotNull(voiceNotice))
     Footnote(tr("הכתוביות מושהות בזמן שהטלפון מדבר, ומתחדשות לבד.", "Captions pause while the phone is speaking, and resume on their own."))
 }
 
@@ -916,7 +918,7 @@ private fun Caution(text: String) {
 private fun savedGreen() = if (onLightScreen()) Color(red = 0f, green = 0.45f, blue = 0.15f) else Color(0xFF81C784)
 
 @Composable
-private fun cautionOrange() = if (onLightScreen()) Color(red = 0.7f, green = 0.3f, blue = 0f) else Color(0xFFFFB74D)
+internal fun cautionOrange() = if (onLightScreen()) Color(red = 0.7f, green = 0.3f, blue = 0f) else Color(0xFFFFB74D)
 
 @Composable
 private fun onLightScreen() = MaterialTheme.colorScheme.background.luminance() > 0.5f

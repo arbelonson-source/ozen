@@ -74,6 +74,7 @@ internal fun SayScreen(
     look: CaptionTheme,
     captionSize: Double,
     onClose: () -> Unit,
+    voiceNotices: List<String> = emptyList(),
 ) {
     BackHandler(onBack = onClose)
     var lastTyped by rememberSaveable { mutableStateOf<String?>(null) }
@@ -148,6 +149,7 @@ internal fun SayScreen(
             OutlinedButton(onClick = { bigLetters = true }, modifier = Modifier.fillMaxWidth()) {
                 Text(tr("מסך מלא באותיות גדולות", "Full screen, big letters"))
             }
+            VoiceNotices(voiceNotices)
             Row(modifier = Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(tr("משפטים מוכנים", "Quick phrases"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f).semantics { heading() })
                 TextButton(

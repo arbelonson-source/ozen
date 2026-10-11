@@ -88,6 +88,9 @@ class CaptionSession(
     private val notifier = AlertNotifier(context)
     private val savingTrouble = SavingTroubleNotice()
 
+    /** The phone's own voice, and which languages it has one for. */
+    val voice = PhoneVoice(context)
+
     /**
      * The phone saying something for her, as on the iPhone: captions pause
      * while it talks, so the microphone doesn't caption the phone's own
@@ -95,7 +98,7 @@ class CaptionSession(
      * or resumed them by hand meanwhile.
      */
     private val replies = SpokenReplies(
-        PhoneVoice(context),
+        voice,
         scope,
         object : SpokenReplies.Captions {
             override val isListening get() = pipeline.phase.isListening
@@ -285,6 +288,9 @@ class CaptionSession(
     }
 
     fun canSay(text: String) = replies.canSay(text)
+
+    /** Back from the phone's settings a voice may have been added or removed, as the iPhone looks again. */
+    fun refreshVoice() = voice.refreshVoice()
 
     fun speak(text: String) = replies.speak(text, settings.current.value.speechRate)
 

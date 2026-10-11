@@ -161,6 +161,7 @@ class MainActivity : ComponentActivity() {
         if (microphoneAnswer.value == false && hasMicrophone()) microphoneAnswer.value = true
         if (notificationsAnswer.value != true && AlertNotifier.allowed(this)) notificationsAnswer.value = true
         (application as OzenApplication).captions.appIsActive = true
+        (application as OzenApplication).captions.refreshVoice()
         CaptionState.screenReturned()
     }
 
@@ -276,6 +277,10 @@ private fun OzenApp(
     val direction = if (Localization.language.isRightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr
     val state by CaptionState.screen.collectAsStateWithLifecycle()
     val current by app.settings.current.collectAsStateWithLifecycle()
+    val voices by app.captions.voice.installed.collectAsStateWithLifecycle()
+    // A new one when the phone's voices change, so buttons greyed out for a
+    // missing voice come back once it is installed.
+    val canSay = remember(voices) { { text: String -> app.captions.canSay(text) } }
     var showingHistory by rememberSaveable { mutableStateOf(false) }
     var reading by rememberSaveable { mutableStateOf<Pair<UUID, UUID>?>(null) }
     var saying by rememberSaveable { mutableStateOf(false) }
@@ -313,10 +318,10 @@ private fun OzenApp(
                         onFinish = onboarding.finish,
                     )
                 }
-                showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, onAppLanguage = onAppLanguage, onShowWalkthrough = {
+                showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, onAppLanguage = onAppLanguage, onShowWalkthrough = {
                     app.captions.showWalkthroughAgain()
                     showingSettings.value = false
-                }, onClearCaptions = app.captions::clearCaptions)
+                }, onClearCaptions = app.captions::clearCaptions, voiceNotice = VoiceNotice.forSettings(Localization.language, voices))
                 opened != null -> ConversationScreen(
                     app.captions.savedConversations,
                     opened.first,
@@ -341,7 +346,7 @@ private fun OzenApp(
                     onDraft = { sayDraft = it },
                     speaking = state.speaking,
                     phrases = QuickPhrases.shown(current.quickPhrases, Localization.language),
-                    canSay = app.captions::canSay,
+                    canSay = canSay,
                     onSpeak = app.captions::speak,
                     onStop = app.captions::stopSpeaking,
                     onAddPhrase = app.captions::addQuickPhrase,
@@ -352,6 +357,7 @@ private fun OzenApp(
                     look = look,
                     captionSize = current.display.fontSize,
                     onClose = { saying = false },
+                    voiceNotices = VoiceNotice.forSay(Localization.language, voices),
                 )
                 showingHistory -> HistoryScreen(
                     app.captions.savedConversations,

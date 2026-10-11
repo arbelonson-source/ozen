@@ -10,6 +10,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.speech.tts.TextToSpeech
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -51,7 +52,9 @@ import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
@@ -662,6 +665,54 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun withNoHebrewVoiceTheSayScreenSaysSoAndOpensThePhonesVoiceSettings() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val started = CopyOnWriteArrayList<Intent>()
+        val settings = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
+                started += intent
+                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+            }
+        }
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        assertTrue("the phone's speech engine never answered", within(15_000) { app.captions.voice.installed.value != null })
+        instrumentation.addMonitor(settings)
+        try {
+            compose.runOnUiThread { app.captions.voice.installed.value = setOf(UILanguage.English) }
+            compose.onNodeWithContentDescription("Say something out loud").performClick()
+            keyboardAway()
+            compose.onNodeWithText("No Hebrew voice is installed.").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("Open phone settings").performScrollTo().performClick()
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            assertEquals(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA, started.first().action)
+
+            compose.runOnUiThread { app.captions.voice.installed.value = setOf(UILanguage.English, UILanguage.Hebrew) }
+            compose.waitForIdle()
+            compose.onNodeWithText("No Hebrew voice is installed.").assertDoesNotExist()
+            compose.onNodeWithText("Open phone settings").assertDoesNotExist()
+        } finally {
+            instrumentation.removeMonitor(settings)
+            compose.runOnUiThread { app.captions.refreshVoice() }
+        }
+    }
+
+    @Test
+    fun comingBackToTheAppLooksAgainForTheVoicesThePhoneHas() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        assertTrue("the phone's speech engine never answered", within(15_000) { app.captions.voice.installed.value != null })
+        val real = app.captions.voice.installed.value
+        val stale = setOf(UILanguage.Amharic)
+        compose.runOnUiThread { app.captions.voice.installed.value = stale }
+        try {
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            assertEquals(stale, app.captions.voice.installed.value)
+        } finally {
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        }
+        assertTrue("still ${app.captions.voice.installed.value}, not $real", within(5_000) { app.captions.voice.installed.value == real })
+    }
+
+    @Test
     fun quickPhrasesAreAddedDeletedAndRestoredOnTheSayScreen() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val phrasesBefore = app.settings.current.value.quickPhrases
@@ -870,6 +921,17 @@ class CaptionScreenDeviceTest {
             app.settings.change { it.saveHistory = savingBefore }
             store.delete(record.id)
         }
+    }
+
+    // The Say screen opens with the keyboard coming up; a press while it
+    // slides in lands where the button was.
+    private fun keyboardAway() {
+        val window = compose.activity.window
+        val keyboard = { compose.runOnUiThread { ViewCompat.getRootWindowInsets(window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0 } }
+        within(3_000) { keyboard() > 0 }
+        compose.runOnUiThread { WindowCompat.getInsetsController(window, window.decorView).hide(WindowInsetsCompat.Type.ime()) }
+        compose.waitUntil(5_000) { keyboard() == 0 }
+        compose.waitForIdle()
     }
 
     private fun within(millis: Long, condition: () -> Boolean): Boolean {
