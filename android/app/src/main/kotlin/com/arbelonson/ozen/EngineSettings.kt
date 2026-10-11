@@ -6,6 +6,7 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 class EngineSettings(
     private val settings: SettingsHolder,
     private val cloudKeys: CloudKeyStore,
+    private val homeServerCode: HomeServerCodeStore,
     private val restartIfRunning: () -> Unit,
 ) {
     val engines = listOf(TranscriptionEngineKind.WhisperKit, TranscriptionEngineKind.HomeServer, TranscriptionEngineKind.Cloud)
@@ -14,6 +15,8 @@ class EngineSettings(
         get() = settings.current.value.engine.let { if (it == TranscriptionEngineKind.AppleSpeech) TranscriptionEngineKind.WhisperKit else it }
 
     private val cloudIsTheEngine get() = settings.current.value.engine == TranscriptionEngineKind.Cloud
+
+    private val homeComputerIsTheEngine get() = settings.current.value.engine == TranscriptionEngineKind.HomeServer
 
     private val provider get() = settings.current.value.cloudProvider
 
@@ -41,5 +44,21 @@ class EngineSettings(
     fun deleteCloudKey() {
         cloudKeys.remove(provider)
         if (cloudIsTheEngine) restartIfRunning()
+    }
+
+    fun saveHomeComputerAddress(draft: String) {
+        val address = draft.trim()
+        if (settings.current.value.homeServerAddress == address) return
+        settings.change { it.homeServerAddress = address }
+        if (homeComputerIsTheEngine) restartIfRunning()
+    }
+
+    fun hasPairingCode(): Boolean = homeServerCode.read() != null
+
+    fun savePairingCode(draft: String): Boolean {
+        val code = draft.trim()
+        if (code.isEmpty() || !homeServerCode.save(code)) return false
+        if (homeComputerIsTheEngine) restartIfRunning()
+        return true
     }
 }

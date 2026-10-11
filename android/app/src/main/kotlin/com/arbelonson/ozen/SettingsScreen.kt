@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.CloudProvider
+import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.tr
 
@@ -63,6 +64,7 @@ fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onC
             }
             EngineSection(engineSettings, current)
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current)
+            if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current)
         }
     }
 }
@@ -170,6 +172,64 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings) {
     Footnote(cloudServiceFooter(service))
 }
 
+// The iPhone's footer for this section speaks of its camera, the backup
+// model and the speed slider, none of which Android has yet, so there is
+// none here.
+@Composable
+private fun HomeComputerSection(engineSettings: EngineSettings, current: AppSettings) {
+    val saved = current.homeServerAddress
+    var address by rememberSaveable(saved) { mutableStateOf(saved) }
+    var hasCode by remember { mutableStateOf(engineSettings.hasPairingCode()) }
+    var code by rememberSaveable { mutableStateOf("") }
+    var codeSaveFailed by remember { mutableStateOf(false) }
+    val saveAddress = { engineSettings.saveHomeComputerAddress(address) }
+    val saveCode = {
+        if (code.isNotBlank()) {
+            val stored = engineSettings.savePairingCode(code)
+            codeSaveFailed = !stored
+            if (stored) {
+                code = ""
+                hasCode = true
+            }
+        }
+    }
+
+    SectionHeader(tr("המחשב בבית", "Home computer"))
+    OutlinedTextField(
+        value = address,
+        onValueChange = { address = it },
+        label = { Text(tr("כתובת המחשב", "Computer address")) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { saveAddress() }),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    if (address.trim() != saved) Button(onClick = saveAddress) { Text(tr("שמירת הכתובת", "Save address")) }
+    if (HomeServer.needsEncryptedAddress(address)) {
+        Caution(tr("מחוץ לרשת הביתית, צריך את הכתובת שמתחילה ב-wss://", "Outside the home network, use the address that starts with wss://"))
+    } else if (address.isNotBlank() && HomeServer.url(address) == null) {
+        Caution(tr("הכתובת לא נראית תקינה", "That address doesn’t look right"))
+    }
+    if (hasCode) Text(tr("קוד צימוד שמור בטלפון", "Pairing code saved on the phone"), color = SAVED_GREEN)
+    OutlinedTextField(
+        value = code,
+        onValueChange = {
+            code = it
+            codeSaveFailed = false
+        },
+        label = {
+            Text(if (hasCode) tr("קוד חדש במקום השמור", "New code instead of the saved one") else tr("קוד הצימוד מהמחשב", "The pairing code from the computer"))
+        },
+        singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { saveCode() }),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    if (code.isNotBlank()) Button(onClick = saveCode) { Text(tr("שמירת הקוד", "Save code")) }
+    if (codeSaveFailed) Warning(tr("הקוד לא נשמר. נסו שוב.", "The code wasn’t saved. Try again."))
+}
+
 private fun cloudServiceFooter(service: CloudProvider): String = when (service) {
     CloudProvider.Deepgram -> tr(
         "הקול נשלח דרך האינטרנט ל‑Deepgram, שכותבת את הכתוביות, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שתכתוב אותן נכון; Deepgram מתבקשת לא להשתמש בו לשיפור המודלים שלה. רק כשמישהו מדבר; כל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 65 סנט מהקרדיט של המפתח, ודיבור רצוף בלי הפסקות, כמו חדשות או הרצאה, עד פי שלושה; חשבון Deepgram חדש מקבל 200 דולר קרדיט חינם. בלי Wi‑Fi זה משתמש בגלישה סלולרית: כמה מאות MB לשעת דיבור, ועד כ‑1 GB. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.",
@@ -241,4 +301,10 @@ private fun Warning(text: String) {
     Text(text, color = MaterialTheme.colorScheme.error)
 }
 
+@Composable
+private fun Caution(text: String) {
+    Text(text, color = CAUTION_ORANGE)
+}
+
 private val SAVED_GREEN = Color(0xFF81C784)
+private val CAUTION_ORANGE = Color(0xFFFFB74D)

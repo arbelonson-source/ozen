@@ -17,8 +17,9 @@ class EngineSettingsTest {
     private val settingsFile = File(folder, "ozen-settings.json")
     private val settings = SettingsHolder(SettingsStore(settingsFile))
     private val keys = CloudKeyStore(File(folder, "cloud-keys"), ReversingCipher())
+    private val codes = HomeServerCodeStore(File(folder, "home-server-code"), ReversingCipher())
     private var restarts = 0
-    private val engineSettings = EngineSettings(settings, keys) { restarts += 1 }
+    private val engineSettings = EngineSettings(settings, keys, codes) { restarts += 1 }
 
     @AfterTest
     fun removeFolder() {
@@ -88,7 +89,7 @@ class EngineSettingsTest {
 
     @Test
     fun `a key the phone could not seal is reported and does not restart captions`() {
-        val failing = EngineSettings(settings, CloudKeyStore(File(folder, "cloud-keys"), ReversingCipher(failsToSeal = true))) { restarts += 1 }
+        val failing = EngineSettings(settings, CloudKeyStore(File(folder, "cloud-keys"), ReversingCipher(failsToSeal = true)), codes) { restarts += 1 }
         failing.chooseEngine(TranscriptionEngineKind.Cloud)
         assertFalse(failing.saveCloudKey("sx-test-key"))
         assertFalse(failing.hasCloudKey())
@@ -105,5 +106,42 @@ class EngineSettingsTest {
         assertEquals("dg-test-key", keys.read(CloudProvider.Deepgram))
         assertFalse(engineSettings.hasCloudKey())
         assertEquals(2, restarts)
+    }
+
+    @Test
+    fun `a computer address is saved trimmed and restarts captions only while the home computer is the engine`() {
+        engineSettings.saveHomeComputerAddress("  ws://192.168.1.20:8765 ")
+        assertEquals("ws://192.168.1.20:8765", saved().homeServerAddress)
+        assertEquals(0, restarts)
+        engineSettings.chooseEngine(TranscriptionEngineKind.HomeServer)
+        engineSettings.saveHomeComputerAddress("ws://192.168.1.20:8765")
+        assertEquals(1, restarts)
+        engineSettings.saveHomeComputerAddress("wss://pc.example.net")
+        assertEquals("wss://pc.example.net", saved().homeServerAddress)
+        assertEquals(2, restarts)
+    }
+
+    @Test
+    fun `a pairing code is saved trimmed and restarts captions only while the home computer is the engine`() {
+        assertFalse(engineSettings.hasPairingCode())
+        assertTrue(engineSettings.savePairingCode(" code-one "))
+        assertEquals("code-one", codes.read())
+        assertTrue(engineSettings.hasPairingCode())
+        assertEquals(0, restarts)
+        engineSettings.chooseEngine(TranscriptionEngineKind.HomeServer)
+        assertFalse(engineSettings.savePairingCode("  "))
+        assertEquals("code-one", codes.read())
+        assertTrue(engineSettings.savePairingCode("code-two"))
+        assertEquals("code-two", codes.read())
+        assertEquals(2, restarts)
+    }
+
+    @Test
+    fun `a pairing code the phone could not seal is reported and does not restart captions`() {
+        val failing = EngineSettings(settings, keys, HomeServerCodeStore(File(folder, "home-server-code"), ReversingCipher(failsToSeal = true))) { restarts += 1 }
+        failing.chooseEngine(TranscriptionEngineKind.HomeServer)
+        assertFalse(failing.savePairingCode("code-one"))
+        assertFalse(failing.hasPairingCode())
+        assertEquals(1, restarts)
     }
 }
