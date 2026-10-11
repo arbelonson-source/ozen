@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -8,12 +9,15 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.core.view.WindowCompat
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptSegment
 import java.util.UUID
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -65,6 +69,38 @@ class CaptionScreenDeviceTest {
         } finally {
             app.settings.change { it.display = before }
         }
+    }
+
+    @Test
+    fun blackOnWhiteDrawsDarkWordsUnderDarkBarIconsAndWhiteOnBlackTheOpposite() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.display
+        try {
+            app.settings.change { it.display = it.display.copy(theme = DisplayPreferences.Theme.Light, emphasizeNumbers = true) }
+            showLine("Meet at 10:30 by the door")
+            compose.waitForIdle()
+            val light = layoutOf("Meet at")
+            assertEquals(Color.Black, light.layoutInput.style.color)
+            assertEquals(Color(red = 0f, green = 0.25f, blue = 0.7f), light.layoutInput.text.spanStyles.single().item.color)
+            compose.waitUntil(5_000) { darkBarIcons() }
+
+            app.settings.change { it.display = it.display.copy(theme = DisplayPreferences.Theme.Dark) }
+            compose.waitForIdle()
+            assertEquals(Color.White, layoutOf("Meet at").layoutInput.style.color)
+            compose.waitUntil(5_000) { !darkBarIcons() }
+            assertFalse(darkBarIcons())
+        } finally {
+            app.settings.change { it.display = before }
+        }
+    }
+
+    private fun darkBarIcons(): Boolean {
+        var dark = false
+        compose.runOnUiThread {
+            val window = compose.activity.window
+            dark = WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars
+        }
+        return dark
     }
 
     private fun showLine(text: String) {

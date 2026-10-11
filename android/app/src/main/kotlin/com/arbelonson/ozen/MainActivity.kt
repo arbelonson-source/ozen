@@ -9,11 +9,13 @@ import android.os.Bundle
 import android.os.LocaleList
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -80,13 +83,21 @@ class MainActivity : ComponentActivity() {
         Localization.language = AppLanguage.System.resolved(phoneLanguages)
         enableEdgeToEdge()
         val app = application as OzenApplication
-        setContent { OzenApp(app, showingSettings, onStatusTap = ::statusTapped) }
+        setContent { OzenApp(app, showingSettings, onStatusTap = ::statusTapped, onLightScreen = ::systemBarsFor) }
         openLink(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         openLink(intent)
+    }
+
+    private fun systemBarsFor(lightScreen: Boolean) {
+        if (lightScreen) {
+            enableEdgeToEdge(SystemBarStyle.light(TRANSPARENT, TRANSPARENT), SystemBarStyle.light(LIGHT_SCRIM, DARK_SCRIM))
+        } else {
+            enableEdgeToEdge(SystemBarStyle.dark(TRANSPARENT), SystemBarStyle.dark(DARK_SCRIM))
+        }
     }
 
     private fun openLink(intent: Intent?) {
@@ -121,10 +132,17 @@ class MainActivity : ComponentActivity() {
     private fun openAppSettings() {
         startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
     }
+
+    private companion object {
+        const val TRANSPARENT = android.graphics.Color.TRANSPARENT
+        // The scrims enableEdgeToEdge draws behind three-button navigation by default.
+        val LIGHT_SCRIM = android.graphics.Color.argb(0xe6, 0xff, 0xff, 0xff)
+        val DARK_SCRIM = android.graphics.Color.argb(0x80, 0x1b, 0x1b, 0x1b)
+    }
 }
 
 @Composable
-private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>, onStatusTap: () -> Unit) {
+private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>, onStatusTap: () -> Unit, onLightScreen: (Boolean) -> Unit) {
     val direction = if (Localization.language.isRightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr
     val state by CaptionState.screen.collectAsStateWithLifecycle()
     val current by app.settings.current.collectAsStateWithLifecycle()
@@ -137,7 +155,9 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
         }
     }
     KeepScreenOn(state.keepsScreenOn(current.display.keepScreenAwake, awakeClock))
-    MaterialTheme(colorScheme = darkColorScheme()) {
+    val look = CaptionTheme.of(current.display.theme, isSystemInDarkTheme())
+    LaunchedEffect(look.isLight) { onLightScreen(look.isLight) }
+    MaterialTheme(colorScheme = if (look.isLight) lightColorScheme() else darkColorScheme()) {
         CompositionLocalProvider(LocalLayoutDirection provides direction) {
             when {
                 showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false })
@@ -147,7 +167,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     retention = current.historyRetention,
                     onClose = { showingHistory = false },
                 )
-                else -> CaptionScreen(state, current.display, onStatusTap, onSettings = { showingSettings.value = true }, onHistory = { showingHistory = true })
+                else -> CaptionScreen(state, current.display, look, onStatusTap, onSettings = { showingSettings.value = true }, onHistory = { showingHistory = true })
             }
             PairingDialogs(app.pairing)
         }
@@ -221,6 +241,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
 private fun CaptionScreen(
     state: CaptionScreenState,
     display: DisplayPreferences,
+    look: CaptionTheme,
     onStatusTap: () -> Unit,
     onSettings: () -> Unit,
     onHistory: () -> Unit,
@@ -228,7 +249,7 @@ private fun CaptionScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(look.background)
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -237,16 +258,16 @@ private fun CaptionScreen(
             if (state.lines.isEmpty()) {
                 Text(
                     text = tr("הכתוביות יופיעו כאן.", "Captions will appear here."),
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = look.text.copy(alpha = 0.6f),
                     fontSize = 32.sp,
                     lineHeight = 40.sp,
                     textAlign = TextAlign.Center,
                 )
             } else {
-                CaptionLines(state.lines, display)
+                CaptionLines(state.lines, display, look)
             }
         }
-        StatusButton(state.status, onStatusTap)
+        StatusButton(state.status, look.chrome, onStatusTap)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             TextButton(onClick = onHistory) {
                 Text(tr("היסטוריה", "History"), fontSize = 18.sp)
@@ -259,15 +280,15 @@ private fun CaptionScreen(
 }
 
 @Composable
-private fun CaptionLines(lines: List<CaptionLine>, display: DisplayPreferences) {
+private fun CaptionLines(lines: List<CaptionLine>, display: DisplayPreferences, look: CaptionTheme) {
     val list = rememberLazyListState()
     LaunchedEffect(lines.size, lines.lastOrNull()?.text) { list.scrollToItem(lines.size - 1) }
     LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(lines, key = { it.id }) { line ->
             Text(
-                text = captionText(line.text, display.emphasizeNumbers, numberColor = if (line.isFinal) NUMBER_YELLOW else null),
+                text = captionText(line.text, display.emphasizeNumbers, numberColor = if (line.isFinal) look.numberText else null),
                 style = LocalTextStyle.current.copy(textDirection = TextDirection.Content),
-                color = if (line.isFinal) Color.White else Color.White.copy(alpha = 0.75f),
+                color = if (line.isFinal) look.text else look.pendingText,
                 fontSize = display.fontSize.sp,
                 lineHeight = (display.fontSize * 1.25).sp,
                 fontWeight = if (display.boldText) FontWeight.Bold else FontWeight.Medium,
@@ -277,18 +298,18 @@ private fun CaptionLines(lines: List<CaptionLine>, display: DisplayPreferences) 
 }
 
 @Composable
-private fun StatusButton(status: PhasePresentation, onTap: () -> Unit) {
+private fun StatusButton(status: PhasePresentation, chrome: Color, onTap: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
+            .background(chrome.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
             .clickable(onClick = onTap)
             .padding(vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(text = status.title, color = Color.White, fontSize = 22.sp, textAlign = TextAlign.Center)
+        Text(text = status.title, color = chrome, fontSize = 22.sp, textAlign = TextAlign.Center)
         status.detail?.let { detail ->
-            Text(text = detail, color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp, textAlign = TextAlign.Center)
+            Text(text = detail, color = chrome.copy(alpha = 0.7f), fontSize = 16.sp, textAlign = TextAlign.Center)
         }
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -22,6 +23,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.CloudSpeech
+import com.arbelonson.ozen.core.ContrastRatio
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -225,5 +227,41 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Back to the usual size").assertDoesNotExist()
         compose.onNodeWithText("Screen doesn’t turn off while listening").performScrollTo().performClick()
         assertFalse(app.settings.current.value.display.keepScreenAwake)
+    }
+
+    @Test
+    fun theColoursChosenInSettingsAreSavedAndTheSampleLineShowsThem() {
+        app.settings.change { it.display = DisplayPreferences.default }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Black on white").performScrollTo().performClick()
+        assertEquals(DisplayPreferences.Theme.Light, app.settings.current.value.display.theme)
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText("Hello grandma", substring = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals(Color.Black, layouts.single().layoutInput.style.color)
+        compose.onNodeWithText("Yellow on black").performScrollTo().performClick()
+        assertEquals(DisplayPreferences.Theme.HighContrast, app.settings.current.value.display.theme)
+    }
+
+    @Test
+    fun onBlackOnWhiteTheSavedCodeAndNoAnswerNotesStayReadable() {
+        app.settings.change { it.display = DisplayPreferences.default.copy(theme = DisplayPreferences.Theme.Light) }
+        app.homeServerCode.save("code-for-the-test")
+        compose.onNodeWithText("Settings").performClick()
+        compose.onAllNodesWithText("Home computer").onFirst().performScrollTo().performClick()
+        compose.onNodeWithText("Computer address").performScrollTo().performTextInput("ws://10.0.2.2:9")
+        assertReadableOnWhite("Pairing code saved on the phone")
+        compose.onNodeWithText("Test connection").performScrollTo().performClick()
+        compose.waitUntil(timeoutMillis = 30_000) {
+            compose.onAllNodesWithText("No answer from the computer", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        assertReadableOnWhite("No answer from the computer")
+    }
+
+    private fun assertReadableOnWhite(text: String) {
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(text, substring = true).performScrollTo().performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        val colour = layouts.single().layoutInput.style.color
+        val ratio = ContrastRatio.ratio(Triple(colour.red.toDouble(), colour.green.toDouble(), colour.blue.toDouble()), colour.alpha.toDouble(), Triple(1.0, 1.0, 1.0))
+        assertTrue("$text: $ratio to 1", ratio >= 4.5)
     }
 }

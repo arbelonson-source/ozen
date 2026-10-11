@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -46,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -108,13 +110,14 @@ fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onC
 /**
  * How the captions look, first as on the iPhone: the size is kept when the
  * slider is let go, not at every step of a drag, and the sample line shows
- * the size and weight as they will be.
+ * the size, weight and colours as they will be.
  */
 @Composable
 private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences) {
     SectionHeader(tr("תצוגה", "Display"))
     var size by remember(display.fontSize) { mutableFloatStateOf(display.fontSize.toFloat()) }
     val sizeLabel = tr("גודל טקסט", "Text size")
+    val look = CaptionTheme.of(display.theme, isSystemInDarkTheme())
     Row(modifier = Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
         Text(sizeLabel, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text("${size.roundToInt()}", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -139,17 +142,25 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
         captionText(
             tr("שלום סבתא, נגיע בשש עם שלושה ילדים.", "Hello grandma, we’ll arrive at six with three kids."),
             display.emphasizeNumbers,
-            NUMBER_YELLOW,
+            look.numberText,
         ),
-        color = Color.White,
+        color = look.text,
         fontSize = size.sp,
         lineHeight = (size * 1.25f).sp,
         fontWeight = if (display.boldText) FontWeight.Bold else FontWeight.Medium,
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Black, RoundedCornerShape(10.dp))
+            .background(look.background, RoundedCornerShape(10.dp))
             .padding(12.dp),
     )
+    Text(tr("צבעים", "Colors"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 8.dp))
+    Column(Modifier.selectableGroup()) {
+        for (theme in DisplayPreferences.Theme.entries) {
+            ChoiceRow(CaptionTheme.name(theme), summary = null, selected = display.theme == theme) {
+                settings.change { it.display = it.display.copy(theme = theme) }
+            }
+        }
+    }
     SwitchRow(tr("טקסט מודגש", "Bold text"), display.boldText) { on -> settings.change { it.display = it.display.copy(boldText = on) } }
     SwitchRow(tr("המסך לא נכבה בזמן האזנה", "Screen doesn’t turn off while listening"), display.keepScreenAwake) { on ->
         settings.change { it.display = it.display.copy(keepScreenAwake = on) }
@@ -227,7 +238,7 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
     if (!service.covers(current.languageCode)) {
         Warning(tr("השירות הזה לא יודע לכתוב כתוביות בשפה שמדברים בה. בחרו שירות אחר.", "This service can’t caption the language being spoken. Choose another service."))
     }
-    if (hasKey) Text(tr("מפתח שמור בטלפון", "Key saved on the phone"), color = SAVED_GREEN)
+    if (hasKey) Text(tr("מפתח שמור בטלפון", "Key saved on the phone"), color = savedGreen())
     OutlinedTextField(
         value = draft,
         onValueChange = {
@@ -354,7 +365,7 @@ private fun HomeComputerSection(
     } else if (address.isNotBlank() && HomeServer.url(address) == null) {
         Caution(tr("הכתובת לא נראית תקינה", "That address doesn’t look right"))
     }
-    if (hasCode) Text(tr("קוד צימוד שמור בטלפון", "Pairing code saved on the phone"), color = SAVED_GREEN)
+    if (hasCode) Text(tr("קוד צימוד שמור בטלפון", "Pairing code saved on the phone"), color = savedGreen())
     OutlinedTextField(
         value = code,
         onValueChange = {
@@ -456,9 +467,9 @@ private fun HomeComputerBeam(engineSettings: EngineSettings, beam: Int, onMoved:
 @Composable
 private fun HomeComputerCheckLabel(check: HomeServerCheck) {
     val (text, color) = when (check) {
-        is HomeServerCheck.Connected -> tr("מחובר: המחשב ענה תוך %1 אלפיות שנייה", "Connected: the computer answered in %1 ms", listOf("${check.milliseconds}")) to SAVED_GREEN
+        is HomeServerCheck.Connected -> tr("מחובר: המחשב ענה תוך %1 אלפיות שנייה", "Connected: the computer answered in %1 ms", listOf("${check.milliseconds}")) to savedGreen()
         HomeServerCheck.CodeRefused -> tr("המחשב ענה, אבל לא קיבל את הקוד. סרקו שוב את קוד ה‑QR או הקלידו את הקוד מחדש.", "The computer answered but didn’t accept the code. Scan the QR code again or retype the code.") to MaterialTheme.colorScheme.error
-        HomeServerCheck.Unreachable -> tr("אין תשובה מהמחשב. בדקו שהוא דלוק, ער (לא במצב שינה) ומחובר לאינטרנט.", "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.") to CAUTION_ORANGE
+        HomeServerCheck.Unreachable -> tr("אין תשובה מהמחשב. בדקו שהוא דלוק, ער (לא במצב שינה) ומחובר לאינטרנט.", "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.") to cautionOrange()
         HomeServerCheck.NotSetUp -> tr("חסרים כתובת או קוד", "The address or code is missing") to MaterialTheme.colorScheme.onSurfaceVariant
     }
     Text(text, color = color, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
@@ -537,8 +548,16 @@ private fun Warning(text: String) {
 
 @Composable
 private fun Caution(text: String) {
-    Text(text, color = CAUTION_ORANGE)
+    Text(text, color = cautionOrange())
 }
 
-private val SAVED_GREEN = Color(0xFF81C784)
-private val CAUTION_ORANGE = Color(0xFFFFB74D)
+// On a white screen these give way to the iPhone's deeper shades of the
+// same hues, which stay above 5:1 there; the light ones fall to about 2:1.
+@Composable
+private fun savedGreen() = if (onLightScreen()) Color(red = 0f, green = 0.45f, blue = 0.15f) else Color(0xFF81C784)
+
+@Composable
+private fun cautionOrange() = if (onLightScreen()) Color(red = 0.7f, green = 0.3f, blue = 0f) else Color(0xFFFFB74D)
+
+@Composable
+private fun onLightScreen() = MaterialTheme.colorScheme.background.luminance() > 0.5f
