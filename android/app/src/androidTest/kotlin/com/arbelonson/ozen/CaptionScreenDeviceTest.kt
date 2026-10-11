@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
@@ -42,6 +43,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.ResolvedTextDirection
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.core.view.WindowCompat
@@ -420,6 +422,58 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun theBigLettersPadShowsTheSayFieldHugeInHerColoursFlipsItForThePersonOppositeAndSaysIt() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.display
+        val underline = "________"
+        try {
+            app.settings.change { it.display = it.display.copy(theme = DisplayPreferences.Theme.HighContrast, fontSize = 30.0) }
+            assertTrue("no voice on the phone", within(15_000) { app.captions.canAskToRepeat() })
+            compose.onNodeWithContentDescription("Say something out loud").performClick()
+            compose.waitUntil(5_000) { sayFieldFocused() }
+            compose.onNode(hasSetTextAction()).performTextInput("Pharmacy")
+            compose.onNodeWithText("Full screen, big letters").performScrollTo().performClick()
+            compose.onNodeWithText("Say something").assertDoesNotExist()
+            assertEquals(52.sp, layoutOf("Pharmacy").layoutInput.style.fontSize)
+            assertEquals(NUMBER_YELLOW, layoutOf("Pharmacy").layoutInput.style.color)
+            app.settings.change { it.display = it.display.copy(fontSize = 64.0) }
+            compose.waitForIdle()
+            assertEquals(64.sp, layoutOf("Pharmacy").layoutInput.style.fontSize)
+
+            compose.onNodeWithText("Speak").performClick()
+            assertTrue("never spoke", within(10_000) { app.captions.isSpeaking })
+            compose.runOnUiThread { app.captions.stopSpeaking() }
+
+            compose.onNodeWithText("Clear").performClick()
+            compose.onNodeWithText("Type here…").assertIsDisplayed()
+            compose.onNodeWithText("Clear").assertIsNotEnabled()
+            compose.onNodeWithText("Flip").assertIsNotEnabled()
+            compose.onNodeWithText("Speak").assertIsNotEnabled()
+            compose.onNode(hasSetTextAction()).performTextInput(underline)
+            compose.onNodeWithText("Flip").performClick()
+            compose.onNode(hasSetTextAction()).assertDoesNotExist()
+            val flipped = compose.onNodeWithText(underline).captureToImage()
+            val ink = inkRows(flipped)
+            assertTrue("nothing drawn", ink.isNotEmpty())
+            assertTrue("drawn the right way up: ink on rows $ink of ${flipped.height}", ink.last() < flipped.height / 2)
+            compose.onNodeWithText("Back").performClick()
+            compose.onNode(hasSetTextAction()).assert(hasText(underline))
+
+            compose.onNodeWithText("Close").performClick()
+            compose.onNodeWithText("Say something").assertExists()
+            assertFalse("the keyboard came back over the Say screen", within(1_500) { sayFieldFocused() })
+            compose.onNode(hasSetTextAction()).assert(hasText(underline))
+            compose.onNodeWithContentDescription("Play again: Pharmacy").assertExists()
+            compose.onNodeWithText("Full screen, big letters").performScrollTo().performClick()
+            compose.onNodeWithText("Say something").assertDoesNotExist()
+            compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+            compose.onNodeWithText("Say something").assertExists()
+        } finally {
+            app.settings.change { it.display = before }
+        }
+    }
+
+    @Test
     fun whileThePhoneTalksTheCaptionScreensSayButtonStopsItInsteadOfOpening() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         assertTrue("no voice on the phone", within(15_000) { app.captions.canAskToRepeat() })
@@ -587,6 +641,13 @@ class CaptionScreenDeviceTest {
     }
 
     private fun pixels(image: ImageBitmap) = image.toPixelMap().buffer
+
+    private fun sayFieldFocused() = compose.onNode(hasSetTextAction()).fetchSemanticsNode().config.getOrElse(SemanticsProperties.Focused) { false }
+
+    private fun inkRows(image: ImageBitmap): List<Int> {
+        val pixels = image.toPixelMap()
+        return (0 until pixels.height).filter { y -> (0 until pixels.width).any { x -> pixels[x, y].red > 0.5f } }
+    }
 
     private fun darkBarIcons(): Boolean {
         var dark = false

@@ -241,6 +241,8 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     onRemovePhrase = app.captions::removeQuickPhrase,
                     onRestorePhrases = app.captions::restoreQuickPhrases,
                     phrasesAreDefault = QuickPhrases.isDefault(current.quickPhrases, Localization.language),
+                    look = look,
+                    captionSize = current.display.fontSize,
                     onClose = { saying = false },
                 )
                 showingHistory -> HistoryScreen(

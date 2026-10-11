@@ -70,6 +70,8 @@ internal fun SayScreen(
     onRemovePhrase: (String) -> Unit,
     onRestorePhrases: () -> Unit,
     phrasesAreDefault: Boolean,
+    look: CaptionTheme,
+    captionSize: Double,
     onClose: () -> Unit,
 ) {
     BackHandler(onBack = onClose)
@@ -77,16 +79,24 @@ internal fun SayScreen(
     var editing by rememberSaveable { mutableStateOf(false) }
     var newPhrase by rememberSaveable { mutableStateOf("") }
     var confirmingRestore by remember { mutableStateOf(false) }
+    var bigLetters by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val addPhrase = {
         onAddPhrase(newPhrase)
         newPhrase = ""
     }
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    // What the pad says becomes "Play again" here, as on the iPhone.
     val speakTyped = {
         val phrase = draft.trim()
         if (phrase.isNotEmpty() && onSpeak(phrase)) lastTyped = phrase
+    }
+    // Only as the screen opens: back from the pad, as on the iPhone, the
+    // keyboard would otherwise cover what she came back to tap.
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { if (!bigLetters) focus.requestFocus() }
+    if (bigLetters) {
+        BigTextScreen(draft, onDraft, look, captionSize, canSpeak = canSay(draft), onSpeak = speakTyped, onClose = { bigLetters = false })
+        return
     }
     val play = tr("להשמיע", "Play")
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -133,6 +143,9 @@ internal fun SayScreen(
                         }
                     }
                 }
+            }
+            OutlinedButton(onClick = { bigLetters = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(tr("מסך מלא באותיות גדולות", "Full screen, big letters"))
             }
             Row(modifier = Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(tr("משפטים מוכנים", "Quick phrases"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f).semantics { heading() })
