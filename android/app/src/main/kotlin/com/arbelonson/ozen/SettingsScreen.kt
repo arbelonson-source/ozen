@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -27,11 +30,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,14 +53,17 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.CloudSpeech
+import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.TranscriptionEngineKind
@@ -89,10 +97,72 @@ fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onC
                 Text(tr("הגדרות", "Settings"), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
                 TextButton(onClick = close) { Text(tr("סגירה", "Close")) }
             }
+            DisplaySection(settings, current.display)
             EngineSection(engineSettings, current)
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
             if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
         }
+    }
+}
+
+/**
+ * How the captions look, first as on the iPhone: the size is kept when the
+ * slider is let go, not at every step of a drag, and the sample line shows
+ * the size and weight as they will be.
+ */
+@Composable
+private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences) {
+    SectionHeader(tr("תצוגה", "Display"))
+    var size by remember(display.fontSize) { mutableFloatStateOf(display.fontSize.toFloat()) }
+    val sizeLabel = tr("גודל טקסט", "Text size")
+    Row(modifier = Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
+        Text(sizeLabel, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text("${size.roundToInt()}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Slider(
+        value = size,
+        onValueChange = { size = it },
+        onValueChangeFinished = { settings.change { it.display = it.display.copy(fontSize = size.roundToInt().toDouble()) } },
+        valueRange = DisplayPreferences.minimumFontSize.toFloat()..DisplayPreferences.maximumFontSize.toFloat(),
+        steps = ((DisplayPreferences.maximumFontSize - DisplayPreferences.minimumFontSize) / 2).toInt() - 1,
+        modifier = Modifier.semantics {
+            contentDescription = sizeLabel
+            stateDescription = "${size.roundToInt()}"
+        },
+    )
+    if (size.roundToInt() != DisplayPreferences.default.fontSize.roundToInt()) {
+        TextButton(
+            onClick = { settings.change { it.display = it.display.copy(fontSize = DisplayPreferences.default.fontSize) } },
+        ) { Text(tr("חזרה לגודל הרגיל", "Back to the usual size")) }
+    }
+    Text(
+        tr("שלום סבתא, נגיע בשש עם שלושה ילדים.", "Hello grandma, we’ll arrive at six with three kids."),
+        color = Color.White,
+        fontSize = size.sp,
+        lineHeight = (size * 1.25f).sp,
+        fontWeight = if (display.boldText) FontWeight.Bold else FontWeight.Medium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Black, RoundedCornerShape(10.dp))
+            .padding(12.dp),
+    )
+    SwitchRow(tr("טקסט מודגש", "Bold text"), display.boldText) { on -> settings.change { it.display = it.display.copy(boldText = on) } }
+    SwitchRow(tr("המסך לא נכבה בזמן האזנה", "Screen doesn’t turn off while listening"), display.keepScreenAwake) { on ->
+        settings.change { it.display = it.display.copy(keepScreenAwake = on) }
+    }
+}
+
+@Composable
+private fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 

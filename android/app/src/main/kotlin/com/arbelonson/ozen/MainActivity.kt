@@ -49,12 +49,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AppLanguage
+import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.tr
 import kotlinx.coroutines.delay
@@ -143,7 +145,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     retention = current.historyRetention,
                     onClose = { showingHistory = false },
                 )
-                else -> CaptionScreen(state, onStatusTap, onSettings = { showingSettings.value = true }, onHistory = { showingHistory = true })
+                else -> CaptionScreen(state, current.display, onStatusTap, onSettings = { showingSettings.value = true }, onHistory = { showingHistory = true })
             }
             PairingDialogs(app.pairing)
         }
@@ -214,7 +216,13 @@ private fun PairingDialogs(pairing: PairingRequests) {
 }
 
 @Composable
-private fun CaptionScreen(state: CaptionScreenState, onStatusTap: () -> Unit, onSettings: () -> Unit, onHistory: () -> Unit) {
+private fun CaptionScreen(
+    state: CaptionScreenState,
+    display: DisplayPreferences,
+    onStatusTap: () -> Unit,
+    onSettings: () -> Unit,
+    onHistory: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -233,7 +241,7 @@ private fun CaptionScreen(state: CaptionScreenState, onStatusTap: () -> Unit, on
                     textAlign = TextAlign.Center,
                 )
             } else {
-                CaptionLines(state.lines)
+                CaptionLines(state.lines, display)
             }
         }
         StatusButton(state.status, onStatusTap)
@@ -249,7 +257,7 @@ private fun CaptionScreen(state: CaptionScreenState, onStatusTap: () -> Unit, on
 }
 
 @Composable
-private fun CaptionLines(lines: List<CaptionLine>) {
+private fun CaptionLines(lines: List<CaptionLine>, display: DisplayPreferences) {
     val list = rememberLazyListState()
     LaunchedEffect(lines.size, lines.lastOrNull()?.text) { list.scrollToItem(lines.size - 1) }
     LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -257,8 +265,9 @@ private fun CaptionLines(lines: List<CaptionLine>) {
             Text(
                 text = line.text,
                 color = if (line.isFinal) Color.White else Color.White.copy(alpha = 0.75f),
-                fontSize = 34.sp,
-                lineHeight = 42.sp,
+                fontSize = display.fontSize.sp,
+                lineHeight = (display.fontSize * 1.25).sp,
+                fontWeight = if (display.boldText) FontWeight.Bold else FontWeight.Medium,
             )
         }
     }
