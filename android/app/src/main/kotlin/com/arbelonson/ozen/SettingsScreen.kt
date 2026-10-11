@@ -895,6 +895,17 @@ private fun AboutSection(onSupport: () -> Unit) {
         style = MaterialTheme.typography.bodyLarge,
         modifier = Modifier.fillMaxWidth().clickable { uris.openUri(SOURCE_CODE) }.padding(vertical = 12.dp),
     )
+    Text(
+        tr("whisper.cpp (MIT) — מנוע Whisper", "whisper.cpp (MIT) — Whisper engine"),
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.fillMaxWidth().clickable { uris.openUri(WHISPER_ENGINE) }.padding(vertical = 12.dp),
+    )
+    Footnote(
+        tr(
+            "אוזן היא תוכנה חופשית בקוד פתוח (AGPL-3.0): כל עותק שלה חייב להישאר חופשי ופתוח. אלא אם בחרתם אחרת למעלה, כל העיבוד נעשה בטלפון ושום דבר לא נשלח החוצה.",
+            "Ozen is free, open-source software (AGPL-3.0): every copy of it has to stay free and open. Unless you chose otherwise above, all processing happens on the phone and nothing is sent out.",
+        ),
+    )
 }
 
 @Composable
@@ -906,6 +917,9 @@ private fun AboutRow(label: String, value: String) {
 }
 
 private const val SOURCE_CODE = "https://github.com/arbelonson-source/ozen"
+
+// The phone's own engine, as the iPhone credits WhisperKit.
+private const val WHISPER_ENGINE = "https://github.com/ggml-org/whisper.cpp"
 
 @Composable
 private fun DiagnosticsRow(onOpen: () -> Unit) {

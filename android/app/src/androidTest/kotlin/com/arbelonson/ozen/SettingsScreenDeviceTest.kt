@@ -34,6 +34,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isToggleable
@@ -1420,6 +1421,14 @@ class SettingsScreenDeviceTest {
         }
         compose.onNodeWithText("Back").performScrollTo().performClick()
         compose.onNodeWithText("Made by", substring = true).assertExists()
+    }
+
+    @Test
+    fun aboutCreditsTheWhisperEngineAndSaysOzenIsFreeSoftwareThatKeepsEverythingOnThePhone() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNode(hasText("whisper.cpp (MIT) — Whisper engine") and hasClickAction()).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Ozen is free, open-source software (AGPL-3.0)", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("all processing happens on the phone and nothing is sent out", substring = true).assertExists()
     }
 
     private fun within(millis: Long, condition: () -> Boolean): Boolean {
