@@ -716,6 +716,43 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    // The lines keep their names either way and the screen leaves them out
+    // as it draws, so the locked phone has to leave them out too.
+    @Test
+    fun theListeningNotificationNamesWhoSpokeOnlyWhileSpeakerNamesAreOn() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val manager = app.getSystemService(NotificationManager::class.java)
+        val text = { manager.activeNotifications.firstOrNull { it.notification.channelId == ListeningService.CHANNEL_ID }?.notification?.extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString() }
+        val before = app.settings.current.value.display
+        val now = System.currentTimeMillis() / 1_000.0
+        val said = TranscriptSegment(id = UUID.randomUUID(), text = "Names test good morning", isCommitted = true, speakerClusterID = 0, startTimestamp = now, lastUpdateTimestamp = now)
+        // The captions publish their own lines as they start, so the line is
+        // put back until the notification shows what is expected.
+        val shows = { expected: String ->
+            within(10_000) {
+                compose.runOnUiThread {
+                    if (CaptionState.screen.value.lines.none { it.id == said.id }) {
+                        CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(said), languageCode = "en", speakerName = { "Dana" })
+                    }
+                }
+                text() == expected
+            }
+        }
+        try {
+            app.settings.change { it.display = it.display.copy(showSpeakerNames = true) }
+            compose.runOnUiThread { ListeningService.start(app) }
+            assertTrue("not named with names on: ${text()}", shows("Dana: Names test good morning"))
+            app.settings.change { it.display = it.display.copy(showSpeakerNames = false) }
+            assertTrue("named with names off: ${text()}", shows("Names test good morning"))
+        } finally {
+            compose.runOnUiThread {
+                app.captions.pipeline.stop()
+                CaptionState.clear()
+            }
+            app.settings.change { it.display = before }
+        }
+    }
+
     // Android lets an app out of sight use the microphone only while its
     // listening notification is up, so the phone talking must not end it.
     @Test

@@ -234,11 +234,12 @@ object CaptionState {
     /**
      * The newest lines for the lock screen, as on the iPhone: from the lines
      * the screen shows, each named as the screen names it, so only while
-     * speaker names are on.
+     * speaker names are on: the lines keep their names either way, and the
+     * screen leaves them out as it draws.
      */
-    fun lockScreenLines(count: Int, textSize: LockScreenTextSize): List<LockScreenCaptionLine> {
+    fun lockScreenLines(count: Int, textSize: LockScreenTextSize, namesShown: Boolean): List<LockScreenCaptionLine> {
         val names = state.value.lines.associate { it.id to it.speaker }
-        return LockScreenCaptions.lines(segmentsShown, count, textSize) { names[it.id] }
+        return LockScreenCaptions.lines(segmentsShown, count, textSize) { names[it.id]?.takeIf { namesShown } }
     }
 
     /** The caption screen went away: the phone locked, or another app came to the front. */
