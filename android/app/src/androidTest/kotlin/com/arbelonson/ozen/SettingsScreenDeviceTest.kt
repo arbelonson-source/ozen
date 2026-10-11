@@ -69,6 +69,7 @@ import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -728,6 +729,43 @@ class SettingsScreenDeviceTest {
             instrumentation.removeMonitor(sheet)
             store.deleteAll()
         }
+    }
+
+    @Test
+    fun diagnosticsSayWhetherAlertsCanReachHerWhatConnectionThereIsAndWhatTheEngineIsToldToExpect() {
+        val allowedBefore = AlertNotifier.allowed
+        AlertNotifier.allowed = { false }
+        app.settings.change {
+            it.vocabulary = listOf("Shira", "Ozen", "Netanya")
+            it.keywordAlerts = listOf(KeywordAlert(phrase = "Grandma"), KeywordAlert(phrase = "Doctor", isEnabled = false))
+        }
+        val clipboard = app.getSystemService(ClipboardManager::class.java)
+        compose.runOnUiThread { clipboard.clearPrimaryClip() }
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
+            row("Phone notifications", "Turned off in Android settings")
+            row("Alert vibration", if (phoneVibrator(app)?.hasVibrator() == true) "OK" else "Not supported on this device")
+            val connection = DiagnosticsReport.network(app.captions.pipeline.networkConditions)
+            assertNotEquals("—", connection)
+            row("Internet connection", connection)
+            row("Model state", if (File(app.filesDir, CaptionSession.MODEL_FILE).exists()) "Installed (unverified)" else "Not downloaded")
+            row("Names and words", "3")
+            row("Word alerts", "1")
+
+            AlertNotifier.allowed = { true }
+            compose.waitUntil(5_000) { compose.onAllNodes(hasText("Phone notifications") and hasText("OK")).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Copy report").performScrollTo().performClick()
+            val copied = compose.runOnUiThread { clipboard.primaryClip?.getItemAt(0)?.text.toString() }
+            assertTrue(copied, copied.contains(" notifications allowed: yes haptics: ") && copied.contains(" network: $connection\n"))
+            assertTrue(copied, copied.contains("\nmodel state: ") && copied.contains(" vocabulary: 3\n"))
+        } finally {
+            AlertNotifier.allowed = allowedBefore
+        }
+    }
+
+    private fun row(label: String, value: String) {
+        compose.onNode(hasText(label) and hasText(value)).performScrollTo().assertExists()
     }
 
     private fun sampleMillis(): Long {

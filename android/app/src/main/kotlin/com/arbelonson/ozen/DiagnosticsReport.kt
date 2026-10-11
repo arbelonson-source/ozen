@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.PipelineStats
 import com.arbelonson.ozen.core.ScheduledRetry
@@ -39,6 +40,11 @@ data class DiagnosticsFacts(
     /** The journal kept on the phone as report lines, oldest first, earlier runs of the app included. */
     val journal: List<String>,
     val hasMarkedCaptionLines: Boolean,
+    val notificationsAllowed: Boolean,
+    val canVibrate: Boolean,
+    val network: NetworkConditions?,
+    /** Whether the model file is there; nothing checks it on Android yet, so never "verified". */
+    val modelInstalled: Boolean,
     /** The sound kept with marked problems, newest first. */
     val problemClips: List<File> = emptyList(),
 )
@@ -88,7 +94,9 @@ object DiagnosticsReport {
             "restarts: ${stats.engineRestarts} retry: ${facts.scheduledRetry?.let { "attempt ${it.attempt}" } ?: "-"} interrupted: ${facts.interruptedBySystem}",
             "alerts: words on ${alerts.count { it.isEnabled }} of ${alerts.size} when away: ${settings.notifyWhenInBackground}",
             "history: saving ${settings.saveHistory} keep ${settings.historyRetention.rawValue} display: size ${display.fontSize.toInt()} theme ${display.theme.rawValue} awake ${display.keepScreenAwake}",
-            "settings save error: ${if (facts.settingsSaveFailed) "failed" else "-"} history save error: ${facts.historySaveFailure ?: "-"}",
+            "settings save error: ${if (facts.settingsSaveFailed) "failed" else "-"} history save error: ${facts.historySaveFailure ?: "-"} " +
+                "notifications allowed: ${if (facts.notificationsAllowed) "yes" else "no"} haptics: ${if (facts.canVibrate) "ok" else "unsupported"} network: ${network(facts.network)}",
+            "model state: ${if (facts.modelInstalled) "unverified" else "missing"} vocabulary: ${settings.vocabulary.size}",
             "device: ${facts.device} app ${facts.appVersion}",
             "events (oldest first):",
         )
@@ -114,6 +122,14 @@ object DiagnosticsReport {
         retry ?: return "—"
         val seconds = maxOf(0, (retry.at - now).roundToInt())
         return tr("ניסיון %1, בעוד %2 שנ׳", "Attempt %1, in %2 s", listOf("${retry.attempt}", "$seconds"))
+    }
+
+    /** The phone's connection as the iPhone names it: "Wi-Fi", "Cellular · Data saving", "No connection". */
+    fun network(conditions: NetworkConditions?): String {
+        conditions ?: return "—"
+        if (!conditions.isConnected) return tr("אין חיבור", "No connection")
+        val kind = if (conditions.isExpensive) tr("סלולרי", "Cellular") else "Wi-Fi"
+        return if (conditions.isConstrained) "$kind · ${tr("חיסכון בנתונים", "Data saving")}" else kind
     }
 
     /** A kept sound's file name read back as its moment, in her language: "Oct 11, 2026, 1:05:07 PM". */

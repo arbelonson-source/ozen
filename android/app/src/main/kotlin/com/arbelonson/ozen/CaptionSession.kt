@@ -316,6 +316,10 @@ class CaptionSession(
             appVersion = appVersion(),
             journal = journal.reportLines(::utcOffsetAt),
             hasMarkedCaptionLines = journal.entries().any { ProblemSnapshot.isCaptionLine(it.text) },
+            notificationsAllowed = AlertNotifier.allowed(context),
+            canVibrate = phoneVibrator(context)?.hasVibrator() == true,
+            network = pipeline.networkConditions,
+            modelInstalled = modelFile.exists(),
             problemClips = problemAudio.clips(),
         )
     }

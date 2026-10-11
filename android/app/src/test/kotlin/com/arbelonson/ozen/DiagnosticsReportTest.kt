@@ -7,6 +7,7 @@ import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.PipelineStats
@@ -51,6 +52,10 @@ class DiagnosticsReportTest {
         appVersion = "0.2.40 (40)",
         journal = journal,
         hasMarkedCaptionLines = false,
+        notificationsAllowed = false,
+        canVibrate = true,
+        network = NetworkConditions.cellular.copy(isConstrained = true),
+        modelInstalled = true,
     )
 
     @Test
@@ -77,8 +82,9 @@ class DiagnosticsReportTest {
         assertEquals("restarts: 1 retry: attempt 2 interrupted: false", lines[9])
         assertEquals("alerts: words on 1 of 2 when away: true", lines[10])
         assertEquals("history: saving true keep year display: size ${settings.display.fontSize.toInt()} theme ${settings.display.theme.rawValue} awake ${settings.display.keepScreenAwake}", lines[11])
-        assertEquals("settings save error: failed history save error: -", lines[12])
-        assertEquals("device: Google Pixel 8, Android 16 app 0.2.40 (40)", lines[13])
+        assertEquals("settings save error: failed history save error: - notifications allowed: no haptics: ok network: Cellular · Data saving", lines[12])
+        assertEquals("model state: unverified vocabulary: ${settings.vocabulary.size}", lines[13])
+        assertEquals("device: Google Pixel 8, Android 16 app 0.2.40 (40)", lines[14])
         assertEquals(
             listOf(
                 "events (oldest first):",
@@ -88,7 +94,7 @@ class DiagnosticsReportTest {
                 "10-10 21:02:11 APP STARTED: 0.2.40 Android 16",
                 "10-10 21:40:03 PROBLEM MARKED: engine whisperKit",
             ),
-            lines.drop(14),
+            lines.drop(15),
         )
         assertEquals(listOf("journal, previous runs included (oldest first):", "-"), DiagnosticsReport.text(facts()).lines().takeLast(2))
     }
@@ -111,6 +117,17 @@ class DiagnosticsReportTest {
         assertEquals("requesting mic permission", DiagnosticsReport.stage(PipelinePhase.RequestingMicrophonePermission))
         val download = EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.42, detail = "large-v3")
         assertEquals("preparing engine: downloadingModel 42% large-v3", DiagnosticsReport.stage(PipelinePhase.PreparingEngine(download)))
+    }
+
+    @Test
+    fun `the connection is named as on the iPhone, in her language`() {
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("—", DiagnosticsReport.network(null))
+            assertEquals("No connection", DiagnosticsReport.network(NetworkConditions.offline))
+            assertEquals("Wi-Fi", DiagnosticsReport.network(NetworkConditions.wifi))
+            assertEquals("Cellular", DiagnosticsReport.network(NetworkConditions.cellular))
+            assertEquals("Wi-Fi · Data saving", DiagnosticsReport.network(NetworkConditions.wifi.copy(isConstrained = true)))
+        }
     }
 
     @Test

@@ -37,13 +37,15 @@ fun AlertVibration.waveform(): Pair<LongArray, IntArray> {
     return timings.toLongArray() to amplitudes.toIntArray()
 }
 
+fun phoneVibrator(context: Context): Vibrator? = if (Build.VERSION.SDK_INT >= 31) {
+    context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+} else {
+    context.getSystemService(Vibrator::class.java)
+}
+
 object Buzz {
     var play: (Context, AlertVibration) -> Unit = { context, vibration ->
-        val vibrator = if (Build.VERSION.SDK_INT >= 31) {
-            context.getSystemService(VibratorManager::class.java)?.defaultVibrator
-        } else {
-            context.getSystemService(Vibrator::class.java)
-        }
+        val vibrator = phoneVibrator(context)
         val (timings, amplitudes) = vibration.waveform()
         if (vibrator?.hasVibrator() == true) vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
     }

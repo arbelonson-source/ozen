@@ -122,6 +122,9 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             Value(tr("שיחת טלפון תופסת את האודיו", "Phone call is using the audio"), if (now.interruptedBySystem) tr("כן", "Yes") else tr("לא", "No"))
             Value(tr("שמירת הגדרות", "Settings save"), if (now.settingsSaveFailed) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
             Value(tr("שמירת שיחות", "Conversation history save"), if (now.historySaveFailure != null) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
+            Value(tr("הודעות בטלפון", "Phone notifications"), if (now.notificationsAllowed) tr("תקינות", "OK") else tr("כבויות בהגדרות של Android", "Turned off in Android settings"))
+            Value(tr("רטט להתראות", "Alert vibration"), if (now.canVibrate) tr("תקין", "OK") else tr("לא נתמך במכשיר", "Not supported on this device"))
+            Value(tr("חיבור לאינטרנט", "Internet connection"), DiagnosticsReport.network(now.network))
 
             Header(tr("אירועים אחרונים", "Recent events"))
             if (now.events.isEmpty()) {
@@ -190,6 +193,11 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 )
             }
 
+            Header(tr("מודל ומילים", "Model and words"))
+            Value(tr("מצב המודל", "Model state"), if (now.modelInstalled) tr("מותקן (לא אומת)", "Installed (unverified)") else tr("לא הורד", "Not downloaded"))
+            Value(tr("שמות ומילים", "Names and words"), "${now.settings.vocabulary.size}")
+            Value(tr("התראות מילים", "Word alerts"), "${now.settings.keywordAlerts.count { it.isEnabled }}")
+
             OutlinedButton(onClick = { context.startActivity(reportSheet(DiagnosticsReport.text(facts()))) }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
                 Text(tr("שליחת הדוח", "Send report"))
             }
@@ -213,7 +221,7 @@ private fun Header(text: String) {
 
 @Composable
 private fun Value(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
