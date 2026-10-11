@@ -1289,8 +1289,9 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("The pharmacy closes at nine tonight").assertExists()
             compose.onNodeWithText("Have the phone buzz", substring = true).assertDoesNotExist()
             compose.onNodeWithText("Tap to read it").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Share").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Tap to read it").assertDoesNotExist()
-            compose.onNodeWithText("The pharmacy closes at nine tonight", substring = true).assertExists()
+            compose.waitUntil(5_000) { savedLine("The pharmacy closes at nine tonight") }
             compose.onNodeWithText("Back").performClick()
 
             compose.onNodeWithText("Tap to read it").assertExists()
