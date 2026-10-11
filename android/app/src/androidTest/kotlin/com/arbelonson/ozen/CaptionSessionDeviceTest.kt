@@ -294,6 +294,7 @@ class CaptionSessionDeviceTest {
             assertEquals("smoke_detector", CaptionState.screen.value.sound?.event?.identifier)
             assertTrue("the captions ran: ${CaptionState.screen.value.phase}", soundsOnly)
             assertTrue("named ${named - (firstBanner ?: named)} ms after the first banner", named - (firstBanner ?: named) < 10_000)
+            withTimeoutOrNull(5_000) { while (AlertVibration.pattern(SoundEvent.Importance.Critical) !in buzzed) delay(50) }
             assertTrue("buzzed $buzzed", AlertVibration.pattern(SoundEvent.Importance.Critical) in buzzed)
         } finally {
             Buzz.play = before
