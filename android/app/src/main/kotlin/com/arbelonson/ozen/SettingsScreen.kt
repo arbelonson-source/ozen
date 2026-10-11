@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.BackHandler
@@ -71,6 +72,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.CloudProvider
@@ -590,15 +592,46 @@ private fun AlertsSection(enabled: Int, listed: Boolean, onOpen: () -> Unit) {
  * Alerts with the screen off, on by default as on the iPhone. Android asks
  * for notifications when captions first start; switched on here without
  * that, it asks then, since otherwise every alert in a pocket is dropped.
+ * While on, it offers a test notification, or, with Ozen's notifications
+ * turned off in the phone, says so and leads there; that is checked again
+ * on coming back, where she may just have turned them on.
  */
 @Composable
 private fun AwayAlertsRow(on: Boolean, onChange: (Boolean) -> Unit) {
     val context = LocalContext.current
-    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    var blocked by remember { mutableStateOf(!AlertNotifier.allowed(context)) }
+    var sent by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(Unit) {
+        blocked = !AlertNotifier.allowed(context)
+        onPauseOrDispose { }
+    }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { blocked = !AlertNotifier.allowed(context) }
     SwitchRow(tr("התראה בטלפון כשהמסך כבוי", "Alert on phone when the screen is off"), on) { switching ->
         onChange(switching)
-        val allowed = Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        if (switching && !allowed) ask.launch(Manifest.permission.POST_NOTIFICATIONS)
+        val granted = Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        if (switching && !granted) ask.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+    if (!on) return
+    if (blocked) {
+        Warning(tr("ההודעות של אוזן כבויות בהגדרות הטלפון, אז כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."))
+        TextButton(
+            onClick = {
+                context.startActivity(
+                    Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName),
+                )
+            },
+        ) { Text(tr("לפתוח את הגדרות הטלפון", "Open the phone’s settings")) }
+    } else {
+        TextButton(onClick = { AlertNotifier(context.applicationContext).postTest(); sent = true }) {
+            Text(
+                if (sent) {
+                    tr("נשלחה. נעלו את הטלפון, ותוך 10 שניות היא תגיע", "Sent. Lock the phone, and it will arrive within 10 seconds")
+                } else {
+                    tr("לבדוק שהתראה מגיעה כשהטלפון נעול", "Test that an alert arrives when the phone is locked")
+                },
+            )
+        }
     }
 }
 

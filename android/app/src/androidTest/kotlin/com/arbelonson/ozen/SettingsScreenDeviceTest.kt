@@ -1,5 +1,10 @@
 package com.arbelonson.ozen
 
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationManager
+import android.os.Build
+import android.os.ParcelFileDescriptor
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -421,6 +426,65 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun aTestNotificationAskedForInSettingsArrivesTenSecondsLater() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        if (Build.VERSION.SDK_INT >= 33) instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.POST_NOTIFICATIONS)
+        val manager = app.getSystemService(NotificationManager::class.java)
+        val tests = { manager.activeNotifications.filter { it.tag == "test-alert" } }
+        manager.cancel("test-alert", 0)
+        app.settings.change { it.notifyWhenInBackground = true }
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText(BLOCKED).assertDoesNotExist()
+            compose.onNodeWithText("Test that an alert arrives when the phone is locked").performScrollTo().performClick()
+            compose.onNodeWithText("Sent. Lock the phone, and it will arrive within 10 seconds").assertExists()
+            Thread.sleep(8_000)
+            assertTrue(tests().isEmpty())
+            val until = System.currentTimeMillis() + 6_000
+            while (tests().isEmpty() && System.currentTimeMillis() < until) Thread.sleep(100)
+            val posted = tests().single().notification
+            assertEquals("Test: doorbell", posted.extras.getString(Notification.EXTRA_TITLE))
+            assertEquals(AlertNotifier.CHANNEL_ID, posted.channelId)
+
+            compose.onNode(hasText("Alert on phone when the screen is off") and isToggleable()).performScrollTo().performClick()
+            compose.waitUntil(5_000) { !app.settings.current.value.notifyWhenInBackground }
+            compose.onNodeWithText("Sent. Lock the phone, and it will arrive within 10 seconds").assertDoesNotExist()
+        } finally {
+            manager.cancel("test-alert", 0)
+        }
+    }
+
+    @Test
+    fun notificationsTurnedOffInThePhoneAreSaidLeadToItsSettingsAndAreCheckedAgainOnReturn() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
+        }
+        val focused = { shell("dumpsys window").lineSequence().firstOrNull { "mCurrentFocus" in it }.orEmpty() }
+        val allowedBefore = AlertNotifier.allowed
+        app.settings.change { it.notifyWhenInBackground = true }
+        AlertNotifier.allowed = { false }
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText(BLOCKED).performScrollTo()
+            compose.onNodeWithText("Test that an alert arrives when the phone is locked").assertDoesNotExist()
+            compose.onNodeWithText("Open the phone’s settings").performScrollTo().performClick()
+            val until = System.currentTimeMillis() + 10_000
+            while ("AppNotificationSettingsActivity" !in focused() && System.currentTimeMillis() < until) Thread.sleep(200)
+            assertTrue(focused(), "AppNotificationSettingsActivity" in focused())
+
+            AlertNotifier.allowed = { true }
+            shell("input keyevent KEYCODE_BACK")
+            val back = System.currentTimeMillis() + 10_000
+            while (app.packageName !in focused() && System.currentTimeMillis() < back) Thread.sleep(200)
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(BLOCKED).fetchSemanticsNodes().isEmpty() }
+            compose.onNodeWithText("Test that an alert arrives when the phone is locked").performScrollTo()
+        } finally {
+            AlertNotifier.allowed = allowedBefore
+        }
+    }
+
+    @Test
     fun aFullWordListSaysSoAndTakesNoMore() {
         val full = (1..200).map { "Name number $it" }
         app.settings.change { it.vocabulary = full }
@@ -444,5 +508,9 @@ class SettingsScreenDeviceTest {
         val colour = layouts.single().layoutInput.style.color
         val ratio = ContrastRatio.ratio(Triple(colour.red.toDouble(), colour.green.toDouble(), colour.blue.toDouble()), colour.alpha.toDouble(), Triple(1.0, 1.0, 1.0))
         assertTrue("$text: $ratio to 1", ratio >= 4.5)
+    }
+
+    private companion object {
+        const val BLOCKED = "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."
     }
 }

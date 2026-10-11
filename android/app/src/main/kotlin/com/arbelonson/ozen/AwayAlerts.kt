@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import com.arbelonson.ozen.core.AlertNotificationContent
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppSettings
@@ -50,7 +52,17 @@ class AlertNotifier(private val context: Context) {
         manager.notify(content.identifier, 0, notification)
     }
 
+    fun postTest() {
+        Handler(Looper.getMainLooper()).postDelayed({ post(BackgroundAlertPolicy.testNotification) }, TEST_DELAY_MILLIS)
+    }
+
     companion object {
         const val CHANNEL_ID = "alerts"
+        const val TEST_DELAY_MILLIS = 10_000L
+
+        var allowed: (Context) -> Boolean = { context ->
+            val manager = context.getSystemService(NotificationManager::class.java)
+            manager.areNotificationsEnabled() && manager.getNotificationChannel(CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE
+        }
     }
 }
