@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.arbelonson.ozen.core.AlertSuggestions
 import com.arbelonson.ozen.core.HebrewText
 import com.arbelonson.ozen.core.KeywordAlert
+import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.tr
 
@@ -52,13 +53,15 @@ import com.arbelonson.ozen.core.tr
  * The words that make the phone buzz and mark their line when said, as on
  * the iPhone: added at the end, switched off without being lost, and
  * deleted only after asking, since losing the one that buzzes for her name
- * should take a second tap.
+ * should take a second tap. The ten heard last follow, newest first, as on
+ * the iPhone but without who said them: Android can't tell voices apart yet.
  */
 @Composable
 internal fun ImportantWordsScreen(
     alerts: List<KeywordAlert>,
     vocabulary: List<String>,
     captionLanguage: String,
+    heard: List<KeywordHit>,
     onChange: (List<KeywordAlert>) -> Unit,
     onClose: () -> Unit,
 ) {
@@ -141,6 +144,15 @@ internal fun ImportantWordsScreen(
             for (word in ImportantWords.suggestions(vocabulary, alerts)) {
                 TextButton(onClick = { onChange(ImportantWords.adding(word, alerts)) }) {
                     Text(tr("להוסיף: %1", "Add: %1", listOf(AlertSuggestions.label(word, Localization.language))))
+                }
+            }
+            if (heard.isNotEmpty()) {
+                Text(tr("נשמעו לאחרונה", "Recently heard"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp).semantics { heading() })
+                for (hit in heard) {
+                    Row(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(AlertSuggestions.said(hit.match, Localization.language), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                        Text(clockTime(hit.timestamp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }

@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ControlBarAutoHide
+import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.PhoneNumbers
 import com.arbelonson.ozen.core.PipelinePhase
@@ -40,6 +41,7 @@ data class CaptionScreenState(
     val lines: List<CaptionLine> = emptyList(),
     val lastActivityAt: Double? = null,
     val heard: HeardWord? = null,
+    val recentlyHeard: List<KeywordHit> = emptyList(),
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
@@ -89,6 +91,7 @@ object CaptionState {
         starred: (UUID) -> Boolean = { false },
         conversation: (Int) -> UUID? = { null },
         keywordHits: Set<UUID> = emptySet(),
+        recentlyHeard: List<KeywordHit> = emptyList(),
     ) {
         state.value = CaptionScreenState(
             phase = phase,
@@ -111,6 +114,7 @@ object CaptionState {
             },
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),
             heard = state.value.heard,
+            recentlyHeard = recentlyHeard.takeLast(10).reversed(),
         )
     }
 

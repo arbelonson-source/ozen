@@ -81,6 +81,7 @@ import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.KeywordAlert
+import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.tr
@@ -94,6 +95,7 @@ fun SettingsScreen(
     onClose: () -> Unit,
     onWords: (List<String>) -> Unit,
     onImportantWords: (List<KeywordAlert>) -> Unit,
+    heard: List<KeywordHit> = emptyList(),
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
@@ -112,7 +114,7 @@ fun SettingsScreen(
     }
     var showingImportantWords by rememberSaveable { mutableStateOf(false) }
     if (showingImportantWords) {
-        ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, onImportantWords, onClose = { showingImportantWords = false })
+        ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, heard, onImportantWords, onClose = { showingImportantWords = false })
         return
     }
     BackHandler(onBack = close)

@@ -1,6 +1,8 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.CaptionLayout
+import com.arbelonson.ozen.core.KeywordHit
+import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -70,6 +72,14 @@ class CaptionStateTest {
         assertEquals(word, CaptionState.screen.value.heard)
         CaptionState.clear()
         assertNull(CaptionState.screen.value.heard)
+    }
+
+    @Test
+    fun `the important words heard lately are the last ten, newest first`() {
+        val grandma = UUID.randomUUID()
+        val hits = (1..12).map { KeywordHit(segmentID = UUID.randomUUID(), match = KeywordMatch(grandma, "סבתא", "סבתא", 0), timestamp = it.toDouble()) }
+        CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), recentlyHeard = hits)
+        assertEquals((12 downTo 3).map { it.toDouble() }, CaptionState.screen.value.recentlyHeard.map { it.timestamp })
     }
 
     @Test

@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -41,6 +42,8 @@ import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.ContrastRatio
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.KeywordAlert
+import com.arbelonson.ozen.core.KeywordHit
+import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -423,6 +426,27 @@ class SettingsScreenDeviceTest {
         compose.onNode(hasText("Alert on phone when the screen is off") and isToggleable()).performScrollTo().performClick()
         compose.waitUntil(5_000) { !app.settings.current.value.notifyWhenInBackground }
         compose.onNodeWithText("Quiet hours").assertDoesNotExist()
+    }
+
+    @Test
+    fun importantWordsHeardLatelyAreListedNewestFirstWithTheirTimes() {
+        val grandma = KeywordAlert(phrase = "סבתא")
+        app.settings.change { it.keywordAlerts = listOf(grandma) }
+        val at = 1_800_000_000.0
+        val hits = listOf(
+            KeywordHit(segmentID = UUID.randomUUID(), match = KeywordMatch(grandma.id, "סבתא", "סבתא", 0), timestamp = at),
+            KeywordHit(segmentID = UUID.randomUUID(), match = KeywordMatch(UUID.randomUUID(), "Shira", "Shira", 0), timestamp = at + 60),
+        )
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Important words").performScrollTo().performClick()
+        compose.onNodeWithText("Recently heard").assertDoesNotExist()
+        compose.runOnUiThread {
+            CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), recentlyHeard = hits)
+        }
+        compose.onNodeWithText("Recently heard").performScrollTo()
+        val older = compose.onNode(hasText("Grandma") and hasText(clockTime(at))).performScrollTo()
+        val newer = compose.onNode(hasText("Shira") and hasText(clockTime(at + 60))).performScrollTo()
+        assertTrue(newer.getUnclippedBoundsInRoot().top < older.getUnclippedBoundsInRoot().top)
     }
 
     @Test

@@ -184,6 +184,7 @@ class CaptionSession(
             starred = conversations::isStarred,
             conversation = conversations::savedConversation,
             keywordHits = pipeline.keywordHitSegmentIDs,
+            recentlyHeard = pipeline.keywordHits,
         )
     }
 
