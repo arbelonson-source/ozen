@@ -7,6 +7,7 @@ import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
+import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.core.tr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -43,7 +44,13 @@ class EngineSettings(
     /** Every engine is told the language, so captions running on any of them start again in the new one. */
     fun chooseSpokenLanguage(language: UILanguage) {
         if (settings.current.value.spokenLanguage == language) return
-        settings.change { it.spokenLanguage = language }
+        settings.change {
+            // As on the iPhone: on the old language's recommended model, the
+            // new one's comes along (its "may be misheard" cutoffs, and the
+            // name saved with each conversation); one chosen by hand stays.
+            if (it.whisperModelVariant == it.recommendedWhisperVariant) it.whisperModelVariant = WhisperModelCatalog.recommendedVariant(language)
+            it.spokenLanguage = language
+        }
         restart()
     }
 

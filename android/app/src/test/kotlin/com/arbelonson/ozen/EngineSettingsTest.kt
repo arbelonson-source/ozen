@@ -7,6 +7,7 @@ import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
+import com.arbelonson.ozen.core.WhisperModelCatalog
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.AfterTest
@@ -75,6 +76,17 @@ class EngineSettingsTest {
         engineSettings.chooseSpokenLanguage(UILanguage.Arabic)
         assertEquals("ar", saved().languageCode)
         assertEquals(3, restarts)
+    }
+
+    @Test
+    fun `a new spoken language takes its recommended model along, as on the iPhone, and a model chosen by hand stays`() {
+        engineSettings.chooseSpokenLanguage(UILanguage.English)
+        assertEquals(WhisperModelCatalog.recommendedVariant(UILanguage.English), saved().whisperModelVariant)
+        engineSettings.chooseSpokenLanguage(UILanguage.Hebrew)
+        assertEquals(WhisperModelCatalog.recommendedVariant(UILanguage.Hebrew), saved().whisperModelVariant)
+        settings.change { it.whisperModelVariant = "large-v3_turbo" }
+        engineSettings.chooseSpokenLanguage(UILanguage.French)
+        assertEquals("large-v3_turbo", saved().whisperModelVariant)
     }
 
     @Test
