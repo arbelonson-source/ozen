@@ -4,6 +4,8 @@ import android.Manifest
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -14,6 +16,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.UILanguage
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -56,6 +59,7 @@ class OnboardingDeviceTest {
                 it.keywordAlerts = emptyList()
                 it.vocabulary = emptyList()
                 it.engine = TranscriptionEngineKind.WhisperKit
+                it.languageCode = "he"
                 it.hasCompletedOnboarding = false
             }
         }
@@ -72,6 +76,7 @@ class OnboardingDeviceTest {
             it.keywordAlerts = before.keywordAlerts
             it.vocabulary = before.vocabulary
             it.engine = before.engine
+            it.languageCode = before.languageCode
             it.hasCompletedOnboarding = true
         }
     }
@@ -82,6 +87,10 @@ class OnboardingDeviceTest {
         compose.onNodeWithText("It all happens on the phone. Nothing is sent to the internet.").assertExists()
         compose.onNodeWithText("Next").performClick()
         compose.onNodeWithText("How it works").assertExists()
+        compose.onNodeWithText("Next").performClick()
+
+        compose.onNodeWithText("Which language do people around you speak?").assertExists()
+        compose.onNodeWithText(UILanguage.Hebrew.spokenName).assertIsSelected()
         compose.onNodeWithText("Next").performClick()
 
         compose.onNodeWithText("✓ Microphone approved").assertExists()
@@ -106,6 +115,23 @@ class OnboardingDeviceTest {
         compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
         compose.onNodeWithText("History").assertExists()
         compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
+    }
+
+    @Test
+    fun theWalkthroughAsksWhichLanguagePeopleAroundHerSpeakHebrewUntilSheChoosesAndSkipKeepsTheChoice() {
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Which language do people around you speak?").assertExists()
+        compose.onNodeWithText("The captions are written in this language. You can change it anytime in Settings.").performScrollTo().assertExists()
+        compose.onNodeWithText("English").performScrollTo().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.languageCode == "en" }
+        compose.onNodeWithText("English").assertIsSelected()
+        compose.onNodeWithText(UILanguage.Hebrew.spokenName).performScrollTo().assertIsNotSelected()
+        compose.onNodeWithText("中文").performScrollTo().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.languageCode == "zh" }
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
+        assertEquals("zh", app.settings.current.value.languageCode)
     }
 
     @Test

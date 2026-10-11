@@ -300,6 +300,7 @@ private fun OzenApp(
                         onApproveMicrophone = onboarding.approveMicrophone,
                         onApproveNotifications = onboarding.approveNotifications,
                         onOpenPhoneSettings = onboarding.openPhoneSettings,
+                        onSpokenLanguage = app.engineSettings::chooseSpokenLanguage,
                         onAddName = app.captions::addNameAlert,
                         onAddAlert = app.captions::addAlert,
                         onFinish = onboarding.finish,

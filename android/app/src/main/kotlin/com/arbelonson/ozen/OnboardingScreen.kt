@@ -19,6 +19,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,6 +29,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,6 +45,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -56,6 +60,7 @@ import com.arbelonson.ozen.core.FirstRunNote
 import com.arbelonson.ozen.core.HebrewText
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.audioLeavesPhone
 import com.arbelonson.ozen.core.firstRunNote
 import com.arbelonson.ozen.core.tr
@@ -63,7 +68,8 @@ import kotlinx.coroutines.launch
 
 /**
  * First launch, as on the iPhone: short pages in large type saying what the
- * app is and how it works, the microphone asked for with a reason (and the
+ * app is and how it works, the language people around her speak, the
+ * microphone asked for with a reason (and the
  * notifications that reach her while the phone is put away), her name for
  * the alert that buzzes when she is called, and go. The iPhone's page for
  * choosing the engine and its model download is left out until where the
@@ -81,6 +87,7 @@ internal fun OnboardingScreen(
     onApproveMicrophone: () -> Unit,
     onApproveNotifications: () -> Unit,
     onOpenPhoneSettings: () -> Unit,
+    onSpokenLanguage: (UILanguage) -> Unit,
     onAddName: (String) -> Unit,
     onAddAlert: (String) -> Unit,
     onFinish: () -> Unit,
@@ -116,7 +123,8 @@ internal fun OnboardingScreen(
                         Point("🔔", tr("היא מתריעה על שמות שחשובים לך, ועל צלצול בדלת או אזעקה, ברטט שונה לכל אחד.", "It alerts you to names that matter to you, and to a doorbell or alarm, with a different vibration for each."))
                         Point("⌨", tr("ואפשר להקליד תשובה, והטלפון יגיד אותה בקול.", "And you can type a reply, and the phone will speak it aloud."))
                     }
-                    2 -> MicrophonePage(settings, microphone, notifications, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
+                    2 -> LanguagePage(settings.spokenLanguage, onSpokenLanguage)
+                    3 -> MicrophonePage(settings, microphone, notifications, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
                     NAME_PAGE -> NamePage(settings, nameDraft, addDraft, onAddAlert)
                     else -> Page("✅", tr("מוכן", "Ready")) {
                         // The app does not download the phone's model yet, so
@@ -238,6 +246,28 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
     }
 }
 
+/** Before the microphone, as before the iPhone's engine page; Hebrew until she picks another. */
+@Composable
+private fun LanguagePage(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
+    Page("🌐", tr("באיזו שפה מדברים סביבך?", "Which language do people around you speak?")) {
+        Column(modifier = Modifier.selectableGroup()) {
+            for (language in UILanguage.entries) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 56.dp)
+                        .selectable(selected = language == chosen, role = Role.RadioButton) { onChoose(language) },
+                ) {
+                    RadioButton(selected = language == chosen, onClick = null)
+                    Text(language.spokenName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 12.dp))
+                }
+            }
+        }
+        Body(tr("הכתוביות נכתבות בשפה הזו. אפשר לשנות בכל רגע בהגדרות.", "The captions are written in this language. You can change it anytime in Settings."))
+    }
+}
+
 @Composable
 private fun Page(symbol: String, title: String, content: @Composable () -> Unit) {
     Column(
@@ -326,5 +356,5 @@ private fun Footer(pager: PagerState, onFinish: () -> Unit) {
     }
 }
 
-private const val PAGES = 5
-private const val NAME_PAGE = 3
+private const val PAGES = 6
+private const val NAME_PAGE = 4

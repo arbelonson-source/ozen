@@ -193,7 +193,7 @@ final class OzenScreenshotUITests: XCTestCase {
         capture(app, name: "onboarding-accessibility-text-page1-welcome")
 
         let next = app.descendants(matching: .any)["onboardingNextButton"]
-        for (index, name) in ["page2-how-it-works", "page3-engine", "page4-microphone", "page5-name", "page6-ready"].enumerated() {
+        for (index, name) in ["page2-how-it-works", "page3-language", "page4-engine", "page5-microphone", "page6-name", "page7-ready"].enumerated() {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "onboarding: no Next button on page \(index + 1)")
             next.tap()
             // The footer's own content (Skip/Next vs. the last page's lone
@@ -203,22 +203,22 @@ final class OzenScreenshotUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.5)
             capture(app, name: "onboarding-accessibility-text-\(name)")
 
-            if name == "page4-microphone" {
+            if name == "page5-microphone" {
                 // The "Approve the microphone" button sits below the fold
                 // at this text size -- scroll to actually see it rather
                 // than assume the same fix that worked in the reply
                 // sheet's "Full screen, big letters" button holds here too.
                 app.swipeUp()
-                capture(app, name: "onboarding-accessibility-text-page4-microphone-button-scrolled")
+                capture(app, name: "onboarding-accessibility-text-page5-microphone-button-scrolled")
             }
 
-            if name == "page5-name" {
+            if name == "page6-name" {
                 // NameAlertForm's TextField and "Add" button sit below the
                 // fold at this text size -- scroll to actually see whether
                 // that fixed-direction HStack holds up at the widest word
                 // shapes get, rather than assuming it does.
                 app.swipeUp()
-                capture(app, name: "onboarding-accessibility-text-page5-name-form-scrolled")
+                capture(app, name: "onboarding-accessibility-text-page6-name-form-scrolled")
             }
         }
     }
@@ -285,7 +285,7 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(walkthrough.descendants(matching: .any)["onboardingScreen"].waitForExistence(timeout: 10), "english: the walkthrough never appeared")
         capture(walkthrough, name: "english-walkthrough-page1")
         let next = walkthrough.descendants(matching: .any)["onboardingNextButton"]
-        for page in 2...6 {
+        for page in 2...7 {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "english: no Next button on page \(page - 1)")
             next.tap()
             Thread.sleep(forTimeInterval: 0.5)
@@ -320,7 +320,7 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(walkthrough.descendants(matching: .any)["onboardingScreen"].waitForExistence(timeout: 10), "hebrew default: the walkthrough never appeared")
         capture(walkthrough, name: "hebrew-walkthrough-page1")
         let next = walkthrough.descendants(matching: .any)["onboardingNextButton"]
-        for page in 2...6 {
+        for page in 2...7 {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "hebrew default: no Next button on page \(page - 1)")
             next.tap()
             Thread.sleep(forTimeInterval: 0.5)

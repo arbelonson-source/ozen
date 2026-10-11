@@ -3,8 +3,8 @@ import UIKit
 import OzenKit
 import OzenPlatform
 
-/// First launch. Six short pages in large type: what the app is, how it
-/// works, which engine (with the model download explained before it
+/// First launch. Seven short pages in large type: what the app is, how it
+/// works, the language people around her speak, which engine (with the model download explained before it
 /// happens), the microphone permission asked with a reason, the words
 /// that should buzz the phone (her name), and go.
 struct OnboardingView: View {
@@ -21,16 +21,17 @@ struct OnboardingView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private static let pageCount = 6
+    private static let pageCount = 7
 
     var body: some View {
         TabView(selection: $page) {
             welcomePage.tag(0)
             howItWorksPage.tag(1)
-            enginePage.tag(2)
-            microphonePage.tag(3)
-            namePage.tag(4)
-            readyPage.tag(5)
+            languagePage.tag(2)
+            enginePage.tag(3)
+            microphonePage.tag(4)
+            namePage.tag(5)
+            readyPage.tag(6)
         }
         .tabViewStyle(.page(indexDisplayMode: .always))
         .indexViewStyle(.page(backgroundDisplayMode: .always))
@@ -65,7 +66,7 @@ struct OnboardingView: View {
         .task(id: PendingAppAction.shared.serial) {
             _ = PendingAppAction.shared.takeAll()
         }
-        // Six pages to read, a permission to grant, a name to type: long
+        // Seven pages to read, a permission to grant, a name to type: long
         // enough that the phone's own lock timeout can end onboarding
         // partway through. The caption screen manages this on its own
         // once it's showing (see `ScreenAwakePolicy`); onboarding has no
@@ -98,6 +99,23 @@ struct OnboardingView: View {
         }
     }
 
+    /// Before the engine page, which then offers the model for it. Hebrew
+    /// is chosen until she picks another.
+    private var languagePage: some View {
+        OnboardingPage(symbol: "globe", title: tr("באיזו שפה מדברים סביבך?", "Which language do people around you speak?")) {
+            VStack(spacing: 8) {
+                ForEach(UILanguage.allCases, id: \.self) { language in
+                    LanguageChoiceRow(name: language.spokenName, selected: viewModel.settings.spokenLanguage == language) {
+                        Task { await viewModel.setSpokenLanguage(language) }
+                    }
+                }
+            }
+            Text(tr("הכתוביות נכתבות בשפה הזו. אפשר לשנות בכל רגע בהגדרות.", "The captions are written in this language. You can change it anytime in Settings."))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private var enginePage: some View {
         OnboardingPage(symbol: "cpu", title: tr("הכנה חד-פעמית", "One-time setup")) {
             // Scanning the home computer's QR code on a new phone lands here
@@ -112,7 +130,7 @@ struct OnboardingView: View {
                 ) {}
             }
             EngineCard(
-                title: tr("עברית מדויקת (מומלץ)", "Accurate Hebrew (recommended)"),
+                title: viewModel.settings.spokenLanguage == .hebrew ? tr("עברית מדויקת (מומלץ)", "Accurate Hebrew (recommended)") : tr("מדויק (מומלץ)", "Accurate (recommended)"),
                 subtitle: tr("מוריד פעם אחת קובץ של כ-%1, ב-Wi-Fi, ומכין אותו לטלפון במשך כמה דקות. אחר כך עובד בלי אינטרנט.", "Downloads a file of about %1 once, over Wi‑Fi, and takes a few minutes to set it up for the phone. After that it works without the internet.", args: ["\(modelSizeText)"]),
                 symbol: "sparkles",
                 selected: viewModel.settings.engine == .whisperKit
@@ -126,7 +144,7 @@ struct OnboardingView: View {
                             get: { viewModel.settings.whisperModelVariant },
                             set: { variant in Task { await viewModel.setWhisperModel(variant) } }
                         )) {
-                            Text(tr("מדויק", "Accurate")).tag(WhisperModelCatalog.recommendedVariant)
+                            Text(tr("מדויק", "Accurate")).tag(viewModel.settings.recommendedWhisperVariant)
                             Text(tr("מהיר", "Fast")).tag("small")
                         }
                         .pickerStyle(.segmented)
@@ -140,7 +158,7 @@ struct OnboardingView: View {
                         .font(.callout)
                 }
                 .onAppear {
-                    if viewModel.settings.whisperModelVariant != WhisperModelCatalog.recommendedVariant {
+                    if viewModel.settings.whisperModelVariant != viewModel.settings.recommendedWhisperVariant {
                         showsModelChoice = true
                     }
                 }
@@ -152,7 +170,9 @@ struct OnboardingView: View {
             }
             EngineCard(
                 title: tr("בלי הורדה", "No download"),
-                subtitle: tr("הזיהוי של אפל, שמובנה בטלפון. מתחיל מיד, אבל עברית זמינה רק בחלק מגרסאות iOS.", "Apple’s recognition, built into the phone. Starts right away, but Hebrew is only available on some iOS versions."),
+                subtitle: viewModel.settings.spokenLanguage == .hebrew
+                    ? tr("הזיהוי של אפל, שמובנה בטלפון. מתחיל מיד, אבל עברית זמינה רק בחלק מגרסאות iOS.", "Apple’s recognition, built into the phone. Starts right away, but Hebrew is only available on some iOS versions.")
+                    : tr("הזיהוי של אפל, שמובנה בטלפון. מתחיל מיד, אבל לא כל השפות זמינות.", "Apple’s recognition, built into the phone. Starts right away, but not every language is available."),
                 symbol: "apple.logo",
                 selected: viewModel.settings.engine == .appleSpeech
             ) {
@@ -356,11 +376,16 @@ struct OnboardingView: View {
     }
 
     private var modelChoiceNote: String {
+        let hebrew = viewModel.settings.spokenLanguage == .hebrew
         switch viewModel.settings.whisperModelVariant {
-        case WhisperModelCatalog.recommendedVariant:
-            return tr("מדויק: עברית טובה בהרבה, מתעדכן קצת יותר לאט. מתאים לאייפון חדש.", "Accurate: much better Hebrew, updates a bit slower. Good for a newer iPhone.")
+        case viewModel.settings.recommendedWhisperVariant:
+            return hebrew
+                ? tr("מדויק: עברית טובה בהרבה, מתעדכן קצת יותר לאט. מתאים לאייפון חדש.", "Accurate: much better Hebrew, updates a bit slower. Good for a newer iPhone.")
+                : tr("מדויק: כתוביות טובות בהרבה, מתעדכן קצת יותר לאט. מתאים לאייפון חדש.", "Accurate: much better captions, updates a bit slower. Good for a newer iPhone.")
         case "small":
-            return tr("מהיר: מגיב מיד, אבל טועה בהרבה יותר מילים בעברית. רק לטלפון ישן שהמדויק איטי בו.", "Fast: responds instantly, but gets many more Hebrew words wrong. Only for an older phone the accurate one is slow on.")
+            return hebrew
+                ? tr("מהיר: מגיב מיד, אבל טועה בהרבה יותר מילים בעברית. רק לטלפון ישן שהמדויק איטי בו.", "Fast: responds instantly, but gets many more Hebrew words wrong. Only for an older phone the accurate one is slow on.")
+                : tr("מהיר: מגיב מיד, אבל טועה בהרבה יותר מילים. רק לטלפון ישן שהמדויק איטי בו.", "Fast: responds instantly, but gets many more words wrong. Only for an older phone the accurate one is slow on.")
         default:
             return tr("נבחר מודל אחר בהגדרות.", "A different model is selected in Settings.")
         }
@@ -448,6 +473,38 @@ private struct OnboardingRow: View {
             Text(text)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+private struct LanguageChoiceRow: View {
+    let name: String
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundStyle(selected ? Color.accentColor : Color.secondary)
+                    .accessibilityHidden(true)
+                Text(name)
+                    .font(.title3.weight(selected ? .semibold : .regular))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.secondarySystemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
