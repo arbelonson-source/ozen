@@ -48,8 +48,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -92,6 +94,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -1513,13 +1516,23 @@ private fun StatusButton(status: PhasePresentation, chrome: Color, onTap: () -> 
         modifier = Modifier
             .fillMaxWidth()
             .background(chrome.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
-            .clickable(onClick = onTap)
+            // As on the iPhone, no button while a tap would do nothing.
+            .clickable(enabled = status.action != PhasePresentation.Action.None, onClick = onTap)
             .padding(vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(text = status.title, color = chrome, fontSize = 22.sp, textAlign = TextAlign.Center)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // The title already says what it is busy with; only a download's bar is read out.
+            if (status.isBusy) CircularProgressIndicator(color = chrome, strokeWidth = 2.dp, modifier = Modifier.size(18.dp).testTag(STATUS_BUSY).clearAndSetSemantics {})
+            Text(text = status.title, color = chrome, fontSize = 22.sp, textAlign = TextAlign.Center)
+        }
         status.detail?.let { detail ->
             Text(text = detail, color = chrome.copy(alpha = 0.7f), fontSize = 16.sp, textAlign = TextAlign.Center)
         }
+        status.progress?.let { progress ->
+            LinearProgressIndicator(progress = { progress.toFloat() }, color = chrome, trackColor = chrome.copy(alpha = 0.2f), modifier = Modifier.padding(top = 6.dp).widthIn(max = 160.dp))
+        }
     }
 }
+
+internal const val STATUS_BUSY = "statusBusy"

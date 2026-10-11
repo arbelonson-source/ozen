@@ -15,6 +15,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -43,6 +44,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onParent
@@ -76,6 +78,7 @@ import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
+import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
@@ -1509,6 +1512,28 @@ class CaptionScreenDeviceTest {
             app.settings.change { it.notifyWhenInBackground = before }
             clearAlerts()
         }
+    }
+
+    @Test
+    fun theStatusShowsWhenItIsBusyAndHowFarADownloadIsAndIsNoButtonWhenATapWouldDoNothing() {
+        fun show(phase: PipelinePhase) {
+            compose.runOnUiThread { CaptionState.show(phase, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
+            compose.waitForIdle()
+        }
+        fun status() = compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction())
+        val busy = compose.onNodeWithTag(STATUS_BUSY, useUnmergedTree = true)
+
+        show(PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.42, detail = "small")))
+        status().assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(0.42f, 0f..1f))).assertIsNotEnabled()
+        busy.assertExists()
+
+        show(PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel, detail = "small")))
+        status().assertIsNotEnabled()
+        busy.assertExists()
+
+        show(PipelinePhase.Listening)
+        status().assertIsEnabled()
+        busy.assertDoesNotExist()
     }
 
     // A link opened from another app's task can start a second caption
