@@ -388,6 +388,31 @@ struct TranscriptHistoryTests {
         #expect(store.listSummaries().first?.preview == "בוקר טוב")
     }
 
+    @Test("a search result's preview shows the matching line as it was said, its time, capitals and commas kept")
+    func searchPreviewKeepsTheLineAsSaid() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        try store.save(record(startedAt: 100, segments: [segment(text: "Good morning"), segment(text: "The dentist moved it to Thursday, at 10:30.")]))
+
+        // From the search text prepared on saving, then from the conversation read whole.
+        #expect(store.search("dentist 1030").map(\.preview) == ["The dentist moved it to Thursday, at 10:30."])
+        try FileManager.default.removeItem(at: dir.appendingPathComponent(TranscriptHistoryStore.summariesFolderName))
+        #expect(store.search("dentist 1030").map(\.preview) == ["The dentist moved it to Thursday, at 10:30."])
+    }
+
+    @Test("a search that matches a speaker's name previews the name as written")
+    func searchPreviewKeepsTheNameAsWritten() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        try store.save(record(startedAt: 100, segments: [segment(text: "How are you", speakerName: "Dr. Levi")]))
+
+        #expect(store.search("levi").map(\.preview) == ["Dr. Levi"])
+        try FileManager.default.removeItem(at: dir.appendingPathComponent(TranscriptHistoryStore.summariesFolderName))
+        #expect(store.search("levi").map(\.preview) == ["Dr. Levi"])
+    }
+
     @Test("search matches on speaker name even when the text doesn't contain the query")
     func searchMatchesSpeakerNames() throws {
         let dir = makeTempDirectory()
@@ -922,8 +947,23 @@ struct TranscriptHistorySearchCacheTests {
         dir.appendingPathComponent("\(id.uuidString).json")
     }
 
-    private func searchFile(_ dir: URL, _ id: UUID) -> URL {
-        dir.appendingPathComponent(TranscriptHistoryStore.summariesFolderName).appendingPathComponent("\(id.uuidString).search-v3.txt")
+    private func searchFile(_ dir: URL, _ id: UUID, version: Int = 4) -> URL {
+        dir.appendingPathComponent(TranscriptHistoryStore.summariesFolderName).appendingPathComponent("\(id.uuidString).search-v\(version).txt")
+    }
+
+    @Test("deleting a conversation deletes its search words of the format before too")
+    func deletingRemovesOlderSearchFiles() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        let saved = record(lines: [("The dentist moved it to Thursday", nil)])
+        try store.save(saved)
+        let older = searchFile(dir, saved.id, version: 3)
+        try Data("the dentist moved it to thursday".utf8).write(to: older)
+
+        try store.delete(id: saved.id)
+        #expect(!FileManager.default.fileExists(atPath: older.path))
+        #expect(!FileManager.default.fileExists(atPath: searchFile(dir, saved.id).path))
     }
 
     private func setModified(_ url: URL, _ date: Date) throws {
@@ -1326,7 +1366,7 @@ struct TranscriptHistoryTitleTests {
         #expect(store.search("רופא").map(\.id) == [id])
         #expect(store.search("סבתא").isEmpty)
         let remade = try FileManager.default.contentsOfDirectory(atPath: prepared.path)
-        #expect(remade.contains { $0.hasSuffix(".search-v3.txt") })
+        #expect(remade.contains { $0.hasSuffix(".search-v4.txt") })
         #expect(store.search("רופא").map(\.id) == [id])
     }
 

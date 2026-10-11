@@ -416,6 +416,31 @@ class TranscriptHistoryTest {
     }
 
     @Test
+    fun `a search result's preview shows the matching line as it was said, its time, capitals and commas kept`() {
+        withHistoryDirectory("ozen-history") { dir ->
+            val store = TranscriptHistoryStore(dir)
+            store.save(record(startedAt = 100.0, segments = listOf(segment(text = "Good morning"), segment(text = "The dentist moved it to Thursday, at 10:30."))))
+
+            // From the search text prepared on saving, then from the conversation read whole.
+            assertEquals("The dentist moved it to Thursday, at 10:30.", store.search("dentist 1030").single().preview)
+            File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME).deleteRecursively()
+            assertEquals("The dentist moved it to Thursday, at 10:30.", store.search("dentist 1030").single().preview)
+        }
+    }
+
+    @Test
+    fun `a search that matches a speaker's name previews the name as written`() {
+        withHistoryDirectory("ozen-history") { dir ->
+            val store = TranscriptHistoryStore(dir)
+            store.save(record(startedAt = 100.0, segments = listOf(segment(text = "How are you", speakerName = "Dr. Levi"))))
+
+            assertEquals("Dr. Levi", store.search("levi").single().preview)
+            File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME).deleteRecursively()
+            assertEquals("Dr. Levi", store.search("levi").single().preview)
+        }
+    }
+
+    @Test
     fun `search matches on speaker name even when the text doesn't contain the query`() {
         withHistoryDirectory("ozen-history") { dir ->
             val store = TranscriptHistoryStore(dir)
@@ -923,7 +948,22 @@ class TranscriptHistorySearchCacheTest {
 
     private fun recordFile(dir: File, id: UUID) = File(dir, "${uuidString(id)}.json")
 
-    private fun searchFile(dir: File, id: UUID) = File(File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME), "${uuidString(id)}.search-v3.txt")
+    private fun searchFile(dir: File, id: UUID, version: Int = 4) = File(File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME), "${uuidString(id)}.search-v$version.txt")
+
+    @Test
+    fun `deleting a conversation deletes its search words of the format before too`() {
+        withHistoryDirectory("ozen-history-search") { dir ->
+            val store = TranscriptHistoryStore(dir)
+            val saved = record(lines = listOf("The dentist moved it to Thursday" to null))
+            store.save(saved)
+            val older = searchFile(dir, saved.id, version = 3)
+            older.writeText("the dentist moved it to thursday")
+
+            store.delete(saved.id)
+            assertFalse(older.exists())
+            assertFalse(searchFile(dir, saved.id).exists())
+        }
+    }
 
     @Test
     fun `search answers from the prepared text, without reading the conversation`() {
@@ -1353,7 +1393,7 @@ class TranscriptHistoryTitleTest {
             assertEquals(listOf(id), store.search("רופא").map { it.id })
             assertTrue(store.search("סבתא").isEmpty())
             val remade = prepared.list()?.toList() ?: emptyList()
-            assertTrue(remade.any { it.endsWith(".search-v3.txt") })
+            assertTrue(remade.any { it.endsWith(".search-v4.txt") })
             assertEquals(listOf(id), store.search("רופא").map { it.id })
         }
     }

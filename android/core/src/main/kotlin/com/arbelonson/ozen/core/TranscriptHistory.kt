@@ -505,20 +505,22 @@ class TranscriptHistoryStore(private val directory: File) {
 
     /**
      * The searchable words of one conversation, already lowercased and
-     * stripped of niqqud, one caption line or speaker name per line. The
+     * stripped of niqqud, one caption line or speaker name per line, then
+     * the same lines as they were said (see [searchableText]). The
      * format is in the file name, so a future change simply stops
      * finding the old files and rebuilds them. (v1 also held "speaker 2"
-     * and "unknown speaker" labels.)
+     * and "unknown speaker" labels; v3 had no lines as said, so a result's
+     * preview showed "10:30" as "1030".)
      */
     private fun searchTextFile(recordFile: File): File =
-        File(summariesDirectory, recordFile.nameWithoutExtension + ".search-v3.txt")
+        File(summariesDirectory, recordFile.nameWithoutExtension + ".search-v4.txt")
 
     /**
      * Search files of earlier formats hold the conversation's words too,
      * so deleting it deletes them.
      */
     private fun olderSearchTextFiles(recordFile: File): List<File> =
-        listOf("v1", "v2").map { File(summariesDirectory, recordFile.nameWithoutExtension + ".search-$it.txt") }
+        listOf("v1", "v2", "v3").map { File(summariesDirectory, recordFile.nameWithoutExtension + ".search-$it.txt") }
 
     /**
      * Saves a session, overwriting any earlier save with the same id -
@@ -734,9 +736,9 @@ class TranscriptHistoryStore(private val directory: File) {
             .mapNotNull { file ->
                 // Fast path: the conversation's prepared search text says
                 // no, or says yes and its summary is ready.
-                val prepared = cachedSearchText(file)
+                val prepared = cachedSearchText(file)?.let(::preparedSearch)
                 if (prepared != null) {
-                    if (!words.all { it.found(prepared) }) return@mapNotNull null
+                    if (!words.all { it.found(prepared.words) }) return@mapNotNull null
                     val cached = cachedSummary(file)
                     if (cached != null) {
                         val snippet = matchingSnippet(query, prepared)
@@ -751,8 +753,9 @@ class TranscriptHistoryStore(private val directory: File) {
                 val text = searchableText(record)
                 writeSummary(summary, file, read)
                 writeSearchText(text, file, read)
-                if (!words.all { it.found(text) }) return@mapNotNull null
-                val snippet = matchingSnippet(query, text)
+                val made = preparedSearch(text) ?: return@mapNotNull null
+                if (!words.all { it.found(made.words) }) return@mapNotNull null
+                val snippet = matchingSnippet(query, made)
                 if (snippet != null) summary.copy(preview = snippet) else summary
             }
             .sortedByDescending { it.startedAt }
@@ -785,8 +788,8 @@ class TranscriptHistoryStore(private val directory: File) {
         val needle = normalizedForSearch(from)
         var changed = 0
         for (file in recordFiles()) {
-            val cached = cachedSearchText(file)
-            if (cached != null && !cached.contains(needle)) continue
+            val cached = cachedSearchText(file)?.let(::preparedSearch)
+            if (cached != null && !cached.words.contains(needle)) continue
             val record = decodeRecord(file) ?: continue
             if (record.segments.none { it.speakerName == from }) continue
             val renamed = record.copy(segments = record.segments.map { if (it.speakerName == from) it.copy(speakerName = to) else it })
@@ -969,19 +972,38 @@ class TranscriptHistoryStore(private val directory: File) {
             return if (millis == 0L) null else FileTime.fromMillis(millis)
         }
 
+        /**
+         * One line per title, caption line and speaker name: first all of
+         * them in the form searches compare (see [normalizedForSearch]),
+         * then [SAID_MARK] on a line of its own, then the same lines as
+         * they were said, for a result's preview. The mark is punctuation,
+         * which the searchable form never holds.
+         */
         internal fun searchableText(record: TranscriptSessionRecord): String {
-            val lines = ArrayList<String>()
-            record.title?.let { lines.add(normalizedForSearch(it)) }
+            val said = ArrayList<String>()
+            record.title?.let { said.add(it) }
             for (segment in record.segments) {
-                lines.add(normalizedForSearch(segment.text))
+                said.add(segment.text)
                 // Not "speaker 2" or "unknown speaker": searching for "2" found
                 // every conversation with a numbered voice.
                 val name = segment.speakerName
                 if (name != null && !TranscriptSessionSummary.isGenericLabel(name)) {
-                    lines.add(normalizedForSearch(name))
+                    said.add(name)
                 }
             }
-            return lines.joinToString("\n")
+            return said.joinToString("\n") { normalizedForSearch(it) } + "\n" + SAID_MARK + "\n" +
+                said.joinToString("\n") { it.replace("\n", " ") }
+        }
+
+        internal const val SAID_MARK = "§"
+
+        /** A conversation's prepared search text, split back into its two halves. */
+        internal class PreparedSearch(val words: String, val said: List<String>)
+
+        internal fun preparedSearch(text: String): PreparedSearch? {
+            val mark = text.indexOf("\n" + SAID_MARK + "\n")
+            if (mark < 0) return null
+            return PreparedSearch(text.substring(0, mark), text.substring(mark + SAID_MARK.length + 2).split("\n"))
         }
 
         /**
@@ -1085,21 +1107,19 @@ class TranscriptHistoryStore(private val directory: File) {
         }
 
         /**
-         * The first prepared search line (see [searchableText]) that holds
-         * every word of [query] - or, when none does, the first that holds
-         * any, matching the same fallback [search] itself uses - truncated
-         * like a normal preview. [text] is already normalized, so this reads
-         * slightly differently than the original line (case folded, niqqud
-         * gone); that trade-off is what keeps a search fast, never reading a
-         * conversation back off disk just to build its preview.
+         * The first line (see [searchableText]) that holds every word of
+         * [query] - or, when none does, the first that holds any, matching
+         * the same fallback [search] itself uses - as it was said, truncated
+         * like a normal preview. Read from the prepared search text, so a
+         * search never reads a conversation back off disk to build it.
          */
-        internal fun matchingSnippet(query: String, text: String): String? {
+        internal fun matchingSnippet(query: String, prepared: PreparedSearch): String? {
             val words = searchWords(query)
             if (words.isEmpty()) return null
-            val lines = text.split("\n").filter { it.isNotEmpty() }
-            lines.firstOrNull { line -> words.all { it.found(line) } }?.let { return TranscriptSessionSummary.truncatedForPreview(it) }
-            lines.firstOrNull { line -> words.any { it.found(line) } }?.let { return TranscriptSessionSummary.truncatedForPreview(it) }
-            return null
+            val lines = prepared.words.split("\n").zip(prepared.said).filter { it.first.isNotEmpty() }
+            val line = lines.firstOrNull { line -> words.all { it.found(line.first) } }
+                ?: lines.firstOrNull { line -> words.any { it.found(line.first) } }
+            return line?.let { TranscriptSessionSummary.truncatedForPreview(it.second) }
         }
 
         /**

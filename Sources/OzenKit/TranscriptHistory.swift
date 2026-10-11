@@ -437,18 +437,20 @@ public struct TranscriptHistoryStore: Sendable {
     }
 
     /// The searchable words of one conversation, already lowercased and
-    /// stripped of niqqud, one caption line or speaker name per line. The
+    /// stripped of niqqud, one caption line or speaker name per line, then
+    /// the same lines as they were said (see `searchableText`). The
     /// format is in the file name, so a future change simply stops
     /// finding the old files and rebuilds them. (v1 also held "speaker 2"
-    /// and "unknown speaker" labels.)
+    /// and "unknown speaker" labels; v3 had no lines as said, so a result's
+    /// preview showed "10:30" as "1030".)
     private func searchTextURL(forRecordFile url: URL) -> URL {
-        summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-v3.txt")
+        summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-v4.txt")
     }
 
     /// Search files of earlier formats hold the conversation's words too,
     /// so deleting it deletes them.
     private func olderSearchTextURLs(forRecordFile url: URL) -> [URL] {
-        ["v1", "v2"].map { summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-\($0).txt") }
+        ["v1", "v2", "v3"].map { summariesURL.appendingPathComponent(url.deletingPathExtension().lastPathComponent + ".search-\($0).txt") }
     }
 
     /// Saves a session, overwriting any earlier save with the same id —
@@ -601,17 +603,39 @@ public struct TranscriptHistoryStore: Sendable {
         removeCacheIfConversationChanged(searchTextURL(forRecordFile: url), forRecordFile: url, since: recordModifiedAt)
     }
 
+    /// One line per title, caption line and speaker name: first all of
+    /// them in the form searches compare (see `normalizedForSearch`), then
+    /// `saidMark` on a line of its own, then the same lines as they were
+    /// said, for a result's preview. The mark is punctuation, which the
+    /// searchable form never holds.
     static func searchableText(of record: TranscriptSessionRecord) -> String {
-        var lines: [String] = record.title.map { [normalizedForSearch($0)] } ?? []
+        var said: [String] = record.title.map { [$0] } ?? []
         for segment in record.segments {
-            lines.append(normalizedForSearch(segment.text))
+            said.append(segment.text)
             // Not "speaker 2" or "unknown speaker": searching for "2" found
             // every conversation with a numbered voice.
             if let name = segment.speakerName, !TranscriptSessionSummary.isGenericLabel(name) {
-                lines.append(normalizedForSearch(name))
+                said.append(name)
             }
         }
-        return lines.joined(separator: "\n")
+        return said.map(normalizedForSearch).joined(separator: "\n") + "\n" + saidMark + "\n"
+            + said.map { $0.replacingOccurrences(of: "\n", with: " ") }.joined(separator: "\n")
+    }
+
+    static let saidMark = "§"
+
+    /// A conversation's prepared search text, split back into its two halves.
+    struct PreparedSearch {
+        let words: String
+        let said: [String]
+    }
+
+    static func preparedSearch(_ text: String) -> PreparedSearch? {
+        guard let mark = text.range(of: "\n" + saidMark + "\n") else { return nil }
+        return PreparedSearch(
+            words: String(text[..<mark.lowerBound]),
+            said: text[mark.upperBound...].split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        )
     }
 
     /// Turns saved or typed text into the form both sides of a search are
@@ -800,10 +824,10 @@ public struct TranscriptHistoryStore: Sendable {
             .compactMap { url -> TranscriptSessionSummary? in
                 // Fast path: the conversation's prepared search text says
                 // no, or says yes and its summary is ready.
-                if let text = cachedSearchText(forRecordFile: url) {
-                    guard words.allSatisfy({ $0.found(in: text) }) else { return nil }
+                if let prepared = cachedSearchText(forRecordFile: url).flatMap(Self.preparedSearch) {
+                    guard words.allSatisfy({ $0.found(in: prepared.words) }) else { return nil }
                     if var summary = cachedSummary(forRecordFile: url) {
-                        if let snippet = Self.matchingSnippet(for: query, in: text) {
+                        if let snippet = Self.matchingSnippet(for: query, in: prepared) {
                             summary.preview = snippet
                         }
                         return summary
@@ -817,8 +841,8 @@ public struct TranscriptHistoryStore: Sendable {
                 let text = Self.searchableText(of: record)
                 writeSummary(summary, forRecordFile: url, recordModifiedAt: read)
                 writeSearchText(text, forRecordFile: url, recordModifiedAt: read)
-                guard words.allSatisfy({ $0.found(in: text) }) else { return nil }
-                if let snippet = Self.matchingSnippet(for: query, in: text) {
+                guard let prepared = Self.preparedSearch(text), words.allSatisfy({ $0.found(in: prepared.words) }) else { return nil }
+                if let snippet = Self.matchingSnippet(for: query, in: prepared) {
                     summary.preview = snippet
                 }
                 return summary
@@ -826,24 +850,19 @@ public struct TranscriptHistoryStore: Sendable {
             .sorted { $0.startedAt > $1.startedAt }
     }
 
-    /// The first prepared search line (see `searchableText`) that holds
-    /// every word of `query` — or, when none does, the first that holds
-    /// any, matching the same fallback `search` itself uses — truncated
-    /// like a normal preview. `text` is already normalized, so this reads
-    /// slightly differently than the original line (case folded, niqqud
-    /// gone); that trade-off is what keeps a search fast, never reading a
-    /// conversation back off disk just to build its preview.
-    static func matchingSnippet(for query: String, in text: String) -> String? {
+    /// The first line (see `searchableText`) that holds every word of
+    /// `query` — or, when none does, the first that holds any, matching
+    /// the same fallback `search` itself uses — as it was said, truncated
+    /// like a normal preview. Read from the prepared search text, so a
+    /// search never reads a conversation back off disk to build it.
+    static func matchingSnippet(for query: String, in prepared: PreparedSearch) -> String? {
         let words = searchWords(query)
         guard !words.isEmpty else { return nil }
-        let lines = text.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
-        if let full = lines.first(where: { line in words.allSatisfy { $0.found(in: line) } }) {
-            return TranscriptSessionSummary.truncatedForPreview(full)
-        }
-        if let any = lines.first(where: { line in words.contains { $0.found(in: line) } }) {
-            return TranscriptSessionSummary.truncatedForPreview(any)
-        }
-        return nil
+        let searchable = prepared.words.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        let lines = zip(searchable, prepared.said).filter { !$0.0.isEmpty }
+        let line = lines.first(where: { line in words.allSatisfy { $0.found(in: line.0) } })
+            ?? lines.first(where: { line in words.contains { $0.found(in: line.0) } })
+        return line.map { TranscriptSessionSummary.truncatedForPreview($0.1) }
     }
 
     /// Every starred line in saved history, newest conversation first and
@@ -871,7 +890,7 @@ public struct TranscriptHistoryStore: Sendable {
         let needle = Self.normalizedForSearch(oldName)
         var changed = 0
         for url in recordFiles() {
-            if let cached = cachedSearchText(forRecordFile: url), !cached.contains(needle) { continue }
+            if let cached = cachedSearchText(forRecordFile: url).flatMap(Self.preparedSearch), !cached.words.contains(needle) { continue }
             guard var record = Self.decodeRecord(at: url),
                   record.segments.contains(where: { $0.speakerName == oldName })
             else { continue }
