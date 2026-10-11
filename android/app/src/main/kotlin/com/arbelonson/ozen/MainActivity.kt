@@ -97,6 +97,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -965,37 +966,76 @@ private fun CaptionLineContent(
     layout: TextLayoutResult?,
     actions: List<CustomAccessibilityAction>,
 ) {
+    val speaker = line.speaker?.takeIf { display.showSpeakerNames }
     CompositionLocalProvider(LocalLayoutDirection provides readingDirection(line.text)) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            if (line.starred) StarMark(display.fontSize, starColour(look.isLight))
-            if (line.important) BellMark(display.fontSize, look.text)
-            if (display.markUncertainLines && line.unsure) UnsureMark(display.fontSize, look.pendingText)
-            Text(
-                text = captionText(
-                    line.text,
-                    display.emphasizeNumbers,
-                    numberColor = if (line.isFinal) look.numberText else null,
-                    doubtfulWords = doubtful,
-                    linkingPhoneNumbers = line.phones.isNotEmpty(),
-                ),
-                style = LocalTextStyle.current.copy(textDirection = TextDirection.Content),
-                color = colour,
-                fontSize = display.fontSize.sp,
-                lineHeight = (display.fontSize * 1.25).sp,
-                fontWeight = if (display.boldText) FontWeight.Bold else FontWeight.Medium,
-                onTextLayout = onLayout,
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .then(if (line.important) Modifier.background(importantField(look.isLight), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp) else Modifier)
-                    .drawBehind { layout?.let { drawDoubtDots(it, colour) } }
-                    .semantics {
-                        if (spoken.isNotEmpty()) {
-                            stateDescription = tr("מילים שאולי לא נשמעו נכון: %1", "Words that may be wrong: %1", listOf(spoken.joinToString(", ")))
-                        }
-                        customActions = actions
-                    },
-            )
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (speaker != null && line.showsSpeaker) SpeakerLabel(speaker, line.speakerCluster, display.fontSize, look)
+            CaptionLineWords(line, display, look, doubtful, spoken, colour, onLayout, layout, actions, speaker)
         }
+    }
+}
+
+/**
+ * Like a chat, as on the iPhone: the name heads a run of lines by one
+ * person, in their colour, with a dot. A screen reader hears the name on
+ * every line instead, so the label itself is skipped.
+ */
+@Composable
+private fun SpeakerLabel(name: String, cluster: Int?, captionSize: Double, look: CaptionTheme) {
+    val colour = SpeakerColour.of(cluster, name, look.isLight)
+    Row(
+        modifier = Modifier.semantics { hideFromAccessibility() },
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(name, color = colour, fontSize = maxOf(15.0, captionSize * 0.5).sp, fontWeight = FontWeight.SemiBold)
+        Box(modifier = Modifier.size(10.dp).background(colour, CircleShape))
+    }
+}
+
+@Composable
+private fun CaptionLineWords(
+    line: CaptionLine,
+    display: DisplayPreferences,
+    look: CaptionTheme,
+    doubtful: List<String>,
+    spoken: List<String>,
+    colour: Color,
+    onLayout: (TextLayoutResult) -> Unit,
+    layout: TextLayoutResult?,
+    actions: List<CustomAccessibilityAction>,
+    speaker: String?,
+) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        if (line.starred) StarMark(display.fontSize, starColour(look.isLight))
+        if (line.important) BellMark(display.fontSize, look.text)
+        if (display.markUncertainLines && line.unsure) UnsureMark(display.fontSize, look.pendingText)
+        Text(
+            text = captionText(
+                line.text,
+                display.emphasizeNumbers,
+                numberColor = if (line.isFinal) look.numberText else null,
+                doubtfulWords = doubtful,
+                linkingPhoneNumbers = line.phones.isNotEmpty(),
+            ),
+            style = LocalTextStyle.current.copy(textDirection = TextDirection.Content),
+            color = colour,
+            fontSize = display.fontSize.sp,
+            lineHeight = (display.fontSize * 1.25).sp,
+            fontWeight = if (display.boldText) FontWeight.Bold else FontWeight.Medium,
+            onTextLayout = onLayout,
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .then(if (line.important) Modifier.background(importantField(look.isLight), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp) else Modifier)
+                .drawBehind { layout?.let { drawDoubtDots(it, colour) } }
+                .semantics {
+                    if (speaker != null) contentDescription = "$speaker: ${line.text}"
+                    if (spoken.isNotEmpty()) {
+                        stateDescription = tr("מילים שאולי לא נשמעו נכון: %1", "Words that may be wrong: %1", listOf(spoken.joinToString(", ")))
+                    }
+                    customActions = actions
+                },
+        )
     }
 }
 

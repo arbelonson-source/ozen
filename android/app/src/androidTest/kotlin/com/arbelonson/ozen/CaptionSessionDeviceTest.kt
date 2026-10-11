@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPermission
@@ -343,6 +344,35 @@ class CaptionSessionDeviceTest {
                 session.close()
                 CaptionState.clear()
             }
+        }
+    }
+
+    @Test
+    fun theCaptionsVoicePrintsKeepTwoRecordingsOfOneVoiceTogetherAndAnotherVoiceApart() = runBlocking {
+        val work = File(context.cacheDir, "voice-print-test").apply { deleteRecursively(); mkdirs() }
+        val session = withContext(Dispatchers.Main) {
+            CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(FloatArray(0)),
+                modelFolder = File(work, "no-model"),
+                historyFolder = File(work, "history"),
+            )
+        }
+        try {
+            val (first, second, other) = listOf("speakerA_clip1", "speakerA_clip2", "speakerB_clip1").map { name ->
+                val print = session.pipeline.embeddingInBackground(DeviceClips.asset("$name.wav"))
+                assertNotNull("no voice print for $name", print)
+                print!!
+            }
+            assertEquals(512, first.size)
+            val threshold = AppSettings.default.speakerSimilarityThreshold
+            assertTrue("one voice scored ${DeviceClips.cosine(first, second)}", DeviceClips.cosine(first, second) >= threshold)
+            assertTrue("another voice scored ${DeviceClips.cosine(first, other)}", DeviceClips.cosine(first, other) < threshold)
+        } finally {
+            withContext(Dispatchers.Main) { session.close() }
         }
     }
 

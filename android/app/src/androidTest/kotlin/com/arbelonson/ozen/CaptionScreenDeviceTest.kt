@@ -1226,6 +1226,50 @@ class CaptionScreenDeviceTest {
     }
 
     // The line's own text, which carries its actions; a linked number may have a node of its own.
+    @Test
+    fun aSpeakersNameHeadsTheirRunOfLinesInTheirColourIsSaidOnEveryLineAndGoesWithNamesOff() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.display
+        val voice = { text: String, cluster: Int, at: Double ->
+            TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, speakerClusterID = cluster, startTimestamp = at, lastUpdateTimestamp = at)
+        }
+        val names = mapOf(0 to "Dana", 1 to "Speaker 2")
+        try {
+            app.settings.change { it.display = it.display.copy(theme = DisplayPreferences.Theme.Dark, showSpeakerNames = true) }
+            compose.runOnUiThread {
+                CaptionState.show(
+                    PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null,
+                    segments = listOf(voice("Good morning", 0, 0.0), voice("How did you sleep", 0, 1.0), voice("Fine thanks", 1, 2.0)),
+                    speakerName = { names[it.speakerClusterID] },
+                )
+            }
+            compose.waitForIdle()
+            val dana = compose.onAllNodesWithText("Dana", useUnmergedTree = true)
+            assertEquals(1, dana.fetchSemanticsNodes().size)
+            dana.onFirst().assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.HideFromAccessibility))
+            val label = dana.onFirst().fetchSemanticsNode().boundsInRoot
+            val first = lineText("Good morning").fetchSemanticsNode().boundsInRoot
+            assertTrue("label $label, line $first", label.bottom <= first.top + 1f)
+            assertEquals(SpeakerColour.of(0, "Dana", light = false), labelColour("Dana"))
+            assertEquals(SpeakerColour.of(1, "Speaker 2", light = false), labelColour("Speaker 2"))
+            lineText("How did you sleep").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Dana: How did you sleep")))
+            lineText("Fine thanks").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Speaker 2: Fine thanks")))
+
+            app.settings.change { it.display = it.display.copy(showSpeakerNames = false) }
+            compose.waitForIdle()
+            compose.onNodeWithText("Dana", useUnmergedTree = true).assertDoesNotExist()
+            lineText("How did you sleep").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
+        } finally {
+            app.settings.change { it.display = before }
+        }
+    }
+
+    private fun labelColour(name: String): Color {
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(name, useUnmergedTree = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        return layouts.single().layoutInput.style.color
+    }
+
     private fun lineText(text: String) =
         compose.onAllNodes(hasText(text, substring = true) and SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)).onFirst()
 

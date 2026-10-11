@@ -39,6 +39,31 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `a name heads each run of lines by one person, every line keeps it for the screen reader, and a line without a voice has none`() {
+        fun said(text: String, voice: Int?, at: Double) =
+            TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, speakerClusterID = voice, startTimestamp = at, lastUpdateTimestamp = at)
+        val lines = listOf(
+            said("Good morning", 0, 0.0),
+            said("How did you sleep", 2, 1.0),
+            said("Fine", 1, 2.0),
+            said("And you", null, 3.0),
+            said("Me too", 0, 4.0),
+            said("Later on", 0, 4.0 + CaptionLayout.QUIET_GAP_SECONDS),
+        )
+        val names = mapOf(0 to "Dana", 1 to "Speaker 2", 2 to "Dana")
+        CaptionState.show(
+            PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines,
+            speakerName = { names.getValue(it.speakerClusterID!!) },
+        )
+        val shown = CaptionState.screen.value.lines
+        assertEquals(listOf("Dana", "Dana", "Speaker 2", null, "Dana", "Dana"), shown.map { it.speaker })
+        assertEquals(listOf(true, false, true, false, true, true), shown.map { it.showsSpeaker })
+        assertEquals(listOf(0, 2, 1, null, 0, 0), shown.map { it.speakerCluster })
+        show(PipelinePhase.Listening, lines)
+        assertTrue(CaptionState.screen.value.lines.all { it.speaker == null && !it.showsSpeaker })
+    }
+
+    @Test
     fun `a line of only numbers reads the way the spoken language does, not always from the right`() {
         val time = line("10:30", committed = true)
         CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(time), languageCode = "en")

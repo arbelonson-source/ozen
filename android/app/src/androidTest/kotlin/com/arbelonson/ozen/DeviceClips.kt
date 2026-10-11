@@ -1,12 +1,18 @@
 package com.arbelonson.ozen
 
+import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 object DeviceClips {
-    fun readWav(file: File): FloatArray {
-        val bytes = ByteBuffer.wrap(file.readBytes()).order(ByteOrder.LITTLE_ENDIAN)
+    fun readWav(file: File): FloatArray = readWav(file.readBytes(), file.name)
+
+    fun asset(name: String): FloatArray =
+        readWav(InstrumentationRegistry.getInstrumentation().context.assets.open(name).use { it.readBytes() }, name)
+
+    private fun readWav(wav: ByteArray, name: String): FloatArray {
+        val bytes = ByteBuffer.wrap(wav).order(ByteOrder.LITTLE_ENDIAN)
         var offset = 12
         while (offset + 8 <= bytes.limit()) {
             val id = String(ByteArray(4) { bytes.get(offset + it) }, Charsets.US_ASCII)
@@ -14,7 +20,19 @@ object DeviceClips {
             if (id == "data") return FloatArray(size / 2) { bytes.getShort(offset + 8 + it * 2) / 32768f }
             offset += 8 + size + (size and 1)
         }
-        error("no data chunk in ${file.name}")
+        error("no data chunk in $name")
+    }
+
+    fun cosine(a: FloatArray, b: FloatArray): Double {
+        var dot = 0.0
+        var left = 0.0
+        var right = 0.0
+        for (i in a.indices) {
+            dot += a[i] * b[i]
+            left += a[i] * a[i]
+            right += b[i] * b[i]
+        }
+        return dot / kotlin.math.sqrt(left) / kotlin.math.sqrt(right)
     }
 
     fun withoutPauses(samples: FloatArray): FloatArray {

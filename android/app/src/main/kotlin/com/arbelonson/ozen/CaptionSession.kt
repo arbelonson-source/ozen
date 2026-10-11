@@ -34,7 +34,6 @@ import com.arbelonson.ozen.core.ProblemSnapshot
 import com.arbelonson.ozen.core.ReleaseFileFetching
 import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SessionJournal
-import com.arbelonson.ozen.core.SpeakerEmbedding
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -82,7 +81,7 @@ class CaptionSession(
         scope = scope,
         audio = audio,
         engineFactory = ::engine,
-        embedder = NoVoicePrints,
+        embedder = CamPlusPlusEmbedder(context),
         soundDetector = YamnetSoundDetector(context),
         availableStorageBytes = { context.filesDir.usableSpace },
         network = network,
@@ -356,6 +355,7 @@ class CaptionSession(
             keywordHits = pipeline.keywordHitSegmentIDs,
             recentlyHeard = pipeline.keywordHits,
             languageCode = transcribing.languageCode,
+            speakerName = pipeline::displayName,
         )
         refreshSavingTrouble()
         announceNewLines(transcribing)
@@ -629,10 +629,6 @@ class CaptionSession(
         val scorer = voiceScorer ?: return null
         scorer.reset()
         return { input -> scorer.score(input) }
-    }
-
-    private object NoVoicePrints : SpeakerEmbedding {
-        override fun embed(samples: FloatArray, sampleRate: Double): FloatArray? = null
     }
 
     companion object {

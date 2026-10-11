@@ -37,6 +37,12 @@ data class CaptionLine(
     val important: Boolean = false,
     /** Starts after a quiet stretch (see `CaptionLayout.startsAfterQuiet`): the time goes above it. */
     val afterQuiet: QuietGap? = null,
+    /** Who said it, by the name the screen shows when names are on; null for a line with no voice yet. */
+    val speaker: String? = null,
+    /** The voice it was matched to, which colours an unnamed speaker. */
+    val speakerCluster: Int? = null,
+    /** Heads a run of lines by one person, as in a chat: the name shows above it. */
+    val showsSpeaker: Boolean = false,
 )
 
 /** When the words before a quiet stretch were last heard, and when talk picked up again. */
@@ -133,11 +139,13 @@ object CaptionState {
         keywordHits: Set<UUID> = emptySet(),
         recentlyHeard: List<KeywordHit> = emptyList(),
         languageCode: String = "he",
+        speakerName: (TranscriptSegment) -> String? = { null },
         now: Double = System.currentTimeMillis() / 1_000.0,
     ) {
         val resumed = speechResume.noteCaptions(segments, now)
         segmentsShown = segments
         val firstShown = segments.size - minOf(segments.size, MAXIMUM_LINES)
+        val named = { segment: TranscriptSegment -> segment.takeIf { it.speakerClusterID != null }?.let(speakerName) }
         state.value = CaptionScreenState(
             phase = phase,
             engine = engine,
@@ -158,6 +166,10 @@ object CaptionState {
                     afterQuiet = segments.getOrNull(firstShown + at - 1)
                         ?.takeIf { previous -> CaptionLayout.startsAfterQuiet(it, previous) }
                         ?.let { previous -> QuietGap(previous.lastUpdateTimestamp, it.startTimestamp) },
+                    speaker = named(it),
+                    speakerCluster = it.speakerClusterID,
+                    showsSpeaker = named(it) != null &&
+                        CaptionLayout.showsSpeakerLabel(it, segments.getOrNull(firstShown + at - 1)) { other -> named(other) ?: "" },
                 )
             },
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),
