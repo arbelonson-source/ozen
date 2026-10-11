@@ -182,6 +182,20 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun showSpeakerNamesTurnsTheNamesOnTheCaptionsOffAndOnAgain() {
+        app.settings.change { it.display = it.display.copy(showSpeakerNames = true) }
+        compose.onNodeWithText("Settings").performClick()
+        val names = compose.onNode(hasText("Show speaker names") and isToggleable())
+        names.performScrollTo().assertIsOn()
+        names.performClick()
+        compose.waitUntil(5_000) { !app.settings.current.value.display.showSpeakerNames }
+        names.assertIsOff()
+        names.performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.display.showSpeakerNames }
+        names.assertIsOn()
+    }
+
+    @Test
     fun eachSavedPersonIsListedOnceAndARenameReachesEveryOneOfTheirVoicePrints() {
         val print = FloatArray(512) { 0.1f }
         app.settings.change {

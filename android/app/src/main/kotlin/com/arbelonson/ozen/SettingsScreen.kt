@@ -254,6 +254,9 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
         }
     }
     SwitchRow(tr("טקסט מודגש", "Bold text"), display.boldText) { on -> settings.change { it.display = it.display.copy(boldText = on) } }
+    SwitchRow(tr("להציג שמות דוברים", "Show speaker names"), display.showSpeakerNames) { on ->
+        settings.change { it.display = it.display.copy(showSpeakerNames = on) }
+    }
     SwitchRow(tr("המסך לא נכבה בזמן האזנה", "Screen doesn’t turn off while listening"), display.keepScreenAwake) { on ->
         settings.change { it.display = it.display.copy(keepScreenAwake = on) }
     }
