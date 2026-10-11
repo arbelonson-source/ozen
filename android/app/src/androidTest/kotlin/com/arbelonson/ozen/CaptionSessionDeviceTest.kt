@@ -1,6 +1,10 @@
 package com.arbelonson.ozen
 
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationManager
 import android.net.Uri
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.util.Log
@@ -24,6 +28,7 @@ import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.SoundEvent
+import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
@@ -554,6 +559,52 @@ class CaptionSessionDeviceTest {
             assertTrue(clips.clips().isEmpty())
         } finally {
             withContext(Dispatchers.Main) { session.close() }
+        }
+    }
+
+    @Test
+    fun captionsThatStopForGoodWhileTheAppIsAwaySayItOnceInANoticeThatOpeningTheAppTakesAway(): Unit = runBlocking {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        if (Build.VERSION.SDK_INT >= 33) instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.POST_NOTIFICATIONS)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val notices = { manager.activeNotifications.filter { it.tag == StoppedCaptionsNotice.IDENTIFIER } }
+        manager.cancel(StoppedCaptionsNotice.IDENTIFIER, 0)
+        val work = File(context.cacheDir, "stopped-notice-test").apply { deleteRecursively(); mkdirs() }
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        settings.change { it.notifyWhenInBackground = true }
+        val languageBefore = Localization.language
+        Localization.language = UILanguage.English
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(
+                context,
+                settings,
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(FloatArray(16_000)),
+                modelFolder = File(work, "no-models"),
+                historyFolder = File(work, "history"),
+            )
+        }
+        try {
+            withContext(Dispatchers.Main) { session.listen() }
+            assertNotNull(withTimeoutOrNull(30_000) { CaptionState.screen.first { it.phase.modelMissing } })
+            assertNotNull("never posted", withTimeoutOrNull(5_000) { while (notices().isEmpty()) delay(100) })
+            assertEquals("Captions stopped", notices().single().notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
+
+            withContext(Dispatchers.Main) { session.appIsActive = true }
+            assertNotNull("never taken away", withTimeoutOrNull(5_000) { while (notices().isNotEmpty()) delay(100) })
+            withContext(Dispatchers.Main) { session.appIsActive = false }
+            delay(1_000)
+            assertTrue("posted again after she saw it", notices().isEmpty())
+        } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+            manager.cancel(StoppedCaptionsNotice.IDENTIFIER, 0)
+            Localization.language = languageBefore
+            work.deleteRecursively()
         }
     }
 

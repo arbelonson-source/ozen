@@ -28,6 +28,7 @@ import com.arbelonson.ozen.core.BatteryAdvisor
 import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionsStopAnnouncer
 import com.arbelonson.ozen.core.HomeServerEngine
+import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundAlertPreferences
@@ -111,6 +112,7 @@ class CaptionSession(
     private val announcer = CaptionAnnouncer()
     private val awayAlerts = AwayAlerts()
     private val notifier = AlertNotifier(context)
+    private val stoppedCaptions = StoppedCaptionsNotice()
     private val savingTrouble = SavingTroubleNotice()
 
     // Readings count from asking for captions until they are stopped or
@@ -193,6 +195,7 @@ class CaptionSession(
         set(active) {
             if (active != field) note(if (active) "app back on screen" else "app left the screen (phase ${if (pipeline.phase.isListening) "listening" else "not listening"})")
             field = active
+            checkCaptionsStillRunning()
         }
 
     private val conversations = ConversationSaver(
@@ -411,7 +414,23 @@ class CaptionSession(
         }
     }
 
+    /**
+     * Posts or takes away the "captions stopped" notice, as the iPhone does:
+     * with the phone put away, a stop nothing will undo also stops the
+     * alerts, and a dark screen says nothing of it. Android has no word of
+     * a call that ended without giving the microphone back.
+     */
+    private fun checkCaptionsStillRunning() {
+        val cause = StoppedCaptionsNotice.cause(pipeline.phase, pipeline.isRecoveringByItself, interruptedBySystem, callEndedDuringInterruption = false)
+        when (val update = stoppedCaptions.update(cause, appIsActive, settings.current.value.notifyWhenInBackground)) {
+            is StoppedCaptionsNotice.Update.Post -> notifier.post(update.content)
+            is StoppedCaptionsNotice.Update.Withdraw -> notifier.withdraw(update.identifier)
+            null -> Unit
+        }
+    }
+
     private fun publish() {
+        checkCaptionsStillRunning()
         val transcribing = pipeline.activeSettings.takeIf { pipeline.isCoveringForCloud } ?: settings.current.value
         CaptionState.show(
             phase = pipeline.phase,
