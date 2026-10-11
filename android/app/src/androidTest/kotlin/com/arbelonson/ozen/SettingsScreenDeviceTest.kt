@@ -5,6 +5,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -63,6 +65,7 @@ class SettingsScreenDeviceTest {
     private lateinit var displayBefore: DisplayPreferences
     private lateinit var wordsBefore: List<String>
     private lateinit var alertsBefore: List<KeywordAlert>
+    private var awayAlertsBefore = true
 
     @Before
     fun remember() {
@@ -75,6 +78,7 @@ class SettingsScreenDeviceTest {
         displayBefore = app.settings.current.value.display
         wordsBefore = app.settings.current.value.vocabulary
         alertsBefore = app.settings.current.value.keywordAlerts.map { it.copy() }
+        awayAlertsBefore = app.settings.current.value.notifyWhenInBackground
         app.cloudKeys.remove(CloudProvider.Deepgram)
         app.homeServerCode.remove()
         app.settings.change { it.homeServerAddress = "" }
@@ -93,6 +97,7 @@ class SettingsScreenDeviceTest {
             it.display = displayBefore
             it.vocabulary = wordsBefore
             it.keywordAlerts = alertsBefore
+            it.notifyWhenInBackground = awayAlertsBefore
         }
         compose.runOnUiThread { CaptionState.clear() }
     }
@@ -365,6 +370,17 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Back").performClick()
         compose.onNodeWithText("Important words").performScrollTo()
         compose.onNode(hasText("Important words") and hasText("0")).assertExists()
+    }
+
+    @Test
+    fun alertsWhileTheScreenIsOffAreSwitchedInSettings() {
+        app.settings.change { it.notifyWhenInBackground = true }
+        compose.onNodeWithText("Settings").performClick()
+        val row = compose.onNode(hasText("Alert on phone when the screen is off") and isToggleable())
+        row.performScrollTo().assertIsOn().performClick()
+        compose.waitUntil(5_000) { !app.settings.current.value.notifyWhenInBackground }
+        row.assertIsOff().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.notifyWhenInBackground }
     }
 
     @Test

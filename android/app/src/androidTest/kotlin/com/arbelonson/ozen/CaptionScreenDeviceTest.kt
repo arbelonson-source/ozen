@@ -1,10 +1,14 @@
 package com.arbelonson.ozen
 
+import android.Manifest
 import android.app.Activity
 import android.app.Instrumentation
+import android.app.Notification
+import android.app.NotificationManager
 import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -35,12 +39,15 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.ResolvedTextDirection
+import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.core.view.WindowCompat
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.DisplayPreferences
+import com.arbelonson.ozen.core.KeywordHit
+import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.TranscriptHistoryStore
@@ -375,6 +382,49 @@ class CaptionScreenDeviceTest {
             assertEquals(1, buzzed.size)
         } finally {
             Buzz.play = before
+        }
+    }
+
+    @Test
+    fun anImportantWordSaidWhileTheAppIsAwayBecomesAPhoneNotificationOnlyThen() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        if (Build.VERSION.SDK_INT >= 33) instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.POST_NOTIFICATIONS)
+        val manager = app.getSystemService(NotificationManager::class.java)
+        val alerts = { manager.activeNotifications.filter { it.notification.channelId == AlertNotifier.CHANNEL_ID } }
+        val clearAlerts = { alerts().forEach { manager.cancel(it.tag, it.id) } }
+        val before = app.settings.current.value.notifyWhenInBackground
+        val line = committed("Grandma, dinner is ready")
+        fun hit(alert: UUID) = KeywordHit(segmentID = line.id, match = KeywordMatch(alert, "סבתא", "סבתא", 0), timestamp = System.currentTimeMillis() / 1_000.0)
+        fun waitFor(condition: () -> Boolean): Boolean {
+            val until = System.currentTimeMillis() + 5_000
+            while (System.currentTimeMillis() < until) {
+                if (condition()) return true
+                Thread.sleep(100)
+            }
+            return condition()
+        }
+        clearAlerts()
+        try {
+            app.settings.change { it.notifyWhenInBackground = true }
+            compose.runOnUiThread { app.captions.wordsHeard(listOf(hit(UUID.randomUUID())), line) }
+            assertFalse(waitFor { alerts().isNotEmpty() })
+
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            instrumentation.runOnMainSync { app.captions.wordsHeard(listOf(hit(UUID.randomUUID())), line) }
+            assertTrue(waitFor { alerts().isNotEmpty() })
+            val posted = alerts().single().notification
+            assertEquals("Said: Grandma", posted.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
+            assertTrue(posted.extras.getCharSequence(Notification.EXTRA_TEXT).toString().contains("Grandma, dinner is ready"))
+
+            clearAlerts()
+            app.settings.change { it.notifyWhenInBackground = false }
+            instrumentation.runOnMainSync { app.captions.wordsHeard(listOf(hit(UUID.randomUUID())), line) }
+            assertFalse(waitFor { alerts().isNotEmpty() })
+        } finally {
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            app.settings.change { it.notifyWhenInBackground = before }
+            clearAlerts()
         }
     }
 

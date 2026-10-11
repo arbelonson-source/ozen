@@ -132,6 +132,16 @@ class MainActivity : ComponentActivity() {
         openLink(intent)
     }
 
+    override fun onStart() {
+        super.onStart()
+        (application as OzenApplication).captions.appIsActive = true
+    }
+
+    override fun onStop() {
+        (application as OzenApplication).captions.appIsActive = false
+        super.onStop()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         openLink(intent)

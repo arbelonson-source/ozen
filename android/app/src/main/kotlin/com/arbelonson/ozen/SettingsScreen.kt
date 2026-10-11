@@ -1,6 +1,11 @@
 package com.arbelonson.ozen
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -49,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -119,6 +125,7 @@ fun SettingsScreen(
             }
             DisplaySection(settings, current.display, current.engine)
             AlertsSection(current.keywordAlerts.count { it.isEnabled }, listed = current.keywordAlerts.isNotEmpty(), onOpen = { showingImportantWords = true })
+            AwayAlertsRow(current.notifyWhenInBackground) { on -> settings.change { it.notifyWhenInBackground = on } }
             EngineSection(engineSettings, current)
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
             if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
@@ -571,6 +578,22 @@ private fun AlertsSection(enabled: Int, listed: Boolean, onOpen: () -> Unit) {
     ) {
         Text(tr("מילים חשובות", "Important words"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text(if (listed) "$enabled" else tr("אין", "None"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * Alerts with the screen off, on by default as on the iPhone. Android asks
+ * for notifications when captions first start; switched on here without
+ * that, it asks then, since otherwise every alert in a pocket is dropped.
+ */
+@Composable
+private fun AwayAlertsRow(on: Boolean, onChange: (Boolean) -> Unit) {
+    val context = LocalContext.current
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    SwitchRow(tr("התראה בטלפון כשהמסך כבוי", "Alert on phone when the screen is off"), on) { switching ->
+        onChange(switching)
+        val allowed = Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        if (switching && !allowed) ask.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }
 

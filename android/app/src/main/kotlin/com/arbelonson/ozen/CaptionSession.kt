@@ -9,11 +9,13 @@ import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.HomeServerEngine
 import com.arbelonson.ozen.core.KeywordAlert
+import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SpeakerEmbedding
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
+import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngine
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.VocabularyHints
@@ -21,6 +23,7 @@ import com.arbelonson.ozen.core.WebSocketConnector
 import com.arbelonson.ozen.whisper.ModelFileLoader
 import com.arbelonson.ozen.whisper.SileroVoiceScorer
 import java.io.File
+import java.util.TimeZone
 import java.util.UUID
 import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
@@ -50,6 +53,11 @@ class CaptionSession(
     )
     private val historyStore = TranscriptHistoryStore(historyFolder)
     private val attention = KeywordAttention()
+    private val awayAlerts = AwayAlerts()
+    private val notifier = AlertNotifier(context)
+
+    /** Whether the caption screen is in front: set as MainActivity starts and stops. */
+    var appIsActive = false
 
     private val conversations = ConversationSaver(
         writer = TranscriptHistoryWriter(historyStore),
@@ -125,10 +133,7 @@ class CaptionSession(
             publish()
         }
         pipeline.onCaptionsChanged = ::publish
-        pipeline.onKeywordHits = { hits, _ ->
-            attention.claim(hits)?.let(CaptionState::heard)
-            publish()
-        }
+        pipeline.onKeywordHits = ::wordsHeard
     }
 
     fun listen() {
@@ -199,6 +204,15 @@ class CaptionSession(
         settings.change { it.vocabulary = VocabularyHints.normalized(words) }
         val terms = settings.current.value.vocabulary
         scope.launch { pipeline.setVocabulary(terms) }
+    }
+
+    /** Important words just heard: they buzz on screen, or, with the app away, become a phone notification. */
+    fun wordsHeard(hits: List<KeywordHit>, line: TranscriptSegment) {
+        attention.claim(hits)?.let(CaptionState::heard)
+        val now = System.currentTimeMillis() / 1_000.0
+        val utcOffsetSeconds = TimeZone.getDefault().getOffset((now * 1_000).toLong()) / 1_000
+        awayAlerts.forWords(hits, line.text, appIsActive, settings.current.value, now, utcOffsetSeconds).forEach(notifier::post)
+        publish()
     }
 
     /** Stars a caption line or takes its star away, in its conversation and on screen. */
