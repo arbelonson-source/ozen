@@ -30,7 +30,6 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
@@ -771,9 +770,9 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Diagnostics").performScrollTo().assertExists()
         compose.activityRule.scenario.recreate()
         compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
-        compose.onNodeWithTag(DIAGNOSTICS_EVENTS).assertExists()
+        compose.onNodeWithText("Recent events").assertExists()
         compose.activityRule.scenario.recreate()
-        compose.onNodeWithTag(DIAGNOSTICS_EVENTS).assertExists()
+        compose.onNodeWithText("Recent events").assertExists()
         compose.onNodeWithText("Back").performClick()
         compose.onNodeWithText("Diagnostics").performScrollTo().assertExists()
     }
