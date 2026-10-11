@@ -93,6 +93,29 @@ class HistoryRowsTest {
     }
 
     @Test
+    fun `numbers mentioned lists the first twelve lines with a time, an amount or a phone number, and counts the rest`() = Localization.withLanguage(UILanguage.English) {
+        val numbered = (1..14).map { line("Take $it pills at 8:00", at = morning + it) }
+        val record = TranscriptSessionRecord(
+            startedAt = morning, endedAt = null, engine = TranscriptionEngineKind.WhisperKit, modelVariant = null, inputName = null,
+            segments = listOf(line("Good morning", at = morning)) + numbered + line("See you then", at = morning + 20),
+        )
+        val mentioned = NumbersMentioned.of(record)
+        assertEquals(numbered.take(12).map { it.id }, mentioned.listed.map { it.id })
+        assertEquals("Plus 2 lines with numbers later in the conversation", mentioned.moreText)
+    }
+
+    @Test
+    fun `a conversation without numbers lists none and says nothing more`() {
+        val record = TranscriptSessionRecord(
+            startedAt = morning, endedAt = null, engine = TranscriptionEngineKind.WhisperKit, modelVariant = null, inputName = null,
+            segments = listOf(line("Good morning", at = morning), line("See you then", at = morning + 20)),
+        )
+        val mentioned = NumbersMentioned.of(record)
+        assertTrue(mentioned.listed.isEmpty())
+        assertNull(mentioned.moreText)
+    }
+
+    @Test
     fun `a named conversation keeps its name`() = Localization.withLanguage(UILanguage.English) {
         assertEquals("Doctor's visit", ConversationRow.of(summary(title = "Doctor's visit"), jerusalem).title)
     }

@@ -51,12 +51,15 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.ByteSize
+import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.HistoryDay
 import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.HistoryRetention
+import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
@@ -297,7 +300,12 @@ private fun ConversationRowView(row: ConversationRow, onOpen: () -> Unit) {
     }
 }
 
-private class OpenConversation(val record: TranscriptSessionRecord?, val lines: List<SavedLine>, val matches: List<UUID>)
+private class OpenConversation(
+    val record: TranscriptSessionRecord?,
+    val lines: List<SavedLine>,
+    val matches: List<UUID>,
+    val numbers: NumbersMentioned?,
+)
 
 /**
  * One saved conversation read back; the one still being captioned is read
@@ -325,6 +333,7 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
                     record = record,
                     lines = record?.let { SavedLine.of(it) } ?: emptyList(),
                     matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
+                    numbers = record?.takeIf { query.isBlank() }?.let(NumbersMentioned::of),
                 )
             }
             current = SearchMatches.position(current, before, now.matches) ?: 0
@@ -364,7 +373,16 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
                     }
                 }
                 val matched = shown.matches.toSet()
+                val numbers = shown.numbers?.takeIf { it.listed.isNotEmpty() }
                 LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (numbers != null) {
+                        item(key = "numbers") {
+                            NumbersSection(numbers) { said ->
+                                val target = shown.lines.indexOfFirst { it.id == said.id }
+                                if (target >= 0) scope.launch { list.scrollToItem(1 + target) }
+                            }
+                        }
+                    }
                     items(shown.lines, key = { it.id.toString() }) { line -> SavedLineView(line, isMatch = line.id in matched) }
                 }
             }
@@ -405,6 +423,38 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
             },
             confirmButton = { TextButton(onClick = { deleteError = null }) { Text(tr("סגירה", "Close")) } },
         )
+    }
+}
+
+/** Above the conversation, as on the iPhone: each line with a number in it, a tap away from where it was said. */
+@Composable
+private fun NumbersSection(numbers: NumbersMentioned, onJump: (SavedSegment) -> Unit) {
+    val jump = tr("מעבר לשורה בשיחה", "Jump to this line in the conversation")
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Heading(tr("מספרים שנאמרו", "Numbers mentioned"))
+        for (said in numbers.listed) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClickLabel = jump) { onJump(said) }
+                    .padding(vertical = 6.dp),
+            ) {
+                said.speakerName?.takeUnless(TranscriptSessionSummary::isGenericLabel)?.let {
+                    Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text(
+                    captionText(CaptionLayout.directed(said.text), emphasizeNumbers = true, numberColor = null),
+                    style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
+                )
+            }
+        }
+        numbers.moreText?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Text(
+            tr("שעות, כמויות ומספרי טלפון מהשיחה. נגיעה בשורה מובילה אליה.", "Times, amounts, and phone numbers from the conversation. Tap a line to jump to it."),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
     }
 }
 

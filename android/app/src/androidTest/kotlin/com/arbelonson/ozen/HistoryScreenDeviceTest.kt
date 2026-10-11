@@ -113,6 +113,20 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Next match (2 of 2)").assertExists()
     }
 
+    @Test
+    fun numbersMentionedGathersTheTimesAtTheTopAndATapLeadsToWhereItWasSaid() {
+        val lines = (1..40).map { "Nice weather we are having" to null as String? }.toMutableList()
+        lines[35] = "Come back at 10:30 on Sunday" to null
+        seed(*lines.toTypedArray())
+        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText("Nice weather we are having", substring = true).performClick()
+
+        waitFor("Numbers mentioned")
+        assertFalse(shownLine("Come back at 10:30 on Sunday"))
+        compose.onNodeWithText("Come back at 10:30", substring = true).performClick()
+        compose.waitUntil(5_000) { shownLine("Come back at 10:30 on Sunday") }
+    }
+
     private fun shownLine(text: String) =
         compose.onAllNodesWithContentDescription(text, substring = true).fetchSemanticsNodes().isNotEmpty() &&
             compose.onNodeWithContentDescription(text, substring = true).isDisplayed()

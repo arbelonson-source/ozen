@@ -4,7 +4,9 @@ import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.NumberEmphasis
 import com.arbelonson.ozen.core.SavedLineSpeech
+import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.tr
@@ -104,4 +106,28 @@ object SearchMatches {
 
     fun position(index: Int, old: List<UUID>, new: List<UUID>): Int? =
         old.getOrNull(index)?.let { new.indexOf(it) }?.takeIf { it >= 0 }
+}
+
+/**
+ * "What time was the appointment again?": the lines of a saved conversation
+ * with a time, an amount or a phone number in them, gathered at its top as
+ * on the iPhone, the first twelve listed and the rest counted.
+ */
+class NumbersMentioned(val listed: List<SavedSegment>, val moreText: String?) {
+    companion object {
+        const val LISTED = 12
+
+        fun of(record: TranscriptSessionRecord): NumbersMentioned {
+            val numbered = record.segments.filter { NumberEmphasis.hasListableNumber(it.text) }
+            val more = numbered.size - LISTED
+            return NumbersMentioned(
+                listed = numbered.take(LISTED),
+                moreText = if (more > 0) {
+                    tr("ועוד %1 עם מספרים בהמשך השיחה", "Plus %1 with numbers later in the conversation", listOf(ConversationStats.linesText(more)))
+                } else {
+                    null
+                },
+            )
+        }
+    }
 }
