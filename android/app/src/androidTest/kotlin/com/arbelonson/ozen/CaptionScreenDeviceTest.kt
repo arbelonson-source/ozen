@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
@@ -675,12 +676,15 @@ class CaptionScreenDeviceTest {
             }
         }
         val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val phrasesBefore = app.settings.current.value.quickPhrases
         assertTrue("the phone's speech engine never answered", within(15_000) { app.captions.voice.installed.value != null })
+        app.settings.change { it.quickPhrases = AppSettings.defaultQuickPhrases(UILanguage.Hebrew) }
         instrumentation.addMonitor(settings)
         try {
-            compose.runOnUiThread { app.captions.voice.installed.value = setOf(UILanguage.English) }
+            compose.runOnUiThread { app.captions.voice.installed.value = emptySet() }
             compose.onNodeWithContentDescription("Say something out loud").performClick()
             keyboardAway()
+            compose.onNodeWithText("Slower, please").performScrollTo().assertIsNotEnabled()
             compose.onNodeWithText("No Hebrew voice is installed.").performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("Open phone settings").performScrollTo().performClick()
             compose.waitUntil(5_000) { started.isNotEmpty() }
@@ -690,9 +694,11 @@ class CaptionScreenDeviceTest {
             compose.waitForIdle()
             compose.onNodeWithText("No Hebrew voice is installed.").assertDoesNotExist()
             compose.onNodeWithText("Open phone settings").assertDoesNotExist()
+            compose.onNodeWithText("Slower, please").performScrollTo().assertIsEnabled()
         } finally {
             instrumentation.removeMonitor(settings)
             compose.runOnUiThread { app.captions.refreshVoice() }
+            app.settings.change { it.quickPhrases = phrasesBefore }
         }
     }
 

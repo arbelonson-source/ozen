@@ -278,9 +278,6 @@ private fun OzenApp(
     val state by CaptionState.screen.collectAsStateWithLifecycle()
     val current by app.settings.current.collectAsStateWithLifecycle()
     val voices by app.captions.voice.installed.collectAsStateWithLifecycle()
-    // A new one when the phone's voices change, so buttons greyed out for a
-    // missing voice come back once it is installed.
-    val canSay = remember(voices) { { text: String -> app.captions.canSay(text) } }
     var showingHistory by rememberSaveable { mutableStateOf(false) }
     var reading by rememberSaveable { mutableStateOf<Pair<UUID, UUID>?>(null) }
     var saying by rememberSaveable { mutableStateOf(false) }
@@ -318,7 +315,7 @@ private fun OzenApp(
                         onFinish = onboarding.finish,
                     )
                 }
-                showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, onAppLanguage = onAppLanguage, onShowWalkthrough = {
+                showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, onAppLanguage = onAppLanguage, onShowWalkthrough = {
                     app.captions.showWalkthroughAgain()
                     showingSettings.value = false
                 }, onClearCaptions = app.captions::clearCaptions, voiceNotice = VoiceNotice.forSettings(Localization.language, voices))
@@ -346,7 +343,7 @@ private fun OzenApp(
                     onDraft = { sayDraft = it },
                     speaking = state.speaking,
                     phrases = QuickPhrases.shown(current.quickPhrases, Localization.language),
-                    canSay = canSay,
+                    canSay = app.captions::canSay,
                     onSpeak = app.captions::speak,
                     onStop = app.captions::stopSpeaking,
                     onAddPhrase = app.captions::addQuickPhrase,
