@@ -134,9 +134,12 @@ class CaptionSession(
             publish()
         }
 
+        // Her words kept with a marked problem are part of what she asked
+        // to delete, so they leave the journal too; the rest of it stays.
         override fun deleteAll() {
             conversations.deleteAll()
             forgetSharedCopy()
+            deleteMarkedCaptionLines()
             publish()
         }
 

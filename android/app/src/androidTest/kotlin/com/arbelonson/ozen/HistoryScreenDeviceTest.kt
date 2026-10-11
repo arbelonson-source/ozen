@@ -34,6 +34,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.SavedSegment
+import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
@@ -287,7 +288,12 @@ class HistoryScreenDeviceTest {
     }
 
     @Test
-    fun deleteAllAsksFirstThenDeletesEverySavedConversation() {
+    fun deleteAllAsksFirstThenDeletesEverySavedConversationAndTheCaptionLinesAMarkedProblemKept() {
+        val journal = SessionJournal(File(app.filesDir, CaptionSession.JOURNAL_FILE))
+        val said = "  line (final, sure 0.88, 09:15:00): Delete all test, a line kept with a marked problem"
+        val note = "delete all test: not a caption line"
+        journal.append(note, System.currentTimeMillis() / 1_000.0)
+        journal.append(said, System.currentTimeMillis() / 1_000.0)
         seed("Delete all test first" to null)
         seed("Delete all test second" to null)
         compose.onNodeWithText("History").performClick()
@@ -297,10 +303,13 @@ class HistoryScreenDeviceTest {
         compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
         compose.waitForIdle()
         assertEquals(2, seeded.count { store.load(it) != null })
+        assertTrue(journal.entries().any { it.text == said })
 
         compose.onNodeWithText("Delete all").performClick()
         compose.onNode(hasText("Delete all") and hasAnyAncestor(isDialog())).performClick()
         compose.waitUntil(5_000) { store.listSummaries().isEmpty() }
+        compose.waitUntil(5_000) { journal.entries().none { it.text == said } }
+        assertTrue("delete all took the rest of the journal with it", journal.entries().any { it.text == note })
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Delete all test", substring = true).fetchSemanticsNodes().isEmpty() }
         compose.onNodeWithText("Delete all").assertIsNotEnabled()
     }
