@@ -7,6 +7,7 @@ import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
+import com.arbelonson.ozen.core.LockScreenTextSize
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
@@ -463,5 +464,25 @@ class CaptionStateTest {
         assertEquals(morning.id, CaptionState.screen.value.lines.first().id)
         assertEquals(QuietGap(lastWordsAt = 1_010.0, resumedAt = 1_310.0), CaptionState.screen.value.lines.first().afterQuiet)
         assertNull(CaptionState.screen.value.lines[1].afterQuiet)
+    }
+
+    @Test
+    fun `the lock screen takes the newest lines the screen shows, named as the screen names them`() {
+        fun said(text: String, voice: Int?, at: Double) =
+            TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, speakerClusterID = voice, startTimestamp = at, lastUpdateTimestamp = at + 2)
+        val lines = listOf(said("Good morning", 0, 0.0), said("How did you sleep", 0, 3.0), said("Fine thanks", 1, 6.0))
+        CaptionState.show(
+            PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines, languageCode = "en",
+            speakerName = { mapOf(0 to "Dana", 1 to "Speaker 2").getValue(it.speakerClusterID!!) },
+        )
+        val shown = CaptionState.lockScreenLines(2, LockScreenTextSize.Regular)
+        assertEquals(listOf("Dana", "Speaker 2"), shown.map { it.speaker })
+        assertEquals(listOf("How did you sleep", "Fine thanks"), shown.map { it.text })
+        assertEquals(listOf(5.0, 8.0), shown.map { it.lastUpdate })
+
+        CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines)
+        assertEquals(listOf(null, null), CaptionState.lockScreenLines(2, LockScreenTextSize.Regular).map { it.speaker })
+        CaptionState.clear()
+        assertTrue(CaptionState.lockScreenLines(2, LockScreenTextSize.Regular).isEmpty())
     }
 }

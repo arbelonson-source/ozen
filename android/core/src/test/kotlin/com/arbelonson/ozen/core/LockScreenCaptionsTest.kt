@@ -204,6 +204,66 @@ class LockScreenCaptionsTest {
     }
 }
 
+class LockScreenContentTest {
+    private fun said(text: String, at: Double) = LockScreenCaptionLine(speaker = null, text = text, isFinal = true, lastUpdate = at)
+
+    private val asked = mutableListOf<Int>()
+
+    private fun from(vararg lines: LockScreenCaptionLine): (Int) -> List<LockScreenCaptionLine> = { count ->
+        asked += count
+        lines.toList().takeLast(count)
+    }
+
+    @Test
+    fun `while captions run, the newest two lines show as they are`() {
+        val content = LockScreenCaptions.content(status = null, now = 1_010.0, textSize = LockScreenTextSize.Regular, lines = from(said("a", 1_000.0), said("b", 1_005.0)))
+        assertEquals(listOf("a", "b"), content.lines.map { it.text })
+        assertEquals(null, content.ageNote)
+        assertEquals(listOf(2), asked)
+    }
+
+    @Test
+    fun `under a status there is room for the newest line only`() {
+        val content = LockScreenCaptions.content(status = "Captions starting…", now = 1_010.0, textSize = LockScreenTextSize.Regular, lines = from(said("a", 1_000.0), said("b", 1_005.0)))
+        assertEquals(listOf("b"), content.lines.map { it.text })
+        assertEquals("Captions starting…", content.status)
+        assertEquals(listOf(1), asked)
+    }
+
+    @Test
+    fun `a minute after the newest line it shows alone with how long ago it was said`() {
+        Localization.withLanguage(UILanguage.English) {
+            val content = LockScreenCaptions.content(status = null, now = 1_005.0 + 120, textSize = LockScreenTextSize.Regular, lines = from(said("a", 1_000.0), said("b", 1_005.0)))
+            assertEquals(listOf("b"), content.lines.map { it.text })
+            assertEquals("said 2 minutes ago", content.ageNote)
+        }
+    }
+
+    @Test
+    fun `under a status a line minutes old is left off rather than shown as just said`() {
+        val content = LockScreenCaptions.content(status = "Captions stopped", now = 1_005.0 + 120, textSize = LockScreenTextSize.Regular, lines = from(said("a", 1_000.0), said("b", 1_005.0)))
+        assertTrue(content.lines.isEmpty())
+        assertEquals(null, content.ageNote)
+    }
+
+    @Test
+    fun `a quarter of an hour after the newest line no lines show, status or not`() {
+        for (status in listOf(null, "Captions paused for a call")) {
+            val content = LockScreenCaptions.content(status = status, now = 1_005.0 + 15 * 60, textSize = LockScreenTextSize.Large, lines = from(said("a", 1_000.0), said("b", 1_005.0)))
+            assertTrue(content.lines.isEmpty(), "$status")
+            assertEquals(null, content.ageNote)
+            assertEquals(LockScreenTextSize.Large, content.textSize)
+        }
+    }
+
+    @Test
+    fun `the age is the newest of the lines shown, not the first`() {
+        val content = LockScreenCaptions.content(status = null, now = 1_050.0, textSize = LockScreenTextSize.Regular, lines = from(said("a", 900.0), said("b", 1_000.0)))
+        assertEquals(listOf("a", "b"), content.lines.map { it.text })
+        assertEquals(null, content.ageNote)
+    }
+}
+
 class LockScreenUpdateThrottleTest {
     private val first = LockScreenCaptionContent(lines = listOf(LockScreenCaptionLine(speaker = null, text = "hello", isFinal = false)))
     private val second = LockScreenCaptionContent(lines = listOf(LockScreenCaptionLine(speaker = null, text = "hello there", isFinal = false)))

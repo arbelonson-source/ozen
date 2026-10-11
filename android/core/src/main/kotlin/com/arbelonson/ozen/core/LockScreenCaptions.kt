@@ -141,6 +141,29 @@ object LockScreenCaptions {
 
     /** "said 3 minutes ago", for the lock screen. */
     fun ageNote(minutes: Int): String = tr("נאמר %1", "said %1", listOf(HebrewTime.minutesAgo(minutes)))
+
+    /**
+     * What the lock screen shows now, as the iPhone decides it: under a
+     * [status] there is room for the newest line only. A newest line a
+     * minute old shows alone with its age, or not at all under a status,
+     * which leaves no room to say how old it is; after a quarter of an hour
+     * no lines show. [lines] gets how many lines there is room for.
+     */
+    fun content(status: String?, now: Double, textSize: LockScreenTextSize, lines: (count: Int) -> List<LockScreenCaptionLine>): LockScreenCaptionContent {
+        var shown = lines(if (status == null) LINE_COUNT else 1)
+        var ageNote: String? = null
+        when (val quiet = quiet(shown.maxOfOrNull { it.lastUpdate }, now)) {
+            Quiet.Recent -> Unit
+            is Quiet.MinutesAgo -> if (status == null) {
+                shown = lines(1)
+                ageNote = ageNote(quiet.minutes)
+            } else {
+                shown = emptyList()
+            }
+            Quiet.Over -> shown = emptyList()
+        }
+        return LockScreenCaptionContent(shown, status, ageNote, textSize)
+    }
 }
 
 /**

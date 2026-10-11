@@ -10,21 +10,28 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import com.arbelonson.ozen.core.LockScreenCaptionContent
+import com.arbelonson.ozen.core.LockScreenCaptions
+import com.arbelonson.ozen.core.LockScreenTextSize
+import com.arbelonson.ozen.core.LockScreenUpdateThrottle
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.tr
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.dropWhile
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class ListeningService : Service() {
     private val captions get() = (application as OzenApplication).captions
+    private val settings get() = (application as OzenApplication).settings
     private val scope = MainScope()
     private var watching: Job? = null
+    private val throttle = LockScreenUpdateThrottle()
+    private var flush: Job? = null
+    private var drawnPublic: Boolean? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -34,14 +41,16 @@ class ListeningService : Service() {
             finish()
             return START_NOT_STICKY
         }
-        val drawn = shown()
+        val content = content()
+        val public = onLockScreen()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            startForeground(NOTIFICATION_ID, notification(this, content, public), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
         } else {
-            startForeground(NOTIFICATION_ID, notification())
+            startForeground(NOTIFICATION_ID, notification(this, content, public))
         }
+        drawn(content, public)
         captions.listen()
-        if (watching == null) watching = scope.launch { watch(drawn) }
+        if (watching == null) watching = scope.launch { watch() }
         return START_NOT_STICKY
     }
 
@@ -52,29 +61,68 @@ class ListeningService : Service() {
         super.onDestroy()
     }
 
-    private fun shown(screen: CaptionScreenState = CaptionState.screen.value, onLockScreen: Boolean = (application as OzenApplication).settings.current.value.display.lockScreenCaptions) =
-        Triple(screen.phase, screen.status.title, screen.lines.lastOrNull { it.isFinal }?.text) to onLockScreen
+    private fun onLockScreen() = settings.current.value.display.lockScreenCaptions
 
     /**
-     * Skips only what the first notification already shows: the watcher
-     * starts a moment after it, and a lock-screen switch made in between
-     * was the first value seen and skipped, leaving the line on the locked
-     * phone she had just hidden.
+     * What the lock screen shows, as on the iPhone: the newest two lines
+     * while captions run, one under any other status, the newest alone with
+     * its age once it is a minute old, and none after a quarter of an hour.
+     * The status is always the title here, so a new one goes at once.
      */
-    private suspend fun watch(drawn: Pair<Triple<PipelinePhase, String, String?>, Boolean>) {
-        val manager = getSystemService(NotificationManager::class.java)
-        CaptionState.screen
-            .combine((application as OzenApplication).settings.current.map { it.display.lockScreenCaptions }) { screen, onLockScreen -> shown(screen, onLockScreen) }
-            .distinctUntilChanged()
-            .dropWhile { it == drawn }
-            .collect { (shown, _) ->
-                val phase = shown.first
-                if (phase == PipelinePhase.Idle || phase == PipelinePhase.Paused) {
-                    finish()
-                } else {
-                    manager.notify(NOTIFICATION_ID, notification())
+    private fun content(): LockScreenCaptionContent {
+        val screen = CaptionState.screen.value
+        val textSize = LockScreenTextSize.of(settings.current.value.display.fontSize)
+        val status = screen.status.title.takeUnless { screen.captionsRunning }
+        return LockScreenCaptions.content(status, now = secondsNow(), textSize) { CaptionState.lockScreenLines(it, textSize) }
+            .copy(status = screen.status.title)
+    }
+
+    private fun drawn(content: LockScreenCaptionContent, public: Boolean) {
+        throttle.sent(content, secondsNow())
+        drawnPublic = public
+    }
+
+    /**
+     * Every word, status and setting brings the notification up to date, at
+     * most once a second with the last change never dropped; a quiet room is
+     * looked at again every half minute, so the age moves on and the lines
+     * go after a quarter of an hour. Turning the lock screen captions on or
+     * off goes at once: a line left on the locked phone she just hid them
+     * from is what she switched off.
+     */
+    private suspend fun watch() = coroutineScope {
+        launch {
+            while (true) {
+                delay(KEEP_ALIVE_MILLISECONDS)
+                refresh()
+            }
+        }
+        CaptionState.screen.combine(settings.current) { _, _ -> }.collect { refresh() }
+    }
+
+    private fun refresh() {
+        val phase = CaptionState.screen.value.phase
+        if (phase == PipelinePhase.Idle || phase == PipelinePhase.Paused) {
+            finish()
+            return
+        }
+        val content = content()
+        val public = onLockScreen()
+        val decision = if (public != drawnPublic) LockScreenUpdateThrottle.Decision.Send else throttle.decide(content, secondsNow())
+        when (decision) {
+            LockScreenUpdateThrottle.Decision.NothingNew -> Unit
+            LockScreenUpdateThrottle.Decision.Send -> {
+                getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(this, content, public))
+                drawn(content, public)
+            }
+            is LockScreenUpdateThrottle.Decision.Wait -> if (flush == null) {
+                flush = scope.launch {
+                    delay((decision.seconds * 1_000).toLong())
+                    flush = null
+                    refresh()
                 }
             }
+        }
     }
 
     private fun finish() {
@@ -82,45 +130,49 @@ class ListeningService : Service() {
         stopSelf()
     }
 
-    private fun notification(): Notification {
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, tr("מקשיב", "Listening"), NotificationManager.IMPORTANCE_LOW),
-        )
-        val open = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
-        )
-        val screen = CaptionState.screen.value
-        val newest = screen.lines.lastOrNull { it.isFinal }?.text
-        val builder = Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_listening)
-            .setContentTitle(screen.status.title)
-            .setContentText(newest ?: tr("הכתוביות יופיעו כאן.", "Captions will appear here."))
-            .setContentIntent(open)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-        // On the lock screen the newest line shows only while she wants
-        // captions there, as on the iPhone: anyone looking at the phone can
-        // read it. Otherwise the locked phone shows what Ozen is doing.
-        if ((application as OzenApplication).settings.current.value.display.lockScreenCaptions) {
-            builder.setVisibility(Notification.VISIBILITY_PUBLIC)
-        } else {
-            builder.setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(
-                Notification.Builder(this, CHANNEL_ID).setSmallIcon(R.drawable.ic_listening).setContentTitle(screen.status.title).build(),
-            )
-        }
-        return builder.build()
-    }
-
     companion object {
         const val CHANNEL_ID = "listening"
         private const val NOTIFICATION_ID = 1
         private const val ACTION_PAUSE = "com.arbelonson.ozen.PAUSE"
+        private const val KEEP_ALIVE_MILLISECONDS = 30_000L
 
         fun start(context: Context) = context.startForegroundService(Intent(context, ListeningService::class.java))
+
+        /** The listening notification showing [content], its lines on the lock screen only when [public]. */
+        internal fun notification(context: Context, content: LockScreenCaptionContent, public: Boolean): Notification {
+            val manager = context.getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(
+                NotificationChannel(CHANNEL_ID, tr("מקשיב", "Listening"), NotificationManager.IMPORTANCE_LOW),
+            )
+            val open = PendingIntent.getActivity(
+                context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
+            )
+            val builder = Notification.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_listening)
+                .setContentTitle(content.status)
+                .setContentText(ListeningNotice.glance(content))
+                .setSubText(content.ageNote)
+                .setContentIntent(open)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+            ListeningNotice.opened(content)?.let { builder.setStyle(Notification.BigTextStyle().bigText(it)) }
+            // On the lock screen the lines show only while she wants captions
+            // there, as on the iPhone: anyone looking at the phone can read
+            // them. Otherwise the locked phone shows what Ozen is doing.
+            if (public) {
+                builder.setVisibility(Notification.VISIBILITY_PUBLIC)
+            } else {
+                builder.setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(
+                    Notification.Builder(context, CHANNEL_ID).setSmallIcon(R.drawable.ic_listening).setContentTitle(content.status).build(),
+                )
+            }
+            return builder.build()
+        }
 
         fun pause(context: Context) {
             context.startService(Intent(context, ListeningService::class.java).setAction(ACTION_PAUSE))
         }
     }
 }
+
+private fun secondsNow() = System.currentTimeMillis() / 1_000.0

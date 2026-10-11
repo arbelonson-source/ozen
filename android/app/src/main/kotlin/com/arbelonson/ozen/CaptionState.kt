@@ -8,6 +8,9 @@ import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ControlBarAutoHide
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.KeywordHit
+import com.arbelonson.ozen.core.LockScreenCaptionLine
+import com.arbelonson.ozen.core.LockScreenCaptions
+import com.arbelonson.ozen.core.LockScreenTextSize
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.PhoneNumbers
@@ -226,6 +229,16 @@ object CaptionState {
             away = awayMark(segments),
             earlier = segments.getOrNull(firstShown - 1)?.let { EarlierLines(conversation(firstShown - 1), it.id) },
         )
+    }
+
+    /**
+     * The newest lines for the lock screen, as on the iPhone: from the lines
+     * the screen shows, each named as the screen names it, so only while
+     * speaker names are on.
+     */
+    fun lockScreenLines(count: Int, textSize: LockScreenTextSize): List<LockScreenCaptionLine> {
+        val names = state.value.lines.associate { it.id to it.speaker }
+        return LockScreenCaptions.lines(segmentsShown, count, textSize) { names[it.id] }
     }
 
     /** The caption screen went away: the phone locked, or another app came to the front. */
