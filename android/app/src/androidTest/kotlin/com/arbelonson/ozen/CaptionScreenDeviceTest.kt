@@ -855,10 +855,20 @@ class CaptionScreenDeviceTest {
             compose.waitUntil(5_000) { buzzed.isNotEmpty() }
             assertEquals(listOf(AlertVibration.speechResumed), buzzed)
 
+            compose.onNodeWithText("Settings").performClick()
+            val away = committed("Are you there")
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(hello, dinner, away), now = 130.0)
+            }
+            compose.onNodeWithText("Close").performClick()
+            compose.onNodeWithText("History").assertExists()
+            compose.waitForIdle()
+            assertEquals(1, buzzed.size)
+
             app.settings.change { it.hapticOnSpeechResume = false }
             compose.waitForIdle()
             compose.runOnUiThread {
-                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(hello, dinner, committed("Coming")), now = 120.0)
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(hello, dinner, away, committed("Coming")), now = 140.0)
             }
             compose.waitForIdle()
             assertEquals(1, buzzed.size)
