@@ -71,6 +71,7 @@ import com.arbelonson.ozen.core.SpeakerProfile
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
+import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.KeywordHit
@@ -1330,6 +1331,70 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Earlier lines were saved", substring = true).assertDoesNotExist()
         } finally {
             store.delete(record.id)
+        }
+    }
+
+    @Test
+    fun aLowBatteryShowsABannerThatSaysHowUrgentItIsAndGoesWithATap() {
+        try {
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.battery(BatteryWarning.Low(19))
+            }
+            compose.onNodeWithText("Battery at 19%").assertExists()
+            compose.onNodeWithText("Consider plugging in a charger.").assertExists()
+            compose.onNodeWithText("Battery at 19%").performClick()
+            compose.onNodeWithText("Battery at 19%").assertDoesNotExist()
+            assertNull(CaptionState.screen.value.battery)
+
+            compose.runOnUiThread { CaptionState.battery(BatteryWarning.Critical(9)) }
+            compose.onNodeWithText("Battery at 9%").assertExists()
+            compose.onNodeWithText("The phone might shut down mid-conversation. Plug in a charger.").assertExists()
+            compose.onNodeWithText("Consider plugging in a charger.").assertDoesNotExist()
+        } finally {
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
+    fun aLowBatteryWhileTheAppIsAwayBecomesAPhoneNotificationOnlyThen() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        if (Build.VERSION.SDK_INT >= 33) instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.POST_NOTIFICATIONS)
+        val manager = app.getSystemService(NotificationManager::class.java)
+        val alerts = { manager.activeNotifications.filter { it.notification.channelId == AlertNotifier.CHANNEL_ID } }
+        val clearAlerts = { alerts().forEach { manager.cancel(it.tag, it.id) } }
+        val before = app.settings.current.value.notifyWhenInBackground
+        fun waitFor(condition: () -> Boolean): Boolean {
+            val until = System.currentTimeMillis() + 5_000
+            while (System.currentTimeMillis() < until) {
+                if (condition()) return true
+                Thread.sleep(100)
+            }
+            return condition()
+        }
+        clearAlerts()
+        try {
+            app.settings.change { it.notifyWhenInBackground = true }
+            compose.runOnUiThread { app.captions.batteryWarningRaised(BatteryWarning.Low(19)) }
+            assertFalse(waitFor { alerts().isNotEmpty() })
+
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            instrumentation.runOnMainSync { app.captions.batteryWarningRaised(BatteryWarning.Critical(9)) }
+            assertTrue(waitFor { alerts().isNotEmpty() })
+            val posted = alerts().single().notification
+            assertEquals("Battery at 9%", posted.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
+            assertEquals("The phone might turn off, and captions and alerts with it. Plug it in.", posted.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+
+            clearAlerts()
+            assertTrue("the first alert was never taken down", waitFor { alerts().isEmpty() })
+            app.settings.change { it.notifyWhenInBackground = false }
+            instrumentation.runOnMainSync { app.captions.batteryWarningRaised(BatteryWarning.Low(19)) }
+            assertFalse(waitFor { alerts().isNotEmpty() })
+        } finally {
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            app.settings.change { it.notifyWhenInBackground = before }
+            clearAlerts()
         }
     }
 

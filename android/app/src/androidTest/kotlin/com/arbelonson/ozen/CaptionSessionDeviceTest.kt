@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -11,6 +12,7 @@ import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPermission
 import com.arbelonson.ozen.core.AudioPortType
+import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
@@ -142,6 +144,53 @@ class CaptionSessionDeviceTest {
             withContext(Dispatchers.Main) { session.clearCaptions() }
             assertNull(CaptionState.screen.value.recentConversation)
         } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+        }
+    }
+
+    @Test
+    fun aBatteryRunningLowWhileTheMicrophoneListensPutsUpTheWarningAndChargingTakesItDown() = runBlocking {
+        val work = File(context.cacheDir, "battery-test").apply { deleteRecursively(); mkdirs() }
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        settings.change {
+            it.engine = TranscriptionEngineKind.HomeServer
+            it.homeServerAddress = "127.0.0.1:9"
+        }
+        val code = HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()).apply { save("code-for-the-test") }
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+        }
+        val buzzed = CopyOnWriteArrayList<AlertVibration>()
+        val before = Buzz.play
+        Buzz.play = { _, vibration -> buzzed += vibration }
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, settings, code, CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(16_000 * 120)), modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))
+                .also { it.appIsActive = true }
+        }
+        try {
+            shell("dumpsys battery unplug")
+            shell("dumpsys battery set level 15")
+            delay(1_000)
+            assertNull("warned before anything listened", CaptionState.screen.value.battery)
+            withContext(Dispatchers.Main) { session.listen() }
+            val listening = withTimeoutOrNull(60_000) {
+                while (!withContext(Dispatchers.Main) { session.pipeline.isListeningForSoundsOnly }) delay(100)
+                true
+            }
+            assertNotNull("never listened for sounds alone: ${CaptionState.screen.value.phase}", listening)
+            shell("dumpsys battery set level 14")
+            val warned = withTimeoutOrNull(10_000) { CaptionState.screen.first { it.battery != null } }?.battery
+            assertTrue("warned $warned", warned is BatteryWarning.Low && warned.percent in 14..15)
+            assertEquals("buzzed $buzzed", listOf(CaptionSession.BATTERY_BUZZ), buzzed.filter { it == CaptionSession.BATTERY_BUZZ })
+            shell("dumpsys battery set ac 1")
+            assertNotNull("charging left the warning up", withTimeoutOrNull(10_000) { CaptionState.screen.first { it.battery == null } })
+        } finally {
+            Buzz.play = before
+            shell("dumpsys battery reset")
             withContext(Dispatchers.Main) {
                 session.close()
                 CaptionState.clear()

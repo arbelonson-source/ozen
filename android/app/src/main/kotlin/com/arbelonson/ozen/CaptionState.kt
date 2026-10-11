@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AwayCatchUp
+import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ControlBarAutoHide
@@ -87,6 +88,8 @@ data class CaptionScreenState(
     val speechResumed: Int = 0,
     val away: AwayMark? = null,
     val earlier: EarlierLines? = null,
+    /** Running low while the microphone is on; see `BatteryAdvisor`. */
+    val battery: BatteryWarning? = null,
     /** The sound alert the banner shows while its time lasts; see `CaptionPipeline.currentBannerSoundAlert`. */
     val sound: SoundAlert? = null,
     /** The newest sound alert raised, which flashes the screen's edge when it is new to the screen. */
@@ -191,6 +194,7 @@ object CaptionState {
             selectedInput = state.value.selectedInput,
             dropped = state.value.dropped,
             recentConversation = state.value.recentConversation,
+            battery = state.value.battery,
             speechResumed = state.value.speechResumed + if (resumed) 1 else 0,
             away = awayMark(segments),
             earlier = segments.getOrNull(firstShown - 1)?.let { EarlierLines(conversation(firstShown - 1), it.id) },
@@ -241,6 +245,10 @@ object CaptionState {
     /** The phone started or stopped saying something for her: the caption screen's Say button stops it meanwhile. */
     fun speaking(on: Boolean) {
         state.value = state.value.copy(speaking = on)
+    }
+
+    fun battery(warning: BatteryWarning?) {
+        state.value = state.value.copy(battery = warning)
     }
 
     fun recentConversation(summary: TranscriptSessionSummary?) {

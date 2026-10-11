@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import android.app.ActivityManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -20,6 +21,7 @@ import com.arbelonson.ozen.core.HTTPFileFetcher
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.HomeServerEngine
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.core.SoundAlert
@@ -102,6 +104,14 @@ class CaptionSession(
     private val awayAlerts = AwayAlerts()
     private val notifier = AlertNotifier(context)
     private val savingTrouble = SavingTroubleNotice()
+
+    // Readings count only while the microphone is on, for captions or for
+    // sounds alone: a night of either runs the battery down, as the iPhone
+    // found. Sounds alone can start with no publish, so each reading asks.
+    private val batteryWatch = BatteryWatch(show = CaptionState::battery, warned = ::batteryWarningRaised)
+    private val batteryReadings = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = readBattery(intent)
+    }
 
     /** The phone's own voice, and which languages it has one for. */
     val voice = PhoneVoice(context)
@@ -257,6 +267,7 @@ class CaptionSession(
         started.speakerProfiles.forEach(pipeline::enroll)
         note("APP STARTED: ${appVersion()} Android ${Build.VERSION.RELEASE} engine ${started.engine.rawValue} model ${started.modelDescription(started.engine) ?: "-"} ${deviceState()}")
         scope.launch { combine(settings.current, settings.saveFailed) { _, _ -> }.collect { refreshSavingTrouble() } }
+        context.registerReceiver(batteryReadings, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         loadRecentConversation()
     }
 
@@ -356,6 +367,7 @@ class CaptionSession(
     }
 
     fun close() {
+        runCatching { context.unregisterReceiver(batteryReadings) }
         pipeline.close()
         network.close()
         scope.cancel()
@@ -391,7 +403,31 @@ class CaptionSession(
         )
         refreshSavingTrouble()
         announceNewLines(transcribing)
+        if (batteryWatch.listeningChanged(microphoneOn)) context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.let(::readBattery)
     }
+
+    private val microphoneOn: Boolean get() = pipeline.phase.isListening || pipeline.isListeningForSoundsOnly
+
+    private fun readBattery(intent: Intent) {
+        val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
+        batteryWatch.reading(
+            level = level.takeIf { it >= 0 && scale > 0 }?.let { it.toFloat() / scale },
+            pluggedIn = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0,
+            listening = microphoneOn,
+        )
+    }
+
+    /** On screen the banner says so with a buzz; with the app away it becomes a notification, as on the iPhone. */
+    fun batteryWarningRaised(warning: BatteryWarning) {
+        if (appIsActive) {
+            buzz(BATTERY_BUZZ)
+        } else if (settings.current.value.notifyWhenInBackground) {
+            notifier.post(warning.notificationContent)
+        }
+    }
+
+    fun dismissBatteryWarning() = CaptionState.battery(null)
 
     /**
      * Finished lines reach TalkBack (speech or a braille display) by
@@ -796,6 +832,9 @@ class CaptionSession(
         const val JOURNAL_FILE = "ozen-journal.log"
         const val PROBLEM_AUDIO_FOLDER = "problem-audio"
         private const val SAMPLE_RATE = 16_000
+
+        /** The iPhone's warning buzz: two taps, the second stronger. */
+        val BATTERY_BUZZ = AlertVibration(listOf(AlertVibration.Pulse(0.0, 0.1, 0.6f, 0.5f), AlertVibration.Pulse(0.2, 0.15, 1f, 0.5f)))
 
         /** In the cache: the conversation last shared as a file, kept for the app it went to. */
         const val SHARED_FOLDER = "shared"

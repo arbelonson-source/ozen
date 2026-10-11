@@ -114,6 +114,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.AppLanguage
+import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.DisplayPreferences
@@ -412,6 +413,7 @@ private fun OzenApp(
                         onFontSize = { size -> app.settings.change { it.display = it.display.copy(fontSize = size) } },
                         onOpenConversation = { reading = it to null },
                         onDismissRecent = app.captions::dismissRecentConversation,
+                        onDismissBattery = app.captions::dismissBatteryWarning,
                     )
                 }
             }
@@ -535,6 +537,7 @@ private fun CaptionScreen(
     onFontSize: (Double) -> Unit,
     onOpenConversation: (UUID) -> Unit,
     onDismissRecent: () -> Unit,
+    onDismissBattery: () -> Unit,
 ) {
     val list = rememberLazyListState()
     // As on the iPhone: the text grows under the fingers and only the
@@ -757,6 +760,7 @@ private fun CaptionScreen(
                         onDismiss = onDismissMicrophoneDrop,
                     )
                 }
+                state.battery?.let { BatteryBanner(it, onDismissBattery) }
             }
         }
         AnimatedVisibility(visible = !hidden) {
@@ -831,6 +835,9 @@ private const val AWAY_MARK_SEEN_MILLIS = 1_000L
 
 // A deep orange as on the iPhone, with white words on it at 5.5:1.
 private val TROUBLE_ORANGE = Color(red = 0.7f, green = 0.28f, blue = 0f)
+
+// The deeper red for a battery about to run out, white words on it at 6.6:1.
+private val CRITICAL_RED = Color(red = 0.7f, green = 0.1f, blue = 0.1f)
 
 @Composable
 private fun screenReaderOn(): Boolean {
@@ -1282,6 +1289,37 @@ private fun SavingTroubleBanner(onDismiss: () -> Unit) {
                     "כנראה שהטלפון מלא. שיחות והגדרות חדשות לא יישמרו עד שיתפנה מקום. בקשו ממי שעוזר לך עם הטלפון לפנות מקום.",
                     "The phone is probably full. New conversations and settings won't be saved until space frees up. Ask whoever helps you with the phone to free some.",
                 ),
+                color = Color.White,
+                fontSize = 16.sp,
+            )
+        }
+        Text("✕", color = Color.White.copy(alpha = 0.7f), fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics {})
+    }
+}
+
+/** "Battery at 19%", as the iPhone's: deeper red when the phone may shut down, a tap anywhere puts it away. */
+@Composable
+private fun BatteryBanner(warning: BatteryWarning, onDismiss: () -> Unit) {
+    val critical = warning is BatteryWarning.Critical
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (critical) CRITICAL_RED else TROUBLE_ORANGE, RoundedCornerShape(16.dp))
+            .clickable(onClickLabel = tr("סגירה", "Close"), onClick = onDismiss)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Text("🔋", fontSize = 26.sp, modifier = Modifier.clearAndSetSemantics {})
+        Column(Modifier.weight(1f)) {
+            Text(tr("הסוללה ב-%1%", "Battery at %1%", listOf("${warning.percent}")), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                if (critical) {
+                    tr("הטלפון עלול להיכבות באמצע השיחה. חברו למטען.", "The phone might shut down mid-conversation. Plug in a charger.")
+                } else {
+                    tr("כדאי לחבר למטען.", "Consider plugging in a charger.")
+                },
                 color = Color.White,
                 fontSize = 16.sp,
             )
