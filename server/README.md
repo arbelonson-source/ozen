@@ -125,6 +125,14 @@ few seconds late while the models load. Testing the connection from the
 phone starts the loading too. If the card is too full to load them, that
 phone uses its own model for the session, and the next one tries again.
 
+A phone set to another spoken language than Hebrew is captioned by the
+general Whisper Turbo model (`--general-model`, `large-v3-turbo` by
+default), since the Hebrew models are trained for Hebrew alone. It is
+downloaded from Hugging Face the first time such a phone connects (about
+1.6 GB), loads only while such a phone is connected, and leaves the card
+after `--unload-after` minutes without one, or 10 when that isn't set.
+`--general-model ""` turns it off, and every phone gets the Hebrew models.
+
 Each connection is logged with what it was for (`check` when the phone only
 tests that the server is there, `captions` when it streams, `report` when it
 sends a diagnostics report to keep in `reports/`) and the app build

@@ -148,6 +148,9 @@ SPEECH_OPTIONS = VadOptions(min_silence_duration_ms=100, speech_pad_ms=0)
 MIN_VOICE_SECONDS = 0.2
 LOAD_RETRY_SECONDS = 60
 IDLE_CHECK_SECONDS = 30
+# How long the general model stays on the card after the last phone that
+# needed it, when --unload-after doesn't say: most phones speak Hebrew.
+GENERAL_IDLE_MINUTES = 10
 # The names go to the model twice, as the prompt and as hotwords, and
 # Whisper reads both and the caption out of one 448-token context. A
 # 28 s line can take 220 tokens by itself, so each copy of the names
@@ -348,6 +351,22 @@ def load_models(args):
     for final in (False, True):
         transcriber._run(np.zeros(RATE, dtype=np.float32), "he", None, final, gate=False)
     return transcriber
+
+
+def load_general(args):
+    """The general model for phones whose people speak another language than
+    Hebrew: the Hebrew models are trained for Hebrew alone. Finished lines
+    use it too, as the stronger --final-model is Hebrew's. Runs in a worker
+    thread, like load_models."""
+    transcriber = Transcriber(args.general_model, args.device, args.compute_type, args.beam, args.context,
+                              None, args.speech_gate)
+    for final in (False, True):
+        transcriber._run(np.zeros(RATE, dtype=np.float32), "en", None, final, gate=False)
+    return transcriber
+
+
+def speaks_hebrew(language):
+    return str(language).lower().split("-")[0] in ("he", "iw")
 
 
 class OnDemandTranscriber:
@@ -708,7 +727,7 @@ def worker_failed(error):
     return error is not None and not isinstance(error, websockets.ConnectionClosed)
 
 
-async def handle(ws, transcriber, token, live_interval, make_enhancer=None):
+async def handle(ws, transcriber, token, live_interval, make_enhancer=None, general=None):
     peer = ws.remote_address
     try:
         hello = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
@@ -726,11 +745,14 @@ async def handle(ws, transcriber, token, live_interval, make_enhancer=None):
         await refuse(ws, "unauthorized", "")
         return
     beam = requested_beam(hello.get("beam"))
+    language = hello.get("language", "he")
+    if general is not None and not speaks_hebrew(language):
+        transcriber = general
     on_demand = isinstance(transcriber, OnDemandTranscriber)
     if on_demand:
         transcriber.opened()
         transcriber.prepare()
-    session = Session(ws, transcriber, hello.get("language", "he"),
+    session = Session(ws, transcriber, language,
                       [str(v) for v in hello.get("vocabulary", [])][:200], live_interval,
                       make_enhancer() if make_enhancer else None, beam)
     await ws.send(json.dumps({"type": "ready", "model": transcriber.name, "version": PROTOCOL_VERSION}))
@@ -804,6 +826,9 @@ async def main():
     p.add_argument("--enhance-mix", type=float, default=0.0,
                    help="mix this share of GTCRN-cleaned audio with the original (see enhance.py); 0 turns it off")
     p.add_argument("--enhance-model", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "gtcrn_simple.onnx"))
+    p.add_argument("--general-model", default="large-v3-turbo",
+                   help="for phones whose people speak another language than Hebrew, loaded when such a phone "
+                        "connects; empty turns it off and every language gets --model")
     p.add_argument("--unload-after", type=float, default=0.0,
                    help="load the models only when a phone connects, and free the graphics card after this many "
                         "minutes with no phone connected; 0 loads them at startup and keeps them")
@@ -812,10 +837,12 @@ async def main():
     if not token:
         raise SystemExit("set OZEN_TOKEN to the pairing code the phone will send")
     setup_logging()
+    general = OnDemandTranscriber(lambda: load_general(args), args.general_model, args.beam,
+                                  (args.unload_after or GENERAL_IDLE_MINUTES) * 60, args.context) if args.general_model else None
     if args.unload_after > 0:
         models = OnDemandTranscriber(lambda: load_models(args), args.model if not args.final_model else
                                      f"{args.model} + {args.final_model}", args.beam, args.unload_after * 60, args.context)
-        await serve(args, models, token, audio_cleaner(args))
+        await serve(args, models, token, audio_cleaner(args), general)
         return
     try:
         transcriber = Transcriber(args.model, args.device, args.compute_type, args.beam, args.context, args.final_model or None,
@@ -837,7 +864,7 @@ async def main():
         time.sleep(LOAD_RETRY_SECONDS)
         raise SystemExit(4)
     log.info("models warmed in %.1f s", time.monotonic() - started)
-    await serve(args, transcriber, token, audio_cleaner(args))
+    await serve(args, transcriber, token, audio_cleaner(args), general)
 
 
 def audio_cleaner(args):
@@ -850,16 +877,19 @@ def audio_cleaner(args):
     return make_enhancer
 
 
-async def serve(args, transcriber, token, make_enhancer):
-    async with websockets.serve(lambda ws: handle(ws, transcriber, token, args.live_interval, make_enhancer),
+async def serve(args, transcriber, token, make_enhancer, general=None):
+    async with websockets.serve(lambda ws: handle(ws, transcriber, token, args.live_interval, make_enhancer, general),
                                 args.host, args.port, max_size=2**22, ping_interval=10, ping_timeout=20):
         if isinstance(transcriber, OnDemandTranscriber):
             log.info("listening on %s:%d with %s, loaded when a phone connects and freed after %.0f idle minutes",
                      args.host, args.port, transcriber.name, transcriber.unload_after / 60)
-            await unload_when_idle(transcriber)
         else:
             log.info("listening on %s:%d with %s", args.host, args.port, transcriber.name)
-            await asyncio.Future()
+        if general is not None:
+            log.info("other languages than Hebrew use %s, loaded when such a phone connects and freed after %.0f idle "
+                     "minutes", general.name, general.unload_after / 60)
+        idle = [models for models in (transcriber, general) if isinstance(models, OnDemandTranscriber)]
+        await asyncio.gather(*(unload_when_idle(models) for models in idle)) if idle else await asyncio.Future()
 
 
 if __name__ == "__main__":

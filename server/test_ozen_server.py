@@ -1836,6 +1836,57 @@ class PhoneContract(unittest.TestCase):
         self.assertTrue(any("captions, Ozen test build, beam 3" in line for line in logged.output), logged.output)
 
 
+class OtherLanguages(unittest.TestCase):
+    """The Hebrew models stay for Hebrew; a phone whose people speak another
+    language is captioned by the general model, loaded only when such a
+    phone connects."""
+
+    def ready_model(self, language, general):
+        hello = {"type": "hello", "token": "example-code-123", "purpose": "check"}
+        if language is not None:
+            hello["language"] = language
+        ws = PhoneSocket(hello, [json.dumps({"type": "end"})])
+        with self.assertLogs(S.log, "INFO"):
+            asyncio.run(asyncio.wait_for(S.handle(ws, NamesGPU(), "example-code-123", 1.0, general=general), 5))
+        return json.loads(ws.sent[0])["model"]
+
+    def test_a_phone_for_another_language_gets_the_general_model_and_a_hebrew_one_the_hebrew_models(self):
+        loads = []
+
+        def load():
+            loads.append(1)
+            return LoadedGPU()
+
+        general = S.OnDemandTranscriber(load, "large-v3-turbo", 5, 600)
+        self.assertEqual(self.ready_model("he", general), "stand-in")
+        self.assertEqual(self.ready_model(None, general), "stand-in")
+        self.assertEqual(loads, [])
+        self.assertEqual(self.ready_model("en", general), "large-v3-turbo")
+        self.assertEqual(self.ready_model("ru", general), "large-v3-turbo")
+        self.assertEqual(general.connections, 0)
+
+    def test_without_a_general_model_every_language_gets_the_one_model_as_before(self):
+        self.assertEqual(self.ready_model("en", None), "stand-in")
+
+    def test_a_whole_english_session_runs_through_the_general_model_told_its_language(self):
+        languages = []
+
+        class Heard(LoadedGPU):
+            async def transcribe(self, audio, language, prompt, final, hotwords=None, gate=True, beam=None):
+                languages.append(language)
+                return await super().transcribe(audio, language, prompt, final, hotwords, gate, beam)
+
+        general = S.OnDemandTranscriber(Heard, "large-v3-turbo", 5, 600)
+        hebrew = NamesGPU()
+        ws = PhoneSocket({"type": "hello", "token": "example-code-123", "language": "en"},
+                         [*speech_frames(1.5), json.dumps({"type": "end"})])
+        with self.assertLogs(S.log, "INFO"):
+            asyncio.run(asyncio.wait_for(S.handle(ws, hebrew, "example-code-123", 1.0, general=general), 5))
+        self.assertEqual(set(languages), {"en"})
+        self.assertEqual(hebrew.passes, [])
+        self.assertIn("shalom", " ".join(ws.sent))
+
+
 class SessionAfterHello(unittest.TestCase):
     def test_new_names_reach_the_next_pass_a_report_is_kept_junk_is_skipped_and_end_finishes_the_line(self):
         import os
