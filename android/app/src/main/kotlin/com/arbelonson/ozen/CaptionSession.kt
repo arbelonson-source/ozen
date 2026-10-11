@@ -8,6 +8,7 @@ import com.arbelonson.ozen.core.CaptionPipeline
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.HomeServerEngine
+import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SpeakerEmbedding
@@ -186,6 +187,12 @@ class CaptionSession(
 
     /** A word the captions got wrong goes first in the word list. */
     fun addWord(word: String) = setWords(listOf(word) + settings.current.value.vocabulary)
+
+    /** The words that buzz when said; a running engine listens for them from the next line. */
+    fun setImportantWords(alerts: List<KeywordAlert>) {
+        settings.change { it.keywordAlerts = alerts }
+        pipeline.setKeywordAlerts(alerts)
+    }
 
     /** The names and words the engines are given, in order; a running engine has them from the next sentence. */
     fun setWords(words: List<String>) {

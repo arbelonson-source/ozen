@@ -5,8 +5,11 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -30,6 +33,7 @@ import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.ContrastRatio
 import com.arbelonson.ozen.core.DisplayPreferences
+import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
@@ -58,6 +62,7 @@ class SettingsScreenDeviceTest {
     private lateinit var modelBefore: String
     private lateinit var displayBefore: DisplayPreferences
     private lateinit var wordsBefore: List<String>
+    private lateinit var alertsBefore: List<KeywordAlert>
 
     @Before
     fun remember() {
@@ -69,6 +74,7 @@ class SettingsScreenDeviceTest {
         modelBefore = app.settings.current.value.cloudModel
         displayBefore = app.settings.current.value.display
         wordsBefore = app.settings.current.value.vocabulary
+        alertsBefore = app.settings.current.value.keywordAlerts.map { it.copy() }
         app.cloudKeys.remove(CloudProvider.Deepgram)
         app.homeServerCode.remove()
         app.settings.change { it.homeServerAddress = "" }
@@ -86,6 +92,7 @@ class SettingsScreenDeviceTest {
             it.cloudModel = modelBefore
             it.display = displayBefore
             it.vocabulary = wordsBefore
+            it.keywordAlerts = alertsBefore
         }
         compose.runOnUiThread { CaptionState.clear() }
     }
@@ -306,6 +313,58 @@ class SettingsScreenDeviceTest {
         compose.runOnUiThread { delete.action() }
         compose.waitUntil(5_000) { app.settings.current.value.vocabulary.isEmpty() }
         compose.onNodeWithText("No names yet").assertExists()
+    }
+
+    @Test
+    fun importantWordsAreAddedSwitchedOffAndBackOnAndDeletedAfterAskingInSettings() {
+        app.settings.change { it.keywordAlerts = emptyList() }
+        val phrases = { app.settings.current.value.keywordAlerts.map { it.phrase to it.isEnabled } }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Important words").performScrollTo()
+        compose.onNode(hasText("Important words") and hasText("None")).assertExists()
+        compose.onNodeWithText("Important words").performClick()
+        compose.onNodeWithText("No words yet", substring = true).assertExists()
+        compose.onNodeWithText("Add: Grandma").performClick()
+        compose.waitUntil(5_000) { phrases() == listOf("סבתא" to true) }
+        assertTrue(compose.onAllNodesWithText("Add: Grandma").fetchSemanticsNodes().isEmpty())
+
+        val field = compose.onNode(hasSetTextAction())
+        val otherLetters = "Captions are in Hebrew letters, so a word written in other letters may never be found."
+        field.performTextInput("Shira")
+        compose.onNodeWithText(otherLetters).assertExists()
+        compose.onNodeWithContentDescription("Add").performClick()
+        compose.waitUntil(5_000) { phrases() == listOf("סבתא" to true, "Shira" to true) }
+        compose.onNode(hasText("Shira") and hasText(otherLetters)).assertExists()
+
+        compose.onNode(hasText("Grandma") and isToggleable()).performClick()
+        compose.waitUntil(5_000) { phrases() == listOf("סבתא" to false, "Shira" to true) }
+        field.performTextInput("סבתא")
+        compose.onNodeWithText("\u201CGrandma\u201D is already in the list, turned off. Tap the plus to turn it back on.").assertExists()
+        compose.onNodeWithContentDescription("Turn on").performClick()
+        compose.waitUntil(5_000) { phrases() == listOf("סבתא" to true, "Shira" to true) }
+
+        compose.onNodeWithText("Shira").performTouchInput { longClick() }
+        compose.onNodeWithText("Delete").performClick()
+        compose.onNodeWithText("Delete \u201CShira\u201D?").assertExists()
+        compose.onNodeWithText("The phone will stop alerting when this word is said.").assertExists()
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitForIdle()
+        assertEquals(2, phrases().size)
+        val row = compose.onNode(hasText("Shira") and SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)).fetchSemanticsNode()
+        val delete = row.config[SemanticsActions.CustomActions].single { it.label == "Delete" }
+        compose.runOnUiThread { delete.action() }
+        compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(5_000) { phrases() == listOf("סבתא" to true) }
+
+        compose.onNodeWithText("Back").performClick()
+        compose.onNodeWithText("Important words").performScrollTo()
+        compose.onNode(hasText("Important words") and hasText("1")).assertExists()
+        compose.onNodeWithText("Important words").performClick()
+        compose.onNode(hasText("Grandma") and isToggleable()).performClick()
+        compose.waitUntil(5_000) { phrases() == listOf("סבתא" to false) }
+        compose.onNodeWithText("Back").performClick()
+        compose.onNodeWithText("Important words").performScrollTo()
+        compose.onNode(hasText("Important words") and hasText("0")).assertExists()
     }
 
     @Test

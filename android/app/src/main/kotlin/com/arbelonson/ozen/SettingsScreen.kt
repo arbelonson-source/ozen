@@ -69,13 +69,20 @@ import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
+import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.tr
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onClose: () -> Unit, onWords: (List<String>) -> Unit) {
+fun SettingsScreen(
+    engineSettings: EngineSettings,
+    settings: SettingsHolder,
+    onClose: () -> Unit,
+    onWords: (List<String>) -> Unit,
+    onImportantWords: (List<KeywordAlert>) -> Unit,
+) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
     val addressDraft = rememberSaveable(current.homeServerAddress) { mutableStateOf(current.homeServerAddress) }
@@ -89,6 +96,11 @@ fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onC
     var showingWords by rememberSaveable { mutableStateOf(false) }
     if (showingWords) {
         WordsScreen(current.vocabulary, onWords, onClose = { showingWords = false })
+        return
+    }
+    var showingImportantWords by rememberSaveable { mutableStateOf(false) }
+    if (showingImportantWords) {
+        ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, onImportantWords, onClose = { showingImportantWords = false })
         return
     }
     BackHandler(onBack = close)
@@ -106,6 +118,7 @@ fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onC
                 TextButton(onClick = close) { Text(tr("סגירה", "Close")) }
             }
             DisplaySection(settings, current.display, current.engine)
+            AlertsSection(current.keywordAlerts.count { it.isEnabled }, listed = current.keywordAlerts.isNotEmpty(), onOpen = { showingImportantWords = true })
             EngineSection(engineSettings, current)
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
             if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
@@ -545,6 +558,19 @@ private fun ChoiceRow(title: String, summary: String?, selected: Boolean, onSele
             Text(title, style = MaterialTheme.typography.bodyLarge)
             summary?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
+    }
+}
+
+/** Right after how captions look, as on the iPhone: the words that buzz when said. */
+@Composable
+private fun AlertsSection(enabled: Int, listed: Boolean, onOpen: () -> Unit) {
+    SectionHeader(tr("התראות", "Alerts"))
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(tr("מילים חשובות", "Important words"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(if (listed) "$enabled" else tr("אין", "None"), color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
