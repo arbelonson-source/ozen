@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
@@ -52,8 +53,9 @@ import kotlinx.coroutines.delay
  * is open, so the report sent is the one on screen.
  */
 @Composable
-internal fun DiagnosticsScreen(facts: () -> DiagnosticsFacts, onClose: () -> Unit) {
+internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
+    val facts = source::diagnostics
     var now by remember { mutableStateOf(facts()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -119,7 +121,7 @@ internal fun DiagnosticsScreen(facts: () -> DiagnosticsFacts, onClose: () -> Uni
             } else {
                 // English, so left to right even with the app in Hebrew.
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    Column {
+                    Column(modifier = Modifier.testTag(DIAGNOSTICS_EVENTS)) {
                         for (line in now.events.takeLast(RECENT_EVENTS).reversed()) {
                             Text(line, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, modifier = Modifier.fillMaxWidth())
                         }
@@ -127,6 +129,39 @@ internal fun DiagnosticsScreen(facts: () -> DiagnosticsFacts, onClose: () -> Uni
                 }
             }
             Text(tr("החדש ביותר למעלה. הדוח המועתק כולל את כל הרשימה.", "Newest at the top. The copied report includes the full list."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            Header(tr("יומן, כולל הפעלות קודמות", "Journal, previous runs included"))
+            OutlinedButton(
+                onClick = {
+                    source.markProblem()
+                    now = facts()
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(tr("לסמן בעיה עכשיו", "Mark a problem now"))
+            }
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Column(modifier = Modifier.testTag(DIAGNOSTICS_JOURNAL)) {
+                    for (line in now.journal.takeLast(JOURNAL_LINES).reversed()) {
+                        Text(line, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+            if (now.hasMarkedCaptionLines) {
+                TextButton(
+                    onClick = {
+                        source.deleteMarkedCaptionLines()
+                        now = facts()
+                    },
+                ) {
+                    Text(tr("מחיקת שורות הכתוביות שנשמרו כאן", "Delete the caption lines kept here"), color = MaterialTheme.colorScheme.error)
+                }
+            }
+            Text(
+                tr("נשמר בטלפון גם כשהאפליקציה נסגרת, ונשלח רק עם הדוח. כשמסמנים בעיה נשמרות גם השורות האחרונות של הכתוביות.", "Kept on the phone even when the app closes, and sent only with the report. Marking a problem also keeps the last few caption lines."),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             OutlinedButton(onClick = { context.startActivity(reportSheet(DiagnosticsReport.text(facts()))) }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
                 Text(tr("שליחת הדוח", "Send report"))
@@ -189,3 +224,6 @@ private fun copyReport(context: Context, report: String) {
 private fun format(pattern: String, value: Double): String = String.format(Locale.ROOT, pattern, value)
 
 private const val RECENT_EVENTS = 12
+private const val JOURNAL_LINES = 15
+internal const val DIAGNOSTICS_EVENTS = "diagnosticsEvents"
+internal const val DIAGNOSTICS_JOURNAL = "diagnosticsJournal"

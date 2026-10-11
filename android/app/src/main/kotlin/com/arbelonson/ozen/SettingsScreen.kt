@@ -98,7 +98,7 @@ fun SettingsScreen(
     onImportantWords: (List<KeywordAlert>) -> Unit,
     canSay: (String) -> Boolean,
     onSpeak: (String) -> Unit,
-    diagnostics: () -> DiagnosticsFacts,
+    diagnostics: DiagnosticsSource,
     heard: List<KeywordHit> = emptyList(),
 ) {
     val current by settings.current.collectAsStateWithLifecycle()

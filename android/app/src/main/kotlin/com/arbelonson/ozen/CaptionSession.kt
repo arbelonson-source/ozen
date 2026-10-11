@@ -2,6 +2,8 @@ package com.arbelonson.ozen
 
 import android.content.Context
 import android.os.Build
+import android.os.Debug
+import android.os.PowerManager
 import androidx.core.content.pm.PackageInfoCompat
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioCapturing
@@ -14,7 +16,9 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.ProblemSnapshot
 import com.arbelonson.ozen.core.SavingTroubleNotice
+import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SpeakerEmbedding
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
@@ -43,7 +47,7 @@ class CaptionSession(
     val audio: AudioCapturing = AndroidAudioCapture(context),
     private val modelFile: File = File(context.filesDir, MODEL_FILE),
     historyFolder: File = File(context.filesDir, HISTORY_FOLDER),
-) {
+) : DiagnosticsSource {
     private val scope = MainScope()
     private val connector = WebSocketConnector()
     private val voiceScorer by lazy { SileroVoiceScorer.fromAssets(context) }
@@ -83,8 +87,19 @@ class CaptionSession(
         },
     )
 
+    /**
+     * What happened to the captions, kept on the phone past the app's
+     * end, for the diagnostics report: the pipeline's events, the app
+     * starting and leaving the screen, and the problems she marks.
+     */
+    private val journal = SessionJournal(File(context.filesDir, JOURNAL_FILE))
+
     /** Whether the caption screen is in front: set as MainActivity starts and stops. */
     var appIsActive = false
+        set(active) {
+            if (active != field) note(if (active) "app back on screen" else "app left the screen (phase ${if (pipeline.phase.isListening) "listening" else "not listening"})")
+            field = active
+        }
 
     private val conversations = ConversationSaver(
         writer = TranscriptHistoryWriter(historyStore),
@@ -170,6 +185,9 @@ class CaptionSession(
         pipeline.onCaptionsChanged = ::publish
         pipeline.onKeywordHits = ::wordsHeard
         replies.onSpeaking = CaptionState::speaking
+        pipeline.onEvent = { journal.append(it.description, it.at) }
+        val started = settings.current.value
+        note("APP STARTED: ${appVersion()} Android ${Build.VERSION.RELEASE} engine ${started.engine.rawValue} model ${started.modelDescription(started.engine) ?: "-"} ${deviceState()}")
         scope.launch { combine(settings.current, settings.saveFailed) { _, _ -> }.collect { refreshSavingTrouble() } }
     }
 
@@ -257,8 +275,7 @@ class CaptionSession(
     }
 
     /** What the diagnostics screen shows and its report says, as things stand now. */
-    fun diagnostics(): DiagnosticsFacts {
-        val app = context.packageManager.getPackageInfo(context.packageName, 0)
+    override fun diagnostics(): DiagnosticsFacts {
         return DiagnosticsFacts(
             phase = pipeline.phase,
             activeEngine = pipeline.activeEngineKind,
@@ -273,11 +290,46 @@ class CaptionSession(
             interruptedBySystem = interruptedBySystem,
             settingsSaveFailed = settings.saveFailed.value,
             historySaveFailure = conversations.lastSaveFailure,
-            events = pipeline.eventLog.reportLines { at -> TimeZone.getDefault().getOffset((at * 1_000).toLong()) / 1_000 },
+            events = pipeline.eventLog.reportLines(::utcOffsetAt),
             device = "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE}",
-            appVersion = "${app.versionName} (${PackageInfoCompat.getLongVersionCode(app)})",
+            appVersion = appVersion(),
+            journal = journal.reportLines(::utcOffsetAt),
+            hasMarkedCaptionLines = journal.entries().any { ProblemSnapshot.isCaptionLine(it.text) },
         )
     }
+
+    override fun markProblem() {
+        val now = System.currentTimeMillis() / 1_000.0
+        val lines = ProblemSnapshot.lines(
+            settings = settings.current.value,
+            activeEngine = pipeline.activeEngineKind,
+            input = pipeline.availableInputs.firstOrNull { it.uid == pipeline.selectedInputUID },
+            stats = pipeline.stats,
+            segments = pipeline.segments,
+            device = deviceState(),
+            utcOffsetSeconds = utcOffsetAt(now),
+        )
+        lines.forEach { journal.append(it, now) }
+        scope.launch { pipeline.engineDiagnostics()?.let { journal.append("  engine: $it", now) } }
+    }
+
+    override fun deleteMarkedCaptionLines() = journal.removeEntries(ProblemSnapshot::isCaptionLine)
+
+    private fun note(text: String) = journal.append(text, System.currentTimeMillis() / 1_000.0)
+
+    private fun appVersion(): String {
+        val app = context.packageManager.getPackageInfo(context.packageName, 0)
+        return "${app.versionName} (${PackageInfoCompat.getLongVersionCode(app)})"
+    }
+
+    /** Heat, Battery Saver and the memory the app holds: all slow captions down with nothing on screen saying so. */
+    private fun deviceState(): String {
+        val power = context.getSystemService(PowerManager::class.java)
+        val thermal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) "${power.currentThermalStatus}" else "-"
+        return "thermal $thermal low power ${power.isPowerSaveMode} memory ${Debug.getPss() / 1_024}MB"
+    }
+
+    private fun utcOffsetAt(at: Double): Int = TimeZone.getDefault().getOffset((at * 1_000).toLong()) / 1_000
 
     /** Hides the saving-failed banner until saving works and then fails again. */
     fun dismissSavingTrouble() {
@@ -370,6 +422,7 @@ class CaptionSession(
     companion object {
         const val MODEL_FILE = "ggml-ozen-a3-q5_0.bin"
         const val HISTORY_FOLDER = "ozen-history"
+        const val JOURNAL_FILE = "ozen-journal.log"
 
         /** In the cache: the conversation last shared as a file, kept for the app it went to. */
         const val SHARED_FOLDER = "shared"

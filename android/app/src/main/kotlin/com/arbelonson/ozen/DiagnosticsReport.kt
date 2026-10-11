@@ -30,7 +30,21 @@ data class DiagnosticsFacts(
     val events: List<String>,
     val device: String,
     val appVersion: String,
+    /** The journal kept on the phone as report lines, oldest first, earlier runs of the app included. */
+    val journal: List<String>,
+    val hasMarkedCaptionLines: Boolean,
 )
+
+/** Where the diagnostics screen reads from, and what its buttons do. */
+interface DiagnosticsSource {
+    fun diagnostics(): DiagnosticsFacts
+
+    /** "Captions not good?": what was running and what the captions last said, kept in the journal. */
+    fun markProblem()
+
+    /** Takes the caption lines marked problems kept out of the journal, and nothing else. */
+    fun deleteMarkedCaptionLines()
+}
 
 /**
  * The iPhone's diagnostics report, in the same plain English for whoever
@@ -64,7 +78,8 @@ object DiagnosticsReport {
             "device: ${facts.device} app ${facts.appVersion}",
             "events (oldest first):",
         )
-        return (lines + facts.events.ifEmpty { listOf("-") }).joinToString("\n")
+        val journal = listOf("journal, previous runs included (oldest first):") + facts.journal.ifEmpty { listOf("-") }
+        return (lines + facts.events.ifEmpty { listOf("-") } + journal).joinToString("\n")
     }
 
     /** The stage in the iPhone's own technical words: "preparing engine: downloadingModel 42% large-v3". */

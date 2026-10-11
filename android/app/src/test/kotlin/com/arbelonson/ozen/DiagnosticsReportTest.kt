@@ -20,7 +20,7 @@ class DiagnosticsReportTest {
     private val phone = AudioInputDescriptor("mic-1", "Phone microphone", AudioPortType.BuiltInMic)
     private val headset = AudioInputDescriptor("mic-2", "USB headset", AudioPortType.Usb)
 
-    private fun facts(settings: AppSettings = AppSettings.default.copy(), codeSaved: Boolean = false) = DiagnosticsFacts(
+    private fun facts(settings: AppSettings = AppSettings.default.copy(), codeSaved: Boolean = false, journal: List<String> = emptyList()) = DiagnosticsFacts(
         phase = PipelinePhase.Failed(PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, "the microphone is busy")),
         activeEngine = TranscriptionEngineKind.WhisperKit,
         settings = settings,
@@ -45,6 +45,8 @@ class DiagnosticsReportTest {
         events = listOf("12:41:00 microphone stopped delivering audio", "12:41:05 listening"),
         device = "Google Pixel 8, Android 16",
         appVersion = "0.2.40 (40)",
+        journal = journal,
+        hasMarkedCaptionLines = false,
     )
 
     @Test
@@ -57,7 +59,8 @@ class DiagnosticsReportTest {
             saveHistory = true
             historyRetention = HistoryRetention.Year
         }
-        val lines = DiagnosticsReport.text(facts(settings)).lines()
+        val journal = listOf("10-10 21:02:11 APP STARTED: 0.2.40 Android 16", "10-10 21:40:03 PROBLEM MARKED: engine whisperKit")
+        val lines = DiagnosticsReport.text(facts(settings, journal = journal)).lines()
         assertEquals("Ozen diagnostics", lines[0])
         assertEquals("phase: failed: audioSessionFailed", lines[1])
         assertEquals("failure: the microphone is busy", lines[2])
@@ -72,7 +75,18 @@ class DiagnosticsReportTest {
         assertEquals("history: saving true keep year display: size ${settings.display.fontSize.toInt()} theme ${settings.display.theme.rawValue} awake ${settings.display.keepScreenAwake}", lines[11])
         assertEquals("settings save error: failed history save error: -", lines[12])
         assertEquals("device: Google Pixel 8, Android 16 app 0.2.40 (40)", lines[13])
-        assertEquals(listOf("events (oldest first):", "12:41:00 microphone stopped delivering audio", "12:41:05 listening"), lines.drop(14))
+        assertEquals(
+            listOf(
+                "events (oldest first):",
+                "12:41:00 microphone stopped delivering audio",
+                "12:41:05 listening",
+                "journal, previous runs included (oldest first):",
+                "10-10 21:02:11 APP STARTED: 0.2.40 Android 16",
+                "10-10 21:40:03 PROBLEM MARKED: engine whisperKit",
+            ),
+            lines.drop(14),
+        )
+        assertEquals(listOf("journal, previous runs included (oldest first):", "-"), DiagnosticsReport.text(facts()).lines().takeLast(2))
     }
 
     @Test

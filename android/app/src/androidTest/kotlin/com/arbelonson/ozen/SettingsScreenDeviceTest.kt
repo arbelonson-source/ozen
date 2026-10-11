@@ -9,6 +9,8 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.os.Process
+import android.os.SystemClock
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -19,6 +21,7 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isToggleable
@@ -39,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.CloudProvider
@@ -49,9 +53,12 @@ import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.ProblemSnapshot
 import com.arbelonson.ozen.core.QuietHours
+import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
@@ -578,10 +585,11 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
             compose.onNodeWithText("Stage").assertExists()
             compose.onNodeWithText(DiagnosticsReport.stage(app.captions.pipeline.phase)).assertExists()
-            val givenBack = compose.onNodeWithText("audio given back", substring = true).performScrollTo().fetchSemanticsNode().positionInRoot.y
-            val taken = compose.onAllNodesWithText("audio taken by a call or another app", substring = true).fetchSemanticsNodes().minOf { it.positionInRoot.y }
+            val events = hasAnyAncestor(hasTestTag(DIAGNOSTICS_EVENTS))
+            val givenBack = compose.onAllNodes(hasText("audio given back", substring = true) and events).fetchSemanticsNodes().minOf { it.positionInRoot.y }
+            val taken = compose.onAllNodes(hasText("audio taken by a call or another app", substring = true) and events).fetchSemanticsNodes().minOf { it.positionInRoot.y }
             assertTrue("the newest event is not at the top", givenBack < taken)
-            val calls = { compose.onAllNodesWithText("audio taken by a call or another app", substring = true).fetchSemanticsNodes().size }
+            val calls = { compose.onAllNodes(hasText("audio taken by a call or another app", substring = true) and events).fetchSemanticsNodes().size }
             val before = calls()
             compose.runOnUiThread { app.captions.pipeline.systemInterruptionChanged(true) }
             compose.waitUntil(5_000) { calls() == before + 1 }
@@ -593,7 +601,8 @@ class SettingsScreenDeviceTest {
             compose.runOnUiThread { copied = clipboard.primaryClip?.getItemAt(0)?.text.toString() }
             assertTrue(copied, copied.startsWith("Ozen diagnostics\nphase: "))
             assertTrue(copied, copied.contains("home server: 192.168.1.20:8765 code saved: true"))
-            assertTrue("events not oldest first", copied.lastIndexOf("audio taken by a call or another app") < copied.lastIndexOf("audio given back"))
+            val eventsInReport = copied.substringBefore("journal, previous runs included")
+            assertTrue("events not oldest first", eventsInReport.lastIndexOf("audio taken by a call or another app") < eventsInReport.lastIndexOf("audio given back"))
             assertFalse("the pairing code went into the report", copied.contains("code-for-the-report"))
 
             compose.onNodeWithText("Send report").performScrollTo().performClick()
@@ -612,6 +621,56 @@ class SettingsScreenDeviceTest {
         } finally {
             instrumentation.removeMonitor(sheet)
         }
+    }
+
+    @Test
+    fun theJournalKeepsWhatHappenedOnDiskAndAMarkedProblemGoesIntoTheReportWithItsCaptionLinesDeletableApart() {
+        val kept = SessionJournal(File(app.filesDir, CaptionSession.JOURNAL_FILE))
+        val clock = { System.currentTimeMillis() / 1_000.0 }
+        val since = { from: Double -> kept.entries().filter { it.at >= from - 0.01 }.map { it.text } }
+        val processStarted = clock() - (SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime()) / 1_000.0
+        kept.removeEntries(ProblemSnapshot::isCaptionLine)
+        val clipboard = app.getSystemService(ClipboardManager::class.java)
+        compose.runOnUiThread { clipboard.clearPrimaryClip() }
+        assertTrue(since(processStarted - 1).any { it.startsWith("APP STARTED: ") && it.contains(" Android ") && it.contains(" engine ") })
+
+        val away = clock()
+        compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        assertTrue(within(5_000) { since(away).filter { it.startsWith("app ") } == listOf("app left the screen (phase not listening)", "app back on screen") })
+        val call = clock()
+        compose.runOnUiThread {
+            app.captions.pipeline.systemInterruptionChanged(true)
+            app.captions.pipeline.systemInterruptionChanged(false)
+        }
+        assertTrue(within(5_000) { since(call).let { it.indexOf("audio taken by a call or another app") in 0 until it.indexOf("audio given back") } })
+        val backOnScreen = compose.runOnUiThread { app.captions.diagnostics().journal.last { it.endsWith(" app back on screen") } }
+
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
+        val journal = hasAnyAncestor(hasTestTag(DIAGNOSTICS_JOURNAL))
+        compose.onNodeWithText("Journal, previous runs included").performScrollTo()
+        compose.onNodeWithText("Delete the caption lines kept here").assertDoesNotExist()
+        val marked = clock()
+        compose.onNodeWithText("Mark a problem now").performScrollTo().performClick()
+        assertTrue(since(marked).any { it.startsWith("PROBLEM MARKED: engine ") })
+        val problem = compose.runOnUiThread { app.captions.diagnostics().journal.last { it.contains(" PROBLEM MARKED: engine ") } }
+        val problemAt = compose.onAllNodes(hasText(problem) and journal).fetchSemanticsNodes().minOf { it.positionInRoot.y }
+        val backAt = compose.onAllNodes(hasText(backOnScreen) and journal).fetchSemanticsNodes().minOf { it.positionInRoot.y }
+        assertTrue("the journal is not newest first", problemAt < backAt)
+
+        val said = "  line (final, sure 0.91, 12:00:00): The pharmacy closes early on Friday"
+        kept.append(said, clock())
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Delete the caption lines kept here").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Delete the caption lines kept here").performScrollTo().performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Delete the caption lines kept here").fetchSemanticsNodes().isEmpty() }
+        assertFalse(kept.entries().any { it.text == said })
+        assertTrue("deleting the caption lines took the rest with them", since(marked).any { it.startsWith("PROBLEM MARKED: engine ") })
+
+        compose.onNodeWithText("Copy report").performScrollTo().performClick()
+        val copied = compose.runOnUiThread { clipboard.primaryClip?.getItemAt(0)?.text.toString() }
+        val inReport = copied.substringAfter("journal, previous runs included (oldest first):\n", missingDelimiterValue = "")
+        assertTrue(copied, inReport.indexOf(backOnScreen) in 0 until inReport.indexOf(problem))
     }
 
     private fun sampleMillis(): Long {
