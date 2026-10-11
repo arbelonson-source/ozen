@@ -3,7 +3,10 @@ package com.arbelonson.ozen
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
@@ -94,6 +97,27 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    @Test
+    fun theButtonsSlideAwayWhileCaptionsRunUntouchedAndComeBackWithATap() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.display
+        try {
+            app.settings.change { it.display = it.display.copy(autoHideControls = true) }
+            showLine("Captions running on their own", PipelinePhase.Listening)
+            compose.onNodeWithText("Settings").assertExists()
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("Settings").fetchSemanticsNodes().isEmpty() }
+            compose.onNodeWithContentDescription("Show the buttons").performClick()
+            compose.onNodeWithText("Settings").assertExists()
+
+            app.settings.change { it.display = it.display.copy(autoHideControls = false) }
+            val later = System.currentTimeMillis() + 7_000
+            compose.waitUntil(10_000) { System.currentTimeMillis() >= later }
+            compose.onNodeWithText("Settings").assertExists()
+        } finally {
+            app.settings.change { it.display = before }
+        }
+    }
+
     private fun darkBarIcons(): Boolean {
         var dark = false
         compose.runOnUiThread {
@@ -103,10 +127,10 @@ class CaptionScreenDeviceTest {
         return dark
     }
 
-    private fun showLine(text: String) {
+    private fun showLine(text: String, phase: PipelinePhase = PipelinePhase.Paused) {
         val line = TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
         compose.runOnUiThread {
-            CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line))
+            CaptionState.show(phase, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line))
         }
     }
 

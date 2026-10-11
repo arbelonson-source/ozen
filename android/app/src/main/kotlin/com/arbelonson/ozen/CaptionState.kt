@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.CaptionLayout
+import com.arbelonson.ozen.core.ControlBarAutoHide
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ScheduledRetry
 import com.arbelonson.ozen.core.ScreenAwakePolicy
@@ -30,6 +31,18 @@ data class CaptionScreenState(
         lastActivityAt = lastActivityAt,
         now = maxOf(now, lastActivityAt ?: 0.0),
     )
+
+    fun hidesButtons(autoHide: Boolean, followingLatest: Boolean, screenReaderOn: Boolean, lastTouchAt: Double, now: Double): Boolean =
+        ControlBarAutoHide.hides(
+            enabled = autoHide,
+            isListening = phase.isListening,
+            followingLatest = followingLatest,
+            hasLines = lines.isNotEmpty(),
+            voiceOverRunning = screenReaderOn,
+            pausedForCall = interruptedBySystem,
+            lastTouchAt = lastTouchAt,
+            now = now,
+        )
 }
 
 object CaptionState {

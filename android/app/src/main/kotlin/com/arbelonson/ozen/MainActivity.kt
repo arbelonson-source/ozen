@@ -8,13 +8,18 @@ import android.os.Build
 import android.os.Bundle
 import android.os.LocaleList
 import android.provider.Settings
+import android.view.accessibility.AccessibilityManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,8 +30,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,8 +58,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
@@ -246,10 +263,33 @@ private fun CaptionScreen(
     onSettings: () -> Unit,
     onHistory: () -> Unit,
 ) {
+    val list = rememberLazyListState()
+    var lastTouchAt by remember { mutableDoubleStateOf(secondsNow()) }
+    var clock by remember { mutableDoubleStateOf(secondsNow()) }
+    val listening = state.phase.isListening
+    LaunchedEffect(listening) {
+        while (listening) {
+            clock = secondsNow()
+            delay(1_000)
+        }
+    }
+    val hidden = state.hidesButtons(
+        autoHide = display.autoHideControls,
+        followingLatest = !list.canScrollForward,
+        screenReaderOn = screenReaderOn(),
+        lastTouchAt = lastTouchAt,
+        now = clock,
+    )
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(look.background)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    lastTouchAt = secondsNow()
+                }
+            }
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -264,24 +304,71 @@ private fun CaptionScreen(
                     textAlign = TextAlign.Center,
                 )
             } else {
-                CaptionLines(state.lines, display, look)
+                CaptionLines(state.lines, display, look, list)
             }
         }
-        StatusButton(state.status, look.chrome, onStatusTap)
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onHistory) {
-                Text(tr("היסטוריה", "History"), fontSize = 18.sp)
+        AnimatedVisibility(visible = !hidden) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                StatusButton(state.status, look.chrome, onStatusTap)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(onClick = onHistory) {
+                        Text(tr("היסטוריה", "History"), fontSize = 18.sp)
+                    }
+                    TextButton(onClick = onSettings) {
+                        Text(tr("הגדרות", "Settings"), fontSize = 18.sp)
+                    }
+                }
             }
-            TextButton(onClick = onSettings) {
-                Text(tr("הגדרות", "Settings"), fontSize = 18.sp)
+        }
+        if (hidden) ShowButtonsButton(look.chrome) { lastTouchAt = secondsNow() }
+    }
+}
+
+private fun secondsNow() = System.currentTimeMillis() / 1_000.0
+
+@Composable
+private fun screenReaderOn(): Boolean {
+    val manager = LocalContext.current.getSystemService(AccessibilityManager::class.java)
+    var on by remember(manager) { mutableStateOf(manager.isTouchExplorationEnabled) }
+    DisposableEffect(manager) {
+        val listener = AccessibilityManager.TouchExplorationStateChangeListener { on = it }
+        manager.addTouchExplorationStateChangeListener(listener)
+        onDispose { manager.removeTouchExplorationStateChangeListener(listener) }
+    }
+    return on
+}
+
+/**
+ * The one control left while the buttons are away, as on the iPhone: at
+ * least the 44-point target a shaky finger needs. A touch anywhere on the
+ * screen brings the buttons back too.
+ */
+@Composable
+private fun ShowButtonsButton(chrome: Color, onTap: () -> Unit) {
+    val label = tr("הצגת הכפתורים", "Show the buttons")
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(width = 64.dp, height = 44.dp)
+                .background(chrome.copy(alpha = 0.12f), RoundedCornerShape(22.dp))
+                .clickable(role = Role.Button, onClick = onTap)
+                .semantics { contentDescription = label },
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(modifier = Modifier.size(width = 20.dp, height = 11.dp)) {
+                val chevron = Path().apply {
+                    moveTo(0f, size.height)
+                    lineTo(size.width / 2, 0f)
+                    lineTo(size.width, size.height)
+                }
+                drawPath(chevron, chrome, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
         }
     }
 }
 
 @Composable
-private fun CaptionLines(lines: List<CaptionLine>, display: DisplayPreferences, look: CaptionTheme) {
-    val list = rememberLazyListState()
+private fun CaptionLines(lines: List<CaptionLine>, display: DisplayPreferences, look: CaptionTheme, list: LazyListState) {
     LaunchedEffect(lines.size, lines.lastOrNull()?.text) { list.scrollToItem(lines.size - 1) }
     LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(lines, key = { it.id }) { line ->

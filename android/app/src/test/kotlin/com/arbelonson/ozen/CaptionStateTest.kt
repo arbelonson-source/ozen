@@ -102,6 +102,29 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `the buttons slide away once captions have run five seconds untouched`() {
+        show(PipelinePhase.Listening, listOf(line("Hello", committed = true)))
+        val screen = CaptionState.screen.value
+        assertFalse(screen.hidesButtons(autoHide = true, followingLatest = true, screenReaderOn = false, lastTouchAt = 100.0, now = 103.0))
+        assertTrue(screen.hidesButtons(autoHide = true, followingLatest = true, screenReaderOn = false, lastTouchAt = 100.0, now = 106.0))
+    }
+
+    @Test
+    fun `the buttons stay when switched off, scrolled up, with a screen reader, paused, empty or cut off by a call`() {
+        show(PipelinePhase.Listening, listOf(line("Hello", committed = true)))
+        val screen = CaptionState.screen.value
+        assertFalse(screen.hidesButtons(autoHide = false, followingLatest = true, screenReaderOn = false, lastTouchAt = 100.0, now = 160.0))
+        assertFalse(screen.hidesButtons(autoHide = true, followingLatest = false, screenReaderOn = false, lastTouchAt = 100.0, now = 160.0))
+        assertFalse(screen.hidesButtons(autoHide = true, followingLatest = true, screenReaderOn = true, lastTouchAt = 100.0, now = 160.0))
+        show(PipelinePhase.Paused, listOf(line("Hello", committed = true)))
+        assertFalse(CaptionState.screen.value.hidesButtons(autoHide = true, followingLatest = true, screenReaderOn = false, lastTouchAt = 100.0, now = 160.0))
+        show(PipelinePhase.Listening)
+        assertFalse(CaptionState.screen.value.hidesButtons(autoHide = true, followingLatest = true, screenReaderOn = false, lastTouchAt = 100.0, now = 160.0))
+        show(PipelinePhase.Listening, listOf(line("Hello", committed = true)), interrupted = true)
+        assertFalse(CaptionState.screen.value.hidesButtons(autoHide = true, followingLatest = true, screenReaderOn = false, lastTouchAt = 100.0, now = 160.0))
+    }
+
+    @Test
     fun `clearing starts the screen over, captions off and no lines`() {
         show(PipelinePhase.Listening, listOf(line("שלום", committed = true)))
         CaptionState.clear()

@@ -219,7 +219,7 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
-    fun theUsualTextSizeComesBackWithOneTapAndTheScreenSwitchIsSaved() {
+    fun theUsualTextSizeComesBackWithOneTapAndTheScreenAndButtonSwitchesAreSaved() {
         app.settings.change { it.display = DisplayPreferences.default.copy(fontSize = 50.0) }
         compose.onNodeWithText("Settings").performClick()
         compose.onNodeWithText("Back to the usual size").performScrollTo().performClick()
@@ -227,6 +227,8 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Back to the usual size").assertDoesNotExist()
         compose.onNodeWithText("Screen doesn’t turn off while listening").performScrollTo().performClick()
         assertFalse(app.settings.current.value.display.keepScreenAwake)
+        compose.onNodeWithText("Hide the buttons while captions are running").performScrollTo().performClick()
+        assertFalse(app.settings.current.value.display.autoHideControls)
     }
 
     @Test

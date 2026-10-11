@@ -165,6 +165,9 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
     SwitchRow(tr("המסך לא נכבה בזמן האזנה", "Screen doesn’t turn off while listening"), display.keepScreenAwake) { on ->
         settings.change { it.display = it.display.copy(keepScreenAwake = on) }
     }
+    SwitchRow(tr("להסתיר את הכפתורים בזמן האזנה", "Hide the buttons while captions are running"), display.autoHideControls) { on ->
+        settings.change { it.display = it.display.copy(autoHideControls = on) }
+    }
     SwitchRow(tr("מספרים בולטים (שעות, כמויות, טלפונים)", "Bold numbers (times, amounts, phone numbers)"), display.emphasizeNumbers) { on ->
         settings.change { it.display = it.display.copy(emphasizeNumbers = on) }
     }
