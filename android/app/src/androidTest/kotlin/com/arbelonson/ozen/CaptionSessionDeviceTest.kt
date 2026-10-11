@@ -131,6 +131,14 @@ class CaptionSessionDeviceTest {
             val another = saved("The bus leaves at four", now - 60)
             withContext(Dispatchers.Main) { session.loadRecentConversation() }
             assertEquals(another.id, withTimeoutOrNull(5_000) { CaptionState.screen.first { it.recentConversation != null } }?.recentConversation?.id)
+            withContext(Dispatchers.Main) {
+                session.loadRecentConversation()
+                session.dismissRecentConversation()
+            }
+            delay(1_000)
+            assertNull("taken away while it was being looked for", CaptionState.screen.value.recentConversation)
+            withContext(Dispatchers.Main) { session.loadRecentConversation() }
+            assertEquals(another.id, withTimeoutOrNull(5_000) { CaptionState.screen.first { it.recentConversation != null } }?.recentConversation?.id)
             withContext(Dispatchers.Main) { session.clearCaptions() }
             assertNull(CaptionState.screen.value.recentConversation)
         } finally {
