@@ -32,8 +32,10 @@ import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ProblemSnapshot
 import com.arbelonson.ozen.core.ReleaseFileFetching
+import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SessionJournal
+import com.arbelonson.ozen.core.SpeakerProfile
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -242,6 +244,7 @@ class CaptionSession(
         replies.onSpeaking = CaptionState::speaking
         pipeline.onEvent = { journal.append(it.description, it.at) }
         val started = settings.current.value
+        started.speakerProfiles.forEach(pipeline::enroll)
         note("APP STARTED: ${appVersion()} Android ${Build.VERSION.RELEASE} engine ${started.engine.rawValue} model ${started.modelDescription(started.engine) ?: "-"} ${deviceState()}")
         scope.launch { combine(settings.current, settings.saveFailed) { _, _ -> }.collect { refreshSavingTrouble() } }
     }
@@ -501,7 +504,9 @@ class CaptionSession(
     }
 
     /** What was said since the last autosave is written first, so a conversation opened from the captions has every line. */
-    fun saveBeforeReading() = conversations.save(ended = false)
+    fun saveBeforeReading() {
+        conversations.save(ended = false)
+    }
 
     /** Her name, typed: it buzzes when said, and goes first on the names list so every engine expects it, as on the iPhone. */
     fun addNameAlert(name: String) {
@@ -531,6 +536,47 @@ class CaptionSession(
     fun soundNearMiss(event: SoundEvent) = pipeline.soundNearMisses.entry(event)
 
     /** The names and words the engines are given, in order; a running engine has them from the next sentence. */
+    /** The saved people, each once however many voice prints they have, for the naming dialog's one-tap list. */
+    val savedSpeakerNames: List<String> get() = SavedSpeaker.grouping(settings.current.value.speakerProfiles).map { it.name }
+
+    /**
+     * "Who is speaking?" on a line, as on the iPhone: its voice shows
+     * [name] from now on, and the lines on screen and their saved
+     * conversations follow. A saved person's voice given a new name is a
+     * spelling fixed, everywhere; the name of another saved person means
+     * the phone took this voice for the wrong one, so it gets a print of
+     * its own instead of taking that person's.
+     */
+    fun nameSpeaker(lineID: UUID, name: String) {
+        val trimmed = name.trim()
+        val line = pipeline.segments.firstOrNull { it.id == lineID } ?: return
+        if (trimmed.isEmpty()) return
+        val oldName = line.speakerClusterID?.let { voice -> pipeline.speakerClusters.firstOrNull { it.id == voice }?.name }
+        val print = pipeline.nameSpeaker(line, trimmed) ?: return
+        when (val naming = SpeakerNaming.of(oldName, trimmed, settings.current.value.speakerProfiles.map { it.name }.toSet())) {
+            is SpeakerNaming.Rename -> renamePerson(naming.from, trimmed)
+            SpeakerNaming.Unchanged -> Unit
+            SpeakerNaming.NewPrint -> {
+                settings.change { it.speakerProfiles = it.speakerProfiles + SpeakerProfile(name = trimmed, embedding = print) }
+                speakerLabelsChanged()
+            }
+        }
+    }
+
+    private fun renamePerson(from: String, to: String) {
+        settings.change { current -> current.speakerProfiles = current.speakerProfiles.map { if (it.name == from) it.copy(name = to) else it } }
+        val words = settings.current.value.vocabulary
+        if (from in words) setWords(words.map { if (it == from) to else it })
+        pipeline.renameSpeakers(from, to)
+        speakerLabelsChanged()
+        conversations.renameSpeaker(from, to)
+    }
+
+    private fun speakerLabelsChanged() {
+        conversations.speakerLabelsChanged()
+        publish()
+    }
+
     fun setWords(words: List<String>) {
         settings.change { it.vocabulary = VocabularyHints.normalized(words) }
         val terms = settings.current.value.vocabulary

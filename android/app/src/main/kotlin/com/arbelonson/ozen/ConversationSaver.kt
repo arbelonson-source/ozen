@@ -42,7 +42,10 @@ class ConversationSaver(
     private var startedAt: Double? = null
     private var end: Pair<UUID, Double>? = null
     private var offset = 0
-    private val closed = linkedMapOf<UUID, IntRange>()
+    private val closed = linkedMapOf<UUID, Closed>()
+
+    /** A conversation a long quiet ended while its lines stay on screen, and how it was last written. */
+    private class Closed(val lines: IntRange, val record: TranscriptSessionRecord?)
     private val reading = mutableSetOf<UUID>()
     private val starred = mutableSetOf<UUID>()
     private var sawListening = false
@@ -82,9 +85,9 @@ class ConversationSaver(
      * A save after captions stopped keeps the end the stop wrote; without
      * it the conversation turned open again, or ended at that later save.
      */
-    fun save(ended: Boolean, endedAt: Double? = null, inBackground: Boolean = false) {
-        if (!settings().saveHistory) return
-        val startedAt = conversationStart ?: return
+    fun save(ended: Boolean, endedAt: Double? = null, inBackground: Boolean = false): TranscriptSessionRecord? {
+        if (!settings().saveHistory) return null
+        val startedAt = conversationStart ?: return null
         val kept = end?.takeIf { it.first == id && !isListening() }?.second
         val endsAt = if (ended) (endedAt ?: kept ?: now()).also { end = id to it } else kept
         val using = transcribing()
@@ -101,7 +104,40 @@ class ConversationSaver(
         )
         if (inBackground) writer.saveInBackground(record) else writer.saveNow(record)
         deleteExpiredIfDue()
+        return record
     }
+
+    /**
+     * A voice was named or its name changed: the conversations whose lines
+     * are on screen are written again with the names they show now, as on
+     * the iPhone. The open one's autosave would catch up, but one a long
+     * quiet had closed kept the old names in History for good.
+     */
+    fun speakerLabelsChanged() {
+        if (!settings().saveHistory) return
+        val all = lines()
+        for (conversation in closed.values) {
+            val record = conversation.record ?: continue
+            val from = all.subList(minOf(conversation.lines.first, all.size), minOf(conversation.lines.last + 1, all.size))
+            writer.saveInBackground(
+                TranscriptSessionRecord.make(
+                    from = from,
+                    speakerName = speakerName,
+                    id = record.id,
+                    startedAt = record.startedAt,
+                    endedAt = record.endedAt,
+                    engine = record.engine,
+                    modelVariant = record.modelVariant,
+                    inputName = record.inputName,
+                    starred = starred.toSet(),
+                ),
+            )
+        }
+        save(ended = false, inBackground = true)
+    }
+
+    /** A saved person's name changed: every saved conversation follows, not only those on screen. */
+    fun renameSpeaker(from: String, to: String) = writer.renameSpeakerInBackground(from, to)
 
     /** Ends the saved conversation after a long quiet stretch; its lines stay on screen. */
     fun checkForConversationBreak(now: Double = this.now()): Boolean {
@@ -139,8 +175,7 @@ class ConversationSaver(
 
     private fun close(endedAt: Double?) {
         if (settings().saveHistory) {
-            save(ended = true, endedAt = endedAt)
-            closed[id] = offset until lines().size
+            closed[id] = Closed(offset until lines().size, save(ended = true, endedAt = endedAt))
         }
         forgetCurrent()
     }
@@ -236,7 +271,7 @@ class ConversationSaver(
     fun savedConversation(index: Int): UUID? {
         if (!settings().saveHistory || writer.lastFailure != null || index !in lines().indices) return null
         if (index >= offset) return id
-        return closed.entries.lastOrNull { index in it.value }?.key
+        return closed.entries.lastOrNull { index in it.value.lines }?.key
     }
 
     /** A conversation open for reading is not deleted as old while it is read. */
@@ -255,7 +290,9 @@ class ConversationSaver(
     }
 
     /** Android may end the app next: what was said since the last autosave is written now. */
-    fun memoryShort() = save(ended = false)
+    fun memoryShort() {
+        save(ended = false)
+    }
 
     private fun deleteExpiredIfDue() {
         val at = now()

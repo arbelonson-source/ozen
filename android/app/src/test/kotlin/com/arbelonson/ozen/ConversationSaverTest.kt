@@ -37,13 +37,14 @@ class ConversationSaverTest {
     private var clock = 1_800_000_000.0
     private var newConversations = 0
     private val clips = ProblemAudioStore(File(folder, "problem-audio"))
+    private val names = mutableMapOf<Int, String>()
     private val saver = ConversationSaver(
         writer = writer,
         lines = { lines.toList() },
         isListening = { listening },
         settings = { settings },
         transcribing = { settings },
-        speakerName = { null },
+        speakerName = { it.speakerClusterID?.let(names::get) },
         inputName = { "Wired headset" },
         startNewConversation = { newConversations += 1 },
         setSaveHistory = { settings.saveHistory = it },
@@ -151,6 +152,31 @@ class ConversationSaverTest {
         assertEquals(clock, conversations.single { it.preview == "Good evening" }.startedAt)
         assertEquals(2, lines.size)
         assertFalse(saver.checkForConversationBreak())
+    }
+
+    @Test
+    fun `a name given to a voice is written into the closed conversation still on screen and the open one, their times kept`() {
+        start()
+        val quietSince = clock - 30 * 60
+        val voice = { text: String, at: Double ->
+            TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, speakerClusterID = 0, startTimestamp = at, lastUpdateTimestamp = at)
+        }
+        lines += voice("Good morning", quietSince)
+        assertTrue(saver.checkForConversationBreak())
+        lines += voice("Good evening", clock)
+        saver.save(ended = false)
+        assertTrue(saved().all { it.speakerNames.isEmpty() })
+
+        names[0] = "Dana"
+        saver.speakerLabelsChanged()
+        val conversations = saved()
+        assertEquals(listOf(listOf("Dana"), listOf("Dana")), conversations.map { it.speakerNames })
+        val morning = conversations.single { it.preview == "Good morning" }
+        assertEquals(quietSince, morning.endedAt)
+        assertEquals(1, morning.segmentCount)
+        val evening = conversations.single { it.preview == "Good evening" }
+        assertNull(evening.endedAt)
+        assertEquals(1, evening.segmentCount)
     }
 
     @Test

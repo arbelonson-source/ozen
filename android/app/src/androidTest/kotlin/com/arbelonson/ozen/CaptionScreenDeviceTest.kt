@@ -64,6 +64,7 @@ import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.SoundEventCatalog
+import com.arbelonson.ozen.core.SpeakerProfile
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
@@ -1261,6 +1262,50 @@ class CaptionScreenDeviceTest {
             lineText("How did you sleep").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
         } finally {
             app.settings.change { it.display = before }
+        }
+    }
+
+    @Test
+    fun whoIsSpeakingAsksForANameOffersEachSavedPersonOnceAndWaitsForAVoiceOnALineWithoutOne() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.speakerProfiles
+        val who = "Who is speaking?"
+        val voiced = TranscriptSegment(id = UUID.randomUUID(), text = "Good morning", isCommitted = true, speakerClusterID = 0, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+        val unvoiced = TranscriptSegment(id = UUID.randomUUID(), text = "Hello there", isCommitted = true, startTimestamp = 1.0, lastUpdateTimestamp = 1.0)
+        try {
+            app.settings.change {
+                it.speakerProfiles = listOf(
+                    SpeakerProfile(name = "Grandma", embedding = FloatArray(512) { 0.1f }),
+                    SpeakerProfile(name = "Grandma", embedding = FloatArray(512) { 0.2f }),
+                    SpeakerProfile(name = "Yossi", embedding = FloatArray(512) { 0.3f }),
+                )
+            }
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(voiced, unvoiced), speakerName = { "Speaker 1" })
+            }
+            lineText("Good morning").performTouchInput { longClick() }
+            compose.onNodeWithText(who).performClick()
+            compose.onNodeWithText("Name the speaker").assertExists()
+            compose.onNodeWithText("From now on, everything this voice says will show with this name.").assertExists()
+            compose.onNodeWithText("Saved speakers").assertExists()
+            assertEquals(1, compose.onAllNodesWithText("Grandma").fetchSemanticsNodes().size)
+            compose.onNodeWithText("Yossi").assertExists()
+            compose.onNodeWithText("Save").assertIsNotEnabled()
+            compose.onNode(hasSetTextAction()).performTextInput("Dana")
+            compose.onNodeWithText("Save").assertIsEnabled()
+            compose.onNodeWithText("Yossi").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Name the speaker").fetchSemanticsNodes().isEmpty() }
+
+            val action = lineText("Hello there").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == who }
+            compose.runOnUiThread { action.action() }
+            compose.onNodeWithText("No voice has been identified for this line yet. Try again after the person talks a bit more.").assertExists()
+            compose.onNodeWithText("Saved speakers").assertDoesNotExist()
+            compose.onNode(hasSetTextAction()).performTextInput("Dana")
+            compose.onNodeWithText("Save").assertIsNotEnabled()
+            compose.onNodeWithText("Cancel").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Name the speaker").fetchSemanticsNodes().isEmpty() }
+        } finally {
+            app.settings.change { it.speakerProfiles = before }
         }
     }
 

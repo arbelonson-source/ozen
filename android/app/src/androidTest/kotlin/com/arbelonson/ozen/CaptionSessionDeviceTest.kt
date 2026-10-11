@@ -17,6 +17,7 @@ import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.TranscriptHistoryStore
+import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
@@ -373,6 +374,55 @@ class CaptionSessionDeviceTest {
             assertTrue("another voice scored ${DeviceClips.cosine(first, other)}", DeviceClips.cosine(first, other) < threshold)
         } finally {
             withContext(Dispatchers.Main) { session.close() }
+        }
+    }
+
+    @Test
+    fun aVoiceNamedOnItsLineIsSavedAndShownByThatNameAndANewSpellingRenamesThePerson() = runBlocking {
+        val model = File(context.filesDir, CaptionSession.MODEL_FILE)
+        assumeTrue("put the model at ${model.path}", model.exists())
+        val work = File(context.cacheDir, "name-speaker-test").apply { deleteRecursively(); mkdirs() }
+        val speech = DeviceClips.asset("speakerA_clip1.wav") + DeviceClips.asset("speakerA_clip2.wav")
+        val audio = ClipAudio(FloatArray(8_000) + speech + FloatArray(32_000) + speech + FloatArray(32_000))
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(
+                context,
+                settings,
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                audio,
+                historyFolder = File(work, "history"),
+            )
+        }
+        try {
+            withContext(Dispatchers.Main) { session.listen() }
+            val voiced = withTimeoutOrNull(180_000) {
+                var found: TranscriptSegment? = null
+                while (found == null) {
+                    found = withContext(Dispatchers.Main) { session.pipeline.segments.firstOrNull { it.speakerClusterID != null } }
+                    if (found == null) delay(500)
+                }
+                found
+            }
+            assertNotNull("no line got a voice: ${CaptionState.screen.value.phase} ${session.pipeline.segments.map { it.text }}", voiced)
+            withContext(Dispatchers.Main) { session.nameSpeaker(voiced!!.id, "Dana") }
+            val saved = settings.current.value.speakerProfiles
+            assertEquals(listOf("Dana"), saved.map { it.name })
+            assertEquals(512, saved.single().embedding.size)
+            assertEquals(listOf("Dana"), withContext(Dispatchers.Main) { session.savedSpeakerNames })
+            assertEquals("Dana", CaptionState.screen.value.lines.single { it.id == voiced!!.id }.speaker)
+
+            withContext(Dispatchers.Main) { session.nameSpeaker(voiced!!.id, "Dahna") }
+            assertEquals(listOf("Dahna"), settings.current.value.speakerProfiles.map { it.name })
+            assertEquals(saved.single().id, settings.current.value.speakerProfiles.single().id)
+            assertEquals("Dahna", CaptionState.screen.value.lines.single { it.id == voiced!!.id }.speaker)
+        } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
         }
     }
 
