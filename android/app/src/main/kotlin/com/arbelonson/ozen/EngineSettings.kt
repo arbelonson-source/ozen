@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.CloudProvider
+import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.TranscriptionEngineKind
@@ -41,6 +42,12 @@ class EngineSettings(
     fun chooseCloudService(service: CloudProvider) {
         if (provider == service) return
         settings.change { it.cloudProvider = service }
+        if (cloudIsTheEngine) restartIfRunning()
+    }
+
+    fun chooseCloudModel(model: String) {
+        if (settings.current.value.cloudModel == model) return
+        settings.change { it.cloudModel = model }
         if (cloudIsTheEngine) restartIfRunning()
     }
 
@@ -110,6 +117,9 @@ class EngineSettings(
 
     companion object {
         const val BEAM_SETTLE_MILLIS = 1_000L
+
+        fun cloudModelName(model: String): String =
+            if (model == CloudSpeech.FAST_MODEL) tr("מהיר (Gemini Flash Lite)", "Fast (Gemini Flash Lite)") else tr("מדויק יותר, קצת איטי (Gemini Flash)", "More accurate, a bit slower (Gemini Flash)")
 
         fun beamDescription(beam: Int): String {
             val top = AppSettings.homeServerBeamRange.last

@@ -18,6 +18,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.CloudProvider
+import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -38,6 +39,7 @@ class SettingsScreenDeviceTest {
     private lateinit var addressBefore: String
     private var codeBefore: String? = null
     private var beamBefore = 0
+    private lateinit var modelBefore: String
 
     @Before
     fun remember() {
@@ -46,6 +48,7 @@ class SettingsScreenDeviceTest {
         addressBefore = app.settings.current.value.homeServerAddress
         codeBefore = app.homeServerCode.read()
         beamBefore = app.settings.current.value.homeServerBeam
+        modelBefore = app.settings.current.value.cloudModel
         app.cloudKeys.remove(CloudProvider.Deepgram)
         app.homeServerCode.remove()
         app.settings.change { it.homeServerAddress = "" }
@@ -60,6 +63,7 @@ class SettingsScreenDeviceTest {
             it.cloudProvider = serviceBefore
             it.homeServerAddress = addressBefore
             it.homeServerBeam = beamBefore
+            it.cloudModel = modelBefore
         }
     }
 
@@ -164,5 +168,16 @@ class SettingsScreenDeviceTest {
         assertNull(app.homeServerCode.read())
         compose.onNodeWithText("Pairing code saved on the phone").assertDoesNotExist()
         compose.onNodeWithText("Delete code").assertDoesNotExist()
+    }
+
+    @Test
+    fun anOpenRouterModelChosenInSettingsIsSaved() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Cloud transcription").performClick()
+        compose.onNodeWithText("OpenRouter").performScrollTo().performClick()
+        compose.onNodeWithText("Fast (Gemini Flash Lite)").performScrollTo().performClick()
+        assertEquals(CloudSpeech.FAST_MODEL, app.settings.current.value.cloudModel)
+        compose.onNodeWithText("More accurate, a bit slower (Gemini Flash)").performScrollTo().performClick()
+        assertEquals(CloudSpeech.ACCURATE_MODEL, app.settings.current.value.cloudModel)
     }
 }

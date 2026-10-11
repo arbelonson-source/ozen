@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.CloudProvider
+import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.TranscriptionEngineKind
@@ -194,6 +195,14 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
             },
             dismissButton = { TextButton(onClick = { confirmingDelete = false }) { Text(tr("ביטול", "Cancel")) } },
         )
+    }
+    if (service == CloudProvider.OpenRouter) {
+        Text(tr("מודל", "Model"), style = MaterialTheme.typography.titleSmall)
+        Column(Modifier.selectableGroup()) {
+            for (model in CloudSpeech.models) {
+                ChoiceRow(EngineSettings.cloudModelName(model), null, selected = model == current.chosenCloudModel) { engineSettings.chooseCloudModel(model) }
+            }
+        }
     }
     Footnote(cloudServiceFooter(service))
 }

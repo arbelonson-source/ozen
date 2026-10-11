@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.CloudProvider
+import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.SettingsStore
@@ -81,6 +82,24 @@ class EngineSettingsTest {
         engineSettings.chooseCloudService(CloudProvider.Gemini)
         assertEquals(CloudProvider.Gemini, saved().cloudProvider)
         assertEquals(2, restarts)
+    }
+
+    @Test
+    fun `choosing an openrouter model saves it and restarts captions only while the cloud is the engine`() {
+        engineSettings.chooseCloudModel(CloudSpeech.FAST_MODEL)
+        assertEquals(CloudSpeech.FAST_MODEL, saved().cloudModel)
+        assertEquals(0, restarts)
+        engineSettings.chooseEngine(TranscriptionEngineKind.Cloud)
+        engineSettings.chooseCloudModel(CloudSpeech.ACCURATE_MODEL)
+        engineSettings.chooseCloudModel(CloudSpeech.ACCURATE_MODEL)
+        assertEquals(CloudSpeech.ACCURATE_MODEL, saved().cloudModel)
+        assertEquals(2, restarts)
+    }
+
+    @Test
+    fun `the openrouter models are named in the iphone's words`() {
+        val names = Localization.withLanguage(UILanguage.English) { CloudSpeech.models.map { EngineSettings.cloudModelName(it) } }
+        assertEquals(listOf("Fast (Gemini Flash Lite)", "More accurate, a bit slower (Gemini Flash)"), names)
     }
 
     @Test
