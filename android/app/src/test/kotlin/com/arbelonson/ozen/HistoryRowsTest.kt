@@ -11,6 +11,7 @@ import java.time.ZoneId
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -142,5 +143,30 @@ class HistoryRowsTest {
         assertEquals(listOf("Hello", "How are you", "Fine", "Later on"), lines.map { it.text })
         assertTrue(lines[2].spoken.startsWith("Yossi: Fine"), lines[2].spoken)
         assertTrue(lines[3].spoken.startsWith(lines[3].time!!), lines[3].spoken)
+    }
+
+    @Test
+    fun `a saved line that may have been misheard is marked and says so while the marks are on, and a starred one says it is important`() = Localization.withLanguage(UILanguage.English) {
+        val record = TranscriptSessionRecord(
+            startedAt = morning,
+            endedAt = morning + 60,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(
+                SavedSegment(UUID.randomUUID(), "Two pills after dinner", null, null, morning, true, confidence = 0.05f),
+                SavedSegment(UUID.randomUUID(), "Call the pharmacy", null, null, morning + 10, true, isStarred = true, confidence = 0.95f),
+            ),
+        )
+        val marked = SavedLine.of(record, jerusalem, markUncertain = true)
+        assertEquals(listOf(true, false), marked.map { it.unsure })
+        assertEquals(listOf(false, true), marked.map { it.starred })
+        assertTrue(marked[0].spoken.contains("May not have been heard correctly. Two pills after dinner"), marked[0].spoken)
+        assertTrue(marked[1].spoken.contains("Marked as important. Call the pharmacy"), marked[1].spoken)
+
+        val unmarked = SavedLine.of(record, jerusalem, markUncertain = false)
+        assertEquals(listOf(false, false), unmarked.map { it.unsure })
+        assertFalse(unmarked[0].spoken.contains("May not have been heard"), unmarked[0].spoken)
+        assertEquals(listOf(false, true), unmarked.map { it.starred })
     }
 }

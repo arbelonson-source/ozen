@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.HistoryRetention
@@ -40,19 +41,31 @@ data class ConversationRow(
     }
 }
 
-data class SavedLine(val id: UUID, val time: String?, val speaker: String?, val text: String, val spoken: String) {
+data class SavedLine(
+    val id: UUID,
+    val time: String?,
+    val speaker: String?,
+    val text: String,
+    val spoken: String,
+    val starred: Boolean = false,
+    val unsure: Boolean = false,
+) {
     companion object {
-        fun of(record: TranscriptSessionRecord, zone: ZoneId = ZoneId.systemDefault()): List<SavedLine> {
+        /** [markUncertain]: the caption screen's question mark, kept on saved lines as on the iPhone. */
+        fun of(record: TranscriptSessionRecord, zone: ZoneId = ZoneId.systemDefault(), markUncertain: Boolean = false): List<SavedLine> {
             val timed = CaptionLayout.timeMarkedLineIDs(record.segments)
             return record.segments.mapIndexed { index, segment ->
                 val previous = record.segments.getOrNull(index - 1)
                 val time = if (segment.id in timed) clockTime(segment.startTimestamp, zone) else null
+                val unsure = markUncertain && CaptionConfidence.isUncertain(segment, record.engine, record.modelVariant)
                 SavedLine(
                     id = segment.id,
                     time = time,
                     speaker = segment.speakerName.takeIf { CaptionLayout.showsSpeakerLabel(segment, previous) },
                     text = CaptionLayout.displayText(segment.text),
-                    spoken = SavedLineSpeech.label(segment, time, uncertain = false),
+                    spoken = SavedLineSpeech.label(segment, time, uncertain = unsure),
+                    starred = segment.isStarred,
+                    unsure = unsure,
                 )
             }
         }

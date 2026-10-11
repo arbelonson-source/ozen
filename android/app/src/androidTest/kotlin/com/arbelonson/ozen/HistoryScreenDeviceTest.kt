@@ -307,6 +307,38 @@ class HistoryScreenDeviceTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Dentist visit", substring = true).fetchSemanticsNodes().isEmpty() }
     }
 
+    @Test
+    fun savedLinesSayWhichWereStarredAndWhichMayBeMisheardWhileTheMarksAreOn() {
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 30,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(
+                SavedSegment(UUID.randomUUID(), "Marks test two pills after dinner", null, null, startedAt, true, confidence = 0.05f),
+                SavedSegment(UUID.randomUUID(), "Marks test call the pharmacy", null, null, startedAt + 5, true, isStarred = true, confidence = 0.95f),
+            ),
+        )
+        store.save(record)
+        seeded += record.id
+        app.settings.change { it.display = it.display.copy(markUncertainLines = true) }
+        compose.onNodeWithText("History").performClick()
+        waitFor("Marks test two pills")
+        compose.onNodeWithText("Marks test two pills", substring = true).performClick()
+        compose.waitUntil(5_000) { shownLine("May not have been heard correctly. Marks test two pills after dinner") }
+        compose.onNodeWithContentDescription("Marked as important. Marks test call the pharmacy", substring = true).assertExists()
+
+        compose.onNodeWithText("Back").performClick()
+        app.settings.change { it.display = it.display.copy(markUncertainLines = false) }
+        waitFor("Marks test two pills")
+        compose.onNodeWithText("Marks test two pills", substring = true).performClick()
+        compose.waitUntil(5_000) { shownLine("Marks test two pills after dinner") }
+        assertTrue(compose.onAllNodesWithContentDescription("May not have been heard", substring = true).fetchSemanticsNodes().isEmpty())
+        compose.onNodeWithContentDescription("Marked as important. Marks test call the pharmacy", substring = true).assertExists()
+    }
+
     private fun sharedCopies() = File(app.cacheDir, CaptionSession.SHARED_FOLDER).listFiles()?.toList() ?: emptyList()
 
     private fun offsetHere(at: Double) = ZoneId.systemDefault().rules.getOffset(Instant.ofEpochMilli((at * 1_000).toLong())).totalSeconds

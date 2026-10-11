@@ -494,7 +494,7 @@ private fun readingDirection(shown: String) =
     if (Bidi(shown, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight()) LayoutDirection.Ltr else LayoutDirection.Rtl
 
 @Composable
-private fun UnsureMark(fontSize: Double, colour: Color) {
+internal fun UnsureMark(fontSize: Double, colour: Color) {
     val label = tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ").trim()
     val side = maxOf(14.0, fontSize * 0.6)
     val inset = with(LocalDensity.current) { ((fontSize * 1.25 - side) / 2).sp.toDp() }

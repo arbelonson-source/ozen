@@ -48,6 +48,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -337,7 +338,7 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
     var loaded by remember { mutableStateOf<OpenConversation?>(null) }
     val list = rememberLazyListState()
     var current by remember { mutableIntStateOf(0) }
-    LaunchedEffect(id) {
+    LaunchedEffect(id, marksUncertain) {
         var jumped = false
         while (true) {
             val before = loaded?.matches ?: emptyList()
@@ -345,7 +346,7 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
                 val record = conversations.load(id)
                 OpenConversation(
                     record = record,
-                    lines = record?.let { SavedLine.of(it) } ?: emptyList(),
+                    lines = record?.let { SavedLine.of(it, markUncertain = marksUncertain) } ?: emptyList(),
                     matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
                     numbers = record?.takeIf { query.isBlank() }?.let(NumbersMentioned::of),
                 )
@@ -526,9 +527,18 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean) {
     ) {
         line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
-        Text(line.text, style = MaterialTheme.typography.bodyLarge)
+        Row {
+            if (line.starred) Text("★", color = starColour(), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 6.dp))
+            if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(line.text, style = MaterialTheme.typography.bodyLarge)
+        }
     }
 }
+
+// The iPhone's yellow star, deepened on a light screen to stay visible.
+@Composable
+private fun starColour() =
+    if (MaterialTheme.colorScheme.background.luminance() > 0.5f) Color(red = 0.6f, green = 0.42f, blue = 0f) else Color(red = 1f, green = 0.84f, blue = 0.04f)
 
 @Composable
 private fun Screen(title: String, close: String, onClose: () -> Unit, content: @Composable () -> Unit) {
