@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ScheduledRetry
 import com.arbelonson.ozen.core.ScreenAwakePolicy
@@ -48,7 +49,7 @@ object CaptionState {
             engine = engine,
             interruptedBySystem = interruptedBySystem,
             scheduledRetry = scheduledRetry,
-            lines = segments.takeLast(MAXIMUM_LINES).map { CaptionLine(it.id, it.text, it.isCommitted) },
+            lines = segments.takeLast(MAXIMUM_LINES).map { CaptionLine(it.id, CaptionLayout.displayText(it.text), it.isCommitted) },
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),
         )
     }

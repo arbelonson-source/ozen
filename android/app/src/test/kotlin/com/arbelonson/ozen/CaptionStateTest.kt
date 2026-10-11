@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptSegment
 import java.util.UUID
@@ -21,7 +22,10 @@ class CaptionStateTest {
         val growing = line("מה שלומך", committed = false)
         show(PipelinePhase.Listening, listOf(done, growing))
         assertEquals(
-            listOf(CaptionLine(done.id, "שלום לכולם", isFinal = true), CaptionLine(growing.id, "מה שלומך", isFinal = false)),
+            listOf(
+                CaptionLine(done.id, CaptionLayout.displayText("שלום לכולם"), isFinal = true),
+                CaptionLine(growing.id, CaptionLayout.displayText("מה שלומך"), isFinal = false),
+            ),
             CaptionState.screen.value.lines,
         )
     }
@@ -50,6 +54,19 @@ class CaptionStateTest {
     fun `a call that silences the microphone says so on the status button`() {
         show(PipelinePhase.Listening, interrupted = true)
         assertEquals("phone.fill", CaptionState.screen.value.status.systemImage)
+    }
+
+    @Test
+    fun `lines are laid out as on the iPhone, a mixed line read from the right and a long one in paragraphs`() {
+        val mixed = line("OK, \u05D0\u05D6 \u05E0\u05EA\u05D7\u05D9\u05DC", committed = true)
+        val english = line("Good morning", committed = true)
+        val sentence = "\u05E9\u05DC\u05D5\u05DD \u05DC\u05DB\u05D5\u05DC\u05DD \u05D5\u05D1\u05E8\u05D5\u05DB\u05D9\u05DD \u05D4\u05D1\u05D0\u05D9\u05DD."
+        val long = line(List(5) { sentence }.joinToString(" "), committed = true)
+        show(PipelinePhase.Listening, listOf(mixed, english, long))
+        val shown = CaptionState.screen.value.lines.map { it.text }
+        assertTrue(shown[0].startsWith("\u200F"), shown[0])
+        assertEquals("Good morning", shown[1])
+        assertTrue(shown[2].contains("\n"), shown[2])
     }
 
     private fun showAt(phase: PipelinePhase, lastLineAt: Double, listeningSince: Double) = CaptionState.show(
