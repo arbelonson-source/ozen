@@ -219,7 +219,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
         CompositionLocalProvider(LocalLayoutDirection provides direction) {
             val opened = reading
             when {
-                showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, heard = state.recentlyHeard)
+                showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, heard = state.recentlyHeard)
                 opened != null -> ConversationScreen(
                     app.captions.savedConversations,
                     opened.first,

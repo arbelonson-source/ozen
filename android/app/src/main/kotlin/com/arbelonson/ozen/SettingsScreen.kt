@@ -85,6 +85,7 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.tr
+import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -95,6 +96,8 @@ fun SettingsScreen(
     onClose: () -> Unit,
     onWords: (List<String>) -> Unit,
     onImportantWords: (List<KeywordAlert>) -> Unit,
+    canSay: (String) -> Boolean,
+    onSpeak: (String) -> Unit,
     heard: List<KeywordHit> = emptyList(),
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
@@ -135,6 +138,7 @@ fun SettingsScreen(
             AlertsSection(current.keywordAlerts.count { it.isEnabled }, listed = current.keywordAlerts.isNotEmpty(), onOpen = { showingImportantWords = true })
             AwayAlertsRow(current.notifyWhenInBackground) { on -> settings.change { it.notifyWhenInBackground = on } }
             if (current.notifyWhenInBackground) QuietHoursRows(current.quietHours) { hours -> settings.change { it.quietHours = hours } }
+            SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak)
             EngineSection(engineSettings, current)
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
             if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
@@ -699,6 +703,41 @@ private fun WordsSection(count: Int, onOpen: () -> Unit) {
         Text(if (count == 0) tr("ריק", "Empty") else "$count", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     Footnote(tr("כל המנועים מקבלים את הרשימה כרמז, כדי ששמות של בני משפחה ייכתבו נכון.", "Every engine gets the list as a hint, so family members’ names are spelled correctly."))
+}
+
+/**
+ * The voice that says her replies, after the alerts as on the iPhone: the
+ * rate is kept when the slider is let go, and the sample is said at it.
+ */
+@Composable
+private fun SpeechSection(rate: Float, onRate: (Float) -> Unit, canSay: (String) -> Boolean, onSpeak: (String) -> Unit) {
+    SectionHeader(tr("להגיד משהו (הקלדה לדיבור)", "Say something (type to speak)"))
+    var shown by remember(rate) { mutableFloatStateOf(rate) }
+    val label = tr("מהירות דיבור", "Speech rate")
+    // Written as on the iPhone, whatever the phone's own number format.
+    val value = String.format(Locale.ROOT, "%.2f", shown)
+    Row(modifier = Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Slider(
+        value = shown,
+        onValueChange = { shown = it },
+        onValueChangeFinished = { onRate((shown * 20).roundToInt() / 20f) },
+        valueRange = 0.2f..0.7f,
+        steps = 9,
+        modifier = Modifier.semantics {
+            contentDescription = label
+            stateDescription = value
+        },
+    )
+    Row(modifier = Modifier.clearAndSetSemantics {}) {
+        Text(tr("לאט", "Slow"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text(tr("מהר", "Fast"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    val sample = tr("שלום, זה קול הטלפון. ככה אני נשמע.", "Hello, this is the phone's voice. This is how I sound.")
+    TextButton(onClick = { onSpeak(sample) }, enabled = canSay(sample)) { Text(tr("להשמיע דוגמה", "Play a sample")) }
+    Footnote(tr("הכתוביות מושהות בזמן שהטלפון מדבר, ומתחדשות לבד.", "Captions pause while the phone is speaking, and resume on their own."))
 }
 
 @Composable

@@ -49,6 +49,7 @@ import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.util.UUID
+import kotlin.math.abs
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -76,6 +77,7 @@ class SettingsScreenDeviceTest {
     private lateinit var alertsBefore: List<KeywordAlert>
     private var awayAlertsBefore = true
     private var quietHoursBefore = QuietHours.default
+    private var speechRateBefore = 0.45f
 
     @Before
     fun remember() {
@@ -90,6 +92,7 @@ class SettingsScreenDeviceTest {
         alertsBefore = app.settings.current.value.keywordAlerts.map { it.copy() }
         awayAlertsBefore = app.settings.current.value.notifyWhenInBackground
         quietHoursBefore = app.settings.current.value.quietHours
+        speechRateBefore = app.settings.current.value.speechRate
         app.cloudKeys.remove(CloudProvider.Deepgram)
         app.homeServerCode.remove()
         app.settings.change { it.homeServerAddress = "" }
@@ -110,6 +113,7 @@ class SettingsScreenDeviceTest {
             it.keywordAlerts = alertsBefore
             it.notifyWhenInBackground = awayAlertsBefore
             it.quietHours = quietHoursBefore
+            it.speechRate = speechRateBefore
         }
         compose.runOnUiThread { CaptionState.clear() }
     }
@@ -521,6 +525,45 @@ class SettingsScreenDeviceTest {
         compose.onNode(hasSetTextAction()).performImeAction()
         compose.waitForIdle()
         assertEquals(full, app.settings.current.value.vocabulary)
+    }
+
+    @Test
+    fun theSpeechRateIsKeptAndTheSampleIsSaidThatFast() {
+        assertTrue("no voice on the phone", within(15_000) { app.captions.canAskToRepeat() })
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Say something (type to speak)").performScrollTo()
+        compose.onNodeWithText("Captions pause while the phone is speaking, and resume on their own.").performScrollTo()
+        val rate = compose.onNodeWithContentDescription("Speech rate")
+        val range = rate.performScrollTo().fetchSemanticsNode().config[SemanticsProperties.ProgressBarRangeInfo]
+        assertEquals(0.2f..0.7f, range.range)
+        assertEquals(9, range.steps)
+
+        rate.performSemanticsAction(SemanticsActions.SetProgress) { it(0.7f) }
+        compose.waitUntil(5_000) { abs(app.settings.current.value.speechRate - 0.7f) < 0.001f }
+        rate.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0.70"))
+        val fast = sampleMillis()
+        rate.performSemanticsAction(SemanticsActions.SetProgress) { it(0.2f) }
+        compose.waitUntil(5_000) { abs(app.settings.current.value.speechRate - 0.2f) < 0.001f }
+        rate.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0.20"))
+        val slow = sampleMillis()
+        assertTrue("the sample took $slow ms slow and $fast ms fast", slow > fast * 1.8)
+    }
+
+    private fun sampleMillis(): Long {
+        compose.onNodeWithText("Play a sample").performScrollTo().performClick()
+        assertTrue("never spoke", within(10_000) { app.captions.isSpeaking })
+        val start = System.currentTimeMillis()
+        assertTrue("never finished", within(30_000) { !app.captions.isSpeaking })
+        return System.currentTimeMillis() - start
+    }
+
+    private fun within(millis: Long, condition: () -> Boolean): Boolean {
+        val until = System.currentTimeMillis() + millis
+        while (System.currentTimeMillis() < until) {
+            if (condition()) return true
+            Thread.sleep(50)
+        }
+        return condition()
     }
 
     private fun hour(title: String, shown: String) =
