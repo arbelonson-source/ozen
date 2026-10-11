@@ -123,6 +123,7 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Clear").performClick()
         compose.onNodeWithText("Search what was said").performTextInput("zebra crossing")
         waitFor("Nothing found for “zebra crossing”.")
+        compose.onNodeWithText("Delete all").assertIsNotEnabled()
 
         compose.onNodeWithText("Clear").performClick()
         waitFor("Search test other conversation")

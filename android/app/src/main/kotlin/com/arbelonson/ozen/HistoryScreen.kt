@@ -214,7 +214,7 @@ fun HistoryScreen(
         close = tr("סגירה", "Close"),
         onClose = onClose,
         actions = {
-            TextButton(onClick = { confirmingDeleteAll = true }, enabled = loaded?.let { searching || it.summaries.isNotEmpty() } == true) {
+            TextButton(onClick = { confirmingDeleteAll = true }, enabled = loaded?.summaries?.isNotEmpty() == true) {
                 Text(tr("מחיקת הכול", "Delete all"))
             }
         },
