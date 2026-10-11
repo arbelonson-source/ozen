@@ -6,6 +6,11 @@ import java.io.IOException
 import java.net.URI
 import java.nio.file.Files
 import java.security.MessageDigest
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.concurrent.thread
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -96,4 +101,47 @@ class PhoneModelDownloaderTest {
         file.writeBytes(byteArrayOf(0))
         assertNull(downloader.pendingMegabytes())
     }
+
+    @Test
+    fun `two downloads of one model at once share it rather than writing into each other, and the one waiting hears how far it has got`() {
+        val served = SlowModel(data)
+        val failures = CopyOnWriteArrayList<Throwable>()
+        val heard = CopyOnWriteArrayList<Double>()
+        val underway = CountDownLatch(1)
+        val first = thread {
+            runCatching { PhoneModelDownloader(file, source, served).download { if (it > 0.1) underway.countDown() } }.onFailure { failures += it }
+        }
+        assertTrue(underway.await(10, TimeUnit.SECONDS))
+        val second = thread {
+            runCatching { PhoneModelDownloader(file, source, served).download { heard += it } }.onFailure { failures += it }
+        }
+        first.join(10_000)
+        second.join(10_000)
+        assertEquals(emptyList(), failures.toList())
+        assertContentEquals(data, file.readBytes())
+        assertEquals(data.size.toLong(), served.served.get(), "fetched more than once")
+        assertTrue(heard.any { it > 0.1 && it < 1.0 }, "the waiting download heard $heard")
+        assertEquals(1.0, heard.last())
+    }
+}
+
+private class SlowModel(private val data: ByteArray) : ReleaseFileFetching {
+    val served = AtomicLong()
+
+    override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
+        FileOutputStream(appendingTo, true).use { out ->
+            var index = from.toInt()
+            while (index < data.size) {
+                val end = minOf(index + 100, data.size)
+                out.write(data, index, end - index)
+                out.flush()
+                served.addAndGet((end - index).toLong())
+                received((end - index).toLong())
+                index = end
+                Thread.sleep(5)
+            }
+        }
+    }
+
+    override fun sha256(file: File): String = HTTPFileFetcher().sha256(file)
 }
