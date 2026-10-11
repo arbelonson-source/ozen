@@ -38,6 +38,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -1398,6 +1399,21 @@ class SettingsScreenDeviceTest {
         compose.runOnUiThread { compose.activity.setContent { Column { ClearCaptionsRow(saving = true, saveFailing = { true }, onClear = {}) } } }
         compose.onNodeWithText("Clear captions from the screen").performClick()
         compose.onNodeWithText("Saving to History isn't working right now, so they won't be saved.").assertExists()
+    }
+
+    @Test
+    fun settingsAndEachOfItsSectionsAreHeadingsForTheScreenReaderWithMaintenanceAboveDiagnostics() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNode(hasText("Settings") and isHeading()).assertExists()
+        for (section in listOf("Display", "Alerts", "Say something (type to speak)", "Spoken language", "App language", "Transcription engine", "Maintenance", "About")) {
+            compose.onNode(hasText(section) and isHeading()).performScrollTo()
+        }
+        compose.onNodeWithText("Clear captions from the screen").performScrollTo()
+        val maintenance = compose.onNode(hasText("Maintenance") and isHeading()).fetchSemanticsNode().positionInRoot.y
+        val diagnostics = compose.onNodeWithText("Diagnostics").fetchSemanticsNode().positionInRoot.y
+        val walkthrough = compose.onNodeWithText("Show the initial walkthrough again").fetchSemanticsNode().positionInRoot.y
+        val clear = compose.onNodeWithText("Clear captions from the screen").fetchSemanticsNode().positionInRoot.y
+        assertTrue("Maintenance $maintenance, Diagnostics $diagnostics, walkthrough $walkthrough, clear $clear", maintenance < diagnostics && diagnostics < walkthrough && walkthrough < clear)
     }
 
     @Test

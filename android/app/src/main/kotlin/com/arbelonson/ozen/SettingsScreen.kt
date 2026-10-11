@@ -67,6 +67,7 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
@@ -177,7 +178,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("הגדרות", "Settings"), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                Text(tr("הגדרות", "Settings"), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f).semantics { heading() })
                 TextButton(onClick = close) { Text(tr("סגירה", "Close")) }
             }
             DisplaySection(settings, current.display, current.engine)
@@ -201,6 +202,7 @@ fun SettingsScreen(
                 current.speakerSimilarityThreshold,
                 onSeparation = speakers::setSpeakerSeparation,
             )
+            SectionHeader(tr("תחזוקה", "Maintenance"))
             DiagnosticsRow(onOpen = { showingDiagnostics = true })
             WalkthroughAgainRow(onShowWalkthrough)
             ClearCaptionsRow(current.saveHistory, historySaveFailing, onClearCaptions)
@@ -984,7 +986,7 @@ private fun DiagnosticsRow(onOpen: () -> Unit) {
     Text(
         tr("אבחון", "Diagnostics"),
         style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clickable(onClick = onOpen).padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 12.dp),
     )
 }
 
@@ -1044,7 +1046,7 @@ internal fun ClearCaptionsRow(saving: Boolean, saveFailing: () -> Boolean, onCle
 
 @Composable
 internal fun SectionHeader(text: String) {
-    Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 16.dp))
+    Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 16.dp).semantics { heading() })
 }
 
 @Composable
