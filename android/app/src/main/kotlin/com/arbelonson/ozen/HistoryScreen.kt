@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -349,7 +350,8 @@ private fun SpeakerFilterChips(names: List<String>, chosen: String?, onChoose: (
                 selected = name == chosen,
                 onClick = { onChoose(name) },
                 label = { Text(name) },
-                modifier = Modifier.testTag("speakerChip:$name"),
+                // The chip itself is the tap area, so it is a full 48 dp tall, as the iPhone's 44 points.
+                modifier = Modifier.testTag("speakerChip:$name").heightIn(min = 48.dp),
             )
         }
     }
