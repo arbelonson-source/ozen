@@ -25,6 +25,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
@@ -218,6 +219,39 @@ class HistoryScreenDeviceTest {
         assertFalse(shownLine("Come back at 10:30 on Sunday"))
         compose.onNodeWithText("Come back at 10:30", substring = true).performClick()
         compose.waitUntil(5_000) { shownLine("Come back at 10:30 on Sunday") }
+    }
+
+    @Test
+    fun aNumberMentionedCopiesFromItsRowWhichSaysWhenItMayHaveBeenMisheard() {
+        app.settings.change { it.display = it.display.copy(markUncertainLines = true) }
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 30,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(
+                SavedSegment(UUID.randomUUID(), "Numbers row test at 10:30 on Sunday", null, null, startedAt, true, confidence = 0.05f),
+                SavedSegment(UUID.randomUUID(), "Numbers row test bring 3 forms", null, null, startedAt + 5, true),
+            ),
+        )
+        store.save(record)
+        seeded += record.id
+        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText("Numbers row test at 10:30", substring = true).performClick()
+        waitFor("Numbers mentioned")
+        val row = { text: String -> compose.onNode(hasText(text, substring = true) and hasClickAction()) }
+        val unsure = "May not have been heard correctly"
+        row("at 10:30 on Sunday").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, unsure))
+        row("bring 3 forms").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+
+        val copy = row("bring 3 forms").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Copy" }
+        compose.runOnUiThread { copy.action() }
+        compose.waitUntil(5_000) { copied() == CaptionLayout.copiedText("Numbers row test bring 3 forms") }
+        row("at 10:30 on Sunday").performTouchInput { longClick() }
+        compose.onNodeWithText("Copy").performClick()
+        compose.waitUntil(5_000) { copied() == CaptionLayout.copiedText("Numbers row test at 10:30 on Sunday") }
     }
 
     @Test

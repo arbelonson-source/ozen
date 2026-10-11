@@ -47,6 +47,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,6 +80,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.ByteSize
+import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.HistoryDays
@@ -634,7 +636,7 @@ internal fun ConversationScreen(
                     shown.stats?.let { stats -> item(key = "summary") { SummarySection(stats) } }
                     if (numbers != null) {
                         item(key = "numbers") {
-                            NumbersSection(numbers) { said ->
+                            NumbersSection(numbers, isUncertain = { marksUncertain && CaptionConfidence.isUncertain(it, shown.record.engine, shown.record.modelVariant) }) { said ->
                                 val target = shown.lines.indexOfFirst { it.id == said.id }
                                 if (target >= 0) scope.launch { list.scrollToItem(header + target) }
                             }
@@ -781,24 +783,44 @@ private fun SummaryRow(label: String, value: String) {
 
 /** Above the conversation, as on the iPhone: each line with a number in it, a tap away from where it was said. */
 @Composable
-private fun NumbersSection(numbers: NumbersMentioned, onJump: (SavedSegment) -> Unit) {
+private fun NumbersSection(numbers: NumbersMentioned, isUncertain: (SavedSegment) -> Boolean, onJump: (SavedSegment) -> Unit) {
     val jump = tr("מעבר לשורה בשיחה", "Jump to this line in the conversation")
+    val copy = tr("העתקה", "Copy")
+    val unsureLabel = tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ").trim()
+    val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Heading(tr("מספרים שנאמרו", "Numbers mentioned"))
-        for (said in numbers.listed) {
+        // As on the iPhone: each copies from a hold or the screen reader, and
+        // one that may have been misheard says so, "10:30" or "11:30" being
+        // where the doubt matters most.
+        for (said in numbers.listed) key(said.id) {
+            val unsure = isUncertain(said)
+            val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, CaptionLayout.copiedText(said.text))) }
+            var menu by remember { mutableStateOf(false) }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClickLabel = jump) { onJump(said) }
+                    .onHold { menu = true }
+                    .semantics {
+                        customActions = listOf(CustomAccessibilityAction(copy) { copyLine(); true })
+                        if (unsure) stateDescription = unsureLabel
+                    }
                     .padding(vertical = 6.dp),
             ) {
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
+                }
                 said.speakerName?.takeUnless(TranscriptSessionSummary::isGenericLabel)?.let {
                     Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text(
-                    captionText(CaptionLayout.directed(said.text), emphasizeNumbers = true, numberColor = null),
-                    style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
-                )
+                Row {
+                    if (unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        captionText(CaptionLayout.directed(said.text), emphasizeNumbers = true, numberColor = null),
+                        style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
+                    )
+                }
             }
         }
         numbers.moreText?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
