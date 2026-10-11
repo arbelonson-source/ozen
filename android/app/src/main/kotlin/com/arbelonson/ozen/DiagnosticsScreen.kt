@@ -123,6 +123,13 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 },
             )
 
+            val misses = DiagnosticsReport.nearMisses(now.soundNearMisses)
+            if (misses.isNotEmpty()) {
+                Header(tr("צלילים שנשמעו חלש מדי להתראה", "Sounds heard too faint to alert"))
+                for ((name, heard) in misses) Value(name, heard)
+                Text(DiagnosticsReport.nearMissNote(now.soundAlertConfidence), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
             Header(tr("תמלול", "Transcription"))
             Value(tr("עדכונים מהמנוע", "Updates from engine"), "${stats.tokensReceived}")
             Value(tr("שורות שנסגרו", "Lines closed"), "${stats.segmentsCommitted}")

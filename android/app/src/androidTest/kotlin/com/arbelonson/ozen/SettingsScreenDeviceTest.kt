@@ -88,6 +88,8 @@ import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.SoundAlertPreferences
 import com.arbelonson.ozen.core.SoundEvent
+import com.arbelonson.ozen.core.SoundEventCatalog
+import com.arbelonson.ozen.core.SoundObservation
 import com.arbelonson.ozen.core.RecordingImport
 import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SpeakerProfile
@@ -99,6 +101,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.common.HybridBinarizer
@@ -1399,6 +1402,22 @@ class SettingsScreenDeviceTest {
         compose.runOnUiThread { compose.activity.setContent { Column { ClearCaptionsRow(saving = true, saveFailing = { true }, onClear = {}) } } }
         compose.onNodeWithText("Clear captions from the screen").performClick()
         compose.onNodeWithText("Saving to History isn't working right now, so they won't be saved.").assertExists()
+    }
+
+    @Test
+    fun diagnosticsListASoundHeardTooFaintToAlertWithHowSureAndWhen() {
+        // As if the phone had heard a faint doorbell; nothing resets the
+        // list, and the sound alerts screen would show the same note.
+        val heardAt = System.currentTimeMillis() / 1_000.0
+        app.captions.pipeline.soundNearMisses.record(SoundObservation("door_bell", 0.44, heardAt), alertConfidence = 0.6)
+        val doorbell = SoundEventCatalog.event("door_bell")!!
+        assertTrue(app.captions.diagnostics().soundNearMisses.entry(doorbell)!!.bestConfidence >= 0.44)
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
+        compose.onNodeWithText("Sounds heard too faint to alert").performScrollTo()
+        val (name, heard) = DiagnosticsReport.nearMisses(app.captions.diagnostics().soundNearMisses).single { it.first == "Doorbell" }
+        compose.onNode(hasText(name) and hasText(heard)).performScrollTo()
+        compose.onNodeWithText("An alert needs ${(app.captions.pipeline.soundAlertConfidence * 100).roundToInt()}% confidence", substring = true).assertExists()
     }
 
     @Test

@@ -551,6 +551,8 @@ class CaptionSession(
             problemClips = problemAudio.clips(),
             inputLevel = pipeline.inputLevel,
             speakersIdentified = pipeline.speakerClusters.size,
+            soundNearMisses = pipeline.soundNearMisses.copy(),
+            soundAlertConfidence = pipeline.soundAlertConfidence,
         )
     }
 

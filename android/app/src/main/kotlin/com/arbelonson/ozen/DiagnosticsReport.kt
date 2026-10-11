@@ -8,15 +8,20 @@ import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.PipelineStats
 import com.arbelonson.ozen.core.ScheduledRetry
+import com.arbelonson.ozen.core.SoundEventCatalog
+import com.arbelonson.ozen.core.SoundEventPolicy
+import com.arbelonson.ozen.core.SoundNearMisses
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import java.io.File
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.time.format.FormatStyle
 import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.roundToInt
 
 /** What the diagnostics screen and its report read, taken at one moment. */
@@ -61,6 +66,10 @@ data class DiagnosticsFacts(
     val inputLevel: Float = 0f,
     /** The voices told apart in the conversation on screen. */
     val speakersIdentified: Int = 0,
+    /** Alert sounds heard, but not surely enough to alert. */
+    val soundNearMisses: SoundNearMisses = SoundNearMisses(),
+    /** How sure a sound has to be to alert, 0 to 1. */
+    val soundAlertConfidence: Double = SoundEventPolicy().minimumConfidence,
 )
 
 /** Where the diagnostics screen reads from, and what its buttons do. */
@@ -85,13 +94,14 @@ interface DiagnosticsSource {
 
 /**
  * The iPhone's diagnostics report, in the same plain English for whoever
- * helps her, less what Android has no counterpart for yet (sounds,
- * speakers, the lock screen). The pairing code never goes in: only
+ * helps her, less what Android has no counterpart for yet (the lock
+ * screen). The pairing code never goes in: only
  * whether one is saved.
  */
 object DiagnosticsReport {
-    fun text(facts: DiagnosticsFacts): String {
+    fun text(facts: DiagnosticsFacts, utcOffsetSeconds: Int = TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 1_000): String {
         val settings = facts.settings
+        val sounds = settings.soundAlerts
         val stats = facts.stats
         val display = settings.display
         val alerts = settings.keywordAlerts
@@ -110,7 +120,9 @@ object DiagnosticsReport {
             "tokens: ${stats.tokensReceived} committed: ${stats.segmentsCommitted} on screen: ${facts.linesOnScreen} lag: ${stats.captionLagSeconds?.let { format("%.2f", it) } ?: "-"}",
             "restarts: ${stats.engineRestarts} clusters: ${facts.speakersIdentified} opened: ${stats.speakerClustersOpened} " +
                 "retry: ${facts.scheduledRetry?.let { "attempt ${it.attempt}" } ?: "-"} interrupted: ${facts.interruptedBySystem} sound detection: ${stats.soundDetectionRunning}",
-            "alerts: words on ${alerts.count { it.isEnabled }} of ${alerts.size} when away: ${settings.notifyWhenInBackground}",
+            "sounds heard below the alert level: ${facts.soundNearMisses.reportLine(utcOffsetSeconds) ?: "-"}",
+            "alerts: sounds ${sounds.isEnabled} from ${sounds.minimumImportance.name.lowercase()} muted ${sounds.mutedIdentifiers.size} fainter ${sounds.sensitiveIdentifiers.size} " +
+                "words on ${alerts.count { it.isEnabled }} of ${alerts.size} when away: ${settings.notifyWhenInBackground} buzz on speech: ${settings.hapticOnSpeechResume}",
             "history: saving ${settings.saveHistory} keep ${settings.historyRetention.rawValue} display: size ${display.fontSize.toInt()} theme ${display.theme.rawValue} awake ${display.keepScreenAwake}",
             "settings save error: ${if (facts.settingsSaveFailed) "failed" else "-"} history save error: ${facts.historySaveFailure ?: "-"} " +
                 "notifications allowed: ${if (facts.notificationsAllowed) "yes" else "no"} haptics: ${if (facts.canVibrate) "ok" else "unsupported"} network: ${network(facts.network, "No connection", "Cellular", "Data saving") ?: "-"}",
@@ -123,6 +135,19 @@ object DiagnosticsReport {
         val journal = listOf("journal, previous runs included (oldest first):") + facts.journal.ifEmpty { listOf("-") }
         return (lines + facts.events.ifEmpty { listOf("-") } + journal).joinToString("\n")
     }
+
+    /**
+     * The iPhone's "Sounds heard too faint to alert" rows, newest first: the
+     * sound's name, then how sure the best hearing of it was and when it was
+     * last heard. Tells "never heard the doorbell" from "heard it faintly".
+     */
+    fun nearMisses(misses: SoundNearMisses, zone: ZoneId = ZoneId.systemDefault()): List<Pair<String, String>> =
+        misses.recentFirst.map { miss ->
+            (SoundEventCatalog.event(miss.identifier)?.name ?: miss.identifier) to "${(miss.bestConfidence * 100).roundToInt()}% · ${clockTime(miss.lastHeardAt, zone)}"
+        }
+
+    fun nearMissNote(alertConfidence: Double): String =
+        tr("התראה צריכה ביטחון של %1%. צליל שמופיע כאן נשמע, אבל רחוק או חלש מדי.", "An alert needs %1% confidence. A sound listed here was heard, but too far or too faint.", listOf("${(alertConfidence * 100).roundToInt()}"))
 
     /** The stage in the iPhone's own technical words: "preparing engine: downloadingModel 42% large-v3". */
     fun stage(phase: PipelinePhase): String = when (phase) {

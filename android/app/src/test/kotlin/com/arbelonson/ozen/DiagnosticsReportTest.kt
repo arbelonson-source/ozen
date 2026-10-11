@@ -13,9 +13,14 @@ import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.PipelineStats
 import com.arbelonson.ozen.core.ScheduledRetry
+import com.arbelonson.ozen.core.SoundAlertPreferences
+import com.arbelonson.ozen.core.SoundEvent
+import com.arbelonson.ozen.core.SoundNearMisses
+import com.arbelonson.ozen.core.SoundObservation
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlin.test.Test
@@ -26,7 +31,13 @@ class DiagnosticsReportTest {
     private val phone = AudioInputDescriptor("mic-1", "Phone microphone", AudioPortType.BuiltInMic)
     private val headset = AudioInputDescriptor("mic-2", "USB headset", AudioPortType.Usb)
 
-    private fun facts(settings: AppSettings = AppSettings.default.copy(), codeSaved: Boolean = false, journal: List<String> = emptyList(), charging: Boolean = false) = DiagnosticsFacts(
+    private fun facts(
+        settings: AppSettings = AppSettings.default.copy(),
+        codeSaved: Boolean = false,
+        journal: List<String> = emptyList(),
+        charging: Boolean = false,
+        nearMisses: SoundNearMisses = SoundNearMisses(),
+    ) = DiagnosticsFacts(
         phase = PipelinePhase.Failed(PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, "the microphone is busy")),
         activeEngine = TranscriptionEngineKind.WhisperKit,
         settings = settings,
@@ -67,6 +78,8 @@ class DiagnosticsReportTest {
         freeBytes = 12_300_000_000,
         memoryInUseBytes = 412_000_000,
         memoryAvailableBytes = 1_800_000_000,
+        soundNearMisses = nearMisses,
+        soundAlertConfidence = 0.6,
     )
 
     @Test
@@ -78,6 +91,8 @@ class DiagnosticsReportTest {
             notifyWhenInBackground = true
             saveHistory = true
             historyRetention = HistoryRetention.Year
+            soundAlerts = SoundAlertPreferences(minimumImportance = SoundEvent.Importance.High, mutedIdentifiers = setOf("dog_bark"), sensitiveIdentifiers = setOf("door_bell", "knock"))
+            hapticOnSpeechResume = false
         }
         val journal = listOf("10-10 21:02:11 APP STARTED: 0.2.40 Android 16", "10-10 21:40:03 PROBLEM MARKED: engine whisperKit")
         val lines = DiagnosticsReport.text(facts(settings, journal = journal)).lines()
@@ -91,13 +106,14 @@ class DiagnosticsReportTest {
         assertEquals("levels: - speech: - floor: - margin: -", lines[7])
         assertEquals("tokens: 340 committed: 12 on screen: 14 lag: -", lines[8])
         assertEquals("restarts: 1 clusters: 3 opened: 4 retry: attempt 2 interrupted: false sound detection: true", lines[9])
-        assertEquals("alerts: words on 1 of 2 when away: true", lines[10])
-        assertEquals("history: saving true keep year display: size ${settings.display.fontSize.toInt()} theme ${settings.display.theme.rawValue} awake ${settings.display.keepScreenAwake}", lines[11])
-        assertEquals("settings save error: failed history save error: - notifications allowed: no haptics: ok network: Cellular · Data saving", lines[12])
-        assertEquals("model state: unverified vocabulary: ${settings.vocabulary.size}", lines[13])
-        assertEquals("thermal: 3 low power: true battery: 54% free space: ${ByteSize.text(12_300_000_000)}", lines[14])
-        assertEquals("memory: used ${ByteSize.text(412_000_000)} left ${ByteSize.text(1_800_000_000)}", lines[15])
-        assertEquals("device: Google Pixel 8, Android 16 app 0.2.40 (40)", lines[16])
+        assertEquals("sounds heard below the alert level: -", lines[10])
+        assertEquals("alerts: sounds true from high muted 1 fainter 2 words on 1 of 2 when away: true buzz on speech: false", lines[11])
+        assertEquals("history: saving true keep year display: size ${settings.display.fontSize.toInt()} theme ${settings.display.theme.rawValue} awake ${settings.display.keepScreenAwake}", lines[12])
+        assertEquals("settings save error: failed history save error: - notifications allowed: no haptics: ok network: Cellular · Data saving", lines[13])
+        assertEquals("model state: unverified vocabulary: ${settings.vocabulary.size}", lines[14])
+        assertEquals("thermal: 3 low power: true battery: 54% free space: ${ByteSize.text(12_300_000_000)}", lines[15])
+        assertEquals("memory: used ${ByteSize.text(412_000_000)} left ${ByteSize.text(1_800_000_000)}", lines[16])
+        assertEquals("device: Google Pixel 8, Android 16 app 0.2.40 (40)", lines[17])
         assertEquals(
             listOf(
                 "events (oldest first):",
@@ -107,14 +123,43 @@ class DiagnosticsReportTest {
                 "10-10 21:02:11 APP STARTED: 0.2.40 Android 16",
                 "10-10 21:40:03 PROBLEM MARKED: engine whisperKit",
             ),
-            lines.drop(17),
+            lines.drop(18),
         )
         assertEquals(listOf("journal, previous runs included (oldest first):", "-"), DiagnosticsReport.text(facts()).lines().takeLast(2))
         Localization.withLanguage(UILanguage.Hebrew) {
             val inHebrew = DiagnosticsReport.text(facts(settings, journal = journal, charging = true)).lines()
-            assertEquals(lines[12], inHebrew[12])
-            assertEquals("thermal: 3 low power: true battery: 54% charging free space: ${ByteSize.text(12_300_000_000)}", inHebrew[14])
+            assertEquals(lines[13], inHebrew[13])
+            assertEquals("thermal: 3 low power: true battery: 54% charging free space: ${ByteSize.text(12_300_000_000)}", inHebrew[15])
         }
+    }
+
+    @Test
+    fun `sounds heard too faintly to alert are listed newest first with their best confidence and time, as on the iPhone`() {
+        val misses = SoundNearMisses().apply {
+            record(SoundObservation("door_bell", 0.31, 1_000.0), alertConfidence = 0.6)
+            record(SoundObservation("door_bell", 0.44, 900.0), alertConfidence = 0.6)
+            record(SoundObservation("knock", 0.5, 4_600.0), alertConfidence = 0.6)
+        }
+        assertEquals(
+            "sounds heard below the alert level: knock 50% 01:16:40, door_bell 44% 00:16:40",
+            DiagnosticsReport.text(facts(nearMisses = misses), utcOffsetSeconds = 0).lines()[10],
+        )
+        assertEquals(
+            "sounds heard below the alert level: knock 50% 03:16:40, door_bell 44% 02:16:40",
+            DiagnosticsReport.text(facts(nearMisses = misses), utcOffsetSeconds = 7_200).lines()[10],
+        )
+        val utc = ZoneId.of("UTC")
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals(
+                listOf("Knock at the door" to "50% · ${clockTime(4_600.0, utc)}", "Doorbell" to "44% · ${clockTime(1_000.0, utc)}"),
+                DiagnosticsReport.nearMisses(misses, utc),
+            )
+            assertEquals("An alert needs 60% confidence. A sound listed here was heard, but too far or too faint.", DiagnosticsReport.nearMissNote(0.6))
+        }
+        Localization.withLanguage(UILanguage.Hebrew) {
+            assertEquals("דפיקה בדלת", DiagnosticsReport.nearMisses(misses, utc).first().first)
+        }
+        assertEquals(emptyList(), DiagnosticsReport.nearMisses(SoundNearMisses(), utc))
     }
 
     @Test
