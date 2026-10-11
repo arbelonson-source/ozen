@@ -18,6 +18,7 @@
         android:theme="@style/Theme.Ozen">
         <activity
             android:name=".MainActivity"
+            android:configChanges="uiMode"
             android:exported="true"
             android:launchMode="singleTop">
             <intent-filter>

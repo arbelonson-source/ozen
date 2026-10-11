@@ -780,7 +780,9 @@ class SettingsScreenDeviceTest {
 
     @Test
     fun diagnosticsShowThePhonesHeatBatteryAndBatterySaverAsTheyAre() {
-        val shell = { command: String -> InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command).close() }
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+        }
         val shown = { label: String, value: String -> compose.onAllNodes(hasText(label) and hasText(value)).fetchSemanticsNodes().isNotEmpty() }
         try {
             shell("dumpsys battery unplug")

@@ -9,6 +9,7 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.ParcelFileDescriptor
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -38,6 +39,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollTo
@@ -50,6 +52,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.core.view.WindowCompat
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
@@ -346,6 +350,40 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Lapel mic disconnected", substring = true).assertDoesNotExist()
         } finally {
             compose.runOnUiThread { app.captions.dismissMicrophoneDrop() }
+        }
+    }
+
+    @Test
+    fun theCaptionsFollowThePhoneTurningDarkOrLightWithoutTheScreenBeingRebuilt() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
+        }
+        val resumed = {
+            var shown: Activity? = null
+            instrumentation.runOnMainSync { shown = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).singleOrNull() }
+            shown
+        }
+        val background = { compose.onRoot().captureToImage().toPixelMap().let { it[it.width / 2, it.height / 4] } }
+        val nightBefore = shell("cmd uimode night").substringAfter("Night mode: ").trim()
+        val displayBefore = app.settings.current.value.display
+        try {
+            app.settings.change { it.display = it.display.copy(theme = DisplayPreferences.Theme.MatchPhone) }
+            val darkFirst = nightBefore != "yes"
+            for (dark in listOf(darkFirst, !darkFirst)) {
+                val first = resumed()
+                shell("cmd uimode night ${if (dark) "yes" else "no"}")
+                val until = System.currentTimeMillis() + 3_000
+                while (System.currentTimeMillis() < until) {
+                    assertTrue("the screen was rebuilt when the phone turned ${if (dark) "dark" else "light"}", resumed() === first)
+                    Thread.sleep(50)
+                }
+                compose.waitUntil(5_000) { background() == if (dark) Color.Black else Color.White }
+            }
+        } finally {
+            shell("cmd uimode night $nightBefore")
+            app.settings.change { it.display = displayBefore }
         }
     }
 
