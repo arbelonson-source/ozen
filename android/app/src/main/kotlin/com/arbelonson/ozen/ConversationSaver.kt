@@ -165,11 +165,38 @@ class ConversationSaver(
      * afresh, and it is saved at once so it reads back starred.
      */
     fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean? {
-        if (sessionID != id || currentLines.none { it.id == segmentID }) return writer.toggleStarNow(sessionID, segmentID)
+        if (sessionID != id || currentLines.none { it.id == segmentID }) {
+            return writer.toggleStarNow(sessionID, segmentID)?.also { mark(segmentID, it) }
+        }
         val starring = segmentID !in starred
-        if (starring) starred += segmentID else starred -= segmentID
+        mark(segmentID, starring)
         save(ended = false)
         return starring
+    }
+
+    /**
+     * Stars a line on the caption screen, or takes its star away, in the
+     * conversation it belongs to: the one being captioned, or one closed by
+     * a long quiet whose lines are still on screen. With saving off the star
+     * still shows on the line.
+     */
+    fun toggleLiveStar(segmentID: UUID): Boolean {
+        if (currentLines.any { it.id == segmentID }) return toggleStar(id, segmentID) ?: false
+        for (conversation in closed.asReversed()) {
+            writer.toggleStarNow(conversation, segmentID)?.let { starring ->
+                mark(segmentID, starring)
+                return starring
+            }
+        }
+        val starring = segmentID !in starred
+        mark(segmentID, starring)
+        return starring
+    }
+
+    fun isStarred(segmentID: UUID): Boolean = segmentID in starred
+
+    private fun mark(segmentID: UUID, starring: Boolean) {
+        if (starring) starred += segmentID else starred -= segmentID
     }
 
     fun isCurrent(id: UUID): Boolean = id == this.id
@@ -185,7 +212,6 @@ class ConversationSaver(
 
     private fun forgetCurrent() {
         id = UUID.randomUUID()
-        starred.clear()
         offset = lines().size
         startedAt = null
     }

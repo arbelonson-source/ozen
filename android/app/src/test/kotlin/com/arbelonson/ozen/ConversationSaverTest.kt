@@ -302,6 +302,50 @@ class ConversationSaverTest {
     }
 
     @Test
+    fun `a line starred while it is said shows starred and is saved starred`() {
+        start()
+        say("Take two pills after dinner")
+        say("Call the pharmacy")
+        assertEquals(true, saver.toggleLiveStar(lines[1].id))
+        assertTrue(saver.isStarred(lines[1].id))
+        assertFalse(saver.isStarred(lines[0].id))
+        stop()
+        assertEquals(listOf(false, true), store.load(saved().single().id)!!.segments.map { it.isStarred })
+
+        assertEquals(false, saver.toggleLiveStar(lines[1].id))
+        assertFalse(saver.isStarred(lines[1].id))
+        assertEquals(listOf(false, false), store.load(saved().single().id)!!.segments.map { it.isStarred })
+    }
+
+    @Test
+    fun `a line still on screen from a conversation closed by a long quiet is starred in that conversation`() {
+        start()
+        say("Good morning", at = clock - 30 * 60)
+        assertTrue(saver.checkForConversationBreak())
+        say("Good evening")
+        saver.save(ended = false)
+
+        assertEquals(true, saver.toggleLiveStar(lines[0].id))
+        assertTrue(saver.isStarred(lines[0].id))
+        val conversations = saved()
+        assertEquals(1, conversations.single { it.preview == "Good morning" }.starredCount)
+        assertEquals(0, conversations.single { it.preview == "Good evening" }.starredCount)
+        saver.save(ended = false)
+        assertEquals(0, saved().single { it.preview == "Good evening" }.starredCount)
+    }
+
+    @Test
+    fun `with saving off a line starred while it is said still shows starred`() {
+        settings.saveHistory = false
+        start()
+        say("Off the record")
+        assertEquals(true, saver.toggleLiveStar(lines[0].id))
+        assertTrue(saver.isStarred(lines[0].id))
+        stop()
+        assertTrue(saved().isEmpty())
+    }
+
+    @Test
     fun `a star given to a line of an earlier conversation is written to that conversation`() {
         val earlier = oldConversation(clock - 3_600)
         val line = store.load(earlier)!!.segments.single().id

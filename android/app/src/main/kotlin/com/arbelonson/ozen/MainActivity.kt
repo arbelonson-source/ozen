@@ -1,6 +1,8 @@
 package com.arbelonson.ozen
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -21,6 +23,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,11 +40,12 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -79,9 +83,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
@@ -204,7 +210,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     emphasizeNumbers = current.display.emphasizeNumbers,
                     onClose = { showingHistory = false },
                 )
-                else -> CaptionScreen(state, current.display, look, onStatusTap, onSettings = { showingSettings.value = true }, onHistory = { showingHistory = true })
+                else -> CaptionScreen(state, current.display, look, onStatusTap, onSettings = { showingSettings.value = true }, onHistory = { showingHistory = true }, onStar = { app.captions.toggleStar(it) })
             }
             PairingDialogs(app.pairing)
         }
@@ -282,6 +288,7 @@ private fun CaptionScreen(
     onStatusTap: () -> Unit,
     onSettings: () -> Unit,
     onHistory: () -> Unit,
+    onStar: (UUID) -> Unit,
 ) {
     val list = rememberLazyListState()
     var following by remember { mutableStateOf(true) }
@@ -341,7 +348,7 @@ private fun CaptionScreen(
                     textAlign = TextAlign.Center,
                 )
             } else {
-                CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading))
+                CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading), onStar)
                 if (!following) {
                     JumpToLatest(jumpToLatestTitle(linesSince(state.lines, lastWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                         following = true
@@ -417,12 +424,13 @@ private fun CaptionLines(
     list: LazyListState,
     following: Boolean,
     modifier: Modifier,
+    onStar: (UUID) -> Unit,
 ) {
     LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize) {
         if (following) list.scrollToEnd(lines.lastIndex)
     }
     LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(lines, key = { it.id }) { line -> CaptionLineRow(line, display, look) }
+        items(lines, key = { it.id }) { line -> CaptionLineRow(line, display, look) { onStar(line.id) } }
     }
 }
 
@@ -459,16 +467,57 @@ private fun JumpToLatest(title: String, look: CaptionTheme, modifier: Modifier, 
  * so a Hebrew line starts at the right whatever language the buttons are
  * in. A line the engine wasn't sure of gets a question mark at its start
  * and dots under the words it doubted, without changing their colour: the
- * words stay as readable as any other line.
+ * words stay as readable as any other line. Held, as on the iPhone, it can
+ * be marked as important (a star) or copied; a screen reader has both too.
  */
 @Composable
-private fun CaptionLineRow(line: CaptionLine, display: DisplayPreferences, look: CaptionTheme) {
+private fun CaptionLineRow(line: CaptionLine, display: DisplayPreferences, look: CaptionTheme, onStar: () -> Unit) {
     val doubtful = if (display.markUncertainLines) line.doubtfulWords else emptyList()
     val spoken = UncertainWords.spoken(line.text, doubtful)
     val colour = if (line.isFinal) look.text else look.pendingText
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val star = if (line.starred) tr("ביטול הסימון", "Remove mark") else tr("סימון כחשוב", "Mark as important")
+    val copy = tr("העתקה", "Copy")
+    val context = LocalContext.current
+    val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, line.copied)) }
+    var menu by remember { mutableStateOf(false) }
+    Box(modifier = Modifier.fillMaxWidth().onHold { menu = true }) {
+        CaptionLineContent(
+            line = line,
+            display = display,
+            look = look,
+            doubtful = doubtful,
+            spoken = spoken,
+            colour = colour,
+            onLayout = { layout = it },
+            layout = layout,
+            actions = listOf(
+                CustomAccessibilityAction(star) { onStar(); true },
+                CustomAccessibilityAction(copy) { copyLine(); true },
+            ),
+        )
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            DropdownMenuItem(text = { Text(star) }, onClick = { menu = false; onStar() })
+            DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
+        }
+    }
+}
+
+@Composable
+private fun CaptionLineContent(
+    line: CaptionLine,
+    display: DisplayPreferences,
+    look: CaptionTheme,
+    doubtful: List<String>,
+    spoken: List<String>,
+    colour: Color,
+    onLayout: (TextLayoutResult) -> Unit,
+    layout: TextLayoutResult?,
+    actions: List<CustomAccessibilityAction>,
+) {
     CompositionLocalProvider(LocalLayoutDirection provides readingDirection(line.text)) {
         Row(modifier = Modifier.fillMaxWidth()) {
+            if (line.starred) StarMark(display.fontSize, starColour(look.isLight))
             if (display.markUncertainLines && line.unsure) UnsureMark(display.fontSize, look.pendingText)
             Text(
                 text = captionText(line.text, display.emphasizeNumbers, numberColor = if (line.isFinal) look.numberText else null, doubtfulWords = doubtful),
@@ -477,7 +526,7 @@ private fun CaptionLineRow(line: CaptionLine, display: DisplayPreferences, look:
                 fontSize = display.fontSize.sp,
                 lineHeight = (display.fontSize * 1.25).sp,
                 fontWeight = if (display.boldText) FontWeight.Bold else FontWeight.Medium,
-                onTextLayout = { layout = it },
+                onTextLayout = onLayout,
                 modifier = Modifier
                     .weight(1f, fill = false)
                     .drawBehind { layout?.let { drawDoubtDots(it, colour) } }
@@ -485,6 +534,7 @@ private fun CaptionLineRow(line: CaptionLine, display: DisplayPreferences, look:
                         if (spoken.isNotEmpty()) {
                             stateDescription = tr("מילים שאולי לא נשמעו נכון: %1", "Words that may be wrong: %1", listOf(spoken.joinToString(", ")))
                         }
+                        customActions = actions
                     },
             )
         }
@@ -493,6 +543,22 @@ private fun CaptionLineRow(line: CaptionLine, display: DisplayPreferences, look:
 
 private fun readingDirection(shown: String) =
     if (Bidi(shown, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight()) LayoutDirection.Ltr else LayoutDirection.Rtl
+
+@Composable
+private fun StarMark(fontSize: Double, colour: Color) {
+    val side = maxOf(14.0, fontSize * 0.6)
+    val inset = with(LocalDensity.current) { ((fontSize * 1.25 - side) / 2).sp.toDp() }
+    Text(
+        "★",
+        color = colour,
+        fontSize = side.sp,
+        lineHeight = side.sp,
+        modifier = Modifier
+            .padding(top = inset)
+            .padding(end = 8.dp)
+            .clearAndSetSemantics { contentDescription = tr("מסומן כחשוב. ", "Marked as important. ").trim() },
+    )
+}
 
 @Composable
 internal fun UnsureMark(fontSize: Double, colour: Color) {

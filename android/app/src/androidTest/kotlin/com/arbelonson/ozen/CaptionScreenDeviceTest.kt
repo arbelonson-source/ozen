@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import android.content.ClipboardManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
@@ -10,9 +11,11 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.isDisplayed
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -24,6 +27,7 @@ import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.core.view.WindowCompat
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -195,6 +199,34 @@ class CaptionScreenDeviceTest {
         } finally {
             app.settings.change { it.display = before }
         }
+    }
+
+    @Test
+    fun aCaptionLineIsMarkedAsImportantOrCopiedFromItsHoldMenuAndTheScreenReader() {
+        val pills = committed("Take two pills after dinner")
+        val phone = committed("תתקשרי למרפאה 050 123 4567")
+        showLines(listOf(pills, phone))
+        compose.onNodeWithText("Take two pills after dinner", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText("Mark as important").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Marked as important.").fetchSemanticsNodes().size == 1 }
+        assertTrue(CaptionState.screen.value.lines.single { it.id == pills.id }.starred)
+        assertFalse(CaptionState.screen.value.lines.single { it.id == phone.id }.starred)
+
+        val line = compose.onNodeWithText("Take two pills after dinner", substring = true).fetchSemanticsNode()
+        val unmark = line.config[SemanticsActions.CustomActions].single { it.label == "Remove mark" }
+        compose.runOnUiThread { unmark.action() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Marked as important.").fetchSemanticsNodes().isEmpty() }
+
+        compose.onNodeWithText("תתקשרי", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText("Copy").performClick()
+        compose.waitUntil(5_000) { copied() == CaptionLayout.copiedText("תתקשרי למרפאה 050 123 4567") }
+    }
+
+    private fun copied(): String? {
+        var text: String? = null
+        val clipboard = InstrumentationRegistry.getInstrumentation().targetContext.getSystemService(ClipboardManager::class.java)
+        compose.runOnUiThread { text = clipboard.primaryClip?.getItemAt(0)?.text?.toString() }
+        return text
     }
 
     private fun committed(text: String) =

@@ -616,7 +616,7 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
  * began on it never opened the menu, and lifting the finger dialed it.
  * Once held, the rest of the touch is kept from the number.
  */
-private fun Modifier.onHold(action: () -> Unit) = pointerInput(Unit) {
+internal fun Modifier.onHold(action: () -> Unit) = pointerInput(Unit) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
         val ended = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
@@ -635,10 +635,11 @@ private fun Modifier.onHold(action: () -> Unit) = pointerInput(Unit) {
     }
 }
 
-// The iPhone's yellow star, deepened on a light screen to stay visible.
 @Composable
-private fun starColour() =
-    if (MaterialTheme.colorScheme.background.luminance() > 0.5f) Color(red = 0.6f, green = 0.42f, blue = 0f) else Color(red = 1f, green = 0.84f, blue = 0.04f)
+private fun starColour() = starColour(light = MaterialTheme.colorScheme.background.luminance() > 0.5f)
+
+// The iPhone's yellow star, deepened on a light screen to stay visible.
+internal fun starColour(light: Boolean) = if (light) Color(red = 0.6f, green = 0.42f, blue = 0f) else Color(red = 1f, green = 0.84f, blue = 0.04f)
 
 @Composable
 private fun Screen(title: String, close: String, onClose: () -> Unit, content: @Composable () -> Unit) {

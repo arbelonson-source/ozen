@@ -158,7 +158,13 @@ class CaptionSession(
             listeningStartedAt = pipeline.listeningStartedAt,
             scoringEngine = transcribing.engine,
             scoringModel = transcribing.whisperModelVariant,
+            starred = conversations::isStarred,
         )
+    }
+
+    /** Stars a caption line or takes its star away, in its conversation and on screen. */
+    fun toggleStar(line: UUID) {
+        CaptionState.markStarred(line, conversations.toggleLiveStar(line))
     }
 
     suspend fun checkHomeComputer(): HomeServerCheck {

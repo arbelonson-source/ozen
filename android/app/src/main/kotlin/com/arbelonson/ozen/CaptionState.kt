@@ -21,6 +21,8 @@ data class CaptionLine(
     val isFinal: Boolean,
     val unsure: Boolean = false,
     val doubtfulWords: List<String> = emptyList(),
+    val starred: Boolean = false,
+    val copied: String = text,
 )
 
 data class CaptionScreenState(
@@ -76,6 +78,7 @@ object CaptionState {
         listeningStartedAt: Double? = null,
         scoringEngine: TranscriptionEngineKind = TranscriptionEngineKind.WhisperKit,
         scoringModel: String? = null,
+        starred: (UUID) -> Boolean = { false },
     ) {
         state.value = CaptionScreenState(
             phase = phase,
@@ -89,10 +92,17 @@ object CaptionState {
                     isFinal = it.isCommitted,
                     unsure = CaptionConfidence.isUncertain(it, scoringEngine, scoringModel),
                     doubtfulWords = if (it.isCommitted) it.uncertainWords else emptyList(),
+                    starred = starred(it.id),
+                    copied = CaptionLayout.copiedText(it.text),
                 )
             },
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),
         )
+    }
+
+    /** A star given or taken away shows on the line at once, before the next captions. */
+    fun markStarred(line: UUID, starred: Boolean) {
+        state.value = state.value.let { now -> now.copy(lines = now.lines.map { if (it.id == line) it.copy(starred = starred) else it }) }
     }
 
     fun clear() {

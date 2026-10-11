@@ -26,11 +26,24 @@ class CaptionStateTest {
         show(PipelinePhase.Listening, listOf(done, growing))
         assertEquals(
             listOf(
-                CaptionLine(done.id, CaptionLayout.displayText("שלום לכולם"), isFinal = true),
-                CaptionLine(growing.id, CaptionLayout.displayText("מה שלומך"), isFinal = false),
+                CaptionLine(done.id, CaptionLayout.displayText("שלום לכולם"), isFinal = true, copied = CaptionLayout.copiedText("שלום לכולם")),
+                CaptionLine(growing.id, CaptionLayout.displayText("מה שלומך"), isFinal = false, copied = CaptionLayout.copiedText("מה שלומך")),
             ),
             CaptionState.screen.value.lines,
         )
+    }
+
+    @Test
+    fun `a starred line shows starred, a star given shows at once, and a line copies as said`() {
+        val pills = line("Take two pills after dinner", committed = true)
+        val phone = line("תתקשרי למרפאה 050 123 4567", committed = true)
+        CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(pills, phone), starred = { it == pills.id })
+        assertEquals(listOf(true, false), CaptionState.screen.value.lines.map { it.starred })
+        assertEquals(CaptionLayout.copiedText("תתקשרי למרפאה 050 123 4567"), CaptionState.screen.value.lines[1].copied)
+
+        CaptionState.markStarred(phone.id, true)
+        CaptionState.markStarred(pills.id, false)
+        assertEquals(listOf(false, true), CaptionState.screen.value.lines.map { it.starred })
     }
 
     @Test
