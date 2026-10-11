@@ -510,13 +510,41 @@ class TranscriptHistoryTest {
             var conversation = record(startedAt = 100.0, segments = listOf(segment(text = "אחד")))
             store.save(conversation)
             val file = File(dir, "${uuidString(conversation.id)}.json")
-            val readBefore = Files.getLastModifiedTime(file.toPath())
+            val readBefore = TranscriptHistoryStore.modificationDate(file)
             val oldSummary = TranscriptSessionSummary.summarizing(conversation)
 
             Thread.sleep(20)
             conversation = conversation.copy(segments = conversation.segments + segment(text = "שתיים"))
             store.save(conversation)
             store.writeSummary(oldSummary, file, readBefore)
+
+            assertEquals(2, store.listSummaries().firstOrNull()?.segmentCount)
+        }
+    }
+
+    @Test
+    fun `a conversation's file time keeps its milliseconds`() {
+        withHistoryDirectory("ozen-history") { dir ->
+            assertTrue(dir.mkdirs())
+            val file = File(dir, "a.json").apply { writeText("{}") }
+            assertTrue(file.setLastModified(1_700_000_000_123L))
+            assertEquals(1_700_000_000_123L, TranscriptHistoryStore.modificationDate(file)?.toMillis())
+        }
+    }
+
+    @Test
+    fun `a summary stamped in the same instant as a newer save of its conversation is not trusted`() {
+        withHistoryDirectory("ozen-history") { dir ->
+            val store = TranscriptHistoryStore(dir)
+            val conversation = record(startedAt = 100.0, segments = listOf(segment(text = "אחד")))
+            store.save(conversation)
+            val file = File(dir, "${uuidString(conversation.id)}.json")
+            val summary = File(File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME), file.name)
+
+            store.save(conversation.copy(segments = conversation.segments + segment(text = "שתיים")), updateSearchCaches = false)
+            // A phone's file clock ticks every few milliseconds, so a save
+            // right after the summary can carry the very same time.
+            assertTrue(file.setLastModified(summary.lastModified()))
 
             assertEquals(2, store.listSummaries().firstOrNull()?.segmentCount)
         }

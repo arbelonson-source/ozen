@@ -617,11 +617,16 @@ class TranscriptHistoryStore(private val directory: File) {
         return lenientHistory { TranscriptSessionRecord.fromJson(strictUtf8(data)) }
     }
 
-    /** A cache file is trusted only if it was written after its conversation. */
+    /**
+     * A cache file is trusted only if it was written after its conversation.
+     * The same time is not after: a phone's file clock ticks every few
+     * milliseconds, so a newer save can carry its old cache's time, and a
+     * tie only costs rebuilding the summary.
+     */
     private fun isFresh(cache: File, recordFile: File): Boolean {
         val cacheDate = modificationDate(cache) ?: return false
         val recordDate = modificationDate(recordFile) ?: return false
-        return cacheDate >= recordDate
+        return cacheDate > recordDate
     }
 
     private fun cachedSummary(recordFile: File): TranscriptSessionSummary? {
@@ -954,10 +959,14 @@ class TranscriptHistoryStore(private val directory: File) {
         internal const val SUMMARY_FORMAT = 4
         internal const val SUMMARIES_FOLDER_NAME = "summaries"
 
-        internal fun modificationDate(file: File): FileTime? = try {
-            Files.getLastModifiedTime(file.toPath())
-        } catch (_: IOException) {
-            null
+        /**
+         * java.nio's file times come in whole seconds on Android, which made
+         * two saves in the same second look like one; File keeps the
+         * milliseconds on both platforms.
+         */
+        internal fun modificationDate(file: File): FileTime? {
+            val millis = file.lastModified()
+            return if (millis == 0L) null else FileTime.fromMillis(millis)
         }
 
         internal fun searchableText(record: TranscriptSessionRecord): String {
