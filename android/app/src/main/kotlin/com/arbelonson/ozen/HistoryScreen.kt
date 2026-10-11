@@ -31,6 +31,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -72,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.CaptionLayout
+import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.HistoryDay
 import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.HistoryRetention
@@ -86,6 +88,7 @@ import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -443,7 +446,11 @@ private class OpenConversation(
     val matches: List<UUID>,
     val numbers: NumbersMentioned?,
     val starred: List<UUID>,
-)
+    val stats: ConversationStats?,
+) {
+    /** The summary and the numbers come first in the list, before the lines a jump is aimed at. */
+    val headerItems: Int get() = (if (stats != null) 1 else 0) + (if (numbers?.listed?.isNotEmpty() == true) 1 else 0)
+}
 
 private fun opened(record: TranscriptSessionRecord?, query: String, marksUncertain: Boolean) = OpenConversation(
     record = record,
@@ -451,6 +458,7 @@ private fun opened(record: TranscriptSessionRecord?, query: String, marksUncerta
     matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
     numbers = record?.takeIf { query.isBlank() }?.let(NumbersMentioned::of),
     starred = record?.takeIf { query.isBlank() }?.segments?.filter { it.isStarred }?.map { it.id } ?: emptyList(),
+    stats = record?.let(ConversationStats::compute)?.takeIf { it.totalWords > 0 },
 )
 
 /**
@@ -503,13 +511,13 @@ internal fun ConversationScreen(
             if (!jumped && now.matches.isNotEmpty()) {
                 jumped = true
                 withFrameNanos {}
-                list.scrollToItem(now.lines.indexOfFirst { it.id == now.matches.first() }.coerceAtLeast(0))
+                list.scrollToItem(now.headerItems + now.lines.indexOfFirst { it.id == now.matches.first() }.coerceAtLeast(0))
             }
             val held = now.lines.indexOfFirst { it.id == line }
             if (!jumped && held >= 0) {
                 jumped = true
                 withFrameNanos {}
-                list.scrollToItem(held)
+                list.scrollToItem(now.headerItems + held)
             }
             if (!conversations.isCurrent(id)) break
             delay(20_000)
@@ -528,7 +536,7 @@ internal fun ConversationScreen(
             shown.record == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"))
             else -> {
                 val numbers = shown.numbers?.takeIf { it.listed.isNotEmpty() }
-                val header = if (numbers != null) 1 else 0
+                val header = shown.headerItems
                 FlowRow(modifier = Modifier.fillMaxWidth()) {
                     TextButton(onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { shareSheet(context, shown.record, marksUncertain) }) } }) {
                         Text(tr("שיתוף", "Share"))
@@ -544,7 +552,7 @@ internal fun ConversationScreen(
                             onClick = {
                                 current = (current + 1) % shown.matches.size
                                 val target = shown.lines.indexOfFirst { it.id == shown.matches[current] }
-                                if (target >= 0) scope.launch { list.scrollToItem(target) }
+                                if (target >= 0) scope.launch { list.scrollToItem(header + target) }
                             },
                         ) { Text(SearchMatches.nextTitle(current, shown.matches.size)) }
                     }
@@ -561,6 +569,7 @@ internal fun ConversationScreen(
                 }
                 val matched = shown.matches.toSet()
                 LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    shown.stats?.let { stats -> item(key = "summary") { SummarySection(stats) } }
                     if (numbers != null) {
                         item(key = "numbers") {
                             NumbersSection(numbers) { said ->
@@ -653,6 +662,49 @@ private fun DeletionFailed(error: String, onClose: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onClose) { Text(tr("סגירה", "Close")) } },
     )
+}
+
+/**
+ * At the top, as on the iPhone: how long and how many words, who said how
+ * much, the pace and the turns. Every number is a count or a span between
+ * the lines' own times.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SummarySection(stats: ConversationStats) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Heading(tr("סיכום", "Summary"))
+        Text(stats.hebrewSummary, style = MaterialTheme.typography.titleMedium)
+        for (speaker in stats.speakers) {
+            val share = stats.wordFraction(speaker)
+            Column(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(speaker.name, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "${ConversationStats.wordsText(speaker.words)} · ${(share * 100).roundToInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                LinearProgressIndicator(progress = { share.toFloat() }, modifier = Modifier.fillMaxWidth().clearAndSetSemantics {})
+            }
+        }
+        if (stats.wordsPerMinute > 0) SummaryRow(tr("קצב דיבור", "Speaking pace"), ConversationStats.paceText(stats.wordsPerMinute))
+        SummaryRow(tr("חילופי דוברים", "Speaker turns"), "${stats.totalTurns}")
+        stats.longestTurn?.takeIf { stats.speakers.size > 1 }?.let {
+            SummaryRow(tr("הדיבור הארוך ביותר", "Longest turn"), "${it.speakerName} · ${ConversationStats.wordsText(it.words)}")
+        }
+        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SummaryRow(label: String, value: String) {
+    FlowRow(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label)
+        Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }
 
 /** Above the conversation, as on the iPhone: each line with a number in it, a tap away from where it was said. */

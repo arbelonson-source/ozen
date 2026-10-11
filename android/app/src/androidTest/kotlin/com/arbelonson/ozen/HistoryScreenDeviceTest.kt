@@ -153,6 +153,27 @@ class HistoryScreenDeviceTest {
     }
 
     @Test
+    fun aSavedConversationOpensWithASummaryOfWhoSaidHowMuchAndTheTurns() {
+        seed(
+            "Summary test weather is lovely" to "Dana",
+            "Yes it is lovely" to "Yossi",
+            "Nice weather we are having" to "Dana",
+            "Nice weather we are having" to "Dana",
+        )
+        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText("Summary test weather is lovely", substring = true).performClick()
+
+        waitFor("Summary")
+        compose.onNodeWithText("2 speakers", substring = true).assertExists()
+        compose.onNodeWithText("19 words", substring = true).assertExists()
+        compose.onNodeWithText("15 words · 79%").assertExists()
+        compose.onNodeWithText("4 words · 21%").assertExists()
+        compose.onNodeWithText("Speaking pace").assertExists()
+        compose.onNode(hasText("Speaker turns") and hasText("3")).assertExists()
+        compose.onNode(hasText("Longest turn") and hasText("Dana · 10 words")).assertExists()
+    }
+
+    @Test
     fun shareOffersTheWholeConversationAsTextAndSaysWhichLinesMayBeMisheard() {
         val startedAt = System.currentTimeMillis() / 1_000.0 - 60
         val record = TranscriptSessionRecord(
