@@ -226,6 +226,32 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun theTimeTalkPickedUpIsDrawnAboveALineAfterABreakAndTheAwayMarkTakesItsPlace() {
+        val now = System.currentTimeMillis() / 1_000.0
+        val before = said("Before the break", at = now - 1_000)
+        val after = said("After the break", at = now - 1_000 + CaptionLayout.QUIET_GAP_SECONDS)
+        showLines(listOf(before, after))
+        val spoken = "After a break, from ${resumedTime(QuietGap(before.lastUpdateTimestamp, after.startTimestamp))}"
+        val divider = compose.onNodeWithContentDescription(spoken).assertIsDisplayed().fetchSemanticsNode()
+        val line = compose.onNodeWithText("After the break", substring = true).fetchSemanticsNode()
+        val first = compose.onNodeWithText("Before the break", substring = true).fetchSemanticsNode()
+        assertTrue("divider ${divider.positionInRoot}, line ${line.positionInRoot}", divider.positionInRoot.y + divider.size.height <= line.positionInRoot.y + 1f)
+        assertTrue("divider ${divider.positionInRoot}, first ${first.positionInRoot}", divider.positionInRoot.y >= first.positionInRoot.y + first.size.height - 1f)
+
+        compose.runOnUiThread {
+            CaptionState.screenLeft(after.startTimestamp - 10)
+            CaptionState.show(
+                PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null,
+                segments = listOf(before, after, said("And more", at = after.startTimestamp + 5)),
+            )
+            CaptionState.screenReturned(after.startTimestamp + 60)
+        }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("From here, what was said while the app was closed: 2 lines").assertIsDisplayed()
+        compose.onNodeWithContentDescription(spoken).assertDoesNotExist()
+    }
+
+    @Test
     fun manyLinesSaidWhileTheAppWasAwayAreMarkedAndAButtonAtTheTopLeadsUpToThem() {
         val before = (1..3).map { said("Before $it here", at = 50.0 + it) }
         val missed = (1..30).map { said("Missed $it here", at = 150.0 + it) }

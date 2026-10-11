@@ -105,6 +105,14 @@ fun clockTime(at: Double, zone: ZoneId = ZoneId.systemDefault()): String =
         .withLocale(Localization.locale)
         .format(Instant.ofEpochMilli((at * 1_000).toLong()).atZone(zone))
 
+/** The time above talk that picked up after a break, as on the iPhone: with the day when the words before it were on another day. */
+fun resumedTime(gap: QuietGap, zone: ZoneId = ZoneId.systemDefault()): String {
+    val resumed = Instant.ofEpochMilli((gap.resumedAt * 1_000).toLong()).atZone(zone)
+    val before = Instant.ofEpochMilli((gap.lastWordsAt * 1_000).toLong()).atZone(zone)
+    if (resumed.toLocalDate() == before.toLocalDate()) return clockTime(gap.resumedAt, zone)
+    return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).withLocale(Localization.locale).format(resumed)
+}
+
 object HistoryTexts {
     fun savingFooter(saving: Boolean, size: String, retention: HistoryRetention): String {
         val base = if (saving) {

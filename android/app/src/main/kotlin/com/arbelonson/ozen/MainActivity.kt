@@ -727,9 +727,15 @@ private fun CaptionLines(
     LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(lines, key = { it.id }) { line ->
             val row = @Composable { CaptionLineRow(line, display, look, onStar = { onStar(line.id) }, onOpen = { conversation -> onOpen(conversation, line.id) }, onFix = { onFix(line) }, onAskToRepeat, onMarkProblem) }
+            val gap = line.afterQuiet
             if (away != null && line.id == away.line) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     AwayDivider(away.count, display.fontSize, look)
+                    row()
+                }
+            } else if (gap != null) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    QuietGapDivider(gap, display.fontSize, look)
                     row()
                 }
             } else {
@@ -787,6 +793,32 @@ private fun AwayDivider(count: Int, captionSize: Double, look: CaptionTheme) {
             fontWeight = FontWeight.SemiBold,
         )
         Box(modifier = Modifier.weight(1f).height(2.dp).background(look.pendingText))
+    }
+}
+
+/**
+ * Between two lines with a quiet stretch of five minutes or more, as on the
+ * iPhone: the clock time talk picked up again, so a sentence from half an
+ * hour ago isn't read as the one before the words just said.
+ */
+@Composable
+private fun QuietGapDivider(gap: QuietGap, captionSize: Double, look: CaptionTheme) {
+    val time = resumedTime(gap)
+    val spoken = tr("אחרי הפסקה, מהשעה %1", "After a break, from %1", listOf(time))
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clearAndSetSemantics { contentDescription = spoken },
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(modifier = Modifier.weight(1f).height(1.dp).background(look.pendingText.copy(alpha = 0.5f)))
+        Text(
+            text = time,
+            color = look.pendingText,
+            fontSize = maxOf(15.0, captionSize * 0.45).sp,
+            fontWeight = FontWeight.Medium,
+            style = LocalTextStyle.current.copy(fontFeatureSettings = "tnum"),
+        )
+        Box(modifier = Modifier.weight(1f).height(1.dp).background(look.pendingText.copy(alpha = 0.5f)))
     }
 }
 

@@ -353,4 +353,18 @@ class CaptionStateTest {
         assertNull(CaptionState.screen.value.away)
         CaptionState.clear()
     }
+
+    @Test
+    fun `a line that starts five quiet minutes or more after the one before carries the gap, measured from it even when that one is no longer kept`() {
+        val night = said("Good night", at = 1_000.0)
+        val soon = said("Sleep well", at = 1_010.0)
+        val morning = said("Good morning", at = 1_010.0 + CaptionLayout.QUIET_GAP_SECONDS)
+        show(PipelinePhase.Listening, listOf(night, soon, morning))
+        assertEquals(listOf(null, null, QuietGap(lastWordsAt = 1_010.0, resumedAt = 1_310.0)), CaptionState.screen.value.lines.map { it.afterQuiet })
+        val since = (1..199).map { said("line $it", at = 1_310.0 + it) }
+        show(PipelinePhase.Listening, listOf(night, soon, morning) + since)
+        assertEquals(morning.id, CaptionState.screen.value.lines.first().id)
+        assertEquals(QuietGap(lastWordsAt = 1_010.0, resumedAt = 1_310.0), CaptionState.screen.value.lines.first().afterQuiet)
+        assertNull(CaptionState.screen.value.lines[1].afterQuiet)
+    }
 }

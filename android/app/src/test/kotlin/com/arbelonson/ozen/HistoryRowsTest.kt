@@ -214,4 +214,13 @@ class HistoryRowsTest {
         assertFalse(plain.unsure)
         assertEquals("$time. Call the pharmacy", plain.spoken)
     }
+
+    @Test
+    fun `the time above talk that picked up after a break is the clock time, with the day when the words before it were on another day`() = Localization.withLanguage(UILanguage.English) {
+        val later = morning + 10 * 60
+        assertEquals(clockTime(later, jerusalem), resumedTime(QuietGap(lastWordsAt = morning, resumedAt = later), jerusalem))
+        val tomorrow = morning + 24 * 60 * 60
+        val text = resumedTime(QuietGap(lastWordsAt = morning, resumedAt = tomorrow), jerusalem)
+        assertTrue(text.contains("Jan") && text.contains("16") && text.contains(clockTime(tomorrow, jerusalem)), text)
+    }
 }
