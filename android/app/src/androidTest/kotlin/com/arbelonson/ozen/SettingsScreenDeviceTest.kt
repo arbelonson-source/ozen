@@ -779,8 +779,8 @@ class SettingsScreenDeviceTest {
             row("Temperature", "Hot · captions are slowing down")
             row("Model", "${Build.MANUFACTURER} ${Build.MODEL}")
             row("Android", Build.VERSION.RELEASE)
-            compose.onNode(hasText("Free space") and textMatching(Regex("^[0-9.]+ (KB|MB|GB)$"))).performScrollTo().assertExists()
-            compose.onNode(hasText("Memory") and textMatching(Regex("^[0-9.]+ (KB|MB|GB) in use · [0-9.]+ (KB|MB|GB) more$"))).performScrollTo().assertExists()
+            compose.onNode(hasText("Free space") and textMatching(Regex("^[0-9.]+\u00A0(KB|MB|GB)$"))).performScrollTo().assertExists()
+            compose.onNode(hasText("Memory") and textMatching(Regex("^[0-9.]+\u00A0(KB|MB|GB) in use · [0-9.]+\u00A0(KB|MB|GB) more$"))).performScrollTo().assertExists()
 
             shell("dumpsys battery set ac 1")
             shell("cmd power set-mode 0")
