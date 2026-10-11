@@ -61,7 +61,7 @@ data class PipelineEvent(val at: Double, val kind: Kind) {
             Kind.MicrophoneStalled -> "microphone stopped delivering audio"
             is Kind.PhoneCall -> if (kind.began) "audio taken by a call or another app" else "audio given back"
             is Kind.MemoryWarning ->
-                "iOS low on memory" + (kind.footprintMegabytes?.let { " (app using $it MB)" } ?: "")
+                "Android low on memory" + (kind.footprintMegabytes?.let { " (app using $it MB)" } ?: "")
             is Kind.Step ->
                 kind.name + (kind.afterSeconds?.let { " (previous step took ${oneDecimal(it)}s)" } ?: "")
             is Kind.Input -> "microphone: ${kind.name} [${kind.type.rawValue}]"

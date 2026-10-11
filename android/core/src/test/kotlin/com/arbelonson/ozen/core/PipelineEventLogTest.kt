@@ -67,8 +67,8 @@ class PipelineEventLogTest {
 
     @Test
     fun `a memory warning says how much the app was using, when that could be read`() {
-        assertEquals("iOS low on memory (app using 812 MB)", PipelineEvent(0.0, PipelineEvent.Kind.MemoryWarning(812)).description)
-        assertEquals("iOS low on memory", PipelineEvent(0.0, PipelineEvent.Kind.MemoryWarning(null)).description)
+        assertEquals("Android low on memory (app using 812 MB)", PipelineEvent(0.0, PipelineEvent.Kind.MemoryWarning(812)).description)
+        assertEquals("Android low on memory", PipelineEvent(0.0, PipelineEvent.Kind.MemoryWarning(null)).description)
     }
 
     @Test
