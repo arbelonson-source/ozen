@@ -90,6 +90,7 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.SoundAlertPreferences
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.SoundEventCatalog
@@ -1012,6 +1013,43 @@ class SettingsScreenDeviceTest {
         rate.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0.20"))
         val slow = sampleMillis()
         assertTrue("the sample took $slow ms slow and $fast ms fast", slow > fast * 1.8)
+    }
+
+    @Test
+    fun theHomeComputerSectionOpensTheSetupGuideWithTheDownloadLinkToSend() {
+        val started = CopyOnWriteArrayList<Intent>()
+        val sheet = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
+                started += intent
+                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+            }
+        }
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        app.settings.change { it.engine = TranscriptionEngineKind.HomeServer }
+        instrumentation.addMonitor(sheet)
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("How to set up the home computer").performScrollTo().performClick()
+            compose.onNodeWithText("Setting up the home computer").assertExists()
+            val steps = listOf("1. A suitable computer", "2. Download the setup file on the computer", "3. Double-click it and answer its questions", "4. Type in the address and code it shows")
+            for (step in steps) compose.onNodeWithText(step).performScrollTo().assertExists()
+            compose.onNodeWithText("Under it are the computer’s address and a pairing code", substring = true).performScrollTo().assertExists()
+            compose.onNodeWithText("iPhone", substring = true).assertDoesNotExist()
+            compose.onNodeWithText(HomeServer.setupDownload.toString()).performScrollTo().assertExists()
+            compose.onNodeWithText("A computer that has gone to sleep doesn’t answer", substring = true).performScrollTo().assertExists()
+
+            compose.onNodeWithText("Send the download link").performScrollTo().performClick()
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            @Suppress("DEPRECATION")
+            val send = started.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+            assertEquals(Intent.ACTION_SEND, send.action)
+            assertEquals(HomeServer.setupDownload.toString(), send.getStringExtra(Intent.EXTRA_TEXT))
+
+            compose.onNodeWithText("Back").performClick()
+            compose.onNodeWithText("How to set up the home computer").assertExists()
+        } finally {
+            instrumentation.removeMonitor(sheet)
+        }
     }
 
     @Test

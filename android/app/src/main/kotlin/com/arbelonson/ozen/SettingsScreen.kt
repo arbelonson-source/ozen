@@ -152,6 +152,11 @@ fun SettingsScreen(
         DiagnosticsScreen(diagnostics, onClose = { showingDiagnostics = false })
         return
     }
+    var showingGuide by rememberSaveable { mutableStateOf(false) }
+    if (showingGuide) {
+        HomeServerGuideScreen(onClose = { showingGuide = false })
+        return
+    }
     var showingSupport by rememberSaveable { mutableStateOf(false) }
     if (showingSupport) {
         SupportScreen(onClose = { showingSupport = false })
@@ -200,7 +205,7 @@ fun SettingsScreen(
                 SwitchRow(tr("להוריד מודלים גם בחבילת הגלישה", "Download models on cellular data too"), current.allowCellularModelDownload, onChange = onCellularDownloads)
             }
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
-            if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft, backup, scrollToBackup)
+            if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft, backup, scrollToBackup, onGuide = { showingGuide = true })
             WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
             SavedSpeakersSection(current.speakerProfiles, speakers, onAdd = { showingEnrollment = true })
             BehaviourSection(
@@ -438,6 +443,7 @@ private fun HomeComputerSection(
     codeDraft: MutableState<String>,
     backup: PhoneBackup?,
     scrollToBackup: Boolean,
+    onGuide: () -> Unit,
 ) {
     val saved = current.homeServerAddress
     var address by addressDraft
@@ -484,6 +490,12 @@ private fun HomeComputerSection(
     }
 
     SectionHeader(tr("המחשב בבית", "Home computer"))
+    // As on the iPhone, the steps for setting the computer up come first.
+    Text(
+        tr("איך מכינים את המחשב בבית", "How to set up the home computer"),
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onGuide).padding(vertical = 12.dp),
+    )
     OutlinedTextField(
         value = address,
         onValueChange = { address = it },
