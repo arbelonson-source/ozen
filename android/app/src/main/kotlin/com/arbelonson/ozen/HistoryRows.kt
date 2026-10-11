@@ -49,6 +49,7 @@ data class SavedLine(
     val spoken: String,
     val starred: Boolean = false,
     val unsure: Boolean = false,
+    val copied: String = text,
 ) {
     companion object {
         /** [markUncertain]: the caption screen's question mark, kept on saved lines as on the iPhone. */
@@ -66,6 +67,7 @@ data class SavedLine(
                     spoken = SavedLineSpeech.label(segment, time, uncertain = unsure),
                     starred = segment.isStarred,
                     unsure = unsure,
+                    copied = CaptionLayout.copiedText(segment.text),
                 )
             }
         }

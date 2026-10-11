@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import android.app.Activity
 import android.app.Instrumentation
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.semantics.SemanticsActions
@@ -25,6 +26,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.TranscriptHistoryStore
@@ -400,6 +402,29 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Next starred (2 of 2)").performClick()
         compose.waitUntil(5_000) { shownLine("First starred line about the pills") }
         compose.onNodeWithText("Next starred (1 of 2)").assertExists()
+    }
+
+    @Test
+    fun aSavedLineIsCopiedFromItsMenuOrTheScreenReaderAction() {
+        seed("Copy test opening line" to null, "תתקשרי למרפאה 050 123 4567" to null, "The address is 12 Herzl Street" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Copy test opening line")
+        compose.onNodeWithText("Copy test opening line", substring = true).performClick()
+        compose.waitUntil(5_000) { shownLine("050 123 4567") }
+        compose.onNodeWithContentDescription("050 123 4567", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText("Copy").performClick()
+        compose.waitUntil(5_000) { copied() == CaptionLayout.copiedText("תתקשרי למרפאה 050 123 4567") }
+
+        val address = compose.onNodeWithContentDescription("The address is 12 Herzl Street", substring = true).fetchSemanticsNode()
+        val copy = address.config[SemanticsActions.CustomActions].single { it.label == "Copy" }
+        compose.runOnUiThread { copy.action() }
+        compose.waitUntil(5_000) { copied() == CaptionLayout.copiedText("The address is 12 Herzl Street") }
+    }
+
+    private fun copied(): String? {
+        var text: String? = null
+        compose.runOnUiThread { text = app.getSystemService(ClipboardManager::class.java).primaryClip?.getItemAt(0)?.text?.toString() }
+        return text
     }
 
     private fun sharedCopies() = File(app.cacheDir, CaptionSession.SHARED_FOLDER).listFiles()?.toList() ?: emptyList()

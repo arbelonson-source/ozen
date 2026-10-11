@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
@@ -554,6 +555,10 @@ private fun NumbersSection(numbers: NumbersMentioned, onJump: (SavedSegment) -> 
 private fun SavedLineView(line: SavedLine, isMatch: Boolean, onStar: () -> Unit) {
     val found = tr("מכילה את מה שחיפשת", "Contains what you searched for")
     val star = if (line.starred) tr("הסרת הסימון", "Remove the star") else tr("סימון כחשובה", "Mark as important")
+    val copy = tr("העתקה", "Copy")
+    val context = LocalContext.current
+    // A phone number or an address said, to paste somewhere else.
+    val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, line.copied)) }
     var menu by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
@@ -563,12 +568,16 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, onStar: () -> Unit)
             .clearAndSetSemantics {
                 contentDescription = line.spoken
                 if (isMatch) stateDescription = found
-                customActions = listOf(CustomAccessibilityAction(star) { onStar(); true })
+                customActions = listOf(
+                    CustomAccessibilityAction(star) { onStar(); true },
+                    CustomAccessibilityAction(copy) { copyLine(); true },
+                )
             }
             .pointerInput(Unit) { detectTapGestures(onLongPress = { menu = true }) },
     ) {
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { Text(star) }, onClick = { menu = false; onStar() })
+            DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
         }
         line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }

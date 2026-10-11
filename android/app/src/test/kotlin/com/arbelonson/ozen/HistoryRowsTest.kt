@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.SavedSegment
@@ -175,5 +176,21 @@ class HistoryRowsTest {
         assertEquals(listOf(false, false), unmarked.map { it.unsure })
         assertFalse(unmarked[0].spoken.contains("May not have been heard"), unmarked[0].spoken)
         assertEquals(listOf(false, true), unmarked.map { it.starred })
+    }
+
+    @Test
+    fun `a saved line copies as said, its phone number kept in order for a Hebrew chat`() {
+        val record = TranscriptSessionRecord(
+            startedAt = morning,
+            endedAt = morning + 60,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(line("תתקשרי למרפאה 050 123 4567", morning)),
+        )
+        val copied = SavedLine.of(record, jerusalem).single().copied
+        assertEquals(CaptionLayout.copiedText("תתקשרי למרפאה 050 123 4567"), copied)
+        assertTrue(copied.contains("050 123 4567"), copied)
+        assertTrue(copied != "תתקשרי למרפאה 050 123 4567", copied)
     }
 }
