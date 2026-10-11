@@ -761,7 +761,7 @@ class HistoryScreenDeviceTest {
         compose.waitUntil(5_000) { store.load(old) == null }
         compose.waitUntil(5_000) { !shared.exists() }
         assertEquals(HistoryRetention.Month, app.settings.current.value.historyRetention)
-        compose.onNodeWithText("Device history from long ago", substring = true).assertDoesNotExist()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Device history from long ago", substring = true).fetchSemanticsNodes().isEmpty() }
     }
 
     @Test

@@ -1390,6 +1390,7 @@ class CaptionScreenDeviceTest {
             return condition()
         }
         clearAlerts()
+        assertTrue("an alert from before was never taken down", waitFor { alerts().isEmpty() })
         try {
             app.settings.change { it.notifyWhenInBackground = true }
             compose.runOnUiThread { app.captions.batteryWarningRaised(BatteryWarning.Low(19)) }
@@ -1458,6 +1459,7 @@ class CaptionScreenDeviceTest {
             return condition()
         }
         clearAlerts()
+        assertTrue("an alert from before was never taken down", waitFor { alerts().isEmpty() })
         try {
             app.settings.change { it.notifyWhenInBackground = true }
             compose.runOnUiThread { app.captions.wordsHeard(listOf(hit(UUID.randomUUID())), line) }
