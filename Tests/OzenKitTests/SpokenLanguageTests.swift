@@ -41,4 +41,43 @@ struct SpokenLanguageTests {
         settings.languageCode = "iw"
         #expect(settings.spokenLanguage == .hebrew)
     }
+
+    @Test("Hebrew keeps Ozen's Hebrew model; every other language is recommended the general Turbo, which isn't trained for Hebrew alone")
+    func recommendedModel() {
+        #expect(WhisperModelCatalog.recommendedVariant(for: .hebrew) == WhisperModelCatalog.recommendedVariant)
+        for language in UILanguage.allCases where language != .hebrew {
+            #expect(WhisperModelCatalog.recommendedVariant(for: language) == "large-v3-v20240930_626MB")
+        }
+        #expect(WhisperModelCatalog.option(for: "large-v3-v20240930_626MB")?.isHebrewOnly == false)
+        #expect(WhisperModelCatalog.options.filter(\.isHebrewOnly).map(\.variant) == ["ozen-turbo-hebrew-a3-8bit", "ivrit-large-v3-turbo-8bit"])
+    }
+
+    @Test("for any other language a model trained for Hebrew alone is the weaker one, and the general ones are left as chosen")
+    func weakerModel() {
+        var settings = AppSettings.default
+        settings.spokenLanguage = .english
+        #expect(settings.recommendedWhisperVariant == "large-v3-v20240930_626MB")
+        #expect(settings.runsWeakerModel)
+        settings.whisperModelVariant = "ivrit-large-v3-turbo-8bit"
+        #expect(settings.runsWeakerModel)
+        for general in ["large-v3-v20240930_626MB", "small", "large-v3"] {
+            settings.whisperModelVariant = general
+            #expect(!settings.runsWeakerModel, "\(general)")
+        }
+        settings.spokenLanguage = .hebrew
+        #expect(settings.recommendedWhisperVariant == WhisperModelCatalog.recommendedVariant)
+        settings.whisperModelVariant = "small"
+        #expect(settings.runsWeakerModel)
+        settings.whisperModelVariant = WhisperModelCatalog.recommendedVariant
+        #expect(!settings.runsWeakerModel)
+    }
+
+    @Test("the model screen lists the language's recommended model first, the other general ones next, and for any language but Hebrew the Hebrew-only ones last")
+    func listedOrder() {
+        #expect(WhisperModelCatalog.listed(for: .hebrew) == WhisperModelCatalog.listed)
+        let english = WhisperModelCatalog.listed(for: .english).map(\.variant)
+        #expect(english.first == WhisperModelCatalog.generalVariant)
+        #expect(Array(english.suffix(2)) == ["ozen-turbo-hebrew-a3-8bit", "ivrit-large-v3-turbo-8bit"])
+        #expect(english.sorted() == WhisperModelCatalog.options.map(\.variant).sorted())
+    }
 }

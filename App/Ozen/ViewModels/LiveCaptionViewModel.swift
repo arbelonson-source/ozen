@@ -966,6 +966,11 @@ public final class LiveCaptionViewModel {
     /// them start again in the new one.
     public func setSpokenLanguage(_ language: UILanguage) async {
         guard settings.spokenLanguage != language else { return }
+        // A phone on the old language's recommended model takes the new
+        // one's along; a model she chose herself stays.
+        if settings.whisperModelVariant == settings.recommendedWhisperVariant {
+            settings.whisperModelVariant = WhisperModelCatalog.recommendedVariant(for: language)
+        }
         settings.spokenLanguage = language
         persist()
         await restartIfRunning()
@@ -1436,7 +1441,7 @@ public final class LiveCaptionViewModel {
     /// The caption screen's offer of the recommended Whisper model, taken:
     /// the model switches (and downloads, on Wi-Fi) like a pick in Settings.
     public func acceptBetterModelOffer() async {
-        await setWhisperModel(WhisperModelCatalog.recommendedVariant)
+        await setWhisperModel(settings.recommendedWhisperVariant)
     }
 
     /// "Not now" on that offer: it comes back later, see

@@ -2,6 +2,8 @@ package com.arbelonson.ozen.core
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class SpokenLanguageTest {
     @Test
@@ -42,5 +44,44 @@ class SpokenLanguageTest {
         assertEquals(UILanguage.Hebrew, settings.spokenLanguage)
         settings.languageCode = "iw"
         assertEquals(UILanguage.Hebrew, settings.spokenLanguage)
+    }
+
+    @Test
+    fun `Hebrew keeps Ozen's Hebrew model, and every other language is recommended the general Turbo, which isn't trained for Hebrew alone`() {
+        assertEquals(WhisperModelCatalog.RECOMMENDED_VARIANT, WhisperModelCatalog.recommendedVariant(UILanguage.Hebrew))
+        for (language in UILanguage.entries.filter { it != UILanguage.Hebrew }) {
+            assertEquals("large-v3-v20240930_626MB", WhisperModelCatalog.recommendedVariant(language))
+        }
+        assertEquals(false, WhisperModelCatalog.option("large-v3-v20240930_626MB")?.isHebrewOnly)
+        assertEquals(listOf("ozen-turbo-hebrew-a3-8bit", "ivrit-large-v3-turbo-8bit"), WhisperModelCatalog.options.filter { it.isHebrewOnly }.map { it.variant })
+    }
+
+    @Test
+    fun `for any other language a model trained for Hebrew alone is the weaker one, and the general ones are left as chosen`() {
+        val settings = AppSettings.default
+        settings.spokenLanguage = UILanguage.English
+        assertEquals("large-v3-v20240930_626MB", settings.recommendedWhisperVariant)
+        assertTrue(settings.runsWeakerModel)
+        settings.whisperModelVariant = "ivrit-large-v3-turbo-8bit"
+        assertTrue(settings.runsWeakerModel)
+        for (general in listOf("large-v3-v20240930_626MB", "small", "large-v3")) {
+            settings.whisperModelVariant = general
+            assertFalse(settings.runsWeakerModel, general)
+        }
+        settings.spokenLanguage = UILanguage.Hebrew
+        assertEquals(WhisperModelCatalog.RECOMMENDED_VARIANT, settings.recommendedWhisperVariant)
+        settings.whisperModelVariant = "small"
+        assertTrue(settings.runsWeakerModel)
+        settings.whisperModelVariant = WhisperModelCatalog.RECOMMENDED_VARIANT
+        assertFalse(settings.runsWeakerModel)
+    }
+
+    @Test
+    fun `the model screen lists the language's recommended model first, the other general ones next, and for any language but Hebrew the Hebrew-only ones last`() {
+        assertEquals(WhisperModelCatalog.listed, WhisperModelCatalog.listed(UILanguage.Hebrew))
+        val english = WhisperModelCatalog.listed(UILanguage.English).map { it.variant }
+        assertEquals(WhisperModelCatalog.GENERAL_VARIANT, english.first())
+        assertEquals(listOf("ozen-turbo-hebrew-a3-8bit", "ivrit-large-v3-turbo-8bit"), english.takeLast(2))
+        assertEquals(WhisperModelCatalog.options.map { it.variant }.sorted(), english.sorted())
     }
 }

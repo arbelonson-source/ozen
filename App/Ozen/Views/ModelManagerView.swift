@@ -29,7 +29,7 @@ struct ModelManagerView: View {
     var body: some View {
         List {
             Section {
-                ForEach(WhisperModelCatalog.listed) { option in
+                ForEach(WhisperModelCatalog.listed(for: viewModel.settings.spokenLanguage)) { option in
                     row(for: option)
                 }
             } header: {
@@ -135,8 +135,8 @@ struct ModelManagerView: View {
                     nameLayout {
                         Text(option.displayName)
                             .font(.body.weight(isSelected ? .semibold : .regular))
-                        if option.isRecommended {
-                            Text(tr("מומלץ לעברית", "Recommended for Hebrew"))
+                        if option.variant == viewModel.settings.recommendedWhisperVariant {
+                            Text(viewModel.settings.spokenLanguage == .hebrew ? tr("מומלץ לעברית", "Recommended for Hebrew") : tr("מומלץ", "Recommended"))
                                 .font(.caption2.weight(.semibold))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -152,7 +152,11 @@ struct ModelManagerView: View {
                 }
 
                 ratingsLayout {
-                    RatingDots(label: tr("עברית", "Hebrew"), value: option.hebrewQuality)
+                    // Rated for Hebrew only: no rating says how well any
+                    // of them does another language.
+                    if viewModel.settings.spokenLanguage == .hebrew {
+                        RatingDots(label: tr("עברית", "Hebrew"), value: option.hebrewQuality)
+                    }
                     RatingDots(label: tr("מהירות", "Speed"), value: option.speed)
                 }
 

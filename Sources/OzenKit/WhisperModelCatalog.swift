@@ -25,6 +25,9 @@ public struct WhisperModelOption: Sendable, Equatable, Identifiable {
     /// The question mark's cutoffs for a model whose scores sit higher
     /// than those `CaptionConfidence`'s were measured on; nil keeps those.
     public let uncertainBelow: CaptionConfidence.Cutoffs?
+    /// Trained further on Hebrew alone: no choice for any other spoken
+    /// language.
+    public let isHebrewOnly: Bool
 
     public init(
         variant: String,
@@ -36,9 +39,11 @@ public struct WhisperModelOption: Sendable, Equatable, Identifiable {
         isRecommended: Bool,
         source: WhisperModelSource = .whisperKitHub,
         folderName: String? = nil,
-        uncertainBelow: CaptionConfidence.Cutoffs? = nil
+        uncertainBelow: CaptionConfidence.Cutoffs? = nil,
+        isHebrewOnly: Bool = false
     ) {
         self.uncertainBelow = uncertainBelow
+        self.isHebrewOnly = isHebrewOnly
         self.variant = variant
         self.displayName = displayName
         self.sizeMB = sizeMB
@@ -136,7 +141,8 @@ public enum WhisperModelCatalog {
             isRecommended: true,
             source: .ozenRelease(tag: "model-ozen-turbo-hebrew-a3-8bit-1"),
             folderName: "ozen_whisper-large-v3-turbo-hebrew-a3_8bit",
-            uncertainBelow: CaptionConfidence.Cutoffs(shortLine: 0.65, line: 0.83)
+            uncertainBelow: CaptionConfidence.Cutoffs(shortLine: 0.65, line: 0.83),
+            isHebrewOnly: true
         ),
         WhisperModelOption(
             variant: "ivrit-large-v3-turbo-8bit", displayName: "Turbo Hebrew (ivrit.ai)", sizeMB: 819,
@@ -144,7 +150,8 @@ public enum WhisperModelCatalog {
             note: "Turbo trained on 5,000 hours of Hebrew by ivrit.ai: a third fewer wrong words than Turbo on test recordings. As quick, a bigger download.",
             isRecommended: false,
             source: .ozenRelease(tag: "model-ivrit-large-v3-turbo-8bit-1"),
-            folderName: "ivrit-ai_whisper-large-v3-turbo_8bit"
+            folderName: "ivrit-ai_whisper-large-v3-turbo_8bit",
+            isHebrewOnly: true
         ),
         WhisperModelOption(
             variant: "large-v3-v20240930_626MB", displayName: "Turbo (compressed)", sizeMB: 626,
@@ -199,6 +206,32 @@ public enum WhisperModelCatalog {
 
     public static let defaultVariant = recommendedVariant
     public static let recommendedVariant = "ozen-turbo-hebrew-a3-8bit"
+
+    /// The model recommended for every language but Hebrew: Ozen's own and
+    /// ivrit.ai's are trained for Hebrew alone, and OpenAI's Turbo is the
+    /// general one a phone runs live.
+    public static let generalVariant = "large-v3-v20240930_626MB"
+
+    /// The model screen's order for a spoken language: its recommended
+    /// model first, then the rest as in `listed`; for any language but
+    /// Hebrew, the models trained for Hebrew alone come last.
+    public static func listed(for language: UILanguage) -> [WhisperModelOption] {
+        guard language != .hebrew else { return listed }
+        let recommended = recommendedVariant(for: language)
+        let rest = options.filter { $0.variant != recommended }
+        return options.filter { $0.variant == recommended } + rest.filter { !$0.isHebrewOnly } + rest.filter(\.isHebrewOnly)
+    }
+
+    public static func recommendedVariant(for language: UILanguage) -> String {
+        language == .hebrew ? recommendedVariant : generalVariant
+    }
+
+    /// For Hebrew, `recommendedImproves(on:)`. For any other language only
+    /// a model trained for Hebrew alone is clearly worse: the general ones
+    /// carry no rating in it to compare.
+    public static func recommendedImproves(on variant: String, for language: UILanguage) -> Bool {
+        language == .hebrew ? recommendedImproves(on: variant) : option(for: variant)?.isHebrewOnly == true
+    }
 
     public static func option(for variant: String) -> WhisperModelOption? {
         options.first { $0.variant == variant }

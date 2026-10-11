@@ -860,7 +860,7 @@ struct LiveCaptionView: View {
     /// full for the download would only be sent to a status line saying so,
     /// and the model list already says how much room it needs.
     private var betterModelOption: WhisperModelOption? {
-        guard let option = WhisperModelCatalog.option(for: WhisperModelCatalog.recommendedVariant) else { return nil }
+        guard let option = WhisperModelCatalog.option(for: viewModel.settings.recommendedWhisperVariant) else { return nil }
         let fits = StorageSpaceGate.shortfallMegabytes(downloadMegabytes: option.installMegabytes, availableBytes: DeviceStorage.availableBytes()) == nil
         return fits ? option : nil
     }
@@ -876,7 +876,9 @@ struct LiveCaptionView: View {
                     Image(systemName: "sparkles")
                         .font(.title2)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(tr("עברית מדויקת בהרבה עם מודל אחר", "Much more accurate Hebrew with a different model"))
+                        Text(viewModel.settings.spokenLanguage == .hebrew
+                             ? tr("עברית מדויקת בהרבה עם מודל אחר", "Much more accurate Hebrew with a different model")
+                             : tr("כתוביות מדויקות בהרבה עם מודל אחר", "Much more accurate captions with a different model"))
                             .font(.headline)
                         Text(tr("הקישו כדי להוריד %1, %2, פעם אחת ב-Wi-Fi", "Tap to download %1, %2, once over Wi-Fi", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
                             .font(.subheadline.weight(.semibold))

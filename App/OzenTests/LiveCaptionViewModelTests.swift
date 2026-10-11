@@ -311,6 +311,35 @@ struct LiveCaptionViewModelTests {
         #expect(viewModel.stats.engineRestarts == 3)
     }
 
+    @Test("a new spoken language takes its recommended model along from the old one's, with one restart, and leaves a model she chose herself")
+    func spokenLanguageTakesItsModel() async {
+        let store = temporaryStore()
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: fakePipeline())
+        await viewModel.start()
+
+        await viewModel.setSpokenLanguage(.english)
+        #expect(store.load().whisperModelVariant == WhisperModelCatalog.generalVariant)
+        #expect(viewModel.stats.engineRestarts == 1)
+        await viewModel.setSpokenLanguage(.hebrew)
+        #expect(store.load().whisperModelVariant == WhisperModelCatalog.recommendedVariant)
+
+        await viewModel.setWhisperModel("small")
+        await viewModel.setSpokenLanguage(.russian)
+        #expect(store.load().whisperModelVariant == "small")
+    }
+
+    @Test("the caption screen's model offer, taken, switches to the model recommended for the spoken language")
+    func betterModelOfferFollowsTheLanguage() async {
+        let store = temporaryStore()
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: fakePipeline())
+        await viewModel.start()
+        await viewModel.setWhisperModel("small")
+        await viewModel.setSpokenLanguage(.english)
+
+        await viewModel.acceptBetterModelOffer()
+        #expect(store.load().whisperModelVariant == WhisperModelCatalog.generalVariant)
+    }
+
     @Test("display preferences persist without touching the pipeline")
     func displayPersists() async {
         let store = temporaryStore()

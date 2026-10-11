@@ -264,10 +264,16 @@ public struct AppSettings: Codable, Sendable, Equatable {
         set { languageCode = newValue.languageCode.identifier }
     }
 
-    /// Whether the phone runs a Whisper model clearly worse in Hebrew than
-    /// the recommended one. Settings says so for as long as it is true.
+    /// The Whisper model recommended for the spoken language.
+    public var recommendedWhisperVariant: String {
+        WhisperModelCatalog.recommendedVariant(for: spokenLanguage)
+    }
+
+    /// Whether the phone runs a Whisper model clearly worse for the spoken
+    /// language than the recommended one. Settings says so for as long as
+    /// it is true.
     public var runsWeakerModel: Bool {
-        engine == .whisperKit && WhisperModelCatalog.recommendedImproves(on: whisperModelVariant)
+        engine == .whisperKit && WhisperModelCatalog.recommendedImproves(on: whisperModelVariant, for: spokenLanguage)
     }
 
     /// Whether the caption screen should offer the recommended Whisper

@@ -271,11 +271,14 @@ struct SettingsView: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("modelManagerRow")
-            if viewModel.settings.runsWeakerModel, let recommended = WhisperModelCatalog.option(for: WhisperModelCatalog.recommendedVariant) {
+            if viewModel.settings.runsWeakerModel, let recommended = WhisperModelCatalog.option(for: viewModel.settings.recommendedWhisperVariant) {
                 Button {
                     Task { await viewModel.acceptBetterModelOffer() }
                 } label: {
-                    Label(tr("המודל הזה טועה בהרבה מילים בעברית. הקישו כדי לעבור ל-%1, %2", "This model gets many Hebrew words wrong. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"]), systemImage: "sparkles")
+                    Label(viewModel.settings.spokenLanguage == .hebrew
+                          ? tr("המודל הזה טועה בהרבה מילים בעברית. הקישו כדי לעבור ל-%1, %2", "This model gets many Hebrew words wrong. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"])
+                          : tr("המודל הזה אומן לעברית בלבד. הקישו כדי לעבור ל-%1, %2", "This model was trained for Hebrew only. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"]),
+                          systemImage: "sparkles")
                 }
                 .accessibilityIdentifier("switchToRecommendedModel")
             }
@@ -283,12 +286,15 @@ struct SettingsView: View {
         } header: {
             Text("Whisper")
         } footer: {
-            Text(tr("מודל גדול יותר מבין עברית טוב יותר אבל מגיב לאט יותר. \u{2066}\"%1\"\u{2069} הוא הבחירה המומלצת. מודלים שוקלים מאות MB, ולכן כברירת מחדל הם יורדים רק ב-Wi-Fi.", "A bigger model understands Hebrew better but responds more slowly. “%1” is the recommended choice. Models weigh hundreds of MB, so by default they only download over Wi‑Fi.", args: ["\(recommendedModelName)"]))
+            Text(viewModel.settings.spokenLanguage == .hebrew
+                 ? tr("מודל גדול יותר מבין עברית טוב יותר אבל מגיב לאט יותר. \u{2066}\"%1\"\u{2069} הוא הבחירה המומלצת. מודלים שוקלים מאות MB, ולכן כברירת מחדל הם יורדים רק ב-Wi-Fi.", "A bigger model understands Hebrew better but responds more slowly. “%1” is the recommended choice. Models weigh hundreds of MB, so by default they only download over Wi‑Fi.", args: ["\(recommendedModelName)"])
+                 : tr("מודל גדול יותר מבין דיבור טוב יותר אבל מגיב לאט יותר. \u{2066}\"%1\"\u{2069} הוא הבחירה המומלצת. מודלים שוקלים מאות MB, ולכן כברירת מחדל הם יורדים רק ב-Wi-Fi.", "A bigger model understands speech better but responds more slowly. “%1” is the recommended choice. Models weigh hundreds of MB, so by default they only download over Wi‑Fi.", args: ["\(recommendedModelName)"]))
         }
     }
 
     private var recommendedModelName: String {
-        WhisperModelCatalog.option(for: WhisperModelCatalog.recommendedVariant)?.displayName ?? WhisperModelCatalog.recommendedVariant
+        let variant = viewModel.settings.recommendedWhisperVariant
+        return WhisperModelCatalog.option(for: variant)?.displayName ?? variant
     }
 
     private var currentModelLabel: String {

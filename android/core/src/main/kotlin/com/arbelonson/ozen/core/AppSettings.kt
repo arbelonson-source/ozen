@@ -387,8 +387,12 @@ class AppSettings(
             languageCode = language.languageCode
         }
 
+    /** The Whisper model recommended for the spoken language. */
+    val recommendedWhisperVariant: String
+        get() = WhisperModelCatalog.recommendedVariant(spokenLanguage)
+
     val runsWeakerModel: Boolean
-        get() = engine == TranscriptionEngineKind.WhisperKit && WhisperModelCatalog.recommendedImproves(whisperModelVariant)
+        get() = engine == TranscriptionEngineKind.WhisperKit && WhisperModelCatalog.recommendedImproves(whisperModelVariant, spokenLanguage)
 
     /**
      * Whether the caption screen should offer the recommended Whisper

@@ -34,6 +34,8 @@ data class WhisperModelOption(
      * than those `CaptionConfidence`'s were measured on; null keeps those.
      */
     val uncertainBelow: CaptionConfidence.Cutoffs? = null,
+    /** Trained further on Hebrew alone: no choice for any other spoken language. */
+    val isHebrewOnly: Boolean = false,
 ) {
     val id: String get() = variant
 
@@ -128,6 +130,7 @@ object WhisperModelCatalog {
             source = WhisperModelSource.OzenRelease(tag = "model-ozen-turbo-hebrew-a3-8bit-1"),
             folderName = "ozen_whisper-large-v3-turbo-hebrew-a3_8bit",
             uncertainBelow = CaptionConfidence.Cutoffs(shortLine = 0.65f, line = 0.83f),
+            isHebrewOnly = true,
         ),
         WhisperModelOption(
             variant = "ivrit-large-v3-turbo-8bit", displayName = "Turbo Hebrew (ivrit.ai)", sizeMB = 819,
@@ -136,6 +139,7 @@ object WhisperModelCatalog {
             isRecommended = false,
             source = WhisperModelSource.OzenRelease(tag = "model-ivrit-large-v3-turbo-8bit-1"),
             folderName = "ivrit-ai_whisper-large-v3-turbo_8bit",
+            isHebrewOnly = true,
         ),
         WhisperModelOption(
             variant = "large-v3-v20240930_626MB", displayName = "Turbo (compressed)", sizeMB = 626,
@@ -193,6 +197,35 @@ object WhisperModelCatalog {
      */
     const val RECOMMENDED_VARIANT = "ozen-turbo-hebrew-a3-8bit"
     const val DEFAULT_VARIANT = RECOMMENDED_VARIANT
+
+    /**
+     * The model recommended for every language but Hebrew: Ozen's own and
+     * ivrit.ai's are trained for Hebrew alone, and OpenAI's Turbo is the
+     * general one a phone runs live.
+     */
+    const val GENERAL_VARIANT = "large-v3-v20240930_626MB"
+
+    /**
+     * The model screen's order for a spoken language: its recommended model
+     * first, then the rest as in [listed]; for any language but Hebrew, the
+     * models trained for Hebrew alone come last.
+     */
+    fun listed(language: UILanguage): List<WhisperModelOption> {
+        if (language == UILanguage.Hebrew) return listed
+        val recommended = recommendedVariant(language)
+        val rest = options.filter { it.variant != recommended }
+        return options.filter { it.variant == recommended } + rest.filter { !it.isHebrewOnly } + rest.filter { it.isHebrewOnly }
+    }
+
+    fun recommendedVariant(language: UILanguage): String = if (language == UILanguage.Hebrew) RECOMMENDED_VARIANT else GENERAL_VARIANT
+
+    /**
+     * For Hebrew, [recommendedImproves]. For any other language only a model
+     * trained for Hebrew alone is clearly worse: the general ones carry no
+     * rating in it to compare.
+     */
+    fun recommendedImproves(variant: String, language: UILanguage): Boolean =
+        if (language == UILanguage.Hebrew) recommendedImproves(variant) else option(variant)?.isHebrewOnly == true
 
     fun option(variant: String): WhisperModelOption? = options.firstOrNull { it.variant == variant }
 
