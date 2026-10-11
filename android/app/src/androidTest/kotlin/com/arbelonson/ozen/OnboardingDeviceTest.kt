@@ -54,6 +54,7 @@ class OnboardingDeviceTest {
             app.captions.launchHandled = false
             app.settings.change {
                 it.keywordAlerts = emptyList()
+                it.vocabulary = emptyList()
                 it.engine = TranscriptionEngineKind.WhisperKit
                 it.hasCompletedOnboarding = false
             }
