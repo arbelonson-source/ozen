@@ -256,6 +256,10 @@ class CaptionSession(
         settings.change { it.quickPhrases = QuickPhrases.removing(phrase, it.quickPhrases, Localization.language) }
     }
 
+    fun moveQuickPhrase(phrase: String, by: Int) {
+        settings.change { it.quickPhrases = QuickPhrases.moving(phrase, by, it.quickPhrases, Localization.language) }
+    }
+
     fun restoreQuickPhrases() {
         settings.change { it.quickPhrases = AppSettings.defaultQuickPhrases(Localization.language) }
     }

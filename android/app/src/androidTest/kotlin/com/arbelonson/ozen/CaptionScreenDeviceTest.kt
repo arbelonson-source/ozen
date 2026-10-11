@@ -23,6 +23,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
@@ -557,6 +558,41 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Done").performScrollTo().performClick()
             compose.onNodeWithText("New phrase").assertDoesNotExist()
             compose.onNodeWithText("Slower, please").performScrollTo()
+        } finally {
+            app.settings.change { it.quickPhrases = phrasesBefore }
+        }
+    }
+
+    @Test
+    fun quickPhrasesMoveUpOrDownFromTheHoldMenuOrTheScreenReaderButNotPastTheEnds() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val phrasesBefore = app.settings.current.value.quickPhrases
+        val english = AppSettings.defaultQuickPhrases(UILanguage.English)
+        val stored = { app.settings.current.value.quickPhrases }
+        val actions = { phrase: String -> compose.onNodeWithText(phrase).fetchSemanticsNode().config[SemanticsActions.CustomActions] }
+        app.settings.change { it.quickPhrases = english }
+        try {
+            compose.onNodeWithContentDescription("Say something out loud").performClick()
+            compose.onNodeWithText("Edit").performScrollTo().performClick()
+            compose.onNodeWithText(english[1]).performScrollTo().performTouchInput { longClick() }
+            compose.onNodeWithText("Move up").performClick()
+            compose.waitUntil(5_000) { stored() == listOf(english[1], english[0]) + english.drop(2) }
+
+            compose.onNodeWithText(english[1]).performScrollTo().performTouchInput { longClick() }
+            compose.onNodeWithText("Move up").assertDoesNotExist()
+            compose.onNodeWithText("Move down").performClick()
+            compose.waitUntil(5_000) { stored() == english }
+
+            assertEquals(listOf("Move down", "Delete"), actions(english.first()).map { it.label })
+            assertEquals(listOf("Move up", "Move down", "Delete"), actions(english[1]).map { it.label })
+            val moveUp = actions(english.last()).also { last -> assertEquals(listOf("Move up", "Delete"), last.map { it.label }) }.first()
+            compose.runOnUiThread { moveUp.action() }
+            compose.waitUntil(5_000) { stored() == english.dropLast(2) + english.last() + english[english.size - 2] }
+
+            compose.onNodeWithText("Done").performScrollTo().performClick()
+            val said = compose.onAllNodes(hasClickAction() and hasAnyAncestor(hasScrollAction())).fetchSemanticsNodes()
+                .mapNotNull { node -> node.config.getOrNull(SemanticsProperties.Text)?.joinToString("")?.takeIf { it in english } }
+            assertEquals(english.dropLast(2) + english.last() + english[english.size - 2], said)
         } finally {
             app.settings.change { it.quickPhrases = phrasesBefore }
         }

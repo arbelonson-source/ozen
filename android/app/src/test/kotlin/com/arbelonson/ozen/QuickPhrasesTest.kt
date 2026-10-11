@@ -30,4 +30,17 @@ class QuickPhrasesTest {
         assertFalse(QuickPhrases.isDefault(fewer, UILanguage.English))
         assertTrue(QuickPhrases.isDefault(english, UILanguage.English))
     }
+
+    @Test
+    fun `a phrase moves one place up or down in the list as she sees it, and no further than its ends`() {
+        val english = AppSettings.defaultQuickPhrases(UILanguage.English)
+        val stored = AppSettings.defaultQuickPhrases(UILanguage.Hebrew)
+        val up = QuickPhrases.moving(english[1], by = -1, stored, UILanguage.English)
+        assertEquals(listOf(english[1], english[0]) + english.drop(2), up)
+        assertEquals(english, QuickPhrases.moving(english[1], by = 1, up, UILanguage.English))
+        assertEquals(english.dropLast(2) + english.last() + english[english.size - 2], QuickPhrases.moving(english.last(), by = -1, english, UILanguage.English))
+        assertEquals(english, QuickPhrases.moving(english.first(), by = -1, english, UILanguage.English))
+        assertEquals(english, QuickPhrases.moving(english.last(), by = 1, english, UILanguage.English))
+        assertEquals(english, QuickPhrases.moving("Not one of hers", by = 1, english, UILanguage.English))
+    }
 }

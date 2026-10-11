@@ -68,6 +68,7 @@ internal fun SayScreen(
     onStop: () -> Unit,
     onAddPhrase: (String) -> Unit,
     onRemovePhrase: (String) -> Unit,
+    onMovePhrase: (String, Int) -> Unit,
     onRestorePhrases: () -> Unit,
     phrasesAreDefault: Boolean,
     look: CaptionTheme,
@@ -176,8 +177,13 @@ internal fun SayScreen(
                         Text("+", fontSize = 28.sp)
                     }
                 }
-                for (phrase in phrases) {
-                    EditablePhraseRow(phrase, onDelete = { onRemovePhrase(phrase) })
+                phrases.forEachIndexed { at, phrase ->
+                    EditablePhraseRow(
+                        phrase,
+                        onMoveUp = { onMovePhrase(phrase, -1) }.takeIf { at > 0 },
+                        onMoveDown = { onMovePhrase(phrase, 1) }.takeIf { at < phrases.lastIndex },
+                        onDelete = { onRemovePhrase(phrase) },
+                    )
                     HorizontalDivider()
                 }
                 TextButton(onClick = { confirmingRestore = true }, enabled = !phrasesAreDefault) {
@@ -217,8 +223,14 @@ internal fun SayScreen(
 
 /** Held, or through the screen reader's action, a phrase is deleted at once, as the iPhone's swipe does. */
 @Composable
-private fun EditablePhraseRow(phrase: String, onDelete: () -> Unit) {
-    val delete = tr("מחיקה", "Delete")
+private fun EditablePhraseRow(phrase: String, onMoveUp: (() -> Unit)?, onMoveDown: (() -> Unit)?, onDelete: () -> Unit) {
+    // The iPhone drags a phrase to its place; here, as with Delete, the
+    // hold menu and the screen reader move it a place at a time.
+    val choices = listOfNotNull(
+        onMoveUp?.let { tr("להזיז למעלה", "Move up") to it },
+        onMoveDown?.let { tr("להזיז למטה", "Move down") to it },
+        tr("מחיקה", "Delete") to onDelete,
+    )
     var menu by remember { mutableStateOf(false) }
     Box {
         Text(
@@ -227,11 +239,13 @@ private fun EditablePhraseRow(phrase: String, onDelete: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .onHold { menu = true }
-                .semantics { customActions = listOf(CustomAccessibilityAction(delete) { onDelete(); true }) }
+                .semantics { customActions = choices.map { (label, act) -> CustomAccessibilityAction(label) { act(); true } } }
                 .padding(vertical = 12.dp),
         )
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(text = { Text(delete) }, onClick = { menu = false; onDelete() })
+            for ((label, act) in choices) {
+                DropdownMenuItem(text = { Text(label) }, onClick = { menu = false; act() })
+            }
         }
     }
 }

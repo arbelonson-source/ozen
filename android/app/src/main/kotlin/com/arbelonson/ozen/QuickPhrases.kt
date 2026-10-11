@@ -15,5 +15,13 @@ object QuickPhrases {
 
     fun removing(phrase: String, stored: List<String>, language: UILanguage): List<String> = shown(stored, language) - phrase
 
+    fun moving(phrase: String, by: Int, stored: List<String>, language: UILanguage): List<String> {
+        val shown = shown(stored, language)
+        val from = shown.indexOf(phrase)
+        val to = from + by
+        if (from < 0 || to !in shown.indices) return stored
+        return shown.toMutableList().apply { add(to, removeAt(from)) }
+    }
+
     fun isDefault(stored: List<String>, language: UILanguage): Boolean = shown(stored, language) == AppSettings.defaultQuickPhrases(language)
 }
