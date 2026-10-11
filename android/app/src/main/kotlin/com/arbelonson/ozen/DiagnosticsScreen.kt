@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -75,6 +76,15 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             now = facts()
         }
     }
+    // The iPhone's level row moves about twenty times a second, so it shows
+    // the microphone hearing a word or a tap on the phone as it happens.
+    var level by remember { mutableFloatStateOf(now.inputLevel) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(50)
+            level = source.inputLevelNow()
+        }
+    }
     var copied by remember { mutableStateOf(false) }
     var sendingHome by remember { mutableStateOf(false) }
     var sentHome by remember { mutableStateOf<Boolean?>(null) }
@@ -112,7 +122,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             Value(tr("החלפות מיקרופון", "Microphone changes"), "${stats.inputChanges}")
             Value(tr("המיקרופון נתקע", "Microphone stalls"), "${stats.audioStalls}")
             Value(tr("רמות קול (dBFS)", "Sound levels (dBFS)"), levels(stats.inputLevels))
-            Value(tr("עוצמה עכשיו", "Level now"), format("%.0f%%", now.inputLevel * 100.0))
+            Value(tr("עוצמה עכשיו", "Level now"), format("%.0f%%", level * 100.0))
             Value(tr("נשמע כדיבור", "Sounded like speech"), stats.speechShare?.let { format("%.0f%%", it * 100) } ?: "—")
             Value(
                 tr("זיהוי צלילים", "Sound detection"),

@@ -788,6 +788,8 @@ class CaptionSession(
 
     override val inputLevel: Float get() = pipeline.inputLevel
 
+    override fun inputLevelNow(): Float = pipeline.inputLevel
+
     override fun needsNewRecording(speaker: SavedSpeaker): Boolean {
         val prints = settings.current.value.speakerProfiles.filter { it.id in speaker.profileIDs }
         return prints.isNotEmpty() && prints.none(pipeline::canRecognize)

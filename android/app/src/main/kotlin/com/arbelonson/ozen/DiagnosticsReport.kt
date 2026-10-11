@@ -78,6 +78,9 @@ data class DiagnosticsFacts(
 interface DiagnosticsSource {
     fun diagnostics(): DiagnosticsFacts
 
+    /** The microphone's level this moment, read far more often than the rest. */
+    fun inputLevelNow(): Float = diagnostics().inputLevel
+
     /**
      * "Captions not good?": what was running and what the captions last
      * said, kept in the journal, with the last stretch of sound while

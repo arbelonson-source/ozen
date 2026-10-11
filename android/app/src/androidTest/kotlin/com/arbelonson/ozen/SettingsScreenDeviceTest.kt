@@ -1690,7 +1690,10 @@ class SettingsScreenDeviceTest {
     fun diagnosticsSayHowLoudTheMicrophoneIsNowWhetherSoundsAreListenedForAndHowManyVoicesWereToldApart() {
         var phase: PipelinePhase = PipelinePhase.Listening
         var detecting = true
+        var level = 0.42f
         val source = object : DiagnosticsSource by app.captions {
+            override fun inputLevelNow() = level
+
             override fun diagnostics() = app.captions.diagnostics().copy(
                 phase = phase,
                 inputLevel = 0.42f,
@@ -1703,6 +1706,18 @@ class SettingsScreenDeviceTest {
         }
         compose.runOnUiThread { compose.activity.setContent { DiagnosticsScreen(source, onClose = {}) } }
         row("Level now", "42%")
+        // As on the iPhone, many times a second, not with the rest every two seconds.
+        compose.mainClock.autoAdvance = false
+        try {
+            for (now in listOf(0.77f, 0.05f)) {
+                level = now
+                compose.mainClock.advanceTimeBy(200)
+                val shown = "${(now * 100).roundToInt()}%"
+                assertTrue("Level now never showed $shown", compose.onAllNodes(hasText("Level now") and hasText(shown)).fetchSemanticsNodes().isNotEmpty())
+            }
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
         row("Sound detection", "Running")
         row("Speakers identified", "3")
         row("New speakers since the app opened", "4")
