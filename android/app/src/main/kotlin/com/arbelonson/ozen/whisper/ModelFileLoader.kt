@@ -5,6 +5,7 @@ import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.ModelDownloadGate
 import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneModelDownloader
+import com.arbelonson.ozen.core.StorageSpaceGate
 import com.arbelonson.ozen.core.WhisperFallbackPasses
 import com.arbelonson.ozen.core.WhisperLoadedModel
 import com.arbelonson.ozen.core.WhisperModelLoader
@@ -24,6 +25,7 @@ class ModelFileLoader(
     private val threads: Int = Runtime.getRuntime().availableProcessors().coerceIn(1, 4),
     private val download: PhoneModelDownloader? = null,
     private val network: () -> NetworkConditions? = { null },
+    private val freeBytes: () -> Long? = { null },
     private val open: (path: String, libraryDir: String) -> WhisperModel? = { path, libraryDir -> WhisperModel.load(path, libraryDir) },
 ) : WhisperModelLoader {
     override suspend fun pendingDownloadMegabytes(): Int? = if (file.isFile) null else download?.pendingMegabytes()
@@ -81,7 +83,10 @@ class ModelFileLoader(
         } catch (stopped: CancellationException) {
             throw stopped
         } catch (error: Exception) {
-            throw EngineUnavailability(EngineUnavailability.Kind.ModelDownloadFailed, "${file.name}: $error")
+            if (!StorageSpaceGate.isOutOfSpace(error)) throw EngineUnavailability(EngineUnavailability.Kind.ModelDownloadFailed, "${file.name}: $error")
+            val left = download.pendingMegabytes()
+            val missing = left?.let { StorageSpaceGate.shortfallMegabytes(it, freeBytes()) }
+            throw EngineUnavailability(EngineUnavailability.Kind.NotEnoughStorage, "${file.name}: disk full: $error", left, missing)
         } finally {
             downloading = null
         }

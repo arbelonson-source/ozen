@@ -6,6 +6,7 @@ import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PhoneModelSource
 import com.arbelonson.ozen.core.ReleaseFileFetching
+import com.arbelonson.ozen.core.StorageSpaceGate
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -52,6 +53,16 @@ private class Unreachable : ReleaseFileFetching {
     override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) = throw IOException("no route to host")
 
     override fun sha256(file: File): String = ""
+}
+
+private class FillsThePhone(private val data: ByteArray, private val room: Int) : ReleaseFileFetching {
+    override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
+        FileOutputStream(appendingTo, from > 0).use { it.write(data, from.toInt(), room - from.toInt()) }
+        received(room - from)
+        throw IOException("write failed: ENOSPC (No space left on device)")
+    }
+
+    override fun sha256(file: File): String = digest(file.readBytes())
 }
 
 private fun digest(data: ByteArray) = MessageDigest.getInstance("SHA-256").digest(data).joinToString("") { "%02x".format(it) }
@@ -114,6 +125,20 @@ class ModelFileLoaderTest {
         val failure = assertFailsWith<EngineUnavailability> { loader(Unreachable()).load("en", cellularDownloadAllowed = true) {} }
         assertEquals(EngineUnavailability.Kind.ModelDownloadFailed, failure.kind)
         assertFalse(file.exists())
+        assertTrue(opened.isEmpty())
+    }
+
+    @Test
+    fun `a phone that fills up mid-download says there is not enough room and how much more is needed, not that the download failed`() = runBlocking {
+        val loader = ModelFileLoader(file, "/lib", download = PhoneModelDownloader(file, PhoneModelSource(source.url, 3_000_000, "0"), FillsThePhone(ByteArray(3_000_000), 1_000_000)), freeBytes = { 0 }) { path, _ ->
+            opened.add(path)
+            null
+        }
+        val failure = assertFailsWith<EngineUnavailability> { loader.load("en", cellularDownloadAllowed = true) {} }
+        assertEquals(EngineUnavailability.Kind.NotEnoughStorage, failure.kind, failure.detail)
+        assertEquals(2, failure.downloadMegabytes)
+        assertEquals(StorageSpaceGate.requiredMegabytes(2), failure.missingMegabytes)
+        assertEquals(1_000_000, File(file.path + ".part").length())
         assertTrue(opened.isEmpty())
     }
 
