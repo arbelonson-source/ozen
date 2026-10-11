@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
+import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.NumberEmphasis
@@ -108,6 +109,12 @@ fun clockTime(at: Double, zone: ZoneId = ZoneId.systemDefault()): String =
     DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
         .withLocale(Localization.locale)
         .format(Instant.ofEpochMilli((at * 1_000).toLong()).atZone(zone))
+
+/** A conversation's day and the time it started, over its lines and over each group of starred lines, as on the iPhone. */
+fun conversationHeading(startedAt: Double, now: Double, zone: ZoneId = ZoneId.systemDefault()): String {
+    val offset = { at: Double -> zone.rules.getOffset(Instant.ofEpochMilli((at * 1_000).toLong())).totalSeconds }
+    return tr("%1 בשעה %2", "%1 at %2", listOf(HistoryDays.title(startedAt, now, offset), clockTime(startedAt, zone)))
+}
 
 /** The time above talk that picked up after a break, as on the iPhone: with the day when the words before it were on another day. */
 fun resumedTime(gap: QuietGap, zone: ZoneId = ZoneId.systemDefault()): String {

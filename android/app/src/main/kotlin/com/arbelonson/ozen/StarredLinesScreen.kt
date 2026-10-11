@@ -35,7 +35,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.unit.dp
-import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.tr
@@ -105,7 +104,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     for ((session, starred) in shown.groupBy { it.sessionID }) {
                         item(key = "conversation-$session") {
-                            Heading(HistoryDays.title(of = starred.first().sessionStartedAt, now = now, utcOffsetSeconds = ::localOffset))
+                            Heading(conversationHeading(starred.first().sessionStartedAt, now = now))
                         }
                         items(starred, key = { it.id.toString() }) { line ->
                             StarredLineView(SavedLine.of(line, markUncertain = marksUncertain, languageCode = languageCode), emphasizeNumbers, onOpen = { opened = line.sessionID to line.id })

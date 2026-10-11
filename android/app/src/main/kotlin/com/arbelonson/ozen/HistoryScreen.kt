@@ -496,7 +496,7 @@ private class OpenConversation(
     val stats: ConversationStats?,
 ) {
     /** The summary and the numbers come first in the list, before the lines a jump is aimed at. */
-    val headerItems: Int get() = (if (stats != null) 1 else 0) + (if (numbers?.listed?.isNotEmpty() == true) 1 else 0)
+    val headerItems: Int get() = (if (stats != null) 1 else 0) + (if (numbers?.listed?.isNotEmpty() == true) 1 else 0) + 1
 }
 
 private fun opened(record: TranscriptSessionRecord?, query: String, marksUncertain: Boolean, languageCode: String) = OpenConversation(
@@ -626,6 +626,9 @@ internal fun ConversationScreen(
                             }
                         }
                     }
+                    item(key = "when") {
+                        Heading(conversationHeading(shown.record.startedAt, now = System.currentTimeMillis() / 1_000.0))
+                    }
                     items(shown.lines, key = { it.id.toString() }) { line ->
                         SavedLineView(line, isMatch = line.id in matched, emphasizeNumbers = emphasizeNumbers) {
                             scope.launch {
@@ -633,6 +636,9 @@ internal fun ConversationScreen(
                                 show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
                             }
                         }
+                    }
+                    item(key = "source") {
+                        Text(shown.record.sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }

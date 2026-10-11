@@ -256,6 +256,13 @@ class HistoryRowsTest {
     }
 
     @Test
+    fun `a conversation is headed by its day and the time it started, as on the iPhone`() = Localization.withLanguage(UILanguage.English) {
+        val evening = 1_791_741_600.0
+        assertEquals("Today at ${clockTime(evening - 3_600, jerusalem)}", conversationHeading(evening - 3_600, now = evening, zone = jerusalem))
+        assertEquals("Yesterday at ${clockTime(evening - 86_400, jerusalem)}", conversationHeading(evening - 86_400, now = evening, zone = jerusalem))
+    }
+
+    @Test
     fun `the time above talk that picked up after a break is the clock time, with the day when the words before it were on another day`() = Localization.withLanguage(UILanguage.English) {
         val later = morning + 10 * 60
         assertEquals(clockTime(later, jerusalem), resumedTime(QuietGap(lastWordsAt = morning, resumedAt = later), jerusalem))

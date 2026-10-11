@@ -601,7 +601,7 @@ class HistoryScreenDeviceTest {
         val newer = compose.onNodeWithContentDescription("Starred list test two pills after dinner", substring = true)
         val older = compose.onNodeWithContentDescription("Starred list test call the pharmacy", substring = true)
         assertTrue(newer.getUnclippedBoundsInRoot().top < older.getUnclippedBoundsInRoot().top)
-        compose.onNodeWithText("Today").assertExists()
+        compose.onNodeWithText("Today at ${clockTime(now - 120)}").assertExists()
 
         val started = CopyOnWriteArrayList<Intent>()
         val sheet = startsHeldBack(started)
@@ -786,6 +786,21 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Row 25 of the scroll test", substring = true).assertIsDisplayed().performClick()
         compose.onNodeWithText("Back").performClick()
         compose.onNodeWithText("Row 25 of the scroll test", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun anOpenedConversationIsHeadedByItsDayAndTimeAndEndsWithWhatTranscribedIt() {
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 60
+        seed("Heading test opening line" to null, "Heading test last line" to null, startedAt = startedAt)
+        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText("Heading test opening line", substring = true).performClick()
+        waitFor("Heading test last line")
+        compose.onNodeWithText("Today at ${clockTime(startedAt)}").assertIsDisplayed()
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Home computer"))
+        compose.onNodeWithText("Home computer").assertIsDisplayed()
+        val heading = compose.onNodeWithText("Today at ${clockTime(startedAt)}").getUnclippedBoundsInRoot()
+        val first = compose.onNodeWithContentDescription("Heading test opening line", substring = true).getUnclippedBoundsInRoot()
+        assertTrue("the heading is not above the lines", heading.bottom <= first.top)
     }
 
     @Test
