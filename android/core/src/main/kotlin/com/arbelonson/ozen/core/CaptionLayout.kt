@@ -124,7 +124,7 @@ object CaptionLayout {
         return result.append(text, rest, text.length).toString()
     }
 
-    private val starCode: Pattern = Pattern.compile("(?<![\\d*])\\*\\d{2,6}(?!\\d)", Pattern.UNICODE_CHARACTER_CLASS)
+    private val starCode: Pattern = unicodePattern("(?<![\\d*])\\*\\d{2,6}(?!\\d)")
 
     private val neutralEnders = setOf(".", "!", "?", ")", ":")
 

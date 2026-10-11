@@ -2,7 +2,7 @@ package com.arbelonson.ozen.core
 
 object RecordingImport {
     private const val SEPARATORS = "[\\s_\\-.,()\\[\\]#]"
-    private val trailing = Regex("(?U)$SEPARATORS*(?:\\d+(?:$SEPARATORS+\\d+)*)?$SEPARATORS*\$")
+    private val trailing = unicodePattern("$SEPARATORS*(?:\\d+(?:$SEPARATORS+\\d+)*)?$SEPARATORS*\$").toRegex()
 
     fun personName(fromFileName: String): String? {
         var name = withoutExtension(fromFileName)

@@ -215,13 +215,13 @@ object CloudSpeech {
      * sentence that opens with a short word and a colon keeps its word, and
      * never a colon before a digit, so a time like "10:30" keeps its hour.
      */
-    private val speakerLabel: Pattern = Pattern.compile(
+    private val speakerLabel: Pattern = unicodePattern(
         "^(?:(?:speaker|דוברת|דובר)\\s*)?([A-Za-z0-9]{1,2}|[א-ת])\\s*[:：](?!\\d)\\s*",
-        Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE or Pattern.UNICODE_CHARACTER_CLASS,
+        Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE,
     )
 
     private val annotation = Pattern.compile("[\\[(<][A-Za-z _-]*[\\])>]")
-    private val manySpaces = Pattern.compile("\\s{2,}", Pattern.UNICODE_CHARACTER_CLASS)
+    private val manySpaces = unicodePattern("\\s{2,}")
 
     private fun withoutAnnotations(text: String): String {
         val removed = annotation.matcher(text).replaceAll("")

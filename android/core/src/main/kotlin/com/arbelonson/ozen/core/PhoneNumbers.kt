@@ -28,13 +28,11 @@ object PhoneNumbers {
 
     private fun digitsOf(written: String): String = written.filter { it in '0'..'9' }
 
-    private val pattern: Pattern = Pattern.compile(
+    private val pattern: Pattern = unicodePattern(
         """(?<![\d+])(?!\d{1,2}[-./]\d{1,2}[-./]\d{2,4})(?:\+972[- ]?|0)(?:[2-489](?:[- ]?\d){7}|[57](?:[- ]?\d){8})(?!-?\d)""",
-        Pattern.UNICODE_CHARACTER_CLASS,
     )
 
-    private val servicePattern: Pattern = Pattern.compile(
+    private val servicePattern: Pattern = unicodePattern(
         """(?<![\d+*])1[- ]?(?:700|800|801|599)(?:[- ]?\d){6}(?!\d)""",
-        Pattern.UNICODE_CHARACTER_CLASS,
     )
 }
