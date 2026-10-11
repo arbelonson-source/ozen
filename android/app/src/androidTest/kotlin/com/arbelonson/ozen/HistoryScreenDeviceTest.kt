@@ -6,9 +6,9 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PixelMap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.onNodeWithTag
 import com.arbelonson.ozen.core.DisplayPreferences
 import androidx.compose.ui.semantics.SemanticsActions
@@ -581,7 +581,16 @@ class HistoryScreenDeviceTest {
 
     @Test
     fun aSavedLineSitsOnTheSideItsOwnWordsReadFromWhateverTheAppsLanguage() {
-        assertEquals("en", app.settings.current.value.languageCode)
+        val spokenBefore = app.settings.current.value.languageCode
+        app.settings.change { it.languageCode = "en" }
+        try {
+            linesOnTheirOwnSides()
+        } finally {
+            app.settings.change { it.languageCode = spokenBefore }
+        }
+    }
+
+    private fun linesOnTheirOwnSides() {
         val english = "Side test how did you sleep"
         val hebrew = "בדיקת צד שלום לכולם"
         val digits = "4417 2209"
@@ -916,21 +925,25 @@ class HistoryScreenDeviceTest {
         seed("Colour test good morning" to "Dana", "Colour test how did you sleep" to "Avi", "Colour test fine thanks" to "Dana")
         compose.onNodeWithText("History").performClick()
         compose.onNodeWithText("Colour test good morning", substring = true).performClick()
-        waitFor("Colour test fine thanks")
+        compose.waitUntil(5_000) { shownLine("Colour test fine thanks") }
+        // A saved line is one node to the screen reader, its name inside it
+        // with no node of its own, so the name's colour is read from what
+        // the line draws.
+        val list = compose.onNode(hasScrollToNodeAction())
         for (name in listOf("Dana", "Avi")) {
             val expected = SpeakerColour.of(null, name, light = false)
-            assertTrue("$name's lines not in their colour: ${nameColours(name)}", expected in nameColours(name))
-            val bar = compose.onNodeWithTag("$SPEAKER_SHARE$name").captureToImage().toPixelMap()
-            val found = (0 until bar.width).any { x -> (0 until bar.height).any { y -> near(bar[x, y], expected) } }
-            assertTrue("$name's share of the talk not drawn in their colour", found)
+            // The bar is part of its speaker's row to the screen reader, so
+            // the row is scrolled to and the bar found in the unmerged tree.
+            list.performScrollToNode(hasText(name) and hasText("%", substring = true))
+            val bar = compose.onNodeWithTag("$SPEAKER_SHARE$name", useUnmergedTree = true).captureToImage().toPixelMap()
+            assertTrue("$name's share of the talk not drawn in their colour", drawsIn(bar, expected))
+            list.performScrollToNode(hasContentDescription("$name: Colour test", substring = true))
+            val line = compose.onAllNodesWithContentDescription("$name: Colour test", substring = true)[0].captureToImage().toPixelMap()
+            assertTrue("$name's lines not in their colour", drawsIn(line, expected))
         }
     }
 
-    private fun nameColours(name: String): List<Color> = compose.onAllNodesWithText(name, useUnmergedTree = true).fetchSemanticsNodes().mapNotNull { node ->
-        val layouts = mutableListOf<TextLayoutResult>()
-        node.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(layouts)
-        layouts.firstOrNull()?.layoutInput?.style?.color
-    }
+    private fun drawsIn(pixels: PixelMap, colour: Color) = (0 until pixels.width).any { x -> (0 until pixels.height).any { y -> near(pixels[x, y], colour) } }
 
     private fun near(a: Color, b: Color) = abs(a.red - b.red) < 0.03f && abs(a.green - b.green) < 0.03f && abs(a.blue - b.blue) < 0.03f
 
@@ -956,7 +969,7 @@ class HistoryScreenDeviceTest {
         seed("Heading test opening line" to null, "Heading test last line" to null, startedAt = startedAt)
         compose.onNodeWithText("History").performClick()
         compose.onNodeWithText("Heading test opening line", substring = true).performClick()
-        waitFor("Heading test last line")
+        compose.waitUntil(5_000) { shownLine("Heading test last line") }
         compose.onNodeWithText("Today at ${clockTime(startedAt)}").assertIsDisplayed()
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Home computer"))
         compose.onNodeWithText("Home computer").assertIsDisplayed()
