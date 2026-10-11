@@ -5,6 +5,8 @@ import com.arbelonson.ozen.core.TranscriptSegment
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class CaptionStateTest {
     private fun line(text: String, committed: Boolean) =
@@ -48,6 +50,38 @@ class CaptionStateTest {
     fun `a call that silences the microphone says so on the status button`() {
         show(PipelinePhase.Listening, interrupted = true)
         assertEquals("phone.fill", CaptionState.screen.value.status.systemImage)
+    }
+
+    private fun showAt(phase: PipelinePhase, lastLineAt: Double, listeningSince: Double) = CaptionState.show(
+        phase,
+        engine = null,
+        interruptedBySystem = false,
+        scheduledRetry = null,
+        segments = listOf(TranscriptSegment(id = UUID.randomUUID(), text = "a line", isCommitted = true, startTimestamp = lastLineAt, lastUpdateTimestamp = lastLineAt)),
+        listeningStartedAt = listeningSince,
+    )
+
+    @Test
+    fun `the screen stays on while listening, until fifteen minutes pass with nothing said`() {
+        showAt(PipelinePhase.Listening, lastLineAt = 1_000.0, listeningSince = 400.0)
+        val screen = CaptionState.screen.value
+        assertTrue(screen.keepsScreenOn(keepAwakeWhileListening = true, now = 1_000.0 + 14 * 60))
+        assertFalse(screen.keepsScreenOn(keepAwakeWhileListening = true, now = 1_000.0 + 15 * 60))
+        assertFalse(screen.keepsScreenOn(keepAwakeWhileListening = false, now = 1_000.0))
+    }
+
+    @Test
+    fun `listening that began after the last line counts from when it began`() {
+        showAt(PipelinePhase.Listening, lastLineAt = 1_000.0, listeningSince = 5_000.0)
+        assertTrue(CaptionState.screen.value.keepsScreenOn(keepAwakeWhileListening = true, now = 5_000.0 + 14 * 60))
+    }
+
+    @Test
+    fun `paused captions let the screen turn off, and getting ready keeps it on`() {
+        showAt(PipelinePhase.Paused, lastLineAt = 1_000.0, listeningSince = 400.0)
+        assertFalse(CaptionState.screen.value.keepsScreenOn(keepAwakeWhileListening = true, now = 1_000.0))
+        showAt(PipelinePhase.StartingAudio, lastLineAt = 1_000.0, listeningSince = 400.0)
+        assertTrue(CaptionState.screen.value.keepsScreenOn(keepAwakeWhileListening = false, now = 1_000.0 + 3_600))
     }
 
     @Test

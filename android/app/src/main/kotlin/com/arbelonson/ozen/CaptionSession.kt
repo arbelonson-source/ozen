@@ -124,6 +124,7 @@ class CaptionSession(
         interruptedBySystem = interruptedBySystem,
         scheduledRetry = pipeline.scheduledRetry,
         segments = pipeline.segments,
+        listeningStartedAt = pipeline.listeningStartedAt,
     )
 
     suspend fun checkHomeComputer(): HomeServerCheck {

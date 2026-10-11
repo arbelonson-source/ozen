@@ -35,16 +35,20 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -53,6 +57,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.tr
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     private val showingSettings = mutableStateOf(false)
@@ -120,6 +125,14 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
     val state by CaptionState.screen.collectAsStateWithLifecycle()
     val current by app.settings.current.collectAsStateWithLifecycle()
     var showingHistory by rememberSaveable { mutableStateOf(false) }
+    var awakeClock by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1_000.0) }
+    LaunchedEffect(state.phase.isListening) {
+        while (true) {
+            awakeClock = System.currentTimeMillis() / 1_000.0
+            delay(30_000)
+        }
+    }
+    KeepScreenOn(state.keepsScreenOn(current.display.keepScreenAwake, awakeClock))
     MaterialTheme(colorScheme = darkColorScheme()) {
         CompositionLocalProvider(LocalLayoutDirection provides direction) {
             when {
@@ -129,6 +142,15 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
             }
             PairingDialogs(app.pairing)
         }
+    }
+}
+
+@Composable
+private fun KeepScreenOn(keep: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(view, keep) {
+        view.keepScreenOn = keep
+        onDispose { view.keepScreenOn = false }
     }
 }
 

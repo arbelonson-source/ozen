@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ScheduledRetry
+import com.arbelonson.ozen.core.ScreenAwakePolicy
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.util.UUID
@@ -17,9 +18,17 @@ data class CaptionScreenState(
     val interruptedBySystem: Boolean = false,
     val scheduledRetry: ScheduledRetry? = null,
     val lines: List<CaptionLine> = emptyList(),
+    val lastActivityAt: Double? = null,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
+
+    fun keepsScreenOn(keepAwakeWhileListening: Boolean, now: Double): Boolean = ScreenAwakePolicy.shouldKeepAwake(
+        phase = phase,
+        keepAwakeWhileListening = keepAwakeWhileListening,
+        lastActivityAt = lastActivityAt,
+        now = maxOf(now, lastActivityAt ?: 0.0),
+    )
 }
 
 object CaptionState {
@@ -32,6 +41,7 @@ object CaptionState {
         interruptedBySystem: Boolean,
         scheduledRetry: ScheduledRetry?,
         segments: List<TranscriptSegment>,
+        listeningStartedAt: Double? = null,
     ) {
         state.value = CaptionScreenState(
             phase = phase,
@@ -39,6 +49,7 @@ object CaptionState {
             interruptedBySystem = interruptedBySystem,
             scheduledRetry = scheduledRetry,
             lines = segments.takeLast(MAXIMUM_LINES).map { CaptionLine(it.id, it.text, it.isCommitted) },
+            lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),
         )
     }
 
