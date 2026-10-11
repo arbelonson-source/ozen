@@ -137,11 +137,11 @@ class MainActivity : ComponentActivity() {
         // Turning the phone or a new theme rebuilds the activity; the
         // screens below Settings are kept by rememberSaveable already.
         showingSettings.value = savedInstanceState?.getBoolean(SHOWING_SETTINGS) == true
-        val phoneLanguages = LocaleList.getDefault().let { list -> (0 until list.size()).map { list[it].toLanguageTag() } }
-        Localization.language = AppLanguage.System.resolved(phoneLanguages)
-        enableEdgeToEdge()
         val app = application as OzenApplication
-        setContent { OzenApp(app, showingSettings, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onLightScreen = ::systemBarsFor) }
+        val phoneLanguages = LocaleList.getDefault().let { list -> (0 until list.size()).map { list[it].toLanguageTag() } }
+        Localization.language = app.settings.current.value.appLanguage.resolved(phoneLanguages)
+        enableEdgeToEdge()
+        setContent { OzenApp(app, showingSettings, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
         openLink(intent)
     }
 
@@ -204,6 +204,12 @@ class MainActivity : ComponentActivity() {
         finish = { (application as OzenApplication).settings.change { it.hasCompletedOnboarding = true } },
     )
 
+    /** Rebuilt so every screen is drawn again in it; Settings stays open through it (see onSaveInstanceState). */
+    private fun chooseAppLanguage(language: AppLanguage) {
+        (application as OzenApplication).settings.change { it.appLanguage = language }
+        recreate()
+    }
+
     private fun askForNotifications() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             approveNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -251,7 +257,15 @@ private class OnboardingHooks(
 )
 
 @Composable
-private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>, onboarding: OnboardingHooks, onStatusTap: () -> Unit, onLaunch: () -> Unit, onLightScreen: (Boolean) -> Unit) {
+private fun OzenApp(
+    app: OzenApplication,
+    showingSettings: MutableState<Boolean>,
+    onboarding: OnboardingHooks,
+    onStatusTap: () -> Unit,
+    onLaunch: () -> Unit,
+    onAppLanguage: (AppLanguage) -> Unit,
+    onLightScreen: (Boolean) -> Unit,
+) {
     val direction = if (Localization.language.isRightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr
     val state by CaptionState.screen.collectAsStateWithLifecycle()
     val current by app.settings.current.collectAsStateWithLifecycle()
@@ -291,7 +305,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                         onFinish = onboarding.finish,
                     )
                 }
-                showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard)
+                showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, onAppLanguage = onAppLanguage)
                 opened != null -> ConversationScreen(
                     app.captions.savedConversations,
                     opened.first,

@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,6 +34,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -74,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.CloudSpeech
@@ -100,6 +104,7 @@ fun SettingsScreen(
     onSpeak: (String) -> Unit,
     diagnostics: DiagnosticsSource,
     heard: List<KeywordHit> = emptyList(),
+    onAppLanguage: (AppLanguage) -> Unit = {},
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
@@ -145,6 +150,7 @@ fun SettingsScreen(
             AwayAlertsRow(current.notifyWhenInBackground) { on -> settings.change { it.notifyWhenInBackground = on } }
             if (current.notifyWhenInBackground) QuietHoursRows(current.quietHours) { hours -> settings.change { it.quietHours = hours } }
             SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak)
+            LanguageSection(current.appLanguage, onAppLanguage)
             EngineSection(engineSettings, current)
             if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
             if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
@@ -748,6 +754,41 @@ private fun SpeechSection(rate: Float, onRate: (Float) -> Unit, canSay: (String)
 }
 
 /** Last, as on the iPhone, for whoever helps her: what the captions are doing and the report to send. */
+/**
+ * After the speaking rate, as on the iPhone: every language by its own
+ * name, since a reader picks "العربية" by recognizing it, and a menu
+ * rather than thirteen rows to scroll past.
+ */
+@Composable
+private fun LanguageSection(chosen: AppLanguage, onChoose: (AppLanguage) -> Unit) {
+    SectionHeader(tr("שפת האפליקציה", "App language"))
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().clickable(onClickLabel = tr("שפת האפליקציה", "App language")) { open = true }.padding(vertical = 12.dp),
+        ) {
+            Text(languageName(chosen), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text("▾", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.clearAndSetSemantics {})
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            for (language in AppLanguage.entries) {
+                DropdownMenuItem(
+                    text = { Text(languageName(language)) },
+                    onClick = {
+                        open = false
+                        if (language != chosen) onChoose(language)
+                    },
+                )
+            }
+        }
+    }
+    Footnote(tr("השפה של הכפתורים וההגדרות. הכתוביות נכתבות לדיבור בעברית, בכל שפה שתיבחר כאן.", "The language of the buttons and settings. Captions are written for Hebrew speech, whichever language is chosen here."))
+}
+
+private fun languageName(language: AppLanguage): String =
+    if (language == AppLanguage.System) tr("כמו בטלפון", "Same as the phone") else language.resolved(emptyList()).nativeName
+
 @Composable
 private fun DiagnosticsRow(onOpen: () -> Unit) {
     Text(

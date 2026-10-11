@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.ContrastRatio
@@ -761,6 +762,27 @@ class SettingsScreenDeviceTest {
             assertTrue(copied, copied.contains("\nmodel state: ") && copied.contains(" vocabulary: 3\n"))
         } finally {
             AlertNotifier.allowed = allowedBefore
+        }
+    }
+
+    @Test
+    fun theAppLanguageIsChosenByEachLanguagesOwnNameAndTheScreensFollowItAtOnce() {
+        val before = app.settings.current.value.appLanguage
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Same as the phone").performScrollTo().performClick()
+            compose.onNodeWithText("العربية").assertExists()
+            compose.onNodeWithText("עברית").performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.appLanguage == AppLanguage.Hebrew }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("הגדרות").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("שפת האפליקציה").assertExists()
+
+            compose.onNodeWithText("עברית").performScrollTo().performClick()
+            compose.onNodeWithText("כמו בטלפון").performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.appLanguage == AppLanguage.System }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("App language").fetchSemanticsNodes().isNotEmpty() }
+        } finally {
+            app.settings.change { it.appLanguage = before }
         }
     }
 
