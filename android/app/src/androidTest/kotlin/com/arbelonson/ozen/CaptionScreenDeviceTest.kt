@@ -321,6 +321,14 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun theMicrophoneButtonShrinksItsWordToFitRatherThanCuttingItOff() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        compose.runOnUiThread { CaptionState.inputs(app.captions.pipeline.availableInputs, null) }
+        compose.onNodeWithContentDescription("Choose microphone").assert(hasText("Microphone"))
+        assertFalse("the word on the microphone button was cut off", layoutOf("Microphone").isLineEllipsized(0))
+    }
+
+    @Test
     fun aMicrophoneThatDroppedIsSaidAtTheTopWhereATapOpensThePickerAndCloseOnlyPutsItAway() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val lapel = AudioInputDescriptor("usb:lapel", "Lapel mic", AudioPortType.Usb)

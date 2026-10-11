@@ -44,6 +44,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -501,7 +502,13 @@ private fun CaptionScreen(
                             stateDescription = state.selectedInput?.portName ?: ""
                         },
                     ) {
-                        Text(state.selectedInput?.let(::inputShortName) ?: tr("מיקרופון", "Microphone"), fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        // Shrunk to fit as on the iPhone; only a name too long even then is cut.
+                        Text(
+                            state.selectedInput?.let(::inputShortName) ?: tr("מיקרופון", "Microphone"),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = 18.sp),
+                        )
                     }
                     // While the phone talks, this stops it at once instead of
                     // opening the Say screen, as on the iPhone: captions stay
