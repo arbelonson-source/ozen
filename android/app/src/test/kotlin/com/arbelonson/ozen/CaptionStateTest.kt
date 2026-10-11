@@ -33,8 +33,8 @@ class CaptionStateTest {
         show(PipelinePhase.Listening, listOf(done, growing))
         assertEquals(
             listOf(
-                CaptionLine(done.id, CaptionLayout.displayText("שלום לכולם"), isFinal = true, copied = CaptionLayout.copiedText("שלום לכולם")),
-                CaptionLine(growing.id, CaptionLayout.displayText("מה שלומך"), isFinal = false, copied = CaptionLayout.copiedText("מה שלומך")),
+                CaptionLine(done.id, CaptionLayout.displayText("שלום לכולם"), isFinal = true, copied = CaptionLayout.copiedText("שלום לכולם"), spoken = "שלום לכולם"),
+                CaptionLine(growing.id, CaptionLayout.displayText("מה שלומך"), isFinal = false, copied = CaptionLayout.copiedText("מה שלומך"), spoken = "מה שלומך"),
             ),
             CaptionState.screen.value.lines,
         )
@@ -73,6 +73,7 @@ class CaptionStateTest {
         CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(time), languageCode = "he")
         assertEquals(CaptionLayout.displayText("10:30", "he"), CaptionState.screen.value.lines.single().text)
         assertTrue(CaptionState.screen.value.lines.single().text != "10:30")
+        assertEquals("10:30", CaptionState.screen.value.lines.single().spoken)
     }
 
     @Test

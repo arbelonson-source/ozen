@@ -31,6 +31,8 @@ data class CaptionLine(
     val doubtfulWords: List<String> = emptyList(),
     val starred: Boolean = false,
     val copied: String = text,
+    /** The words as recognized, for a screen reader: [text] carries marks for drawing Hebrew. */
+    val spoken: String = text,
     /** Only once the engine has settled the line: a number still being heard can change under the finger. */
     val phones: List<PhoneNumbers.Match> = emptyList(),
     /** The saved conversation it belongs to, to open from the line; none while saving is off. */
@@ -176,6 +178,7 @@ object CaptionState {
                     doubtfulWords = if (it.isCommitted) it.uncertainWords else emptyList(),
                     starred = starred(it.id),
                     copied = CaptionLayout.copiedText(it.text),
+                    spoken = it.text,
                     phones = if (it.isSettled) PhoneNumbers.matches(it.text) else emptyList(),
                     conversation = conversation(firstShown + at),
                     important = it.id in keywordHits,

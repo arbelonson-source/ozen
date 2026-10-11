@@ -1208,7 +1208,7 @@ private fun CaptionLineWords(
                 // One stop for a screen reader, as on the iPhone: the marks
                 // beside the words are heard here, not each on its own.
                 .semantics {
-                    val label = CaptionLineSpeech.label(line.text, speaker, line.starred, display.markUncertainLines && line.unsure)
+                    val label = CaptionLineSpeech.label(line.spoken, speaker, line.starred, display.markUncertainLines && line.unsure)
                     if (label != line.text) contentDescription = label
                     CaptionLineSpeech.state(line.important, spoken)?.let { stateDescription = it }
                     customActions = actions
