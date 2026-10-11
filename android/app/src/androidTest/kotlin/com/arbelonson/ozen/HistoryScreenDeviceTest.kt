@@ -10,6 +10,9 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -771,6 +774,18 @@ class HistoryScreenDeviceTest {
 
     private fun waitFor(text: String) = compose.waitUntil(5_000) {
         compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+    }
+
+    @Test
+    fun backFromAConversationFarDownTheListFindsTheListWhereItWas() {
+        val now = System.currentTimeMillis() / 1_000.0
+        (1..30).forEach { seed("Row $it of the scroll test" to null, startedAt = now - it * 3_600.0) }
+        compose.onNodeWithText("History").performClick()
+        waitFor("Row 1 of the scroll test")
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Row 25 of the scroll test", substring = true))
+        compose.onNodeWithText("Row 25 of the scroll test", substring = true).assertIsDisplayed().performClick()
+        compose.onNodeWithText("Back").performClick()
+        compose.onNodeWithText("Row 25 of the scroll test", substring = true).assertIsDisplayed()
     }
 
     @Test

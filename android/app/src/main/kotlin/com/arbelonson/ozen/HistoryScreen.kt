@@ -155,6 +155,10 @@ fun HistoryScreen(
     var openID by rememberSaveable { mutableStateOf<String?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var speakerFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    // Kept while a conversation or the starred lines are open, so Back finds
+    // the list as she left it, as on the iPhone, not reloading from the top.
+    var loaded by remember { mutableStateOf<HistoryList?>(null) }
+    val place = rememberLazyListState()
     val open = openID
     if (open != null) {
         ConversationScreen(conversations, UUID.fromString(open), query, marksUncertain, emphasizeNumbers, onClose = { openID = null }, languageCode = languageCode)
@@ -167,7 +171,6 @@ fun HistoryScreen(
     }
     BackHandler(onBack = onClose)
     var reloads by remember { mutableIntStateOf(0) }
-    var loaded by remember { mutableStateOf<HistoryList?>(null) }
     val searching = query.isNotBlank()
     // Every search reads every saved conversation, so it waits for a pause
     // in typing and runs off the main thread; a newer search cancels this one.
@@ -229,7 +232,7 @@ fun HistoryScreen(
                 val top = TranscriptSessionSummary.topSpeakerNames(shown.summaries)
                 if (chosen == null || chosen in top) top else listOf(chosen) + top
             }
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(modifier = Modifier.fillMaxSize(), state = place) {
                 item(key = "search") {
                     SearchField(query, onChange = { query = it })
                 }
