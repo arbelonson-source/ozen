@@ -44,9 +44,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -109,9 +111,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -690,8 +694,10 @@ private fun CaptionScreen(
             contentAlignment = Alignment.Center,
         ) {
             if (state.lines.isEmpty()) {
+                // Scrolls when it can't all fit, at the phone's largest text
+                // or turned sideways: the offer's last line was cut off there.
                 Column(
-                    modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().padding(top = 40.dp),
+                    modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().verticalScroll(rememberScrollState()).padding(top = 40.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     // Not while a call holds the microphone: the phase stays
@@ -784,41 +790,63 @@ private fun CaptionScreen(
         AnimatedVisibility(visible = !hidden) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 StatusButton(state.status, look.chrome, onStatusTap)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = onHistory) {
-                        Text(tr("היסטוריה", "History"), fontSize = 18.sp)
-                    }
-                    val choose = tr("בחירת מיקרופון", "Choose microphone")
-                    TextButton(
-                        onClick = onMicrophone,
-                        modifier = Modifier.widthIn(max = 120.dp).semantics {
-                            contentDescription = choose
-                            stateDescription = state.selectedInput?.portName ?: ""
-                        },
-                    ) {
-                        // Shrunk to fit as on the iPhone; only a name too long even then is cut.
-                        Text(
-                            state.selectedInput?.let(::inputShortName) ?: tr("מיקרופון", "Microphone"),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = 18.sp),
-                        )
-                    }
-                    // While the phone talks, this stops it at once instead of
-                    // opening the Say screen, as on the iPhone: captions stay
-                    // paused for as long as it talks.
-                    val say = if (state.speaking) tr("עצירת הדיבור", "Stop speaking") else tr("להגיד משהו בקול", "Say something out loud")
-                    TextButton(onClick = onSay, modifier = Modifier.semantics { contentDescription = say }) {
-                        Text(if (state.speaking) "■ " + tr("להגיד", "Say") else tr("להגיד", "Say"), fontSize = 18.sp)
-                    }
-                    TextButton(onClick = onSettings) {
-                        Text(tr("הגדרות", "Settings"), fontSize = 18.sp)
+                val history = tr("היסטוריה", "History")
+                val microphone = state.selectedInput?.let(::inputShortName) ?: tr("מיקרופון", "Microphone")
+                val sayWord = if (state.speaking) "■ " + tr("להגיד", "Say") else tr("להגיד", "Say")
+                val settingsWord = tr("הגדרות", "Settings")
+                // The row's words grow with the phone's text size only so far,
+                // as the iPhone's stop at its xxxLarge, and each button's share
+                // of the row follows its word's own width: at the largest text
+                // the four shrink together, where the last one used to break a
+                // few letters to a line; at usual sizes each keeps its width.
+                val density = LocalDensity.current
+                CompositionLocalProvider(LocalDensity provides Density(density.density, minOf(density.fontScale, BAR_MOST_FONT_SCALE))) {
+                    val measurer = rememberTextMeasurer()
+                    val barStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 18.sp)
+                    val buttonPadding = with(LocalDensity.current) { 24.dp.toPx() }
+                    val share = { word: String -> measurer.measure(word, barStyle, maxLines = 1).size.width + buttonPadding }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(onClick = onHistory, modifier = Modifier.weight(share(history), fill = false)) {
+                            BarWord(history)
+                        }
+                        val choose = tr("בחירת מיקרופון", "Choose microphone")
+                        TextButton(
+                            onClick = onMicrophone,
+                            modifier = Modifier.weight(share(microphone), fill = false).widthIn(max = 120.dp).semantics {
+                                contentDescription = choose
+                                stateDescription = state.selectedInput?.portName ?: ""
+                            },
+                        ) {
+                            // Shrunk to fit as on the iPhone; only a name too long even then is cut.
+                            Text(
+                                microphone,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = 18.sp),
+                            )
+                        }
+                        // While the phone talks, this stops it at once instead of
+                        // opening the Say screen, as on the iPhone: captions stay
+                        // paused for as long as it talks.
+                        val say = if (state.speaking) tr("עצירת הדיבור", "Stop speaking") else tr("להגיד משהו בקול", "Say something out loud")
+                        TextButton(onClick = onSay, modifier = Modifier.weight(share(sayWord), fill = false).semantics { contentDescription = say }) {
+                            BarWord(sayWord)
+                        }
+                        TextButton(onClick = onSettings, modifier = Modifier.weight(share(settingsWord), fill = false)) {
+                            BarWord(settingsWord)
+                        }
                     }
                 }
             }
         }
         if (hidden) ShowButtonsButton(look.chrome) { lastTouchAt = secondsNow() }
     }
+}
+
+/** A word on the bottom row, on one line, shrunk as far as the iPhone's to fit. */
+@Composable
+private fun BarWord(word: String) {
+    Text(word, maxLines = 1, overflow = TextOverflow.Ellipsis, autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = 18.sp))
 }
 
 /**
@@ -850,6 +878,8 @@ private fun secondsNow() = System.currentTimeMillis() / 1_000.0
 private const val HEARD_SHOWN_SECONDS = 5.0
 
 private const val AWAY_MARK_SEEN_MILLIS = 1_000L
+
+private const val BAR_MOST_FONT_SCALE = 1.5f
 
 // A deep orange as on the iPhone, with white words on it at 5.5:1.
 private val TROUBLE_ORANGE = Color(red = 0.7f, green = 0.28f, blue = 0f)

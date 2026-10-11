@@ -1964,6 +1964,58 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    // Older people often set the phone's largest text: "Settings" broke a
+    // few letters to a line there. The iPhone keeps each word on one line.
+    @Test
+    fun theButtonsAtTheBottomKeepEachWordOnOneLineAtThePhonesLargestTextSize() {
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+        }
+        try {
+            shell("settings put system font_scale 2.0")
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
+            compose.waitForIdle()
+            for (label in listOf("History", "Say", "Settings")) {
+                val layouts = mutableListOf<TextLayoutResult>()
+                compose.onNodeWithText(label).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                val layout = layouts.single()
+                assertEquals("$label broke over lines", 1, layout.lineCount)
+                assertFalse("$label was cut off", layout.isLineEllipsized(0))
+            }
+        } finally {
+            shell("settings put system font_scale 1.0")
+        }
+    }
+
+    @Test
+    fun theOfferToBuzzForHerNameCanBeReadToTheEndAtThePhonesLargestTextSize() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.copy()
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+        }
+        try {
+            compose.runOnUiThread { CaptionState.clear() }
+            app.settings.change {
+                it.keywordAlerts = emptyList()
+                it.nameAlertOfferDismissed = false
+            }
+            shell("settings put system font_scale 2.0")
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
+            compose.waitForIdle()
+            val offer = compose.onNodeWithText("Tap to write your name", substring = true)
+            offer.performScrollTo()
+            val node = offer.fetchSemanticsNode()
+            assertEquals("the offer is cut off", node.size.height.toFloat(), node.boundsInRoot.height, 1f)
+        } finally {
+            shell("settings put system font_scale 1.0")
+            app.settings.change {
+                it.keywordAlerts = before.keywordAlerts
+                it.nameAlertOfferDismissed = before.nameAlertOfferDismissed
+            }
+        }
+    }
+
     private fun layoutOf(text: String): TextLayoutResult {
         val layouts = mutableListOf<TextLayoutResult>()
         compose.onNodeWithText(text, substring = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
