@@ -9,6 +9,7 @@ import com.arbelonson.ozen.core.NumberEmphasis
 import com.arbelonson.ozen.core.PhoneNumbers
 import com.arbelonson.ozen.core.SavedLineSpeech
 import com.arbelonson.ozen.core.SavedSegment
+import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.tr
@@ -73,6 +74,28 @@ data class SavedLine(
                     phones = PhoneNumbers.matches(segment.text),
                 )
             }
+        }
+
+        /**
+         * A line on the starred list, as on the iPhone: always with its time,
+         * a "Speaker 2" left out, and not read as starred, which the list
+         * already says.
+         */
+        fun of(line: StarredLine, zone: ZoneId = ZoneId.systemDefault(), markUncertain: Boolean = false): SavedLine {
+            val segment = line.segment
+            val time = clockTime(segment.startTimestamp, zone)
+            val speaker = segment.speakerName?.takeUnless { it.isBlank() || TranscriptSessionSummary.isGenericLabel(it) }
+            val unsure = markUncertain && line.isUncertain
+            return SavedLine(
+                id = segment.id,
+                time = time,
+                speaker = speaker,
+                text = CaptionLayout.displayText(segment.text),
+                spoken = SavedLineSpeech.label(segment.copy(speakerName = speaker, isStarred = false), time, uncertain = unsure),
+                starred = true,
+                unsure = unsure,
+                copied = CaptionLayout.copiedText(segment.text),
+            )
         }
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isDisplayed
@@ -414,6 +415,73 @@ class HistoryScreenDeviceTest {
         compose.runOnUiThread { remove.action() }
         compose.waitUntil(5_000) { store.load(id)!!.segments.none { it.isStarred } }
         compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Marked as important", substring = true).fetchSemanticsNodes().isEmpty() }
+    }
+
+    private fun starredConversation(line: String, startedAt: Double): UUID {
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 30,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(
+                SavedSegment(UUID.randomUUID(), line.replace("Starred list test", "Opening line of"), null, null, startedAt, true),
+                SavedSegment(UUID.randomUUID(), line, null, null, startedAt + 5, true, isStarred = true),
+            ),
+        )
+        store.save(record)
+        seeded += record.id
+        return record.id
+    }
+
+    @Test
+    fun everyStarredLineIsGatheredNewestFirstSharedCopiedAndOpenedWhereItWasSaid() {
+        val now = System.currentTimeMillis() / 1_000.0
+        starredConversation("Starred list test call the pharmacy", now - 3 * 86_400)
+        val pills = starredConversation("Starred list test two pills after dinner", now - 120)
+        app.settings.change { it.display = it.display.copy(markUncertainLines = false) }
+        compose.onNodeWithText("History").performClick()
+        waitFor("Opening line of two pills")
+        val total = store.listSummaries().sumOf { it.starredCount }
+        compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
+        compose.waitUntil(5_000) { shownLine("Starred list test two pills after dinner") }
+        val newer = compose.onNodeWithContentDescription("Starred list test two pills after dinner", substring = true)
+        val older = compose.onNodeWithContentDescription("Starred list test call the pharmacy", substring = true)
+        assertTrue(newer.getUnclippedBoundsInRoot().top < older.getUnclippedBoundsInRoot().top)
+        compose.onNodeWithText("Today").assertExists()
+
+        val started = CopyOnWriteArrayList<Intent>()
+        val sheet = startsHeldBack(started)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.addMonitor(sheet)
+        try {
+            compose.onNodeWithText("Share").performClick()
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            @Suppress("DEPRECATION")
+            val send = started.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+            assertEquals(Intent.ACTION_SEND, send.action)
+            assertEquals("Starred lines from Ozen", send.getStringExtra(Intent.EXTRA_SUBJECT))
+            assertEquals(TranscriptHistoryStore.exportStarredText(store.starredLines(), utcOffsetAt = ::offsetHere, marksUncertain = false), send.getStringExtra(Intent.EXTRA_TEXT))
+        } finally {
+            instrumentation.removeMonitor(sheet)
+        }
+
+        older.performTouchInput { longClick() }
+        compose.onNodeWithText("Copy").performClick()
+        compose.waitUntil(5_000) { copied() == CaptionLayout.copiedText("Starred list test call the pharmacy") }
+        val copy = newer.fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Copy" }
+        compose.runOnUiThread { copy.action() }
+        compose.waitUntil(5_000) { copied() == CaptionLayout.copiedText("Starred list test two pills after dinner") }
+
+        newer.performClick()
+        compose.waitUntil(5_000) { shownLine("Marked as important. Starred list test two pills after dinner") }
+        val line = compose.onNodeWithContentDescription("Starred list test two pills after dinner", substring = true).fetchSemanticsNode()
+        val remove = line.config[SemanticsActions.CustomActions].single { it.label == "Remove the star" }
+        compose.runOnUiThread { remove.action() }
+        compose.waitUntil(5_000) { store.load(pills)!!.segments.none { it.isStarred } }
+        compose.onNodeWithText("Back").performClick()
+        compose.waitUntil(5_000) { shownLine("Starred list test call the pharmacy") }
+        assertTrue(compose.onAllNodesWithContentDescription("Starred list test two pills", substring = true).fetchSemanticsNodes().isEmpty())
     }
 
     @Test

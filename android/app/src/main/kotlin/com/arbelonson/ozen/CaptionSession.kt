@@ -78,6 +78,8 @@ class CaptionSession(
 
         override fun load(id: UUID) = historyStore.load(id)
 
+        override fun starredLines() = historyStore.starredLines()
+
         override fun sizeOnDisk() = historyStore.totalSizeOnDisk()
 
         override val lastSaveFailure: String? get() = conversations.lastSaveFailure

@@ -4,6 +4,7 @@ import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.SavedSegment
+import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.TranscriptionEngineKind
@@ -193,5 +194,24 @@ class HistoryRowsTest {
         assertTrue(copied.contains("050 123 4567"), copied)
         assertTrue(copied != "תתקשרי למרפאה 050 123 4567", copied)
         assertEquals(listOf("0501234567"), SavedLine.of(record, jerusalem).single().phones.map { it.dialable })
+    }
+
+    @Test
+    fun `a starred line always shows its time and a real speaker's name, and is read without saying it is starred`() = Localization.withLanguage(UILanguage.English) {
+        val at = morning + 90
+        val pills = SavedSegment(UUID.randomUUID(), "Two pills after dinner", "Dana", null, at, true, isStarred = true, confidence = 0.05f)
+        val row = SavedLine.of(StarredLine(UUID.randomUUID(), morning, pills, engine = TranscriptionEngineKind.HomeServer, model = "home server"), jerusalem, markUncertain = true)
+        val time = clockTime(at, jerusalem)
+        assertEquals(time, row.time)
+        assertEquals("Dana", row.speaker)
+        assertTrue(row.unsure)
+        assertEquals("$time. May not have been heard correctly. Dana: Two pills after dinner", row.spoken)
+        assertEquals(CaptionLayout.copiedText("Two pills after dinner"), row.copied)
+
+        val unnamed = SavedSegment(UUID.randomUUID(), "Call the pharmacy", "Speaker 2", null, at, true, isStarred = true, confidence = 0.05f)
+        val plain = SavedLine.of(StarredLine(UUID.randomUUID(), morning, unnamed, engine = TranscriptionEngineKind.HomeServer, model = "home server"), jerusalem, markUncertain = false)
+        assertNull(plain.speaker)
+        assertFalse(plain.unsure)
+        assertEquals("$time. Call the pharmacy", plain.spoken)
     }
 }

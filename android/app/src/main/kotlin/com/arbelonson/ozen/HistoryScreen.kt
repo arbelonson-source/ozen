@@ -75,6 +75,7 @@ import com.arbelonson.ozen.core.HistoryDay
 import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.SavedSegment
+import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
@@ -96,6 +97,9 @@ interface SavedConversations {
     fun search(query: String): List<TranscriptSessionSummary>
 
     fun load(id: UUID): TranscriptSessionRecord?
+
+    /** Every starred line of every saved conversation, newest conversation first. */
+    fun starredLines(): List<StarredLine>
 
     fun sizeOnDisk(): Long
 
@@ -141,6 +145,11 @@ fun HistoryScreen(
     val open = openID
     if (open != null) {
         ConversationScreen(conversations, UUID.fromString(open), query, marksUncertain, emphasizeNumbers, onClose = { openID = null })
+        return
+    }
+    var showingStarred by rememberSaveable { mutableStateOf(false) }
+    if (showingStarred) {
+        StarredLinesScreen(conversations, marksUncertain, emphasizeNumbers, onClose = { showingStarred = false })
         return
     }
     BackHandler(onBack = onClose)
@@ -209,6 +218,10 @@ fun HistoryScreen(
                             if (choice.expiringCount(shown.summaries, System.currentTimeMillis() / 1_000.0) != 0) pendingRetention = choice else keepFor(choice)
                         },
                     )
+                }
+                val stars = shown.summaries.sumOf { it.starredCount }
+                if (!searching && stars > 0) item(key = "starred") {
+                    StarredLinesRow(stars, onOpen = { showingStarred = true })
                 }
                 if (shown.days.isEmpty()) {
                     item(key = "empty") {
@@ -716,13 +729,13 @@ internal fun Modifier.onHold(action: () -> Unit) = pointerInput(Unit) {
 }
 
 @Composable
-private fun starColour() = starColour(light = MaterialTheme.colorScheme.background.luminance() > 0.5f)
+internal fun starColour() = starColour(light = MaterialTheme.colorScheme.background.luminance() > 0.5f)
 
 // The iPhone's yellow star, deepened on a light screen to stay visible.
 internal fun starColour(light: Boolean) = if (light) Color(red = 0.6f, green = 0.42f, blue = 0f) else Color(red = 1f, green = 0.84f, blue = 0.04f)
 
 @Composable
-private fun Screen(title: String, close: String, onClose: () -> Unit, actions: @Composable () -> Unit = {}, content: @Composable () -> Unit) {
+internal fun Screen(title: String, close: String, onClose: () -> Unit, actions: @Composable () -> Unit = {}, content: @Composable () -> Unit) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
@@ -742,7 +755,7 @@ private fun Screen(title: String, close: String, onClose: () -> Unit, actions: @
 }
 
 @Composable
-private fun Heading(text: String) {
+internal fun Heading(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleMedium,
@@ -781,5 +794,5 @@ private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksU
     return Intent.createChooser(send, null)
 }
 
-private fun localOffset(at: Double): Int =
+internal fun localOffset(at: Double): Int =
     ZoneId.systemDefault().rules.getOffset(Instant.ofEpochMilli((at * 1_000).toLong())).totalSeconds
