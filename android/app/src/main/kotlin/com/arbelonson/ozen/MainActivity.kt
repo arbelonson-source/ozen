@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -60,10 +61,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -107,6 +110,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppLanguage
+import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.MicrophoneDropNotice
@@ -116,6 +120,7 @@ import com.arbelonson.ozen.core.tr
 import java.text.Bidi
 import java.util.UUID
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val showingSettings = mutableStateOf(false)
@@ -156,9 +161,11 @@ class MainActivity : ComponentActivity() {
         if (microphoneAnswer.value == false && hasMicrophone()) microphoneAnswer.value = true
         if (notificationsAnswer.value != true && AlertNotifier.allowed(this)) notificationsAnswer.value = true
         (application as OzenApplication).captions.appIsActive = true
+        CaptionState.screenReturned()
     }
 
     override fun onStop() {
+        CaptionState.screenLeft()
         (application as OzenApplication).captions.appIsActive = false
         super.onStop()
     }
@@ -514,6 +521,22 @@ private fun CaptionScreen(
         }
     }
     LaunchedEffect(state.lines.isEmpty()) { if (state.lines.isEmpty()) following = true }
+    val scope = rememberCoroutineScope()
+    val awayLine by rememberUpdatedState(state.away?.line)
+    // Seen once it has stayed on screen a moment: coming back, the list can
+    // show it for a frame before it follows the newest line down.
+    val awayMarkShowing by remember(list) {
+        derivedStateOf {
+            val info = list.layoutInfo
+            info.visibleItemsInfo.any { it.key == awayLine && it.offset >= info.viewportStartOffset && it.offset < info.viewportEndOffset }
+        }
+    }
+    LaunchedEffect(awayMarkShowing, state.away?.offersJump) {
+        if (awayMarkShowing && state.away?.offersJump == true) {
+            delay(AWAY_MARK_SEEN_MILLIS)
+            CaptionState.acknowledgeAwayLines()
+        }
+    }
     var lastTouchAt by remember { mutableDoubleStateOf(secondsNow()) }
     var clock by remember { mutableDoubleStateOf(secondsNow()) }
     val listening = state.phase.isListening
@@ -557,7 +580,7 @@ private fun CaptionScreen(
                     if (offersNameAlert) NameAlertOffer(look, onNameAlert, onDismissNameAlert)
                 }
             } else {
-                CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
+                CaptionLines(state.lines, state.away, display, look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
                 if (!following) {
                     JumpToLatest(jumpToLatestTitle(linesSince(state.lines, lastWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                         following = true
@@ -570,6 +593,15 @@ private fun CaptionScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 shownWord?.let { HeardPill(it.said, Modifier) }
+                state.away?.takeIf { it.offersJump && !awayMarkShowing && state.lines.isNotEmpty() }?.let { mark ->
+                    AwayJump(mark.count, look) {
+                        CaptionState.acknowledgeAwayLines()
+                        lastWhenLeft = newest
+                        following = false
+                        val index = state.lines.indexOfFirst { it.id == mark.line }
+                        if (index >= 0) scope.launch { list.scrollToItem(index) }
+                    }
+                }
                 if (state.savingTrouble) SavingTroubleBanner(onDismissSavingTrouble)
                 state.dropped?.let { lost ->
                     MicrophoneDropBanner(
@@ -628,6 +660,8 @@ private fun secondsNow() = System.currentTimeMillis() / 1_000.0
 
 private const val HEARD_SHOWN_SECONDS = 5.0
 
+private const val AWAY_MARK_SEEN_MILLIS = 1_000L
+
 // A deep orange as on the iPhone, with white words on it at 5.5:1.
 private val TROUBLE_ORANGE = Color(red = 0.7f, green = 0.28f, blue = 0f)
 
@@ -675,6 +709,7 @@ private fun ShowButtonsButton(chrome: Color, onTap: () -> Unit) {
 @Composable
 private fun CaptionLines(
     lines: List<CaptionLine>,
+    away: AwayMark?,
     display: DisplayPreferences,
     look: CaptionTheme,
     list: LazyListState,
@@ -690,7 +725,17 @@ private fun CaptionLines(
         if (following) list.scrollToEnd(lines.lastIndex)
     }
     LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(lines, key = { it.id }) { line -> CaptionLineRow(line, display, look, onStar = { onStar(line.id) }, onOpen = { conversation -> onOpen(conversation, line.id) }, onFix = { onFix(line) }, onAskToRepeat, onMarkProblem) }
+        items(lines, key = { it.id }) { line ->
+            val row = @Composable { CaptionLineRow(line, display, look, onStar = { onStar(line.id) }, onOpen = { conversation -> onOpen(conversation, line.id) }, onFix = { onFix(line) }, onAskToRepeat, onMarkProblem) }
+            if (away != null && line.id == away.line) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    AwayDivider(away.count, display.fontSize, look)
+                    row()
+                }
+            } else {
+                row()
+            }
+        }
     }
 }
 
@@ -719,6 +764,52 @@ private fun JumpToLatest(title: String, look: CaptionTheme, modifier: Modifier, 
     ) {
         Text(text = "↓", color = look.chrome, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clearAndSetSemantics {})
         Text(text = title, color = look.chrome, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 10.dp))
+    }
+}
+
+/**
+ * Above the first line said while the screen was away, as on the iPhone:
+ * how many lines she missed, so she knows where she stopped reading.
+ */
+@Composable
+private fun AwayDivider(count: Int, captionSize: Double, look: CaptionTheme) {
+    val lines = ConversationStats.linesText(count)
+    val spoken = tr("מכאן, מה שנאמר כשהאפליקציה הייתה סגורה: %1", "From here, what was said while the app was closed: %1", listOf(lines))
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clearAndSetSemantics { contentDescription = spoken },
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = tr("נאמר כשהאפליקציה הייתה סגורה · %1", "Said while the app was closed · %1", listOf(lines)),
+            color = look.pendingText,
+            fontSize = maxOf(15.0, captionSize * 0.5).sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Box(modifier = Modifier.weight(1f).height(2.dp).background(look.pendingText))
+    }
+}
+
+/** Back at the newest line after a while away, a way up to where the lines she missed begin, until she goes there or sees the mark. */
+@Composable
+private fun AwayJump(count: Int, look: CaptionTheme, onTap: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .background(look.background.copy(alpha = 0.9f), RoundedCornerShape(24.dp))
+            .border(width = 1.dp, color = look.chrome.copy(alpha = 0.5f), shape = RoundedCornerShape(24.dp))
+            .clickable(role = Role.Button, onClick = onTap)
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = "↑", color = look.chrome, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clearAndSetSemantics {})
+        Text(
+            text = tr("מה שנאמר בינתיים · %1", "What was said meanwhile · %1", listOf(ConversationStats.linesText(count))),
+            color = look.chrome,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 10.dp),
+        )
     }
 }
 

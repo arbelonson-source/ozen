@@ -316,4 +316,41 @@ class CaptionStateTest {
         showAt(200.0, dinner)
         assertEquals(start + 1, CaptionState.screen.value.speechResumed)
     }
+
+    private fun said(text: String, at: Double) =
+        TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, startTimestamp = at, lastUpdateTimestamp = at)
+
+    @Test
+    fun `lines said while the screen was away are marked from the first of them on coming back, and the jump to them is offered until she has seen them`() {
+        CaptionState.clear()
+        val before = said("Before", at = 50.0)
+        val first = said("While away", at = 150.0)
+        val second = said("Still away", at = 200.0)
+        CaptionState.screenLeft(100.0)
+        show(PipelinePhase.Listening, listOf(before, first, second))
+        assertNull(CaptionState.screen.value.away)
+        CaptionState.screenReturned(400.0)
+        assertEquals(AwayMark(first.id, count = 2, offersJump = true), CaptionState.screen.value.away)
+        CaptionState.acknowledgeAwayLines()
+        assertEquals(AwayMark(first.id, count = 2, offersJump = false), CaptionState.screen.value.away)
+        show(PipelinePhase.Listening, listOf(before, first, second, said("Back", at = 450.0)))
+        assertEquals(AwayMark(first.id, count = 2, offersJump = false), CaptionState.screen.value.away)
+        CaptionState.clear()
+        show(PipelinePhase.Listening, listOf(first, second))
+        assertNull(CaptionState.screen.value.away)
+    }
+
+    @Test
+    fun `the mark goes on the first missed line still kept on the screen, and on none once every missed line is gone from it`() {
+        CaptionState.clear()
+        CaptionState.screenLeft(100.0)
+        CaptionState.screenReturned(400.0)
+        val missed = (1..10).map { said("away $it", at = 100.0 + it) }
+        val since = (1..195).map { said("back $it", at = 400.0 + it) }
+        show(PipelinePhase.Listening, missed + since)
+        assertEquals(AwayMark(missed[5].id, count = 10, offersJump = true), CaptionState.screen.value.away)
+        show(PipelinePhase.Listening, missed + since + (1..10).map { said("later $it", at = 700.0 + it) })
+        assertNull(CaptionState.screen.value.away)
+        CaptionState.clear()
+    }
 }

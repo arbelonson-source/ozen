@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.AudioInputDescriptor
+import com.arbelonson.ozen.core.AwayCatchUp
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ControlBarAutoHide
@@ -35,6 +36,13 @@ data class CaptionLine(
     val important: Boolean = false,
 )
 
+/**
+ * Where the lines said while the screen was away begin (see `AwayCatchUp`):
+ * the line the mark goes above, how many lines she missed, and whether the
+ * jump up to them is still offered, until she has seen the mark.
+ */
+data class AwayMark(val line: UUID, val count: Int, val offersJump: Boolean)
+
 data class CaptionScreenState(
     val phase: PipelinePhase = PipelinePhase.Idle,
     val engine: TranscriptionEngineKind? = null,
@@ -56,6 +64,7 @@ data class CaptionScreenState(
      * the ones that happen while it is showing and not for older ones.
      */
     val speechResumed: Int = 0,
+    val away: AwayMark? = null,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
@@ -97,6 +106,8 @@ object CaptionState {
     private val state = MutableStateFlow(CaptionScreenState())
     val screen: StateFlow<CaptionScreenState> = state.asStateFlow()
     private var speechResume = SpeechResume()
+    private var awayCatchUp = AwayCatchUp()
+    private var segmentsShown: List<TranscriptSegment> = emptyList()
 
     fun show(
         phase: PipelinePhase,
@@ -115,6 +126,7 @@ object CaptionState {
         now: Double = System.currentTimeMillis() / 1_000.0,
     ) {
         val resumed = speechResume.noteCaptions(segments, now)
+        segmentsShown = segments
         state.value = CaptionScreenState(
             phase = phase,
             engine = engine,
@@ -143,7 +155,31 @@ object CaptionState {
             selectedInput = state.value.selectedInput,
             dropped = state.value.dropped,
             speechResumed = state.value.speechResumed + if (resumed) 1 else 0,
+            away = awayMark(segments),
         )
+    }
+
+    /** The caption screen went away: the phone locked, or another app came to the front. */
+    fun screenLeft(now: Double = System.currentTimeMillis() / 1_000.0) {
+        awayCatchUp.screenLeft(now)
+    }
+
+    /** The caption screen is in front of her again: the lines she missed get their mark. */
+    fun screenReturned(now: Double = System.currentTimeMillis() / 1_000.0) {
+        awayCatchUp.screenReturned(now)
+        state.value = state.value.copy(away = awayMark(segmentsShown))
+    }
+
+    /** She has seen where the lines she missed begin, or went there. */
+    fun acknowledgeAwayLines() {
+        if (awayCatchUp.isAcknowledged) return
+        awayCatchUp.acknowledge()
+        state.value = state.value.copy(away = awayMark(segmentsShown))
+    }
+
+    private fun awayMark(segments: List<TranscriptSegment>): AwayMark? {
+        val index = awayCatchUp.drawnMarkIndex(segments, firstDrawnIndex = segments.size - minOf(segments.size, MAXIMUM_LINES)) ?: return null
+        return AwayMark(segments[index].id, awayCatchUp.missedLineCount(segments), awayCatchUp.offersJump(segments))
     }
 
     /** The microphones the phone offers, the one recording and the one that dropped, for the picker, the caption bar and its banner. */
@@ -173,6 +209,8 @@ object CaptionState {
 
     fun clear() {
         speechResume = SpeechResume()
+        awayCatchUp = AwayCatchUp()
+        segmentsShown = emptyList()
         state.value = CaptionScreenState(speechResumed = state.value.speechResumed)
     }
 

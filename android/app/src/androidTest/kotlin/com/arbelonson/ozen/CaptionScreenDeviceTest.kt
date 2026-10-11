@@ -226,6 +226,60 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun manyLinesSaidWhileTheAppWasAwayAreMarkedAndAButtonAtTheTopLeadsUpToThem() {
+        val before = (1..3).map { said("Before $it here", at = 50.0 + it) }
+        val missed = (1..30).map { said("Missed $it here", at = 150.0 + it) }
+        compose.runOnUiThread {
+            CaptionState.screenLeft(100.0)
+            CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = before + missed)
+            CaptionState.screenReturned(400.0)
+        }
+        compose.waitForIdle()
+        assertTrue(displayed("Missed 30 here"))
+        assertFalse(displayed("Missed 1 here"))
+        compose.onNodeWithText("What was said meanwhile · 30 lines").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("From here, what was said while the app was closed: 30 lines").assertIsDisplayed()
+        assertTrue(displayed("Missed 1 here"))
+        compose.onNodeWithText("What was said meanwhile", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("To the last line").assertExists()
+    }
+
+    @Test
+    fun aFewLinesSaidWhileTheAppWasAwayShowTheirMarkWithNoButtonToReachThem() {
+        val missed = listOf(said("Missed one", at = 150.0), said("Missed two", at = 160.0))
+        compose.runOnUiThread {
+            CaptionState.screenLeft(100.0)
+            CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(said("Before", at = 50.0)) + missed)
+            CaptionState.screenReturned(400.0)
+        }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("From here, what was said while the app was closed: 2 lines").assertIsDisplayed()
+        compose.onNodeWithText("What was said meanwhile", substring = true).assertDoesNotExist()
+        compose.waitUntil(5_000) { CaptionState.screen.value.away?.offersJump == false }
+        compose.onNodeWithContentDescription("From here, what was said while the app was closed: 2 lines").assertIsDisplayed()
+    }
+
+    @Test
+    fun leavingTheAppForAWhileMarksTheLinesSaidMeanwhileOnComingBack() {
+        val before = said("Before we left", at = System.currentTimeMillis() / 1_000.0 - 60)
+        showLines(listOf(before))
+        try {
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            val left = System.currentTimeMillis() / 1_000.0
+            val missed = listOf(said("Missed one", at = left + 1), said("Missed two", at = left + 2))
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(before) + missed)
+            }
+            Thread.sleep(16_000)
+        } finally {
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("From here, what was said while the app was closed: 2 lines").assertIsDisplayed()
+    }
+
+    @Test
     fun aLineTallerThanTheScreenIsFollowedToItsNewestWords() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val before = app.settings.current.value.display
@@ -967,6 +1021,9 @@ class CaptionScreenDeviceTest {
 
     private fun committed(text: String) =
         TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+
+    private fun said(text: String, at: Double) =
+        TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, startTimestamp = at, lastUpdateTimestamp = at)
 
     private fun showLines(lines: List<TranscriptSegment>, conversation: (Int) -> UUID? = { null }) {
         compose.runOnUiThread {
