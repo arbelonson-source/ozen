@@ -1065,6 +1065,7 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithText("Settings").performClick()
         val before = heardSmoke()
         compose.runOnUiThread { CaptionState.soundHeard(before, before) }
+        compose.onNodeWithText("Close").assertExists()
         compose.mainClock.autoAdvance = false
         try {
             compose.onNodeWithText("Close").performSemanticsAction(SemanticsActions.OnClick)
