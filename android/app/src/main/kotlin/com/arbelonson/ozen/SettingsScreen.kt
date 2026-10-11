@@ -25,6 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,6 +43,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -56,6 +59,7 @@ import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.tr
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 @Composable
@@ -213,6 +217,7 @@ private fun HomeComputerSection(
     var checking by remember { mutableStateOf(false) }
     var check by remember { mutableStateOf<HomeServerCheck?>(null) }
     var checkGeneration by remember { mutableIntStateOf(0) }
+    var confirmingCodeDelete by remember { mutableStateOf(false) }
     val forgetCheck = {
         check = null
         checkGeneration += 1
@@ -296,6 +301,70 @@ private fun HomeComputerSection(
         }
     }
     check?.let { HomeComputerCheckLabel(it) }
+    HomeComputerBeam(engineSettings, current.homeServerBeam, onMoved = forgetCheck)
+    if (hasCode) {
+        TextButton(onClick = { confirmingCodeDelete = true }) {
+            Text(tr("מחיקת הקוד", "Delete code"), color = MaterialTheme.colorScheme.error)
+        }
+    }
+    if (confirmingCodeDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmingCodeDelete = false },
+            title = { Text(tr("למחוק את קוד המחשב?", "Delete the computer’s code?")) },
+            text = { Text(tr("עד שיסרקו שוב את קוד ה‑QR של המחשב, הכתוביות יגיעו מהגיבוי שבטלפון אם הוא הורד, ויפסיקו אם לא.", "Until the computer’s QR code is scanned again, captions come from the backup on the phone if it’s downloaded, and stop if it isn’t.")) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        engineSettings.deletePairingCode()
+                        hasCode = false
+                        forgetCheck()
+                        confirmingCodeDelete = false
+                    },
+                ) { Text(tr("למחוק", "Delete"), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmingCodeDelete = false }) { Text(tr("ביטול", "Cancel")) } },
+        )
+    }
+}
+
+@Composable
+private fun HomeComputerBeam(engineSettings: EngineSettings, beam: Int, onMoved: () -> Unit) {
+    val range = AppSettings.homeServerBeamRange
+    val description = EngineSettings.beamDescription(beam)
+    val label = tr("מהירות מול דיוק במחשב", "Speed or accuracy on the computer")
+    Row(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
+        Text(tr("מהירות מול דיוק", "Speed or accuracy"), modifier = Modifier.weight(1f))
+        Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Slider(
+        value = beam.toFloat(),
+        onValueChange = {
+            val step = it.roundToInt()
+            if (step != beam) {
+                engineSettings.chooseBeam(step)
+                onMoved()
+            }
+        },
+        valueRange = range.first.toFloat()..range.last.toFloat(),
+        steps = range.last - range.first - 1,
+        modifier = Modifier.semantics {
+            contentDescription = label
+            stateDescription = description
+        },
+    )
+    Row(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
+        Text(tr("מהיר יותר", "Faster"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text(tr("מדויק יותר", "More accurate"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Footnote(tr("ההבדל בזמן ההמתנה קטן מאוד, חלקיק שנייה. עדיף להשאיר על 5, אלא אם אתם יודעים מה אתם עושים.", "The difference in waiting time is very small, a fraction of a second. Leave it at 5 unless you know what you’re doing."))
+    if (beam != AppSettings.default.homeServerBeam) {
+        TextButton(
+            onClick = {
+                engineSettings.chooseBeam(AppSettings.default.homeServerBeam)
+                onMoved()
+            },
+        ) { Text(tr("חזרה להגדרה הרגילה", "Back to the usual setting")) }
+    }
 }
 
 @Composable

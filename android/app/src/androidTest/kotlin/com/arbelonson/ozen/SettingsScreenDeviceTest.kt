@@ -1,12 +1,18 @@
 package com.arbelonson.ozen
 
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -15,6 +21,7 @@ import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -30,6 +37,7 @@ class SettingsScreenDeviceTest {
     private lateinit var serviceBefore: CloudProvider
     private lateinit var addressBefore: String
     private var codeBefore: String? = null
+    private var beamBefore = 0
 
     @Before
     fun remember() {
@@ -37,6 +45,7 @@ class SettingsScreenDeviceTest {
         serviceBefore = app.settings.current.value.cloudProvider
         addressBefore = app.settings.current.value.homeServerAddress
         codeBefore = app.homeServerCode.read()
+        beamBefore = app.settings.current.value.homeServerBeam
         app.cloudKeys.remove(CloudProvider.Deepgram)
         app.homeServerCode.remove()
         app.settings.change { it.homeServerAddress = "" }
@@ -50,6 +59,7 @@ class SettingsScreenDeviceTest {
             it.engine = engineBefore
             it.cloudProvider = serviceBefore
             it.homeServerAddress = addressBefore
+            it.homeServerBeam = beamBefore
         }
     }
 
@@ -125,5 +135,34 @@ class SettingsScreenDeviceTest {
         }
         assertEquals("ws://10.0.2.2:9", app.settings.current.value.homeServerAddress)
         assertEquals("code-for-the-test", app.homeServerCode.read())
+    }
+
+    @Test
+    fun theSpeedSliderSavesItsStepAndTheUsualSettingComesBackWithOneTap() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onAllNodesWithText("Home computer").onFirst().performClick()
+        val slider = compose.onNodeWithContentDescription("Speed or accuracy on the computer")
+        slider.performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(3f) }
+        assertEquals(3, app.settings.current.value.homeServerBeam)
+        slider.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "3 of 7"))
+        compose.onNodeWithText("Back to the usual setting").performScrollTo().performClick()
+        assertEquals(5, app.settings.current.value.homeServerBeam)
+        slider.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "5 of 7, usual"))
+        compose.onNodeWithText("Back to the usual setting").assertDoesNotExist()
+    }
+
+    @Test
+    fun deletingThePairingCodeAsksFirstThenRemovesIt() {
+        app.homeServerCode.save("code-to-delete")
+        compose.onNodeWithText("Settings").performClick()
+        compose.onAllNodesWithText("Home computer").onFirst().performClick()
+        compose.onNodeWithText("Delete code").performScrollTo().performClick()
+        compose.onNodeWithText("Delete the computer’s code?").assertExists()
+        compose.onNodeWithText("Until the computer’s QR code is scanned again", substring = true).assertExists()
+        assertEquals("code-to-delete", app.homeServerCode.read())
+        compose.onNodeWithText("Delete").performClick()
+        assertNull(app.homeServerCode.read())
+        compose.onNodeWithText("Pairing code saved on the phone").assertDoesNotExist()
+        compose.onNodeWithText("Delete code").assertDoesNotExist()
     }
 }

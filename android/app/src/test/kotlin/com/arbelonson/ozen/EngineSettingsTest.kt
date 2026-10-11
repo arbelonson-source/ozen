@@ -2,8 +2,10 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.HomeServerCheck
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.UILanguage
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.AfterTest
@@ -13,6 +15,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 
 class EngineSettingsTest {
     private val folder = Files.createTempDirectory("ozen-engine-settings").toFile()
@@ -22,6 +27,7 @@ class EngineSettingsTest {
     private val codes = HomeServerCodeStore(File(folder, "home-server-code"), ReversingCipher())
     private var restarts = 0
     private var addressWhenChecked: String? = null
+    private val scope = TestScope()
     private val engineSettings = EngineSettings(
         settings,
         keys,
@@ -30,6 +36,7 @@ class EngineSettingsTest {
             addressWhenChecked = settings.current.value.homeServerAddress
             HomeServerCheck.Connected(12)
         },
+        scope = scope,
     ) { restarts += 1 }
 
     @AfterTest
@@ -100,7 +107,7 @@ class EngineSettingsTest {
 
     @Test
     fun `a key the phone could not seal is reported and does not restart captions`() {
-        val failing = EngineSettings(settings, CloudKeyStore(File(folder, "cloud-keys"), ReversingCipher(failsToSeal = true)), codes, { HomeServerCheck.Unreachable }) { restarts += 1 }
+        val failing = EngineSettings(settings, CloudKeyStore(File(folder, "cloud-keys"), ReversingCipher(failsToSeal = true)), codes, { HomeServerCheck.Unreachable }, scope) { restarts += 1 }
         failing.chooseEngine(TranscriptionEngineKind.Cloud)
         assertFalse(failing.saveCloudKey("sx-test-key"))
         assertFalse(failing.hasCloudKey())
@@ -192,8 +199,65 @@ class EngineSettingsTest {
     }
 
     @Test
+    fun `the speed slider saves each step at once, kept inside the computer's range`() {
+        engineSettings.chooseBeam(3)
+        assertEquals(3, saved().homeServerBeam)
+        engineSettings.chooseBeam(0)
+        assertEquals(1, settings.current.value.homeServerBeam)
+        assertEquals(1, saved().homeServerBeam)
+        engineSettings.chooseBeam(9)
+        assertEquals(7, settings.current.value.homeServerBeam)
+        assertEquals(7, saved().homeServerBeam)
+    }
+
+    @Test
+    fun `moving the slider restarts captions once, a second after it stops, and only for the home computer`() {
+        engineSettings.chooseBeam(3)
+        scope.advanceTimeBy(2_000)
+        scope.runCurrent()
+        assertEquals(0, restarts)
+        engineSettings.chooseEngine(TranscriptionEngineKind.HomeServer)
+        restarts = 0
+        engineSettings.chooseBeam(4)
+        scope.advanceTimeBy(600)
+        engineSettings.chooseBeam(5)
+        engineSettings.chooseBeam(5)
+        scope.advanceTimeBy(999)
+        scope.runCurrent()
+        assertEquals(0, restarts)
+        scope.advanceTimeBy(1)
+        scope.runCurrent()
+        assertEquals(1, restarts)
+        engineSettings.chooseBeam(6)
+        engineSettings.chooseEngine(TranscriptionEngineKind.Cloud)
+        scope.advanceTimeBy(2_000)
+        scope.runCurrent()
+        assertEquals(2, restarts)
+    }
+
+    @Test
+    fun `the slider names its steps in the iphone's words`() {
+        val names = Localization.withLanguage(UILanguage.English) { (1..7).map { EngineSettings.beamDescription(it) } }
+        assertEquals(listOf("1 of 7, fastest", "2 of 7", "3 of 7", "4 of 7", "5 of 7, usual", "6 of 7", "7 of 7, slowest"), names)
+    }
+
+    @Test
+    fun `deleting the pairing code removes it and restarts captions only while the home computer is the engine`() {
+        codes.save("code-one")
+        engineSettings.deletePairingCode()
+        assertNull(codes.read())
+        assertFalse(engineSettings.hasPairingCode())
+        assertEquals(0, restarts)
+        codes.save("code-two")
+        engineSettings.chooseEngine(TranscriptionEngineKind.HomeServer)
+        engineSettings.deletePairingCode()
+        assertNull(codes.read())
+        assertEquals(2, restarts)
+    }
+
+    @Test
     fun `a pairing code the phone could not seal is reported and does not restart captions`() {
-        val failing = EngineSettings(settings, keys, HomeServerCodeStore(File(folder, "home-server-code"), ReversingCipher(failsToSeal = true)), { HomeServerCheck.Unreachable }) { restarts += 1 }
+        val failing = EngineSettings(settings, keys, HomeServerCodeStore(File(folder, "home-server-code"), ReversingCipher(failsToSeal = true)), { HomeServerCheck.Unreachable }, scope) { restarts += 1 }
         failing.chooseEngine(TranscriptionEngineKind.HomeServer)
         assertFalse(failing.savePairingCode("code-one"))
         assertFalse(failing.hasPairingCode())
