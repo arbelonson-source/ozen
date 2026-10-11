@@ -364,7 +364,8 @@ class CaptionSessionDeviceTest {
         }
         try {
             val (first, second, other) = listOf("speakerA_clip1", "speakerA_clip2", "speakerB_clip1").map { name ->
-                val print = session.pipeline.embeddingInBackground(DeviceClips.asset("$name.wav"))
+                val clip = DeviceClips.asset("$name.wav")
+                val print = session.pipeline.embeddingInBackground(clip + clip + clip)
                 assertNotNull("no voice print for $name", print)
                 print!!
             }

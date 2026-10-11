@@ -44,6 +44,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onParent
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -1066,7 +1067,7 @@ class CaptionScreenDeviceTest {
         compose.runOnUiThread { CaptionState.soundHeard(before, before) }
         compose.mainClock.autoAdvance = false
         try {
-            compose.onNodeWithText("Close").performClick()
+            compose.onNodeWithText("Close").performSemanticsAction(SemanticsActions.OnClick)
             compose.mainClock.advanceTimeBy(100)
             compose.onNodeWithText("History").assertExists()
             repeat(12) {
@@ -1247,7 +1248,7 @@ class CaptionScreenDeviceTest {
             compose.waitForIdle()
             val dana = compose.onAllNodesWithText("Dana", useUnmergedTree = true)
             assertEquals(1, dana.fetchSemanticsNodes().size)
-            dana.onFirst().assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.HideFromAccessibility))
+            dana.onFirst().onParent().assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.HideFromAccessibility))
             val label = dana.onFirst().fetchSemanticsNode().boundsInRoot
             val first = lineText("Good morning").fetchSemanticsNode().boundsInRoot
             assertTrue("label $label, line $first", label.bottom <= first.top + 1f)
