@@ -1,5 +1,7 @@
 package com.arbelonson.ozen
 
+import android.content.ClipData
+import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -56,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.HistoryDay
@@ -66,6 +69,7 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.tr
+import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
@@ -363,7 +367,7 @@ private fun ConversationScreen(conversations: SavedConversations, id: UUID, quer
             shown.record == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"))
             else -> {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { context.startActivity(shareSheet(shown.record, marksUncertain)) }) {
+                    TextButton(onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { shareSheet(context, shown.record, marksUncertain) }) } }) {
                         Text(tr("שיתוף", "Share"))
                     }
                     TextButton(onClick = { confirmingDelete = true }) {
@@ -517,13 +521,32 @@ private fun Heading(text: String) {
 // The iPhone's mark for a line a search found: its yellow at 30%.
 private val SEARCH_MATCH = Color(red = 1f, green = 0.84f, blue = 0.04f, alpha = 0.3f)
 
-private fun shareSheet(record: TranscriptSessionRecord, marksUncertain: Boolean): Intent = Intent.createChooser(
-    Intent(Intent.ACTION_SEND)
-        .setType("text/plain")
-        .putExtra(Intent.EXTRA_SUBJECT, tr("שיחה מאוזן", "Conversation from Ozen"))
-        .putExtra(Intent.EXTRA_TEXT, TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain)),
-    null,
-)
+/**
+ * Android hands the share sheet everything in one message of about a
+ * megabyte: a 3,000-line conversation sent as text never reached it, and
+ * 8,000 lines closed Ozen. A conversation longer than a chat message takes
+ * goes as a text file instead, the last one shared replacing the one before.
+ */
+private const val LONGEST_SHARED_TEXT = 50_000
+
+private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksUncertain: Boolean): Intent {
+    val text = TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain)
+    val subject = tr("שיחה מאוזן", "Conversation from Ozen")
+    val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, subject)
+    if (text.length <= LONGEST_SHARED_TEXT) {
+        send.putExtra(Intent.EXTRA_TEXT, text)
+    } else {
+        val folder = File(context.cacheDir, "shared")
+        folder.deleteRecursively()
+        folder.mkdirs()
+        val file = File(folder, "$subject.txt")
+        file.writeText(text)
+        val uri = FileProvider.getUriForFile(context, context.packageName + ".share", file)
+        send.putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        send.clipData = ClipData.newRawUri(null, uri)
+    }
+    return Intent.createChooser(send, null)
+}
 
 private fun localOffset(at: Double): Int =
     ZoneId.systemDefault().rules.getOffset(Instant.ofEpochMilli((at * 1_000).toLong())).totalSeconds

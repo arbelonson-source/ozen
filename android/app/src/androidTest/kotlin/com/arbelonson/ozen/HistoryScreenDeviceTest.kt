@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -10,7 +11,7 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isDisplayed
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -188,6 +189,57 @@ class HistoryScreenDeviceTest {
             val plain = started.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!.getStringExtra(Intent.EXTRA_TEXT)!!
             assertFalse(plain, plain.contains("May not have been heard correctly"))
             assertTrue(plain, plain.contains("Pharmacy test two pills after dinner"))
+        } finally {
+            instrumentation.removeMonitor(sheet)
+        }
+    }
+
+    @Test
+    fun aConversationTooLongForAChatMessageIsSharedAsATextFile() {
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 3_600
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 3_000,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = (0 until 1_000).map {
+                val text = if (it == 0) "Long share test opening" else "A long lecture about the history of medicine and the pharmacy"
+                SavedSegment(UUID.randomUUID(), text, null, null, startedAt + it * 3, true)
+            },
+        )
+        store.save(record)
+        seeded += record.id
+        val started = CopyOnWriteArrayList<Intent>()
+        val sheet = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
+                started += intent
+                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+            }
+        }
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.addMonitor(sheet)
+        try {
+            compose.onNodeWithText("History").performClick()
+            waitFor("Long share test opening")
+            compose.onNodeWithText("Long share test opening", substring = true).performClick()
+            waitFor("Share")
+            compose.onNodeWithText("Share").performClick()
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            @Suppress("DEPRECATION")
+            val send = started.single().getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+            assertEquals(Intent.ACTION_SEND, send.action)
+            assertEquals("text/plain", send.type)
+            assertEquals("Conversation from Ozen", send.getStringExtra(Intent.EXTRA_SUBJECT))
+            assertNull(send.getStringExtra(Intent.EXTRA_TEXT))
+            @Suppress("DEPRECATION")
+            val file = send.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)!!
+            assertEquals("content", file.scheme)
+            assertTrue(send.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+            assertEquals(file, send.clipData!!.getItemAt(0).uri)
+            val expected = TranscriptHistoryStore.exportText(record, ::offsetHere, marksUncertain = app.settings.current.value.display.markUncertainLines)
+            assertTrue(expected.length > 60_000)
+            assertEquals(expected, app.contentResolver.openInputStream(file)!!.use { it.readBytes().toString(Charsets.UTF_8) })
         } finally {
             instrumentation.removeMonitor(sheet)
         }
