@@ -206,6 +206,7 @@ class MainActivity : ComponentActivity() {
             PhasePresentation.Action.Start, PhasePresentation.Action.Resume, PhasePresentation.Action.Retry -> startListening()
             PhasePresentation.Action.OpenEngineSettings, PhasePresentation.Action.OpenBackupSettings -> showingSettings.value = true
             PhasePresentation.Action.ConfirmCellularDownload -> confirmingCellular.value = true
+            PhasePresentation.Action.StopSpeaking -> (application as OzenApplication).captions.stopSpeaking()
             else -> Unit
         }
     }

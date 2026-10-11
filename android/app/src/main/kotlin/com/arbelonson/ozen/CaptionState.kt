@@ -6,6 +6,7 @@ import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ControlBarAutoHide
+import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.ConversationStats
@@ -96,9 +97,21 @@ data class CaptionScreenState(
     val sound: SoundAlert? = null,
     /** The newest sound alert raised, which flashes the screen's edge when it is new to the screen. */
     val heardSound: SoundAlert? = null,
+    val downloadSecondsRemaining: Double? = null,
+    /** Paused only while the phone says something aloud: a tap stops the voice, not opens the microphone onto it. */
+    val pausedForSpeech: Boolean = false,
+    /** The phone's own model captioning while the chosen engine can't, and why. */
+    val coveringForCloud: Boolean = false,
+    val coveredEngine: TranscriptionEngineKind? = null,
+    val coverReason: EngineUnavailability.Kind? = null,
+    /** The home computer can't be reached and the phone has no backup to carry on with. */
+    val offerBackup: Boolean = false,
 ) {
     val status: PhasePresentation
-        get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
+        get() = PhasePresentation(
+            phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining, pausedForSpeech,
+            coveringForCloud, coveredEngine, coverReason, offerBackup,
+        )
 
     /** Not merely listening: a call holding captions leaves them stopped, as `captionsAreRunning` on the iPhone. */
     val captionsRunning: Boolean
@@ -156,6 +169,12 @@ object CaptionState {
         languageCode: String = "he",
         speakerName: (TranscriptSegment) -> String? = { null },
         now: Double = System.currentTimeMillis() / 1_000.0,
+        downloadSecondsRemaining: Double? = null,
+        pausedForSpeech: Boolean = false,
+        coveringForCloud: Boolean = false,
+        coveredEngine: TranscriptionEngineKind? = null,
+        coverReason: EngineUnavailability.Kind? = null,
+        offerBackup: Boolean = false,
     ) {
         val resumed = speechResume.noteCaptions(segments, now)
         segmentsShown = segments
@@ -169,6 +188,12 @@ object CaptionState {
             engine = engine,
             interruptedBySystem = interruptedBySystem,
             scheduledRetry = scheduledRetry,
+            downloadSecondsRemaining = downloadSecondsRemaining,
+            pausedForSpeech = pausedForSpeech,
+            coveringForCloud = coveringForCloud,
+            coveredEngine = coveredEngine,
+            coverReason = coverReason,
+            offerBackup = offerBackup,
             lines = segments.drop(firstShown).mapIndexed { at, it ->
                 CaptionLine(
                     id = it.id,

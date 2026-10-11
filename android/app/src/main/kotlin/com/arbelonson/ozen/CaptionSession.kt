@@ -17,6 +17,7 @@ import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.CaptionAnnouncer
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionPipeline
+import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HTTPFileFetcher
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.HomeServerCheck
@@ -408,6 +409,12 @@ class CaptionSession(
             recentlyHeard = pipeline.keywordHits,
             languageCode = transcribing.languageCode,
             speakerName = pipeline::displayName,
+            downloadSecondsRemaining = pipeline.downloadSecondsRemaining,
+            pausedForSpeech = replies.holdsCaptions && pipeline.phase == PipelinePhase.Paused,
+            coveringForCloud = pipeline.isCoveringForCloud,
+            coveredEngine = settings.current.value.engine,
+            coverReason = pipeline.coverReason,
+            offerBackup = offersBackup(),
         )
         refreshSavingTrouble()
         announceNewLines(transcribing)
@@ -874,6 +881,14 @@ class CaptionSession(
                 allowCellular = current.allowCellularModelDownload,
             )
         }
+    }
+
+    /** As on the iPhone: with the computer out of reach and nothing on the phone to carry on, the status points to the backup. */
+    private fun offersBackup(): Boolean {
+        val unreachable = (pipeline.phase as? PipelinePhase.Failed)?.reason?.engineUnavailability?.kind
+        if (unreachable != EngineUnavailability.Kind.HomeServerUnreachable) return false
+        refreshBackup()
+        return BackupModel.shouldOffer(unreachable, backupState.value)
     }
 
     override fun downloadBackup() {

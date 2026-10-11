@@ -273,6 +273,74 @@ class CaptionSessionDeviceTest {
     }
 
     @Test
+    fun aHomeComputerThatCannotBeReachedWithNoBackupOnThePhoneOffersTheBackupOnTheStatus(): Unit = runBlocking {
+        val work = File(context.cacheDir, "backup-offer-test").apply { deleteRecursively(); mkdirs() }
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        settings.change {
+            it.engine = TranscriptionEngineKind.HomeServer
+            it.homeServerAddress = "127.0.0.1:9"
+            it.spokenLanguage = UILanguage.English
+            it.allowCellularModelDownload = true
+        }
+        val code = HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()).apply { save("code-for-the-test") }
+        val languageBefore = Localization.language
+        Localization.language = UILanguage.English
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, settings, code, CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(16_000 * 120)), modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))
+                .also { it.appIsActive = true }
+        }
+        try {
+            withContext(Dispatchers.Main) { session.listen() }
+            val offered = withTimeoutOrNull(60_000) { CaptionState.screen.first { it.status.action == PhasePresentation.Action.OpenBackupSettings } }
+            assertNotNull("never offered: ${CaptionState.screen.value.phase}, ${CaptionState.screen.value.status.detail}", offered)
+            assertTrue("${offered!!.status.detail}", offered.status.detail!!.endsWith("Tap to add a backup on the phone"))
+        } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+            Localization.language = languageBefore
+            work.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun aHomeComputerThatCannotBeReachedIsCoveredByThePhonesOwnModelAndTheStatusSaysSo(): Unit = runBlocking {
+        val model = File(context.filesDir, CaptionSession.MODEL_FILE)
+        assumeTrue("put the model at ${model.path}", model.exists())
+        val work = File(context.cacheDir, "cover-status-test").apply { deleteRecursively(); mkdirs() }
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        settings.change {
+            it.engine = TranscriptionEngineKind.HomeServer
+            it.homeServerAddress = "127.0.0.1:9"
+            it.spokenLanguage = UILanguage.Hebrew
+        }
+        val code = HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()).apply { save("code-for-the-test") }
+        val languageBefore = Localization.language
+        Localization.language = UILanguage.English
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, settings, code, CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(16_000 * 120)), historyFolder = File(work, "history"))
+                .also { it.appIsActive = true }
+        }
+        try {
+            withContext(Dispatchers.Main) { session.listen() }
+            val covering = withTimeoutOrNull(180_000) {
+                CaptionState.screen.first { it.status.detail == "Can’t reach the home computer, carrying on with the phone’s own · Tap to pause" }
+            }
+            assertNotNull("never said the phone covers: ${CaptionState.screen.value.phase}, ${CaptionState.screen.value.status.detail}", covering)
+        } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+            Localization.language = languageBefore
+            work.deleteRecursively()
+        }
+    }
+
+    @Test
     fun captionsThatStopByThemselvesAndComeBackAreSaidToTheScreenReaderOnceEach(): Unit = runBlocking {
         val model = File(context.filesDir, CaptionSession.MODEL_FILE)
         assumeTrue("put the model at ${model.path}", model.exists())

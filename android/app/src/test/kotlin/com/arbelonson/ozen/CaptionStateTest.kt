@@ -3,9 +3,12 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.CaptionLayout
+import com.arbelonson.ozen.core.EnginePreparationProgress
+import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SoundEventCatalog
 import com.arbelonson.ozen.core.SoundAlert
@@ -25,6 +28,36 @@ class CaptionStateTest {
 
     private fun show(phase: PipelinePhase, segments: List<TranscriptSegment> = emptyList(), interrupted: Boolean = false) =
         CaptionState.show(phase, engine = null, interruptedBySystem = interrupted, scheduledRetry = null, segments = segments)
+
+    @Test
+    fun `the status says what the captions are doing beyond their phase, as the iPhone's does`() = Localization.withLanguage(UILanguage.English) {
+        CaptionState.clear()
+        val status = { CaptionState.screen.value.status }
+        CaptionState.show(
+            PipelinePhase.Listening, engine = TranscriptionEngineKind.WhisperKit, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(),
+            coveringForCloud = true, coveredEngine = TranscriptionEngineKind.HomeServer, coverReason = EngineUnavailability.Kind.HomeServerUnreachable,
+        )
+        assertEquals("Can’t reach the home computer, carrying on with the phone’s own · Tap to pause", status().detail)
+
+        CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), pausedForSpeech = true)
+        assertEquals("The phone is talking", status().title)
+        assertEquals(PhasePresentation.Action.StopSpeaking, status().action)
+        CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList())
+        assertEquals(PhasePresentation.Action.Resume, status().action)
+
+        val downloading = PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.5))
+        CaptionState.show(downloading, engine = TranscriptionEngineKind.WhisperKit, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), downloadSecondsRemaining = 300.0)
+        assertTrue(status().detail?.startsWith("About 5 minutes left") == true, "${status().detail}")
+
+        val unreachable = PipelinePhase.Failed(
+            PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "")),
+        )
+        CaptionState.show(unreachable, engine = TranscriptionEngineKind.HomeServer, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), offerBackup = true)
+        assertEquals(PhasePresentation.Action.OpenBackupSettings, status().action)
+        CaptionState.show(unreachable, engine = TranscriptionEngineKind.HomeServer, interruptedBySystem = false, scheduledRetry = null, segments = emptyList())
+        assertFalse(status().action == PhasePresentation.Action.OpenBackupSettings)
+        CaptionState.clear()
+    }
 
     @Test
     fun `the pipeline's lines show in order, the committed ones as final`() {

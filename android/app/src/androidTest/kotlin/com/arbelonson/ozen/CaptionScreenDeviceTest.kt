@@ -1440,6 +1440,26 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun whileThePhoneTalksTheStatusSaysSoAndATapStopsItInsteadOfOpeningTheMicrophone() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        compose.runOnUiThread { if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop() }
+        compose.waitUntil(10_000) { app.captions.pipeline.phase == PipelinePhase.Idle }
+        try {
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), pausedForSpeech = true)
+            }
+            compose.onNodeWithText("The phone is talking").performClick()
+            Thread.sleep(2_000)
+            assertEquals(PipelinePhase.Idle, app.captions.pipeline.phase)
+        } finally {
+            compose.runOnUiThread {
+                if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop()
+                CaptionState.clear()
+            }
+        }
+    }
+
+    @Test
     fun anImportantWordSaidWhileTheAppIsAwayBecomesAPhoneNotificationOnlyThen() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val instrumentation = InstrumentationRegistry.getInstrumentation()
