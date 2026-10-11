@@ -89,4 +89,27 @@ class SettingsScreenDeviceTest {
         assertEquals("device-test-code", app.homeServerCode.read())
         assertEquals(TranscriptionEngineKind.HomeServer, app.settings.current.value.engine)
     }
+
+    @Test
+    fun aKeyTypedButNeverSavedIsKeptWhenSettingsClose() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Cloud transcription").performClick()
+        compose.onNodeWithText("Deepgram").performScrollTo().performClick()
+        compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-kept-on-close")
+        compose.onNodeWithText("Close").performScrollTo().performClick()
+        compose.onNodeWithText("Close").assertDoesNotExist()
+        assertEquals("dg-kept-on-close", app.cloudKeys.read(CloudProvider.Deepgram))
+    }
+
+    @Test
+    fun anAddressAndCodeTypedButNeverSavedAreKeptWhenBackLeavesSettings() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onAllNodesWithText("Home computer").onFirst().performClick()
+        compose.onNodeWithText("Computer address").performScrollTo().performTextInput("ws://192.168.1.21:8765")
+        compose.onNodeWithText("The pairing code from the computer").performScrollTo().performTextInput("code-kept-on-back")
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.onNodeWithText("Close").assertDoesNotExist()
+        assertEquals("ws://192.168.1.21:8765", app.settings.current.value.homeServerAddress)
+        assertEquals("code-kept-on-back", app.homeServerCode.read())
+    }
 }

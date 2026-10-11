@@ -25,6 +25,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,7 +49,16 @@ import com.arbelonson.ozen.core.tr
 @Composable
 fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onClose: () -> Unit) {
     val current by settings.current.collectAsStateWithLifecycle()
-    BackHandler(onBack = onClose)
+    val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
+    val addressDraft = rememberSaveable(current.homeServerAddress) { mutableStateOf(current.homeServerAddress) }
+    val codeDraft = rememberSaveable { mutableStateOf("") }
+    // As on the iPhone, what was typed but never saved with Done or its
+    // button is kept as Settings closes instead of silently dropped.
+    val close = {
+        engineSettings.saveUnsavedEntries(cloudKeyDraft.value, addressDraft.value, codeDraft.value)
+        onClose()
+    }
+    BackHandler(onBack = close)
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
@@ -60,11 +70,11 @@ fun SettingsScreen(engineSettings: EngineSettings, settings: SettingsHolder, onC
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(tr("הגדרות", "Settings"), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-                TextButton(onClick = onClose) { Text(tr("סגירה", "Close")) }
+                TextButton(onClick = close) { Text(tr("סגירה", "Close")) }
             }
             EngineSection(engineSettings, current)
-            if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current)
-            if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current)
+            if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
+            if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
         }
     }
 }
@@ -96,10 +106,10 @@ private fun engineSummary(kind: TranscriptionEngineKind): String? = when (kind) 
 }
 
 @Composable
-private fun CloudSection(engineSettings: EngineSettings, current: AppSettings) {
+private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, keyDraft: MutableState<String>) {
     val service = current.cloudProvider
     var hasKey by remember(service) { mutableStateOf(engineSettings.hasCloudKey()) }
-    var draft by rememberSaveable(service) { mutableStateOf("") }
+    var draft by keyDraft
     var saveFailed by remember(service) { mutableStateOf(false) }
     var confirmingDelete by remember { mutableStateOf(false) }
     val save = {
@@ -176,11 +186,16 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings) {
 // model and the speed slider, none of which Android has yet, so there is
 // none here.
 @Composable
-private fun HomeComputerSection(engineSettings: EngineSettings, current: AppSettings) {
+private fun HomeComputerSection(
+    engineSettings: EngineSettings,
+    current: AppSettings,
+    addressDraft: MutableState<String>,
+    codeDraft: MutableState<String>,
+) {
     val saved = current.homeServerAddress
-    var address by rememberSaveable(saved) { mutableStateOf(saved) }
+    var address by addressDraft
     var hasCode by remember { mutableStateOf(engineSettings.hasPairingCode()) }
-    var code by rememberSaveable { mutableStateOf("") }
+    var code by codeDraft
     var codeSaveFailed by remember { mutableStateOf(false) }
     val saveAddress = { engineSettings.saveHomeComputerAddress(address) }
     val saveCode = {

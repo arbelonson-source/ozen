@@ -137,6 +137,29 @@ class EngineSettingsTest {
     }
 
     @Test
+    fun `closing settings keeps a typed key, a working address and a code that were never saved, as the iphone does`() {
+        engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        engineSettings.saveUnsavedEntries(cloudKeyDraft = " dg-typed ", addressDraft = " ws://192.168.1.20:8765 ", pairingCodeDraft = " code-typed ")
+        assertEquals("dg-typed", keys.read(CloudProvider.Deepgram))
+        assertEquals("ws://192.168.1.20:8765", saved().homeServerAddress)
+        assertEquals("code-typed", codes.read())
+    }
+
+    @Test
+    fun `closing settings drops an address that could not connect and changes nothing for entries left as they were`() {
+        engineSettings.chooseEngine(TranscriptionEngineKind.HomeServer)
+        engineSettings.saveHomeComputerAddress("ws://192.168.1.20:8765")
+        restarts = 0
+        engineSettings.saveUnsavedEntries(cloudKeyDraft = "  ", addressDraft = "ws://pc.example.net", pairingCodeDraft = "")
+        engineSettings.saveUnsavedEntries(cloudKeyDraft = "", addressDraft = "ws://bad host", pairingCodeDraft = " ")
+        engineSettings.saveUnsavedEntries(cloudKeyDraft = "", addressDraft = " ws://192.168.1.20:8765 ", pairingCodeDraft = "")
+        assertEquals("ws://192.168.1.20:8765", saved().homeServerAddress)
+        assertNull(codes.read())
+        assertNull(keys.read(CloudProvider.Soniox))
+        assertEquals(0, restarts)
+    }
+
+    @Test
     fun `a pairing code the phone could not seal is reported and does not restart captions`() {
         val failing = EngineSettings(settings, keys, HomeServerCodeStore(File(folder, "home-server-code"), ReversingCipher(failsToSeal = true))) { restarts += 1 }
         failing.chooseEngine(TranscriptionEngineKind.HomeServer)

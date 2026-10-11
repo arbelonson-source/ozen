@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.CloudProvider
+import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 
 class EngineSettings(
@@ -60,5 +61,11 @@ class EngineSettings(
         if (code.isEmpty() || !homeServerCode.save(code)) return false
         if (homeComputerIsTheEngine) restartIfRunning()
         return true
+    }
+
+    fun saveUnsavedEntries(cloudKeyDraft: String, addressDraft: String, pairingCodeDraft: String) {
+        HomeServer.unsavedAddress(addressDraft, settings.current.value.homeServerAddress)?.let { saveHomeComputerAddress(it) }
+        savePairingCode(pairingCodeDraft)
+        saveCloudKey(cloudKeyDraft)
     }
 }
