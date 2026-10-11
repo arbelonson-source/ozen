@@ -3,11 +3,13 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ControlBarAutoHide
+import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ScheduledRetry
 import com.arbelonson.ozen.core.ScreenAwakePolicy
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.tr
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,6 +53,15 @@ data class CaptionScreenState(
             now = now,
         )
 }
+
+fun linesSince(lines: List<CaptionLine>, lastSeen: UUID?): Int {
+    val seen = lines.indexOfLast { it.id == lastSeen }
+    return if (seen < 0) lines.size else lines.lastIndex - seen
+}
+
+fun jumpToLatestTitle(newLines: Int): String =
+    if (newLines > 0) ConversationStats.linesText(newLines, adjective = "חדשה" to "חדשות", englishAdjective = "new")
+    else tr("לשורה האחרונה", "To the last line")
 
 object CaptionState {
     private val state = MutableStateFlow(CaptionScreenState())

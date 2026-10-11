@@ -8,6 +8,10 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.isDisplayed
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -157,6 +161,55 @@ class CaptionScreenDeviceTest {
             app.settings.change { it.display = before }
         }
     }
+
+    @Test
+    fun scrollingBackToRereadKeepsThePlaceAndAButtonLeadsBackToTheNewestLine() {
+        val lines = (1..30).map { committed("Line $it here") }
+        showLines(lines)
+        assertTrue(displayed("Line 30 here"))
+        repeat(3) { compose.onNode(hasScrollAction()).performTouchInput { swipeDown() } }
+        compose.waitForIdle()
+        assertFalse(displayed("Line 30 here"))
+
+        showLines(lines + (31..32).map { committed("Line $it here") })
+        assertFalse(displayed("Line 32 here"))
+        compose.onNodeWithText("2 new lines").performClick()
+        compose.waitForIdle()
+        assertTrue(displayed("Line 32 here"))
+        compose.onNodeWithText("2 new lines").assertDoesNotExist()
+    }
+
+    @Test
+    fun aLineTallerThanTheScreenIsFollowedToItsNewestWords() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.display
+        try {
+            app.settings.change { it.display = it.display.copy(fontSize = DisplayPreferences.maximumFontSize) }
+            showLines(listOf(committed((1..150).joinToString(" ") { "word$it" } + " lastword")))
+            val line = compose.onNodeWithText("lastword", substring = true).fetchSemanticsNode()
+            val screen = compose.onNode(hasScrollAction()).fetchSemanticsNode().boundsInRoot
+            val lineTop = line.positionInRoot.y
+            val lineBottom = lineTop + line.size.height
+            assertTrue("line $lineTop..$lineBottom, screen $screen", line.size.height > screen.height)
+            assertEquals(screen.bottom, lineBottom, 2f)
+        } finally {
+            app.settings.change { it.display = before }
+        }
+    }
+
+    private fun committed(text: String) =
+        TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+
+    private fun showLines(lines: List<TranscriptSegment>) {
+        compose.runOnUiThread {
+            CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines)
+        }
+        compose.waitForIdle()
+    }
+
+    private fun displayed(text: String) =
+        compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty() &&
+            compose.onNodeWithText(text, substring = true).isDisplayed()
 
     private fun showUnsure(text: String, doubtful: List<String>) {
         val line = TranscriptSegment(

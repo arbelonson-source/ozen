@@ -1,9 +1,11 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.CaptionLayout
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.UILanguage
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -148,6 +150,24 @@ class CaptionStateTest {
         }
         assertTrue(unsureWith("ozen-turbo-hebrew-a3-8bit"))
         assertFalse(unsureWith("ivrit-large-v3-turbo-8bit"))
+    }
+
+    @Test
+    fun `the way back to the newest line says how many came since`() = Localization.withLanguage(UILanguage.English) {
+        assertEquals("To the last line", jumpToLatestTitle(0))
+        assertEquals("1 new line", jumpToLatestTitle(1))
+        assertEquals("4 new lines", jumpToLatestTitle(4))
+    }
+
+    @Test
+    fun `new lines are counted from the newest one on screen when she scrolled back, even past the two hundred kept`() {
+        val segments = (1..200).map { line("line $it", committed = true) }
+        show(PipelinePhase.Listening, segments)
+        val newestThen = CaptionState.screen.value.lines.last().id
+        assertEquals(0, linesSince(CaptionState.screen.value.lines, newestThen))
+        show(PipelinePhase.Listening, segments + (201..203).map { line("line $it", committed = true) })
+        assertEquals(3, linesSince(CaptionState.screen.value.lines, newestThen))
+        assertEquals(200, linesSince(CaptionState.screen.value.lines, UUID.randomUUID()))
     }
 
     @Test

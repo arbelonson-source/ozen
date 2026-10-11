@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -36,6 +37,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,6 +57,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,6 +70,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -92,6 +98,7 @@ import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.UncertainWords
 import com.arbelonson.ozen.core.tr
 import java.text.Bidi
+import java.util.UUID
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -275,6 +282,23 @@ private fun CaptionScreen(
     onHistory: () -> Unit,
 ) {
     val list = rememberLazyListState()
+    var following by remember { mutableStateOf(true) }
+    var lastWhenLeft by remember { mutableStateOf<UUID?>(null) }
+    val newest by rememberUpdatedState(state.lines.lastOrNull()?.id)
+    // Only her own scrolling passes through here, not the screen following
+    // the newest line, so a line growing past the bottom for a moment
+    // doesn't stop the following, as it once did on the iPhone.
+    val rereading = remember(list) {
+        object : NestedScrollConnection {
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                val atEnd = !list.canScrollForward
+                if (following && !atEnd) lastWhenLeft = newest
+                following = atEnd
+                return Offset.Zero
+            }
+        }
+    }
+    LaunchedEffect(state.lines.isEmpty()) { if (state.lines.isEmpty()) following = true }
     var lastTouchAt by remember { mutableDoubleStateOf(secondsNow()) }
     var clock by remember { mutableDoubleStateOf(secondsNow()) }
     val listening = state.phase.isListening
@@ -286,7 +310,7 @@ private fun CaptionScreen(
     }
     val hidden = state.hidesButtons(
         autoHide = display.autoHideControls,
-        followingLatest = !list.canScrollForward,
+        followingLatest = following,
         screenReaderOn = screenReaderOn(),
         lastTouchAt = lastTouchAt,
         now = clock,
@@ -315,7 +339,12 @@ private fun CaptionScreen(
                     textAlign = TextAlign.Center,
                 )
             } else {
-                CaptionLines(state.lines, display, look, list)
+                CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading))
+                if (!following) {
+                    JumpToLatest(jumpToLatestTitle(linesSince(state.lines, lastWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
+                        following = true
+                    }
+                }
             }
         }
         AnimatedVisibility(visible = !hidden) {
@@ -379,10 +408,47 @@ private fun ShowButtonsButton(chrome: Color, onTap: () -> Unit) {
 }
 
 @Composable
-private fun CaptionLines(lines: List<CaptionLine>, display: DisplayPreferences, look: CaptionTheme, list: LazyListState) {
-    LaunchedEffect(lines.size, lines.lastOrNull()?.text) { list.scrollToItem(lines.size - 1) }
-    LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+private fun CaptionLines(
+    lines: List<CaptionLine>,
+    display: DisplayPreferences,
+    look: CaptionTheme,
+    list: LazyListState,
+    following: Boolean,
+    modifier: Modifier,
+) {
+    LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize) {
+        if (following) list.scrollToEnd(lines.lastIndex)
+    }
+    LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(lines, key = { it.id }) { line -> CaptionLineRow(line, display, look) }
+    }
+}
+
+/**
+ * To the bottom of the newest line, not its top: a long line at a large
+ * size can be taller than the screen, and its newest words come last.
+ */
+private suspend fun LazyListState.scrollToEnd(lastIndex: Int) {
+    scrollToItem(lastIndex)
+    val last = layoutInfo.visibleItemsInfo.lastOrNull() ?: return
+    val hidden = last.offset + last.size - layoutInfo.viewportEndOffset
+    if (hidden > 0) scrollBy(hidden.toFloat())
+}
+
+@Composable
+private fun JumpToLatest(title: String, look: CaptionTheme, modifier: Modifier, onTap: () -> Unit) {
+    Row(
+        modifier = modifier
+            .padding(bottom = 8.dp)
+            .heightIn(min = 48.dp)
+            .background(look.background.copy(alpha = 0.9f), RoundedCornerShape(24.dp))
+            .border(width = 1.dp, color = look.chrome.copy(alpha = 0.5f), shape = RoundedCornerShape(24.dp))
+            .clickable(onClickLabel = tr("מעבר לשורה האחרונה", "Jump to the last line"), role = Role.Button, onClick = onTap)
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = "↓", color = look.chrome, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clearAndSetSemantics {})
+        Text(text = title, color = look.chrome, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 10.dp))
     }
 }
 
