@@ -1428,6 +1428,29 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun settingsExplainsTheDisplayTheAlertsAndTheHomeComputerAsTheIPhoneDoesLessWhatAndroidCannotDo() {
+        val languageBefore = app.settings.current.value.spokenLanguage
+        val backupSentence = "once the backup above has been downloaded"
+        try {
+            app.settings.change {
+                it.engine = TranscriptionEngineKind.HomeServer
+                it.spokenLanguage = UILanguage.Hebrew
+            }
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("A question mark next to a line means it may not have been heard correctly.", substring = true).performScrollTo()
+            compose.onNodeWithText("plus a notification if captions stopped and didn’t come back on their own.", substring = true).performScrollTo()
+            compose.onNodeWithText("The code is saved only on the phone.", substring = true).performScrollTo()
+            compose.onNodeWithText(backupSentence, substring = true).assertDoesNotExist()
+            for (iPhoneOnly in listOf("QR code", "VoiceOver", "LED Flash")) compose.onNodeWithText(iPhoneOnly, substring = true).assertDoesNotExist()
+
+            app.settings.change { it.spokenLanguage = UILanguage.English }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(backupSentence, substring = true).fetchSemanticsNodes().isNotEmpty() }
+        } finally {
+            app.settings.change { it.spokenLanguage = languageBefore }
+        }
+    }
+
+    @Test
     fun theStatusOfferingTheBackupOpensSettingsAtTheBackupAndTheSettingsButtonAtTheTop() {
         val english = File(app.filesDir, WhisperModelCatalog.phoneModelFile(UILanguage.English))
         assumeFalse("the English model is already on this phone", english.exists())
