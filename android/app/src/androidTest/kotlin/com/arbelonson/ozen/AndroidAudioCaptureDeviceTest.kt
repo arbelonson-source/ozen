@@ -1,10 +1,13 @@
 package com.arbelonson.ozen
 
 import android.Manifest
+import android.media.AudioManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AudioPermission
 import com.arbelonson.ozen.core.AudioPortType
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -52,5 +55,24 @@ class AndroidAudioCaptureDeviceTest {
         withTimeout(10_000) { recording.await() }
         capture.stopCapture()
         withTimeout(3_000) { heard.await() }
+    }
+
+    @Test
+    fun aCallThatEndsAfterTheRecordingStoppedIsStillToldEnded() {
+        val capture = AndroidAudioCapture(context)
+        val told = CopyOnWriteArrayList<Boolean>()
+        val mode = AtomicInteger(AudioManager.MODE_IN_CALL)
+        instrumentation.runOnMainSync {
+            capture.onInterruption = { told += it }
+            capture.audioMode = { mode.get() }
+            capture.silencedChanged(true)
+            capture.stopCapture()
+        }
+        Thread.sleep(AndroidAudioCapture.CALL_CHECK_MS * 3)
+        assertEquals("told while the call is still on", listOf(true), told.toList())
+        mode.set(AudioManager.MODE_NORMAL)
+        val deadline = System.currentTimeMillis() + AndroidAudioCapture.CALL_CHECK_MS * 5
+        while (told.size < 2 && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        assertEquals(listOf(true, false), told.toList())
     }
 }

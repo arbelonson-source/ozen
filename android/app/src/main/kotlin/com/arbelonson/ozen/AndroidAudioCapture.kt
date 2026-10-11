@@ -58,9 +58,24 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     private var devices: Map<String, AudioDeviceInfo> = emptyMap()
     private var listening = false
 
-    // Not reset when a recording starts: a call that ended while nothing
-    // was recording is only noticed when the next recording is heard.
+    // Not reset when a recording starts: the new recording's first report
+    // tells whether the call is still on.
+    @Volatile
     private var silenced = false
+
+    /** The phone's audio mode, read to tell a call's end with nothing recording; a seam for tests. */
+    internal var audioMode: () -> Int = { manager.mode }
+
+    // With no recording the silencing can't be heard to lift, so the call's
+    // end is told by the phone leaving call mode, as the iPhone tells it
+    // whether or not it is recording: captions that failed or were stopped
+    // during the call aren't left waiting on it.
+    private val callEndCheck = object : Runnable {
+        override fun run() {
+            if (record != null || !silenced) return
+            if (audioMode() == AudioManager.MODE_NORMAL) silencedChanged(false) else main.postDelayed(this, CALL_CHECK_MS)
+        }
+    }
 
     @Volatile
     private var record: AudioRecord? = null
@@ -80,11 +95,14 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
             val session = record?.audioSessionId ?: return
             val ours = configs.firstOrNull { it.clientAudioSessionId == session } ?: return
-            if (ours.isClientSilenced != silenced) {
-                silenced = ours.isClientSilenced
-                onInterruption?.invoke(silenced)
-            }
+            silencedChanged(ours.isClientSilenced)
         }
+    }
+
+    internal fun silencedChanged(now: Boolean) {
+        if (now == silenced) return
+        silenced = now
+        onInterruption?.invoke(now)
     }
 
     override suspend fun requestPermission(): AudioPermission =
@@ -164,6 +182,10 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
         worker = null
         if (current != null && current != Thread.currentThread()) current.join(1_000)
         record = null
+        if (silenced) {
+            main.removeCallbacks(callEndCheck)
+            main.postDelayed(callEndCheck, CALL_CHECK_MS)
+        }
     }
 
     override fun selectInput(uid: String) {
@@ -204,6 +226,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     companion object {
         const val RATE = 16_000
         const val CHUNK = 1_600
+        internal const val CALL_CHECK_MS = 1_000L
 
         /** Inputs a person speaks into; tuners, call audio and loopbacks are left out. */
         fun portType(type: Int): AudioPortType? = when (type) {
