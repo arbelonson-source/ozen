@@ -310,6 +310,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
 
         let livePass = liveOptions(languageCode: languageCode)
         let finalPass = finalOptions(languageCode: languageCode)
+        let speechFilter = filter.forSpeech(in: languageCode)
         let pauseSamples = Int(pauseSeconds * sampleRate)
         let padSamples = Int(trailingPadSeconds * sampleRate)
         let keepSamples = Int(leadingKeepSeconds * sampleRate)
@@ -474,16 +475,16 @@ public actor WhisperKitEngine: TranscriptionEngine {
             // A thank-you alone in a moment of voice is most likely
             // household noise (see `WhisperResultFilter.isUnvoicedPhrase`).
             // When captions stop, the last chunk may not be scored yet.
-            let dropped = ranOut || filter.isUnvoicedPhrase(
-                filter.acceptedText(from: summaries, echo: echoDetector),
+            let dropped = ranOut || speechFilter.isUnvoicedPhrase(
+                speechFilter.acceptedText(from: summaries, echo: echoDetector),
                 voicedChunks: status.finished ? nil : intake.voicedChunks(upTo: end)
             )
             // Confidence has to describe exactly the text being shown, not
             // the whole pass -- a rejected hallucination segment can have a
             // confident logprob of its own and skew the mean either way for
             // content that never reaches the screen.
-            let acceptedSegments = dropped ? [] : filter.accepted(from: summaries, echo: echoDetector)
-            let text = dropped ? "" : filter.acceptedText(from: summaries, echo: echoDetector)
+            let acceptedSegments = dropped ? [] : speechFilter.accepted(from: summaries, echo: echoDetector)
+            let text = dropped ? "" : speechFilter.acceptedText(from: summaries, echo: echoDetector)
             let confidence = CaptionConfidence.whisperConfidence(of: acceptedSegments)
             tally.recordSegments(seen: summaries.count, accepted: acceptedSegments.count)
             if isFinal { tally.recordFinalPass(cameBackEmpty: text.isEmpty) }

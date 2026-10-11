@@ -269,7 +269,7 @@ class HomeServerEngine(
         // doesn't notice cancellation: without the close the connection
         // (and the receive loop) would stay open for as long as the server did.
         val stopping = AtomicBoolean(false)
-        val receiver = workers.async { receive(socket, run, tokens, stopping) }
+        val receiver = workers.async { receive(socket, run, tokens, stopping, filter.forSpeech(languageCode)) }
         try {
             receiver.await()
         } catch (error: CancellationException) {
@@ -282,7 +282,7 @@ class HomeServerEngine(
         }
     }
 
-    private suspend fun receive(socket: HomeServerSocket, run: UUID, tokens: SendChannel<TranscriptToken>, stopping: AtomicBoolean) {
+    private suspend fun receive(socket: HomeServerSocket, run: UUID, tokens: SendChannel<TranscriptToken>, stopping: AtomicBoolean, speechFilter: WhisperResultFilter) {
         val ids = HashMap<Long, UUID>()
         val shown = HashMap<Long, String>()
         // A frame for a line that already got its final would otherwise
@@ -354,7 +354,7 @@ class HomeServerEngine(
             // model barely heard. A server that sends no segments gets its
             // whole text checked as one, without Whisper's numbers.
             val echo = synchronized(lock) { echo }
-            val text = filter.acceptedText(
+            val text = speechFilter.acceptedText(
                 message.segments ?: listOf(WhisperSegmentSummary(message.text, 0f, 0f, 1f)),
                 echo,
             )

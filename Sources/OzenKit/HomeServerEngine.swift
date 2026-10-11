@@ -224,7 +224,7 @@ public actor HomeServerEngine: TranscriptionEngine {
         // doesn't notice cancellation: without the close the connection
         // (and this loop) would stay open for as long as the server did.
         await withTaskCancellationHandler {
-            await receive(from: socket, run: run, continuation: continuation)
+            await receive(from: socket, run: run, filter: filter.forSpeech(in: languageCode), continuation: continuation)
         } onCancel: {
             Task { await socket.close() }
         }
@@ -233,6 +233,7 @@ public actor HomeServerEngine: TranscriptionEngine {
     private func receive(
         from socket: any HomeServerSocket,
         run: UUID,
+        filter: WhisperResultFilter,
         continuation: AsyncThrowingStream<TranscriptToken, Error>.Continuation
     ) async {
         var ids: [Int: UUID] = [:]

@@ -295,6 +295,32 @@ class WhisperResultFilter(
     fun accepted(segments: List<WhisperSegmentSummary>, echo: PromptEchoDetector? = null): List<WhisperSegmentSummary> =
         segments.filter { accepts(it) && !(echo?.isEcho(stripSpecialTokens(it.text)) ?: false) }
 
+    /**
+     * The filter for speech in [languageCode]. In English a lone "you" is a
+     * real answer as often as it is Whisper's filler for silence, so there it
+     * only goes when the model was also unsure, like "thank you"; in any
+     * other language it can only be the filler.
+     */
+    fun forSpeech(languageCode: String): WhisperResultFilter {
+        val you = normalize("you")
+        if (UILanguage.match(languageCode) != UILanguage.English || you !in knownHallucinations) return this
+        val english = WhisperResultFilter(
+            noSpeechThreshold = noSpeechThreshold,
+            logprobThreshold = logprobThreshold,
+            compressionRatioThreshold = compressionRatioThreshold,
+            knownHallucinations = knownHallucinations - you,
+            ambiguousHallucinations = ambiguousHallucinations + you,
+            ambiguousNoSpeechThreshold = ambiguousNoSpeechThreshold,
+            ambiguousLogprobThreshold = ambiguousLogprobThreshold,
+            hallucinatedCreditPrefixes = hallucinatedCreditPrefixes,
+            hallucinatedCreditLabels = hallucinatedCreditLabels,
+            maximumCreditLineWords = maximumCreditLineWords,
+            maximumDashCreditLineWords = maximumDashCreditLineWords,
+        )
+        english.minimumPhraseVoicedChunks = minimumPhraseVoicedChunks
+        return english
+    }
+
     fun accepts(segment: WhisperSegmentSummary): Boolean {
         val text = trimmingWhisperWhitespace(stripSpecialTokens(segment.text))
         if (text.isEmpty()) return false

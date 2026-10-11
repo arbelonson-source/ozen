@@ -259,6 +259,7 @@ class OnDeviceWhisperEngine(
     ) {
         val livePass = WhisperPassOptions.live(languageCode)
         val finalPass = WhisperPassOptions.final(languageCode)
+        val speechFilter = filter.forSpeech(languageCode)
         val pauseSamples = (pauseSeconds * sampleRate).toInt()
         val padSamples = (trailingPadSeconds * sampleRate).toInt()
         val keepSamples = (leadingKeepSeconds * sampleRate).toInt()
@@ -419,16 +420,16 @@ class OnDeviceWhisperEngine(
             // A thank-you alone in a moment of voice is most likely
             // household noise (see `WhisperResultFilter.isUnvoicedPhrase`).
             // When captions stop, the last chunk may not be scored yet.
-            val dropped = ranOut || filter.isUnvoicedPhrase(
-                filter.acceptedText(summaries, echo),
+            val dropped = ranOut || speechFilter.isUnvoicedPhrase(
+                speechFilter.acceptedText(summaries, echo),
                 if (status.finished) null else intake.voicedChunks(end),
             )
             // Confidence has to describe exactly the text being shown, not
             // the whole pass -- a rejected hallucination segment can have a
             // confident logprob of its own and skew the mean either way for
             // content that never reaches the screen.
-            val acceptedSegments = if (dropped) emptyList() else filter.accepted(summaries, echo)
-            val text = if (dropped) "" else filter.acceptedText(summaries, echo)
+            val acceptedSegments = if (dropped) emptyList() else speechFilter.accepted(summaries, echo)
+            val text = if (dropped) "" else speechFilter.acceptedText(summaries, echo)
             val confidence = CaptionConfidence.whisperConfidence(acceptedSegments)
             synchronized(lock) {
                 tally.recordSegments(seen = summaries.size, accepted = acceptedSegments.size)

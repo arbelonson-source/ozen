@@ -99,4 +99,16 @@ struct SpokenLanguageTests {
         #expect(!CaptionLayout.readsRightToLeft("10:30", languageCode: "en"))
         #expect(CaptionLayout.displayText("10:30", languageCode: "en") == "10:30")
     }
+
+    @Test("in English a lone \"you\" is only dropped when the model was unsure, like \"thank you\"; in any other language it is Whisper's filler for silence")
+    func youInEnglish() {
+        let sure = WhisperSegmentSummary(text: "You.", noSpeechProb: 0.05, avgLogprob: -0.2, compressionRatio: 1)
+        let unsure = WhisperSegmentSummary(text: "You.", noSpeechProb: 0.5, avgLogprob: -0.2, compressionRatio: 1)
+        let english = WhisperResultFilter().forSpeech(in: "en")
+        #expect(english.accepts(sure))
+        #expect(!english.accepts(unsure))
+        #expect(!WhisperResultFilter().forSpeech(in: "he").accepts(sure))
+        #expect(!WhisperResultFilter().forSpeech(in: "ru").accepts(sure))
+        #expect(!english.accepts(WhisperSegmentSummary(text: "Thanks for watching!", noSpeechProb: 0.05, avgLogprob: -0.2, compressionRatio: 1)))
+    }
 }

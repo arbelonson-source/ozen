@@ -229,6 +229,20 @@ public struct WhisperResultFilter: Sendable, Equatable {
         self.knownHallucinations = Set(knownHallucinations.map(Self.normalize))
     }
 
+    /// The filter for speech in `languageCode`. In English a lone "you" is
+    /// a real answer as often as it is Whisper's filler for silence, so
+    /// there it only goes when the model was also unsure, like "thank
+    /// you"; in any other language it can only be the filler.
+    public func forSpeech(in languageCode: String) -> WhisperResultFilter {
+        guard UILanguage.match(languageTag: languageCode) == .english else { return self }
+        var filter = self
+        let you = Self.normalize("you")
+        if filter.knownHallucinations.remove(you) != nil {
+            filter.ambiguousHallucinations.insert(you)
+        }
+        return filter
+    }
+
     /// The text worth showing from one decoding pass, with junk segments
     /// dropped. Empty when nothing survives — the caller should then emit
     /// nothing rather than a blank token.

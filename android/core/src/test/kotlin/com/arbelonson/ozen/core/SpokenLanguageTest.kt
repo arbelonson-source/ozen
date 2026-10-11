@@ -93,4 +93,16 @@ class SpokenLanguageTest {
         assertEquals(listOf("Grandma", "Mom", "Medicine", "Doctor"), AlertSuggestions.offeredWords(UILanguage.English))
         assertEquals(listOf("Бабушка", "Мама"), AlertSuggestions.offeredNames(UILanguage.Russian))
     }
+
+    @Test
+    fun `in English a lone you is only dropped when the model was unsure, like thank you, and in any other language it is Whisper's filler for silence`() {
+        val sure = WhisperSegmentSummary(text = "You.", noSpeechProb = 0.05f, avgLogprob = -0.2f, compressionRatio = 1f)
+        val unsure = WhisperSegmentSummary(text = "You.", noSpeechProb = 0.5f, avgLogprob = -0.2f, compressionRatio = 1f)
+        val english = WhisperResultFilter().forSpeech("en")
+        assertTrue(english.accepts(sure))
+        assertFalse(english.accepts(unsure))
+        assertFalse(WhisperResultFilter().forSpeech("he").accepts(sure))
+        assertFalse(WhisperResultFilter().forSpeech("ru").accepts(sure))
+        assertFalse(english.accepts(WhisperSegmentSummary(text = "Thanks for watching!", noSpeechProb = 0.05f, avgLogprob = -0.2f, compressionRatio = 1f)))
+    }
 }
