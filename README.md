@@ -698,12 +698,15 @@ room, has been the recommended model since 9 October 2026; see
 
 An Android version is being built in `android/`, started on 10 October
 2026 as a full Kotlin rewrite. The portable core and the caption pipeline
-are ported (about 1,600 tests on the JVM), and whisper.cpp runs on the
+are ported (about 1,700 tests on the JVM), and whisper.cpp runs on the
 phone with the same Hebrew model as the iPhone, or with its general Turbo
 model, downloaded on first use, for the other spoken languages. The main screens work on
 an emulator (the first-launch walkthrough, captions, History, Settings,
-Diagnostics, and typing a reply for the phone to say), but there is no
-build to install yet. The plan and how far it has got are in
+Diagnostics, and typing a reply for the phone to say), with sound alerts
+recognised by Google's [YAMNet](https://github.com/tensorflow/models/tree/master/research/audioset/yamnet)
+(Apache 2.0) and speaker names from the same WeSpeaker CAM++ model as the
+iPhone, both run on the phone with LiteRT, but there is no build to
+install yet. The plan and how far it has got are in
 [docs/design/2026-10-10-android.md](docs/design/2026-10-10-android.md).
 
 ## Support Ozen
