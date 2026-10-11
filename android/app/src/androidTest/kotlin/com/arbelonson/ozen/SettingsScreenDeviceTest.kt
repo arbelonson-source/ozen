@@ -846,6 +846,35 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun settingsShowsTheWalkthroughAgainOnceSheConfirmsWithCaptionsStoppedUntilItEnds() {
+        try {
+            compose.runOnUiThread { app.captions.listen() }
+            compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Show the initial walkthrough again").performScrollTo().performClick()
+            compose.onNodeWithText("Captions stop until the walkthrough ends.").assertExists()
+            compose.onNodeWithText("Cancel").performClick()
+            assertTrue(app.settings.current.value.hasCompletedOnboarding)
+            assertNotEquals(PipelinePhase.Idle, app.captions.pipeline.phase)
+
+            compose.onNodeWithText("Show the initial walkthrough again").performScrollTo().performClick()
+            compose.onNodeWithText("Show it").performClick()
+            compose.waitUntil(5_000) { !app.settings.current.value.hasCompletedOnboarding }
+            compose.waitUntil(10_000) { app.captions.pipeline.phase == PipelinePhase.Idle }
+            compose.onNodeWithText("Live captions for conversation.").assertExists()
+            compose.onNodeWithText("Skip").performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
+            compose.onNodeWithText("History").assertExists()
+        } finally {
+            compose.runOnUiThread {
+                if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop()
+                app.captions.launchHandled = true
+            }
+            app.settings.change { it.hasCompletedOnboarding = true }
+        }
+    }
+
+    @Test
     fun settingsAndDiagnosticsStayOpenWhenThePhoneRebuildsTheScreen() {
         compose.onNodeWithText("Settings").performClick()
         compose.onNodeWithText("Diagnostics").performScrollTo().assertExists()

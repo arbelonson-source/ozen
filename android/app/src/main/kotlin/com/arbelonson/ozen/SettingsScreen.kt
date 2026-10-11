@@ -106,6 +106,7 @@ fun SettingsScreen(
     diagnostics: DiagnosticsSource,
     heard: List<KeywordHit> = emptyList(),
     onAppLanguage: (AppLanguage) -> Unit = {},
+    onShowWalkthrough: () -> Unit = {},
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
@@ -161,6 +162,7 @@ fun SettingsScreen(
             if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft)
             WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
             DiagnosticsRow(onOpen = { showingDiagnostics = true })
+            WalkthroughAgainRow(onShowWalkthrough)
         }
     }
 }
@@ -829,6 +831,32 @@ private fun DiagnosticsRow(onOpen: () -> Unit) {
         style = MaterialTheme.typography.bodyLarge,
         modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clickable(onClick = onOpen).padding(vertical = 12.dp),
     )
+}
+
+@Composable
+private fun WalkthroughAgainRow(onShow: () -> Unit) {
+    var asking by remember { mutableStateOf(false) }
+    Text(
+        tr("להציג שוב את ההסבר הראשוני", "Show the initial walkthrough again"),
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.fillMaxWidth().clickable { asking = true }.padding(vertical = 12.dp),
+    )
+    if (asking) {
+        AlertDialog(
+            onDismissRequest = { asking = false },
+            title = { Text(tr("להציג שוב את ההסבר הראשוני?", "Show the initial walkthrough again?")) },
+            text = { Text(tr("הכתוביות ייעצרו עד סוף ההסבר.", "Captions stop until the walkthrough ends.")) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        asking = false
+                        onShow()
+                    },
+                ) { Text(tr("להציג", "Show it")) }
+            },
+            dismissButton = { TextButton(onClick = { asking = false }) { Text(tr("ביטול", "Cancel")) } },
+        )
+    }
 }
 
 @Composable

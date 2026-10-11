@@ -252,6 +252,21 @@ class CaptionSession(
         pipeline.pause()
     }
 
+    /**
+     * Settings' "Show the initial walkthrough again", as on the iPhone:
+     * captions stop (the conversation so far is kept) rather than keep the
+     * microphone open behind a screen that isn't showing them, and the
+     * walkthrough's end starts them again, as on the first run.
+     */
+    fun showWalkthroughAgain() {
+        if (pipeline.phase != PipelinePhase.Idle) {
+            replies.userTookControl()
+            pipeline.stop()
+        }
+        settings.change { it.hasCompletedOnboarding = false }
+        launchHandled = false
+    }
+
     val isSpeaking: Boolean get() = replies.isSpeaking
 
     fun canAskToRepeat() = replies.canSay(SpokenReplies.REPEAT_REQUEST)
