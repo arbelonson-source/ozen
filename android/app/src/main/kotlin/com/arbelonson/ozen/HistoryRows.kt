@@ -83,6 +83,12 @@ object HistoryTexts {
         else -> ConversationStats.oldConversationsDeletedText(count)
     }
 
+    fun emptyMessage(query: String, saving: Boolean): String = when {
+        query.isNotBlank() -> tr("לא נמצא כלום עבור \"%1\".", "Nothing found for “%1”.", listOf(query.trim()))
+        saving -> tr("עדיין אין שיחות שמורות.", "No saved conversations yet.")
+        else -> tr("שמירת שיחות כבויה.", "Saving conversations is off.")
+    }
+
     fun name(retention: HistoryRetention): String = when (retention) {
         HistoryRetention.Forever -> tr("אף פעם", "Never")
         HistoryRetention.Year -> tr("אחרי שנה", "After a year")

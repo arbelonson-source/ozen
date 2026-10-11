@@ -62,6 +62,8 @@ class CaptionSession(
     val savedConversations = object : SavedConversations {
         override fun list() = historyStore.listSummaries()
 
+        override fun search(query: String) = historyStore.search(query)
+
         override fun load(id: UUID) = historyStore.load(id)
 
         override fun sizeOnDisk() = historyStore.totalSizeOnDisk()

@@ -77,6 +77,13 @@ class HistoryRowsTest {
     }
 
     @Test
+    fun `an empty list says whether nothing matched the search, nothing is saved yet, or saving is off`() = Localization.withLanguage(UILanguage.English) {
+        assertEquals("Nothing found for “dentist”.", HistoryTexts.emptyMessage(query = "dentist", saving = true))
+        assertEquals("No saved conversations yet.", HistoryTexts.emptyMessage(query = "  ", saving = true))
+        assertEquals("Saving conversations is off.", HistoryTexts.emptyMessage(query = "", saving = false))
+    }
+
+    @Test
     fun `a named conversation keeps its name`() = Localization.withLanguage(UILanguage.English) {
         assertEquals("Doctor's visit", ConversationRow.of(summary(title = "Doctor's visit"), jerusalem).title)
     }

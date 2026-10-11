@@ -21,6 +21,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -64,6 +65,9 @@ import kotlinx.coroutines.withContext
 interface SavedConversations {
     fun list(): List<TranscriptSessionSummary>
 
+    /** The conversations where every word of [query] was said, each previewed by the line that matched. */
+    fun search(query: String): List<TranscriptSessionSummary>
+
     fun load(id: UUID): TranscriptSessionRecord?
 
     fun sizeOnDisk(): Long
@@ -83,7 +87,10 @@ interface SavedConversations {
     fun isCurrent(id: UUID): Boolean
 }
 
-/** Past conversations by day, as on the iPhone: open one to read it back, or delete it. Everything stays on the phone. */
+/**
+ * Past conversations by day, as on the iPhone: search what was said, open one
+ * to read it back, or delete it. Everything stays on the phone.
+ */
 @Composable
 fun HistoryScreen(conversations: SavedConversations, saving: Boolean, retention: HistoryRetention, onClose: () -> Unit) {
     var openID by rememberSaveable { mutableStateOf<String?>(null) }
@@ -95,9 +102,14 @@ fun HistoryScreen(conversations: SavedConversations, saving: Boolean, retention:
     BackHandler(onBack = onClose)
     var reloads by remember { mutableIntStateOf(0) }
     var loaded by remember { mutableStateOf<HistoryList?>(null) }
-    LaunchedEffect(reloads) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val searching = query.isNotBlank()
+    // Every search reads every saved conversation, so it waits for a pause
+    // in typing and runs off the main thread; a newer search cancels this one.
+    LaunchedEffect(reloads, query) {
+        if (searching) delay(250)
         loaded = withContext(Dispatchers.IO) {
-            val summaries = conversations.list()
+            val summaries = if (searching) conversations.search(query) else conversations.list()
             HistoryList(
                 summaries = summaries,
                 days = HistoryDays.grouped(summaries, now = System.currentTimeMillis() / 1_000.0, utcOffsetSeconds = ::localOffset),
@@ -120,7 +132,10 @@ fun HistoryScreen(conversations: SavedConversations, saving: Boolean, retention:
             CircularProgressIndicator(modifier = Modifier.padding(24.dp))
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                item(key = "saving") {
+                item(key = "search") {
+                    SearchField(query, onChange = { query = it })
+                }
+                if (!searching) item(key = "saving") {
                     SavingSection(
                         saving = saving,
                         retention = retention,
@@ -137,7 +152,7 @@ fun HistoryScreen(conversations: SavedConversations, saving: Boolean, retention:
                         Column {
                             Heading(tr("שיחות", "Conversations"))
                             Text(
-                                if (saving) tr("עדיין אין שיחות שמורות.", "No saved conversations yet.") else tr("שמירת שיחות כבויה.", "Saving conversations is off."),
+                                HistoryTexts.emptyMessage(query, saving),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -172,6 +187,20 @@ fun HistoryScreen(conversations: SavedConversations, saving: Boolean, retention:
 }
 
 private class HistoryList(val summaries: List<TranscriptSessionSummary>, val days: List<HistoryDay>, val size: String)
+
+@Composable
+private fun SearchField(query: String, onChange: (String) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onChange,
+            placeholder = { Text(tr("חיפוש במה שנאמר", "Search what was said")) },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        if (query.isNotEmpty()) TextButton(onClick = { onChange("") }) { Text(tr("ניקוי", "Clear")) }
+    }
+}
 
 /** Right above the list, as on the iPhone: whether to save, for how long, and where it is kept. */
 @Composable

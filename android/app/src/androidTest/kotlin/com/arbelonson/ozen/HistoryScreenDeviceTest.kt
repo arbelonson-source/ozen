@@ -4,9 +4,11 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.HistoryRetention
@@ -60,6 +62,31 @@ class HistoryScreenDeviceTest {
         store.save(record)
         seeded += record.id
         return record.id
+    }
+
+    @Test
+    fun searchingFindsTheConversationWhereTheWordsWereSaidAndShowsTheLineThatMatched() {
+        seed("Search test opening line" to null, "The dentist moved it to Thursday" to null)
+        seed("Search test other conversation" to null)
+        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText("Search test other conversation", substring = true).assertExists()
+
+        compose.onNodeWithText("Search what was said").performTextInput("dentist thursday")
+        waitFor("The dentist moved it to Thursday")
+        compose.onNodeWithText("Search test other conversation", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Automatic deletion").assertDoesNotExist()
+
+        compose.onNodeWithText("Clear").performClick()
+        compose.onNodeWithText("Search what was said").performTextInput("zebra crossing")
+        waitFor("Nothing found for “zebra crossing”.")
+
+        compose.onNodeWithText("Clear").performClick()
+        waitFor("Search test other conversation")
+        compose.onNodeWithText("Automatic deletion").assertExists()
+    }
+
+    private fun waitFor(text: String) = compose.waitUntil(5_000) {
+        compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
     }
 
     @Test
