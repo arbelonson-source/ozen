@@ -677,7 +677,8 @@ class CaptionScreenDeviceTest {
         try {
             app.settings.change { it.display = it.display.copy(lockScreenCaptions = true) }
             compose.runOnUiThread { ListeningService.start(app) }
-            assertTrue("never public: ${listening()?.visibility}", within(10_000) { listening()?.visibility == Notification.VISIBILITY_PUBLIC })
+            val lately = { SessionJournal(File(app.filesDir, CaptionSession.JOURNAL_FILE)).entries().takeLast(6).joinToString(" | ") { it.text } }
+            assertTrue("never public: ${listening()?.visibility}, phase ${app.captions.pipeline.phase}, journal ${lately()}", within(10_000) { listening()?.visibility == Notification.VISIBILITY_PUBLIC })
 
             app.settings.change { it.display = it.display.copy(lockScreenCaptions = false) }
             assertTrue("never private: ${listening()?.visibility}", within(5_000) { listening()?.visibility == Notification.VISIBILITY_PRIVATE })
