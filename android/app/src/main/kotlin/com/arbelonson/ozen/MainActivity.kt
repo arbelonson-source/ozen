@@ -248,6 +248,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                         reading = conversation to line
                     },
                     onAddWord = { app.captions.addWord(it) },
+                    onAskToRepeat = { app.captions.askToRepeat() }.takeIf { app.captions.canAskToRepeat() },
                 )
             }
             PairingDialogs(app.pairing)
@@ -329,6 +330,7 @@ private fun CaptionScreen(
     onStar: (UUID) -> Unit,
     onOpen: (conversation: UUID, line: UUID) -> Unit,
     onAddWord: (String) -> Unit,
+    onAskToRepeat: (() -> Unit)?,
 ) {
     val list = rememberLazyListState()
     val context = LocalContext.current
@@ -404,7 +406,7 @@ private fun CaptionScreen(
                     textAlign = TextAlign.Center,
                 )
             } else {
-                CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it })
+                CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onAskToRepeat)
                 if (!following) {
                     JumpToLatest(jumpToLatestTitle(linesSince(state.lines, lastWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                         following = true
@@ -486,12 +488,13 @@ private fun CaptionLines(
     onStar: (UUID) -> Unit,
     onOpen: (conversation: UUID, line: UUID) -> Unit,
     onFix: (CaptionLine) -> Unit,
+    onAskToRepeat: (() -> Unit)?,
 ) {
     LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize) {
         if (following) list.scrollToEnd(lines.lastIndex)
     }
     LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(lines, key = { it.id }) { line -> CaptionLineRow(line, display, look, onStar = { onStar(line.id) }, onOpen = { conversation -> onOpen(conversation, line.id) }, onFix = { onFix(line) }) }
+        items(lines, key = { it.id }) { line -> CaptionLineRow(line, display, look, onStar = { onStar(line.id) }, onOpen = { conversation -> onOpen(conversation, line.id) }, onFix = { onFix(line) }, onAskToRepeat) }
     }
 }
 
@@ -529,7 +532,8 @@ private fun JumpToLatest(title: String, look: CaptionTheme, modifier: Modifier, 
  * in. A line the engine wasn't sure of gets a question mark at its start
  * and dots under the words it doubted, without changing their colour: the
  * words stay as readable as any other line. Held, as on the iPhone, it can
- * be marked as important (a star) or copied; a screen reader has both too.
+ * be marked as important (a star) or copied, and, with a voice on the phone
+ * for it, the phone asks them aloud to repeat it; a screen reader has these too.
  */
 @Composable
 private fun CaptionLineRow(
@@ -539,6 +543,7 @@ private fun CaptionLineRow(
     onStar: () -> Unit,
     onOpen: (UUID) -> Unit,
     onFix: () -> Unit,
+    onAskToRepeat: (() -> Unit)?,
 ) {
     val doubtful = if (display.markUncertainLines) line.doubtfulWords else emptyList()
     val spoken = UncertainWords.spoken(line.text, doubtful)
@@ -547,6 +552,7 @@ private fun CaptionLineRow(
     val star = if (line.starred) tr("ביטול הסימון", "Remove mark") else tr("סימון כחשוב", "Mark as important")
     val copy = tr("העתקה", "Copy")
     val fix = tr("תיקון מילה למילון", "Fix a word for next time")
+    val ask = tr("לבקש שיחזרו על זה", "Ask them to repeat that")
     val open = tr("פתיחת השיחה כולה, לשיתוף או לחיפוש", "Open the whole conversation, to share or search")
     val context = LocalContext.current
     val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, line.copied)) }
@@ -564,6 +570,9 @@ private fun CaptionLineRow(
             layout = layout,
             actions = listOf(
                 CustomAccessibilityAction(star) { onStar(); true },
+            ) + listOfNotNull(onAskToRepeat).map { say ->
+                CustomAccessibilityAction(ask) { say(); true }
+            } + listOf(
                 CustomAccessibilityAction(fix) { onFix(); true },
                 CustomAccessibilityAction(copy) { copyLine(); true },
             ) + listOfNotNull(line.conversation).map { conversation ->
@@ -574,6 +583,7 @@ private fun CaptionLineRow(
         )
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { Text(star) }, onClick = { menu = false; onStar() })
+            onAskToRepeat?.let { say -> DropdownMenuItem(text = { Text(ask) }, onClick = { menu = false; say() }) }
             DropdownMenuItem(text = { Text(fix) }, onClick = { menu = false; onFix() })
             DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
             line.conversation?.let { conversation ->

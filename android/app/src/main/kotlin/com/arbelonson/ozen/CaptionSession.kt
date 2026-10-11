@@ -56,6 +56,28 @@ class CaptionSession(
     private val awayAlerts = AwayAlerts()
     private val notifier = AlertNotifier(context)
 
+    /**
+     * The phone saying something for her, as on the iPhone: captions pause
+     * while it talks, so the microphone doesn't caption the phone's own
+     * voice, and come back by themselves once it is done, unless she paused
+     * or resumed them by hand meanwhile.
+     */
+    private val replies = SpokenReplies(
+        PhoneVoice(context),
+        scope,
+        object : SpokenReplies.Captions {
+            override val isListening get() = pipeline.phase.isListening
+            override val isPaused get() = pipeline.phase == PipelinePhase.Paused
+            override val duringCall get() = interruptedBySystem
+
+            override fun pause() = pipeline.pause()
+
+            override fun resume() {
+                scope.launch { pipeline.resume(settings.current.value) }
+            }
+        },
+    )
+
     /** Whether the caption screen is in front: set as MainActivity starts and stops. */
     var appIsActive = false
 
@@ -127,11 +149,14 @@ class CaptionSession(
     init {
         (audio as? AndroidAudioCapture)?.onInterruption = { active ->
             interruptedBySystem = active
+            if (active) replies.callChanged(began = true)
             pipeline.systemInterruptionChanged(active)
+            if (!active) replies.callChanged(began = false)
             publish()
         }
         pipeline.onPhaseChange = {
             conversations.listeningChanged()
+            replies.captionsCameOn()
             publish()
         }
         pipeline.onCaptionsChanged = ::publish
@@ -139,6 +164,7 @@ class CaptionSession(
     }
 
     fun listen() {
+        replies.userTookControl()
         scope.launch {
             val current = settings.current.value
             when (pipeline.phase) {
@@ -150,7 +176,18 @@ class CaptionSession(
         }
     }
 
-    fun pause() = pipeline.pause()
+    fun pause() {
+        replies.userTookControl()
+        pipeline.pause()
+    }
+
+    val isSpeaking: Boolean get() = replies.isSpeaking
+
+    fun canAskToRepeat() = replies.canSay(SpokenReplies.REPEAT_REQUEST)
+
+    fun askToRepeat() {
+        replies.askToRepeat(settings.current.value.speechRate)
+    }
 
     fun memoryShort(footprintBytes: Long) {
         pipeline.handleMemoryWarning(footprintBytes)

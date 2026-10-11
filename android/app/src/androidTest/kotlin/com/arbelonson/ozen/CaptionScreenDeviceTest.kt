@@ -324,6 +324,33 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun aCaptionLineAsksThemToRepeatAloudFromItsHoldMenuOrTheScreenReader() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        assertTrue("no voice on the phone for the request", within(15_000) { app.captions.canAskToRepeat() })
+        showLines(listOf(committed("What did the doctor say about the pills")))
+        val ask = "Ask them to repeat that"
+        compose.onNodeWithText("What did the doctor say", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText(ask).performClick()
+        assertTrue("never spoke", within(10_000) { app.captions.isSpeaking })
+        assertTrue("never finished", within(15_000) { !app.captions.isSpeaking })
+
+        val line = compose.onNodeWithText("What did the doctor say", substring = true).fetchSemanticsNode()
+        val action = line.config[SemanticsActions.CustomActions].single { it.label == ask }
+        compose.runOnUiThread { action.action() }
+        assertTrue("never spoke for the screen reader", within(10_000) { app.captions.isSpeaking })
+        assertTrue(within(15_000) { !app.captions.isSpeaking })
+    }
+
+    private fun within(millis: Long, condition: () -> Boolean): Boolean {
+        val until = System.currentTimeMillis() + millis
+        while (System.currentTimeMillis() < until) {
+            if (condition()) return true
+            Thread.sleep(50)
+        }
+        return condition()
+    }
+
+    @Test
     fun aWordTheCaptionsGotWrongGoesFirstInTheWordListFromTheLinesHoldMenuOrTheScreenReader() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val before = app.settings.current.value.vocabulary
