@@ -22,6 +22,7 @@ import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.BatteryWarning
+import com.arbelonson.ozen.core.CaptionsStopAnnouncer
 import com.arbelonson.ozen.core.HomeServerEngine
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.core.SoundAlert
@@ -108,6 +109,7 @@ class CaptionSession(
     // Readings count only while the microphone is on, for captions or for
     // sounds alone: a night of either runs the battery down, as the iPhone
     // found. Sounds alone can start with no publish, so each reading asks.
+    private val stopAnnouncer = CaptionsStopAnnouncer()
     private val batteryWatch = BatteryWatch(show = CaptionState::battery, warned = ::batteryWarningRaised)
     private val batteryReadings = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = readBattery(intent)
@@ -256,6 +258,7 @@ class CaptionSession(
             conversations.listeningChanged()
             replies.captionsCameOn()
             publish()
+            announceStopOrReturn()
         }
         pipeline.onCaptionsChanged = ::publish
         pipeline.onInputsChanged = ::publishInputs
@@ -404,6 +407,24 @@ class CaptionSession(
         refreshSavingTrouble()
         announceNewLines(transcribing)
         if (batteryWatch.listeningChanged(microphoneOn)) context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.let(::readBattery)
+    }
+
+    /**
+     * Captions that stopped by themselves, and their return, said to
+     * TalkBack as on the iPhone: a reader who can't see the status line
+     * would keep waiting for words that never come.
+     */
+    private fun announceStopOrReturn() {
+        val phase = pipeline.phase
+        val text = when (stopAnnouncer.phaseChanged(phase)) {
+            CaptionsStopAnnouncer.Event.Stopped -> {
+                val status = PhasePresentation(phase, pipeline.activeEngineKind, interruptedBySystem, pipeline.scheduledRetry)
+                tr("הכתוביות נעצרו: %1", "Captions stopped: %1", listOf(status.title))
+            }
+            CaptionsStopAnnouncer.Event.Back -> tr("הכתוביות חזרו", "Captions are back")
+            null -> return
+        }
+        if (appIsActive && ScreenReader.isOn(context)) ScreenReader.announce(context, text)
     }
 
     private val microphoneOn: Boolean get() = pipeline.phase.isListening || pipeline.isListeningForSoundsOnly

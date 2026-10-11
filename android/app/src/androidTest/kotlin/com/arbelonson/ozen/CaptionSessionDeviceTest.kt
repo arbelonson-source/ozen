@@ -199,6 +199,57 @@ class CaptionSessionDeviceTest {
     }
 
     @Test
+    fun captionsThatStopByThemselvesAndComeBackAreSaidToTheScreenReaderOnceEach(): Unit = runBlocking {
+        val model = File(context.filesDir, CaptionSession.MODEL_FILE)
+        assumeTrue("put the model at ${model.path}", model.exists())
+        val work = File(context.cacheDir, "stop-announce-test").apply { deleteRecursively(); mkdirs() }
+        val announced = CopyOnWriteArrayList<String>()
+        val readerBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        ScreenReader.isOn = { true }
+        ScreenReader.announce = { _, text -> announced += text }
+        val clip = ClipAudio(FloatArray(16_000 * 120))
+        val busyAtFirst = object : AudioCapturing by clip {
+            var tries = 0
+
+            override suspend fun prepareSession(preferredInputUID: String?) {
+                tries += 1
+                if (tries == 1) error("the microphone is busy")
+                clip.prepareSession(preferredInputUID)
+            }
+        }
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                busyAtFirst,
+                historyFolder = File(work, "history"),
+            ).also { it.appIsActive = true }
+        }
+        try {
+            withContext(Dispatchers.Main) { session.listen() }
+            val back = withTimeoutOrNull(180_000) {
+                while ("Captions are back" !in announced) delay(200)
+                true
+            }
+            assertNotNull("never said they were back: $announced, ${CaptionState.screen.value.phase}", back)
+            assertEquals("said $announced", 2, announced.size)
+            assertTrue("said $announced", announced[0].startsWith("Captions stopped: ") && announced[0].removePrefix("Captions stopped: ").isNotBlank())
+            assertEquals("Captions are back", announced[1])
+        } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+            ScreenReader.isOn = readerBefore
+            ScreenReader.announce = announceBefore
+        }
+    }
+
+    @Test
     fun twentySecondsOfSpeechWithoutAPauseShowLiveTextBeforeTheLineIsFinished() = runBlocking {
         val clip = File(File(context.filesDir, "device-test"), "clip.wav")
         val model = File(context.filesDir, CaptionSession.MODEL_FILE)
