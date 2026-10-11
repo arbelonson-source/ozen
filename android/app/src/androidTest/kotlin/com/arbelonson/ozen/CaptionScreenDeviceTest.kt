@@ -13,8 +13,10 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.isDisplayed
@@ -29,6 +31,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.ResolvedTextDirection
@@ -309,6 +312,37 @@ class CaptionScreenDeviceTest {
             compose.waitUntil(5_000) { displayed("Off the record") }
         } finally {
             store.delete(record.id)
+        }
+    }
+
+    @Test
+    fun aWordTheCaptionsGotWrongGoesFirstInTheWordListFromTheLinesHoldMenuOrTheScreenReader() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.vocabulary
+        app.settings.change { it.vocabulary = listOf("Dr. Levi") }
+        try {
+            showLines(listOf(committed("I spoke with Shera yesterday")))
+            val fix = "Fix a word for next time"
+            lineText("Shera").performTouchInput { longClick() }
+            compose.onNodeWithText(fix).performClick()
+            compose.onNodeWithText("What the captions showed").assertExists()
+            assertEquals(2, compose.onAllNodesWithText("I spoke with Shera yesterday").fetchSemanticsNodes().size)
+            compose.onNodeWithText("Add").assertIsNotEnabled()
+            compose.onNode(hasSetTextAction()).performTextInput("   ")
+            compose.onNodeWithText("Add").assertIsNotEnabled()
+            compose.onNode(hasSetTextAction()).performTextInput("Shira")
+            compose.onNodeWithText("Add").performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.vocabulary == listOf("Shira", "Dr. Levi") }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("What the captions showed").fetchSemanticsNodes().isEmpty() }
+
+            val action = lineText("Shera").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == fix }
+            compose.runOnUiThread { action.action() }
+            compose.onNode(hasSetTextAction()).performTextInput("Shai")
+            compose.onNodeWithText("Cancel").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("What the captions showed").fetchSemanticsNodes().isEmpty() }
+            assertEquals(listOf("Shira", "Dr. Levi"), app.settings.current.value.vocabulary)
+        } finally {
+            app.settings.change { it.vocabulary = before }
         }
     }
 

@@ -15,6 +15,7 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptionEngine
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.VocabularyHints
 import com.arbelonson.ozen.core.WebSocketConnector
 import com.arbelonson.ozen.whisper.ModelFileLoader
 import com.arbelonson.ozen.whisper.SileroVoiceScorer
@@ -169,6 +170,13 @@ class CaptionSession(
 
     /** What was said since the last autosave is written first, so a conversation opened from the captions has every line. */
     fun saveBeforeReading() = conversations.save(ended = false)
+
+    /** A word the captions got wrong goes first in the word list, and the engine has it from the next sentence. */
+    fun addWord(word: String) {
+        settings.change { it.vocabulary = VocabularyHints.normalized(listOf(word) + it.vocabulary) }
+        val terms = settings.current.value.vocabulary
+        scope.launch { pipeline.setVocabulary(terms) }
+    }
 
     /** Stars a caption line or takes its star away, in its conversation and on screen. */
     fun toggleStar(line: UUID) {
