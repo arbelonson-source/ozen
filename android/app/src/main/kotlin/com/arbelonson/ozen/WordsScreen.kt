@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
@@ -104,7 +104,14 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
                 Text(tr("הוסיפו את השמות שנאמרים הכי הרבה בבית.", "Add the names said most often at home."), color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
-                    items(words, key = { it }) { word -> WordRow(word, onDelete = { onChange(words - word) }) }
+                    itemsIndexed(words, key = { _, word -> word }) { at, word ->
+                        WordRow(
+                            word,
+                            onMoveUp = { onChange(movingWord(word, -1, words)) }.takeIf { at > 0 },
+                            onMoveDown = { onChange(movingWord(word, 1, words)) }.takeIf { at < words.lastIndex },
+                            onDelete = { onChange(words - word) },
+                        )
+                    }
                 }
             }
             Text(
@@ -116,9 +123,18 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
     }
 }
 
+/**
+ * The first words on the list matter most to the captions; the iPhone
+ * drags one to its place, and here, as with quick phrases, the hold menu
+ * and the screen reader move it a place at a time.
+ */
 @Composable
-private fun WordRow(word: String, onDelete: () -> Unit) {
-    val delete = tr("מחיקה", "Delete")
+private fun WordRow(word: String, onMoveUp: (() -> Unit)?, onMoveDown: (() -> Unit)?, onDelete: () -> Unit) {
+    val choices = listOfNotNull(
+        onMoveUp?.let { tr("להזיז למעלה", "Move up") to it },
+        onMoveDown?.let { tr("להזיז למטה", "Move down") to it },
+        tr("מחיקה", "Delete") to onDelete,
+    )
     var menu by remember { mutableStateOf(false) }
     Box {
         Text(
@@ -127,11 +143,20 @@ private fun WordRow(word: String, onDelete: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .onHold { menu = true }
-                .semantics { customActions = listOf(CustomAccessibilityAction(delete) { onDelete(); true }) }
+                .semantics { customActions = choices.map { (label, act) -> CustomAccessibilityAction(label) { act(); true } } }
                 .padding(vertical = 10.dp),
         )
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(text = { Text(delete) }, onClick = { menu = false; onDelete() })
+            for ((label, act) in choices) {
+                DropdownMenuItem(text = { Text(label) }, onClick = { menu = false; act() })
+            }
         }
     }
+}
+
+internal fun movingWord(word: String, by: Int, words: List<String>): List<String> {
+    val from = words.indexOf(word)
+    val to = from + by
+    if (from < 0 || to !in words.indices) return words
+    return words.toMutableList().apply { add(to, removeAt(from)) }
 }

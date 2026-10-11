@@ -712,6 +712,27 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun aNameIsMovedUpOrDownTheWordsListFromItsHoldMenuOrTheScreenReader() {
+        app.settings.change { it.vocabulary = listOf("Shira", "Dr. Levi", "Amoxicillin") }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Names and special words").performScrollTo().performClick()
+        compose.onNodeWithText("Dr. Levi").performTouchInput { longClick() }
+        compose.onNodeWithText("Move up").performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.vocabulary == listOf("Dr. Levi", "Shira", "Amoxicillin") }
+
+        compose.onNodeWithText("Dr. Levi").performTouchInput { longClick() }
+        compose.onNodeWithText("Move up").assertDoesNotExist()
+        compose.onNodeWithText("Delete").assertExists()
+        compose.onNodeWithText("Move down").performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.vocabulary == listOf("Shira", "Dr. Levi", "Amoxicillin") }
+
+        val last = compose.onNode(hasText("Amoxicillin") and SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)).fetchSemanticsNode()
+        assertEquals(listOf("Move up", "Delete"), last.config[SemanticsActions.CustomActions].map { it.label })
+        compose.runOnUiThread { last.config[SemanticsActions.CustomActions].single { it.label == "Move up" }.action() }
+        compose.waitUntil(5_000) { app.settings.current.value.vocabulary == listOf("Shira", "Amoxicillin", "Dr. Levi") }
+    }
+
+    @Test
     fun importantWordsAreAddedSwitchedOffAndBackOnAndDeletedAfterAskingInSettings() {
         app.settings.change { it.keywordAlerts = emptyList() }
         val phrases = { app.settings.current.value.keywordAlerts.map { it.phrase to it.isEnabled } }
