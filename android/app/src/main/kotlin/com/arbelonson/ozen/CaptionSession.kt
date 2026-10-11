@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Debug
 import android.os.PowerManager
 import android.provider.OpenableColumns
+import androidx.annotation.RequiresApi
 import androidx.core.content.pm.PackageInfoCompat
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioCapturing
@@ -125,6 +126,14 @@ class CaptionSession(
     private val batteryReadings = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = readBattery(intent)
     }
+
+    // Heat and battery saver both slow the captions with nothing on screen
+    // saying so: the journal notes each change, as on the iPhone.
+    private val power = context.getSystemService(PowerManager::class.java)
+    private val batterySaving = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = note("power: ${deviceState()}")
+    }
+    private var heat: Any? = null
 
     /** The phone's own voice, and which languages it has one for. */
     val voice = PhoneVoice(context)
@@ -333,7 +342,21 @@ class CaptionSession(
         note("APP STARTED: ${appVersion()} Android ${Build.VERSION.RELEASE} engine ${started.engine.rawValue} model ${started.modelDescription(started.engine) ?: "-"} ${deviceState()}")
         scope.launch { combine(settings.current, settings.saveFailed) { _, _ -> }.collect { refreshSavingTrouble() } }
         context.registerReceiver(batteryReadings, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        context.registerReceiver(batterySaving, IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) watchHeat()
         loadRecentConversation()
+    }
+
+    /** Android tells a new listener the heat as it is; only a change is noted. */
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun watchHeat() {
+        var last = power.currentThermalStatus
+        val listener = PowerManager.OnThermalStatusChangedListener { status ->
+            if (status != last) note("heat: ${deviceState()}")
+            last = status
+        }
+        power.addThermalStatusListener(context.mainExecutor, listener)
+        heat = listener
     }
 
     /**
@@ -433,6 +456,8 @@ class CaptionSession(
 
     fun close() {
         runCatching { context.unregisterReceiver(batteryReadings) }
+        runCatching { context.unregisterReceiver(batterySaving) }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) (heat as? PowerManager.OnThermalStatusChangedListener)?.let(power::removeThermalStatusListener)
         pipeline.close()
         network.close()
         scope.cancel()
@@ -667,7 +692,6 @@ class CaptionSession(
 
     /** Heat, Battery Saver and the memory the app holds: all slow captions down with nothing on screen saying so. */
     private fun deviceState(): String {
-        val power = context.getSystemService(PowerManager::class.java)
         val thermal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) "${power.currentThermalStatus}" else "-"
         return "thermal $thermal low power ${power.isPowerSaveMode} memory ${Debug.getPss() / 1_024}MB"
     }

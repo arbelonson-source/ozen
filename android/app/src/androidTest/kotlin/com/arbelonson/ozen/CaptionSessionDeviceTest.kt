@@ -798,6 +798,46 @@ class CaptionSessionDeviceTest {
         }
     }
 
+    @Test
+    fun theJournalNotesWhenThePhoneGetsHotOrSavesBatteryAsTheIPhoneDoes(): Unit = runBlocking {
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+        }
+        val work = File(context.cacheDir, "heat-power-test").apply { deleteRecursively(); mkdirs() }
+        val journal = File(work, "journal.log")
+        val noted = { start: String -> SessionJournal(journal).entries().map { it.text }.filter { it.startsWith(start) } }
+        val session = withContext(Dispatchers.Main) {
+            CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(FloatArray(16_000)),
+                modelFolder = File(work, "no-models"),
+                historyFolder = File(work, "history"),
+                journalFile = journal,
+            )
+        }
+        try {
+            delay(1_000)
+            assertEquals("noted before anything changed", emptyList<String>(), noted("heat:") + noted("power:"))
+            shell("cmd thermalservice override-status 3")
+            assertNotNull("the heat never noted", withTimeoutOrNull(5_000) { while (noted("heat:").isEmpty()) delay(100); true })
+            assertTrue(noted("heat:").toString(), noted("heat:").single().contains("thermal 3 "))
+            shell("dumpsys battery unplug")
+            shell("cmd power set-mode 1")
+            assertNotNull("battery saver never noted", withTimeoutOrNull(5_000) { while (noted("power:").isEmpty()) delay(100); true })
+            assertTrue(noted("power:").toString(), noted("power:").last().contains("low power true"))
+        } finally {
+            withContext(Dispatchers.Main) { session.close() }
+            shell("cmd power set-mode 0")
+            shell("cmd thermalservice reset")
+            shell("dumpsys battery reset")
+            work.deleteRecursively()
+        }
+    }
+
     private val PipelinePhase.modelMissing: Boolean
         get() = this is PipelinePhase.Failed && reason.engineUnavailability?.kind == EngineUnavailability.Kind.ModelNotOnDevice
 
