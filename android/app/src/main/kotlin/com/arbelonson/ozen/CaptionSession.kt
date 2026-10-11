@@ -201,6 +201,14 @@ class CaptionSession(
         settings.change { it.quickPhrases = QuickPhrases.adding(phrase, it.quickPhrases, Localization.language) }
     }
 
+    fun removeQuickPhrase(phrase: String) {
+        settings.change { it.quickPhrases = QuickPhrases.removing(phrase, it.quickPhrases, Localization.language) }
+    }
+
+    fun restoreQuickPhrases() {
+        settings.change { it.quickPhrases = AppSettings.defaultQuickPhrases(Localization.language) }
+    }
+
     fun memoryShort(footprintBytes: Long) {
         pipeline.handleMemoryWarning(footprintBytes)
         conversations.memoryShort()

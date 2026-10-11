@@ -12,4 +12,8 @@ object QuickPhrases {
         if (trimmed.isEmpty() || trimmed in shown) return stored
         return shown + trimmed
     }
+
+    fun removing(phrase: String, stored: List<String>, language: UILanguage): List<String> = shown(stored, language) - phrase
+
+    fun isDefault(stored: List<String>, language: UILanguage): Boolean = shown(stored, language) == AppSettings.defaultQuickPhrases(language)
 }

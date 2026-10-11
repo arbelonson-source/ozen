@@ -20,10 +20,12 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.isDisplayed
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
@@ -375,6 +377,43 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Say something").assertDoesNotExist()
             compose.onNodeWithContentDescription("Say something out loud").performClick()
             compose.onNode(hasSetTextAction()).assert(hasText(typed))
+        } finally {
+            app.settings.change { it.quickPhrases = phrasesBefore }
+        }
+    }
+
+    @Test
+    fun quickPhrasesAreAddedDeletedAndRestoredOnTheSayScreen() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val phrasesBefore = app.settings.current.value.quickPhrases
+        val english = AppSettings.defaultQuickPhrases(UILanguage.English)
+        val stored = { app.settings.current.value.quickPhrases }
+        app.settings.change { it.quickPhrases = AppSettings.defaultQuickPhrases(UILanguage.Hebrew) }
+        try {
+            compose.onNodeWithContentDescription("Say something out loud").performClick()
+            compose.onNodeWithText("Edit").performScrollTo().performClick()
+            compose.onNodeWithText("Restore defaults").performScrollTo().assertIsNotEnabled()
+            compose.onNodeWithContentDescription("Add").assertIsNotEnabled()
+            compose.onNodeWithText("New phrase").performScrollTo().performTextInput("Please write it down for me")
+            compose.onNodeWithContentDescription("Add").performClick()
+            compose.waitUntil(5_000) { stored() == english + "Please write it down for me" }
+
+            compose.onNodeWithText("Slower, please").performScrollTo().performTouchInput { longClick() }
+            compose.onNodeWithText("Delete").performClick()
+            compose.waitUntil(5_000) { stored() == english - "Slower, please" + "Please write it down for me" }
+            val waiting = compose.onNodeWithText("Wait, I didn't catch that").fetchSemanticsNode()
+            val delete = waiting.config[SemanticsActions.CustomActions].single { it.label == "Delete" }
+            compose.runOnUiThread { delete.action() }
+            compose.waitUntil(5_000) { stored() == english - "Slower, please" - "Wait, I didn't catch that" + "Please write it down for me" }
+
+            compose.onNodeWithText("Restore defaults").performScrollTo().performClick()
+            compose.onNodeWithText("Phrases that were added or changed will be deleted.").assertExists()
+            compose.onNode(hasText("Restore") and hasAnyAncestor(isDialog())).performClick()
+            compose.waitUntil(5_000) { stored() == english }
+            compose.onNodeWithText("Restore defaults").performScrollTo().assertIsNotEnabled()
+            compose.onNodeWithText("Done").performScrollTo().performClick()
+            compose.onNodeWithText("New phrase").assertDoesNotExist()
+            compose.onNodeWithText("Slower, please").performScrollTo()
         } finally {
             app.settings.change { it.quickPhrases = phrasesBefore }
         }
