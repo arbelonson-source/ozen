@@ -878,7 +878,7 @@ class CaptionPipeline(
         restartAfterRecording = null
         recovery.reset()
         listeningSince = null
-        microphoneDrop.dismiss()
+        dismissMicrophoneDrop()
         tearDownSession()
         phase = PipelinePhase.Idle
     }
@@ -1250,7 +1250,7 @@ class CaptionPipeline(
             syncInputs()
             // Her own choice in the picker: the microphone she left was
             // not lost, and saying "disconnected" would be untrue.
-            if (selectedInputUID == uid) microphoneDrop.dismiss()
+            if (selectedInputUID == uid) dismissMicrophoneDrop()
         } catch (error: Exception) {
             // A failed switch leaves the previous input active, which is
             // strictly better than dropping a live conversation over a mic
@@ -1333,6 +1333,7 @@ class CaptionPipeline(
     /** Hides the notice until another microphone drops. */
     fun dismissMicrophoneDrop() {
         microphoneDrop.dismiss()
+        onInputsChanged?.invoke()
     }
 
     /**

@@ -47,9 +47,15 @@ data class CaptionScreenState(
     val savingTrouble: Boolean = false,
     val inputs: List<AudioInputDescriptor> = emptyList(),
     val selectedInput: AudioInputDescriptor? = null,
+    /** A microphone placed near the talker came out while captions were on; see `MicrophoneDropNotice`. */
+    val dropped: AudioInputDescriptor? = null,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
+
+    /** Not merely listening: a call holding captions leaves them stopped, as `captionsAreRunning` on the iPhone. */
+    val captionsRunning: Boolean
+        get() = phase.isListening && !interruptedBySystem
 
     fun keepsScreenOn(keepAwakeWhileListening: Boolean, now: Double): Boolean = ScreenAwakePolicy.shouldKeepAwake(
         phase = phase,
@@ -124,12 +130,13 @@ object CaptionState {
             savingTrouble = state.value.savingTrouble,
             inputs = state.value.inputs,
             selectedInput = state.value.selectedInput,
+            dropped = state.value.dropped,
         )
     }
 
-    /** The microphones the phone offers and the one recording, for the picker and the caption bar. */
-    fun inputs(available: List<AudioInputDescriptor>, selected: String?) {
-        state.value = state.value.copy(inputs = available, selectedInput = available.firstOrNull { it.uid == selected })
+    /** The microphones the phone offers, the one recording and the one that dropped, for the picker, the caption bar and its banner. */
+    fun inputs(available: List<AudioInputDescriptor>, selected: String?, dropped: AudioInputDescriptor? = null) {
+        state.value = state.value.copy(inputs = available, selectedInput = available.firstOrNull { it.uid == selected }, dropped = dropped)
     }
 
     /** An important word was said, and should buzz and show for a moment; kept through new captions. */

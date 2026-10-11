@@ -313,7 +313,9 @@ class CaptionSession(
     /** Asks the phone again which microphones there are: "I just plugged it in". */
     fun refreshInputs() = pipeline.refreshInputs()
 
-    private fun publishInputs() = CaptionState.inputs(pipeline.availableInputs, pipeline.selectedInputUID)
+    fun dismissMicrophoneDrop() = pipeline.dismissMicrophoneDrop()
+
+    private fun publishInputs() = CaptionState.inputs(pipeline.availableInputs, pipeline.selectedInputUID, pipeline.microphoneDrop.lost)
 
     /** What the diagnostics screen shows and its report says, as things stand now. */
     override fun diagnostics(): DiagnosticsFacts {

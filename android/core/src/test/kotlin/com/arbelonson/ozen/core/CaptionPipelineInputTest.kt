@@ -85,6 +85,34 @@ class CaptionPipelineInputTest {
     }
 
     @Test
+    fun `the app is told when the notice goes away: closed, captions stopped, or her own choice in the picker`() = runTest {
+        val audio = lapelAudio()
+        val (pipeline, _, _) = makePipeline(audio = audio)
+        val told = mutableListOf<AudioInputDescriptor?>()
+        pipeline.onInputsChanged = { told += pipeline.microphoneDrop.lost }
+        pipeline.start(lapelSettings())
+        audio.selectedInputUID = "builtin"
+        audio.simulateRouteChange(listOf(builtIn))
+        assertEquals(lapel, told.last())
+        pipeline.dismissMicrophoneDrop()
+        assertNull(told.last())
+
+        audio.selectedInputUID = "usb-lav"
+        audio.simulateRouteChange(listOf(builtIn, lapel))
+        audio.selectedInputUID = "builtin"
+        audio.simulateRouteChange(listOf(builtIn))
+        assertEquals(lapel, told.last())
+        pipeline.stop()
+        assertNull(told.last())
+
+        audio.availableInputs = listOf(builtIn, lapel)
+        pipeline.start(lapelSettings())
+        assertEquals("usb-lav", pipeline.selectedInputUID)
+        assertTrue(pipeline.selectInput("builtin"))
+        assertNull(told.last())
+    }
+
+    @Test
     fun `the notice of a dropped microphone goes away when she closes it`() = runTest {
         val audio = lapelAudio()
         val (pipeline, _, _) = makePipeline(audio = audio)

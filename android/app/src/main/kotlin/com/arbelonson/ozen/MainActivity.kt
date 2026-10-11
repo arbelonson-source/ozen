@@ -107,6 +107,7 @@ import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.MicrophoneDropNotice
 import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.UncertainWords
 import com.arbelonson.ozen.core.tr
@@ -282,6 +283,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     onAskToRepeat = { app.captions.askToRepeat() }.takeIf { app.captions.canAskToRepeat() },
                     onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
                     onDismissSavingTrouble = app.captions::dismissSavingTrouble,
+                    onDismissMicrophoneDrop = app.captions::dismissMicrophoneDrop,
                     onMarkProblem = app.captions::markProblem,
                     onMicrophone = { choosingMicrophone = true },
                 )
@@ -368,6 +370,7 @@ private fun CaptionScreen(
     onAskToRepeat: (() -> Unit)?,
     onSay: () -> Unit,
     onDismissSavingTrouble: () -> Unit,
+    onDismissMicrophoneDrop: () -> Unit,
     onMarkProblem: () -> Boolean,
     onMicrophone: () -> Unit,
 ) {
@@ -461,6 +464,17 @@ private fun CaptionScreen(
             ) {
                 shownWord?.let { HeardPill(it.said, Modifier) }
                 if (state.savingTrouble) SavingTroubleBanner(onDismissSavingTrouble)
+                state.dropped?.let { lost ->
+                    MicrophoneDropBanner(
+                        title = MicrophoneDropNotice.titleFor(lost),
+                        detail = MicrophoneDropNotice.detail(state.captionsRunning),
+                        onChooseMicrophone = {
+                            onDismissMicrophoneDrop()
+                            onMicrophone()
+                        },
+                        onDismiss = onDismissMicrophoneDrop,
+                    )
+                }
             }
         }
         AnimatedVisibility(visible = !hidden) {
@@ -792,6 +806,41 @@ private fun SavingTroubleBanner(onDismiss: () -> Unit) {
             )
         }
         Text("✕", color = Color.White.copy(alpha = 0.7f), fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics {})
+    }
+}
+
+/** As the iPhone's: a tap on the words opens the microphone picker, the ✕ only puts the notice away. */
+@Composable
+private fun MicrophoneDropBanner(title: String, detail: String, onChooseMicrophone: () -> Unit, onDismiss: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().background(TROUBLE_ORANGE, RoundedCornerShape(16.dp)),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .weight(1f)
+                .clickable(onClickLabel = tr("בחירת מיקרופון", "Choose microphone"), onClick = onChooseMicrophone)
+                .padding(start = 16.dp, top = 12.dp, bottom = 12.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite },
+        ) {
+            Text("🎙", fontSize = 26.sp, modifier = Modifier.clearAndSetSemantics {})
+            Column {
+                Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(detail, color = Color.White, fontSize = 16.sp)
+            }
+        }
+        val close = tr("סגירה", "Close")
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(48.dp)
+                .clickable(role = Role.Button, onClick = onDismiss)
+                .semantics { contentDescription = close },
+        ) {
+            Text("✕", color = Color.White.copy(alpha = 0.8f), fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics {})
+        }
     }
 }
 

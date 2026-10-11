@@ -19,7 +19,7 @@ class MicrophoneDropNotice {
     }
 
     val title: String?
-        get() = lost?.let { tr("המיקרופון ⁨%1⁩ התנתק", "%1 disconnected", listOf(it.portName)) }
+        get() = lost?.let(::titleFor)
 
     override fun equals(other: Any?): Boolean = other is MicrophoneDropNotice && lost == other.lost
 
@@ -27,6 +27,8 @@ class MicrophoneDropNotice {
 
     companion object {
         private val placedNearTheTalker = setOf(AudioPortType.Wired, AudioPortType.Usb, AudioPortType.RemoteMic)
+
+        fun titleFor(lost: AudioInputDescriptor): String = tr("המיקרופון ⁨%1⁩ התנתק", "%1 disconnected", listOf(lost.portName))
 
         fun detail(listening: Boolean): String {
             if (!listening) {

@@ -317,6 +317,39 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun aMicrophoneThatDroppedIsSaidAtTheTopWhereATapOpensThePickerAndCloseOnlyPutsItAway() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val lapel = AudioInputDescriptor("usb:lapel", "Lapel mic", AudioPortType.Usb)
+        val phone = AudioInputDescriptor("builtInMic:test", "Phone microphone", AudioPortType.BuiltInMic)
+        val unplugged = {
+            compose.runOnUiThread {
+                app.captions.pipeline.microphoneDrop.inputChanged(lapel, phone, isListening = true)
+                app.captions.refreshInputs()
+            }
+        }
+        try {
+            unplugged()
+            compose.onNodeWithText("Lapel mic disconnected", substring = true).assertIsDisplayed()
+            compose.onNodeWithText("When captions start again they will use the phone's own microphone and may be less accurate. Reconnect it to go back to it.", substring = true).assertExists()
+            compose.runOnUiThread { CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
+            compose.onNodeWithText("Captions carry on through the phone's own microphone and may be less accurate. Reconnect it to go back to it.", substring = true).assertExists()
+
+            compose.onNodeWithContentDescription("Close").performClick()
+            compose.onNodeWithText("Lapel mic disconnected", substring = true).assertDoesNotExist()
+            compose.onNodeWithText("Available microphones").assertDoesNotExist()
+
+            unplugged()
+            compose.onNodeWithText("Lapel mic disconnected", substring = true).performClick()
+            compose.onNodeWithText("Available microphones").assertExists()
+            compose.onNodeWithText("Close").performClick()
+            compose.onNodeWithText("Available microphones").assertDoesNotExist()
+            compose.onNodeWithText("Lapel mic disconnected", substring = true).assertDoesNotExist()
+        } finally {
+            compose.runOnUiThread { app.captions.dismissMicrophoneDrop() }
+        }
+    }
+
+    @Test
     fun aSettledPhoneNumberOnTheCaptionScreenOpensTheDialerAndOneStillBeingHeardDoesNot() {
         val settled = committed("050 123 4567")
         val growing = TranscriptSegment(id = UUID.randomUUID(), text = "052 765 4321", isCommitted = false, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)

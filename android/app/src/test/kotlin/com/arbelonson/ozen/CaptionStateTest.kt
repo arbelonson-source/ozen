@@ -108,6 +108,26 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `a microphone that dropped stays said through new captions until the pipeline lets it go`() {
+        val phone = AudioInputDescriptor("builtInMic:", "Phone microphone", AudioPortType.BuiltInMic)
+        val lapel = AudioInputDescriptor("usb:1", "Lapel mic", AudioPortType.Usb)
+        CaptionState.inputs(listOf(phone), selected = "builtInMic:", dropped = lapel)
+        show(PipelinePhase.Listening, listOf(line("Hello", committed = true)))
+        assertEquals(lapel, CaptionState.screen.value.dropped)
+        CaptionState.inputs(listOf(phone), selected = "builtInMic:")
+        assertNull(CaptionState.screen.value.dropped)
+        CaptionState.clear()
+    }
+
+    @Test
+    fun `captions count as running only while listening and not held for a call, as on the iPhone`() {
+        assertTrue(CaptionScreenState(phase = PipelinePhase.Listening).captionsRunning)
+        assertFalse(CaptionScreenState(phase = PipelinePhase.Listening, interruptedBySystem = true).captionsRunning)
+        assertFalse(CaptionScreenState(phase = PipelinePhase.Paused).captionsRunning)
+        assertFalse(CaptionScreenState(phase = PipelinePhase.Idle).captionsRunning)
+    }
+
+    @Test
     fun `the important words heard lately are the last ten, newest first`() {
         val grandma = UUID.randomUUID()
         val hits = (1..12).map { KeywordHit(segmentID = UUID.randomUUID(), match = KeywordMatch(grandma, "סבתא", "סבתא", 0), timestamp = it.toDouble()) }
