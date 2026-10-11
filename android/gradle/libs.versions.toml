@@ -9,6 +9,7 @@ testRunner = "1.7.0"
 kotlin = "2.4.21"
 serialization = "1.11.0"
 zxing = "3.5.3"
+litert = "1.4.2"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
@@ -24,6 +25,7 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+litert = { module = "com.google.ai.edge.litert:litert", version.ref = "litert" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
