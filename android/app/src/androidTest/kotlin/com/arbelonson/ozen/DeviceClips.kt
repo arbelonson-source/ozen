@@ -23,6 +23,17 @@ object DeviceClips {
         error("no data chunk in $name")
     }
 
+    fun writeWav(file: File, frames: FloatArray, rate: Int = 16_000, channels: Int = 1) {
+        val bytes = frames.size * channels * 2
+        val data = ByteBuffer.allocate(44 + bytes).order(ByteOrder.LITTLE_ENDIAN)
+        data.put("RIFF".toByteArray()).putInt(36 + bytes).put("WAVE".toByteArray())
+        data.put("fmt ".toByteArray()).putInt(16).putShort(1).putShort(channels.toShort()).putInt(rate).putInt(rate * channels * 2)
+        data.putShort((channels * 2).toShort()).putShort(16)
+        data.put("data".toByteArray()).putInt(bytes)
+        for (value in frames) repeat(channels) { data.putShort((value.coerceIn(-1f, 1f) * 32_767).toInt().toShort()) }
+        file.writeBytes(data.array())
+    }
+
     fun cosine(a: FloatArray, b: FloatArray): Double {
         var dot = 0.0
         var left = 0.0

@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -474,6 +475,47 @@ class CaptionSessionDeviceTest {
             stopped.join()
             assertEquals(listOf("Dana"), settings.current.value.speakerProfiles.map { it.name })
             assertFalse(withContext(Dispatchers.Main) { session.pipeline.speakerClusters.any { it.name == "Stopped" } })
+        } finally {
+            withContext(Dispatchers.Main) { session.close() }
+        }
+    }
+
+    @Test
+    fun recordingsAddedFromFilesAreSavedUnderTheNameInEachFileNameAndOnesWithoutANameOrSpeechAreNot() = runBlocking {
+        val work = File(context.cacheDir, "add-recordings-test").apply { deleteRecursively(); mkdirs() }
+        val first = DeviceClips.asset("speakerA_clip1.wav")
+        val second = DeviceClips.asset("speakerA_clip2.wav")
+        val other = DeviceClips.asset("speakerB_clip1.wav")
+        val files = listOf(
+            "Savta 1.wav" to first + first + first,
+            "Savta_2.wav" to second + second + second,
+            "Yossi.wav" to other + other + other,
+            "2.wav" to first + first + first,
+            "Quiet.wav" to FloatArray(5 * 16_000),
+        ).map { (name, samples) -> File(work, name).also { DeviceClips.writeWav(it, samples) } }
+        val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
+        val session = withContext(Dispatchers.Main) {
+            CaptionSession(
+                context,
+                settings,
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(FloatArray(0)),
+                modelFolder = File(work, "no-model"),
+                historyFolder = File(work, "history"),
+            )
+        }
+        try {
+            val result = withContext(Dispatchers.Main) { session.addRecordings(files.map { Uri.fromFile(it) }) }
+            assertEquals(mapOf("Savta" to 2, "Yossi" to 1), result.added)
+            assertEquals(listOf("2.wav", "Quiet.wav"), result.unusable)
+            val saved = settings.current.value.speakerProfiles
+            assertEquals(listOf("Savta", "Savta", "Yossi"), saved.map { it.name })
+            assertTrue(saved.all { it.embedding.size == 512 })
+            assertEquals(setOf("Savta", "Yossi"), withContext(Dispatchers.Main) { session.pipeline.speakerClusters.mapNotNull { it.name }.toSet() })
+            val threshold = AppSettings.default.speakerSimilarityThreshold
+            assertTrue("her two recordings scored ${DeviceClips.cosine(saved[0].embedding, saved[1].embedding)}", DeviceClips.cosine(saved[0].embedding, saved[1].embedding) >= threshold)
+            assertTrue("another voice scored ${DeviceClips.cosine(saved[0].embedding, saved[2].embedding)}", DeviceClips.cosine(saved[0].embedding, saved[2].embedding) < threshold)
         } finally {
             withContext(Dispatchers.Main) { session.close() }
         }

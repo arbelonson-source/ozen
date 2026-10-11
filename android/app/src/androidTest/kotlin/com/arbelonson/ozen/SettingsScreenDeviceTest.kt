@@ -12,7 +12,14 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.os.SystemClock
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.ActivityResultRegistryOwner
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.core.app.ActivityOptionsCompat
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -76,6 +83,7 @@ import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.SoundAlertPreferences
 import com.arbelonson.ozen.core.SoundEvent
+import com.arbelonson.ozen.core.RecordingImport
 import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SpeakerProfile
 import androidx.compose.ui.test.assertIsEnabled
@@ -310,6 +318,43 @@ class SettingsScreenDeviceTest {
         compose.waitUntil(5_000) { closed.isCompleted }
     }
 
+    @Test
+    fun addFromExistingRecordingsAsksThePhoneForAudioFilesAndSaysWhoWasAddedAndWhatWasNot() {
+        val book = RecordingBook()
+        val files = listOf(Uri.parse("content://recordings/Savta%201.m4a"), Uri.parse("content://recordings/2.m4a"))
+        val asked = CopyOnWriteArrayList<Any?>()
+        val registry = object : ActivityResultRegistry() {
+            override fun <I, O> onLaunch(requestCode: Int, contract: ActivityResultContract<I, O>, input: I, options: ActivityOptionsCompat?) {
+                asked.add(input)
+                @Suppress("UNCHECKED_CAST")
+                dispatchResult(requestCode, files as O)
+            }
+        }
+        val owner = object : ActivityResultRegistryOwner {
+            override val activityResultRegistry = registry
+        }
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                CompositionLocalProvider(LocalActivityResultRegistryOwner provides owner) {
+                    Column { SavedSpeakersSection(emptyList(), book, onAdd = {}) }
+                }
+            }
+        }
+        val add = compose.onNodeWithText("Add from existing recordings")
+        add.performClick()
+        compose.waitUntil(5_000) { book.picked.size == 1 }
+        assertArrayEquals(arrayOf("audio/*"), asked.single() as Array<*>)
+        assertEquals(files, book.picked.single())
+        add.assertIsNotEnabled()
+        val result = RecordingImport.Result(added = mapOf("Savta" to 1), unusable = listOf("2.m4a"))
+        book.finishImport(result)
+        compose.onNodeWithText("Recordings").assertExists()
+        compose.onNodeWithText(result.summary).assertExists()
+        compose.onNodeWithText("OK").performClick()
+        compose.onNodeWithText("Recordings").assertDoesNotExist()
+        add.assertIsEnabled()
+    }
+
     private class RecordingBook : SpeakerBook {
         val asked = CopyOnWriteArrayList<Pair<String, Double>>()
 
@@ -343,6 +388,19 @@ class SettingsScreenDeviceTest {
                 false
             }
         }
+
+        val picked = CopyOnWriteArrayList<List<Uri>>()
+
+        @Volatile
+        private var imported = CompletableDeferred<RecordingImport.Result>()
+
+        override suspend fun addRecordings(recordings: List<Uri>): RecordingImport.Result {
+            imported = CompletableDeferred()
+            picked.add(recordings)
+            return imported.await()
+        }
+
+        fun finishImport(result: RecordingImport.Result) = imported.complete(result)
 
         fun progress(fraction: Double) = onProgress(fraction)
 

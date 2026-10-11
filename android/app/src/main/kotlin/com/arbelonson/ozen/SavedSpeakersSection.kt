@@ -1,12 +1,17 @@
 package com.arbelonson.ozen
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -17,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -28,12 +34,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.RecordingImport
 import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SpeakerProfile
 import com.arbelonson.ozen.core.tr
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /** What Settings asks of the captions about the people saved by voice, as the iPhone's view model answers it. */
 interface SpeakerBook {
@@ -57,6 +65,13 @@ interface SpeakerBook {
      * too short or too quiet for a print, or was stopped.
      */
     suspend fun recordSpeaker(name: String, seconds: Double, onProgress: (Double) -> Unit): Boolean
+
+    /**
+     * Saves one voice print per recording, under the name in its file
+     * name ("Savta 2.m4a" is Savta), and says who was added and which
+     * files were not: no name, or too little speech.
+     */
+    suspend fun addRecordings(recordings: List<Uri>): RecordingImport.Result
 }
 
 /**
@@ -69,6 +84,20 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
     SectionHeader(tr("דוברים שמורים", "Saved speakers"))
     var renaming by rememberSaveable { mutableStateOf<String?>(null) }
     var removing by rememberSaveable { mutableStateOf<String?>(null) }
+    var importing by remember { mutableStateOf(false) }
+    var imported by remember { mutableStateOf<RecordingImport.Result?>(null) }
+    val scope = rememberCoroutineScope()
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { picked ->
+        if (picked.isEmpty()) return@rememberLauncherForActivityResult
+        importing = true
+        scope.launch {
+            try {
+                imported = speakers.addRecordings(picked)
+            } finally {
+                importing = false
+            }
+        }
+    }
     for (speaker in SavedSpeaker.grouping(profiles)) {
         Row(modifier = Modifier.fillMaxWidth().testTag("savedSpeaker:${speaker.name}"), verticalAlignment = Alignment.CenterVertically) {
             Column(
@@ -92,12 +121,24 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
         }
     }
     TextButton(onClick = onAdd) { Text(tr("הוספת דובר", "Add speaker")) }
+    TextButton(onClick = { pick.launch(arrayOf("audio/*")) }, enabled = !importing) {
+        Text(tr("הוספה מהקלטות קיימות", "Add from existing recordings"))
+        if (importing) CircularProgressIndicator(modifier = Modifier.padding(start = 8.dp).size(16.dp), strokeWidth = 2.dp)
+    }
     Footnote(
         tr(
-            "דובר שמור מזוהה בשמו מהמשפט הראשון. אפשר גם להשאיר אצבע על שורה בכתוביות, לבחור \"מי מדבר?\" ולתת שם אחרי שהאדם כבר דיבר.",
-            "A saved speaker is recognized by name from the first sentence. You can also press and hold a line in the captions, choose “Who is speaking?”, and give a name after the person has already spoken.",
+            "דובר שמור מזוהה בשמו מהמשפט הראשון. אפשר גם להשאיר אצבע על שורה בכתוביות, לבחור \"מי מדבר?\" ולתת שם אחרי שהאדם כבר דיבר. בהוספה מהקלטות, כל קובץ נשמר בשם שבשם הקובץ: \"סבתא 1\" ו-\"סבתא 2\" הם שתי הקלטות של סבתא. בכל קובץ רק אדם אחד מדבר.",
+            "A saved speaker is recognized by name from the first sentence. You can also press and hold a line in the captions, choose “Who is speaking?”, and give a name after the person has already spoken. When adding from recordings, each file is saved under the name in its file name: “Savta 1” and “Savta 2” are two recordings of Savta. Only one person should speak in each file.",
         ),
     )
+    imported?.let { result ->
+        AlertDialog(
+            onDismissRequest = { imported = null },
+            title = { Text(tr("הקלטות", "Recordings")) },
+            text = { Text(result.summary) },
+            confirmButton = { TextButton(onClick = { imported = null }) { Text(tr("אישור", "OK")) } },
+        )
+    }
     renaming?.let { name ->
         RenameSpeakerDialog(
             name,
