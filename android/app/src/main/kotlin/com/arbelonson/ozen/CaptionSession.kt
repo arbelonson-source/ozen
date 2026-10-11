@@ -48,6 +48,8 @@ class CaptionSession(
         availableStorageBytes = { context.filesDir.usableSpace },
     )
     private val historyStore = TranscriptHistoryStore(historyFolder)
+    private val attention = KeywordAttention()
+
     private val conversations = ConversationSaver(
         writer = TranscriptHistoryWriter(historyStore),
         lines = { pipeline.segments },
@@ -122,6 +124,10 @@ class CaptionSession(
             publish()
         }
         pipeline.onCaptionsChanged = ::publish
+        pipeline.onKeywordHits = { hits, _ ->
+            attention.claim(hits)?.let(CaptionState::heard)
+            publish()
+        }
     }
 
     fun listen() {
@@ -171,6 +177,7 @@ class CaptionSession(
             scoringModel = transcribing.whisperModelVariant,
             starred = conversations::isStarred,
             conversation = conversations::savedConversation,
+            keywordHits = pipeline.keywordHitSegmentIDs,
         )
     }
 

@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.core.view.WindowCompat
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.PipelinePhase
@@ -343,6 +344,37 @@ class CaptionScreenDeviceTest {
             assertEquals(listOf("Shira", "Dr. Levi"), app.settings.current.value.vocabulary)
         } finally {
             app.settings.change { it.vocabulary = before }
+        }
+    }
+
+    @Test
+    fun aLineWithAnImportantWordIsMarkedAndAFreshMentionBuzzesAndSaysSoForFiveSeconds() {
+        val buzzed = CopyOnWriteArrayList<AlertVibration>()
+        val before = Buzz.play
+        Buzz.play = { _, vibration -> buzzed += vibration }
+        try {
+            val name = committed("Grandma, dinner is ready")
+            val other = committed("Pass the salt")
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(name, other), keywordHits = setOf(name.id))
+            }
+            compose.waitForIdle()
+            assertEquals(1, compose.onAllNodesWithContentDescription("Contains an important word").fetchSemanticsNodes().size)
+            assertTrue(buzzed.isEmpty())
+
+            val now = System.currentTimeMillis() / 1_000.0
+            compose.runOnUiThread { CaptionState.heard(HeardWord(UUID.randomUUID(), "Doctor", now - 600)) }
+            compose.waitForIdle()
+            assertTrue(buzzed.isEmpty())
+            assertTrue(compose.onAllNodesWithText("Said: Doctor").fetchSemanticsNodes().isEmpty())
+
+            compose.runOnUiThread { CaptionState.heard(HeardWord(UUID.randomUUID(), "Grandma", now)) }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Grandma").fetchSemanticsNodes().isNotEmpty() }
+            assertEquals(listOf(AlertVibration.keyword), buzzed)
+            compose.waitUntil(8_000) { compose.onAllNodesWithText("Said: Grandma").fetchSemanticsNodes().isEmpty() }
+            assertEquals(1, buzzed.size)
+        } finally {
+            Buzz.play = before
         }
     }
 

@@ -28,6 +28,8 @@ data class CaptionLine(
     val phones: List<PhoneNumbers.Match> = emptyList(),
     /** The saved conversation it belongs to, to open from the line; none while saving is off. */
     val conversation: UUID? = null,
+    /** Says a word from the important words list: highlighted, with a bell. */
+    val important: Boolean = false,
 )
 
 data class CaptionScreenState(
@@ -37,6 +39,7 @@ data class CaptionScreenState(
     val scheduledRetry: ScheduledRetry? = null,
     val lines: List<CaptionLine> = emptyList(),
     val lastActivityAt: Double? = null,
+    val heard: HeardWord? = null,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
@@ -85,6 +88,7 @@ object CaptionState {
         scoringModel: String? = null,
         starred: (UUID) -> Boolean = { false },
         conversation: (Int) -> UUID? = { null },
+        keywordHits: Set<UUID> = emptySet(),
     ) {
         state.value = CaptionScreenState(
             phase = phase,
@@ -102,10 +106,17 @@ object CaptionState {
                     copied = CaptionLayout.copiedText(it.text),
                     phones = if (it.isSettled) PhoneNumbers.matches(it.text) else emptyList(),
                     conversation = conversation(segments.size - minOf(segments.size, MAXIMUM_LINES) + at),
+                    important = it.id in keywordHits,
                 )
             },
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),
+            heard = state.value.heard,
         )
+    }
+
+    /** An important word was said, and should buzz and show for a moment; kept through new captions. */
+    fun heard(word: HeardWord) {
+        state.value = state.value.copy(heard = word)
     }
 
     /** A star given or taken away shows on the line at once, before the next captions. */

@@ -10,6 +10,7 @@ import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CaptionStateTest {
@@ -55,6 +56,20 @@ class CaptionStateTest {
         val growing = line("And the pharmacy on 052 765 4321", committed = false)
         show(PipelinePhase.Listening, listOf(settled, provisional, growing))
         assertEquals(listOf(listOf("0501234567"), emptyList(), emptyList()), CaptionState.screen.value.lines.map { line -> line.phones.map { it.dialable } })
+    }
+
+    @Test
+    fun `a line with an important word is marked, and a word heard stays through new captions until cleared`() {
+        val name = line("Grandma, dinner is ready", committed = true)
+        val other = line("Pass the salt", committed = true)
+        CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(name, other), keywordHits = setOf(name.id))
+        assertEquals(listOf(true, false), CaptionState.screen.value.lines.map { it.important })
+        val word = HeardWord(UUID.randomUUID(), "Grandma", 1_800_000_000.0)
+        CaptionState.heard(word)
+        show(PipelinePhase.Listening, listOf(name, other))
+        assertEquals(word, CaptionState.screen.value.heard)
+        CaptionState.clear()
+        assertNull(CaptionState.screen.value.heard)
     }
 
     @Test

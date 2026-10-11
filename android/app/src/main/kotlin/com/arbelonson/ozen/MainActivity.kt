@@ -85,10 +85,12 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
@@ -99,6 +101,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.Localization
@@ -318,6 +321,18 @@ private fun CaptionScreen(
     onAddWord: (String) -> Unit,
 ) {
     val list = rememberLazyListState()
+    val context = LocalContext.current
+    var shownWord by remember { mutableStateOf<HeardWord?>(null) }
+    // Only a word said just now: one heard while the screen was away buzzing
+    // on coming back would send her looking for something long over.
+    LaunchedEffect(state.heard?.id) {
+        val word = state.heard ?: return@LaunchedEffect
+        if (secondsNow() - word.at > HEARD_SHOWN_SECONDS) return@LaunchedEffect
+        Buzz.play(context, AlertVibration.keyword)
+        shownWord = word
+        delay((HEARD_SHOWN_SECONDS * 1_000).toLong())
+        if (shownWord?.id == word.id) shownWord = null
+    }
     var fixing by remember { mutableStateOf<CaptionLine?>(null) }
     fixing?.let { line ->
         FixWordDialog(line.text, onAdd = { onAddWord(it); fixing = null }, onDismiss = { fixing = null })
@@ -386,6 +401,7 @@ private fun CaptionScreen(
                     }
                 }
             }
+            shownWord?.let { HeardPill(it.said, Modifier.align(Alignment.TopCenter)) }
         }
         AnimatedVisibility(visible = !hidden) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -405,6 +421,8 @@ private fun CaptionScreen(
 }
 
 private fun secondsNow() = System.currentTimeMillis() / 1_000.0
+
+private const val HEARD_SHOWN_SECONDS = 5.0
 
 @Composable
 private fun screenReaderOn(): Boolean {
@@ -570,6 +588,7 @@ private fun CaptionLineContent(
     CompositionLocalProvider(LocalLayoutDirection provides readingDirection(line.text)) {
         Row(modifier = Modifier.fillMaxWidth()) {
             if (line.starred) StarMark(display.fontSize, starColour(look.isLight))
+            if (line.important) BellMark(display.fontSize, look.text)
             if (display.markUncertainLines && line.unsure) UnsureMark(display.fontSize, look.pendingText)
             Text(
                 text = captionText(
@@ -587,6 +606,7 @@ private fun CaptionLineContent(
                 onTextLayout = onLayout,
                 modifier = Modifier
                     .weight(1f, fill = false)
+                    .then(if (line.important) Modifier.background(importantField(look.isLight), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp) else Modifier)
                     .drawBehind { layout?.let { drawDoubtDots(it, colour) } }
                     .semantics {
                         if (spoken.isNotEmpty()) {
@@ -601,6 +621,52 @@ private fun CaptionLineContent(
 
 private fun readingDirection(shown: String) =
     if (Bidi(shown, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight()) LayoutDirection.Ltr else LayoutDirection.Rtl
+
+// The iPhone's soft yellow field, so the line where a name was said is found again scrolling back.
+private fun importantField(light: Boolean) = Color.Yellow.copy(alpha = if (light) 0.35f else 0.22f)
+
+@Composable
+private fun BellMark(fontSize: Double, colour: Color) {
+    val side = maxOf(14.0, fontSize * 0.6)
+    val inset = with(LocalDensity.current) { ((fontSize * 1.25 - side) / 2).sp.toDp() }
+    val size = with(LocalDensity.current) { side.sp.toDp() }
+    Canvas(
+        modifier = Modifier
+            .padding(top = inset)
+            .padding(end = 8.dp)
+            .size(size)
+            .clearAndSetSemantics { contentDescription = tr("מכילה מילה חשובה", "Contains an important word") },
+    ) {
+        val w = this.size.width
+        val h = this.size.height
+        val bell = Path().apply {
+            moveTo(w * 0.5f, h * 0.08f)
+            cubicTo(w * 0.22f, h * 0.08f, w * 0.2f, h * 0.35f, w * 0.2f, h * 0.55f)
+            lineTo(w * 0.1f, h * 0.75f)
+            lineTo(w * 0.9f, h * 0.75f)
+            lineTo(w * 0.8f, h * 0.55f)
+            cubicTo(w * 0.8f, h * 0.35f, w * 0.78f, h * 0.08f, w * 0.5f, h * 0.08f)
+            close()
+        }
+        drawPath(bell, colour)
+        drawCircle(colour, radius = w * 0.1f, center = Offset(w * 0.5f, h * 0.86f))
+    }
+}
+
+/** "Said: grandma" for five seconds at the top, as the iPhone's pill; the screen reader reads it as it appears. */
+@Composable
+private fun HeardPill(said: String, modifier: Modifier) {
+    Text(
+        tr("נאמר: %1", "Said: %1", listOf(said)),
+        color = Color.Black,
+        fontSize = 18.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = modifier
+            .background(Color.Yellow.copy(alpha = 0.9f), RoundedCornerShape(50))
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    )
+}
 
 @Composable
 private fun StarMark(fontSize: Double, colour: Color) {
