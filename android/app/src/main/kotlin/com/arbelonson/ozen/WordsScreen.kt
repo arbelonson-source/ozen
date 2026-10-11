@@ -43,7 +43,7 @@ import com.arbelonson.ozen.core.VocabularyHints
 import com.arbelonson.ozen.core.tr
 
 @Composable
-internal fun WordsScreen(words: List<String>, onChange: (List<String>) -> Unit, onClose: () -> Unit) {
+internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChange: (List<String>) -> Unit, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     var draft by rememberSaveable { mutableStateOf("") }
     val listed = VocabularyHints.listedEntry(draft, words)
@@ -92,6 +92,9 @@ internal fun WordsScreen(words: List<String>, onChange: (List<String>) -> Unit, 
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (VocabularyHints.normalized(words + speakerNames) != words) {
+                TextButton(onClick = { onChange(words + speakerNames) }) { Text(tr("להוסיף את שמות הדוברים השמורים", "Add the saved speaker names")) }
+            }
             Row(modifier = Modifier.padding(top = 8.dp)) {
                 Text(tr("הרשימה", "List"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f).semantics { heading() })
                 Text("${words.size} / ${VocabularyHints.maximumTerms}", color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -204,6 +204,21 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun theWordsListOffersTheSavedSpeakersNamesOnlyWhileSomeAreMissingFromIt() {
+        val print = FloatArray(512) { 0.1f }
+        app.settings.change {
+            it.vocabulary = listOf("Dana")
+            it.speakerProfiles = listOf(SpeakerProfile(name = "Dana", embedding = print), SpeakerProfile(name = "Yossi", embedding = print), SpeakerProfile(name = "Yossi", embedding = print))
+        }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Names and special words").performScrollTo().performClick()
+        compose.onNodeWithText("Add the saved speaker names").performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.vocabulary == listOf("Dana", "Yossi") }
+        compose.onNodeWithText("Add the saved speaker names").assertDoesNotExist()
+        compose.onNodeWithText("Yossi").assertExists()
+    }
+
+    @Test
     fun showSpeakerNamesTurnsTheNamesOnTheCaptionsOffAndOnAgain() {
         app.settings.change { it.display = it.display.copy(showSpeakerNames = true) }
         compose.onNodeWithText("Settings").performClick()

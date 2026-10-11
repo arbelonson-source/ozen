@@ -132,7 +132,7 @@ fun SettingsScreen(
     }
     var showingWords by rememberSaveable { mutableStateOf(false) }
     if (showingWords) {
-        WordsScreen(current.vocabulary, onWords, onClose = { showingWords = false })
+        WordsScreen(current.vocabulary, current.speakerProfiles.map { it.name }, onWords, onClose = { showingWords = false })
         return
     }
     var showingDiagnostics by rememberSaveable { mutableStateOf(false) }
