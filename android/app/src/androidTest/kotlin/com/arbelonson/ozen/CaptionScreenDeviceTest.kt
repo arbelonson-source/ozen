@@ -322,6 +322,37 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun theOfferToBuzzForHerNameOpensTheNameFormAndGoesOnceANameIsInOrSheSaysNotNow() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.copy()
+        val offer = "Have the phone buzz when someone calls your name?"
+        try {
+            app.settings.change {
+                it.keywordAlerts = emptyList()
+                it.nameAlertOfferDismissed = false
+            }
+            compose.onNodeWithText(offer).performClick()
+            compose.onNodeWithText("When your name is called").assertExists()
+            compose.onNodeWithText("Your name").performTextInput("Dana")
+            compose.onNodeWithText("Done").performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.keywordAlerts.map { it.phrase } == listOf("Dana") }
+            assertEquals("Dana", app.settings.current.value.vocabulary.first())
+            compose.onNodeWithText(offer).assertDoesNotExist()
+
+            app.settings.change { it.keywordAlerts = emptyList() }
+            compose.onNodeWithContentDescription("Not now").performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.nameAlertOfferDismissed }
+            compose.onNodeWithText(offer).assertDoesNotExist()
+        } finally {
+            app.settings.change {
+                it.keywordAlerts = before.keywordAlerts
+                it.vocabulary = before.vocabulary
+                it.nameAlertOfferDismissed = before.nameAlertOfferDismissed
+            }
+        }
+    }
+
+    @Test
     fun openingTheAppStartsTheCaptionsOnceAndComingBackToTheCaptionScreenDoesNotStartThemAgain() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val stopped = { compose.runOnUiThread { app.captions.pipeline.stop() } }

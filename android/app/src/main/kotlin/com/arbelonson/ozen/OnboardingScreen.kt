@@ -81,14 +81,15 @@ internal fun OnboardingScreen(
     onApproveMicrophone: () -> Unit,
     onApproveNotifications: () -> Unit,
     onOpenPhoneSettings: () -> Unit,
-    onAddWord: (String) -> Unit,
+    onAddName: (String) -> Unit,
+    onAddAlert: (String) -> Unit,
     onFinish: () -> Unit,
 ) {
     val pager = rememberPagerState(pageCount = { PAGES })
     val nameDraft = rememberSaveable { mutableStateOf("") }
-    val addWord by rememberUpdatedState(onAddWord)
+    val addName by rememberUpdatedState(onAddName)
     val addDraft = {
-        if (nameDraft.value.isNotBlank()) addWord(nameDraft.value.trim())
+        if (nameDraft.value.isNotBlank()) addName(nameDraft.value.trim())
         nameDraft.value = ""
     }
     // A name typed and then "Next" or a swipe instead of "Add" was dropped
@@ -116,7 +117,7 @@ internal fun OnboardingScreen(
                         Point("⌨", tr("ואפשר להקליד תשובה, והטלפון יגיד אותה בקול.", "And you can type a reply, and the phone will speak it aloud."))
                     }
                     2 -> MicrophonePage(settings, microphone, notifications, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
-                    NAME_PAGE -> NamePage(settings, nameDraft, addDraft, onAddWord)
+                    NAME_PAGE -> NamePage(settings, nameDraft, addDraft, onAddAlert)
                     else -> Page("✅", tr("מוכן", "Ready")) {
                         // The app does not download the phone's model yet, so
                         // the iPhone's note about that first download would be
@@ -183,9 +184,26 @@ private fun MicrophonePage(
  * while the family member setting the phone up is still holding it.
  */
 @Composable
-private fun NamePage(settings: AppSettings, draft: MutableState<String>, addDraft: () -> Unit, onAddWord: (String) -> Unit) {
+private fun NamePage(settings: AppSettings, draft: MutableState<String>, addDraft: () -> Unit, onAddAlert: (String) -> Unit) {
     Page("🔔", tr("כשקוראים לך", "When you’re called")) {
         Body(tr("כשמישהו אומר את השם שלך, הטלפון רוטט והשורה מסומנת, גם כשלא מסתכלים על המסך.", "When someone says your name, the phone vibrates and the line is highlighted, even when no one is looking at the screen."))
+        NameAlertForm(settings, draft, addDraft, onAddAlert)
+        Text(
+            tr("אפשר להוסיף עוד מילים, או למחוק, בהגדרות ← התראות ← מילים חשובות.", "More words can be added or removed in Settings → Alerts → Important words."),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * Her name typed, or one of the suggestions, as the iPhone's form: the
+ * walkthrough's page and the caption screen's offer both use it. A typed
+ * name goes through [addDraft]; a suggestion only becomes an alert.
+ */
+@Composable
+internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, addDraft: () -> Unit, onAddAlert: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = draft.value,
@@ -211,17 +229,12 @@ private fun NamePage(settings: AppSettings, draft: MutableState<String>, addDraf
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             for (word in AlertSuggestions.names) {
                 val added = settings.keywordAlerts.any { it.isEnabled && HebrewText.normalize(it.phrase) == HebrewText.normalize(word) }
-                OutlinedButton(onClick = { onAddWord(word) }, enabled = !added, modifier = Modifier.heightIn(min = 56.dp)) {
+                OutlinedButton(onClick = { onAddAlert(word) }, enabled = !added, modifier = Modifier.heightIn(min = 56.dp)) {
                     Text((if (added) "✓ " else "+ ") + AlertSuggestions.label(word, Localization.language), fontSize = 18.sp)
                 }
             }
         }
         AlertSuggestions.vibrationNote(settings.keywordAlerts, Localization.language)?.let { Status("✓ $it", good = true) }
-        Text(
-            tr("אפשר להוסיף עוד מילים, או למחוק, בהגדרות ← התראות ← מילים חשובות.", "More words can be added or removed in Settings → Alerts → Important words."),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

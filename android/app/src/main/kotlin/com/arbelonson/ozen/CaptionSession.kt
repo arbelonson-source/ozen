@@ -430,6 +430,16 @@ class CaptionSession(
     /** What was said since the last autosave is written first, so a conversation opened from the captions has every line. */
     fun saveBeforeReading() = conversations.save(ended = false)
 
+    /** Her name, typed: it buzzes when said, and goes first on the names list so every engine expects it, as on the iPhone. */
+    fun addNameAlert(name: String) {
+        addAlert(name)
+        addWord(name)
+    }
+
+    fun addAlert(phrase: String) = setImportantWords(ImportantWords.adding(phrase, settings.current.value.keywordAlerts))
+
+    fun dismissNameAlertOffer() = settings.change { it.nameAlertOfferDismissed = true }
+
     /** A word the captions got wrong goes first in the word list. */
     fun addWord(word: String) = setWords(listOf(word) + settings.current.value.vocabulary)
 

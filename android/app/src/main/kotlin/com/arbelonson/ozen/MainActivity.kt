@@ -259,6 +259,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
     var reading by rememberSaveable { mutableStateOf<Pair<UUID, UUID>?>(null) }
     var saying by rememberSaveable { mutableStateOf(false) }
     var choosingMicrophone by rememberSaveable { mutableStateOf(false) }
+    var namingAlert by rememberSaveable { mutableStateOf(false) }
     var sayDraft by rememberSaveable { mutableStateOf("") }
     var awakeClock by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1_000.0) }
     LaunchedEffect(state.phase.isListening) {
@@ -285,7 +286,8 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                         onApproveMicrophone = onboarding.approveMicrophone,
                         onApproveNotifications = onboarding.approveNotifications,
                         onOpenPhoneSettings = onboarding.openPhoneSettings,
-                        onAddWord = { app.captions.setImportantWords(ImportantWords.adding(it, app.settings.current.value.keywordAlerts)) },
+                        onAddName = app.captions::addNameAlert,
+                        onAddAlert = app.captions::addAlert,
                         onFinish = onboarding.finish,
                     )
                 }
@@ -299,6 +301,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     onClose = { reading = null },
                     line = opened.second,
                 )
+                namingAlert -> NameAlertScreen(current, onAddName = app.captions::addNameAlert, onAddAlert = app.captions::addAlert, onClose = { namingAlert = false })
                 choosingMicrophone -> MicPickerScreen(
                     inputs = state.inputs,
                     selected = state.selectedInput,
@@ -354,6 +357,9 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                         onDismissMicrophoneDrop = app.captions::dismissMicrophoneDrop,
                         onMarkProblem = app.captions::markProblem,
                         onMicrophone = { choosingMicrophone = true },
+                        offersNameAlert = current.offersNameAlert,
+                        onNameAlert = { namingAlert = true },
+                        onDismissNameAlert = app.captions::dismissNameAlertOffer,
                     )
                 }
             }
@@ -442,6 +448,9 @@ private fun CaptionScreen(
     onDismissMicrophoneDrop: () -> Unit,
     onMarkProblem: () -> Boolean,
     onMicrophone: () -> Unit,
+    offersNameAlert: Boolean,
+    onNameAlert: () -> Unit,
+    onDismissNameAlert: () -> Unit,
 ) {
     val list = rememberLazyListState()
     var problemMarked by remember { mutableStateOf<Boolean?>(null) }
@@ -511,13 +520,16 @@ private fun CaptionScreen(
     ) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             if (state.lines.isEmpty()) {
-                Text(
-                    text = tr("הכתוביות יופיעו כאן.", "Captions will appear here."),
-                    color = look.text.copy(alpha = 0.6f),
-                    fontSize = 32.sp,
-                    lineHeight = 40.sp,
-                    textAlign = TextAlign.Center,
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = tr("הכתוביות יופיעו כאן.", "Captions will appear here."),
+                        color = look.text.copy(alpha = 0.6f),
+                        fontSize = 32.sp,
+                        lineHeight = 40.sp,
+                        textAlign = TextAlign.Center,
+                    )
+                    if (offersNameAlert) NameAlertOffer(look, onNameAlert, onDismissNameAlert)
+                }
             } else {
                 CaptionLines(state.lines, display, look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it }, onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
                 if (!following) {
@@ -915,6 +927,33 @@ private fun MicrophoneDropBanner(title: String, detail: String, onChooseMicropho
                 .semantics { contentDescription = close },
         ) {
             Text("✕", color = Color.White.copy(alpha = 0.8f), fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics {})
+        }
+    }
+}
+
+/** As the iPhone's card, for a phone whose walkthrough was skipped: the buzz for her name only works once the name is in. */
+@Composable
+private fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = Modifier.padding(top = 32.dp).fillMaxWidth().background(look.chrome.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.weight(1f).clickable(onClick = onOpen).padding(start = 14.dp, top = 14.dp, bottom = 14.dp),
+        ) {
+            Text("🔔", fontSize = 24.sp, modifier = Modifier.clearAndSetSemantics {})
+            Column {
+                Text(tr("שהטלפון ירטוט כשקוראים לך?", "Have the phone buzz when someone calls your name?"), color = look.chrome, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(tr("הקישו כדי לכתוב את השם שלך", "Tap to write your name"), color = look.chrome, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        val notNow = tr("לא עכשיו", "Not now")
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(48.dp).clickable(role = Role.Button, onClick = onDismiss).semantics { contentDescription = notNow },
+        ) {
+            Text("✕", color = look.chrome, fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics {})
         }
     }
 }

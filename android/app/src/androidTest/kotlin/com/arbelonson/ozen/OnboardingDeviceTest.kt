@@ -16,6 +16,7 @@ import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -68,6 +69,7 @@ class OnboardingDeviceTest {
         }
         app.settings.change {
             it.keywordAlerts = before.keywordAlerts
+            it.vocabulary = before.vocabulary
             it.engine = before.engine
             it.hasCompletedOnboarding = true
         }
@@ -94,6 +96,8 @@ class OnboardingDeviceTest {
         compose.onNodeWithText("Your name").performScrollTo().performTextInput("Dana")
         compose.onNodeWithText("Next").performClick()
         compose.waitUntil(5_000) { alerts() == listOf("סבתא", "Dana") }
+        assertEquals("Dana", app.settings.current.value.vocabulary.first())
+        assertFalse("סבתא" in app.settings.current.value.vocabulary)
 
         compose.onNodeWithText("The button below starts the captions. Good luck, Grandma.").assertExists()
         compose.onNodeWithText("Skip").assertDoesNotExist()
