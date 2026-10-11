@@ -268,6 +268,27 @@ class EngineSettingsTest {
     }
 
     @Test
+    fun `a new address, code, language or computer restarts captions once, carrying a slider still settling`() {
+        engineSettings.chooseEngine(TranscriptionEngineKind.HomeServer)
+        val changes = listOf<() -> Unit>(
+            { engineSettings.saveHomeComputerAddress("wss://pc.example.com") },
+            { assertTrue(engineSettings.savePairingCode("123456")) },
+            { engineSettings.deletePairingCode() },
+            { engineSettings.chooseSpokenLanguage(UILanguage.English) },
+            { engineSettings.pairedWithAComputer() },
+        )
+        changes.forEachIndexed { at, change ->
+            restarts = 0
+            engineSettings.chooseBeam(2 + at)
+            scope.advanceTimeBy(300)
+            change()
+            scope.advanceTimeBy(2_000)
+            scope.runCurrent()
+            assertEquals(1, restarts, "change $at")
+        }
+    }
+
+    @Test
     fun `the slider names its steps in the iphone's words`() {
         val names = Localization.withLanguage(UILanguage.English) { (1..7).map { EngineSettings.beamDescription(it) } }
         assertEquals(listOf("1 of 7, fastest", "2 of 7", "3 of 7", "4 of 7", "5 of 7, usual", "6 of 7", "7 of 7, slowest"), names)

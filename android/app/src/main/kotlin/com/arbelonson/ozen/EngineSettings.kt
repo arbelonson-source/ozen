@@ -37,26 +37,26 @@ class EngineSettings(
     fun chooseEngine(kind: TranscriptionEngineKind) {
         if (settings.current.value.engine == kind) return
         settings.change { it.engine = kind }
-        restartIfRunning()
+        restart()
     }
 
     /** Every engine is told the language, so captions running on any of them start again in the new one. */
     fun chooseSpokenLanguage(language: UILanguage) {
         if (settings.current.value.spokenLanguage == language) return
         settings.change { it.spokenLanguage = language }
-        restartIfRunning()
+        restart()
     }
 
     fun chooseCloudService(service: CloudProvider) {
         if (provider == service) return
         settings.change { it.cloudProvider = service }
-        if (cloudIsTheEngine) restartIfRunning()
+        if (cloudIsTheEngine) restart()
     }
 
     fun chooseCloudModel(model: String) {
         if (settings.current.value.cloudModel == model) return
         settings.change { it.cloudModel = model }
-        if (cloudIsTheEngine) restartIfRunning()
+        if (cloudIsTheEngine) restart()
     }
 
     fun hasCloudKey(): Boolean = cloudKeys.hasKey(provider)
@@ -64,20 +64,20 @@ class EngineSettings(
     fun saveCloudKey(draft: String): Boolean {
         val key = draft.trim()
         if (key.isEmpty() || !cloudKeys.save(key, provider)) return false
-        if (cloudIsTheEngine) restartIfRunning()
+        if (cloudIsTheEngine) restart()
         return true
     }
 
     fun deleteCloudKey() {
         cloudKeys.remove(provider)
-        if (cloudIsTheEngine) restartIfRunning()
+        if (cloudIsTheEngine) restart()
     }
 
     fun saveHomeComputerAddress(draft: String) {
         val address = draft.trim()
         if (settings.current.value.homeServerAddress == address) return
         settings.change { it.homeServerAddress = address }
-        if (homeComputerIsTheEngine) restartIfRunning()
+        if (homeComputerIsTheEngine) restart()
     }
 
     fun hasPairingCode(): Boolean = homeServerCode.read() != null
@@ -85,13 +85,13 @@ class EngineSettings(
     fun savePairingCode(draft: String): Boolean {
         val code = draft.trim()
         if (code.isEmpty() || !homeServerCode.save(code)) return false
-        if (homeComputerIsTheEngine) restartIfRunning()
+        if (homeComputerIsTheEngine) restart()
         return true
     }
 
     fun deletePairingCode() {
         homeServerCode.remove()
-        if (homeComputerIsTheEngine) restartIfRunning()
+        if (homeComputerIsTheEngine) restart()
     }
 
     fun chooseBeam(beam: Int) {
@@ -104,6 +104,19 @@ class EngineSettings(
             delay(BEAM_SETTLE_MILLIS)
             if (homeComputerIsTheEngine) restartIfRunning()
         }
+    }
+
+    /** A new computer paired from its code: captions start again on it. */
+    fun pairedWithAComputer() = restart()
+
+    /**
+     * As on the iPhone, a restart carries the current beam too: one still
+     * settling from the slider would only reconnect a second time.
+     */
+    private fun restart() {
+        beamRestart?.cancel()
+        beamRestart = null
+        restartIfRunning()
     }
 
     fun canTestConnection(addressDraft: String, codeDraft: String, codeSaved: Boolean): Boolean {
