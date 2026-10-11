@@ -657,13 +657,30 @@ private fun CaptionScreen(
             contentAlignment = Alignment.Center,
         ) {
             if (state.lines.isEmpty()) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().padding(top = 40.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    // Not while a call holds the microphone: the phase stays
+                    // on listening, but nothing is being heard.
+                    val running = state.captionsRunning
                     Text(
-                        text = tr("הכתוביות יופיעו כאן.", "Captions will appear here."),
-                        color = look.text.copy(alpha = 0.6f),
-                        fontSize = 32.sp,
-                        lineHeight = 40.sp,
-                        textAlign = TextAlign.Center,
+                        text = if (running) tr("מקשיב.", "Listening.") else tr("הכתוביות יופיעו כאן.", "Captions will appear here."),
+                        color = look.text,
+                        fontSize = pinchedSize.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = if (running) {
+                            tr(
+                                "כשמישהו ידבר, המילים יופיעו כאן בזמן אמת. השאירו אצבע על שורה כדי לסמן אותה כחשובה או לתת שם לדובר, וצבטו בשתי אצבעות כדי להגדיל או להקטין את הטקסט.",
+                                "When someone talks, the words will appear here in real time. Press and hold a line to mark it as important or name the speaker, and pinch with two fingers to make the text bigger or smaller.",
+                            )
+                        } else {
+                            tr("אפשר לבחור מיקרופון בכפתור למטה מימין ולשנות מנוע תמלול בהגדרות.", "You can choose a microphone with the microphone button at the bottom, and change the transcription engine in Settings.")
+                        },
+                        color = look.pendingText,
+                        fontSize = maxOf(17.0, pinchedSize * 0.6).sp,
                     )
                     if (offersNameAlert) NameAlertOffer(look, onNameAlert, onDismissNameAlert)
                 }

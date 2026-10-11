@@ -1242,6 +1242,26 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun anEmptyScreenSaysItIsListeningAndHowToUseItOrHowToGetCaptionsGoingWhileACallHoldsThem() {
+        compose.runOnUiThread {
+            CaptionState.clear()
+            CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList())
+        }
+        compose.onNodeWithText("Listening.").assertExists()
+        compose.onNodeWithText("Press and hold a line to mark it as important or name the speaker", substring = true).assertExists()
+        compose.onNodeWithText("pinch with two fingers to make the text bigger or smaller", substring = true).assertExists()
+        compose.onNodeWithText("Captions will appear here.").assertDoesNotExist()
+
+        compose.runOnUiThread {
+            CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = true, scheduledRetry = null, segments = emptyList())
+        }
+        compose.onNodeWithText("Captions will appear here.").assertExists()
+        compose.onNodeWithText("You can choose a microphone with the microphone button", substring = true).assertExists()
+        compose.onNodeWithText("Listening.").assertDoesNotExist()
+        compose.onNodeWithText("pinch with two fingers", substring = true).assertDoesNotExist()
+    }
+
+    @Test
     fun theSaidPillNamesWhoSaidTheWordWhileSpeakerNamesAreShown() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val displayBefore = app.settings.current.value.display
