@@ -793,6 +793,10 @@ class CaptionScreenDeviceTest {
         try {
             app.settings.change { it.display = it.display.copy(showSpeakerNames = true) }
             compose.runOnUiThread { ListeningService.start(app) }
+            // With a model on the phone, its seconds of loading publish the
+            // captions' own empty lines over and over; looked at once they
+            // have started, what the notification shows holds still.
+            compose.waitUntil(30_000) { app.captions.pipeline.phase.isListening || app.captions.pipeline.phase is PipelinePhase.Failed }
             assertTrue("not named with names on: ${text()}", shows("Dana: Names test good morning"))
             app.settings.change { it.display = it.display.copy(showSpeakerNames = false) }
             assertTrue("named with names off: ${text()}", shows("Names test good morning"))
