@@ -1,5 +1,7 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.AudioInputDescriptor
+import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
@@ -90,6 +92,19 @@ class CaptionStateTest {
         assertTrue(CaptionState.screen.value.savingTrouble)
         CaptionState.savingTrouble(false)
         assertFalse(CaptionState.screen.value.savingTrouble)
+    }
+
+    @Test
+    fun `the microphones and the one in use stay through new captions`() {
+        val phone = AudioInputDescriptor("builtInMic:", "Phone microphone", AudioPortType.BuiltInMic)
+        val lapel = AudioInputDescriptor("usb:1", "Lapel mic", AudioPortType.Usb)
+        CaptionState.inputs(listOf(phone, lapel), selected = "usb:1")
+        show(PipelinePhase.Listening, listOf(line("Hello", committed = true)))
+        assertEquals(listOf(phone, lapel), CaptionState.screen.value.inputs)
+        assertEquals(lapel, CaptionState.screen.value.selectedInput)
+        CaptionState.inputs(listOf(phone), selected = "usb:1")
+        assertNull(CaptionState.screen.value.selectedInput)
+        CaptionState.clear()
     }
 
     @Test

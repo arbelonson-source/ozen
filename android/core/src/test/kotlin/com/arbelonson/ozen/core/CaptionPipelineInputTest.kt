@@ -66,6 +66,25 @@ class CaptionPipelineInputTest {
     }
 
     @Test
+    fun `the app is told each time the microphones change, with the drop notice already set`() = runTest {
+        val audio = lapelAudio()
+        val (pipeline, _, _) = makePipeline(audio = audio)
+        val told = mutableListOf<AudioInputDescriptor?>()
+        pipeline.onInputsChanged = { told += pipeline.microphoneDrop.lost }
+        pipeline.start(lapelSettings())
+        val atStart = told.size
+        assertTrue(atStart >= 1)
+
+        audio.selectedInputUID = "builtin"
+        audio.simulateRouteChange(listOf(builtIn))
+        assertEquals(atStart + 1, told.size)
+        assertEquals(lapel, told.last())
+
+        pipeline.refreshInputs()
+        assertEquals(atStart + 2, told.size)
+    }
+
+    @Test
     fun `the notice of a dropped microphone goes away when she closes it`() = runTest {
         val audio = lapelAudio()
         val (pipeline, _, _) = makePipeline(audio = audio)

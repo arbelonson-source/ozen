@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -97,6 +98,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -205,6 +207,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
     var showingHistory by rememberSaveable { mutableStateOf(false) }
     var reading by rememberSaveable { mutableStateOf<Pair<UUID, UUID>?>(null) }
     var saying by rememberSaveable { mutableStateOf(false) }
+    var choosingMicrophone by rememberSaveable { mutableStateOf(false) }
     var sayDraft by rememberSaveable { mutableStateOf("") }
     var awakeClock by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1_000.0) }
     LaunchedEffect(state.phase.isListening) {
@@ -229,6 +232,15 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     emphasizeNumbers = current.display.emphasizeNumbers,
                     onClose = { reading = null },
                     line = opened.second,
+                )
+                choosingMicrophone -> MicPickerScreen(
+                    inputs = state.inputs,
+                    selected = state.selectedInput,
+                    listening = state.phase.isListening,
+                    level = { app.captions.pipeline.inputLevel },
+                    onChoose = { app.captions.selectInput(it.uid) },
+                    onRefresh = app.captions::refreshInputs,
+                    onClose = { choosingMicrophone = false },
                 )
                 saying -> SayScreen(
                     draft = sayDraft,
@@ -271,6 +283,7 @@ private fun OzenApp(app: OzenApplication, showingSettings: MutableState<Boolean>
                     onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
                     onDismissSavingTrouble = app.captions::dismissSavingTrouble,
                     onMarkProblem = app.captions::markProblem,
+                    onMicrophone = { choosingMicrophone = true },
                 )
             }
             PairingDialogs(app.pairing)
@@ -356,6 +369,7 @@ private fun CaptionScreen(
     onSay: () -> Unit,
     onDismissSavingTrouble: () -> Unit,
     onMarkProblem: () -> Boolean,
+    onMicrophone: () -> Unit,
 ) {
     val list = rememberLazyListState()
     var problemMarked by remember { mutableStateOf<Boolean?>(null) }
@@ -455,6 +469,16 @@ private fun CaptionScreen(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     TextButton(onClick = onHistory) {
                         Text(tr("היסטוריה", "History"), fontSize = 18.sp)
+                    }
+                    val choose = tr("בחירת מיקרופון", "Choose microphone")
+                    TextButton(
+                        onClick = onMicrophone,
+                        modifier = Modifier.widthIn(max = 120.dp).semantics {
+                            contentDescription = choose
+                            stateDescription = state.selectedInput?.portName ?: ""
+                        },
+                    ) {
+                        Text(state.selectedInput?.let(::inputShortName) ?: tr("מיקרופון", "Microphone"), fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     // While the phone talks, this stops it at once instead of
                     // opening the Say screen, as on the iPhone: captions stay

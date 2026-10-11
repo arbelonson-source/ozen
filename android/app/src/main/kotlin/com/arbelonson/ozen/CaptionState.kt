@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ControlBarAutoHide
@@ -44,6 +45,8 @@ data class CaptionScreenState(
     val recentlyHeard: List<KeywordHit> = emptyList(),
     val speaking: Boolean = false,
     val savingTrouble: Boolean = false,
+    val inputs: List<AudioInputDescriptor> = emptyList(),
+    val selectedInput: AudioInputDescriptor? = null,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(phase, engine, interruptedBySystem, scheduledRetry)
@@ -119,7 +122,14 @@ object CaptionState {
             recentlyHeard = recentlyHeard.takeLast(10).reversed(),
             speaking = state.value.speaking,
             savingTrouble = state.value.savingTrouble,
+            inputs = state.value.inputs,
+            selectedInput = state.value.selectedInput,
         )
+    }
+
+    /** The microphones the phone offers and the one recording, for the picker and the caption bar. */
+    fun inputs(available: List<AudioInputDescriptor>, selected: String?) {
+        state.value = state.value.copy(inputs = available, selectedInput = available.firstOrNull { it.uid == selected })
     }
 
     /** An important word was said, and should buzz and show for a moment; kept through new captions. */

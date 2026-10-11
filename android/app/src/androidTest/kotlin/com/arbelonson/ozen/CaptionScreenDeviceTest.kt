@@ -24,6 +24,8 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelectable
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isDialog
@@ -50,6 +52,8 @@ import androidx.core.view.WindowCompat
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.AudioInputDescriptor
+import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.KeywordHit
@@ -276,6 +280,40 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithText("Problem marked").assertExists()
         assertEquals(2, marks())
         compose.onNodeWithText("OK").performClick()
+    }
+
+    @Test
+    fun theMicrophoneButtonOpensThePickerWhereChoosingOneSwitchesToItOrSaysThePhoneWouldNot() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val preferredBefore = app.settings.current.value.preferredInputUID
+        try {
+            compose.onNodeWithContentDescription("Choose microphone").performClick()
+            compose.onNodeWithText("Available microphones").assertExists()
+            compose.onNodeWithText("The meter is only active while listening.").performScrollTo().assertExists()
+            val real = app.captions.pipeline.availableInputs
+            assertTrue("the picker found no microphone on the phone", real.isNotEmpty())
+            val phone = real.first()
+            compose.onNode(hasText(phone.portName) and isSelectable()).performScrollTo().performClick()
+            compose.waitUntil(5_000) { compose.onAllNodes(hasText(phone.portName) and isSelected()).fetchSemanticsNodes().isNotEmpty() }
+            assertEquals(phone.uid, app.settings.current.value.preferredInputUID)
+
+            val lapel = AudioInputDescriptor("usb:lapel", "Lapel mic", AudioPortType.Usb)
+            compose.runOnUiThread { CaptionState.inputs(real + lapel, phone.uid) }
+            compose.onNode(hasText("Lapel mic") and isSelectable()).performScrollTo().performClick()
+            compose.onNodeWithText("The phone did not switch to “Lapel mic”, and the marked microphone is still recording. Try unplugging and reconnecting it.").performScrollTo().assertExists()
+            compose.onNode(hasText(phone.portName) and isSelected()).assertExists()
+
+            compose.runOnUiThread { CaptionState.inputs(emptyList(), null) }
+            compose.onNodeWithText("No microphones available").assertExists()
+            compose.onNodeWithText("Refresh").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodes(hasText(phone.portName) and isSelectable()).fetchSemanticsNodes().isNotEmpty() }
+
+            compose.onNodeWithText("Close").performClick()
+            compose.onNodeWithText("Available microphones").assertDoesNotExist()
+            compose.onNodeWithContentDescription("Choose microphone").assert(hasText(if (phone.portType == AudioPortType.BuiltInMic) "Phone" else phone.portName))
+        } finally {
+            app.settings.change { it.preferredInputUID = preferredBefore }
+        }
     }
 
     @Test

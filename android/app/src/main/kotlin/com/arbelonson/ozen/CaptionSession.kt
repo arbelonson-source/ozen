@@ -207,6 +207,7 @@ class CaptionSession(
             publish()
         }
         pipeline.onCaptionsChanged = ::publish
+        pipeline.onInputsChanged = ::publishInputs
         pipeline.onKeywordHits = ::wordsHeard
         replies.onSpeaking = CaptionState::speaking
         pipeline.onEvent = { journal.append(it.description, it.at) }
@@ -298,6 +299,21 @@ class CaptionSession(
         )
         refreshSavingTrouble()
     }
+
+    /**
+     * Her choice in the picker, kept for next time even when the phone
+     * refuses to switch now; false when it refused.
+     */
+    fun selectInput(uid: String): Boolean {
+        val switched = pipeline.selectInput(uid)
+        settings.change { it.preferredInputUID = uid }
+        return switched
+    }
+
+    /** Asks the phone again which microphones there are: "I just plugged it in". */
+    fun refreshInputs() = pipeline.refreshInputs()
+
+    private fun publishInputs() = CaptionState.inputs(pipeline.availableInputs, pipeline.selectedInputUID)
 
     /** What the diagnostics screen shows and its report says, as things stand now. */
     override fun diagnostics(): DiagnosticsFacts {

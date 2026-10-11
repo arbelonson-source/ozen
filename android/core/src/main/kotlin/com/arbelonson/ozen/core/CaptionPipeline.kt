@@ -374,6 +374,13 @@ class CaptionPipeline(
      */
     var onCaptionsChanged: (() -> Unit)? = null
 
+    /**
+     * The microphones, the one in use, or [microphoneDrop] changed: a
+     * microphone plugged in or out, a refresh, a choice in the picker.
+     * Android's screens don't observe the pipeline as SwiftUI's do.
+     */
+    var onInputsChanged: (() -> Unit)? = null
+
     val inputLevel: Float get() = audio.inputLevel
 
     /** The connection as last reported, for diagnostics; null when unknown. */
@@ -1320,6 +1327,7 @@ class CaptionPipeline(
         // Remembered apart from the list: the one that just went away is
         // no longer in it.
         if (current != null) lastSelectedInput = current
+        onInputsChanged?.invoke()
     }
 
     /** Hides the notice until another microphone drops. */

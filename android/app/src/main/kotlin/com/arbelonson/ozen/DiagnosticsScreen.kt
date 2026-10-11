@@ -47,7 +47,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.AudioLevelHistogram
-import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.tr
@@ -100,7 +99,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             Value(tr("מיקרופון נבחר", "Selected microphone"), now.selectedInput?.portName ?: "—")
             Value(tr("מיקרופונים זמינים", "Available microphones"), "${now.availableInputs.size}")
             for (input in now.availableInputs) {
-                Text("${input.portName} · ${typeName(input.portType)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${input.portName} · ${inputTypeName(input.portType)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Value(tr("חבילות אודיו", "Audio chunks"), "${stats.audioChunksReceived}")
             Value(tr("שניות אודיו", "Audio seconds"), format("%.1f", stats.audioSecondsReceived))
@@ -239,15 +238,6 @@ private fun Value(label: String, value: String) {
     }
 }
 
-private fun typeName(type: AudioPortType): String = when (type) {
-    AudioPortType.BuiltInMic -> tr("מובנה", "Built-in")
-    AudioPortType.Bluetooth -> "Bluetooth"
-    AudioPortType.Wired -> tr("חוטי", "Wired")
-    AudioPortType.Usb -> "USB"
-    AudioPortType.HearingAid -> tr("מכשיר שמיעה", "Hearing aid")
-    AudioPortType.RemoteMic -> tr("מיקרופון מרוחק", "Remote microphone")
-    AudioPortType.Other -> tr("אחר", "Other")
-}
 
 private fun levels(histogram: AudioLevelHistogram): String {
     val quiet = histogram.decibels(0.1) ?: return "—"
