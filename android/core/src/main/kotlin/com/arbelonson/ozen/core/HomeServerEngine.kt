@@ -451,7 +451,8 @@ class HomeServerEngine(
     // MARK: - Connecting
 
     private fun destination(): Target {
-        val url = HomeServer.url(address) ?: throw EngineUnavailability.homeServerUnreachable(HomeServer.NO_ADDRESS)
+        val url = HomeServer.url(address)
+            ?: throw EngineUnavailability.homeServerUnreachable(if (HomeServer.needsEncryptedAddress(address)) HomeServer.NEEDS_ENCRYPTION else HomeServer.NO_ADDRESS)
         val code = token()
         if (code.isNullOrEmpty()) throw EngineUnavailability.homeServerRejected(HomeServer.NO_CODE)
         return Target(url, code)

@@ -74,7 +74,7 @@ class HomeServerTest {
             client = "Ozen 36, iOS 18.2",
             timeSource = testScheduler.timeSource,
         ).checkAvailability("he")
-        assertEquals(HomeServerCheck.NotSetUp, HomeServerCheck.of(check, 0.0))
+        assertEquals(HomeServerCheck.NeedsEncryptedAddress, HomeServerCheck.of(check, 0.0))
         assertTrue(socket.sentTexts.isEmpty())
     }
 

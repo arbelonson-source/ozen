@@ -629,6 +629,9 @@ struct SettingsView: View {
         case .notSetUp:
             Label(text, systemImage: "questionmark.circle")
                 .foregroundStyle(.secondary)
+        case .needsEncryptedAddress:
+            Label(text, systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.readable(.orange))
         }
     }
 
@@ -642,6 +645,8 @@ struct SettingsView: View {
             tr("אין תשובה מהמחשב. בדקו שהוא דלוק, ער (לא במצב שינה) ומחובר לאינטרנט.", "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.")
         case .notSetUp:
             tr("חסרים כתובת או קוד", "The address or code is missing")
+        case .needsEncryptedAddress:
+            tr("מחוץ לרשת הביתית, צריך את הכתובת שמתחילה ב-wss://", "Outside the home network, use the address that starts with wss://")
         }
     }
 

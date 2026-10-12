@@ -183,7 +183,7 @@ struct HomeServerEngineTests {
         #expect(HomeServer.url(from: "grandma-pc.local")?.absoluteString == "ws://grandma-pc.local:8765")
         let socket = ScriptedSocket(helloReply: ready)
         let check = await engine(socket, address: "203.0.113.5").checkAvailability(languageCode: "he")
-        #expect(HomeServerCheck(availability: check, seconds: 0) == .notSetUp)
+        #expect(HomeServerCheck(availability: check, seconds: 0) == .needsEncryptedAddress)
         #expect(await socket.sentTexts.isEmpty)
     }
 
@@ -300,6 +300,18 @@ struct HomeServerEngineTests {
         #expect(HomeServerCheck(availability: noCode, seconds: 0) == .notSetUp)
         let noAddress = await engine(ScriptedSocket(helloReply: ready), address: "").checkAvailability(languageCode: "he")
         #expect(HomeServerCheck(availability: noAddress, seconds: 0) == .notSetUp)
+    }
+
+    @Test("Test connection on a saved plain ws:// address out on the internet says to use the wss:// one, not that the address is missing")
+    func unencryptedFarAddressCheckNamesWss() async {
+        let socket = ScriptedSocket(helloReply: ready)
+        let far = await engine(socket, address: "ws://captions.example.org:8765").checkAvailability(languageCode: "he")
+        #expect(HomeServerCheck(availability: far, seconds: 0) == .needsEncryptedAddress)
+        #expect(await socket.sentTexts.isEmpty)
+        for missing in ["", "two words"] {
+            let check = await engine(ScriptedSocket(helloReply: ready), address: missing).checkAvailability(languageCode: "he")
+            #expect(HomeServerCheck(availability: check, seconds: 0) == .notSetUp, "\(missing)")
+        }
     }
 
     @Test("captions started with no code or no address end at once, saying which, without calling anyone")

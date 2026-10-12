@@ -84,6 +84,18 @@ class HomeServerEngineTest {
         assertEquals(HomeServerCheck.NotSetUp, HomeServerCheck.of(noAddress, 0.0))
     }
 
+    @Test
+    fun `Test connection on a saved plain ws address out on the internet says to use the wss one, not that the address is missing`() = runTest {
+        val socket = socket(READY)
+        val far = engine(socket, address = "ws://captions.example.org:8765").checkAvailability("he")
+        assertEquals(HomeServerCheck.NeedsEncryptedAddress, HomeServerCheck.of(far, 0.0))
+        assertTrue(socket.sentTexts.isEmpty())
+        for (missing in listOf("", "two words")) {
+            val check = engine(socket(READY), address = missing).checkAvailability("he")
+            assertEquals(HomeServerCheck.NotSetUp, HomeServerCheck.of(check, 0.0), missing)
+        }
+    }
+
     private suspend fun TestScope.firstError(token: String?, address: String): Pair<EngineUnavailability.Kind?, List<String>> {
         val socket = socket(READY)
         val feed = AudioFeed()

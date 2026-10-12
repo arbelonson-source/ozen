@@ -155,6 +155,7 @@ if you have not saved it yet.
 | "The computer answered but didn’t accept the code." | The computer is on, but the code on the phone is not the one it expects. | Scan the QR code again, or type the code again. |
 | "No answer from the computer." | The phone cannot reach it. | Check that it is on and awake, and on the same Wi-Fi as the phone (or online, for a `wss://` address). |
 | "The address or code is missing" | One of the two is empty. | Fill in both. |
+| "Outside the home network, use the address that starts with wss://" | The address is a plain one for a computer out on the internet. The phone won't send the sound, the code and the names there unencrypted. | Type the computer's address that starts with `wss://`. |
 
 ### Speed or accuracy
 

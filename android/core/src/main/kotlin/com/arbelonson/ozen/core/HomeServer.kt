@@ -43,6 +43,7 @@ object HomeServer {
     val setupDownload: URI = URI("https://github.com/arbelonson-source/ozen/releases/latest/download/$SETUP_FILE_NAME")
     internal const val NO_ADDRESS = "no valid server address"
     internal const val NO_CODE = "no pairing code"
+    internal const val NEEDS_ENCRYPTION = "plain ws:// address outside the home network"
     const val END = """{"type":"end"}"""
 
     /**
@@ -327,14 +328,19 @@ sealed class HomeServerCheck {
 
     data object NotSetUp : HomeServerCheck()
 
+    data object NeedsEncryptedAddress : HomeServerCheck()
+
     companion object {
         fun of(availability: EngineAvailability, seconds: Double): HomeServerCheck = when (availability) {
             is EngineAvailability.Available -> Connected(maxOf(0, rounded(seconds * 1000)))
             is EngineAvailability.Unavailable -> when (availability.why.kind) {
                 EngineUnavailability.Kind.HomeServerRejected ->
                     if (availability.why.detail == HomeServer.NO_CODE) NotSetUp else CodeRefused
-                EngineUnavailability.Kind.HomeServerUnreachable ->
-                    if (availability.why.detail == HomeServer.NO_ADDRESS) NotSetUp else Unreachable
+                EngineUnavailability.Kind.HomeServerUnreachable -> when (availability.why.detail) {
+                    HomeServer.NO_ADDRESS -> NotSetUp
+                    HomeServer.NEEDS_ENCRYPTION -> NeedsEncryptedAddress
+                    else -> Unreachable
+                }
                 else -> Unreachable
             }
         }

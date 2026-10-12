@@ -383,7 +383,7 @@ public actor HomeServerEngine: TranscriptionEngine {
 
     private func destination() -> Result<(url: URL, token: String), EngineUnavailability> {
         guard let url = HomeServer.url(from: address) else {
-            return .failure(.homeServerUnreachable(HomeServer.noAddress))
+            return .failure(.homeServerUnreachable(HomeServer.needsEncryptedAddress(address) ? HomeServer.needsEncryption : HomeServer.noAddress))
         }
         guard let token = token(), !token.isEmpty else {
             return .failure(.homeServerRejected(HomeServer.noCode))

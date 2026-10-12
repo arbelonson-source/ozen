@@ -23,6 +23,7 @@ public enum HomeServer {
     public static let setupDownload = URL(string: "https://github.com/arbelonson-source/ozen/releases/latest/download/\(setupFileName)")!
     static let noAddress = "no valid server address"
     static let noCode = "no pairing code"
+    static let needsEncryption = "plain ws:// address outside the home network"
 
     /// An address typed in Settings but never saved with Return or the
     /// button, worth saving as Settings closes: going back used to drop it,
@@ -218,6 +219,7 @@ public enum HomeServerCheck: Sendable, Equatable {
     case codeRefused
     case unreachable
     case notSetUp
+    case needsEncryptedAddress
 
     public init(availability: EngineAvailability, seconds: Double) {
         switch availability {
@@ -226,7 +228,12 @@ public enum HomeServerCheck: Sendable, Equatable {
         case .unavailable(let why):
             switch why.kind {
             case .homeServerRejected: self = why.detail == HomeServer.noCode ? .notSetUp : .codeRefused
-            case .homeServerUnreachable: self = why.detail == HomeServer.noAddress ? .notSetUp : .unreachable
+            case .homeServerUnreachable:
+                switch why.detail {
+                case HomeServer.noAddress: self = .notSetUp
+                case HomeServer.needsEncryption: self = .needsEncryptedAddress
+                default: self = .unreachable
+                }
             default: self = .unreachable
             }
         }
