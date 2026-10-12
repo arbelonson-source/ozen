@@ -448,7 +448,8 @@ private fun HomeComputerSection(
 ) {
     val saved = current.homeServerAddress
     var address by addressDraft
-    var hasCode by remember { mutableStateOf(engineSettings.hasPairingCode()) }
+    val pairings by engineSettings.computerPairings.collectAsStateWithLifecycle()
+    var hasCode by remember(pairings) { mutableStateOf(engineSettings.hasPairingCode()) }
     var code by codeDraft
     var codeSaveFailed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()

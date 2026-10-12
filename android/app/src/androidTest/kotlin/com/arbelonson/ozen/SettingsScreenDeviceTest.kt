@@ -664,6 +664,19 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun aComputerPairedFromItsLinkWhileSettingsAreOpenShowsItsCodeAsSaved() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onAllNodesWithText("Home computer").onFirst().performScrollTo().performClick()
+        compose.onNodeWithText("The pairing code from the computer").performScrollTo()
+        compose.onNodeWithText("Pairing code saved on the phone").assertDoesNotExist()
+        compose.runOnUiThread { app.pairing.open("ozen://pair?address=ws://192.168.1.20:8765&code=paired-from-link") }
+        compose.onNodeWithText("Connect").performClick()
+        assertEquals("paired-from-link", app.homeServerCode.read())
+        compose.onNodeWithText("Pairing code saved on the phone").performScrollTo()
+        compose.onNodeWithText("Delete code").performScrollTo()
+    }
+
+    @Test
     fun deletingThePairingCodeAsksFirstThenRemovesIt() {
         app.homeServerCode.save("code-to-delete")
         compose.onNodeWithText("Settings").performClick()

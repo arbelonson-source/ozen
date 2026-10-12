@@ -12,6 +12,7 @@ import com.arbelonson.ozen.core.tr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 class EngineSettings(
@@ -113,8 +114,14 @@ class EngineSettings(
         }
     }
 
+    /** Counts pairings from a computer's link, so an open Settings shows the code they saved. */
+    val computerPairings = MutableStateFlow(0)
+
     /** A new computer paired from its code: captions start again on it. */
-    fun pairedWithAComputer() = restart()
+    fun pairedWithAComputer() {
+        computerPairings.value += 1
+        restart()
+    }
 
     /**
      * As on the iPhone, a restart carries the current beam too: one still
