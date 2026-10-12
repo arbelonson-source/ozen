@@ -9,6 +9,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -306,9 +308,14 @@ private fun Header(text: String) {
 
 @Composable
 private fun Value(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    // A long value, a failure's details say, took the whole row and left
+    // its label a letter wide; it wraps within most of the row instead.
+    BoxWithConstraints {
+        val widest = maxWidth * 0.6f
+        Row(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.widthIn(max = widest))
+        }
     }
 }
 

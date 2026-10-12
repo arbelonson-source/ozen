@@ -1833,6 +1833,22 @@ class SettingsScreenDeviceTest {
         assertEquals("the journal was read on the main thread, which then drew nothing", listOf(false, false), onMain.take(2))
     }
 
+    @Test
+    fun aLongFailureInDiagnosticsLeavesItsLabelReadableBesideIt() {
+        val detail = "could not connect: java.net.ConnectException: failed to connect to /100.64.0.7 (port 8765) after 5000 ms: connection timed out"
+        val failed = PipelinePhase.Failed(
+            PipelineFailure(PipelineFailure.Kind.EngineUnavailable, detail, EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, detail)),
+        )
+        val source = object : DiagnosticsSource by app.captions {
+            override fun diagnostics(journal: DiagnosticsJournal?) = app.captions.diagnostics(journal).copy(phase = failed)
+        }
+        compose.runOnUiThread { compose.activity.setContent { DiagnosticsScreen(source, onClose = {}) } }
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText("Failure details", useUnmergedTree = true).performScrollTo().performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals("the label was squeezed beside its value", 1, layouts.single().lineCount)
+        compose.onNodeWithText(detail, useUnmergedTree = true).assertExists()
+    }
+
     private fun row(label: String, value: String) {
         compose.onNode(hasText(label) and hasText(value)).performScrollTo().assertExists()
     }
