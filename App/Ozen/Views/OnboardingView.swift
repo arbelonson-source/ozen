@@ -323,6 +323,7 @@ struct OnboardingView: View {
                         .contentShape(Rectangle())
                 }
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier("onboardingSkipButton")
                 Spacer()
                 Button {
                     withAnimation { page += 1 }

@@ -192,7 +192,12 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(screen.waitForExistence(timeout: 10), "onboarding: the first page never appeared")
         capture(app, name: "onboarding-accessibility-text-page1-welcome")
 
+        // Hebrew's two short words still fit side by side at this size.
         let next = app.descendants(matching: .any)["onboardingNextButton"]
+        let skip = app.descendants(matching: .any)["onboardingSkipButton"]
+        XCTAssertTrue(skip.exists && next.exists, "onboarding: no Skip or Next on page 1")
+        XCTAssertLessThan(abs(skip.frame.midY - next.frame.midY), next.frame.height / 2, "onboarding: Skip left Next's row though both fit beside it (Skip \(skip.frame), Next \(next.frame))")
+
         for (index, name) in ["page2-how-it-works", "page3-language", "page4-engine", "page5-microphone", "page6-name", "page7-ready"].enumerated() {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "onboarding: no Next button on page \(index + 1)")
             next.tap()
@@ -235,7 +240,14 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(screen.waitForExistence(timeout: 10), "onboarding: the first page never appeared")
         capture(app, name: "onboarding-german-accessibility-text-page1-welcome")
 
+        // Side by side at this size, "Weiter" broke inside the word ("Weit",
+        // "er") and "Überspringen" took three lines. Next across the screen
+        // with Skip under it keeps both words whole.
         let next = app.descendants(matching: .any)["onboardingNextButton"]
+        let skip = app.descendants(matching: .any)["onboardingSkipButton"]
+        XCTAssertTrue(skip.exists && next.exists, "onboarding: no Skip or Next on page 1")
+        XCTAssertGreaterThanOrEqual(skip.frame.minY, next.frame.maxY, "onboarding: Skip beside Next breaks their German words at this size (Skip \(skip.frame), Next \(next.frame))")
+
         for (index, name) in ["page2-how-it-works", "page3-language", "page4-engine", "page5-microphone", "page6-name"].enumerated() {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "onboarding: no Next button on page \(index + 1)")
             next.tap()

@@ -11,6 +11,10 @@ on:
           - iPhone
           - iPad
           - iPhone 13 mini
+      test:
+        description: Run only this test of OzenScreenshotUITests (e.g. testOnboardingGermanAccessibilityText); empty runs them all
+        type: string
+        default: ""
 
 jobs:
   screenshots:
@@ -68,13 +72,24 @@ jobs:
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
 
       - name: Run the screenshot UI tests
+        env:
+          ONLY_TEST: ${{ inputs.test }}
         run: |
           set -o pipefail
           mkdir -p /tmp/ozen-screenshots
+          ONLY=""
+          if [ -n "$ONLY_TEST" ]; then
+            if ! printf '%s' "$ONLY_TEST" | grep -qE '^test[A-Za-z0-9_]+$'; then
+              echo "Not a test name: $ONLY_TEST" >&2
+              exit 1
+            fi
+            ONLY="-only-testing:OzenUITests/OzenScreenshotUITests/$ONLY_TEST"
+          fi
           xcodebuild test \
             -project Ozen.xcodeproj \
             -scheme OzenUITests \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            $ONLY \
             2>&1 | tee xcodebuild-raw.log | xcpretty
 
       - name: Show why it failed
