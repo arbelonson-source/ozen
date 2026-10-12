@@ -171,7 +171,11 @@ class MainActivity : ComponentActivity() {
         Localization.language = app.settings.current.value.appLanguage.resolved(phoneLanguages)
         enableEdgeToEdge()
         setContent { OzenApp(app, showingSettings, settingsAtBackup, confirmingCellular, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
-        openLink(intent)
+        // Once per link: a rebuilt screen (a turn, a new language, the app
+        // back after Android ended it) and an opening from recent apps carry
+        // the link the app was first opened with, and asking about it again
+        // offered to replace the address and code set since.
+        if (savedInstanceState == null && intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY == 0) openLink(intent)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
