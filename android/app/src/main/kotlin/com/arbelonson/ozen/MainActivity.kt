@@ -125,6 +125,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.AppLanguage
+import com.arbelonson.ozen.core.BackgroundAlertPolicy
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionLayout
@@ -262,6 +263,7 @@ class MainActivity : ComponentActivity() {
     private fun startListening() {
         if (hasMicrophone()) {
             ListeningService.start(this)
+            askForNotificationsIfNeverAnswered()
             return
         }
         val wanted = buildList {
@@ -269,6 +271,22 @@ class MainActivity : ComponentActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
         }
         askForMicrophone.launch(wanted.toTypedArray())
+    }
+
+    /**
+     * As on the iPhone: asked the first time captions run if nobody answered
+     * in the walkthrough, or alerts while she is away from the app never
+     * arrive and nothing on the caption screen says so. Android keeps no
+     * "never asked" (NotificationAsking.answered): a refusal it would ask
+     * about again shows as a rationale, and for one it won't ask about
+     * again it shows no dialog.
+     */
+    private fun askForNotificationsIfNeverAnswered() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val alertsAway = (application as OzenApplication).settings.current.value.notifyWhenInBackground
+        if (BackgroundAlertPolicy.shouldAskPermission(alertsWhenScreenOff = alertsAway, allowed = NotificationAsking.answered(this))) {
+            NotificationAsking.ask(approveNotifications)
+        }
     }
 
     private fun hasMicrophone() = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED

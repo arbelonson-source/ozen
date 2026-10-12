@@ -27,10 +27,12 @@ import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -238,6 +240,46 @@ class OnboardingDeviceTest {
         compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
         compose.onNodeWithText("History").assertExists()
         compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
+    }
+
+    // As on the iPhone: with the microphone allowed and nobody having said
+    // yes or no to notifications in the walkthrough, captions starting ask
+    // for them, or alerts while she is away from the app never arrive.
+    // Android kills the app when a permission is taken back, so the phone's
+    // answer is played by NotificationAsking here (the test grants the
+    // permission itself, which the phone reports as allowed).
+    @Test
+    fun captionsStartingAskForNotificationsWhenNobodyAnsweredInTheWalkthrough() {
+        assertEquals(true, NotificationAsking.answered(compose.activity))
+        assertEquals(1, notificationRequestsAfterSkip(answered = null))
+    }
+
+    // A refusal Android would still ask about again is her answer.
+    @Test
+    fun captionsStartingDoNotAskForNotificationsAgainAfterSheRefusedThem() {
+        assertEquals(0, notificationRequestsAfterSkip(answered = false))
+    }
+
+    private fun notificationRequestsAfterSkip(answered: Boolean?): Int {
+        assumeTrue("notifications need no asking before Android 13", Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        val answeredBefore = NotificationAsking.answered
+        val askBefore = NotificationAsking.ask
+        val awayBefore = app.settings.current.value.notifyWhenInBackground
+        val asked = AtomicInteger()
+        try {
+            NotificationAsking.answered = { answered }
+            NotificationAsking.ask = { asked.incrementAndGet() }
+            app.settings.change { it.notifyWhenInBackground = true }
+            compose.onNodeWithText("Next").performClick()
+            compose.onNodeWithText("Skip").performClick()
+            compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
+            compose.waitForIdle()
+            return asked.get()
+        } finally {
+            NotificationAsking.answered = answeredBefore
+            NotificationAsking.ask = askBefore
+            app.settings.change { it.notifyWhenInBackground = awayBefore }
+        }
     }
 
     @Test
