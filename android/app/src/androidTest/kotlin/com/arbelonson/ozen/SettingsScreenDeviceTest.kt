@@ -829,6 +829,24 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun turningThePhoneKeepsTheQuestionAboutDeletingAnImportantWordOpen() {
+        app.settings.change { it.keywordAlerts = emptyList() }
+        val phrases = { app.settings.current.value.keywordAlerts.map { it.phrase } }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Important words").performScrollTo().performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("Shira")
+        compose.onNodeWithContentDescription("Add").performClick()
+        compose.waitUntil(5_000) { phrases() == listOf("Shira") }
+        compose.onNodeWithText("Shira").performTouchInput { longClick() }
+        compose.onNodeWithText("Delete").performClick()
+        compose.onNodeWithText("Delete “Shira”?").assertExists()
+        compose.activityRule.scenario.recreate()
+        compose.onNodeWithText("Delete “Shira”?").assertExists()
+        compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(5_000) { phrases().isEmpty() }
+    }
+
+    @Test
     fun importantWordsAreAddedSwitchedOffAndBackOnAndDeletedAfterAskingInSettings() {
         app.settings.change { it.keywordAlerts = emptyList() }
         val phrases = { app.settings.current.value.keywordAlerts.map { it.phrase to it.isEnabled } }

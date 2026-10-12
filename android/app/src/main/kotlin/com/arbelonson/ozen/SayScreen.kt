@@ -80,7 +80,7 @@ internal fun SayScreen(
     var lastTyped by rememberSaveable { mutableStateOf<String?>(null) }
     var editing by rememberSaveable { mutableStateOf(false) }
     var newPhrase by rememberSaveable { mutableStateOf("") }
-    var confirmingRestore by remember { mutableStateOf(false) }
+    var confirmingRestore by rememberSaveable { mutableStateOf(false) }
     var bigLetters by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val addPhrase = {

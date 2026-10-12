@@ -49,6 +49,7 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
+import java.util.UUID
 
 /**
  * The words that make the phone buzz and mark their line when said, as on
@@ -70,7 +71,8 @@ internal fun ImportantWordsScreen(
 ) {
     BackHandler(onBack = onClose)
     var draft by rememberSaveable { mutableStateOf("") }
-    var pendingDelete by remember { mutableStateOf<KeywordAlert?>(null) }
+    var pendingDeleteId by rememberSaveable { mutableStateOf<UUID?>(null) }
+    val pendingDelete = pendingDeleteId?.let { id -> alerts.firstOrNull { it.id == id } }
     val listed = ImportantWords.listed(draft, alerts)
     val typedWordIsOn = listed?.isEnabled == true
     val add = {
@@ -141,7 +143,7 @@ internal fun ImportantWordsScreen(
                     shown = shown(alert.phrase),
                     note = otherLetters.takeIf { HebrewText.isInOtherLetters(alert.phrase, captionLanguage) },
                     onSwitch = { on -> onChange(ImportantWords.switched(alert.id, on, alerts)) },
-                    onDelete = { pendingDelete = alert },
+                    onDelete = { pendingDeleteId = alert.id },
                 )
             }
             for (word in ImportantWords.suggestions(vocabulary, alerts, spoken)) {
@@ -165,18 +167,18 @@ internal fun ImportantWordsScreen(
     }
     pendingDelete?.let { alert ->
         AlertDialog(
-            onDismissRequest = { pendingDelete = null },
+            onDismissRequest = { pendingDeleteId = null },
             title = { Text(tr("למחוק את \"%1\"?", "Delete “%1”?", listOf(shown(alert.phrase)))) },
             text = { Text(tr("הטלפון יפסיק להתריע כשהמילה נאמרת.", "The phone will stop alerting when this word is said.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        pendingDelete = null
+                        pendingDeleteId = null
                         onChange(ImportantWords.removing(alert.id, alerts))
                     },
                 ) { Text(tr("למחוק", "Delete"), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(tr("ביטול", "Cancel")) } },
+            dismissButton = { TextButton(onClick = { pendingDeleteId = null }) { Text(tr("ביטול", "Cancel")) } },
         )
     }
 }

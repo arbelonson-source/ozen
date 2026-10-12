@@ -1916,6 +1916,26 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun turningThePhoneKeepsTheQuestionAboutRestoringThePhrasesOpen() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val phrasesBefore = app.settings.current.value.quickPhrases
+        app.settings.change { it.quickPhrases = AppSettings.defaultQuickPhrases(UILanguage.English) + "Please write it down for me" }
+        try {
+            compose.onNodeWithContentDescription("Say something out loud").performClick()
+            compose.onNodeWithText("Edit").performScrollTo().performClick()
+            compose.onNodeWithText("Restore defaults").performScrollTo().performClick()
+            compose.onNodeWithText("Phrases that were added or changed will be deleted.").assertExists()
+            turnThePhone()
+            compose.onNodeWithText("Phrases that were added or changed will be deleted.").assertExists()
+            compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+            compose.waitForIdle()
+            assertEquals(AppSettings.defaultQuickPhrases(UILanguage.English) + "Please write it down for me", app.settings.current.value.quickPhrases)
+        } finally {
+            app.settings.change { it.quickPhrases = phrasesBefore }
+        }
+    }
+
+    @Test
     fun fixAWordAndNameTheSpeakerStayOpenWithWhatWasTypedWhenTheirLineLeavesTheScreensNewest200() {
         val voiced = TranscriptSegment(id = UUID.randomUUID(), text = "Good evening", isCommitted = true, speakerClusterID = 0, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
         val later = (1..200).map { committed("Later line $it") }
