@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.net.Uri
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -882,8 +883,7 @@ class CaptionSessionDeviceTest {
             shell("cmd thermalservice override-status 3")
             assertNotNull("the heat never noted", withTimeoutOrNull(5_000) { while (noted("heat:").isEmpty()) delay(100); true })
             assertTrue(noted("heat:").toString(), noted("heat:").single().contains("thermal 3 "))
-            shell("dumpsys battery unplug")
-            shell("cmd power set-mode 1")
+            saveBattery(shell)
             assertNotNull("battery saver never noted", withTimeoutOrNull(5_000) { while (noted("power:").isEmpty()) delay(100); true })
             assertTrue(noted("power:").toString(), noted("power:").last().contains("low power true"))
         } finally {
@@ -892,6 +892,23 @@ class CaptionSessionDeviceTest {
             shell("cmd thermalservice reset")
             shell("dumpsys battery reset")
             work.deleteRecursively()
+        }
+    }
+
+    /**
+     * Battery saver on, as she would switch it. Asked right after the
+     * battery is set unplugged, Android still counted the emulator as
+     * charging and refused it about one time in two, so it is asked again
+     * until it is on.
+     */
+    private suspend fun saveBattery(shell: (String) -> ByteArray) {
+        val power = context.getSystemService(PowerManager::class.java)
+        shell("dumpsys battery unplug")
+        withTimeoutOrNull(5_000) {
+            while (!power.isPowerSaveMode) {
+                shell("cmd power set-mode 1")
+                delay(200)
+            }
         }
     }
 
@@ -925,8 +942,7 @@ class CaptionSessionDeviceTest {
             assertNotNull("a hot phone kept the pace: ${pace()}", settles(1.5))
             shell("cmd thermalservice reset")
             assertNotNull("never back to the usual pace: ${pace()}", settles(0.6))
-            shell("dumpsys battery unplug")
-            shell("cmd power set-mode 1")
+            saveBattery(shell)
             assertNotNull("battery saver kept the pace: ${pace()}", settles(1.2))
         } finally {
             withContext(Dispatchers.Main) { session.close() }
