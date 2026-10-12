@@ -714,6 +714,12 @@ class CaptionScreenDeviceTest {
 
             compose.onNodeWithText("Close").performScrollTo().performClick()
             compose.onNodeWithText("Say something").assertDoesNotExist()
+            // The keyboard the Say screen had up slides away over the bottom
+            // row; a press before it has gone lands on the keyboard.
+            val window = compose.activity.window
+            compose.waitUntil(5_000) {
+                compose.runOnUiThread { (ViewCompat.getRootWindowInsets(window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0) == 0 }
+            }
             compose.onNodeWithContentDescription("Say something out loud").performClick()
             compose.onNode(hasSetTextAction()).assert(hasText(typed))
         } finally {
@@ -859,8 +865,16 @@ class CaptionScreenDeviceTest {
                 "never shown: phase ${app.captions.pipeline.phase}, busy ${app.captions.voice.isBusy}, screen ${CaptionState.screen.value.phase} ${CaptionState.screen.value.pausedForSpeech}, journal ${lately()}",
                 within(10_000) { listening() != null },
             )
-            paused(true)
-            assertTrue("not the phone talking: ${title()}", within(5_000) { title() == "The phone is talking" })
+            // Without a model here the captions fail and try again on a timer,
+            // publishing each try over the screen this test sets; it is set
+            // again until the notification has caught up with it.
+            assertTrue(
+                "not the phone talking: ${title()}",
+                within(5_000) {
+                    paused(true)
+                    title() == "The phone is talking"
+                },
+            )
             assertFalse("the phone talking took the notification away", within(2_000) { listening() == null })
             paused(false)
             assertTrue("a pause she chose kept it", within(5_000) { listening() == null })
