@@ -21,7 +21,7 @@ class HistoryRowsTest {
     private val jerusalem = ZoneId.of("Asia/Jerusalem")
     private val morning = 1_800_000_000.0
 
-    private fun summary(names: List<String> = emptyList(), title: String? = null) = TranscriptSessionSummary(
+    private fun summary(names: List<String> = emptyList(), title: String? = null, starred: Int = 0) = TranscriptSessionSummary(
         id = UUID.randomUUID(),
         startedAt = morning,
         endedAt = morning + 25 * 60,
@@ -30,6 +30,7 @@ class HistoryRowsTest {
         engine = TranscriptionEngineKind.WhisperKit,
         speakerNames = names,
         title = title,
+        starredCount = starred,
     )
 
     private fun line(text: String, at: Double, speaker: String? = null) =
@@ -44,6 +45,16 @@ class HistoryRowsTest {
         assertEquals("Good morning", row.preview)
         assertNull(row.title)
         assertNull(row.speakers)
+    }
+
+    @Test
+    fun `a row shows how many of its lines are starred, said in words to a screen reader, and nothing when none are`() = Localization.withLanguage(UILanguage.English) {
+        val starred = ConversationRow.of(summary(starred = 2), jerusalem)
+        assertEquals(2, starred.starred)
+        assertEquals("2 starred lines", starred.starredSpoken)
+        val none = ConversationRow.of(summary(), jerusalem)
+        assertEquals(0, none.starred)
+        assertNull(none.starredSpoken)
     }
 
     @Test

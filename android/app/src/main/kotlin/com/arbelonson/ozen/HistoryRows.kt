@@ -28,6 +28,8 @@ data class ConversationRow(
     val speakers: String?,
     val preview: String,
     val lines: String,
+    val starred: Int = 0,
+    val starredSpoken: String? = null,
 ) {
     companion object {
         fun of(summary: TranscriptSessionSummary, zone: ZoneId = ZoneId.systemDefault()) = ConversationRow(
@@ -40,6 +42,10 @@ data class ConversationRow(
             },
             preview = CaptionLayout.directed(summary.preview),
             lines = ConversationStats.linesText(summary.segmentCount),
+            starred = summary.starredCount,
+            starredSpoken = summary.starredCount.takeIf { it > 0 }?.let {
+                ConversationStats.linesText(it, adjective = "מסומנת" to "מסומנות", englishAdjective = "starred")
+            },
         )
     }
 }

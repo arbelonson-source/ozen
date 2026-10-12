@@ -699,6 +699,18 @@ class HistoryScreenDeviceTest {
         return record.id
     }
 
+    // As on the iPhone, a conversation's row shows how many of its lines are
+    // starred, so the ones that matter stand out without opening each.
+    @Test
+    fun aConversationRowShowsHowManyOfItsLinesAreStarredAndAScreenReaderHearsIt() {
+        starredConversation("Starred list test row count", System.currentTimeMillis() / 1_000.0 - 60)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Opening line of row count")
+        compose.onNode(hasClickAction() and hasText("Opening line of row count", substring = true) and hasContentDescription("1 starred line")).assertExists()
+        compose.onNodeWithText("★ 1", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithContentDescription("1 starred line", useUnmergedTree = true).assertIsDisplayed()
+    }
+
     @Test
     fun everyStarredLineIsGatheredNewestFirstSharedCopiedAndOpenedWhereItWasSaid() {
         val now = System.currentTimeMillis() / 1_000.0

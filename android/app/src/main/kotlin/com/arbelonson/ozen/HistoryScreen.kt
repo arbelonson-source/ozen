@@ -483,7 +483,19 @@ private fun ConversationRowContent(row: ConversationRow, onOpen: () -> Unit, onH
         }
         row.speakers?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Text(row.preview, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(row.lines, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // As on the iPhone, the starred lines' count beside the line count,
+        // heard as words rather than a star symbol and a number.
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(row.lines, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            row.starredSpoken?.let { spoken ->
+                Text(
+                    "★ ${row.starred}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = starColour(),
+                    modifier = Modifier.clearAndSetSemantics { contentDescription = spoken },
+                )
+            }
+        }
     }
 }
 
