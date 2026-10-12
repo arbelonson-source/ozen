@@ -119,8 +119,9 @@ struct OzenApp: App {
                 Button(tr("סגירה", "Close"), role: .cancel) {}
             } message: {
                 Text(tr(
-                    "חלק מהקישור חסר או השתבש. סרקו שוב את הריבוע במחשב עם מצלמת האייפון, ממש מקרוב.",
-                    "Part of the link is missing or garbled. Scan the square on the computer again with the iPhone camera, up close."
+                    "חלק מהקישור חסר או השתבש. סרקו שוב את הריבוע במחשב עם מצלמת ה-%1, ממש מקרוב.",
+                    "Part of the link is missing or garbled. Scan the square on the computer again with the %1 camera, up close.",
+                    args: ["\(DeviceWord.brand)"]
                 ))
             }
             // Asked once, the first time captions run, if nobody answered
