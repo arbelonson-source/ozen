@@ -138,8 +138,13 @@ class CaptionSession(
     // saying so: the journal notes each change, as on the iPhone.
     private val power = context.getSystemService(PowerManager::class.java)
     private val batterySaving = object : BroadcastReceiver() {
+        // Only a change is noted, as the iPhone's notice: a session just
+        // started on the emulator heard "battery saver off" while it was
+        // already off, a word sent before the session began.
         override fun onReceive(context: Context, intent: Intent) {
-            savingPower = power.isPowerSaveMode
+            val now = power.isPowerSaveMode
+            if (now == savingPower) return
+            savingPower = now
             note("power: ${deviceState()}")
         }
     }
