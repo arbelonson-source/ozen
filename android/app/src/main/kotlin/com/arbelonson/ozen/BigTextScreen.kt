@@ -36,6 +36,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -106,22 +107,26 @@ internal fun BigTextScreen(
                 },
             )
         }
-        val buttons = buildList<Pair<String, (() -> Unit)?>> {
-            add(tr("ניקוי", "Clear") to { onText(""); flipped = false }.takeUnless { empty })
-            add((if (flipped) tr("חזרה", "Back") else tr("להפוך", "Flip")) to { flipped = !flipped }.takeUnless { empty })
-            if (canSpeak) add(tr("להשמיע", "Speak") to onSpeak.takeUnless { empty })
-            add(tr("סגירה", "Close") to onClose)
+        // As on the iPhone, a screen reader hears what flipping is for.
+        val flipHint = tr("להפוך את הטקסט כדי שמי שיושב מולך יוכל לקרוא", "Flip the text so the person sitting across from you can read it")
+        val buttons = buildList<Triple<String, String?, (() -> Unit)?>> {
+            add(Triple(tr("ניקוי", "Clear"), null, { onText(""); flipped = false }.takeUnless { empty }))
+            add(Triple(if (flipped) tr("חזרה", "Back") else tr("להפוך", "Flip"), flipHint.takeUnless { flipped }, { flipped = !flipped }.takeUnless { empty }))
+            if (canSpeak) add(Triple(tr("להשמיע", "Speak"), null, onSpeak.takeUnless { empty }))
+            add(Triple(tr("סגירה", "Close"), null, onClose))
         }
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             for (row in buttons.chunked(2)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    for ((title, action) in row) {
+                    for ((title, hint, action) in row) {
                         OutlinedButton(
                             onClick = { action?.invoke() },
                             enabled = action != null,
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = look.chrome, disabledContentColor = look.chrome.copy(alpha = 0.38f)),
                             border = BorderStroke(1.dp, look.chrome.copy(alpha = if (action != null) 0.6f else 0.2f)),
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).semantics {
+                                if (hint != null && action != null) onClick(label = hint) { action(); true }
+                            },
                         ) {
                             Text(title, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }

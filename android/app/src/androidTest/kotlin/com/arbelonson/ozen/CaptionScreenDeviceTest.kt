@@ -1074,6 +1074,24 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    // As on the iPhone, a screen reader says what flipping is for; "Back"
+    // needs no such note.
+    @Test
+    fun theBigLettersFlipButtonTellsAScreenReaderWhatFlippingIsFor() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        assertTrue("no voice on the phone", within(15_000) { app.captions.canAskToRepeat() })
+        compose.onNodeWithContentDescription("Say something out loud").performClick()
+        compose.waitUntil(5_000) { sayFieldFocused() }
+        compose.onNode(hasSetTextAction()).performTextInput("Pharmacy")
+        compose.onNodeWithText("Full screen, big letters").performScrollTo().performClick()
+        val flip = compose.onNodeWithText("Flip").fetchSemanticsNode().config[SemanticsActions.OnClick]
+        assertEquals("Flip the text so the person sitting across from you can read it", flip.label)
+        compose.onNodeWithText("Flip").performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNode(hasSetTextAction()).assertDoesNotExist()
+        assertNull(compose.onNodeWithText("Back").fetchSemanticsNode().config[SemanticsActions.OnClick].label)
+        compose.onNodeWithText("Close").performClick()
+    }
+
     @Test
     fun whileThePhoneTalksTheCaptionScreensSayButtonStopsItInsteadOfOpening() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
