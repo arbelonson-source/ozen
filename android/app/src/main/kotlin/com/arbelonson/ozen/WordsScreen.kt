@@ -103,6 +103,7 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
                 Text(tr("עדיין אין שמות", "No names yet"), style = MaterialTheme.typography.titleMedium)
                 Text(tr("הוסיפו את השמות שנאמרים הכי הרבה בבית.", "Add the names said most often at home."), color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
+                Text(tr("לחיצה ארוכה על שם מאפשרת להזיז אותו או למחוק אותו.", "Press and hold a name to move it or delete it."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
                     itemsIndexed(words, key = { _, word -> word }) { at, word ->
                         WordRow(

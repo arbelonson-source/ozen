@@ -819,6 +819,23 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun theWordsListSaysHowToMoveOrDeleteANameOnceItHasOne() {
+        val hint = "Press and hold a name to move it or delete it."
+        val before = app.settings.current.value.vocabulary
+        try {
+            app.settings.change { it.vocabulary = emptyList() }
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Names and special words").performScrollTo().performClick()
+            compose.onNodeWithText("No names yet").assertExists()
+            compose.onNodeWithText(hint).assertDoesNotExist()
+            app.settings.change { it.vocabulary = listOf("Shira") }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(hint).fetchSemanticsNodes().isNotEmpty() }
+        } finally {
+            app.settings.change { it.vocabulary = before }
+        }
+    }
+
+    @Test
     fun aNameIsMovedUpOrDownTheWordsListFromItsHoldMenuOrTheScreenReader() {
         app.settings.change { it.vocabulary = listOf("Shira", "Dr. Levi", "Amoxicillin") }
         compose.onNodeWithText("Settings").performClick()
