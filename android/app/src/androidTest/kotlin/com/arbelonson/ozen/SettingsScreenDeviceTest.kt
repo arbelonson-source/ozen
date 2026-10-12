@@ -669,9 +669,9 @@ class SettingsScreenDeviceTest {
         compose.onAllNodesWithText("Home computer").onFirst().performScrollTo().performClick()
         compose.onNodeWithText("The pairing code from the computer").performScrollTo()
         compose.onNodeWithText("Pairing code saved on the phone").assertDoesNotExist()
-        compose.runOnUiThread { app.pairing.open("ozen://pair?address=ws://192.168.1.20:8765&code=paired-from-link") }
+        compose.runOnUiThread { app.pairing.open("ozen://pair?address=ws://192.168.1.20:8765&code=example-code-123") }
         compose.onNodeWithText("Connect").performClick()
-        assertEquals("paired-from-link", app.homeServerCode.read())
+        assertEquals("example-code-123", app.homeServerCode.read())
         compose.onNodeWithText("Pairing code saved on the phone").performScrollTo()
         compose.onNodeWithText("Delete code").performScrollTo()
     }
