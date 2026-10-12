@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import android.Manifest
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.view.View
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -18,6 +19,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AppLanguage
@@ -115,6 +118,38 @@ class OnboardingDeviceTest {
             val page = compose.onRoot().fetchSemanticsNode().size.width
             val field = compose.onNode(hasSetTextAction()).fetchSemanticsNode().size.width
             assertTrue("the name field was $field of $page wide", field >= page * 0.6f)
+        } finally {
+            shell("settings put system font_scale 1.0")
+            app.settings.change { it.appLanguage = language }
+        }
+    }
+
+    // The page already makes room for the keyboard; Android also slid the
+    // whole window up to the name field, which put the top of the page
+    // under the clock and left a band of empty screen over the keyboard.
+    @Test
+    fun theKeyboardForHerNameMakesRoomWithoutSlidingTheWholeScreenUp() {
+        val language = app.settings.current.value.appLanguage
+        val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
+        try {
+            app.settings.change { it.appLanguage = AppLanguage.German }
+            shell("settings put system font_scale 2.0")
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f && shown("Weiter") }
+            repeat(4) {
+                compose.onNodeWithText("Weiter").performClick()
+                compose.waitForIdle()
+            }
+            compose.onNode(hasSetTextAction()).performClick()
+            val window = compose.activity.window
+            compose.waitUntil(5_000) {
+                compose.runOnUiThread { (ViewCompat.getRootWindowInsets(window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0) > 0 }
+            }
+            Thread.sleep(1_000)
+            val top = compose.runOnUiThread {
+                IntArray(2).also { window.decorView.findViewById<View>(android.R.id.content).getLocationOnScreen(it) }[1]
+            }
+            assertEquals("the whole screen slid up", 0, top)
         } finally {
             shell("settings put system font_scale 1.0")
             app.settings.change { it.appLanguage = language }
