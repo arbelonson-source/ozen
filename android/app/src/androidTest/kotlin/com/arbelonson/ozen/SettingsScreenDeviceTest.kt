@@ -1755,6 +1755,18 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun aSoundHeardTooFaintWhileTheSoundsPageIsOpenShowsItsNoteThereAtOnce() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Sounds at home").performScrollTo().performClick()
+        val note = "Heard at 47%, a bit too faint"
+        compose.onNodeWithText(note).assertDoesNotExist()
+        compose.runOnUiThread {
+            app.captions.pipeline.soundNearMisses.record(SoundObservation("car_horn", 0.47, System.currentTimeMillis() / 1_000.0), alertConfidence = 0.6)
+        }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(note).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
     fun settingsAndEachOfItsSectionsAreHeadingsForTheScreenReaderWithMaintenanceAboveDiagnostics() {
         compose.onNodeWithText("Settings").performClick()
         compose.onNode(hasText("Settings") and isHeading()).assertExists()

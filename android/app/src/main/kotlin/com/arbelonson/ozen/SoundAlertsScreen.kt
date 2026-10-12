@@ -20,6 +20,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -35,6 +37,7 @@ import com.arbelonson.ozen.core.SoundEventCatalog
 import com.arbelonson.ozen.core.SoundNearMisses
 import com.arbelonson.ozen.core.tr
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 /**
  * "Sounds at home", as on the iPhone: whether sounds alert at all, how
@@ -51,6 +54,15 @@ internal fun SoundAlertsScreen(
     onClose: () -> Unit,
 ) {
     BackHandler(onBack = onClose)
+    // Sounds go on being heard while the page is open, and one heard too
+    // faintly shows its note at once, as on the iPhone; the list they are
+    // kept in is no state the screen can watch.
+    val misses by produceState(SoundEventCatalog.listed.associateWith(nearMiss)) {
+        while (true) {
+            delay(1_000)
+            value = SoundEventCatalog.listed.associateWith(nearMiss)
+        }
+    }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
@@ -103,7 +115,7 @@ internal fun SoundAlertsScreen(
                 if (events.isEmpty()) continue
                 SectionHeader(soundGroupName(importance))
                 val enabled = preferences.isEnabled && importance >= preferences.minimumImportance
-                for (event in events) SoundRow(event, preferences, enabled, nearMiss(event), onChange)
+                for (event in events) SoundRow(event, preferences, enabled, misses[event], onChange)
             }
         }
     }
