@@ -89,10 +89,12 @@ class ProblemAudioStore(val directory: File, val keep: Int = 5) {
 
     /**
      * Every clip, for "delete all saved conversations": a clip is her
-     * voice, and deleting everything must not leave it behind.
+     * voice, and deleting everything must not leave it behind - nor the
+     * copy a save the system cut short left in the folder.
      */
     fun deleteAll() {
         for (clip in clips()) remove(clip)
+        for (leftover in PrivateFileWrites.leftovers(directory)) leftover.delete()
     }
 
     /**

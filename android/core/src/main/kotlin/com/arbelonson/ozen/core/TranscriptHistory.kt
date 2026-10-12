@@ -843,6 +843,9 @@ class TranscriptHistoryStore(private val directory: File) {
 
     fun deleteAll() {
         for (file in recordFiles()) Files.delete(file.toPath())
+        // A save the system cut short (the app killed between writing the
+        // copy and moving it into place) leaves that copy, her words, here.
+        for (leftover in PrivateFileWrites.leftovers(directory)) leftover.delete()
         // The caches are rebuilt from the conversations. A folder that can't
         // go at once (a listing writing into it at that moment) must not make
         // deleting fail after the conversations themselves are gone; what

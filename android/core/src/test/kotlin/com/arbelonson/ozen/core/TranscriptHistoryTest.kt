@@ -517,6 +517,20 @@ class TranscriptHistoryTest {
     }
 
     @Test
+    fun `delete all also removes the copy a save cut short left beside the conversations`() {
+        withHistoryDirectory("ozen-history") { dir ->
+            val store = TranscriptHistoryStore(dir)
+            store.save(record(startedAt = 100.0, segments = listOf(segment(text = "the words she asked to delete"))))
+            val leftover = Files.createTempFile(dir.toPath(), "private-", ".tmp").toFile()
+            leftover.writeText("""{"segments":[{"text":"the words she asked to delete"}]}""")
+
+            store.deleteAll()
+            assertFalse(leftover.exists(), "a save the system cut short left her words behind after delete all")
+            assertEquals(0L, store.totalSizeOnDisk())
+        }
+    }
+
+    @Test
     fun `delete all still deletes every conversation when the cache folder can't be removed`() {
         withHistoryDirectory("ozen-history") { dir ->
             val summaries = File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME)

@@ -17,4 +17,7 @@ object PrivateFileWrites {
             temporary.delete()
         }
     }
+
+    fun leftovers(directory: File): List<File> =
+        directory.listFiles()?.filter { it.name.startsWith("private-") && it.name.endsWith(".tmp") } ?: emptyList()
 }

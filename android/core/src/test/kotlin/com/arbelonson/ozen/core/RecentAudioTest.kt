@@ -86,6 +86,17 @@ class RecentAudioTest {
     }
 
     @Test
+    fun `deleting everything also removes a clip a save cut short left behind`() {
+        val store = ProblemAudioStore(newClipDirectory(), keep = 5)
+        assertNotNull(store.save(floats(0.1f), 16_000, at(1_790_000_000.0)))
+        val leftover = Files.createTempFile(store.directory.toPath(), "private-", ".tmp").toFile()
+        leftover.writeBytes(WAVFile.pcm16(floats(0.1f, 0.2f), 16_000))
+
+        store.deleteAll()
+        assertTrue(store.directory.list().isNullOrEmpty(), "left behind: ${store.directory.list()?.toList()}")
+    }
+
+    @Test
     fun `clips older than the chosen keep-for time are deleted, newer ones stay`() {
         val store = ProblemAudioStore(newClipDirectory(), keep = 5)
         val now = 1_790_000_000.0
