@@ -10,7 +10,15 @@ class SavingTroubleNoticeTest {
     fun `English title and detail`() {
         Localization.withLanguage(UILanguage.English) {
             assertEquals("Saving on the phone failed", SavingTroubleNotice.title)
-            assertTrue(SavingTroubleNotice.detail.contains("iPhone Storage"))
+            assertTrue(SavingTroubleNotice.detail.contains("Settings → Storage"))
+        }
+    }
+
+    @Test
+    fun `the storage menu is the one this phone really has`() {
+        Localization.withLanguage(UILanguage.English) {
+            assertTrue(SavingTroubleNotice.detail.contains("Settings → Storage"))
+            assertFalse(SavingTroubleNotice.detail.contains("iPhone"))
         }
     }
 

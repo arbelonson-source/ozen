@@ -11,6 +11,17 @@ struct SavingTroubleNoticeTests {
         }
     }
 
+    @Test("the storage menu in the notice names the device it is read on")
+    func namesTheDevicesStorageMenu() {
+        Localization.$override.withValue(.english) {
+            #expect(SavingTroubleNotice.detail.contains("iPhone Storage"))
+            DeviceWord.$override.withValue("iPad") {
+                #expect(SavingTroubleNotice.detail.contains("iPad Storage"))
+                #expect(!SavingTroubleNotice.detail.contains("iPhone"))
+            }
+        }
+    }
+
     @Test("nothing to say while every save works")
     func quietWhileSaving() {
         var notice = SavingTroubleNotice()

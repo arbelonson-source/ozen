@@ -36,7 +36,7 @@ computer backup when that is on.
 | "Captions paused for a call" (ha-ktuviyot mushhot biglal sicha) | A phone call or another app has the microphone. | Nothing. They come back after the call. If they don't, a notification "Captions stopped" (ha-ktuviyot ne'etzru) arrives; open Ozen from it. |
 | "Downloading the language model · N%" (morid et model ha-safa · N%) | First-time download of the speech model. | Keep the app open (the screen stays on by itself) until it finishes. |
 | "Waiting for Wi-Fi to download the language model" (mamtin le-Wi-Fi kdei lehorid et model ha-safa) | The model still has to download and the phone is on cellular data or Low Data Mode. | Connect to Wi-Fi and it starts by itself, or tap to download over cellular. |
-| "Not enough free space on the phone" (ein maspik makom panuy ba-telefon) | Not enough room for the model. It says how much to free. | Free space (Settings → General → iPhone Storage), then open Ozen again and it starts by itself. Or tap to pick a smaller model, or switch to Apple's engine, which needs no download. |
+| "Not enough free space on the phone" (ein maspik makom panuy ba-telefon) | Not enough room for the model. It says how much to free. | Free space (Settings → General → iPhone Storage; on an iPad it is iPad Storage), then open Ozen again and it starts by itself. Or tap to pick a smaller model, or switch to Apple's engine, which needs no download. |
 | "Downloading the model failed" (horadat ha-model nichshela) | The download failed, usually a dead connection. | It retries by itself for about 20 minutes, less and less often. Check the internet, then tap to try again. |
 | "Loading the model failed" (te'inat ha-model nichshela) | The model is on the phone but didn't load. | Tap to try again. If it keeps failing, pick a smaller model in Settings. |
 | "Setting the model up for this phone" (matim et ha-model la-telefon ha-ze) | The first time a model loads on this phone, iOS prepares it for the phone's chip. It takes a few minutes, once per model and again after each iOS update (iOS throws the prepared copy away), and the very first model also needs the internet once. This is also what the home computer's backup does the first time it takes over. | Keep the app open and wait; it doesn't happen again for this model until iOS is next updated. |
@@ -238,7 +238,7 @@ the same.
 - **A banner "Saving on the phone failed" (ha-shmira ba-telefon nichshela), or History says the last save failed.**
   The phone is out of storage, so new conversations and settings changes
   aren't being kept, though captions still work. Free some space (Settings →
-  General → iPhone Storage) and saving resumes by itself; the banner comes
+  General → iPhone Storage; on an iPad it is iPad Storage) and saving resumes by itself; the banner comes
   back only if it fails again.
 - **A model in the model list is greyed out and can't be picked.** It says
   "Not enough room on the phone" (ein maspik makom ba-telefon): its
