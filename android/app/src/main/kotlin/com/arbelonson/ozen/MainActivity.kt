@@ -611,18 +611,27 @@ private fun CaptionScreen(
         delay((soundSecondsLeft(alert) * 1_000).toLong())
         shownSound = null
     }
-    // Kept by the line's id, so turning the phone leaves the dialog open.
-    var fixing by rememberSaveable { mutableStateOf<UUID?>(null) }
-    fixing?.let { id -> state.lines.firstOrNull { it.id == id } }?.let { line ->
-        FixWordDialog(line.text, onAdd = { onAddWord(it); fixing = null }, onDismiss = { fixing = null })
+    // Kept with the line's text, as the iPhone's sheet keeps its line:
+    // turning the phone leaves the dialog open, and so does the line
+    // leaving the newest 200 the screen holds while she types.
+    var fixing by rememberSaveable { mutableStateOf<String?>(null) }
+    fixing?.let { text ->
+        FixWordDialog(text, onAdd = { onAddWord(it); fixing = null }, onDismiss = { fixing = null })
     }
     var naming by rememberSaveable { mutableStateOf<UUID?>(null) }
-    naming?.let { id -> state.lines.firstOrNull { it.id == id } }?.let { line ->
+    var namingText by rememberSaveable { mutableStateOf("") }
+    var namingHasVoice by rememberSaveable { mutableStateOf(false) }
+    val nameSpeakerOf = { line: CaptionLine ->
+        namingText = line.text
+        namingHasVoice = line.speakerCluster != null
+        naming = line.id
+    }
+    naming?.let { id ->
         NameSpeakerDialog(
-            line.text,
-            hasVoice = line.speakerCluster != null,
-            savedNames = remember(line.id) { savedSpeakerNames() },
-            onSave = { onNameSpeaker(line.id, it); naming = null },
+            namingText,
+            hasVoice = namingHasVoice,
+            savedNames = remember(id) { savedSpeakerNames() },
+            onSave = { onNameSpeaker(id, it); naming = null },
             onDismiss = { naming = null },
         )
     }
@@ -745,7 +754,7 @@ private fun CaptionScreen(
                     }
                 }
             } else {
-                CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it.id }, onName = { naming = it.id }, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
+                CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it.text }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
                 if (!following) {
                     JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                         following = true

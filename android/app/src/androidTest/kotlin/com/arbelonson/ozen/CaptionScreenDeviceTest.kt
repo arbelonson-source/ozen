@@ -1915,6 +1915,36 @@ class CaptionScreenDeviceTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Name the speaker").fetchSemanticsNodes().isEmpty() }
     }
 
+    @Test
+    fun fixAWordAndNameTheSpeakerStayOpenWithWhatWasTypedWhenTheirLineLeavesTheScreensNewest200() {
+        val voiced = TranscriptSegment(id = UUID.randomUUID(), text = "Good evening", isCommitted = true, speakerClusterID = 0, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+        val later = (1..200).map { committed("Later line $it") }
+        fun show(segments: List<TranscriptSegment>) = compose.runOnUiThread {
+            CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = segments, speakerName = { "Speaker 1" })
+        }
+        show(listOf(voiced))
+        lineText("Good evening").performTouchInput { longClick() }
+        compose.onNodeWithText("Fix a word for next time").performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("Shira")
+        show(listOf(voiced) + later)
+        compose.waitForIdle()
+        compose.onNodeWithText("What the captions showed").assertExists()
+        compose.onNode(hasSetTextAction()).assert(hasText("Shira"))
+        compose.onNodeWithText("Cancel").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("What the captions showed").fetchSemanticsNodes().isEmpty() }
+
+        show(listOf(voiced))
+        lineText("Good evening").performTouchInput { longClick() }
+        compose.onNodeWithText("Who is speaking?").performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("Dana")
+        show(listOf(voiced) + later)
+        compose.waitForIdle()
+        compose.onNodeWithText("Name the speaker").assertExists()
+        compose.onNode(hasSetTextAction()).assert(hasText("Dana"))
+        compose.onNodeWithText("Cancel").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Name the speaker").fetchSemanticsNodes().isEmpty() }
+    }
+
     private fun turnThePhone() {
         val first = compose.activity
         compose.activityRule.scenario.recreate()
