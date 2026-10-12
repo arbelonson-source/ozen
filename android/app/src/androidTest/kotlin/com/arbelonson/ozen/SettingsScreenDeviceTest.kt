@@ -1878,6 +1878,33 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText(detail, useUnmergedTree = true).assertExists()
     }
 
+    // In German at the phone's largest text, "Haushaltsgeräusche und mehr"
+    // beside "Geräusche zu Hause" left the label one letter to a line.
+    @Test
+    fun aLongValueInSettingsLeavesTheWordsOfItsLabelWholeAtThePhonesLargestTextInGerman() {
+        val language = app.settings.current.value.appLanguage
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+        }
+        try {
+            app.settings.change { it.appLanguage = AppLanguage.German }
+            shell("settings put system font_scale 2.0")
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
+            compose.onAllNodesWithText("Einstellungen").onFirst().performClick()
+            compose.onNodeWithText("Haushaltsgeräusche und mehr", useUnmergedTree = true).performScrollTo()
+            val label = "Geräusche zu Hause"
+            val layouts = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithText(label, useUnmergedTree = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            val layout = layouts.single()
+            val broken = (0 until layout.lineCount - 1).map { layout.getLineEnd(it) }.filter { it in 1 until label.length && !label[it - 1].isWhitespace() && !label[it].isWhitespace() }
+            assertTrue("$label broke inside a word at $broken", broken.isEmpty())
+        } finally {
+            shell("settings put system font_scale 1.0")
+            app.settings.change { it.appLanguage = language }
+        }
+    }
+
     private fun row(label: String, value: String) {
         compose.onNode(hasText(label) and hasText(value)).performScrollTo().assertExists()
     }

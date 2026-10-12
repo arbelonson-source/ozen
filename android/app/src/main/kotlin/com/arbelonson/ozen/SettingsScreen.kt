@@ -83,6 +83,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -645,10 +646,11 @@ private fun HomeComputerBeam(engineSettings: EngineSettings, beam: Int, onMoved:
     val range = AppSettings.homeServerBeamRange
     val description = EngineSettings.beamDescription(beam)
     val label = tr("מהירות מול דיוק במחשב", "Speed or accuracy on the computer")
-    Row(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
-        Text(tr("מהירות מול דיוק", "Speed or accuracy"), modifier = Modifier.weight(1f))
-        Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+    LabelAndValue(
+        label = { Text(tr("מהירות מול דיוק", "Speed or accuracy")) },
+        value = { Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
+    )
     Slider(
         value = beam.toFloat(),
         onValueChange = {
@@ -759,13 +761,11 @@ private fun AlertsSection(enabled: Int, listed: Boolean, onOpen: () -> Unit, sou
         Text(tr("מילים חשובות", "Important words"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text(if (listed) "$enabled" else tr("אין", "None"), color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    Row(
+    LabelAndValue(
+        label = { Text(tr("צלילים בבית", "Sounds at home"), style = MaterialTheme.typography.bodyLarge) },
+        value = { Text(if (sounds.isEnabled) soundFloorName(sounds.minimumImportance) else tr("כבוי", "Off"), color = MaterialTheme.colorScheme.onSurfaceVariant) },
         modifier = Modifier.fillMaxWidth().clickable(onClick = onSounds).padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(tr("צלילים בבית", "Sounds at home"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(if (sounds.isEnabled) soundFloorName(sounds.minimumImportance) else tr("כבוי", "Off"), color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+    )
 }
 
 /**
@@ -1038,10 +1038,11 @@ private fun AboutSection(onSupport: () -> Unit) {
 
 @Composable
 private fun AboutRow(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.padding(vertical = 8.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+    LabelAndValue(
+        label = { Text(label, style = MaterialTheme.typography.bodyLarge) },
+        value = { Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.padding(vertical = 8.dp),
+    )
 }
 
 private const val SOURCE_CODE = "https://github.com/arbelonson-source/ozen"
@@ -1131,29 +1132,45 @@ internal fun Footnote(text: String) {
  */
 @Composable
 internal fun ScreenTitle(title: String, actions: @Composable RowScope.() -> Unit) {
-    Layout(
-        contents = listOf(
-            { Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() }) },
-            { Row(verticalAlignment = Alignment.CenterVertically, content = actions) },
-        ),
-    ) { (titles, rows), constraints ->
-        val heading = titles.single()
-        val buttons = rows.single()
+    BesideOrUnder(
+        start = { Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() }) },
+        end = { Row(verticalAlignment = Alignment.CenterVertically, content = actions) },
+        underAtEnd = true,
+    )
+}
+
+/**
+ * A label with its value at the end of the row, or, where even the label's
+ * longest word wouldn't fit beside the value, the value under it: in German
+ * at the phone's largest text, "Haushaltsgeräusche und mehr" left "Geräusche
+ * zu Hause" one letter to a line.
+ */
+@Composable
+internal fun LabelAndValue(label: @Composable () -> Unit, value: @Composable () -> Unit, modifier: Modifier = Modifier, gap: Dp = 0.dp) {
+    BesideOrUnder(start = label, end = value, underAtEnd = false, modifier = modifier, gap = gap)
+}
+
+@Composable
+private fun BesideOrUnder(start: @Composable () -> Unit, end: @Composable () -> Unit, underAtEnd: Boolean, modifier: Modifier = Modifier, gap: Dp = 0.dp) {
+    Layout(contents = listOf(start, end), modifier = modifier) { (starts, ends), constraints ->
+        val first = starts.single()
+        val second = ends.single()
         val width = constraints.maxWidth
-        if (heading.minIntrinsicWidth(Constraints.Infinity) + buttons.maxIntrinsicWidth(Constraints.Infinity) <= width) {
-            val row = buttons.measure(Constraints(maxWidth = width))
-            val text = heading.measure(Constraints(maxWidth = width - row.width))
-            val height = maxOf(text.height, row.height)
+        val space = gap.roundToPx()
+        if (first.minIntrinsicWidth(Constraints.Infinity) + space + second.maxIntrinsicWidth(Constraints.Infinity) <= width) {
+            val after = second.measure(Constraints(maxWidth = width))
+            val before = first.measure(Constraints(maxWidth = width - after.width - space))
+            val height = maxOf(before.height, after.height, constraints.minHeight)
             layout(width, height) {
-                text.placeRelative(0, (height - text.height) / 2)
-                row.placeRelative(width - row.width, (height - row.height) / 2)
+                before.placeRelative(0, (height - before.height) / 2)
+                after.placeRelative(width - after.width, (height - after.height) / 2)
             }
         } else {
-            val text = heading.measure(Constraints(maxWidth = width))
-            val row = buttons.measure(Constraints(maxWidth = width))
-            layout(width, text.height + row.height) {
-                text.placeRelative(0, 0)
-                row.placeRelative(width - row.width, text.height)
+            val above = first.measure(Constraints(maxWidth = width))
+            val below = second.measure(Constraints(maxWidth = width))
+            layout(width, maxOf(above.height + below.height, constraints.minHeight)) {
+                above.placeRelative(0, 0)
+                below.placeRelative(if (underAtEnd) width - below.width else 0, above.height)
             }
         }
     }

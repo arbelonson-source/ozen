@@ -421,16 +421,14 @@ private fun SavingSection(
         }
         var choosing by remember { mutableStateOf(false) }
         Box {
-            Row(
+            LabelAndValue(
+                label = { Text(tr("מחיקה אוטומטית", "Automatic deletion"), style = MaterialTheme.typography.bodyLarge) },
+                value = { Text(HistoryTexts.name(retention), color = MaterialTheme.colorScheme.primary) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(role = Role.DropdownList) { choosing = true }
                     .padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(tr("מחיקה אוטומטית", "Automatic deletion"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Text(HistoryTexts.name(retention), color = MaterialTheme.colorScheme.primary)
-            }
+            )
             DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {
                 HistoryRetention.entries.forEach { choice ->
                     DropdownMenuItem(
