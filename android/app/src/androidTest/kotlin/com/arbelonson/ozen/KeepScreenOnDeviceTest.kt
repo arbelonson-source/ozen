@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.BackupModelStatus
+import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ReleaseFileFetching
 import com.arbelonson.ozen.core.TranscriptionEngineKind
@@ -57,6 +58,7 @@ class KeepScreenOnDeviceTest {
         assumeFalse("the English model is already on this phone", File(app.filesDir, WhisperModelCatalog.phoneModelFile(UILanguage.English)).exists())
         val before = app.settings.current.value.copy()
         val fetcherBefore = app.captions.modelFetcher
+        val networkBefore = app.captions.networkNow
         val release = CountDownLatch(1)
         try {
             app.settings.change {
@@ -67,6 +69,7 @@ class KeepScreenOnDeviceTest {
             app.captions.modelFetcher = object : ReleaseFileFetching {
                 override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
                     release.await(30, TimeUnit.SECONDS)
+                    received(1)
                     throw IOException("ended by the test")
                 }
 
@@ -77,12 +80,19 @@ class KeepScreenOnDeviceTest {
             compose.runOnUiThread { app.captions.downloadBackup() }
             compose.waitUntil(5_000) { app.captions.backupStatus.value is BackupModelStatus.Downloading }
             compose.waitUntil(5_000) { screenKeptOn() }
+            // Ended as Wi-Fi going with cellular downloads off does, which
+            // isn't counted a failure: a failed backup stays offered as "Try
+            // again" for the rest of the run, and later tests look for the
+            // first offer.
+            app.settings.change { it.allowCellularModelDownload = false }
+            app.captions.networkNow = { NetworkConditions.cellular }
             release.countDown()
             compose.waitUntil(10_000) { app.captions.backupStatus.value !is BackupModelStatus.Downloading }
             compose.waitUntil(5_000) { !screenKeptOn() }
         } finally {
             release.countDown()
             app.captions.modelFetcher = fetcherBefore
+            app.captions.networkNow = networkBefore
             app.settings.change {
                 it.engine = before.engine
                 it.spokenLanguage = before.spokenLanguage
