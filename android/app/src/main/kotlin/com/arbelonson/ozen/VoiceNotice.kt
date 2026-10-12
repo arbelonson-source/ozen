@@ -5,7 +5,6 @@ import android.content.Intent
 import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.arbelonson.ozen.core.UILanguage

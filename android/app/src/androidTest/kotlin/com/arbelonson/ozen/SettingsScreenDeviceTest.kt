@@ -64,6 +64,13 @@ import androidx.compose.ui.test.longClick
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.core.view.ViewCompat
@@ -1924,6 +1931,52 @@ class SettingsScreenDeviceTest {
             val layout = layouts.single()
             val broken = (0 until layout.lineCount - 1).map { layout.getLineEnd(it) }.filter { it in 1 until label.length && !label[it - 1].isWhitespace() && !label[it].isWhitespace() }
             assertTrue("$label broke inside a word at $broken", broken.isEmpty())
+        } finally {
+            shell("settings put system font_scale 1.0")
+            app.settings.change { it.appLanguage = language }
+        }
+    }
+
+    // In German at the phone's largest text, the alert test's label runs to
+    // three lines, and the pill's round ends cut off the letters at its
+    // corners: "Testen" lost the top of its T, "gesperrt" the side of its g.
+    @Test
+    fun aButtonLabelOnSeveralLinesKeepsTheLettersAtItsCornersAtThePhonesLargestTextInGerman() {
+        val language = app.settings.current.value.appLanguage
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+        }
+        val label = "Testen, ob ein Hinweis ankommt, wenn das Telefon gesperrt ist"
+        try {
+            app.settings.change {
+                it.appLanguage = AppLanguage.German
+                it.notifyWhenInBackground = true
+            }
+            shell("settings put system font_scale 2.0")
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
+            compose.onAllNodesWithText("Einstellungen").onFirst().performClick()
+            compose.onNodeWithText(label, useUnmergedTree = true).performScrollTo()
+            // Where they are and how big, not boundsInRoot, which the list's
+            // edge trims.
+            val place = { node: SemanticsNode -> Rect(node.positionInRoot, node.size.toSize()) }
+            val button = place(compose.onNode(hasClickAction() and hasText(label)).fetchSemanticsNode())
+            val text = place(compose.onNodeWithText(label, useUnmergedTree = true).fetchSemanticsNode())
+            val layouts = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithText(label, useUnmergedTree = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            val layout = layouts.single()
+            assertTrue("the label fits on one line here, so this shows nothing", layout.lineCount > 1)
+            val outline = TextButtonShape.createOutline(button.size, LayoutDirection.Ltr, Density(compose.activity)) as Outline.Rounded
+            val cut = (0 until layout.lineCount).flatMap { line ->
+                val top = text.top - button.top + layout.getLineTop(line)
+                val bottom = text.top - button.top + layout.getLineBottom(line)
+                val left = text.left - button.left + layout.getLineLeft(line)
+                val right = text.left - button.left + layout.getLineRight(line)
+                listOf(Offset(left, top), Offset(right, top), Offset(left, bottom), Offset(right, bottom))
+                    .filterNot { outline.roundRect.contains(it) }
+                    .map { "line ${line + 1} at $it" }
+            }
+            assertTrue("letters cut off at the button's corners: $cut (button ${button.size})", cut.isEmpty())
         } finally {
             shell("settings put system font_scale 1.0")
             app.settings.change { it.appLanguage = language }
