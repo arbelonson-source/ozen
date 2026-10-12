@@ -3,24 +3,31 @@ package com.arbelonson.ozen
 import android.Manifest
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -79,6 +86,38 @@ class OnboardingDeviceTest {
             it.engine = before.engine
             it.languageCode = before.languageCode
             it.hasCompletedOnboarding = true
+        }
+    }
+
+    // Older people often set the phone's largest text, and German words are
+    // long: "Weiter" broke in the middle beside "Überspringen", and
+    // "Hinzufügen" left the name field a few letters wide. The iPhone puts
+    // the field above Add at its largest sizes.
+    @Test
+    fun atTheLargestTextInGermanEachButtonKeepsItsWordWholeAndTheNameFieldItsWidth() {
+        val language = app.settings.current.value.appLanguage
+        val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
+        try {
+            app.settings.change { it.appLanguage = AppLanguage.German }
+            shell("settings put system font_scale 2.0")
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f && shown("Weiter") }
+            repeat(4) {
+                compose.onNodeWithText("Weiter").performClick()
+                compose.waitForIdle()
+            }
+            compose.onNodeWithText("Wenn Sie gerufen werden").assertExists()
+            for (label in listOf("Weiter", "Überspringen", "Hinzufügen")) {
+                val layouts = mutableListOf<TextLayoutResult>()
+                compose.onNodeWithText(label).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                assertEquals("$label broke over lines", 1, layouts.single().lineCount)
+            }
+            val page = compose.onRoot().fetchSemanticsNode().size.width
+            val field = compose.onNode(hasSetTextAction()).fetchSemanticsNode().size.width
+            assertTrue("the name field was $field of $page wide", field >= page * 0.6f)
+        } finally {
+            shell("settings put system font_scale 1.0")
+            app.settings.change { it.appLanguage = language }
         }
     }
 

@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,6 +44,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -54,6 +55,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.arbelonson.ozen.core.AlertSuggestions
@@ -223,20 +226,35 @@ private fun NamePage(settings: AppSettings, draft: MutableState<String>, addDraf
  */
 @Composable
 internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, addDraft: () -> Unit, onAddAlert: (String) -> Unit) {
+    // Past the largest ordinary text size, one above the other, as the
+    // iPhone's form at its accessibility sizes: beside it, German's
+    // "Hinzufügen" left the field a few letters wide.
+    val stacked = LocalDensity.current.fontScale > LARGEST_ORDINARY_FONT_SCALE
+    val field = @Composable { modifier: Modifier ->
+        OutlinedTextField(
+            value = draft.value,
+            onValueChange = { draft.value = it },
+            placeholder = { Text(tr("השם שלך", "Your name")) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.titleLarge,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { addDraft() }),
+            modifier = modifier,
+        )
+    }
+    val add = @Composable { modifier: Modifier ->
+        OutlinedButton(onClick = addDraft, enabled = draft.value.isNotBlank(), modifier = modifier.heightIn(min = 56.dp)) {
+            Text(tr("להוסיף", "Add"), fontSize = 18.sp)
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = draft.value,
-                onValueChange = { draft.value = it },
-                placeholder = { Text(tr("השם שלך", "Your name")) },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.titleLarge,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { addDraft() }),
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedButton(onClick = addDraft, enabled = draft.value.isNotBlank(), modifier = Modifier.heightIn(min = 56.dp)) {
-                Text(tr("להוסיף", "Add"), fontSize = 18.sp)
+        if (stacked) {
+            field(Modifier.fillMaxWidth())
+            add(Modifier.fillMaxWidth())
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                field(Modifier.weight(1f))
+                add(Modifier)
             }
         }
         if (HebrewText.isInOtherLetters(draft.value, settings.languageCode)) {
@@ -246,13 +264,18 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        val suggestions = @Composable { modifier: Modifier ->
             for (word in AlertSuggestions.offeredNames(settings.spokenLanguage)) {
                 val added = settings.keywordAlerts.any { it.isEnabled && HebrewText.normalize(it.phrase) == HebrewText.normalize(word) }
-                OutlinedButton(onClick = { onAddAlert(word) }, enabled = !added, modifier = Modifier.heightIn(min = 56.dp)) {
+                OutlinedButton(onClick = { onAddAlert(word) }, enabled = !added, modifier = modifier.heightIn(min = 56.dp)) {
                     Text((if (added) "✓ " else "+ ") + AlertSuggestions.label(word, Localization.language), fontSize = 18.sp)
                 }
             }
+        }
+        if (stacked) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { suggestions(Modifier.fillMaxWidth()) }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { suggestions(Modifier) }
         }
         AlertSuggestions.vibrationNote(settings.keywordAlerts, Localization.language)?.let { Status("✓ $it", good = true) }
     }
@@ -345,26 +368,65 @@ private fun Footer(pager: PagerState, onFinish: () -> Unit) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
     ) {
         if (pager.currentPage < PAGES - 1) {
-            // Bare text is too small a target beside Next, and a slip ends
-            // the walkthrough.
-            TextButton(onClick = onFinish, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(tr("דילוג", "Skip"), fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Spacer(Modifier.weight(1f))
-            Button(
-                onClick = {
-                    // Let go of the name field first: focused, it pulled
-                    // the pages back to itself mid-slide.
-                    focusManager.clearFocus()
-                    scope.launch { pager.animateScrollToPage(pager.currentPage + 1) }
+            SideBySideOrStacked(
+                gap = 16.dp,
+                start = {
+                    // Bare text is too small a target beside Next, and a
+                    // slip ends the walkthrough.
+                    TextButton(onClick = onFinish, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(tr("דילוג", "Skip"), fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 },
-                modifier = Modifier.widthIn(min = 120.dp).heightIn(min = 56.dp),
-            ) {
-                Text(tr("הבא", "Next"), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            }
+                end = {
+                    Button(
+                        onClick = {
+                            // Let go of the name field first: focused, it
+                            // pulled the pages back to itself mid-slide.
+                            focusManager.clearFocus()
+                            scope.launch { pager.animateScrollToPage(pager.currentPage + 1) }
+                        },
+                        modifier = Modifier.widthIn(min = 120.dp).heightIn(min = 56.dp),
+                    ) {
+                        Text(tr("הבא", "Next"), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                },
+            )
         } else {
             Button(onClick = onFinish, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
                 Text(tr("להתחיל", "Start"), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+/**
+ * [start] at the start and [end] at the end, or, where the two don't fit
+ * side by side, [end] across the page with [start] under it: German at the
+ * phone's largest text squeezed "Weiter" beside "Überspringen" until it
+ * broke in the middle of the word.
+ */
+@Composable
+private fun SideBySideOrStacked(gap: Dp, start: @Composable () -> Unit, end: @Composable () -> Unit) {
+    Layout(contents = listOf(start, end)) { (starts, ends), constraints ->
+        val first = starts.single()
+        val second = ends.single()
+        val space = gap.roundToPx()
+        val loose = constraints.copy(minWidth = 0)
+        val wanted = first.maxIntrinsicWidth(Constraints.Infinity) + space + second.maxIntrinsicWidth(Constraints.Infinity)
+        if (wanted <= constraints.maxWidth) {
+            val a = first.measure(loose)
+            val b = second.measure(loose)
+            val height = maxOf(a.height, b.height)
+            layout(constraints.maxWidth, height) {
+                a.placeRelative(0, (height - a.height) / 2)
+                b.placeRelative(constraints.maxWidth - b.width, (height - b.height) / 2)
+            }
+        } else {
+            val b = second.measure(Constraints.fixedWidth(constraints.maxWidth))
+            val a = first.measure(loose)
+            layout(constraints.maxWidth, b.height + space + a.height) {
+                b.placeRelative(0, 0)
+                a.placeRelative((constraints.maxWidth - a.width) / 2, b.height + space)
             }
         }
     }

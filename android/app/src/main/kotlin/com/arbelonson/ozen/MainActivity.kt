@@ -829,7 +829,7 @@ private fun CaptionScreen(
                 // the four shrink together, where the last one used to break a
                 // few letters to a line; at usual sizes each keeps its width.
                 val density = LocalDensity.current
-                CompositionLocalProvider(LocalDensity provides Density(density.density, minOf(density.fontScale, BAR_MOST_FONT_SCALE))) {
+                CompositionLocalProvider(LocalDensity provides Density(density.density, minOf(density.fontScale, LARGEST_ORDINARY_FONT_SCALE))) {
                     val measurer = rememberTextMeasurer()
                     val barStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 18.sp)
                     val buttonPadding = with(LocalDensity.current) { 24.dp.toPx() }
@@ -908,7 +908,7 @@ private const val HEARD_SHOWN_SECONDS = 5.0
 
 private const val AWAY_MARK_SEEN_MILLIS = 1_000L
 
-private const val BAR_MOST_FONT_SCALE = 1.5f
+internal const val LARGEST_ORDINARY_FONT_SCALE = 1.5f
 
 // A deep orange as on the iPhone, with white words on it at 5.5:1.
 private val TROUBLE_ORANGE = Color(red = 0.7f, green = 0.28f, blue = 0f)
