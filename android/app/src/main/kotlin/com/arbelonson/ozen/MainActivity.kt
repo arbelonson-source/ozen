@@ -29,6 +29,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -828,19 +829,24 @@ private fun CaptionScreen(
                 // of the row follows its word's own width: at the largest text
                 // the four shrink together, where the last one used to break a
                 // few letters to a line; at usual sizes each keeps its width.
+                // Each button keeps only a little padding at its sides: with
+                // the usual padding in every share, German's "Verlauf" and
+                // "Sagen" were cut to "Verla…" and "Sag…".
                 val density = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(density.density, minOf(density.fontScale, LARGEST_ORDINARY_FONT_SCALE))) {
                     val measurer = rememberTextMeasurer()
                     val barStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 18.sp)
-                    val buttonPadding = with(LocalDensity.current) { 24.dp.toPx() }
+                    val buttonPadding = with(LocalDensity.current) { (BAR_SIDE_PADDING * 2).toPx() }
+                    val padding = PaddingValues(horizontal = BAR_SIDE_PADDING, vertical = 8.dp)
                     val share = { word: String -> measurer.measure(word, barStyle, maxLines = 1).size.width + buttonPadding }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(onClick = onHistory, modifier = Modifier.weight(share(history), fill = false)) {
+                        TextButton(onClick = onHistory, contentPadding = padding, modifier = Modifier.weight(share(history), fill = false)) {
                             BarWord(history)
                         }
                         val choose = tr("בחירת מיקרופון", "Choose microphone")
                         TextButton(
                             onClick = onMicrophone,
+                            contentPadding = padding,
                             modifier = Modifier.weight(share(microphone), fill = false).widthIn(max = 120.dp).semantics {
                                 contentDescription = choose
                                 stateDescription = state.selectedInput?.portName ?: ""
@@ -858,10 +864,10 @@ private fun CaptionScreen(
                         // opening the Say screen, as on the iPhone: captions stay
                         // paused for as long as it talks.
                         val say = if (state.speaking) tr("עצירת הדיבור", "Stop speaking") else tr("להגיד משהו בקול", "Say something out loud")
-                        TextButton(onClick = onSay, modifier = Modifier.weight(share(sayWord), fill = false).semantics { contentDescription = say }) {
+                        TextButton(onClick = onSay, contentPadding = padding, modifier = Modifier.weight(share(sayWord), fill = false).semantics { contentDescription = say }) {
                             BarWord(sayWord)
                         }
-                        TextButton(onClick = onSettings, modifier = Modifier.weight(share(settingsWord), fill = false)) {
+                        TextButton(onClick = onSettings, contentPadding = padding, modifier = Modifier.weight(share(settingsWord), fill = false)) {
                             BarWord(settingsWord)
                         }
                     }
@@ -909,6 +915,8 @@ private const val HEARD_SHOWN_SECONDS = 5.0
 private const val AWAY_MARK_SEEN_MILLIS = 1_000L
 
 internal const val LARGEST_ORDINARY_FONT_SCALE = 1.5f
+
+private val BAR_SIDE_PADDING = 4.dp
 
 // A deep orange as on the iPhone, with white words on it at 5.5:1.
 private val TROUBLE_ORANGE = Color(red = 0.7f, green = 0.28f, blue = 0f)

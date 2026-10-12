@@ -2222,6 +2222,35 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    // German's words on the bottom row are among the longest: with each
+    // button's padding taking its share, "Verlauf" and "Sagen" were cut to
+    // "Verla…" and "Sag…" at the phone's largest text.
+    @Test
+    fun theButtonsAtTheBottomKeepEachGermanWordWholeAtThePhonesLargestTextSize() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val language = app.settings.current.value.appLanguage
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+        }
+        try {
+            app.settings.change { it.appLanguage = AppLanguage.German }
+            shell("settings put system font_scale 2.0")
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
+            compose.waitForIdle()
+            for (label in listOf("Verlauf", "Sagen", "Einstellungen")) {
+                val layouts = mutableListOf<TextLayoutResult>()
+                compose.onNodeWithText(label).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                val layout = layouts.single()
+                assertEquals("$label broke over lines", 1, layout.lineCount)
+                assertFalse("$label was cut off", layout.isLineEllipsized(0))
+            }
+        } finally {
+            shell("settings put system font_scale 1.0")
+            app.settings.change { it.appLanguage = language }
+        }
+    }
+
     // A screen's buttons squeezed its title at the phone's largest text
     // until a word broke: Hebrew's History left its last letter on a line
     // of its own, German's broke into three pieces.
