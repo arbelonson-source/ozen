@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
+import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
@@ -246,7 +247,9 @@ class PhasePresentation private constructor(
                     action = Action.Retry,
                 )
             }
-            if (offerBackup && failure.engineUnavailability?.kind == EngineUnavailability.Kind.HomeServerUnreachable) {
+            if (offerBackup && failure.engineUnavailability?.kind == EngineUnavailability.Kind.HomeServerUnreachable &&
+                !HomeServer.refusedPlainAddress(failure.engineUnavailability)
+            ) {
                 // Without the phone's own model nothing can cover for the
                 // computer, so the way out is a backup, not another retry.
                 result = PhasePresentation(
@@ -478,13 +481,26 @@ class PhasePresentation private constructor(
                     action = Action.Retry,
                 )
 
-                EngineUnavailability.Kind.HomeServerUnreachable -> PhasePresentation(
-                    title = tr("אין חיבור למחשב בבית", "Can’t reach the home computer"),
-                    detail = tr("בדקו שהמחשב דלוק ומחובר · הקישו לנסות שוב", "Check that the computer is on and connected · Tap to try again"),
-                    systemImage = "desktopcomputer.trianglebadge.exclamationmark",
-                    tint = PhaseTint.Attention,
-                    action = Action.Retry,
-                )
+                // The phone itself refuses a plain ws:// address out on the
+                // internet, before asking: the computer may well be on, and
+                // only the address in Settings can change that.
+                EngineUnavailability.Kind.HomeServerUnreachable -> if (HomeServer.refusedPlainAddress(engineFailure)) {
+                    PhasePresentation(
+                        title = tr("אין חיבור למחשב בבית", "Can’t reach the home computer"),
+                        detail = tr("מחוץ לרשת הביתית, צריך את הכתובת שמתחילה ב-wss:// · הקישו להגדרות", "Outside the home network, use the address that starts with wss:// · Tap for Settings"),
+                        systemImage = "desktopcomputer.trianglebadge.exclamationmark",
+                        tint = PhaseTint.Attention,
+                        action = Action.OpenEngineSettings,
+                    )
+                } else {
+                    PhasePresentation(
+                        title = tr("אין חיבור למחשב בבית", "Can’t reach the home computer"),
+                        detail = tr("בדקו שהמחשב דלוק ומחובר · הקישו לנסות שוב", "Check that the computer is on and connected · Tap to try again"),
+                        systemImage = "desktopcomputer.trianglebadge.exclamationmark",
+                        tint = PhaseTint.Attention,
+                        action = Action.Retry,
+                    )
+                }
 
                 EngineUnavailability.Kind.HomeServerRejected -> PhasePresentation(
                     title = tr("המחשב בבית לא קיבל את קוד הצימוד", "The home computer didn’t accept the pairing code"),

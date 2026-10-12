@@ -106,6 +106,17 @@ struct StoppedCaptionsNoticeTests {
         #expect(StoppedCaptionsNotice.content(for: .failed(glitch)).threadIdentifier == "status")
     }
 
+    @Test("a plain ws:// address out on the internet points to the wss:// one, not to a computer that may well be on")
+    func plainAddressNotice() {
+        let plain = PipelineFailure(
+            kind: .engineUnavailable, detail: "",
+            engineUnavailability: EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.needsEncryption)
+        )
+        let body = StoppedCaptionsNotice.content(for: .failed(plain)).body
+        #expect(body.contains("wss://"))
+        #expect(!body.contains("אין תשובה מהמחשב"))
+    }
+
     @Test("the message says what she can do about it")
     func wording() {
         let callEnded = StoppedCaptionsNotice.content(for: .callEnded).body

@@ -2492,10 +2492,13 @@ class CaptionPipeline(
      * after it woke up: only a tap, or the phone's own network dropping
      * and coming back, started them again. Asks the computer every
      * [homeServerWaitSeconds] and starts captions once it answers. A
-     * refused code needs a person, so it isn't asked again.
+     * refused code needs a person, so it isn't asked again, and neither is
+     * a plain ws:// address out on the internet, which the phone itself
+     * refuses before asking.
      */
     private fun waitForHomeServer(failure: PipelineFailure): Boolean {
         if (failure.engineUnavailability?.kind != EngineUnavailability.Kind.HomeServerUnreachable ||
+            HomeServer.refusedPlainAddress(failure.engineUnavailability) ||
             settingsInUse?.engine != TranscriptionEngineKind.HomeServer
         ) {
             return false

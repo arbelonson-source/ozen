@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.PhasePresentation.Action
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
+import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ScheduledRetry
@@ -175,6 +176,16 @@ class PhasePresentationTest {
         assertTrue(refused.action == Action.OpenEngineSettings && refused.tint == PhaseTint.Active)
         assertTrue(refused.detail?.contains("ממי שהתקין את הטלפון") == true)
         assertTrue(!refused.detailFitsInStatus && !unreachable.detailFitsInStatus)
+    }
+
+    @Test
+    fun `a plain ws address out on the internet sends her to Settings for the wss one, not to check a computer that may well be on`() {
+        val plain = failure(EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.NEEDS_ENCRYPTION))
+        for (offerBackup in listOf(false, true)) {
+            val shown = present(plain, TranscriptionEngineKind.HomeServer, offerBackup = offerBackup)
+            assertTrue(shown.detail?.contains("wss://") == true, "${shown.detail}")
+            assertEquals(Action.OpenEngineSettings, shown.action)
+        }
     }
 
     @Test

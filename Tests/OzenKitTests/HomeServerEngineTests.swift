@@ -945,6 +945,27 @@ struct HomeServerCoverTests {
         #expect(!captions.isCoveringForCloud)
     }
 
+    @Test("a plain ws:// address out on the internet is not asked again on a timer: only a new address in Settings can help")
+    func plainAddressNotAskedAgain() async throws {
+        let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, HomeServer.needsEncryption))
+        let phone = FakeEngine(kind: .whisperKit)
+        phone.pendingDownload = 819
+        let captions = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { $0.engine == .homeServer ? server : phone },
+            embedder: FakeEmbedder(),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+        )
+        captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
+        await captions.start(settings: serverSettings)
+        #expect(await eventually { captions.phase.failure != nil })
+        try await Task.sleep(for: .milliseconds(300))
+        let asked = server.prepareCount
+        #expect(asked == 1)
+        #expect(captions.scheduledRetry == nil)
+    }
+
     @Test("stopped captions ask the computer sooner than covered ones look to switch back: nothing is captioned meanwhile")
     func stoppedCaptionsAskSooner() async {
         let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, "asleep"))

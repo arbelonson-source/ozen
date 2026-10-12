@@ -43,7 +43,7 @@ object HomeServer {
     val setupDownload: URI = URI("https://github.com/arbelonson-source/ozen/releases/latest/download/$SETUP_FILE_NAME")
     internal const val NO_ADDRESS = "no valid server address"
     internal const val NO_CODE = "no pairing code"
-    internal const val NEEDS_ENCRYPTION = "plain ws:// address outside the home network"
+    const val NEEDS_ENCRYPTION = "plain ws:// address outside the home network"
     const val END = """{"type":"end"}"""
 
     /**
@@ -118,6 +118,14 @@ object HomeServer {
      * look like an address.
      */
     fun needsEncryptedAddress(address: String): Boolean = parsedURL(address) != null && url(address) == null
+
+    /**
+     * Captions stopped by such an address: a retry asks with the same one,
+     * so only a new address in Settings helps, and the computer itself may
+     * well be on.
+     */
+    fun refusedPlainAddress(why: EngineUnavailability?): Boolean =
+        why?.kind == EngineUnavailability.Kind.HomeServerUnreachable && why.detail == NEEDS_ENCRYPTION
 
     private fun parsedURL(address: String): URI? {
         val trimmed = homeServerTrimmed(address)

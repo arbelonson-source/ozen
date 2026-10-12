@@ -91,6 +91,13 @@ public enum HomeServer {
         parsedURL(from: address) != nil && url(from: address) == nil
     }
 
+    /// Captions stopped by such an address: a retry asks with the same one,
+    /// so only a new address in Settings helps, and the computer itself may
+    /// well be on.
+    public static func refusedPlainAddress(_ why: EngineUnavailability?) -> Bool {
+        why?.kind == .homeServerUnreachable && why?.detail == needsEncryption
+    }
+
     private static func parsedURL(from address: String) -> URL? {
         let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !trimmed.contains(" ") else { return nil }

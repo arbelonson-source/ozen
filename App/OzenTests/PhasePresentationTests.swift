@@ -296,6 +296,16 @@ struct PhasePresentationTests {
         #expect(rejected.action == .openEngineSettings)
         #expect(rejected.detail?.contains("QR") == true)
     }
+
+    @Test("a plain ws:// address out on the internet sends her to Settings for the wss:// one, not to check a computer that may well be on")
+    func plainAddressPointsToSettings() {
+        let phase = failure(EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.needsEncryption))
+        for offerBackup in [false, true] {
+            let shown = PhasePresentation(phase: phase, engine: .homeServer, interruptedBySystem: false, offerBackup: offerBackup)
+            #expect(shown.detail?.contains("wss://") == true)
+            #expect(shown.action == .openEngineSettings)
+        }
+    }
 }
 
 /// Small pieces of wording she reads on the screen.

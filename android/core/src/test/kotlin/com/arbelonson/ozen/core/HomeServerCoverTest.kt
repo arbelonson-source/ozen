@@ -173,6 +173,21 @@ class HomeServerCoverTest {
     }
 
     @Test
+    fun `a plain ws address out on the internet is not asked again on a timer - only a new address in Settings can help`() = runTest {
+        val server = FakeEngine(kind = homeKind, availability = EngineAvailability.unavailable(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.NEEDS_ENCRYPTION))
+        val phone = FakeEngine(kind = phoneKind)
+        phone.pendingDownload = 819
+        val captions = serverPipeline(server, phone, recovery = oneQuickRetry())
+        captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
+        captions.start(serverSettings())
+        assertTrue(eventually { captions.phase is PipelinePhase.Failed })
+        delay(300.milliseconds)
+        assertEquals(1, server.prepareCount, "asked again with the same address")
+        assertNull(captions.scheduledRetry)
+    }
+
+    @Test
     fun `stopped captions ask the computer sooner than covered ones look to switch back - nothing is captioned meanwhile`() = runTest {
         val server = unreachableServer()
         val phone = FakeEngine(kind = phoneKind)

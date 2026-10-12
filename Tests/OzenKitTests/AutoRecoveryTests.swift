@@ -24,6 +24,16 @@ struct AutoRecoveryPolicyTests {
         #expect(AutoRecoveryPolicy.schedule(for: failure(.engineUnavailable, engine: .noInternet)) == .glitch)
     }
 
+    @Test("a plain ws:// address out on the internet is not retried on a timer, which cannot change the address")
+    func plainAddressNotRetried() {
+        let plain = PipelineFailure(
+            kind: .engineUnavailable, detail: "",
+            engineUnavailability: EngineUnavailability(kind: .homeServerUnreachable, detail: HomeServer.needsEncryption)
+        )
+        #expect(AutoRecoveryPolicy.schedule(for: plain) == .never)
+        #expect(AutoRecoveryPolicy.schedule(for: failure(.engineUnavailable, engine: .homeServerUnreachable)) == .glitch)
+    }
+
     @Test("glitches back off through their delays and then stop")
     func glitchBackoff() {
         var policy = AutoRecoveryPolicy(glitchDelays: [1, 3, 8], downloadDelays: [60])

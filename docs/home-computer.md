@@ -157,6 +157,11 @@ if you have not saved it yet.
 | "The address or code is missing" | One of the two is empty. | Fill in both. |
 | "Outside the home network, use the address that starts with wss://" | The address is a plain one for a computer out on the internet. The phone won't send the sound, the code and the names there unencrypted. | Type the computer's address that starts with `wss://`. |
 
+With such an address saved, the caption screen and the notice when
+captions stop say the same thing, and a tap on the caption screen opens
+Settings. Captions don't keep trying that address on their own: only the
+`wss://` one helps.
+
 ### Speed or accuracy
 
 The slider **Speed or accuracy** (mehirut mul diyuk) sets how many

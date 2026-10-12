@@ -29,6 +29,13 @@ class AutoRecoveryPolicyTest {
     }
 
     @Test
+    fun `a plain ws address out on the internet is not retried on a timer, which cannot change the address`() {
+        val plain = PipelineFailure(K.EngineUnavailable, "", EngineUnavailability(E.HomeServerUnreachable, HomeServer.NEEDS_ENCRYPTION))
+        assertEquals(S.Never, AutoRecoveryPolicy.schedule(plain))
+        assertEquals(S.Glitch, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.HomeServerUnreachable)))
+    }
+
+    @Test
     fun `a model that is not on the phone is not retried on a timer, which cannot put it there`() {
         assertEquals(S.Never, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.ModelNotOnDevice)))
     }

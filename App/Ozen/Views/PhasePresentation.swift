@@ -138,7 +138,8 @@ struct PhasePresentation {
                     action: .retry
                 )
             }
-            if offerBackup, failure.engineUnavailability?.kind == .homeServerUnreachable {
+            if offerBackup, failure.engineUnavailability?.kind == .homeServerUnreachable,
+               !HomeServer.refusedPlainAddress(failure.engineUnavailability) {
                 // Without the phone's own model nothing can cover for the
                 // computer, so the way out is a backup, not another retry.
                 self = PhasePresentation(
@@ -308,6 +309,17 @@ struct PhasePresentation {
                 systemImage: "wifi.slash",
                 tint: .orange,
                 action: .retry
+            )
+        case .homeServerUnreachable where HomeServer.refusedPlainAddress(engineFailure):
+            // The phone itself refuses a plain ws:// address out on the
+            // internet, before asking: the computer may well be on, and only
+            // the address in Settings can change that.
+            self.init(
+                title: tr("אין חיבור למחשב בבית", "Can’t reach the home computer"),
+                detail: tr("מחוץ לרשת הביתית, צריך את הכתובת שמתחילה ב-wss:// · הקישו להגדרות", "Outside the home network, use the address that starts with wss:// · Tap for Settings"),
+                systemImage: "desktopcomputer.trianglebadge.exclamationmark",
+                tint: .orange,
+                action: .openEngineSettings
             )
         case .homeServerUnreachable:
             self.init(

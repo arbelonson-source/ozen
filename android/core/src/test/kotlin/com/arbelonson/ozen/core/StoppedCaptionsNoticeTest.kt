@@ -123,6 +123,17 @@ class StoppedCaptionsNoticeTest {
     }
 
     @Test
+    fun `a plain ws address out on the internet points to the wss one, not to a computer that may well be on`() {
+        val plain = PipelineFailure(
+            PipelineFailure.Kind.EngineUnavailable, "",
+            EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, HomeServer.NEEDS_ENCRYPTION),
+        )
+        val body = StoppedCaptionsNotice.content(failed(plain)).body
+        assertTrue(body.contains("wss://"), body)
+        assertTrue(!body.contains("אין תשובה מהמחשב"), body)
+    }
+
+    @Test
     fun `the message says what she can do about it`() {
         val callEnded = StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.CallEnded).body
         val permission = StoppedCaptionsNotice.content(failed(PipelineFailure(PipelineFailure.Kind.MicrophonePermissionDenied, ""))).body

@@ -2280,10 +2280,13 @@ public final class CaptionPipeline {
     /// after it woke up: only a tap, or the phone's own network dropping
     /// and coming back, started them again. Asks the computer every
     /// `homeServerWaitSeconds` and starts captions once it answers. A
-    /// refused code needs a person, so it isn't asked again.
+    /// refused code needs a person, so it isn't asked again, and neither is
+    /// a plain ws:// address out on the internet, which the phone itself
+    /// refuses before asking.
     @discardableResult
     private func waitForHomeServer(after failure: PipelineFailure) -> Bool {
         guard failure.engineUnavailability?.kind == .homeServerUnreachable,
+              !HomeServer.refusedPlainAddress(failure.engineUnavailability),
               activeSettings?.engine == .homeServer
         else { return false }
         homeServerRecheck?.cancel()

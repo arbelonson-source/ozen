@@ -140,8 +140,9 @@ class AutoRecoveryPolicy(
                 EngineUnavailability.Kind.ModelNotOnDevice -> Schedule.Never
                 EngineUnavailability.Kind.ModelDownloadFailed -> Schedule.Download
                 EngineUnavailability.Kind.ModelLoadFailed -> Schedule.LoadFailure
+                EngineUnavailability.Kind.HomeServerUnreachable ->
+                    if (HomeServer.refusedPlainAddress(failure.engineUnavailability)) Schedule.Never else Schedule.Glitch
                 EngineUnavailability.Kind.NoInternet,
-                EngineUnavailability.Kind.HomeServerUnreachable,
                 EngineUnavailability.Kind.TemporarilyUnavailable,
                 EngineUnavailability.Kind.Other,
                 null,
