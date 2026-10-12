@@ -116,7 +116,11 @@ private class WebSocketConnection(
                 fail(error)
                 return@launch
             }
-            connection.complete(streams)
+            // Closed while it was opening: nothing will use or close it.
+            if (!connection.complete(streams)) {
+                streams.socket.close()
+                return@launch
+            }
             try {
                 readLoop(streams)
             } catch (error: Throwable) {

@@ -375,6 +375,17 @@ class WebSocketConnectorTest {
     }
 
     @Test
+    fun `a connection closed while it was still opening is let go once it opens, not left open`() = runBlocking<Unit> {
+        ScriptedWebSocketServer(answerAfterMillis = 500) { readFrame() }.use { server ->
+            val socket = WebSocketConnector().open(server.url())
+            withTimeout(5_000) { while (server.requestLines.isEmpty()) delay(10) }
+            socket.close()
+            server.awaitScript()
+            assertEquals("client closed", server.failures.single().message)
+        }
+    }
+
+    @Test
     fun `a frame the server masked is refused`() = runBlocking<Unit> {
         ScriptedWebSocketServer { send(1, "hi".toByteArray(), masked = true) }.use { server ->
             val socket = WebSocketConnector().open(server.url())
