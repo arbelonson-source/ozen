@@ -2,8 +2,10 @@ package com.arbelonson.ozen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -35,7 +37,7 @@ internal fun NameSpeakerDialog(shown: String, hasVoice: Boolean, savedNames: Lis
         onDismissRequest = onDismiss,
         title = { Text(tr("שם לדובר", "Name the speaker")) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(tr("מי אמר את זה?", "Who said this?"), style = MaterialTheme.typography.labelLarge)
                 Text(shown, maxLines = 3, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(

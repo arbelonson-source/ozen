@@ -1909,6 +1909,35 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun everySavedPersonCanBeReachedInWhoIsSpeakingAtThePhonesLargestTextSize() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.speakerProfiles
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+        }
+        val names = listOf("Grandma", "Grandpa", "Yossi", "Dana", "Noa", "Avi", "Michal", "Uncle Dov")
+        val voiced = TranscriptSegment(id = UUID.randomUUID(), text = "Good morning", isCommitted = true, speakerClusterID = 0, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+        try {
+            app.settings.change { settings ->
+                settings.speakerProfiles = names.mapIndexed { index, name -> SpeakerProfile(name = name, embedding = FloatArray(512) { 0.1f * (index + 1) }) }
+            }
+            shell("settings put system font_scale 2.0")
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(voiced), speakerName = { "Speaker 1" })
+            }
+            lineText("Good morning").performTouchInput { longClick() }
+            compose.onNodeWithText("Who is speaking?").performScrollTo().performClick()
+            compose.onNodeWithText("Name the speaker").assertExists()
+            compose.onNodeWithText("Uncle Dov").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("Cancel").assertIsDisplayed()
+        } finally {
+            shell("settings put system font_scale 1.0")
+            app.settings.change { it.speakerProfiles = before }
+        }
+    }
+
+    @Test
     fun whoIsSpeakingAsksForANameOffersEachSavedPersonOnceAndWaitsForAVoiceOnALineWithoutOne() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val before = app.settings.current.value.speakerProfiles
