@@ -24,10 +24,11 @@ whisper_context *context(jlong handle) {
     return model(handle)->context;
 }
 
-// Each pass starts listening for a stop of its own: one asked for after
-// the last pass ended must not cut the next stream's first pass short.
+// A stop stays asked for until the next pass begins: WhisperModel.beginPass
+// clears it, under the same lock as the stop, and only for a pass whose
+// stream still runs. Clearing it here, as the pass started, lost a stop that
+// landed just before, and that pass then ran to its end.
 void stop_when_asked(jlong handle, whisper_full_params &params) {
-    model(handle)->stop = false;
     params.abort_callback = [](void *stop) { return static_cast<std::atomic<bool> *>(stop)->load(); };
     params.abort_callback_user_data = &model(handle)->stop;
 }
@@ -70,6 +71,11 @@ Java_com_arbelonson_ozen_whisper_WhisperCpp_abort(JNIEnv *, jobject, jlong handl
     model(handle)->stop = true;
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_resume(JNIEnv *, jobject, jlong handle) {
+    model(handle)->stop = false;
+}
+
 extern "C" JNIEXPORT jint JNICALL
 Java_com_arbelonson_ozen_whisper_WhisperCpp_transcribe(
         JNIEnv *env, jobject, jlong handle, jfloatArray audio, jstring language, jstring prompt,
@@ -92,6 +98,7 @@ Java_com_arbelonson_ozen_whisper_WhisperCpp_transcribe(
     params.temperature_inc = finished ? 0.2f : 0.0f;
     params.logprob_thold = -1.0f;
     params.no_speech_thold = 0.6f;
+    model(handle)->stop = false;
     stop_when_asked(handle, params);
 
     jsize count = env->GetArrayLength(audio);

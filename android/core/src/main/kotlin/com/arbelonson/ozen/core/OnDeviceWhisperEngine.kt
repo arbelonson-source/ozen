@@ -240,12 +240,16 @@ class OnDeviceWhisperEngine(
     // asks it to stop, as the iPhone's cancelled WhisperKit pass does, then
     // still waits for it to return, so nothing outlives the stream; running
     // it out instead held the next start (and, on a closed session, the
-    // model's memory) for a whole pass, about 30 s on the emulator.
+    // model's memory) for a whole pass, about 30 s on the emulator. The pass
+    // is cancelled before it is asked to stop: a stop that lands before its
+    // native part begins is cleared there, and the cancel is what keeps it
+    // (or a retry at a higher temperature) from beginning at all.
     private suspend fun runPass(passes: WhisperPasses, audio: FloatArray, options: WhisperPassOptions): List<WhisperSegment> {
         val pass = CoroutineScope(passDispatcher).async { passes.run(audio, options) }
         try {
             return pass.await()
         } catch (stopped: CancellationException) {
+            pass.cancel()
             passes.abortRunningPass()
             withContext(NonCancellable) { pass.join() }
             throw stopped

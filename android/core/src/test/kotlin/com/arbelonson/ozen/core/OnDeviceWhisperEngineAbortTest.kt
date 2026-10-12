@@ -9,7 +9,9 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
@@ -40,6 +42,39 @@ class OnDeviceWhisperEngineAbortTest {
         }
     }
 
+    // As WhisperCppPasses: a pass whose stream was already stopped does not
+    // begin, and one that begins clears any stop asked for before it, since
+    // that may have been meant for a pass that had already ended.
+    private class PassThatBeginsAsItIsStopped : WhisperPasses {
+        override val specialTokenBegin = 50_000
+        var holdsThread = false
+        val started = CompletableDeferred<Unit>()
+        val aborts = AtomicInteger()
+
+        @Volatile private var stop = false
+
+        override fun tokenize(text: String): List<Int> = emptyList()
+
+        override suspend fun run(audio: FloatArray, options: WhisperPassOptions): List<WhisperSegment> {
+            if (!holdsThread) return emptyList()
+            started.complete(Unit)
+            while (aborts.get() == 0) Thread.sleep(1)
+            currentCoroutineContext().ensureActive()
+            stop = false
+            val until = System.nanoTime() + 10_000_000_000
+            while (!stop) {
+                check(System.nanoTime() < until) { "the pass ran to its end" }
+                Thread.sleep(1)
+            }
+            error("the pass was stopped")
+        }
+
+        override fun abortRunningPass() {
+            stop = true
+            aborts.incrementAndGet()
+        }
+    }
+
     private class Loader(private val passes: WhisperPasses, private val release: () -> Unit = {}) : WhisperModelLoader {
         override suspend fun load(
             languageCode: String,
@@ -65,6 +100,19 @@ class OnDeviceWhisperEngineAbortTest {
     @Test
     fun `stopping captions in the middle of a pass stops that pass instead of waiting for it to finish`() = runBlocking {
         val passes = NativeLikePasses()
+        val engine = OnDeviceWhisperEngine("test", Loader(passes), passDispatcher = Dispatchers.IO)
+        assertEquals(EngineAvailability.Available, engine.prepare("he") {})
+        passes.holdsThread = true
+        val listening = launch(Dispatchers.Default) { engine.stream("he", speechThatGoesOn()).collect {} }
+        withTimeout(10_000) { passes.started.await() }
+        listening.cancel()
+        withTimeout(2_000) { listening.join() }
+        assertEquals(1, passes.aborts.get())
+    }
+
+    @Test
+    fun `stopping captions just as a pass begins stops that pass instead of waiting for it to finish`() = runBlocking {
+        val passes = PassThatBeginsAsItIsStopped()
         val engine = OnDeviceWhisperEngine("test", Loader(passes), passDispatcher = Dispatchers.IO)
         assertEquals(EngineAvailability.Available, engine.prepare("he") {})
         passes.holdsThread = true

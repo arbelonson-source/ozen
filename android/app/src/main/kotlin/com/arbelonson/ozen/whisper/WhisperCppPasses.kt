@@ -5,6 +5,9 @@ import com.arbelonson.ozen.core.WhisperPassOptions
 import com.arbelonson.ozen.core.WhisperSinglePass
 import com.arbelonson.ozen.core.WhisperToken
 import com.arbelonson.ozen.core.WhisperSegment as PassSegment
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 
 class WhisperCppPasses(private val model: WhisperModel, private val threads: Int) : WhisperSinglePass {
     private val pieces = HashMap<Int, ByteArray>()
@@ -16,8 +19,10 @@ class WhisperCppPasses(private val model: WhisperModel, private val threads: Int
 
     override fun abortRunningPass() = model.abort()
 
-    override suspend fun once(audio: FloatArray, options: WhisperPassOptions, temperature: Float): List<PassSegment> =
-        model.withHandle { handle ->
+    override suspend fun once(audio: FloatArray, options: WhisperPassOptions, temperature: Float): List<PassSegment> {
+        val pass = currentCoroutineContext()
+        return model.withHandle { handle ->
+            if (!model.beginPass { pass.isActive }) throw CancellationException("stopped before it began")
             val count = WhisperCpp.pass(
                 handle, audio, options.language, options.promptTokens?.toIntArray(), options.maxTokens ?: 0,
                 temperature, threads, options.suppressBlank, options.withoutTimestamps,
@@ -26,6 +31,7 @@ class WhisperCppPasses(private val model: WhisperModel, private val threads: Int
             check(count >= 0) { "whisper.cpp could not run the pass" }
             (0 until count).map { segment -> segment(handle, segment, temperature) }
         }
+    }
 
     private fun segment(handle: Long, segment: Int, temperature: Float): PassSegment {
         val ids = WhisperCpp.segmentTokenIds(handle, segment)

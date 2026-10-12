@@ -11,7 +11,10 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.thread
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -108,7 +111,32 @@ class WhisperCppPassesDeviceTest {
         assertTrue("the next pass heard nothing", words(next).isNotBlank())
     }
 
-    private fun clip(): FloatArray = readWav(File(folder, "clip.wav")).let { it.copyOf(minOf(it.size, 28 * 16_000)) }
+    @Test
+    fun aPassStoppedJustBeforeItBeginsDoesNotRunAndTheModelStillWorksAfterwards() {
+        val audio = clip()
+        val begun = CountDownLatch(1)
+        val asked = CountDownLatch(1)
+        val started = SystemClock.elapsedRealtime()
+        val outcome = runBlocking {
+            val pass = async(Dispatchers.IO) {
+                begun.countDown()
+                asked.await()
+                runCatching { WhisperFallbackPasses(passes).run(audio, WhisperPassOptions.final("he")) }
+            }
+            begun.await()
+            pass.cancel()
+            passes.abortRunningPass()
+            asked.countDown()
+            runCatching { pass.await() }
+        }
+        val seconds = (SystemClock.elapsedRealtime() - started) / 1000.0
+        Log.i("OzenWhisper", "a pass stopped as it began returned after %.1f s: %s".format(seconds, outcome))
+        assertTrue("the pass stopped as it began ran on for %.1f s".format(seconds), seconds < 3.0)
+        val next = runBlocking { passes.once(audio, WhisperPassOptions.live("he").copy(maxTokens = 3), 0f) }
+        assertTrue("the next pass heard nothing", words(next).isNotBlank())
+    }
+
+    private fun clip(): FloatArray =readWav(File(folder, "clip.wav")).let { it.copyOf(minOf(it.size, 28 * 16_000)) }
 
     private fun readWav(file: File): FloatArray {
         val bytes = ByteBuffer.wrap(file.readBytes()).order(ByteOrder.LITTLE_ENDIAN)
