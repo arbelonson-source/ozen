@@ -1042,10 +1042,21 @@ class CaptionScreenDeviceTest {
             compose.onNode(hasSetTextAction()).performTextInput(underline)
             compose.onNodeWithText("Flip").performClick()
             compose.onNode(hasSetTextAction()).assertDoesNotExist()
+            // In some full runs, and never alone, the ink came out mid-picture
+            // (rows 83-100, then 104-121, of 197). Where the words were and
+            // whether the keyboard was still up, either side of the picture,
+            // is what the next such failure needs to say.
+            val window = compose.activity.window
+            val scene = {
+                val keyboard = compose.runOnUiThread { ViewCompat.getRootWindowInsets(window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0 }
+                "words at ${compose.onNodeWithText(underline).fetchSemanticsNode().boundsInWindow}, keyboard $keyboard px"
+            }
+            val before = scene()
             val flipped = compose.onNodeWithText(underline).captureToImage()
+            val after = scene()
             val ink = inkRows(flipped)
             assertTrue("nothing drawn", ink.isNotEmpty())
-            assertTrue("drawn the right way up: ink on rows $ink of ${flipped.height}", ink.last() < flipped.height / 2)
+            assertTrue("drawn the right way up: ink on rows $ink of ${flipped.height} ($before before the picture, $after after)", ink.last() < flipped.height / 2)
             compose.onNodeWithText("Back").performClick()
             compose.onNode(hasSetTextAction()).assert(hasText(underline))
 
