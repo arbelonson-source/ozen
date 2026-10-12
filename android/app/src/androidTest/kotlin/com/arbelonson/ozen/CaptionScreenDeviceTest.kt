@@ -31,6 +31,7 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.hasScrollAction
@@ -68,6 +69,7 @@ import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.arbelonson.ozen.core.AlertFlash
 import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.SoundEventCatalog
@@ -2217,6 +2219,43 @@ class CaptionScreenDeviceTest {
             }
         } finally {
             shell("settings put system font_scale 1.0")
+        }
+    }
+
+    // A screen's buttons squeezed its title at the phone's largest text
+    // until a word broke: Hebrew's History left its last letter on a line
+    // of its own, German's broke into three pieces.
+    @Test
+    fun screenTitlesKeepEachWordWholeAtThePhonesLargestTextInHebrewAndGerman() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val language = app.settings.current.value.appLanguage
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+        }
+        val screens = mapOf(
+            AppLanguage.Hebrew to listOf("היסטוריה", "הגדרות"),
+            AppLanguage.German to listOf("Verlauf", "Einstellungen"),
+        )
+        try {
+            shell("settings put system font_scale 2.0")
+            for ((appLanguage, titles) in screens) {
+                app.settings.change { it.appLanguage = appLanguage }
+                compose.activityRule.scenario.recreate()
+                compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
+                for (title in titles) {
+                    compose.onAllNodesWithText(title).onFirst().performClick()
+                    val layouts = mutableListOf<TextLayoutResult>()
+                    compose.onNode(hasText(title) and isHeading()).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                    val layout = layouts.single()
+                    val broken = (0 until layout.lineCount - 1).map { layout.getLineEnd(it) }.filter { it in 1 until title.length && !title[it - 1].isWhitespace() && !title[it].isWhitespace() }
+                    assertTrue("the title $title broke inside a word at $broken", broken.isEmpty())
+                    compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+                    compose.waitForIdle()
+                }
+            }
+        } finally {
+            shell("settings put system font_scale 1.0")
+            app.settings.change { it.appLanguage = language }
         }
     }
 

@@ -926,8 +926,7 @@ internal fun Screen(title: String, close: String, onClose: () -> Unit, actions: 
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f).semantics { heading() })
+            ScreenTitle(title) {
                 actions()
                 TextButton(onClick = onClose) { Text(close) }
             }

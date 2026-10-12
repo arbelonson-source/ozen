@@ -62,8 +62,7 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("שמות ומילים", "Names and words"), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f).semantics { heading() })
+            ScreenTitle(tr("שמות ומילים", "Names and words")) {
                 TextButton(onClick = onClose) { Text(tr("חזרה", "Back")) }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {

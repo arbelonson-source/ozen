@@ -91,8 +91,7 @@ internal fun ImportantWordsScreen(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("מילים חשובות", "Important words"), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f).semantics { heading() })
+            ScreenTitle(tr("מילים חשובות", "Important words")) {
                 TextButton(onClick = onClose) { Text(tr("חזרה", "Back")) }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {

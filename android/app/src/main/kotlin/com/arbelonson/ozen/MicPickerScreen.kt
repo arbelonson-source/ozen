@@ -71,12 +71,7 @@ internal fun MicPickerScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    tr("בחירת מיקרופון", "Choose microphone"),
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                )
+            ScreenTitle(tr("בחירת מיקרופון", "Choose microphone")) {
                 TextButton(onClick = onRefresh) { Text(tr("רענון", "Refresh")) }
                 TextButton(onClick = onClose) { Text(tr("סגירה", "Close")) }
             }

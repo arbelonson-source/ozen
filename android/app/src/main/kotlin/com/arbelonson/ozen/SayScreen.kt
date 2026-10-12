@@ -111,8 +111,7 @@ internal fun SayScreen(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("להגיד משהו", "Say something"), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f).semantics { heading() })
+            ScreenTitle(tr("להגיד משהו", "Say something")) {
                 TextButton(onClick = onClose) { Text(tr("סגירה", "Close")) }
             }
             OutlinedTextField(

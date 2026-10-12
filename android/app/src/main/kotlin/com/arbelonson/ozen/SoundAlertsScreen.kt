@@ -26,8 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.arbelonson.ozen.core.AlertVibration
@@ -72,8 +70,7 @@ internal fun SoundAlertsScreen(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("צלילים בבית", "Sounds at home"), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f).semantics { heading() })
+            ScreenTitle(tr("צלילים בבית", "Sounds at home")) {
                 TextButton(onClick = onClose) { Text(tr("חזרה", "Back")) }
             }
             SwitchRow(tr("התראות על צלילים", "Sound alerts"), preferences.isEnabled) { on -> onChange(preferences.copy(isEnabled = on)) }

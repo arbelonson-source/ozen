@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -80,6 +82,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -187,8 +190,7 @@ fun SettingsScreen(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("הגדרות", "Settings"), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f).semantics { heading() })
+            ScreenTitle(tr("הגדרות", "Settings")) {
                 TextButton(onClick = close) { Text(tr("סגירה", "Close")) }
             }
             DisplaySection(settings, current.display, current.engine)
@@ -1118,6 +1120,43 @@ internal fun SectionHeader(text: String) {
 @Composable
 internal fun Footnote(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/**
+ * A screen's title with its buttons beside it, or, where even the title's
+ * longest word wouldn't fit beside them, the title on a line of its own
+ * and the buttons under it at the end. Squeezed by its buttons at the
+ * phone's largest text, History broke before its last Hebrew letter and
+ * German's into three pieces.
+ */
+@Composable
+internal fun ScreenTitle(title: String, actions: @Composable RowScope.() -> Unit) {
+    Layout(
+        contents = listOf(
+            { Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() }) },
+            { Row(verticalAlignment = Alignment.CenterVertically, content = actions) },
+        ),
+    ) { (titles, rows), constraints ->
+        val heading = titles.single()
+        val buttons = rows.single()
+        val width = constraints.maxWidth
+        if (heading.minIntrinsicWidth(Constraints.Infinity) + buttons.maxIntrinsicWidth(Constraints.Infinity) <= width) {
+            val row = buttons.measure(Constraints(maxWidth = width))
+            val text = heading.measure(Constraints(maxWidth = width - row.width))
+            val height = maxOf(text.height, row.height)
+            layout(width, height) {
+                text.placeRelative(0, (height - text.height) / 2)
+                row.placeRelative(width - row.width, (height - row.height) / 2)
+            }
+        } else {
+            val text = heading.measure(Constraints(maxWidth = width))
+            val row = buttons.measure(Constraints(maxWidth = width))
+            layout(width, text.height + row.height) {
+                text.placeRelative(0, 0)
+                row.placeRelative(width - row.width, text.height)
+            }
+        }
+    }
 }
 
 @Composable
