@@ -145,6 +145,12 @@ class ListeningService : Service() {
 
         fun start(context: Context) = context.startForegroundService(Intent(context, ListeningService::class.java))
 
+        /** Whether this notification, and with it the lock screen's captions, can be seen; a seam for tests. */
+        var shown: (Context) -> Boolean = { context ->
+            val manager = context.getSystemService(NotificationManager::class.java)
+            manager.areNotificationsEnabled() && manager.getNotificationChannel(CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE
+        }
+
         /** The listening notification showing [content], its lines on the lock screen only when [public]. */
         internal fun notification(context: Context, content: LockScreenCaptionContent, public: Boolean): Notification {
             val manager = context.getSystemService(NotificationManager::class.java)

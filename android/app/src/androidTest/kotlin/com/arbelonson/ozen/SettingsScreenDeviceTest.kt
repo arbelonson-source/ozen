@@ -1034,8 +1034,10 @@ class SettingsScreenDeviceTest {
         }
         val focused = { shell("dumpsys window").lineSequence().firstOrNull { "mCurrentFocus" in it }.orEmpty() }
         val allowedBefore = AlertNotifier.allowed
+        val lockScreenBefore = ListeningService.shown
         app.settings.change { it.notifyWhenInBackground = true }
         AlertNotifier.allowed = { false }
+        ListeningService.shown = { true }
         try {
             compose.onNodeWithText("Settings").performClick()
             compose.onNodeWithText(BLOCKED).performScrollTo()
@@ -1053,6 +1055,44 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Test that an alert arrives when the phone is locked").performScrollTo()
         } finally {
             AlertNotifier.allowed = allowedBefore
+            ListeningService.shown = lockScreenBefore
+        }
+    }
+
+    @Test
+    fun lockScreenCaptionsSayWhenOzensNotificationsAreOffLeadToTheirSettingsAndAreCheckedAgainOnReturn() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
+        }
+        val focused = { shell("dumpsys window").lineSequence().firstOrNull { "mCurrentFocus" in it }.orEmpty() }
+        val allowedBefore = AlertNotifier.allowed
+        val shownBefore = ListeningService.shown
+        val lockScreenBefore = app.settings.current.value.display.lockScreenCaptions
+        app.settings.change { it.display = it.display.copy(lockScreenCaptions = true) }
+        AlertNotifier.allowed = { true }
+        ListeningService.shown = { false }
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText(LOCK_SCREEN_BLOCKED).performScrollTo()
+            compose.onNodeWithText("Captions on the lock screen too").performScrollTo().performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(LOCK_SCREEN_BLOCKED).fetchSemanticsNodes().isEmpty() }
+            compose.onNodeWithText("Captions on the lock screen too").performClick()
+            compose.onNodeWithText(LOCK_SCREEN_BLOCKED).performScrollTo()
+            compose.onNodeWithText("Open the phone’s settings").performScrollTo().performClick()
+            val until = System.currentTimeMillis() + 10_000
+            while ("AppNotificationSettingsActivity" !in focused() && System.currentTimeMillis() < until) Thread.sleep(200)
+            assertTrue(focused(), "AppNotificationSettingsActivity" in focused())
+
+            ListeningService.shown = { true }
+            shell("input keyevent KEYCODE_BACK")
+            val back = System.currentTimeMillis() + 10_000
+            while (app.packageName !in focused() && System.currentTimeMillis() < back) Thread.sleep(200)
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(LOCK_SCREEN_BLOCKED).fetchSemanticsNodes().isEmpty() }
+        } finally {
+            AlertNotifier.allowed = allowedBefore
+            ListeningService.shown = shownBefore
+            app.settings.change { it.display = it.display.copy(lockScreenCaptions = lockScreenBefore) }
         }
     }
 
@@ -1883,5 +1923,6 @@ class SettingsScreenDeviceTest {
     private companion object {
         const val OLDER_PRINT = "Saved by an older version and not recognized. To fix: “Add speaker” with the same name."
         const val BLOCKED = "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."
+        const val LOCK_SCREEN_BLOCKED = "Ozen’s notifications are turned off in the phone’s settings, so captions won’t appear on the lock screen."
     }
 }

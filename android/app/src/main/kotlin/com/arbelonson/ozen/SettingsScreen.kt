@@ -303,6 +303,7 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
     SwitchRow(tr("כתוביות גם במסך הנעילה", "Captions on the lock screen too"), display.lockScreenCaptions) { on ->
         settings.change { it.display = it.display.copy(lockScreenCaptions = on) }
     }
+    if (display.lockScreenCaptions) LockScreenBlockedNotice()
     // The iPhone's footer, less its sentence about VoiceOver.
     Footnote(tr("סימן שאלה ליד שורה אומר שייתכן שהיא לא נשמעה נכון. מספרים כמו שעה, כמות כדורים או מספר טלפון מודגשים בצבע אחר, כדי שלא יתפספסו. לחיצה ארוכה על השורה מאפשרת לבקש שיחזרו עליה. אחרי רבע שעה בלי דיבור המסך ננעל כרגיל, והכתוביות וההתראות ממשיכות. כשהכתוביות רצות לבד, הכפתורים למטה יורדים אחרי כמה שניות כדי לא להסתיר את השורה החדשה; נגיעה במסך מחזירה אותם. השורות האחרונות מופיעות גם במסך הנעילה, בלי לפתוח את הטלפון; מי שמסתכל על הטלפון יכול לקרוא אותן.", "A question mark next to a line means it may not have been heard correctly. Numbers like the time, a pill count, or a phone number are highlighted in another color so they aren’t missed. A long press on a line lets you ask for it to be repeated. After a quarter hour without speech the screen locks as usual, and captions and alerts keep going. While captions are running on their own, the buttons at the bottom drop away after a few seconds so they don’t hide the new line; touching the screen brings them back. The last lines also appear on the lock screen without unlocking the phone; anyone looking at the phone can read them."))
 }
@@ -808,6 +809,32 @@ private fun AwayAlertsRow(on: Boolean, onChange: (Boolean) -> Unit) {
             )
         }
     }
+}
+
+/**
+ * The lock screen's captions come in the listening notification, so with
+ * Ozen's notifications turned off in the phone (or never allowed) there
+ * are none. Said, and led there, as the iPhone does when its Live
+ * Activities are off; checked again on coming back.
+ */
+@Composable
+private fun LockScreenBlockedNotice() {
+    val context = LocalContext.current
+    var blocked by remember { mutableStateOf(!ListeningService.shown(context)) }
+    LifecycleResumeEffect(Unit) {
+        blocked = !ListeningService.shown(context)
+        onPauseOrDispose { }
+    }
+    if (!blocked) return
+    Warning(tr("ההודעות של אוזן כבויות בהגדרות הטלפון, אז הכתוביות לא יופיעו במסך הנעילה.", "Ozen’s notifications are turned off in the phone’s settings, so captions won’t appear on the lock screen."))
+    TextButton(
+        onClick = {
+            context.startActivity(
+                Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName),
+            )
+        },
+    ) { Text(tr("לפתוח את הגדרות הטלפון", "Open the phone’s settings")) }
 }
 
 /**
