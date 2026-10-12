@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.core.app.ActivityOptionsCompat
 import androidx.compose.ui.semantics.SemanticsActions
@@ -364,6 +365,38 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("New speaker").assertExists()
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitUntil(5_000) { closedAgain.isCompleted }
+    }
+
+    @Test
+    fun turningThePhoneWhileAVoiceIsRecordingKeepsRecordingShowsHowFarItIsAndSavesIt() {
+        val book = RecordingBook()
+        val closed = CompletableDeferred<Unit>()
+        var showing by mutableStateOf(true)
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                val saved = rememberSaveableStateHolder()
+                if (showing) saved.SaveableStateProvider("new speaker") { SpeakerEnrollmentScreen(book, onClose = { closed.complete(Unit) }) }
+            }
+        }
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.EditableText)).performTextInput("Grandma")
+        keyboardAway()
+        compose.onNodeWithText("Record and save (30 seconds)").performClick()
+        compose.waitUntil(5_000) { book.asked.size == 1 }
+        compose.runOnUiThread { book.progress(0.5) }
+        compose.runOnUiThread { showing = false }
+        compose.waitForIdle()
+        compose.runOnUiThread { showing = true }
+        compose.waitForIdle()
+        assertFalse("turning the phone stopped the recording", book.stopped)
+        compose.onNodeWithText("Recording… 15/30 seconds").assertExists()
+        book.finish(true)
+        compose.waitUntil(5_000) { closed.isCompleted }
+
+        val closedAgain = CompletableDeferred<Unit>()
+        compose.runOnUiThread { compose.activity.setContent { SpeakerEnrollmentScreen(RecordingBook(), onClose = { closedAgain.complete(Unit) }) } }
+        compose.onNodeWithText("New speaker").assertExists()
+        compose.waitForIdle()
+        assertFalse("a new screen closed on the last one's saved recording", closedAgain.isCompleted)
     }
 
     @Test
