@@ -1916,6 +1916,17 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun turningThePhoneWhileEditingQuickPhrasesKeepsTheKeyboardOffTheEditor() {
+        compose.onNodeWithContentDescription("Say something out loud").performClick()
+        compose.waitUntil(5_000) { sayFieldFocused() }
+        compose.onNodeWithText("Edit").performScrollTo().performClick()
+        compose.waitUntil(5_000) { !anyFieldFocused() }
+        turnThePhone()
+        compose.onNodeWithText("Done").performScrollTo()
+        assertFalse("the keyboard came back over the phrase editor", within(1_500) { anyFieldFocused() })
+    }
+
+    @Test
     fun turningThePhoneKeepsTheQuestionAboutRestoringThePhrasesOpen() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val phrasesBefore = app.settings.current.value.quickPhrases
@@ -2023,6 +2034,9 @@ class CaptionScreenDeviceTest {
     private fun pixels(image: ImageBitmap) = image.toPixelMap().buffer
 
     private fun sayFieldFocused() = compose.onNode(hasSetTextAction()).fetchSemanticsNode().config.getOrElse(SemanticsProperties.Focused) { false }
+
+    private fun anyFieldFocused() =
+        compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().any { it.config.getOrElse(SemanticsProperties.Focused) { false } }
 
     private fun inkRows(image: ImageBitmap): List<Int> {
         val pixels = image.toPixelMap()

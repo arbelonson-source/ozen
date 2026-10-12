@@ -93,9 +93,10 @@ internal fun SayScreen(
         if (phrase.isNotEmpty() && onSpeak(phrase)) lastTyped = phrase
     }
     // Only as the screen opens: back from the pad, as on the iPhone, the
-    // keyboard would otherwise cover what she came back to tap.
+    // keyboard would otherwise cover what she came back to tap. Nor over
+    // the phrase editor when a turn of the phone rebuilds the screen.
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { if (!bigLetters) focus.requestFocus() }
+    LaunchedEffect(Unit) { if (!bigLetters && !editing) focus.requestFocus() }
     if (bigLetters) {
         BigTextScreen(draft, onDraft, look, captionSize, canSpeak = canSay(draft), onSpeak = speakTyped, onClose = { bigLetters = false })
         return
