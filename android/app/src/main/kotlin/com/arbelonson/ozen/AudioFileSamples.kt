@@ -30,8 +30,7 @@ object AudioFileSamples {
             var rate = input.getInteger(MediaFormat.KEY_SAMPLE_RATE)
             var channels = input.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
             var encoding = AudioFormat.ENCODING_PCM_16BIT
-            val seconds = if (input.containsKey(MediaFormat.KEY_DURATION)) input.getLong(MediaFormat.KEY_DURATION) / 1_000_000.0 else 10.0
-            var mono = FloatArray((minOf(seconds, MAXIMUM_SECONDS) * rate).toInt() + rate)
+            var stream: SampleRateConverter.Stream? = null
             var count = 0
             val info = MediaCodec.BufferInfo()
             var fed = false
@@ -68,19 +67,18 @@ object AudioFileSamples {
                         else -> return null
                     }
                     codec.releaseOutputBuffer(out, false)
-                    val added = frames.size / channels
-                    if (count + added > mono.size) mono = mono.copyOf(maxOf(mono.size * 2, count + added))
-                    for (frame in 0 until added) {
+                    val added = minOf(frames.size / channels, (MAXIMUM_SECONDS * rate).toInt() - count)
+                    val mono = FloatArray(added) { frame ->
                         var sum = 0f
                         for (channel in 0 until channels) sum += frames[frame * channels + channel]
-                        mono[count + frame] = sum / channels
+                        sum / channels
                     }
+                    (stream ?: SampleRateConverter.Stream(rate, sampleRate).also { stream = it }).add(mono)
                     count += added
                     if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
                 }
             }
-            val heard = mono.copyOf(minOf(count, (MAXIMUM_SECONDS * rate).toInt()))
-            if (heard.isEmpty()) null else SampleRateConverter.convert(heard, from = rate, to = sampleRate)
+            stream?.finish()?.takeIf { it.isNotEmpty() }
         } catch (unreadable: Exception) {
             null
         } catch (tooBig: OutOfMemoryError) {

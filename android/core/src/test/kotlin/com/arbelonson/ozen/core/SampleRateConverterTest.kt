@@ -1,6 +1,7 @@
 package com.arbelonson.ozen.core
 
 import kotlin.math.PI
+import kotlin.random.Random
 import kotlin.math.abs
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -21,6 +22,23 @@ class SampleRateConverterTest {
         val part = middle(samples)
         val crossings = (1 until part.size).count { part[it - 1] < 0f && part[it] >= 0f }
         return crossings * rate.toDouble() / part.size
+    }
+
+    @Test
+    fun `sound fed a piece at a time comes out sample for sample as from one call`() {
+        val pieces = Random(7)
+        for (from in listOf(48_000, 44_100, 22_050, 16_000, 8_000)) {
+            val sound = FloatArray(from * 3) { pieces.nextFloat() * 2 - 1 }
+            val stream = SampleRateConverter.Stream(from)
+            var at = 0
+            while (at < sound.size) {
+                val size = minOf(pieces.nextInt(1, 6_000), sound.size - at)
+                stream.add(sound.copyOfRange(at, at + size))
+                at += size
+            }
+            assertContentEquals(SampleRateConverter.convert(sound, from), stream.finish(), "from $from")
+        }
+        assertEquals(0, SampleRateConverter.Stream(48_000).finish().size)
     }
 
     @Test

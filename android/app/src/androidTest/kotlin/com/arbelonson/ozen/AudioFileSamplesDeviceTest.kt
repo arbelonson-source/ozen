@@ -60,10 +60,51 @@ class AudioFileSamplesDeviceTest {
         assertSameVoice(loaded, 0.9f)
     }
 
+    // Ten minutes is the most a recording is read for. At 48 kHz its
+    // samples alone are 115 MB, and a second copy of them took the app past
+    // Android's 192 MB limit: the recording was turned away as unusable.
+    @Test
+    fun aTenMinuteRecordingAtFortyEightKilohertzLoadsWhole() {
+        val file = File(folder, "long.wav")
+        val seconds = AudioFileSamples.MAXIMUM_SECONDS.toInt()
+        writeLongStereoWav(file, seconds, rate = 48_000)
+        try {
+            val loaded = AudioFileSamples.load(context, Uri.fromFile(file))
+            assertNotNull("a ten-minute recording at 48 kHz came back as nothing", loaded)
+            assertTrue("${loaded!!.size} samples", abs(loaded.size - seconds * 16_000) < 2_000)
+        } finally {
+            file.delete()
+        }
+    }
+
     @Test
     fun aFileThatIsNotAudioGivesNothingInsteadOfCrashing() {
         val file = File(folder, "note.m4a").apply { writeText("not a recording") }
         assertNull(AudioFileSamples.load(context, Uri.fromFile(file)))
+    }
+
+    private fun writeLongStereoWav(file: File, seconds: Int, rate: Int) {
+        val frames = seconds.toLong() * rate
+        val bytes = frames * 4
+        val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
+        header.put("RIFF".toByteArray()).putInt((36 + bytes).toInt()).put("WAVE".toByteArray())
+        header.put("fmt ".toByteArray()).putInt(16).putShort(1).putShort(2).putInt(rate).putInt(rate * 4)
+        header.putShort(4).putShort(16)
+        header.put("data".toByteArray()).putInt(bytes.toInt())
+        file.outputStream().buffered(1 shl 20).use { out ->
+            out.write(header.array())
+            val chunk = ByteBuffer.allocate(rate * 4).order(ByteOrder.LITTLE_ENDIAN)
+            var written = 0L
+            while (written < frames) {
+                chunk.clear()
+                repeat(min(rate.toLong(), frames - written).toInt()) {
+                    val value = (original[((written + it) % original.size).toInt()] * 32_767).toInt().toShort()
+                    chunk.putShort(value).putShort(value)
+                }
+                out.write(chunk.array(), 0, chunk.position())
+                written += rate
+            }
+        }
     }
 
     private fun assertSameVoice(loaded: FloatArray, least: Float) {
