@@ -9,6 +9,7 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.os.SystemClock
@@ -1817,6 +1818,21 @@ class SettingsScreenDeviceTest {
         runCatching { node.config[SemanticsProperties.Text] }.getOrNull()?.any { pattern.matches(it.text) } == true
     }
 
+    @Test
+    fun diagnosticsReadTheJournalAwayFromTheMainThreadEveryTwoSecondsWhileTheScreenIsOpen() {
+        val onMain = CopyOnWriteArrayList<Boolean>()
+        val source = object : DiagnosticsSource by app.captions {
+            override fun readJournal() = app.captions.readJournal().also { onMain += Looper.myLooper() == Looper.getMainLooper() }
+
+            override fun diagnostics(journal: DiagnosticsJournal?) = app.captions.diagnostics(journal ?: readJournal())
+        }
+        compose.runOnUiThread { compose.activity.setContent { DiagnosticsScreen(source, onClose = {}) } }
+        compose.onNodeWithText("Journal, previous runs included").assertExists()
+        onMain.clear()
+        compose.waitUntil(7_000) { onMain.size >= 2 }
+        assertEquals("the journal was read on the main thread, which then drew nothing", listOf(false, false), onMain.take(2))
+    }
+
     private fun row(label: String, value: String) {
         compose.onNode(hasText(label) and hasText(value)).performScrollTo().assertExists()
     }
@@ -1894,7 +1910,7 @@ class SettingsScreenDeviceTest {
         val source = object : DiagnosticsSource by app.captions {
             override fun inputLevelNow() = level
 
-            override fun diagnostics() = app.captions.diagnostics().copy(
+            override fun diagnostics(journal: DiagnosticsJournal?) = app.captions.diagnostics(journal).copy(
                 phase = phase,
                 inputLevel = 0.42f,
                 speakersIdentified = 3,

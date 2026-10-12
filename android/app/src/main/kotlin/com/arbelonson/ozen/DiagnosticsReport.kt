@@ -78,9 +78,19 @@ data class DiagnosticsFacts(
     val lockScreenShowing: Boolean = false,
 )
 
+/** The journal as the report shows it, oldest first, and whether any of it is marked caption lines. */
+data class DiagnosticsJournal(val lines: List<String>, val hasMarkedCaptionLines: Boolean)
+
 /** Where the diagnostics screen reads from, and what its buttons do. */
 interface DiagnosticsSource {
-    fun diagnostics(): DiagnosticsFacts
+    /**
+     * Everything at this moment. The journal is a file read and most of
+     * the time this takes, so a [journal] already read is used when given.
+     */
+    fun diagnostics(journal: DiagnosticsJournal? = null): DiagnosticsFacts
+
+    /** Reads the journal from its file, away from the main thread too. */
+    fun readJournal(): DiagnosticsJournal
 
     /** The microphone's level this moment, read far more often than the rest. */
     fun inputLevelNow(): Float = diagnostics().inputLevel

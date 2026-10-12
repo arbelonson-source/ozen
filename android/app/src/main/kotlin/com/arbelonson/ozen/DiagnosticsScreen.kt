@@ -31,6 +31,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -56,8 +57,10 @@ import com.arbelonson.ozen.core.tr
 import java.io.File
 import java.util.Locale
 import java.util.TimeZone
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The iPhone's Diagnostics screen, for whoever helps her with the phone:
@@ -68,12 +71,24 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
-    val facts = source::diagnostics
+    val facts = { source.diagnostics() }
     var now by remember { mutableStateOf(facts()) }
-    LaunchedEffect(Unit) {
+    // Bumped by a button that changed what the screen shows, so a refresh
+    // still reading the journal is dropped instead of putting back the one
+    // from before.
+    var reread by remember { mutableIntStateOf(0) }
+    val refresh = {
+        now = facts()
+        reread += 1
+    }
+    // The journal is a file read and most of a refresh's time, a tenth of
+    // a second and more once it fills up: read on the main thread every
+    // two seconds, the screen stopped drawing that long each time.
+    LaunchedEffect(reread) {
         while (true) {
             delay(2_000)
-            now = facts()
+            val journal = withContext(Dispatchers.IO) { source.readJournal() }
+            now = source.diagnostics(journal)
         }
     }
     // The iPhone's level row moves about twenty times a second, so it shows
@@ -180,7 +195,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             OutlinedButton(
                 onClick = {
                     source.markProblem()
-                    now = facts()
+                    refresh()
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -197,7 +212,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 TextButton(
                     onClick = {
                         source.deleteMarkedCaptionLines()
-                        now = facts()
+                        refresh()
                     },
                 ) {
                     Text(tr("מחיקת שורות הכתוביות שנשמרו כאן", "Delete the caption lines kept here"), color = MaterialTheme.colorScheme.error)
@@ -217,7 +232,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                         onSend = { context.startActivity(clipSheet(context, clip)) },
                         onDelete = {
                             source.deleteProblemClip(clip)
-                            now = facts()
+                            refresh()
                         },
                     )
                 }

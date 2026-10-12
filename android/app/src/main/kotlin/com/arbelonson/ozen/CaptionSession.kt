@@ -651,7 +651,10 @@ class CaptionSession(
     private fun publishInputs() = CaptionState.inputs(pipeline.availableInputs, pipeline.selectedInputUID, pipeline.microphoneDrop.lost)
 
     /** What the diagnostics screen shows and its report says, as things stand now. */
-    override fun diagnostics(): DiagnosticsFacts {
+    override fun readJournal() = DiagnosticsJournal(journal.reportLines(::utcOffsetAt), journal.entries().any { ProblemSnapshot.isCaptionLine(it.text) })
+
+    override fun diagnostics(journal: DiagnosticsJournal?): DiagnosticsFacts {
+        val read = journal ?: readJournal()
         val power = context.getSystemService(PowerManager::class.java)
         // The sticky broadcast, not BatteryManager's properties: it is what
         // Android itself shows, test overrides included.
@@ -673,8 +676,8 @@ class CaptionSession(
             events = pipeline.eventLog.reportLines(::utcOffsetAt),
             device = "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE}",
             appVersion = appVersion(),
-            journal = journal.reportLines(::utcOffsetAt),
-            hasMarkedCaptionLines = journal.entries().any { ProblemSnapshot.isCaptionLine(it.text) },
+            journal = read.lines,
+            hasMarkedCaptionLines = read.hasMarkedCaptionLines,
             notificationsAllowed = AlertNotifier.allowed(context),
             canVibrate = phoneVibrator(context)?.hasVibrator() == true,
             network = pipeline.networkConditions,
