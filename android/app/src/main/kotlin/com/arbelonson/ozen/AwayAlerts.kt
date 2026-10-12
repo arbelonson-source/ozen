@@ -40,9 +40,10 @@ class AwayAlerts(private val policy: BackgroundAlertPolicy = BackgroundAlertPoli
 
 class AlertNotifier(private val context: Context) {
     fun post(content: AlertNotificationContent): Boolean {
-        if (!allowed(context)) return false
         val manager = context.getSystemService(NotificationManager::class.java)
         val alarm = content.isUrgent && content.threadIdentifier == SOUNDS_THREAD
+        val shown = if (alarm) manager.areNotificationsEnabled() && manager.getNotificationChannel(ALARM_CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE else allowed(context)
+        if (!shown) return false
         val channel = if (alarm) {
             NotificationChannel(ALARM_CHANNEL_ID, tr("חירום", "Emergency"), NotificationManager.IMPORTANCE_HIGH).apply {
                 enableVibration(true)

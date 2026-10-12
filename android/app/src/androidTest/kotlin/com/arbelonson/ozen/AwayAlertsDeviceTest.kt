@@ -43,7 +43,7 @@ class AwayAlertsDeviceTest {
         val content = checkNotNull(AwayAlerts().forSound(alert, appIsActive = false, AppSettings.default, now, 0)) { "no notification for $identifier" }
         manager.cancel(content.identifier, 0)
         posted += content.identifier
-        assertTrue(AlertNotifier(context).post(content))
+        assertTrue("$identifier was not posted", AlertNotifier(context).post(content))
         val deadline = System.currentTimeMillis() + 5_000
         while (System.currentTimeMillis() < deadline) {
             manager.activeNotifications.firstOrNull { it.tag == content.identifier }?.let { return it.notification }
@@ -64,5 +64,16 @@ class AwayAlertsDeviceTest {
         assertNotEquals(Notification.CATEGORY_ALARM, door.category)
         assertEquals(AlertNotifier.CHANNEL_ID, door.channelId)
         assertArrayEquals(AlertVibration.keyword.waveform().first, manager.getNotificationChannel(door.channelId).vibrationPattern)
+    }
+
+    @Test
+    fun aSmokeAlarmStillComesWithTheOrdinaryAlertsTurnedOffInThePhonesSettings() {
+        val before = AlertNotifier.allowed
+        try {
+            AlertNotifier.allowed = { false }
+            assertEquals(Notification.CATEGORY_ALARM, postedWhileAway("smoke_detector").category)
+        } finally {
+            AlertNotifier.allowed = before
+        }
     }
 }
