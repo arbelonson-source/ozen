@@ -739,13 +739,17 @@ class CaptionScreenDeviceTest {
             val lately = { SessionJournal(File(app.filesDir, CaptionSession.JOURNAL_FILE)).entries().takeLast(6).joinToString(" | ") { it.text } }
             assertTrue("never public: ${listening()?.visibility}, phase ${app.captions.pipeline.phase}, journal ${lately()}", within(10_000) { listening()?.visibility == Notification.VISIBILITY_PUBLIC })
 
+            val text = { listening()?.extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString() }
+            assertTrue("no captions in it: ${text()}", within(5_000) { text() != null })
+
+            // Marked private, a notification still shows in full on a phone set
+            // to show sensitive content when locked: the lines must not be in it.
             app.settings.change { it.display = it.display.copy(lockScreenCaptions = false) }
-            assertTrue("never private: ${listening()?.visibility}", within(5_000) { listening()?.visibility == Notification.VISIBILITY_PRIVATE })
-            val shown = listening()!!.publicVersion
-            assertNull(shown.extras.getCharSequence(Notification.EXTRA_TEXT))
+            assertTrue("still showing ${text()}", within(5_000) { listening() != null && text() == null })
+            assertNull(listening()!!.extras.getCharSequence(Notification.EXTRA_BIG_TEXT))
 
             app.settings.change { it.display = it.display.copy(lockScreenCaptions = true) }
-            assertTrue("never public again: ${listening()?.visibility}", within(5_000) { listening()?.visibility == Notification.VISIBILITY_PUBLIC })
+            assertTrue("never back: ${text()}", within(5_000) { text() != null && listening()?.visibility == Notification.VISIBILITY_PUBLIC })
         } finally {
             compose.runOnUiThread { app.captions.pipeline.stop() }
             app.settings.change { it.display = before }

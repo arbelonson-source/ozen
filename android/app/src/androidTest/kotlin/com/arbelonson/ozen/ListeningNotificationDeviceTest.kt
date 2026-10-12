@@ -36,12 +36,21 @@ class ListeningNotificationDeviceTest {
 
     @Test
     fun withCaptionsKeptOffTheLockScreenTheLockedPhoneShowsOnlyTheStatus() {
-        val content = LockScreenCaptionContent(lines = listOf(LockScreenCaptionLine(speaker = "Dana", text = "See you at dinner", isFinal = true)), status = "Listening")
+        val content = LockScreenCaptionContent(
+            lines = listOf(
+                LockScreenCaptionLine(speaker = "Dana", text = "See you at dinner", isFinal = true),
+                LockScreenCaptionLine(speaker = null, text = "Bring the cake", isFinal = true),
+            ),
+            status = "Listening",
+            ageNote = "said 2 minutes ago",
+        )
         val shown = ListeningService.notification(context, content, public = false)
-        assertEquals(Notification.VISIBILITY_PRIVATE, shown.visibility)
-        assertEquals("Dana: See you at dinner", shown.text(Notification.EXTRA_TEXT))
-        assertEquals("Listening", shown.publicVersion.text(Notification.EXTRA_TITLE))
-        assertNull(shown.publicVersion.text(Notification.EXTRA_TEXT))
+        assertEquals("Listening", shown.text(Notification.EXTRA_TITLE))
+        val everything = listOfNotNull(shown, shown.publicVersion).flatMap { notification ->
+            notification.extras.keySet().mapNotNull { key -> notification.extras.get(key)?.toString() }
+        }
+        assertEquals(emptyList<String>(), everything.filter { "dinner" in it || "cake" in it || "minutes ago" in it })
+        assertNull(shown.text(Notification.EXTRA_TEXT))
         assertNull(shown.text(Notification.EXTRA_SUB_TEXT))
     }
 }

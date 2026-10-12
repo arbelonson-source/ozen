@@ -157,7 +157,7 @@ class ListeningService : Service() {
             manager.areNotificationsEnabled() && manager.getNotificationChannel(CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE
         }
 
-        /** The listening notification showing [content], its lines on the lock screen only when [public]. */
+        /** The listening notification showing [content], its lines only when [public] (captions on the lock screen). */
         internal fun notification(context: Context, content: LockScreenCaptionContent, public: Boolean): Notification {
             val manager = context.getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(
@@ -169,21 +169,19 @@ class ListeningService : Service() {
             val builder = Notification.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_listening)
                 .setContentTitle(content.status)
-                .setContentText(ListeningNotice.glance(content))
-                .setSubText(content.ageNote)
                 .setContentIntent(open)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
-            ListeningNotice.opened(content)?.let { builder.setStyle(Notification.BigTextStyle().bigText(it)) }
-            // On the lock screen the lines show only while she wants captions
-            // there, as on the iPhone: anyone looking at the phone can read
-            // them. Otherwise the locked phone shows what Ozen is doing.
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+            // The lines are in it only while she wants captions on the lock
+            // screen, as on the iPhone, where they show nowhere outside the
+            // app otherwise; then the locked phone shows what Ozen is doing.
+            // Marking them private would not keep them off it: a phone set to
+            // show sensitive content when locked, the usual setting, shows a
+            // private notification in full.
             if (public) {
-                builder.setVisibility(Notification.VISIBILITY_PUBLIC)
-            } else {
-                builder.setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(
-                    Notification.Builder(context, CHANNEL_ID).setSmallIcon(R.drawable.ic_listening).setContentTitle(content.status).build(),
-                )
+                builder.setContentText(ListeningNotice.glance(content)).setSubText(content.ageNote)
+                ListeningNotice.opened(content)?.let { builder.setStyle(Notification.BigTextStyle().bigText(it)) }
             }
             return builder.build()
         }
