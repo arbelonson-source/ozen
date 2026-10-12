@@ -1242,6 +1242,27 @@ struct LiveCaptionViewModelBackgroundAlertTests {
         #expect(viewModel.claimAttentionForNewKeywordHits() != nil)
     }
 
+    @Test("a name heard while the app was away with Ozen's notifications turned off in iOS is shown on return")
+    func awayKeywordWithNotificationsTurnedOffShownOnReturn() async {
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        var posted: [AlertNotificationContent] = []
+        let store = SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-away-blocked-\(UUID()).json"))
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: store, pipeline: pipeline, postNotification: { posted.append($0) }, notificationsAllowed: { false }
+        )
+        viewModel.addKeywordAlert(phrase: "Doctor")
+        await viewModel.start()
+
+        viewModel.sceneActivityChanged(isActive: false)
+        try? await Task.sleep(for: .milliseconds(100))
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "Doctor, are you awake?", isFinal: true, timestamp: Date().timeIntervalSince1970))
+        #expect(await eventually { !posted.isEmpty })
+        viewModel.sceneActivityChanged(isActive: true)
+
+        #expect(viewModel.claimAttentionForNewKeywordHits() != nil)
+    }
+
     @Test("a name said again while away, inside the notification's cooldown, doesn't buzz again on return")
     func awayKeywordRepeatedInsideCooldownNotReplayed() async {
         let engine = FakeEngine()

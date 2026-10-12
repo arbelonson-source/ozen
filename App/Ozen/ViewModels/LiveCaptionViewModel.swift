@@ -63,6 +63,12 @@ public final class LiveCaptionViewModel {
     private let postNotification: ((AlertNotificationContent) -> Void)?
     /// Removes a delivered notification by its identifier.
     private let withdrawNotification: ((String) -> Void)?
+    /// Whether iOS shows Ozen's notifications (nil: never asked), looked
+    /// at as the app leaves the screen.
+    private let notificationsAllowed: (@MainActor () async -> Bool?)?
+    /// Ozen's notifications were turned off when the app last left the
+    /// screen: a word's notification then reaches nobody.
+    @ObservationIgnored private var notificationsBlocked = false
     /// Tells her when captions stop while the phone is put away.
     private var stoppedCaptions = StoppedCaptionsNotice()
     /// Tells her when the first-time model download pauses because the
@@ -167,6 +173,7 @@ public final class LiveCaptionViewModel {
             synthesizer: SpeechSynthesizer(),
             postNotification: { AlertNotifier.shared.post($0) },
             withdrawNotification: { AlertNotifier.shared.withdraw(identifier: $0) },
+            notificationsAllowed: { await AlertNotifier.shared.isAllowed() },
             phoneCalls: PhoneCallMonitor(),
             lockScreen: LockScreenCaptionsActivity(),
             journal: SessionJournal(fileURL: support.appendingPathComponent("ozen-journal.log")),
@@ -185,6 +192,7 @@ public final class LiveCaptionViewModel {
         synthesizer: (any SpeechSynthesizing)? = nil,
         postNotification: ((AlertNotificationContent) -> Void)? = nil,
         withdrawNotification: ((String) -> Void)? = nil,
+        notificationsAllowed: (@MainActor () async -> Bool?)? = nil,
         phoneCalls: PhoneCallMonitor? = nil,
         reclaimAudioSession: (@MainActor () async -> Bool)? = nil,
         lockScreen: (any LockScreenCaptionsDisplaying)? = nil,
@@ -204,6 +212,7 @@ public final class LiveCaptionViewModel {
         self.synthesizer = synthesizer
         self.postNotification = postNotification
         self.withdrawNotification = withdrawNotification
+        self.notificationsAllowed = notificationsAllowed
         self.phoneCalls = phoneCalls
         if let reclaimAudioSession {
             self.reclaimAudioSession = reclaimAudioSession
@@ -405,6 +414,9 @@ public final class LiveCaptionViewModel {
             synthesizer?.refreshVoice()
         } else {
             awayCatchUp.screenLeft(at: now)
+            if let notificationsAllowed {
+                Task { notificationsBlocked = await notificationsAllowed() != true }
+            }
         }
         lockScreen?.appActivityChanged(isActive: isActive)
         // Captions that failed with the app open were on screen for her to
@@ -631,13 +643,14 @@ public final class LiveCaptionViewModel {
                 for: hit, lineText: segment.text, appIsActive: isAppActive, now: now, utcOffsetSeconds: utcOffsetSeconds
             ) {
                 postNotification?(content)
-                if !isAppActive { keywordsNotifiedWhileAway.insert(hit.match.alertID) }
+                if !isAppActive, !notificationsBlocked { keywordsNotifiedWhileAway.insert(hit.match.alertID) }
             }
             // Heard while the app was away, its word a notification since
             // she left: coming back must not buzz or show its pill as if the
             // name had just been said. One that never went out (alerts with
-            // the screen off turned off, quiet hours) is still news to her,
-            // and was marked handled all the same: nothing told her at all.
+            // the screen off turned off, quiet hours, Ozen's notifications
+            // turned off in iOS) is still news to her, and was marked handled
+            // all the same: nothing told her at all.
             if !isAppActive, keywordsNotifiedWhileAway.contains(hit.match.alertID) {
                 handledKeywordHitIDs.insert(hit.id)
             }
