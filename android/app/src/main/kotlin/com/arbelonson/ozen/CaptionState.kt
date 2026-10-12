@@ -51,6 +51,8 @@ data class CaptionLine(
     val speakerCluster: Int? = null,
     /** Heads a run of lines by one person, as in a chat: the name shows above it. */
     val showsSpeaker: Boolean = false,
+    /** Laid out from the right, as `CaptionLayout.readsRightToLeft` says for its words, as on the iPhone. */
+    val rightToLeft: Boolean = true,
 )
 
 /** When the words before a quiet stretch were last heard, and when talk picked up again. */
@@ -224,6 +226,7 @@ object CaptionState {
                     speakerCluster = it.speakerClusterID,
                     showsSpeaker = named(it) != null &&
                         CaptionLayout.showsSpeakerLabel(it, segments.getOrNull(firstShown + at - 1)) { other -> named(other) ?: "" },
+                    rightToLeft = CaptionLayout.readsRightToLeft(it.text, languageCode),
                 )
             },
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),

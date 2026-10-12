@@ -111,6 +111,21 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `a line with any Hebrew in it is laid out from the right, as on the iPhone, whatever its first word`() {
+        fun rightToLeft(text: String, languageCode: String): Boolean {
+            CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line(text, committed = true)), languageCode = languageCode)
+            return CaptionState.screen.value.lines.single().rightToLeft
+        }
+        assertTrue(rightToLeft("OK, אז נתראה", "en"))
+        assertTrue(rightToLeft("WhatsApp. שלום, מה שלומך", "he"))
+        assertTrue(rightToLeft("שלום", "he"))
+        assertFalse(rightToLeft("See you at dinner", "en"))
+        assertFalse(rightToLeft("See you at dinner", "he"))
+        assertTrue(rightToLeft("10:30", "he"))
+        assertFalse(rightToLeft("10:30", "en"))
+    }
+
+    @Test
     fun `a starred line shows starred, a star given shows at once, and a line copies as said`() {
         val pills = line("Take two pills after dinner", committed = true)
         val phone = line("תתקשרי למרפאה 050 123 4567", committed = true)

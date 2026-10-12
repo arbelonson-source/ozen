@@ -138,7 +138,6 @@ import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.UncertainWords
 import com.arbelonson.ozen.core.tr
-import java.text.Bidi
 import java.util.UUID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -1227,7 +1226,7 @@ private fun CaptionLineContent(
     actions: List<CustomAccessibilityAction>,
 ) {
     val speaker = line.speaker?.takeIf { display.showSpeakerNames }
-    CompositionLocalProvider(LocalLayoutDirection provides readingDirection(line.text)) {
+    CompositionLocalProvider(LocalLayoutDirection provides if (line.rightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr) {
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             if (speaker != null && line.showsSpeaker) SpeakerLabel(speaker, line.speakerCluster, display.fontSize, look)
             CaptionLineWords(line, display, look, doubtful, spoken, colour, onLayout, layout, actions, speaker)
@@ -1299,9 +1298,6 @@ private fun CaptionLineWords(
         )
     }
 }
-
-private fun readingDirection(shown: String) =
-    if (Bidi(shown, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight()) LayoutDirection.Ltr else LayoutDirection.Rtl
 
 // The iPhone's soft yellow field, so the line where a name was said is found again scrolling back.
 private fun importantField(light: Boolean) = Color.Yellow.copy(alpha = if (light) 0.35f else 0.22f)

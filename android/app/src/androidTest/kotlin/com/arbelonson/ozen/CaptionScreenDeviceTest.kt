@@ -1977,6 +1977,18 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun aLineWithHebrewInItIsLaidOutFromTheRightEvenWhenItsFirstWordIsEnglish() {
+        val line = TranscriptSegment(id = UUID.randomUUID(), text = "OK, אז נתראה", isCommitted = true, speakerClusterID = 0, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+        compose.runOnUiThread {
+            CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line), speakerName = { "Dana" }, languageCode = "en")
+        }
+        compose.waitForIdle()
+        val name = compose.onNodeWithText("Dana").fetchSemanticsNode().boundsInRoot
+        val width = compose.onRoot().fetchSemanticsNode().size.width
+        assertTrue("the speaker's name sits on the left of a Hebrew line: $name of $width", name.left > width / 2f)
+    }
+
+    @Test
     fun turningThePhoneWhileEditingQuickPhrasesKeepsTheKeyboardOffTheEditor() {
         compose.onNodeWithContentDescription("Say something out loud").performClick()
         compose.waitUntil(5_000) { sayFieldFocused() }
