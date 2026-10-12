@@ -8,6 +8,7 @@ import java.io.OutputStream
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.SocketTimeoutException
 import java.net.URI
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
@@ -382,6 +383,38 @@ class WebSocketConnectorTest {
             socket.close()
             server.awaitScript()
             assertEquals("client closed", server.failures.single().message)
+        }
+    }
+
+    // A home computer whose program has hung still has its connections
+    // taken by the system, and nothing ever answers them: each try to reach
+    // it held a thread and a socket for good once it was given up on.
+    @Test
+    fun `a connection given up on while the far end never answers its opening is let go at once`() = runBlocking<Unit> {
+        ServerSocket(0, 1, InetAddress.getByName("127.0.0.1")).use { server ->
+            val asked = CountDownLatch(1)
+            val letGo = CountDownLatch(1)
+            thread(isDaemon = true) {
+                server.accept().use { peer ->
+                    val input = BufferedInputStream(peer.getInputStream())
+                    var ended = 0
+                    while (ended < 4) ended = if (input.read() == "\r\n\r\n"[ended].code) ended + 1 else 0
+                    asked.countDown()
+                    peer.soTimeout = 5_000
+                    val closed = try {
+                        input.read() < 0
+                    } catch (stillOpen: SocketTimeoutException) {
+                        false
+                    } catch (reset: IOException) {
+                        true
+                    }
+                    if (closed) letGo.countDown()
+                }
+            }
+            val socket = WebSocketConnector().open(URI("ws://127.0.0.1:${server.localPort}/"))
+            assertTrue(asked.await(5, TimeUnit.SECONDS), "the phone never asked to open")
+            socket.close()
+            assertTrue(letGo.await(3, TimeUnit.SECONDS), "the phone kept the connection open after giving up on it")
         }
     }
 

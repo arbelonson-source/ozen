@@ -57,7 +57,7 @@ class WebSocketConnector(
         return socket
     }
 
-    internal fun connect(url: URI): Socket {
+    internal fun connect(url: URI, created: (Socket) -> Unit = {}): Socket {
         val scheme = url.scheme?.lowercase()
         require(scheme == "ws" || scheme == "wss") { "not a WebSocket address: $url" }
         val host = requireNotNull(url.host) { "no host in $url" }.trim('[', ']')
@@ -65,6 +65,7 @@ class WebSocketConnector(
         val port = if (url.port > 0) url.port else if (secure) 443 else 80
         val plain = plainSockets.createSocket()
         try {
+            created(plain)
             plain.connect(InetSocketAddress(host, port), connectTimeoutMillis)
             plain.tcpNoDelay = true
             if (!secure) return plain
@@ -107,6 +108,11 @@ private class WebSocketConnection(
     private val lock = Any()
     private val pongs = ArrayDeque<CompletableDeferred<Unit>>()
     private var failure: Throwable? = null
+
+    // The socket from the moment it exists, so closing reaches it while it
+    // still opens: a far end that takes the connection and never answers
+    // (a home computer whose program hung) held it, and its thread, for good.
+    private var opening: Socket? = null
 
     fun start() {
         scope.launch {
@@ -185,7 +191,13 @@ private class WebSocketConnection(
     }
 
     private fun handshake(): Streams {
-        val socket = connector.connect(url)
+        val socket = connector.connect(url) { created ->
+            val closed = synchronized(lock) {
+                opening = created
+                failure != null
+            }
+            if (closed) created.close()
+        }
         try {
             val output = socket.getOutputStream()
             val input = BufferedInputStream(socket.getInputStream())
@@ -326,14 +338,15 @@ private class WebSocketConnection(
     }
 
     private fun fail(error: Throwable) {
-        val waiting = synchronized(lock) {
+        val (waiting, unopened) = synchronized(lock) {
             if (failure != null) return
             failure = error
             val pending = pongs.toList()
             pongs.clear()
-            pending
+            pending to opening
         }
         waiting.forEach { it.completeExceptionally(error) }
+        runCatching { unopened?.close() }
         if (!connection.completeExceptionally(error)) {
             runCatching { connection.getCompleted().socket.close() }
         }
