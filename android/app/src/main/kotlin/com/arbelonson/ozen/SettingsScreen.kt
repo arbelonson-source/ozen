@@ -233,7 +233,7 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
     SectionHeader(tr("תצוגה", "Display"))
     var size by remember(display.fontSize) { mutableFloatStateOf(display.fontSize.toFloat()) }
     val sizeLabel = tr("גודל טקסט", "Text size")
-    val look = CaptionTheme.of(display.theme, isSystemInDarkTheme())
+    val look = CaptionTheme.of(display.theme, isSystemInDarkTheme(), phoneAsksForMoreContrast())
     Row(modifier = Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
         Text(sizeLabel, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text("${size.roundToInt()}", color = MaterialTheme.colorScheme.onSurfaceVariant)

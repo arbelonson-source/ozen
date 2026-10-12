@@ -337,7 +337,7 @@ private fun OzenApp(
             backup is BackupModelStatus.Downloading ||
             state.keepsScreenOn(current.display.keepScreenAwake, awakeClock),
     )
-    val look = CaptionTheme.of(current.display.theme, isSystemInDarkTheme())
+    val look = CaptionTheme.of(current.display.theme, isSystemInDarkTheme(), phoneAsksForMoreContrast())
     LaunchedEffect(look.isLight) { onLightScreen(look.isLight) }
     MaterialTheme(colorScheme = if (look.isLight) lightColorScheme() else darkColorScheme()) {
         CompositionLocalProvider(LocalLayoutDirection provides direction) {

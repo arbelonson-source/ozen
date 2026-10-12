@@ -6,6 +6,7 @@ import android.app.Activity
 import android.app.Instrumentation
 import android.app.Notification
 import android.app.NotificationManager
+import android.app.UiModeManager
 import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
@@ -1986,6 +1987,41 @@ class CaptionScreenDeviceTest {
         val name = compose.onNodeWithText("Dana").fetchSemanticsNode().boundsInRoot
         val width = compose.onRoot().fetchSemanticsNode().size.width
         assertTrue("the speaker's name sits on the left of a Hebrew line: $name of $width", name.left > width / 2f)
+    }
+
+    @Test
+    fun withThePhoneAskingForMoreContrastWordsStillBeingHeardAreDrawnAsStrongAsFinishedOnes() {
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
+        }
+        val uiMode = app.getSystemService(UiModeManager::class.java)
+        val words = "Still being heard"
+        val brightest = {
+            compose.onNodeWithText(words, substring = true).captureToImage().toPixelMap().let { p ->
+                (0 until p.width).maxOf { x -> (0 until p.height).maxOf { y -> p[x, y].red } }
+            }
+        }
+        val displayBefore = app.settings.current.value.display
+        try {
+            app.settings.change { it.display = it.display.copy(theme = DisplayPreferences.Theme.Dark) }
+            val line = TranscriptSegment(id = UUID.randomUUID(), text = words, isCommitted = false, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line))
+            }
+            compose.waitForIdle()
+            assertTrue("words still being heard are dimmed with the phone's contrast left alone", brightest() < 0.9f)
+            shell("settings put secure contrast_level 1.0")
+            compose.waitUntil(5_000) { uiMode.contrast > 0f }
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            compose.waitUntil(5_000) { brightest() > 0.97f }
+        } finally {
+            shell("settings delete secure contrast_level")
+            app.settings.change { it.display = displayBefore }
+        }
     }
 
     @Test

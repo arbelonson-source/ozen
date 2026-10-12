@@ -52,6 +52,17 @@ class CaptionThemeTest {
     }
 
     @Test
+    fun `with the phone asking for more contrast, words still being heard are as strong as finished ones, as on the iPhone`() {
+        for (systemDark in listOf(true, false)) {
+            Theme.entries.forEach { choice ->
+                val theme = CaptionTheme.of(choice, systemDark, moreContrast = true)
+                assertEquals(theme.text, theme.pendingText, "$choice")
+                assertEquals(CaptionTheme.of(choice, systemDark).copy(pendingText = theme.text), theme, "$choice")
+            }
+        }
+    }
+
+    @Test
     fun `every colour keeps 7 to 1 against its background, the dimmer words still being heard too`() {
         for (systemDark in listOf(true, false)) {
             Theme.entries.forEach { choice ->
