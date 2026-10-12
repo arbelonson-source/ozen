@@ -54,7 +54,7 @@ struct MicPickerView: View {
 
                 Section(tr("טיפים", "Tips")) {
                     Label {
-                        Text(tr("מיקרופון USB‑C צריך להיות מסוג \"USB Audio\" (כמו רוב מיקרופוני הדש). אם הוא לא מופיע ברשימה, האייפון לא מזהה אותו בכלל, ולא רק האפליקציה.", "A USB‑C microphone needs to be of the “USB Audio” type (like most lapel mics). If it doesn’t appear in the list, the iPhone isn’t recognizing it at all, not just the app."))
+                        Text(tr("מיקרופון USB‑C צריך להיות מסוג \"USB Audio\" (כמו רוב מיקרופוני הדש). אם הוא לא מופיע ברשימה, ה-%1 לא מזהה אותו בכלל, ולא רק האפליקציה.", "A USB‑C microphone needs to be of the “USB Audio” type (like most lapel mics). If it doesn’t appear in the list, the %1 isn’t recognizing it at all, not just the app.", args: ["\(DeviceWord.brand)"]))
                     } icon: {
                         Image(systemName: "cable.connector")
                     }
@@ -125,7 +125,7 @@ struct MicPickerView: View {
     /// is called "iPhone Microphone", which is too long and says nothing.
     static func shortName(for input: AudioInputDescriptor) -> String {
         switch input.portType {
-        case .builtInMic: return tr("אייפון", "iPhone")
+        case .builtInMic: return DeviceWord.brand
         default: return input.portName
         }
     }

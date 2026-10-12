@@ -27,8 +27,8 @@ struct HomeServerGuideView: View {
         ),
         Step(
             id: 4, systemImage: "qrcode.viewfinder",
-            title: tr("לסרוק את הריבוע במצלמת האייפון", "Scan the square code with the iPhone camera"),
-            text: tr("בסוף מופיע במחשב ריבוע שחור־לבן. פותחים את המצלמה באייפון, מכוונים אליו, לוחצים על הקישור של Ozen ומאשרים. אפשר להציג אותו שוב מתפריט התחל, בשורה \u{2068}Ozen\u{00A0}-\u{00A0}pair\u{00A0}a\u{00A0}phone\u{2069}.", "At the end the computer shows a black-and-white square. Open the Camera on the iPhone, point it at the square, tap the Ozen link and confirm. To show it again: Start menu, “Ozen - pair a phone”.")
+            title: tr("לסרוק את הריבוע במצלמת ה-%1", "Scan the square code with the %1 camera", args: ["\(DeviceWord.brand)"]),
+            text: tr("בסוף מופיע במחשב ריבוע שחור־לבן. פותחים את המצלמה ב-%1, מכוונים אליו, לוחצים על הקישור של Ozen ומאשרים. אפשר להציג אותו שוב מתפריט התחל, בשורה \u{2068}Ozen\u{00A0}-\u{00A0}pair\u{00A0}a\u{00A0}phone\u{2069}.", "At the end the computer shows a black-and-white square. Open the Camera on the %1, point it at the square, tap the Ozen link and confirm. To show it again: Start menu, “Ozen - pair a phone”.", args: ["\(DeviceWord.brand)"])
         ),
     ] }
 

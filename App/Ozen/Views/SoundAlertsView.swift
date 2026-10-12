@@ -41,7 +41,7 @@ struct SoundAlertsView: View {
             } footer: {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(tr("הזיהוי נעשה בטלפון בלבד, על אותו אודיו שמשמש לכתוביות. אותו צליל לא יופיע שוב במשך 20 שניות.", "Detection happens only on the phone, using the same audio as the captions. The same sound won’t appear again for 20 seconds."))
-                    Text(tr("כדי שאזעקה או גלאי עשן יעירו גם במצב שינה או ״נא לא להפריע״: בהגדרות האייפון, מיקוד, בכל מצב מיקוד, אפליקציות מותרות, הוסיפו את אוזן.", "So an alarm or smoke detector still wakes you in Sleep or Do Not Disturb: in iPhone Settings, Focus, in each Focus, Allowed Apps, add Ozen."))
+                    Text(tr("כדי שאזעקה או גלאי עשן יעירו גם במצב שינה או ״נא לא להפריע״: בהגדרות ה-%1, מיקוד, בכל מצב מיקוד, אפליקציות מותרות, הוסיפו את אוזן.", "So an alarm or smoke detector still wakes you in Sleep or Do Not Disturb: in %1 Settings, Focus, in each Focus, Allowed Apps, add Ozen.", args: ["\(DeviceWord.brand)"]))
                 }
             }
 

@@ -401,8 +401,8 @@ struct OnboardingView: View {
         switch viewModel.settings.whisperModelVariant {
         case viewModel.settings.recommendedWhisperVariant:
             return hebrew
-                ? tr("מדויק: עברית טובה בהרבה, מתעדכן קצת יותר לאט. מתאים לאייפון חדש.", "Accurate: much better Hebrew, updates a bit slower. Good for a newer iPhone.")
-                : tr("מדויק: כתוביות טובות בהרבה, מתעדכן קצת יותר לאט. מתאים לאייפון חדש.", "Accurate: much better captions, updates a bit slower. Good for a newer iPhone.")
+                ? tr("מדויק: עברית טובה בהרבה, מתעדכן קצת יותר לאט. מתאים ל-%1 חדש.", "Accurate: much better Hebrew, updates a bit slower. Good for a newer %1.", args: ["\(DeviceWord.brand)"])
+                : tr("מדויק: כתוביות טובות בהרבה, מתעדכן קצת יותר לאט. מתאים ל-%1 חדש.", "Accurate: much better captions, updates a bit slower. Good for a newer %1.", args: ["\(DeviceWord.brand)"])
         case "small":
             return hebrew
                 ? tr("מהיר: מגיב מיד, אבל טועה בהרבה יותר מילים בעברית. רק לטלפון ישן שהמדויק איטי בו.", "Fast: responds instantly, but gets many more Hebrew words wrong. Only for an older phone the accurate one is slow on.")
