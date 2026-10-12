@@ -1092,6 +1092,23 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithText("Close").performClick()
     }
 
+    // As on the iPhone, a screen reader hears what the big letters are for.
+    @Test
+    fun theSayScreensBigLettersButtonTellsAScreenReaderWhatItIsFor() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        assertTrue("no voice on the phone", within(15_000) { app.captions.canAskToRepeat() })
+        compose.onNodeWithContentDescription("Say something out loud").performClick()
+        compose.waitUntil(5_000) { sayFieldFocused() }
+        val big = compose.onNodeWithText("Full screen, big letters").performScrollTo()
+        assertEquals(
+            "Let someone write to you, or show the person you’re talking with what you wrote",
+            big.fetchSemanticsNode().config[SemanticsActions.OnClick].label,
+        )
+        big.performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithText("Say something").assertDoesNotExist()
+        compose.onNodeWithText("Close").performClick()
+    }
+
     @Test
     fun whileThePhoneTalksTheCaptionScreensSayButtonStopsItInsteadOfOpening() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication

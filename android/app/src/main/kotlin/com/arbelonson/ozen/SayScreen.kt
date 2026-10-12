@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -145,7 +146,12 @@ internal fun SayScreen(
                     }
                 }
             }
-            OutlinedButton(onClick = { bigLetters = true }, modifier = Modifier.fillMaxWidth()) {
+            // As on the iPhone, a screen reader hears what the big letters are for.
+            val bigLettersFor = tr("לתת למישהו לכתוב לך, או להראות למי שמולך מה כתבת", "Let someone write to you, or show the person you’re talking with what you wrote")
+            OutlinedButton(
+                onClick = { bigLetters = true },
+                modifier = Modifier.fillMaxWidth().semantics { onClick(label = bigLettersFor) { bigLetters = true; true } },
+            ) {
                 Text(tr("מסך מלא באותיות גדולות", "Full screen, big letters"))
             }
             VoiceNotices(voiceNotices)
