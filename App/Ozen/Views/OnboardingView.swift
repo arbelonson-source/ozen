@@ -312,35 +312,21 @@ struct OnboardingView: View {
     private var footer: some View {
         HStack {
             if page < Self.pageCount - 1 {
-                Button {
-                    finish()
-                } label: {
-                    // Bare text is a ~25 pt target beside the 50 pt Next
-                    // button, and a slip ends the walkthrough.
-                    Text(tr("דילוג", "Skip"))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
+                // Side by side while both words fit whole. At the largest
+                // text German's "Weiter" broke inside the word and
+                // "Überspringen" took three lines, so there Next spans the
+                // screen with Skip under it, as on Android.
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        skipButton
+                        Spacer()
+                        nextButton(spanning: false)
+                    }
+                    VStack(spacing: 8) {
+                        nextButton(spanning: true)
+                        skipButton
+                    }
                 }
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("onboardingSkipButton")
-                Spacer()
-                Button {
-                    withAnimation { page += 1 }
-                } label: {
-                    Text(tr("הבא", "Next"))
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(minWidth: 120)
-                }
-                // Before the glass button style, not after: applied on
-                // the far side of .glassProminent, the identifier stopped
-                // reaching XCUITest even though the button rendered and
-                // worked fine -- unlike the caption screen's own buttons,
-                // which use .buttonStyle(.plain) and never had the issue.
-                .accessibilityIdentifier("onboardingNextButton")
-                .ozenGlassButton(prominent: true)
-                .controlSize(.large)
             } else {
                 Button {
                     finish()
@@ -353,6 +339,40 @@ struct OnboardingView: View {
             }
         }
         .font(.title3.weight(.semibold))
+    }
+
+    private var skipButton: some View {
+        Button {
+            finish()
+        } label: {
+            // Bare text is a ~25 pt target beside the 50 pt Next
+            // button, and a slip ends the walkthrough.
+            Text(tr("דילוג", "Skip"))
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .foregroundStyle(.secondary)
+        .accessibilityIdentifier("onboardingSkipButton")
+    }
+
+    private func nextButton(spanning: Bool) -> some View {
+        Button {
+            withAnimation { page += 1 }
+        } label: {
+            Text(tr("הבא", "Next"))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(minWidth: 120, maxWidth: spanning ? .infinity : nil)
+        }
+        // Before the glass button style, not after: applied on
+        // the far side of .glassProminent, the identifier stopped
+        // reaching XCUITest even though the button rendered and
+        // worked fine -- unlike the caption screen's own buttons,
+        // which use .buttonStyle(.plain) and never had the issue.
+        .accessibilityIdentifier("onboardingNextButton")
+        .ozenGlassButton(prominent: true)
+        .controlSize(.large)
     }
 
     private func finish() {
