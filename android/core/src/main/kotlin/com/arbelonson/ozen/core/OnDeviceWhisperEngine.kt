@@ -66,6 +66,11 @@ class OnDeviceWhisperEngine(
     private val lock = Any()
     private var passes: WhisperPasses? = null
     private var model: WhisperLoadedModel? = null
+
+    // How many times the engine was let go: a load still running then
+    // finished into an engine nothing held any more, and its model stayed
+    // in memory for good.
+    private var lettings = 0
     private var vocabulary: List<String> = emptyList()
     private var cellularDownloadAllowed = true
 
@@ -166,7 +171,10 @@ class OnDeviceWhisperEngine(
     override suspend fun diagnosticsSummary(): String? = synchronized(lock) { "$modelName: ${tally.summary}" }
 
     override suspend fun prepare(languageCode: String, progress: (EnginePreparationProgress) -> Unit): EngineAvailability {
-        if (synchronized(lock) { passes } != null) return EngineAvailability.Available
+        val generation = synchronized(lock) {
+            if (passes != null) return EngineAvailability.Available
+            lettings
+        }
         val allowCellular = synchronized(lock) { cellularDownloadAllowed }
         val loaded = try {
             loader.load(languageCode, allowCellular, progress)
@@ -191,8 +199,12 @@ class OnDeviceWhisperEngine(
         } catch (error: Exception) {
             // A failed warm-up is not a broken model.
         }
+        var letGo = false
         val superseded = synchronized(lock) {
-            if (passes != null) {
+            if (lettings != generation) {
+                letGo = true
+                loaded
+            } else if (passes != null) {
                 loaded
             } else {
                 passes = loaded.passes
@@ -203,11 +215,13 @@ class OnDeviceWhisperEngine(
         // Another prepare stored its model while this one loaded: that one
         // stays and this copy goes back rather than sit in memory unused.
         superseded?.release()
+        if (letGo) return EngineAvailability.unavailable(EngineUnavailability.Kind.ModelLoadFailed, "$modelName: let go while it loaded")
         return EngineAvailability.Available
     }
 
     override fun release() {
         val held = synchronized(lock) {
+            lettings += 1
             val current = model
             model = null
             passes = null

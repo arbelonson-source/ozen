@@ -63,4 +63,19 @@ class OnDeviceWhisperEngineReleaseTest {
         engine.release()
         assertEquals(2, loader.releases.get())
     }
+
+    @Test
+    fun `a model that finishes loading after the engine was let go is given back, not kept where nothing will free it`() = runBlocking {
+        val gate = CompletableDeferred<Unit>()
+        val loader = CountingLoader(gate)
+        val engine = OnDeviceWhisperEngine("test", loader)
+        val preparing = async(Dispatchers.Default) { engine.prepare("he") {} }
+        withTimeout(5_000) { while (loader.loads.get() < 1) delay(5) }
+        engine.release()
+        gate.complete(Unit)
+        assertEquals(EngineUnavailability.Kind.ModelLoadFailed, (preparing.await() as? EngineAvailability.Unavailable)?.why?.kind)
+        assertEquals(1, loader.releases.get(), "the model loaded after the engine was let go stayed in memory")
+        assertEquals(EngineAvailability.Available, engine.prepare("he") {})
+        assertEquals(2, loader.loads.get())
+    }
 }
