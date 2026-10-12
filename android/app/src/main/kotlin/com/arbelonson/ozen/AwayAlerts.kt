@@ -38,7 +38,8 @@ class AwayAlerts(private val policy: BackgroundAlertPolicy = BackgroundAlertPoli
 }
 
 class AlertNotifier(private val context: Context) {
-    fun post(content: AlertNotificationContent) {
+    fun post(content: AlertNotificationContent): Boolean {
+        if (!allowed(context)) return false
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, tr("התראות", "Alerts"), NotificationManager.IMPORTANCE_HIGH).apply {
@@ -57,6 +58,7 @@ class AlertNotifier(private val context: Context) {
             .setAutoCancel(true)
             .build()
         manager.notify(content.identifier, 0, notification)
+        return true
     }
 
     fun withdraw(identifier: String) {

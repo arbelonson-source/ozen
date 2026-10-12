@@ -1732,6 +1732,34 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun aWordHeardWhileAwayWithTheAppsNotificationsBlockedBuzzesOnReturn() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val buzzed = CopyOnWriteArrayList<AlertVibration>()
+        val before = Buzz.play
+        val allowedBefore = AlertNotifier.allowed
+        Buzz.play = { _, vibration -> buzzed += vibration }
+        AlertNotifier.allowed = { false }
+        val notifyBefore = app.settings.current.value.notifyWhenInBackground
+        val line = committed("Doctor, the results are in")
+        val hit = KeywordHit(segmentID = line.id, match = KeywordMatch(UUID.randomUUID(), "Doctor", "Doctor", 0), timestamp = System.currentTimeMillis() / 1_000.0)
+        try {
+            app.settings.change { it.notifyWhenInBackground = true }
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            instrumentation.runOnMainSync { app.captions.wordsHeard(listOf(hit), line) }
+            Thread.sleep(6_000)
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            assertTrue("a word no notification could show never buzzed on her return: $buzzed", within(5_000) { AlertVibration.keyword in buzzed })
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Doctor").fetchSemanticsNodes().isNotEmpty() }
+        } finally {
+            Buzz.play = before
+            AlertNotifier.allowed = allowedBefore
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            app.settings.change { it.notifyWhenInBackground = notifyBefore }
+        }
+    }
+
+    @Test
     fun theStatusShowsWhenItIsBusyAndHowFarADownloadIsAndIsNoButtonWhenATapWouldDoNothing() {
         fun show(phase: PipelinePhase) {
             compose.runOnUiThread { CaptionState.show(phase, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }

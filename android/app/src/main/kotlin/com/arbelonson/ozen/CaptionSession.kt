@@ -909,13 +909,14 @@ class CaptionSession(
      * says them whichever screen is open, not only the captions; with the
      * app away they become a phone notification. One that went out that way
      * stays quiet as she comes back, and one that never did (alerts while
-     * away off, quiet hours) buzzes then, however long ago it was said.
+     * away off, quiet hours, the phone's notifications for Ozen off) buzzes
+     * then, however long ago it was said.
      */
     fun wordsHeard(hits: List<KeywordHit>, line: TranscriptSegment) {
         val now = System.currentTimeMillis() / 1_000.0
         val utcOffsetSeconds = TimeZone.getDefault().getOffset((now * 1_000).toLong()) / 1_000
         val told = hits.filter { hit ->
-            awayAlerts.forWords(listOf(hit), line.text, appIsActive, settings.current.value, now, utcOffsetSeconds).onEach(notifier::post).isNotEmpty()
+            awayAlerts.forWords(listOf(hit), line.text, appIsActive, settings.current.value, now, utcOffsetSeconds).map(notifier::post).any { it }
         }
         attention.claim(hits - told.toSet())?.let { word ->
             CaptionState.heard(word)
