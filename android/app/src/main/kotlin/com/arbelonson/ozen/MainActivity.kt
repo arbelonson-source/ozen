@@ -69,6 +69,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -623,8 +624,8 @@ private fun CaptionScreen(
     }
     problemMarked?.let { keptSound -> ProblemMarkedDialog(keptSound, onDismiss = { problemMarked = null }) }
     var following by remember { mutableStateOf(true) }
-    var lastWhenLeft by remember { mutableStateOf<UUID?>(null) }
-    val newest by rememberUpdatedState(state.lines.lastOrNull()?.id)
+    var countWhenLeft by remember { mutableIntStateOf(0) }
+    val lineCount by rememberUpdatedState(state.lineCount)
     // Only her own scrolling passes through here, not the screen following
     // the newest line, so a line growing past the bottom for a moment
     // doesn't stop the following, as it once did on the iPhone.
@@ -632,7 +633,7 @@ private fun CaptionScreen(
         object : NestedScrollConnection {
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
                 val atEnd = !list.canScrollForward
-                if (following && !atEnd) lastWhenLeft = newest
+                if (following && !atEnd) countWhenLeft = lineCount
                 following = atEnd
                 return Offset.Zero
             }
@@ -742,7 +743,7 @@ private fun CaptionScreen(
             } else {
                 CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it.id }, onName = { naming = it.id }, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
                 if (!following) {
-                    JumpToLatest(jumpToLatestTitle(linesSince(state.lines, lastWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
+                    JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                         following = true
                     }
                 }
@@ -777,7 +778,7 @@ private fun CaptionScreen(
                 state.away?.takeIf { it.offersJump && !awayMarkShowing && state.lines.isNotEmpty() }?.let { mark ->
                     AwayJump(mark.count, look) {
                         CaptionState.acknowledgeAwayLines()
-                        lastWhenLeft = newest
+                        countWhenLeft = lineCount
                         following = false
                         val index = state.lines.indexOfFirst { it.id == mark.line }
                         if (index >= 0) scope.launch { list.scrollToItem(index) }

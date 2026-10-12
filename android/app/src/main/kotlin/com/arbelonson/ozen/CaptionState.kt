@@ -75,6 +75,8 @@ data class CaptionScreenState(
     val interruptedBySystem: Boolean = false,
     val scheduledRetry: ScheduledRetry? = null,
     val lines: List<CaptionLine> = emptyList(),
+    /** Every line of the conversation, also the older ones [lines] no longer keeps. */
+    val lineCount: Int = 0,
     val lastActivityAt: Double? = null,
     val heard: HeardWord? = null,
     val recentlyHeard: List<KeywordHit> = emptyList(),
@@ -142,10 +144,11 @@ data class CaptionScreenState(
         )
 }
 
-fun linesSince(lines: List<CaptionLine>, lastSeen: UUID?): Int {
-    val seen = lines.indexOfLast { it.id == lastSeen }
-    return if (seen < 0) lines.size else lines.lastIndex - seen
-}
+/**
+ * Counted over the whole conversation, as the iPhone counts: from the line
+ * she left at, a count stopped at the 200 lines the screen keeps.
+ */
+fun linesSince(lineCount: Int, countWhenLeft: Int): Int = maxOf(0, lineCount - countWhenLeft)
 
 fun jumpToLatestTitle(newLines: Int): String =
     if (newLines > 0) ConversationStats.linesText(newLines, adjective = "חדשה" to "חדשות", englishAdjective = "new")
@@ -200,6 +203,7 @@ object CaptionState {
             coveredEngine = coveredEngine,
             coverReason = coverReason,
             offerBackup = offerBackup,
+            lineCount = segments.size,
             lines = segments.drop(firstShown).mapIndexed { at, it ->
                 CaptionLine(
                     id = it.id,

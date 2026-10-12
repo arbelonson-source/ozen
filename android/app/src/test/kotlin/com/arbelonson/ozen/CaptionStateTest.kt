@@ -378,14 +378,16 @@ class CaptionStateTest {
     }
 
     @Test
-    fun `new lines are counted from the newest one on screen when she scrolled back, even past the two hundred kept`() {
+    fun `new lines are counted from where she scrolled back, even past the two hundred kept, as on the iPhone`() {
         val segments = (1..200).map { line("line $it", committed = true) }
         show(PipelinePhase.Listening, segments)
-        val newestThen = CaptionState.screen.value.lines.last().id
-        assertEquals(0, linesSince(CaptionState.screen.value.lines, newestThen))
+        val countThen = CaptionState.screen.value.lineCount
+        assertEquals(0, linesSince(CaptionState.screen.value.lineCount, countThen))
         show(PipelinePhase.Listening, segments + (201..203).map { line("line $it", committed = true) })
-        assertEquals(3, linesSince(CaptionState.screen.value.lines, newestThen))
-        assertEquals(200, linesSince(CaptionState.screen.value.lines, UUID.randomUUID()))
+        assertEquals(3, linesSince(CaptionState.screen.value.lineCount, countThen))
+        show(PipelinePhase.Listening, segments + (201..450).map { line("line $it", committed = true) })
+        assertEquals(200, CaptionState.screen.value.lines.size)
+        assertEquals(250, linesSince(CaptionState.screen.value.lineCount, countThen))
     }
 
     @Test
