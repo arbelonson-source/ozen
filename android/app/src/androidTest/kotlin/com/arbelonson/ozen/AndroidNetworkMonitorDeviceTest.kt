@@ -1,14 +1,19 @@
 package com.arbelonson.ozen
 
+import android.net.ConnectivityManager
 import android.os.Looper
+import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.ModelDownloadGate
 import com.arbelonson.ozen.core.NetworkConditions
 import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -47,6 +52,32 @@ class AndroidNetworkMonitorDeviceTest {
         } finally {
             instrumentation.runOnMainSync { monitor.close() }
         }
+    }
+
+    // Data Saver holds back only metered networks, as the iPhone's Low
+    // Data Mode belongs to one network: on home Wi-Fi with it on, the model
+    // was kept "waiting for Wi-Fi".
+    @Test
+    fun dataSaverOnWiFiDoesNotHoldTheModelDownloadBack() {
+        val connectivity = app.getSystemService(ConnectivityManager::class.java)
+        var monitor: AndroidNetworkMonitor? = null
+        try {
+            shell("cmd netpolicy set restrict-background true")
+            assertEquals(ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED, connectivity.restrictBackgroundStatus)
+            instrumentation.runOnMainSync { monitor = AndroidNetworkMonitor(app) }
+            assertTrue("never online", within(10_000) { monitor?.current?.isConnected == true })
+            val wifi = monitor!!.current!!
+            assumeTrue("the test phone's network is unmetered Wi-Fi", !wifi.isExpensive)
+            assertFalse("Wi-Fi was taken for a limited network", wifi.isConstrained)
+            assertEquals(ModelDownloadGate.Decision.Proceed, ModelDownloadGate.decide(wifi, allowCellular = false))
+        } finally {
+            instrumentation.runOnMainSync { monitor?.close() }
+            shell("cmd netpolicy set restrict-background false")
+        }
+    }
+
+    private fun shell(command: String) {
+        ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() }
     }
 
     private fun airplaneMode(on: Boolean) {

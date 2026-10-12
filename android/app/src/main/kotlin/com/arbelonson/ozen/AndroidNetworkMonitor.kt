@@ -35,9 +35,12 @@ class AndroidNetworkMonitor(context: Context) : NetworkMonitoring {
         onChange?.invoke(conditions)
     }
 
-    private fun conditions(capabilities: NetworkCapabilities) = NetworkConditions(
-        isConnected = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
-        isExpensive = !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED),
-        isConstrained = connectivity.restrictBackgroundStatus == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED,
-    )
+    private fun conditions(capabilities: NetworkCapabilities): NetworkConditions {
+        val metered = !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        return NetworkConditions(
+            isConnected = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
+            isExpensive = metered,
+            isConstrained = metered && connectivity.restrictBackgroundStatus == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED,
+        )
+    }
 }
