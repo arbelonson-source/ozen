@@ -322,7 +322,12 @@ class CaptionSession(
             refreshSavingTrouble()
         }
 
-        override fun toggleStar(sessionID: UUID, segmentID: UUID) = conversations.toggleStar(sessionID, segmentID).also { refreshSavingTrouble() }
+        // A line still on the caption screen shows the change at once, as on
+        // the iPhone, not only once the next caption redraws the screen.
+        override fun toggleStar(sessionID: UUID, segmentID: UUID) = conversations.toggleStar(sessionID, segmentID).also { starring ->
+            starring?.let { CaptionState.markStarred(segmentID, it) }
+            refreshSavingTrouble()
+        }
 
         override fun switchSaving(on: Boolean) {
             conversations.switchSaving(on)

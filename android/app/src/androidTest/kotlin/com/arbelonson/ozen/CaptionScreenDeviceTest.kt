@@ -1133,6 +1133,39 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    @Test
+    fun aLineStarredInItsSavedConversationShowsOrLosesItsStarOnTheCaptionScreenAtOnce() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val store = TranscriptHistoryStore(File(app.filesDir, CaptionSession.HISTORY_FOLDER))
+        val savingBefore = app.settings.current.value.saveHistory
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 600
+        val said = "The pharmacy closes early on Friday"
+        val line = SavedSegment(UUID.randomUUID(), said, null, null, startedAt, true)
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 60,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = listOf(line),
+        )
+        val starred = { CaptionState.screen.value.lines.single { it.id == line.id }.starred }
+        store.save(record)
+        try {
+            app.settings.change { it.saveHistory = true }
+            showLines(listOf(TranscriptSegment(id = line.id, text = said, isCommitted = true, startTimestamp = startedAt, lastUpdateTimestamp = startedAt)))
+            compose.runOnUiThread { app.captions.savedConversations.toggleStar(record.id, line.id) }
+            compose.waitForIdle()
+            assertTrue("the star given in the saved conversation is missing from the caption screen", starred())
+            compose.runOnUiThread { app.captions.savedConversations.toggleStar(record.id, line.id) }
+            compose.waitForIdle()
+            assertFalse("the star taken away in the saved conversation is still on the caption screen", starred())
+        } finally {
+            app.settings.change { it.saveHistory = savingBefore }
+            store.delete(record.id)
+        }
+    }
+
     // The Say screen opens with the keyboard coming up; a press while it
     // slides in lands where the button was.
     private fun keyboardAway() {
