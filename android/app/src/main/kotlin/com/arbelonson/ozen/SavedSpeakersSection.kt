@@ -133,7 +133,9 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
                     )
                 }
             }
-            TextButton(onClick = { removing = speaker.name }) { Text(tr("מחיקה", "Delete")) }
+            // Whose: a screen reader otherwise hears "Delete" once per person.
+            val deleteWho = tr("מחיקת %1", "Delete %1", listOf(speaker.name))
+            TextButton(onClick = { removing = speaker.name }, modifier = Modifier.semantics { contentDescription = deleteWho }) { Text(tr("מחיקה", "Delete")) }
         }
     }
     TextButton(onClick = onAdd) { Text(tr("הוספת דובר", "Add speaker")) }

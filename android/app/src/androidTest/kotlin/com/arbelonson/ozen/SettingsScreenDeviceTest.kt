@@ -36,6 +36,7 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasClickAction
@@ -276,6 +277,15 @@ class SettingsScreenDeviceTest {
         compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
         compose.onNode(isDialog()).assertDoesNotExist()
         assertEquals(listOf("Savta", "Savta", "Yossi"), app.settings.current.value.speakerProfiles.map { it.name })
+    }
+
+    @Test
+    fun eachSavedPersonsDeleteButtonTellsTheScreenReaderWhoItDeletes() {
+        val print = FloatArray(512) { 0.1f }
+        app.settings.change { it.speakerProfiles = listOf(SpeakerProfile(name = "Grandma", embedding = print), SpeakerProfile(name = "Yossi", embedding = print)) }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNode(hasText("Delete") and hasAnyAncestor(hasTestTag("savedSpeaker:Grandma"))).performScrollTo().assert(hasContentDescription("Delete Grandma"))
+        compose.onNode(hasText("Delete") and hasAnyAncestor(hasTestTag("savedSpeaker:Yossi"))).performScrollTo().assert(hasContentDescription("Delete Yossi"))
     }
 
     @Test
