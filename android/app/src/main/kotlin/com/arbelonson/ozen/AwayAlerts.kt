@@ -14,6 +14,7 @@ import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.BackgroundAlertPolicy
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.SoundAlert
+import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.tr
 
 class AwayAlerts(private val policy: BackgroundAlertPolicy = BackgroundAlertPolicy()) {
@@ -41,14 +42,22 @@ class AlertNotifier(private val context: Context) {
     fun post(content: AlertNotificationContent): Boolean {
         if (!allowed(context)) return false
         val manager = context.getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
+        val alarm = content.isUrgent && content.threadIdentifier == SOUNDS_THREAD
+        val channel = if (alarm) {
+            NotificationChannel(ALARM_CHANNEL_ID, tr("חירום", "Emergency"), NotificationManager.IMPORTANCE_HIGH).apply {
+                enableVibration(true)
+                vibrationPattern = AlertVibration.pattern(SoundEvent.Importance.Critical).waveform().first
+            }
+        } else {
             NotificationChannel(CHANNEL_ID, tr("התראות", "Alerts"), NotificationManager.IMPORTANCE_HIGH).apply {
                 enableVibration(true)
                 vibrationPattern = AlertVibration.keyword.waveform().first
-            },
-        )
+            }
+        }
+        manager.createNotificationChannel(channel)
         val open = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        val notification = Notification.Builder(context, CHANNEL_ID)
+        val notification = Notification.Builder(context, channel.id)
+            .apply { if (alarm) setCategory(Notification.CATEGORY_ALARM) }
             .setSmallIcon(R.drawable.ic_listening)
             .setContentTitle(content.title)
             .setContentText(content.body)
@@ -71,6 +80,8 @@ class AlertNotifier(private val context: Context) {
 
     companion object {
         const val CHANNEL_ID = "alerts"
+        const val ALARM_CHANNEL_ID = "alarms"
+        private const val SOUNDS_THREAD = "sounds"
         const val TEST_DELAY_MILLIS = 10_000L
 
         var allowed: (Context) -> Boolean = { context ->
