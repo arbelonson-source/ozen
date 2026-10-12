@@ -1164,7 +1164,7 @@ class CaptionScreenDeviceTest {
             breakSettings()
             save()
             compose.waitUntil(5_000) { banner() }
-            compose.onNodeWithText("The phone is probably full. New conversations and settings won't be saved until space frees up. Ask whoever helps you with the phone to free some.", substring = true).assertExists()
+            compose.onNodeWithText("The phone is probably full. New conversations and settings won't be saved until space frees up. Ask whoever helps you with the phone to free some (Settings → Storage).", substring = true).assertExists()
             compose.onNodeWithText(title, substring = true).performClick()
             compose.waitUntil(5_000) { !banner() }
             save()

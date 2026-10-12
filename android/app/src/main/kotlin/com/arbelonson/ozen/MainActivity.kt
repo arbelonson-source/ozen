@@ -1397,14 +1397,7 @@ private fun SavingTroubleBanner(onDismiss: () -> Unit) {
         Text("⚠", color = Color.White, fontSize = 26.sp, modifier = Modifier.clearAndSetSemantics {})
         Column(Modifier.weight(1f)) {
             Text(SavingTroubleNotice.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-            Text(
-                tr(
-                    "כנראה שהטלפון מלא. שיחות והגדרות חדשות לא יישמרו עד שיתפנה מקום. בקשו ממי שעוזר לך עם הטלפון לפנות מקום.",
-                    "The phone is probably full. New conversations and settings won't be saved until space frees up. Ask whoever helps you with the phone to free some.",
-                ),
-                color = Color.White,
-                fontSize = 16.sp,
-            )
+            Text(SavingTroubleNotice.detail, color = Color.White, fontSize = 16.sp)
         }
         Text("✕", color = Color.White.copy(alpha = 0.7f), fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics {})
     }
