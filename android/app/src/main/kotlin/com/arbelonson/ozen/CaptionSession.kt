@@ -692,6 +692,8 @@ class CaptionSession(
             soundNearMisses = pipeline.soundNearMisses.copy(),
             soundAlertConfidence = pipeline.soundAlertConfidence,
             coveringForCloud = pipeline.isCoveringForCloud,
+            lockScreenAllowed = ListeningService.shown(context),
+            lockScreenShowing = ListeningService.showingOnLockScreen,
         )
     }
 

@@ -72,6 +72,10 @@ data class DiagnosticsFacts(
     val soundAlertConfidence: Double = SoundEventPolicy().minimumConfidence,
     /** The phone's own model carrying on while the cloud or the home computer is out of reach. */
     val coveringForCloud: Boolean = false,
+    /** Ozen's notifications, which carry the lock screen's captions, can be seen. */
+    val lockScreenAllowed: Boolean = true,
+    /** The listening notification is up with its lines on the lock screen. */
+    val lockScreenShowing: Boolean = false,
 )
 
 /** Where the diagnostics screen reads from, and what its buttons do. */
@@ -99,8 +103,8 @@ interface DiagnosticsSource {
 
 /**
  * The iPhone's diagnostics report, in the same plain English for whoever
- * helps her, less what Android has no counterpart for yet (the lock
- * screen). The pairing code never goes in: only
+ * helps her, less what Android has no counterpart for (why iOS last
+ * refused the lock screen). The pairing code never goes in: only
  * whether one is saved.
  */
 object DiagnosticsReport {
@@ -130,6 +134,7 @@ object DiagnosticsReport {
                 "words on ${alerts.count { it.isEnabled }} of ${alerts.size} when away: ${settings.notifyWhenInBackground} buzz on speech: ${settings.hapticOnSpeechResume}",
             "history: saving ${settings.saveHistory} keep ${settings.historyRetention.rawValue} " +
                 "speakers saved ${settings.speakerProfiles.size} separation ${format("%.2f", settings.speakerSimilarityThreshold.toDouble())} display: size ${display.fontSize.toInt()} theme ${display.theme.rawValue} awake ${display.keepScreenAwake}",
+            "lock screen: setting ${display.lockScreenCaptions} allowed by Android: ${facts.lockScreenAllowed} showing: ${facts.lockScreenShowing}",
             "settings save error: ${if (facts.settingsSaveFailed) "failed" else "-"} history save error: ${facts.historySaveFailure ?: "-"} " +
                 "notifications allowed: ${if (facts.notificationsAllowed) "yes" else "no"} haptics: ${if (facts.canVibrate) "ok" else "unsupported"} network: ${network(facts.network, "No connection", "Cellular", "Data saving") ?: "-"} " +
                 "cellular downloads: ${settings.allowCellularModelDownload}",

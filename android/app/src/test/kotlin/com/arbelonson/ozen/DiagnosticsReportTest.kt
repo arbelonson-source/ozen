@@ -39,6 +39,8 @@ class DiagnosticsReportTest {
         charging: Boolean = false,
         nearMisses: SoundNearMisses = SoundNearMisses(),
         selected: AudioInputDescriptor? = headset,
+        lockScreenAllowed: Boolean = true,
+        lockScreenShowing: Boolean = false,
     ) = DiagnosticsFacts(
         phase = PipelinePhase.Failed(PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, "the microphone is busy")),
         activeEngine = TranscriptionEngineKind.WhisperKit,
@@ -83,7 +85,17 @@ class DiagnosticsReportTest {
         soundNearMisses = nearMisses,
         soundAlertConfidence = 0.6,
         coveringForCloud = true,
+        lockScreenAllowed = lockScreenAllowed,
+        lockScreenShowing = lockScreenShowing,
     )
+
+    @Test
+    fun `the report says whether the lock screen captions are on, allowed by Android and showing`() {
+        val off = AppSettings.default.copy().apply { display = display.copy(lockScreenCaptions = false) }
+        assertTrue("lock screen: setting true allowed by Android: true showing: true" in DiagnosticsReport.text(facts(lockScreenShowing = true)).lines())
+        assertTrue("lock screen: setting true allowed by Android: false showing: false" in DiagnosticsReport.text(facts(lockScreenAllowed = false)).lines())
+        assertTrue("lock screen: setting false allowed by Android: true showing: false" in DiagnosticsReport.text(facts(settings = off)).lines())
+    }
 
     @Test
     fun `the report says what runs, what failed and what happened, oldest first`() {
@@ -115,11 +127,12 @@ class DiagnosticsReportTest {
         assertEquals("sounds heard below the alert level: -", lines[10])
         assertEquals("alerts: sounds true from high muted 1 fainter 2 words on 1 of 2 when away: true buzz on speech: false", lines[11])
         assertEquals("history: saving true keep year speakers saved 2 separation 0.70 display: size ${settings.display.fontSize.toInt()} theme ${settings.display.theme.rawValue} awake ${settings.display.keepScreenAwake}", lines[12])
-        assertEquals("settings save error: failed history save error: - notifications allowed: no haptics: ok network: Cellular · Data saving cellular downloads: true", lines[13])
-        assertEquals("model state: unverified vocabulary: ${settings.vocabulary.size}", lines[14])
-        assertEquals("thermal: 3 low power: true battery: 54% free space: ${ByteSize.text(12_300_000_000)}", lines[15])
-        assertEquals("memory: used ${ByteSize.text(412_000_000)} left ${ByteSize.text(1_800_000_000)}", lines[16])
-        assertEquals("device: Google Pixel 8, Android 16 app 0.2.40 (40)", lines[17])
+        assertEquals("lock screen: setting ${settings.display.lockScreenCaptions} allowed by Android: true showing: false", lines[13])
+        assertEquals("settings save error: failed history save error: - notifications allowed: no haptics: ok network: Cellular · Data saving cellular downloads: true", lines[14])
+        assertEquals("model state: unverified vocabulary: ${settings.vocabulary.size}", lines[15])
+        assertEquals("thermal: 3 low power: true battery: 54% free space: ${ByteSize.text(12_300_000_000)}", lines[16])
+        assertEquals("memory: used ${ByteSize.text(412_000_000)} left ${ByteSize.text(1_800_000_000)}", lines[17])
+        assertEquals("device: Google Pixel 8, Android 16 app 0.2.40 (40)", lines[18])
         assertEquals(
             listOf(
                 "events (oldest first):",
@@ -129,13 +142,13 @@ class DiagnosticsReportTest {
                 "10-10 21:02:11 APP STARTED: 0.2.40 Android 16",
                 "10-10 21:40:03 PROBLEM MARKED: engine whisperKit",
             ),
-            lines.drop(18),
+            lines.drop(19),
         )
         assertEquals(listOf("journal, previous runs included (oldest first):", "-"), DiagnosticsReport.text(facts()).lines().takeLast(2))
         Localization.withLanguage(UILanguage.Hebrew) {
             val inHebrew = DiagnosticsReport.text(facts(settings, journal = journal, charging = true)).lines()
-            assertEquals(lines[13], inHebrew[13])
-            assertEquals("thermal: 3 low power: true battery: 54% charging free space: ${ByteSize.text(12_300_000_000)}", inHebrew[15])
+            assertEquals(lines[14], inHebrew[14])
+            assertEquals("thermal: 3 low power: true battery: 54% charging free space: ${ByteSize.text(12_300_000_000)}", inHebrew[16])
         }
     }
 

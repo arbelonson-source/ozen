@@ -55,6 +55,7 @@ class ListeningService : Service() {
     }
 
     override fun onDestroy() {
+        showingOnLockScreen = false
         scope.cancel()
         val phase = captions.pipeline.phase
         if (phase != PipelinePhase.Idle && phase != PipelinePhase.Paused) captions.pause()
@@ -81,6 +82,7 @@ class ListeningService : Service() {
     private fun drawn(content: LockScreenCaptionContent, public: Boolean) {
         throttle.sent(content, secondsNow())
         drawnPublic = public
+        showingOnLockScreen = public
     }
 
     /**
@@ -144,6 +146,10 @@ class ListeningService : Service() {
         private const val KEEP_ALIVE_MILLISECONDS = 30_000L
 
         fun start(context: Context) = context.startForegroundService(Intent(context, ListeningService::class.java))
+
+        /** Its notification is up with the captions on the lock screen, for the diagnostics report. */
+        @Volatile var showingOnLockScreen = false
+            private set
 
         /** Whether this notification, and with it the lock screen's captions, can be seen; a seam for tests. */
         var shown: (Context) -> Boolean = { context ->
