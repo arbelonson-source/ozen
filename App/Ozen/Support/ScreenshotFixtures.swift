@@ -22,6 +22,9 @@ enum ScreenshotFixtures {
         case onboarding
         /// The same walkthrough with Ozen set to English.
         case onboardingEnglish
+        /// And in German, whose words run longest: "Überspringen" beside
+        /// "Weiter", "Hinzufügen" beside the name field.
+        case onboardingGerman
         /// Quiet hours already on, so the toggle's revealed steppers can
         /// be screenshotted without a UI test having to flip it live.
         case quietHoursEnabled
@@ -52,9 +55,18 @@ enum ScreenshotFixtures {
         }
         let viewModel = LiveCaptionViewModel(settingsStore: SettingsStore(fileURL: url))
 
-        guard variant != .onboarding, variant != .onboardingEnglish else {
-            viewModel.setAppLanguage(variant == .onboarding ? .hebrew : .english)
+        switch variant {
+        case .onboarding:
+            viewModel.setAppLanguage(.hebrew)
             return viewModel
+        case .onboardingEnglish:
+            viewModel.setAppLanguage(.english)
+            return viewModel
+        case .onboardingGerman:
+            viewModel.setAppLanguage(.german)
+            return viewModel
+        default:
+            break
         }
 
         viewModel.completeOnboarding()
@@ -95,7 +107,7 @@ enum ScreenshotFixtures {
             viewModel.display.theme = .light
         case .english:
             viewModel.setAppLanguage(.english)
-        case .onboarding, .onboardingEnglish:
+        case .onboarding, .onboardingEnglish, .onboardingGerman:
             break
         case .quietHoursEnabled:
             viewModel.setAppLanguage(.hebrew)

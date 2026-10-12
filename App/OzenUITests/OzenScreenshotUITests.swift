@@ -223,6 +223,29 @@ final class OzenScreenshotUITests: XCTestCase {
         }
     }
 
+    /// German's words run longest of Ozen's languages. On Android at the
+    /// largest text, "Weiter" broke in the middle beside "Überspringen" and
+    /// "Hinzufügen" left the name field a few letters wide.
+    func testOnboardingGermanAccessibilityText() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "onboardingGerman", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+
+        let screen = app.descendants(matching: .any)["onboardingScreen"]
+        XCTAssertTrue(screen.waitForExistence(timeout: 10), "onboarding: the first page never appeared")
+        capture(app, name: "onboarding-german-accessibility-text-page1-welcome")
+
+        let next = app.descendants(matching: .any)["onboardingNextButton"]
+        for (index, name) in ["page2-how-it-works", "page3-language", "page4-engine", "page5-microphone", "page6-name"].enumerated() {
+            XCTAssertTrue(next.waitForExistence(timeout: 10), "onboarding: no Next button on page \(index + 1)")
+            next.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+            capture(app, name: "onboarding-german-accessibility-text-\(name)")
+        }
+        app.swipeUp()
+        capture(app, name: "onboarding-german-accessibility-text-page6-name-form-scrolled")
+    }
+
     /// This simulator's own language is English and the fixture sets Ozen
     /// to Hebrew, as on a phone set to English with Ozen chosen in Hebrew.
     /// A sheet took the phone's direction, not Ozen's: Settings came out
