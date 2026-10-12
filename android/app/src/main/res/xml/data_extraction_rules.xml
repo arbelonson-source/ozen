@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <device-transfer>
+        <exclude domain="file" path="problem-audio/" />
+        <exclude domain="file" path="ozen-journal.log" />
+    </device-transfer>
+</data-extraction-rules>

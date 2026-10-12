@@ -12,6 +12,7 @@
     <application
         android:name=".OzenApplication"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="Ozen"
         android:supportsRtl="true"
