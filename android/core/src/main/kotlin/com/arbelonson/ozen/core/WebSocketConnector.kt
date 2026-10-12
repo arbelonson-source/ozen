@@ -149,8 +149,10 @@ private class WebSocketConnection(
             // it, and closing (with the engine's word that the connection
             // was lost) waited until the system gave up on that send,
             // minutes later. Closing the socket below ends the stuck send.
+            // Joined, not awaited: a far end that hangs up meanwhile cancels
+            // the goodbye, and awaiting it threw that cancel at the caller.
             val goodbye = scope.async { runCatching { write(OPCODE_CLOSE, byteArrayOf(0x03, 0xE8.toByte())) } }
-            withTimeoutOrNull(1_000) { goodbye.await() }
+            withTimeoutOrNull(1_000) { goodbye.join() }
         }
         fail(EOFException("closed by the phone"))
     }

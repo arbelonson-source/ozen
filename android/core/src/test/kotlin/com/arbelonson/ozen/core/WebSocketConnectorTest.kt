@@ -348,6 +348,33 @@ class WebSocketConnectorTest {
     }
 
     @Test
+    fun `closing a connection whose far end hangs up while the goodbye waits to go out ends quietly`() = runBlocking<Unit> {
+        val farEndLeaves = CountDownLatch(1)
+        ScriptedWebSocketServer {
+            farEndLeaves.await(20, TimeUnit.SECONDS)
+            hangUp()
+        }.use { server ->
+            val socket = WebSocketConnector().open(server.url())
+            val lastSent = AtomicLong(System.nanoTime())
+            val sender = launch(Dispatchers.IO) {
+                runCatching {
+                    repeat(2_000) {
+                        socket.send(ByteArray(65_536))
+                        lastSent.set(System.nanoTime())
+                    }
+                }
+            }
+            withTimeout(10_000) { while (System.nanoTime() - lastSent.get() < 500_000_000L) delay(50) }
+            val closing = async(Dispatchers.IO) { runCatching { socket.close() } }
+            delay(200)
+            farEndLeaves.countDown()
+            val closed = withTimeout(5_000) { closing.await() }
+            withTimeout(10_000) { sender.join() }
+            assertTrue(closed.isSuccess, "closing threw ${closed.exceptionOrNull()}")
+        }
+    }
+
+    @Test
     fun `a frame the server masked is refused`() = runBlocking<Unit> {
         ScriptedWebSocketServer { send(1, "hi".toByteArray(), masked = true) }.use { server ->
             val socket = WebSocketConnector().open(server.url())
