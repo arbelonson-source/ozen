@@ -12,6 +12,7 @@ import java.net.URI
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -23,6 +24,7 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 
@@ -318,6 +320,30 @@ class WebSocketConnectorTest {
             val error = assertFailsWith<Exception> { withTimeout(5_000) { socket.receive() } }
             assertFalse(error is SocketClosed, "$error")
             assertIs<IOException>(error)
+        }
+    }
+
+    @Test
+    fun `closing a connection whose far end stopped reading returns at once, not after the stuck send gives up`() = runBlocking<Unit> {
+        val release = CountDownLatch(1)
+        ScriptedWebSocketServer { release.await(20, TimeUnit.SECONDS) }.use { server ->
+            val socket = WebSocketConnector().open(server.url())
+            val lastSent = AtomicLong(System.nanoTime())
+            val sender = launch(Dispatchers.IO) {
+                runCatching {
+                    repeat(2_000) {
+                        socket.send(ByteArray(65_536))
+                        lastSent.set(System.nanoTime())
+                    }
+                }
+            }
+            withTimeout(10_000) { while (System.nanoTime() - lastSent.get() < 500_000_000L) delay(50) }
+            val started = System.nanoTime()
+            socket.close()
+            val tookMillis = (System.nanoTime() - started) / 1_000_000
+            release.countDown()
+            withTimeout(10_000) { sender.join() }
+            assertTrue(tookMillis < 3_000, "closing took $tookMillis ms behind a send stuck on a far end that stopped reading")
         }
     }
 

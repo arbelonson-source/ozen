@@ -20,6 +20,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
@@ -142,9 +143,14 @@ private class WebSocketConnection(
 
     override suspend fun close() {
         if (connection.isCompleted && synchronized(lock) { failure } == null) {
-            withTimeoutOrNull(1_000) {
-                runCatching { write(OPCODE_CLOSE, byteArrayOf(0x03, 0xE8.toByte())) }
-            }
+            // The goodbye goes out beside the close, not in its way: on a
+            // connection whose far end stopped reading, a send stuck there
+            // holds the stream, the timeout can't end a thread waiting on
+            // it, and closing (with the engine's word that the connection
+            // was lost) waited until the system gave up on that send,
+            // minutes later. Closing the socket below ends the stuck send.
+            val goodbye = scope.async { runCatching { write(OPCODE_CLOSE, byteArrayOf(0x03, 0xE8.toByte())) } }
+            withTimeoutOrNull(1_000) { goodbye.await() }
         }
         fail(EOFException("closed by the phone"))
     }
