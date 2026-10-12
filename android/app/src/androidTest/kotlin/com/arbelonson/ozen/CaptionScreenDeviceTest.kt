@@ -96,6 +96,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -190,6 +191,32 @@ class CaptionScreenDeviceTest {
             val later = System.currentTimeMillis() + 7_000
             compose.waitUntil(10_000) { System.currentTimeMillis() >= later }
             compose.onNodeWithText("Settings").assertExists()
+        } finally {
+            app.settings.change { it.display = before }
+        }
+    }
+
+    @Test
+    fun theNewestLineStaysWhollyInViewWhenTheButtonsComeBackAsOnTheIPhone() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.display
+        try {
+            app.settings.change { it.display = it.display.copy(autoHideControls = true) }
+            val lines = (1..40).map {
+                TranscriptSegment(id = UUID.randomUUID(), text = "Line $it of a long talk", isCommitted = true, startTimestamp = it.toDouble(), lastUpdateTimestamp = it.toDouble())
+            }
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines)
+            }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("Settings").fetchSemanticsNodes().isEmpty() }
+            compose.waitForIdle()
+            compose.onNodeWithText("Line 40 of a long talk").assertIsDisplayed()
+            compose.onNodeWithContentDescription("Show the buttons").performClick()
+            compose.onNodeWithText("Settings").assertExists()
+            compose.waitForIdle()
+            val newest = compose.onAllNodesWithText("Line 40 of a long talk").fetchSemanticsNodes().singleOrNull()
+            assertNotNull("the newest line went out of view when the buttons came back", newest)
+            assertEquals("the newest line went under the buttons", newest!!.size.height.toFloat(), newest.boundsInRoot.height, 1f)
         } finally {
             app.settings.change { it.display = before }
         }

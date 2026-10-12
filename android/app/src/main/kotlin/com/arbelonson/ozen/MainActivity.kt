@@ -75,6 +75,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -139,6 +140,7 @@ import com.arbelonson.ozen.core.tr
 import java.text.Bidi
 import java.util.UUID
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -956,6 +958,16 @@ private fun CaptionLines(
 ) {
     LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize) {
         if (following) list.scrollToEnd(lines.lastIndex)
+    }
+    // The buttons coming back, or a turn of the phone, change the room the
+    // lines have; the list keeps its top, so the newest line was left under
+    // the buttons until the next word, a long time in a quiet room. The
+    // iPhone follows again on both.
+    LaunchedEffect(list, following) {
+        if (!following) return@LaunchedEffect
+        snapshotFlow { list.layoutInfo.viewportSize.height }
+            .distinctUntilChanged()
+            .collect { if (list.layoutInfo.totalItemsCount > 0) list.scrollToEnd(list.layoutInfo.totalItemsCount - 1) }
     }
     LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(lines, key = { it.id }) { line ->
