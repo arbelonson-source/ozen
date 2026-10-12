@@ -123,6 +123,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.AppLanguage
+import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
@@ -320,8 +321,16 @@ private fun OzenApp(
         }
     }
     // The walkthrough is long enough for the phone's own lock timeout to
-    // end it partway, as the iPhone found.
-    KeepScreenOn(!current.hasCompletedOnboarding || state.keepsScreenOn(current.display.keepScreenAwake, awakeClock))
+    // end it partway, as the iPhone found. The home computer's backup
+    // downloads outside the captions, often while they are stopped, with
+    // nothing else keeping the app going once the phone locks; the iPhone
+    // keeps the screen on for it too.
+    val backup by app.captions.backupStatus.collectAsStateWithLifecycle()
+    KeepScreenOn(
+        !current.hasCompletedOnboarding ||
+            backup is BackupModelStatus.Downloading ||
+            state.keepsScreenOn(current.display.keepScreenAwake, awakeClock),
+    )
     val look = CaptionTheme.of(current.display.theme, isSystemInDarkTheme())
     LaunchedEffect(look.isLight) { onLightScreen(look.isLight) }
     MaterialTheme(colorScheme = if (look.isLight) lightColorScheme() else darkColorScheme()) {
