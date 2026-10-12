@@ -1,7 +1,18 @@
 package com.arbelonson.ozen
 
+import android.Manifest
 import android.os.ParcelFileDescriptor
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.BackupModelStatus
@@ -51,6 +62,29 @@ class KeepScreenOnDeviceTest {
         compose.waitUntil(5_000) { screenKeptOn() }
         show(PipelinePhase.Paused)
         compose.waitUntil(5_000) { !screenKeptOn() }
+    }
+
+    @Test
+    fun theScreenStaysOnWhileANewSpeakersVoiceIsRecordedSinceALockedPhoneGivesTheAppOnlySilence() {
+        InstrumentationRegistry.getInstrumentation().uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.RECORD_AUDIO)
+        show(PipelinePhase.Idle)
+        compose.waitUntil(5_000) { !screenKeptOn() }
+        try {
+            compose.onAllNodesWithText("Settings").onFirst().performClick()
+            compose.onNodeWithText("Add speaker").performScrollTo().performClick()
+            compose.onNode(hasSetTextAction()).performTextInput("Dana")
+            val window = compose.activity.window
+            compose.runOnUiThread { WindowCompat.getInsetsController(window, window.decorView).hide(WindowInsetsCompat.Type.ime()) }
+            compose.waitUntil(5_000) { compose.runOnUiThread { ViewCompat.getRootWindowInsets(window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom == 0 } }
+            compose.onNodeWithText("Record and save (30 seconds)").performClick()
+            compose.waitUntil(5_000) { SpeakerRecordings.progress.value != null }
+            compose.waitUntil(5_000) { screenKeptOn() }
+            compose.onNodeWithText("Stop without saving").performClick()
+            compose.waitUntil(10_000) { SpeakerRecordings.progress.value == null }
+            compose.waitUntil(5_000) { !screenKeptOn() }
+        } finally {
+            SpeakerRecordings.stop()
+        }
     }
 
     @Test

@@ -330,11 +330,16 @@ private fun OzenApp(
     // end it partway, as the iPhone found. The home computer's backup
     // downloads outside the captions, often while they are stopped, with
     // nothing else keeping the app going once the phone locks; the iPhone
-    // keeps the screen on for it too.
+    // keeps the screen on for it too. A new speaker's half minute of voice
+    // as well: the captions are stopped for it, and once the screen locks
+    // Android hands an app out of sight only silence from the microphone
+    // (the iPhone records on behind its lock screen).
     val backup by app.captions.backupStatus.collectAsStateWithLifecycle()
+    val recordingVoice by SpeakerRecordings.progress.collectAsStateWithLifecycle()
     KeepScreenOn(
         !current.hasCompletedOnboarding ||
             backup is BackupModelStatus.Downloading ||
+            recordingVoice != null ||
             state.keepsScreenOn(current.display.keepScreenAwake, awakeClock),
     )
     val look = CaptionTheme.of(current.display.theme, isSystemInDarkTheme(), phoneAsksForMoreContrast())
