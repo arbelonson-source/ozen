@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.HomeServer
+import com.arbelonson.ozen.core.UILanguage
+import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.core.tr
 
 internal object HomeServerGuide {
@@ -33,6 +35,13 @@ internal object HomeServerGuide {
             ),
         )
 
+    fun whenTheComputerIsOff(spoken: UILanguage): String =
+        if (WhisperModelCatalog.phoneModelSource(spoken) == null) {
+            tr("כשהמחשב כבוי או רחוק, הכתוביות מחכות לו וחוזרות לבד כשהוא עונה שוב.", "When the computer is off or out of reach, captions wait for it and start again by themselves once it answers.")
+        } else {
+            tr("כשהמחשב כבוי או רחוק, טלפון שהגיבוי כבר הורד אליו ממשיך לכתוב כתוביות לבד, וחוזר למחשב כשהוא עונה שוב. בלי הגיבוי, הכתוביות מחכות למחשב.", "When the computer is off or out of reach, a phone that already has the backup downloaded keeps writing captions by itself, and goes back to the computer once it answers again. Without the backup, captions wait for the computer.")
+        }
+
     fun sendLink(context: Context) {
         val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, HomeServer.setupDownload.toString())
         context.startActivity(Intent.createChooser(send, null))
@@ -40,7 +49,7 @@ internal object HomeServerGuide {
 }
 
 @Composable
-internal fun HomeServerGuideScreen(onClose: () -> Unit) {
+internal fun HomeServerGuideScreen(spoken: UILanguage, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     val context = LocalContext.current
     Screen(title = tr("הכנת המחשב בבית", "Setting up the home computer"), close = tr("חזרה", "Back"), onClose = onClose) {
@@ -56,6 +65,7 @@ internal fun HomeServerGuideScreen(onClose: () -> Unit) {
                 Text(HomeServer.setupDownload.toString(), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(tr("מחשב שנכנס למצב שינה לא עונה, כמו מחשב כבוי. ההתקנה מציעה למנוע ממנו להירדם מעצמו כשהוא מחובר לחשמל.", "A computer that has gone to sleep doesn’t answer, just like one that is off. Setup offers to stop it from falling asleep by itself while it is plugged in."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(HomeServerGuide.whenTheComputerIsOff(spoken), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

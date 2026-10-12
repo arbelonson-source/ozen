@@ -1229,6 +1229,31 @@ class SettingsScreenDeviceTest {
         }
     }
 
+    // As on the iPhone, the guide says what captions do while the computer is
+    // off. Only a language whose backup the phone can download hears about the
+    // backup: Hebrew has none to download on Android yet.
+    @Test
+    fun theSetupGuideSaysWhatCaptionsDoWhileTheComputerIsOffAndMentionsTheBackupOnlyWhereOneCanBeDownloaded() {
+        val languageBefore = app.settings.current.value.spokenLanguage
+        app.settings.change {
+            it.engine = TranscriptionEngineKind.HomeServer
+            it.spokenLanguage = UILanguage.Hebrew
+        }
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("How to set up the home computer").performScrollTo().performClick()
+            compose.onNodeWithText("When the computer is off or out of reach, captions wait for it and start again by themselves once it answers.").performScrollTo().assertExists()
+            compose.onNodeWithText("backup", substring = true).assertDoesNotExist()
+            compose.onNodeWithText("Back").performClick()
+
+            app.settings.change { it.spokenLanguage = UILanguage.German }
+            compose.onNodeWithText("How to set up the home computer").performScrollTo().performClick()
+            compose.onNodeWithText("When the computer is off or out of reach, a phone that already has the backup downloaded keeps writing captions by itself, and goes back to the computer once it answers again. Without the backup, captions wait for the computer.").performScrollTo().assertExists()
+        } finally {
+            app.settings.change { it.spokenLanguage = languageBefore }
+        }
+    }
+
     @Test
     fun diagnosticsShowWhatTheCaptionsAreDoingNewestEventFirstAndTheReportGoesOutWithoutThePairingCode() {
         val started = CopyOnWriteArrayList<Intent>()

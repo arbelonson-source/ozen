@@ -158,7 +158,7 @@ fun SettingsScreen(
     }
     var showingGuide by rememberSaveable { mutableStateOf(false) }
     if (showingGuide) {
-        HomeServerGuideScreen(onClose = { showingGuide = false })
+        HomeServerGuideScreen(current.spokenLanguage, onClose = { showingGuide = false })
         return
     }
     var showingSupport by rememberSaveable { mutableStateOf(false) }
