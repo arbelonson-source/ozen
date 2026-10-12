@@ -48,6 +48,9 @@ public final class LiveCaptionViewModel {
     /// The latest keyword hit that got her attention, for screens covering
     /// the captions to show its pill too.
     public private(set) var attentionKeywordHit: KeywordHit?
+    /// The latest buzz this device couldn't give, for whichever screen is
+    /// up to flash its edge instead (see `buzzed`).
+    public private(set) var flashInsteadOfBuzz: BuzzStandIn?
     /// Lines marked as important in the conversation on screen.
     public private(set) var starredSegmentIDs: Set<UUID> = []
 
@@ -1417,6 +1420,16 @@ public final class LiveCaptionViewModel {
         return claimed
     }
 
+    /// Told of every buzz the screen gives. An iPad has no vibration
+    /// motor: her name heard, or talk starting again after a quiet
+    /// stretch, would reach her as a pill she may not be looking at, or as
+    /// nothing at all, so the screen's edge flashes instead (a sound alert
+    /// flashes by itself).
+    public func buzzed(_ vibration: AlertVibration, deviceVibrates: Bool) {
+        guard !deviceVibrates, AlertFlash.insteadOfBuzz(for: vibration, reduceMotion: false) != nil else { return }
+        flashInsteadOfBuzz = BuzzStandIn(vibration: vibration)
+    }
+
     public var keywordAlerts: [KeywordAlert] { settings.keywordAlerts }
 
     /// Adds a word to the list; one already there that was switched off is
@@ -2151,6 +2164,13 @@ public final class LiveCaptionViewModel {
         pipeline.handleMemoryWarning(footprintBytes: footprintBytes)
         persistHistory(ended: false)
     }
+}
+
+/// A buzz the device couldn't give, flashed at the screen's edge instead.
+/// Every one is new, so the same buzz twice flashes twice.
+public struct BuzzStandIn: Equatable, Identifiable, Sendable {
+    public let id = UUID()
+    public let vibration: AlertVibration
 }
 
 /// What the outside world (Siri, Shortcuts, a URL) can ask the app to do.

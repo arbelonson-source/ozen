@@ -26,6 +26,12 @@ public struct AlertFlash: Sendable, Equatable {
         }
     }
 
+    public static func insteadOfBuzz(for vibration: AlertVibration, reduceMotion: Bool) -> AlertFlash? {
+        if vibration == .keyword { return pattern(for: .high, reduceMotion: reduceMotion) }
+        if vibration == .speechResumed { return AlertFlash(litSeconds: 0.8, darkSeconds: 0, count: 1) }
+        return nil
+    }
+
     public static func takesOver(from flashing: SoundEvent.Importance?, with arriving: SoundEvent.Importance, reduceMotion: Bool) -> Bool {
         guard pattern(for: arriving, reduceMotion: reduceMotion) != nil else { return false }
         guard let flashing else { return true }

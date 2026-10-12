@@ -25,6 +25,20 @@ struct AlertFlashTests {
         }
     }
 
+    @Test("a buzz the device can't give lights the edge instead: her name like the door, talk resuming once, never faster than the guideline; a sound flashes by itself")
+    func insteadOfBuzz() throws {
+        for reduceMotion in [false, true] {
+            #expect(AlertFlash.insteadOfBuzz(for: .keyword, reduceMotion: reduceMotion) == AlertFlash.pattern(for: .high, reduceMotion: reduceMotion))
+            let resumed = try #require(AlertFlash.insteadOfBuzz(for: .speechResumed, reduceMotion: reduceMotion))
+            #expect(resumed.count == 1)
+            #expect(resumed.litSeconds > 0)
+            #expect(resumed.flashesPerSecond < AlertFlash.maximumFlashesPerSecond)
+            for importance in SoundEvent.Importance.allCases {
+                #expect(AlertFlash.insteadOfBuzz(for: .pattern(for: importance), reduceMotion: reduceMotion) == nil, "\(importance)")
+            }
+        }
+    }
+
     @Test("the limit is the seizure guideline's three flashes a second, and a flash is one lit-and-dark cycle")
     func limitIsTheGuideline() {
         #expect(AlertFlash.maximumFlashesPerSecond <= 3)

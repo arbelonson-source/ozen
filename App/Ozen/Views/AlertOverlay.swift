@@ -35,7 +35,7 @@ private struct AlertOverlay: ViewModifier {
                 }
             }
             .overlay {
-                AlertFlashOverlay(alert: viewModel.currentScreenSoundAlert)
+                AlertFlashOverlay(alert: viewModel.currentScreenSoundAlert, standIn: viewModel.flashInsteadOfBuzz)
             }
             .onChange(of: viewModel.screenSoundAlert?.id) { _, _ in
                 guard let alert = viewModel.currentScreenSoundAlert, alert.takesBanner(from: shown) else { return }

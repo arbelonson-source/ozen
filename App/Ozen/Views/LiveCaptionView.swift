@@ -275,7 +275,7 @@ struct LiveCaptionView: View {
             // Removed rather than fed nil while covered, so closing the
             // covering screen doesn't replay the last flash.
             if !isCoveredByAlertScreen {
-                AlertFlashOverlay(alert: viewModel.currentScreenSoundAlert)
+                AlertFlashOverlay(alert: viewModel.currentScreenSoundAlert, standIn: viewModel.flashInsteadOfBuzz)
             }
         }
         .preferredColorScheme(theme.preferredScheme)
@@ -1410,6 +1410,7 @@ struct LiveCaptionView: View {
     private func vibrate(_ vibration: AlertVibration) {
         viewModel.pipeline.ignoreSounds(whileVibrating: vibration)
         AlertHapticPlayer.shared.play(vibration)
+        viewModel.buzzed(vibration, deviceVibrates: AlertHapticPlayer.shared.supportsHaptics)
     }
 
     /// Opens the big-letters pad a Shortcut asked for. Only one sheet can

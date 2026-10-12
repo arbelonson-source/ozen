@@ -300,20 +300,46 @@ struct SoundAlertBanner: View {
 
 /// Flashes the edge of the whole screen when a safety or door sound is
 /// heard (see `AlertFlash`), so it's noticed without looking at the
-/// banner. Only new alerts flash, not one that was already there when the
+/// banner, and in place of a buzz the device can't give (`standIn`: her
+/// name, or talk starting again, on an iPad, which has no vibration
+/// motor). Only new alerts flash, not one that was already there when the
 /// screen appeared. Takes no touches, and is invisible when dark.
 struct AlertFlashOverlay: View {
     let alert: SoundAlert?
+    var standIn: BuzzStandIn? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var flashing: SoundAlert?
+    @State private var flashing: Run?
     /// Kept after a flash ends, so its last fade doesn't change colour.
-    @State private var tint = SoundEvent.Importance.critical
+    @State private var tint = Tint.sound(.critical)
     @State private var isLit = false
+
+    private enum Tint: Equatable {
+        case sound(SoundEvent.Importance)
+        /// Her name or talk heard, in the yellow of the name's pill.
+        case heard
+    }
+
+    /// One alert's flashing. A stand-in for a buzz has no importance: it
+    /// never cuts a sound's flash short, and any sound that flashes cuts
+    /// it short.
+    private struct Run: Equatable {
+        let id: UUID
+        let flash: AlertFlash
+        let tint: Tint
+        let importance: SoundEvent.Importance?
+    }
+
+    private var colour: Color {
+        switch tint {
+        case .sound(let importance): SoundAlertsView.tint(importance)
+        case .heard: .yellow
+        }
+    }
 
     var body: some View {
         Rectangle()
-            .strokeBorder(SoundAlertsView.tint(tint), lineWidth: 22)
-            .background(SoundAlertsView.tint(tint).opacity(0.2))
+            .strokeBorder(colour, lineWidth: 22)
+            .background(colour.opacity(0.2))
             .ignoresSafeArea()
             .opacity(isLit ? 1 : 0)
             .allowsHitTesting(false)
@@ -322,20 +348,25 @@ struct AlertFlashOverlay: View {
                 // A kettle, or the door, heard during a siren's flash doesn't
                 // cut it short.
                 guard let alert,
-                      AlertFlash.takesOver(from: flashing?.event.importance, with: alert.event.importance, reduceMotion: reduceMotion)
-                else { return }
-                flashing = alert
-                tint = alert.event.importance
-            }
-            .task(id: flashing?.id) {
-                guard let alert = flashing,
+                      AlertFlash.takesOver(from: flashing?.importance, with: alert.event.importance, reduceMotion: reduceMotion),
                       let flash = AlertFlash.pattern(for: alert.event.importance, reduceMotion: reduceMotion)
                 else { return }
+                start(Run(id: alert.id, flash: flash, tint: .sound(alert.event.importance), importance: alert.event.importance))
+            }
+            .onChange(of: standIn?.id) { _, _ in
+                guard let standIn, flashing?.importance == nil,
+                      let flash = AlertFlash.insteadOfBuzz(for: standIn.vibration, reduceMotion: reduceMotion)
+                else { return }
+                start(Run(id: standIn.id, flash: flash, tint: .heard, importance: nil))
+            }
+            .task(id: flashing?.id) {
+                guard let run = flashing else { return }
+                let flash = run.flash
                 // A newer alert cancels this run, but a cancelled task still
                 // wakes up: only the run for the alert still flashing may
                 // touch the light, or this one's "off" could land on the
                 // newer one's first flash.
-                let id = alert.id
+                let id = run.id
                 // Over, or the screen went away: the next alert flashes
                 // whatever it is, and coming back doesn't replay this one.
                 defer { if flashing?.id == id { flashing = nil } }
@@ -350,6 +381,11 @@ struct AlertFlashOverlay: View {
                     if Task.isCancelled { return }
                 }
             }
+    }
+
+    private func start(_ run: Run) {
+        flashing = run
+        tint = run.tint
     }
 }
 

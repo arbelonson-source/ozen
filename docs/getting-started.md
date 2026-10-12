@@ -26,7 +26,9 @@ pages at any time. On the last page the button changes to **Start**
    next section.
 4. **The microphone.** The first permission. See below.
 5. **When you're called.** You type the name, and the phone then vibrates
-   and marks the line whenever someone says it. See below.
+   and marks the line whenever someone says it. See below. An iPad can't
+   vibrate: there the edge of the screen flashes yellow instead, and it
+   does the same when someone starts talking after a long quiet stretch.
 6. **Ready.** Tells you what to expect on the first run. The button then
    starts the captions.
 

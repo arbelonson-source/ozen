@@ -24,6 +24,24 @@ struct LiveCaptionViewModelTests {
         )
     }
 
+    @Test("on a device that can't vibrate, the buzz for her name or for talk resuming becomes a flash every screen shows; a sound flashes by itself, and a device that buzzes gets none")
+    func flashInsteadOfBuzz() throws {
+        let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
+        viewModel.buzzed(.keyword, deviceVibrates: true)
+        #expect(viewModel.flashInsteadOfBuzz == nil)
+        viewModel.buzzed(.pattern(for: .critical), deviceVibrates: false)
+        #expect(viewModel.flashInsteadOfBuzz == nil)
+
+        viewModel.buzzed(.keyword, deviceVibrates: false)
+        let name = try #require(viewModel.flashInsteadOfBuzz)
+        #expect(name.vibration == .keyword)
+        viewModel.buzzed(.speechResumed, deviceVibrates: false)
+        #expect(viewModel.flashInsteadOfBuzz?.vibration == .speechResumed)
+        viewModel.buzzed(.keyword, deviceVibrates: false)
+        #expect(viewModel.flashInsteadOfBuzz?.vibration == .keyword)
+        #expect(viewModel.flashInsteadOfBuzz?.id != name.id, "the same buzz again is a new flash")
+    }
+
     @Test("a fresh view model loads default settings when no settings file exists yet")
     func loadsDefaultsWithNoExistingFile() {
         let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
