@@ -2,17 +2,23 @@
 
 For the person who will use Ozen, and anyone helping to set up the phone.
 
+This guide follows the iPhone and iPad. The Android app (see
+[Installing on Android](../README.md#installing-on-android)) asks the same
+things in nearly the same words, without the setup page: it always starts
+with the phone's own speech model.
+
 ## What Ozen does
 
 Ozen turns what the people around you say into large captions on your
 phone, as they speak. It was made for someone who is deaf or hard of
-hearing. The captions are always of Hebrew speech. The buttons and
-settings can be in any of twelve languages. Once the speech model is on the
+hearing. The captions are written in the language the people around you
+speak, chosen from twelve (Hebrew unless you pick another). The buttons and
+settings can be in any of the same twelve languages. Once the speech model is on the
 phone, the captions are written on the phone itself, with no internet.
 
 ## The first launch
 
-The first time Ozen opens, it shows six short pages in large type. Swipe, or
+The first time Ozen opens, it shows seven short pages in large type. Swipe, or
 tap **Next** (ha-ba) at the bottom. Tap **Skip** (dilug) to leave the
 pages at any time. On the last page the button changes to **Start**
 (lehatchil).
@@ -22,14 +28,17 @@ pages at any time. On the last page the button changes to **Start**
 2. **How it works.** Four short lines: captions run on their own, the app
    tells speakers apart, it alerts you to names, doorbells and alarms, and you
    can type a reply that the phone says aloud.
-3. **One-time setup.** You choose how the captions are written. See the
+3. **The language.** Which language the people around you speak, from a
+   list of twelve with Hebrew first. The captions are written in it, and
+   Settings can change it at any time.
+4. **One-time setup.** You choose how the captions are written. See the
    next section.
-4. **The microphone.** The first permission. See below.
-5. **When you're called.** You type the name, and the phone then vibrates
+5. **The microphone.** The first permission. See below.
+6. **When you're called.** You type the name, and the phone then vibrates
    and marks the line whenever someone says it. See below. An iPad can't
    vibrate: there the edge of the screen flashes yellow instead, and it
    does the same when someone starts talking after a long quiet stretch.
-6. **Ready.** Tells you what to expect on the first run. The button then
+7. **Ready.** Tells you what to expect on the first run. The button then
    starts the captions.
 
 If a family member scanned the home computer's code first, the setup page
@@ -187,7 +196,7 @@ conversations. Conversations with a starred line or a name are always kept.
 They stay on the phone, and in its own backup when the backup is on.
 
 Near the bottom of Settings, **Show the initial walkthrough again**
-(lehatzig shuv et ha-hesber ha-rishoni) brings back the six pages from the
+(lehatzig shuv et ha-hesber ha-rishoni) brings back the seven pages from the
 first launch.
 
 ## The lock screen, Siri and the Action button
