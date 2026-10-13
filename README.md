@@ -184,7 +184,8 @@ Open a section for the details.
   captions and alerts carry on), auto-scroll that stops when you scroll up to re-read (with a
   "To the last line" (la-shura ha-achrona) pill that turns into a count of
   the lines said meanwhile, like "3 new lines"). The screen keeps
-  the newest 300 lines; above them a note opens the saved conversation at the
+  the newest 300 lines (while you read back, the lines above you stay
+  put, up to 600); above them a note opens the saved conversation at the
   last line that scrolled away. With VoiceOver on, each finished line is read
   out or sent to a braille display by itself, once (again only if a slow
   engine then corrects its words), with the speaker's name when the

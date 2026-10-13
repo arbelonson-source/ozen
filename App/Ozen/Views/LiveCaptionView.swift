@@ -543,7 +543,7 @@ struct LiveCaptionView: View {
                 LazyVStack(alignment: .leading, spacing: max(12, liveDisplay.fontSize * 0.6)) {
                     if viewModel.segments.isEmpty {
                         emptyState
-                    } else if CaptionLayout.firstOnScreenIndex(lineCount: viewModel.segments.count) > 0 {
+                    } else if firstDrawnIndex > 0 {
                         earlierLinesNote
                     }
                     let mark = awayMark
@@ -698,7 +698,7 @@ struct LiveCaptionView: View {
         let segments = viewModel.segments
         guard let index = viewModel.awayCatchUp.drawnMarkIndex(
             in: segments,
-            firstDrawnIndex: CaptionLayout.firstOnScreenIndex(lineCount: segments.count)
+            firstDrawnIndex: firstDrawnIndex
         ) else { return nil }
         return (index, segments[index].id, viewModel.awayCatchUp.missedLineCount(in: segments))
     }
@@ -796,15 +796,24 @@ struct LiveCaptionView: View {
     /// line before it, even the first one drawn.
     private var onScreenLines: [(index: Int, segment: TranscriptSegment)] {
         let segments = viewModel.segments
-        let start = CaptionLayout.firstOnScreenIndex(lineCount: segments.count)
-        return segments.indices.dropFirst(start).map { ($0, segments[$0]) }
+        return segments.indices.dropFirst(firstDrawnIndex).map { ($0, segments[$0]) }
+    }
+
+    /// Where the drawn lines start. Scrolled up to re-read, they stay where
+    /// they started then, so a new line doesn't take the top one away and
+    /// move what she reads up a row (`CaptionLayout.firstOnScreenIndex`).
+    private var firstDrawnIndex: Int {
+        CaptionLayout.firstOnScreenIndex(
+            lineCount: viewModel.segments.count,
+            heldAt: isPinnedToBottom ? nil : CaptionLayout.firstOnScreenIndex(lineCount: lineCountWhenUnpinned)
+        )
     }
 
     /// Above the first line drawn, once the oldest ones are no longer:
     /// one tap opens the saved conversation at the last line that went.
     @ViewBuilder
     private var earlierLinesNote: some View {
-        let lastHidden = CaptionLayout.firstOnScreenIndex(lineCount: viewModel.segments.count) - 1
+        let lastHidden = firstDrawnIndex - 1
         if let saved = viewModel.savedConversationID(holdingLineAt: lastHidden) {
             let lineID = viewModel.segments[lastHidden].id
             Button {

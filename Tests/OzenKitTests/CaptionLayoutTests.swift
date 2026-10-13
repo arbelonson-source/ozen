@@ -252,6 +252,21 @@ struct CaptionLayoutOnScreenTests {
         #expect(CaptionLayout.firstOnScreenIndex(lineCount: 20_000) == 20_000 - CaptionLayout.onScreenLineLimit)
     }
 
+    @Test("while she reads back, a new line no longer takes the top one away, until twice the limit are drawn")
+    func heldWhileReadingBack() {
+        let limit = CaptionLayout.onScreenLineLimit
+        // Scrolled up when 320 lines were there: the first drawn was line 20.
+        let held = CaptionLayout.firstOnScreenIndex(lineCount: limit + 20)
+        #expect(CaptionLayout.firstOnScreenIndex(lineCount: limit + 21, heldAt: held) == 20)
+        #expect(CaptionLayout.firstOnScreenIndex(lineCount: limit + 200, heldAt: held) == 20)
+        #expect(CaptionLayout.firstOnScreenIndex(lineCount: 2 * limit + 20, heldAt: held) == 20)
+        #expect(CaptionLayout.firstOnScreenIndex(lineCount: 2 * limit + 21, heldAt: held) == 21)
+        // Back at the newest line, the window is the usual one again.
+        #expect(CaptionLayout.firstOnScreenIndex(lineCount: limit + 200, heldAt: nil) == 200)
+        // Lines cleared while she was scrolled up: nothing held past them.
+        #expect(CaptionLayout.firstOnScreenIndex(lineCount: 5, heldAt: held) == 0)
+    }
+
     @Test("the README and the troubleshooting guide give the screen's line limit")
     func docsGiveTheLimit() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()

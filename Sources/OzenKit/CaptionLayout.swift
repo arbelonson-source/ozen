@@ -210,6 +210,17 @@ extension CaptionLayout {
     public static func firstOnScreenIndex(lineCount: Int) -> Int {
         max(0, lineCount - onScreenLineLimit)
     }
+
+    /// Where the drawn lines start while she reads back, `held` being
+    /// where they started when she scrolled up (nil at the newest line).
+    /// Each new line used to take the top one away, and what she was
+    /// reading moved up a row with every line said. Held, nothing above
+    /// her moves; once twice the limit are drawn, the oldest go again.
+    public static func firstOnScreenIndex(lineCount: Int, heldAt held: Int?) -> Int {
+        let usual = firstOnScreenIndex(lineCount: lineCount)
+        guard let held else { return usual }
+        return max(min(held, usual), lineCount - 2 * onScreenLineLimit)
+    }
 }
 
 extension CaptionLayout {
