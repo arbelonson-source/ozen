@@ -1,8 +1,10 @@
-name: Build sideloadable IPA
+name: Build sideloadable IPA and Android APK
 
 # Manual only - this is heavier than the per-push CI build (it also has to
 # link WhisperKit for a real device architecture, not just the simulator)
 # and is only needed when there's actually a new build to put on a phone.
+# The iPhone and Android builds run side by side and go out together, in
+# one release under one build number.
 on:
   workflow_dispatch:
 
@@ -10,6 +12,56 @@ permissions:
   contents: write
 
 jobs:
+  build-apk:
+    name: Build the signed Android APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build the release APK, signed with Ozen's key
+        # Android installs an update only over an app signed with the same
+        # key, so every release is signed with the one key kept in the
+        # repository's secrets. The version is the iPhone build's: 0.2.N.
+        working-directory: android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          OZEN_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          VERSION=$(sed -n 's/^ *MARKETING_VERSION: *"\([0-9.]*\)".*/\1/p' ../project.yml | head -n 1)
+          if [ -z "$VERSION" ]; then
+            echo "MARKETING_VERSION not found in project.yml" >&2
+            exit 1
+          fi
+          export OZEN_KEYSTORE="$RUNNER_TEMP/ozen-release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$OZEN_KEYSTORE"
+          ./gradlew :core:test :app:testDebugUnitTest :app:assembleRelease \
+            -PozenVersionCode=${{ github.run_number }} \
+            -PozenVersionName="${VERSION%.*}.${{ github.run_number }}"
+          rm -f "$OZEN_KEYSTORE"
+      - name: The APK carries the speech code for every processor and Ozen's signature
+        working-directory: android
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/app-release.apk
+          bash check-apk.sh "$APK"
+          # A missing secret builds an unsigned APK, which no phone installs;
+          # another key would lock every phone out of the next update.
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs "$APK" | tee signature.txt
+          grep -q "certificate SHA-256 digest: cb25d52af671aa79854c0314e4ca6686ae35524fd0467037222096be9df330ec" signature.txt
+          cp "$APK" ../Ozen.apk
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ozen-apk
+          path: Ozen.apk
+          if-no-files-found: error
+
   build-ipa:
     name: Build unsigned device IPA
     runs-on: macos-15
@@ -75,6 +127,29 @@ jobs:
           cp -R "$APP_PATH" Payload/
           zip -r -q Ozen.ipa Payload
           ls -la Ozen.ipa
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ozen-ipa
+          path: Ozen.ipa
+          if-no-files-found: error
+
+  publish:
+    name: Publish both as one GitHub Release
+    needs: [build-apk, build-ipa]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The whole history and its tags, so the release notes can list
+          # what changed since the previous build.
+          fetch-depth: 0
+      - uses: actions/download-artifact@v6
+        with:
+          name: ozen-ipa
+      - uses: actions/download-artifact@v6
+        with:
+          name: ozen-apk
       - name: Publish as a GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -93,7 +168,7 @@ jobs:
           # commit subject, so whoever installs it can see what's new.
           PREVIOUS=$(git tag --list 'v*' --sort=-version:refname | grep -v "^$TAG\$" | head -n 1 || true)
           {
-            echo "Unsigned device build for sideloading via SideStore/AltStore (they re-sign it locally with your own Apple ID - this file is not code-signed and won't install any other way). Built from commit ${{ github.sha }}. Settings shows ${{ github.run_number }} in brackets after the version."
+            echo "Ozen.ipa is the iPhone and iPad app: an unsigned device build for sideloading (Impactor, SideStore or AltStore re-sign it with your own Apple ID; it won't install any other way). Ozen.apk is the Android app, for Android 8 or later: open it on the phone and allow installing from that source when asked. Built from commit ${{ github.sha }}; Settings shows ${{ github.run_number }} in brackets after the version on the iPhone, and ${VERSION%.*}.${{ github.run_number }} as the version on Android."
             echo
             if [ -n "$PREVIOUS" ]; then
               echo "## Changes since build ${PREVIOUS##*.}"
@@ -114,7 +189,7 @@ jobs:
           # fetches the server from the newest release's zip.
           (cd server && zip -q ../ozen-home-server.zip ozen_server.py pairing.py try_server.py requirements.txt setup-windows.ps1)
           cp server/Ozen-Home-Setup.cmd .
-          gh release create "$TAG" Ozen.ipa ozen-home-server.zip Ozen-Home-Setup.cmd \
+          gh release create "$TAG" Ozen.ipa ozen-home-server.zip Ozen-Home-Setup.cmd Ozen.apk \
             --target "${{ github.sha }}" \
             --title "Ozen build ${{ github.run_number }}" \
             --notes-file release-notes.md \

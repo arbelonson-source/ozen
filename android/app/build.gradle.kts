@@ -15,8 +15,10 @@ android {
         applicationId = "com.arbelonson.ozen"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        // A release takes the build number of the iPhone build it ships
+        // beside (release.yml), so one number names both.
+        versionCode = providers.gradleProperty("ozenVersionCode").orNull?.toInt() ?: 1
+        versionName = providers.gradleProperty("ozenVersionName").orNull ?: "0.1.0"
         testInstrumentationRunner = "com.arbelonson.ozen.OzenTestRunner"
 
         ndk {
@@ -30,6 +32,28 @@ android {
     }
 
     ndkVersion = "30.0.16248370"
+
+    // The release key lives outside the repository (CI reads it from its
+    // secrets). Every update has to be signed with the same key or Android
+    // refuses to install it over the app, so without it a release build
+    // comes out unsigned rather than signed with some other key.
+    val keystore = providers.environmentVariable("OZEN_KEYSTORE").orNull
+    signingConfigs {
+        if (keystore != null) {
+            create("release") {
+                storeFile = file(keystore)
+                storePassword = providers.environmentVariable("OZEN_KEYSTORE_PASSWORD").get()
+                keyAlias = "ozen"
+                keyPassword = providers.environmentVariable("OZEN_KEYSTORE_PASSWORD").get()
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.findByName("release")
+        }
+    }
 
     externalNativeBuild {
         cmake {
