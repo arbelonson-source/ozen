@@ -154,6 +154,13 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "\(prefix): the caption screen never appeared")
         capture(app, name: "\(prefix)-1-captions")
 
+        // While captions run the bar slides away after a few seconds, and
+        // the reply button was then below the screen's edge (a 6.9-inch
+        // iPhone in Hebrew, a 13-inch iPad in English).
+        let revealControls = app.descendants(matching: .any)["showControlsButton"]
+        if revealControls.waitForExistence(timeout: 2) {
+            revealControls.tap()
+        }
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
         XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "\(prefix): the reply button never appeared")
         typeToSpeakButton.tap()
