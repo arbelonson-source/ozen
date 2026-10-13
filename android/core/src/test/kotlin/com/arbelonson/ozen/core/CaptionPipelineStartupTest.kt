@@ -60,6 +60,25 @@ class CaptionPipelineStartupTest {
     }
 
     @Test
+    fun `the screen is told of each step of preparing, the download's percent and the set-up after it`() = runTest {
+        val updates = listOf(
+            EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.25, detail = "small"),
+            EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.5, detail = "small"),
+            EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel),
+        )
+        val engine = FakeEngine(progressUpdates = updates)
+        val (pipeline, _, _) = makePipeline(engines = mapOf(TranscriptionEngineKind.WhisperKit to engine))
+        val told = ArrayList<EnginePreparationProgress>()
+        pipeline.onPhaseChange = { phase -> phase.preparationProgress?.let { told.add(it) } }
+        pipeline.onPreparationProgress = { phase -> phase.preparationProgress?.let { told.add(it) } }
+
+        pipeline.start(AppSettings.default)
+
+        assertTrue(updates.all { it in told }, "told only $told")
+        assertEquals(PipelinePhase.Listening, pipeline.phase)
+    }
+
+    @Test
     fun `a download's progress replaces what's on screen only at another whole percent`() = runTest {
         val updates = listOf(0.100, 0.101, 0.104, 0.106, 0.107).map {
             EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = it, detail = "small")

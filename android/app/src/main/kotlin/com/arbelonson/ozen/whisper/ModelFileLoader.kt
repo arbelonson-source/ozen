@@ -26,6 +26,8 @@ class ModelFileLoader(
     private val download: PhoneModelDownloader? = null,
     private val network: () -> NetworkConditions? = { null },
     private val freeBytes: () -> Long? = { null },
+    /** The model list's name for the model, which the status line shows while it downloads and is set up. */
+    private val variant: String? = null,
     private val open: (path: String, libraryDir: String) -> WhisperModel? = { path, libraryDir -> WhisperModel.load(path, libraryDir) },
 ) : WhisperModelLoader {
     override suspend fun pendingDownloadMegabytes(): Int? = if (file.isFile) null else download?.pendingMegabytes()
@@ -46,7 +48,7 @@ class ModelFileLoader(
         if (!file.isFile) {
             fetch(download ?: throw EngineUnavailability(EngineUnavailability.Kind.ModelNotOnDevice, "${file.name} is not on this phone"), cellularDownloadAllowed, progress)
         }
-        progress(EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel, detail = file.name))
+        progress(EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel, detail = variant ?: file.name))
         var opened: WhisperModel? = null
         try {
             withContext(Dispatchers.IO) { opened = open(file.path, libraryDir) }
@@ -76,7 +78,7 @@ class ModelFileLoader(
                     }
                     if (fraction - shown >= 0.001 || (fraction == 1.0 && shown < 1.0)) {
                         shown = fraction
-                        progress(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = fraction, detail = file.name))
+                        progress(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = fraction, detail = variant ?: file.name))
                     }
                 }
             }

@@ -7,6 +7,7 @@ import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PhoneModelSource
 import com.arbelonson.ozen.core.ReleaseFileFetching
 import com.arbelonson.ozen.core.StorageSpaceGate
+import com.arbelonson.ozen.core.WhisperModelCatalog
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -118,6 +119,15 @@ class ModelFileLoaderTest {
         assertEquals(1.0, downloading.last().fraction)
         assertEquals(EnginePreparationProgress.Stage.LoadingModel, steps.last().stage)
         assertNull(loader.pendingDownloadMegabytes())
+    }
+
+    @Test
+    fun `the download and the set-up name the model as the model list does, not by its file`() = runBlocking {
+        val loader = ModelFileLoader(file, "/lib", download = PhoneModelDownloader(file, source, ChunkedModel(data)), variant = WhisperModelCatalog.RECOMMENDED_VARIANT) { _, _ -> null }
+        val steps = mutableListOf<EnginePreparationProgress>()
+        assertFailsWith<EngineUnavailability> { loader.load("he", cellularDownloadAllowed = true) { steps.add(it) } }
+        assertEquals(setOf(EnginePreparationProgress.Stage.DownloadingModel, EnginePreparationProgress.Stage.LoadingModel), steps.map { it.stage }.toSet())
+        assertEquals(setOf("Turbo Hebrew, noise-trained (Ozen)"), steps.map { WhisperModelCatalog.option(it.detail ?: "")?.displayName }.toSet())
     }
 
     @Test

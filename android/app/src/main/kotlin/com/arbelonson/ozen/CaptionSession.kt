@@ -365,6 +365,7 @@ class CaptionSession(
             publish()
             announceStopOrReturn()
         }
+        pipeline.onPreparationProgress = { publish() }
         pipeline.onCaptionsChanged = ::publish
         pipeline.onInputsChanged = ::publishInputs
         pipeline.onKeywordHits = ::wordsHeard
@@ -1012,6 +1013,7 @@ class CaptionSession(
                     download = WhisperModelCatalog.phoneModelSource(settings.spokenLanguage)?.let { PhoneModelDownloader(model, it, modelFetcher) },
                     network = { networkNow() },
                     freeBytes = { freeSpace() },
+                    variant = WhisperModelCatalog.recommendedVariant(settings.spokenLanguage),
                 ),
                 voiceScorerFactory = ::voiceScore,
                 heat = { heatNow },

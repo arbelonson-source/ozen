@@ -72,7 +72,10 @@ class CaptionPipeline(
             // Download progress moves many times a second; only a change
             // of step is news.
             noteStep(old)
-            if (old.preparationProgress != null && value.preparationProgress != null) return
+            if (old.preparationProgress != null && value.preparationProgress != null) {
+                onPreparationProgress?.invoke(value)
+                return
+            }
             onPhaseChange?.invoke(value)
         }
 
@@ -366,6 +369,14 @@ class CaptionPipeline(
      * just after.
      */
     var onPhaseChange: ((PipelinePhase) -> Unit)? = null
+
+    /**
+     * Each later step or percent while the engine gets ready, which
+     * [onPhaseChange] leaves out. The screen has to hear them: without
+     * them it said "Checking the transcription engine" for a whole
+     * download, never its percent or the set-up after it.
+     */
+    var onPreparationProgress: ((PipelinePhase) -> Unit)? = null
 
     /**
      * A caption line was added or changed, or the transcript was cleared.
