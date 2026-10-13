@@ -24,8 +24,10 @@ phone itself, and Ozen has no analytics or usage-reporting code.
 Ozen does go online for a few things that are not your words:
 
 - To download a speech model, once. The files come from Argmax's model
-  site or from Ozen's own page on GitHub. Like any download, the site can
-  see the phone's internet address.
+  site or from Ozen's own page on GitHub; on Android, from Ozen's page on
+  GitHub (Hebrew) or whisper.cpp's page on Hugging Face (the other
+  languages). Like any download, the site can see the phone's internet
+  address.
 - To fetch the model's word list the first time a model loads. After that it
   is kept on the phone.
 - To ask a cloud service whether your key still works, if you use cloud

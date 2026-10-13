@@ -10,6 +10,7 @@
   <a href="https://github.com/arbelonson-source/ozen/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/arbelonson-source/ozen?label=release&color=orange"></a>
   <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-blue"></a>
   <img alt="iOS 17 or later" src="https://img.shields.io/badge/iOS-17%2B-lightgrey?logo=apple">
+  <img alt="Android 8 or later" src="https://img.shields.io/badge/Android-8%2B-lightgrey?logo=android">
 </p>
 <p align="center">
   <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white">
@@ -40,6 +41,13 @@ either unreliable with external microphones or too shallow to trust.
   in huge letters.
 - **Faster with a home computer.** Optionally, a PC with a graphics card
   writes the captions, faster and more accurately than the phone.
+
+**Get it:** each [release](https://github.com/arbelonson-source/ozen/releases/latest)
+has `Ozen.apk` for Android phones and `Ozen.ipa` for iPhone and iPad; see
+[Installing on Android](#installing-on-android) and
+[Installing on a phone without a Mac](#installing-on-a-phone-without-a-mac).
+The Android app is new: it passes its tests on an emulator, but nobody has
+used it on a real phone yet.
 
 **Guides:** [Getting started](docs/getting-started.md) ·
 [Where your words go](docs/privacy.md) ·
@@ -647,14 +655,37 @@ xcodegen generate
 xcodebuild -project Ozen.xcodeproj -scheme Ozen -destination "platform=iOS Simulator,name=iPhone 16" test
 ```
 
-The Android app (being built, not ready to use yet) needs Java 21 and the
-Android SDK, plus the NDK for whisper.cpp:
+The Android app needs Java 21 and the Android SDK, plus the NDK for
+whisper.cpp:
 
 ```bash
 cd android
 ./gradlew :core:test            # the portable core, on the JVM, no emulator
 ./gradlew :app:assembleDebug    # the debug APK
 ```
+
+## Installing on Android
+
+Each release has `Ozen.apk`, built by `.github/workflows/release.yml` and
+signed with Ozen's own key, for Android 8 or later on a phone with a 64-bit
+processor:
+
+1. On the phone, open the [latest release](https://github.com/arbelonson-source/ozen/releases/latest)
+   and tap `Ozen.apk` to download it.
+2. Open the downloaded file. Android asks whether to allow installing apps
+   from the browser or the Files app; allow it, then tap Install.
+3. Open Ozen. The walkthrough asks which language the people around you
+   speak. The first time captions start, Ozen downloads the speech model
+   for that language (574 MB, over Wi-Fi unless "Download models on
+   cellular data too" is on in Settings) and shows how far it has got;
+   after that it works without the internet.
+
+A newer `Ozen.apk` installs over the old one and keeps the conversations,
+names and settings. The Hebrew model is Ozen's own, the same one the
+iPhone uses, converted for whisper.cpp (a release of
+[ozen-models](https://github.com/arbelonson-source/ozen-models/releases));
+the other languages use whisper.cpp's general Turbo model from Hugging
+Face.
 
 ## Installing on a phone without a Mac
 
@@ -696,17 +727,20 @@ Ozen's own version of the speech model, trained to hear across a noisy
 room, has been the recommended model since 9 October 2026; see
 [Training](#training-a-model-that-hears-across-the-room).
 
-An Android version is being built in `android/`, started on 10 October
-2026 as a full Kotlin rewrite. The portable core and the caption pipeline
-are ported (about 1,700 tests on the JVM), and whisper.cpp runs on the
-phone with the same Hebrew model as the iPhone, or with its general Turbo
-model, downloaded on first use, for the other spoken languages. The main screens work on
-an emulator (the first-launch walkthrough, captions, History, Settings,
-Diagnostics, and typing a reply for the phone to say), with sound alerts
+The Android version, a full Kotlin rewrite started on 10 October 2026,
+ships in every release since build 119 as `Ozen.apk` (see
+[Installing on Android](#installing-on-android)). The portable core and
+the caption pipeline are ported (about 1,700 tests on the JVM), and
+whisper.cpp runs on the phone with the same Hebrew model as the iPhone,
+or with its general Turbo model for the other spoken languages, either
+downloaded the first time captions start. The walkthrough, captions,
+History, Settings, Diagnostics and typing a reply for the phone to say
+are checked by about 250 tests on an Android emulator, with sound alerts
 recognised by Google's [YAMNet](https://github.com/tensorflow/models/tree/master/research/audioset/yamnet)
 (Apache 2.0) and speaker names from the same WeSpeaker CAM++ model as the
-iPhone, both run on the phone with LiteRT, but there is no build to
-install yet. The plan and how far it has got are in
+iPhone, both run on the phone with LiteRT. It has not been used on a real
+phone yet, so expect rough edges; a Bluetooth headset's microphone
+probably isn't picked up yet (nothing starts the headset's call audio). The plan and how far it has got are in
 [docs/design/2026-10-10-android.md](docs/design/2026-10-10-android.md).
 
 ## Support Ozen
