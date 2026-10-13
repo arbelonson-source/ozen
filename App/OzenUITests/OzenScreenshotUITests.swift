@@ -156,13 +156,15 @@ final class OzenScreenshotUITests: XCTestCase {
 
         // While captions run the bar slides away after a few seconds, and
         // the reply button was then below the screen's edge (a 6.9-inch
-        // iPhone in Hebrew, a 13-inch iPad in English).
+        // iPhone in Hebrew, a 13-inch iPad in English); a tap while the bar
+        // was still sliding back in missed it too (the iPad in Hebrew).
         let revealControls = app.descendants(matching: .any)["showControlsButton"]
-        if revealControls.waitForExistence(timeout: 2) {
-            revealControls.tap()
-        }
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
         XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "\(prefix): the reply button never appeared")
+        for _ in 0..<5 where !typeToSpeakButton.isHittable {
+            if revealControls.exists { revealControls.tap() }
+            Thread.sleep(forTimeInterval: 1)
+        }
         typeToSpeakButton.tap()
         XCTAssertTrue(app.descendants(matching: .any)["typeToSpeakScreen"].waitForExistence(timeout: 10), "\(prefix): the reply screen never appeared")
         app.textFields.firstMatch.typeText(reply)
