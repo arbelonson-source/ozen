@@ -166,6 +166,12 @@ final class OzenScreenshotUITests: XCTestCase {
         typeToSpeakButton.tap()
         XCTAssertTrue(app.descendants(matching: .any)["typeToSpeakScreen"].waitForExistence(timeout: 10), "\(prefix): the reply screen never appeared")
         app.textFields.firstMatch.typeText(reply)
+        // A fresh simulator's keyboard covers its lower half with a
+        // one-time "slide to type" tip the first time it opens.
+        let keyboardTip = app.buttons["Continue"]
+        if keyboardTip.waitForExistence(timeout: 2) {
+            keyboardTip.tap()
+        }
         capture(app, name: "\(prefix)-3-reply")
         let bigTextButton = app.descendants(matching: .any)["bigTextButton"]
         XCTAssertTrue(bigTextButton.waitForExistence(timeout: 10), "\(prefix): the big letters button never appeared")
