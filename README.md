@@ -787,7 +787,9 @@ Monero (XMR)
 46otohcpNKQfFi9F21ZHTcSiNVrLMw4yMS1SFM5hbDfu5LZCzLGkEZ2Vx4YD5kwK3nKUG6GjMf37z7i6sFQR2NEC1W9ubhb
 ```
 
-The same addresses and codes are in the app under Settings, About, Support Ozen.
+The same addresses and codes are in the Android app under Settings, About,
+Support Ozen. The iPhone app has no donation page, as the App Store doesn't
+allow one outside its own payments.
 
 ## Supporters
 

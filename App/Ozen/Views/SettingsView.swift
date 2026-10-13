@@ -50,6 +50,7 @@ struct SettingsView: View {
     @State private var isCheckingHomeServer = false
     @State private var confirmingHomeServerCodeDelete = false
     @State private var confirmingCloudKeyDelete = false
+    @State private var askingCloudConsent = false
     @State private var confirmingWalkthrough = false
     @State private var homeServerCodeSaveFailed = false
     @Environment(\.dismiss) private var dismiss
@@ -399,10 +400,16 @@ struct SettingsView: View {
                 .textContentType(.password)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .onSubmit(saveCloudKey)
+                .onSubmit(askCloudConsent)
                 .accessibilityIdentifier("cloudKeyField")
+                .alert(tr("לשלוח את הקול ל־%1?", "Send the audio to %1?", args: ["\(viewModel.settings.cloudProvider.name)"]), isPresented: $askingCloudConsent) {
+                    Button(tr("לאשר ולשמור", "Allow and save"), action: saveCloudKey)
+                    Button(tr("ביטול", "Cancel"), role: .cancel) {}
+                } message: {
+                    Text(tr("כשהכתוביות מגיעות מ־%1, הקול מהמיקרופון נשלח אליו דרך האינטרנט, יחד עם השמות והמילים המיוחדות והמילים החשובות. על מה שנשלח חלים התנאים ומדיניות הפרטיות של %1. בלי אישור, המפתח לא יישמר ושום דבר לא יישלח.", "While captions come from %1, the audio from the microphone is sent to it over the internet, together with the names and special words and the important words. %1’s own terms and privacy policy apply to what it receives. Without your OK, the key isn’t saved and nothing is sent.", args: ["\(viewModel.settings.cloudProvider.name)"]))
+                }
             if !cloudKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Button(tr("שמירת המפתח", "Save key"), action: saveCloudKey)
+                Button(tr("שמירת המפתח", "Save key"), action: askCloudConsent)
             }
             if cloudKeySaveFailed {
                 Label(tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again."), systemImage: "exclamationmark.triangle.fill")
@@ -683,6 +690,14 @@ struct SettingsView: View {
         forgetHomeServerCheck()
         hasHomeServerCode = true
         Task { await viewModel.homeServerCodeChanged() }
+    }
+
+    /// A key is the only way sound reaches a cloud service, so it is saved
+    /// only after a plain yes to sending it there (App Review guideline
+    /// 5.1.2(i): name who gets the data and what, and ask first).
+    private func askCloudConsent() {
+        guard !cloudKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        askingCloudConsent = true
     }
 
     private func saveCloudKey() {
@@ -1255,13 +1270,6 @@ struct SettingsView: View {
                 // installed again, for whoever does that.
                 LabeledContent(tr("ההתקנה תקפה עד", "Install valid until"), value: expiresAt.formatted(inAppLanguage: .abbreviated, time: .shortened))
             }
-            if Self.installedOutsideTheStore {
-                NavigationLink {
-                    SupportOzenView()
-                } label: {
-                    Label(tr("תמיכה באוזן (רק אם תרצו)", "Support Ozen (only if you want to)"), systemImage: "heart")
-                }
-            }
             Link(destination: Self.privacyPolicyURL) {
                 Label(tr("מדיניות הפרטיות", "Privacy policy"), systemImage: "hand.raised")
             }
@@ -1277,12 +1285,6 @@ struct SettingsView: View {
             Text(tr("אוזן היא תוכנה חופשית בקוד פתוח (AGPL-3.0): כל עותק שלה חייב להישאר חופשי ופתוח. אלא אם בחרתם אחרת למעלה, כל העיבוד נעשה בטלפון ושום דבר לא נשלח החוצה.", "Ozen is free, open-source software (AGPL-3.0): every copy of it has to stay free and open. Unless you chose otherwise above, all processing happens on the phone and nothing is sent out."))
         }
     }
-
-    /// App Review takes a gift to the developer only through in-app
-    /// purchase (guideline 3.1.1), so the donation page stays in copies
-    /// installed from GitHub. App Store and TestFlight installs carry no
-    /// provisioning profile; sideloaded and Xcode installs do.
-    static let installedOutsideTheStore = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision") != nil
 
     /// The website's policy covers the app as well as the site; Apple wants
     /// it reachable from inside the app (guideline 5.1.1(i)).
