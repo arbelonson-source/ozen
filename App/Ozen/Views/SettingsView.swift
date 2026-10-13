@@ -1255,10 +1255,15 @@ struct SettingsView: View {
                 // installed again, for whoever does that.
                 LabeledContent(tr("ההתקנה תקפה עד", "Install valid until"), value: expiresAt.formatted(inAppLanguage: .abbreviated, time: .shortened))
             }
-            NavigationLink {
-                SupportOzenView()
-            } label: {
-                Label(tr("תמיכה באוזן (רק אם תרצו)", "Support Ozen (only if you want to)"), systemImage: "heart")
+            if Self.installedOutsideTheStore {
+                NavigationLink {
+                    SupportOzenView()
+                } label: {
+                    Label(tr("תמיכה באוזן (רק אם תרצו)", "Support Ozen (only if you want to)"), systemImage: "heart")
+                }
+            }
+            Link(destination: Self.privacyPolicyURL) {
+                Label(tr("מדיניות הפרטיות", "Privacy policy"), systemImage: "hand.raised")
             }
             Link(destination: URL(string: "https://github.com/arbelonson-source/ozen")!) {
                 Label(tr("קוד המקור בגיטהאב", "Source code on GitHub"), systemImage: "chevron.left.forwardslash.chevron.right")
@@ -1271,6 +1276,18 @@ struct SettingsView: View {
         } footer: {
             Text(tr("אוזן היא תוכנה חופשית בקוד פתוח (AGPL-3.0): כל עותק שלה חייב להישאר חופשי ופתוח. אלא אם בחרתם אחרת למעלה, כל העיבוד נעשה בטלפון ושום דבר לא נשלח החוצה.", "Ozen is free, open-source software (AGPL-3.0): every copy of it has to stay free and open. Unless you chose otherwise above, all processing happens on the phone and nothing is sent out."))
         }
+    }
+
+    /// App Review takes a gift to the developer only through in-app
+    /// purchase (guideline 3.1.1), so the donation page stays in copies
+    /// installed from GitHub. App Store and TestFlight installs carry no
+    /// provisioning profile; sideloaded and Xcode installs do.
+    static let installedOutsideTheStore = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision") != nil
+
+    /// The website's policy covers the app as well as the site; Apple wants
+    /// it reachable from inside the app (guideline 5.1.1(i)).
+    static var privacyPolicyURL: URL {
+        URL(string: Localization.language == .hebrew ? "https://ozen.live/he/privacy.html" : "https://ozen.live/privacy.html")!
     }
 
     static var versionString: String {
