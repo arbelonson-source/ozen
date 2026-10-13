@@ -1442,6 +1442,18 @@ public final class CaptionPipeline {
         keywordHitSegmentIDs = [segments[1].id]
         return segments
     }
+
+    /// One more finished line on a seeded conversation, as if just said:
+    /// for the UI test that reads back while lines keep coming.
+    public func addLineForScreenshots(_ text: String) {
+        let now = Date().timeIntervalSince1970
+        segments.append(TranscriptSegment(
+            id: UUID(), text: text,
+            isCommitted: true, speakerClusterID: nil,
+            startTimestamp: now, lastUpdateTimestamp: now, confidence: 0.9
+        ))
+        committedLineCount = segments.count
+    }
     #endif
 
     /// A saved speaker was renamed; lines already on screen follow.

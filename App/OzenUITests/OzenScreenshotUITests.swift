@@ -71,6 +71,43 @@ final class OzenScreenshotUITests: XCTestCase {
         try run(variant: "english", name: "english")
     }
 
+    /// Past the screen's line limit, a line she scrolled back to must hold
+    /// still while new ones arrive: each new one used to take the top line
+    /// away, moving everything she read up a row.
+    func testReadingBackHoldsStillWhileLinesArrive() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "readingBack"]
+        app.launch()
+        let transcript = app.descendants(matching: .any)["transcriptScroll"]
+        XCTAssertTrue(transcript.waitForExistence(timeout: 10), "the transcript never appeared")
+        Thread.sleep(forTimeInterval: 2)
+        // New lines keep the captions following the newest one; a swipe
+        // made just as one arrived could leave them following.
+        let jump = app.buttons.matching(NSPredicate(format: "label CONTAINS 'new line' OR label CONTAINS 'To the last line'")).firstMatch
+        for _ in 0..<4 where !jump.exists {
+            transcript.swipeDown()
+            _ = jump.waitForExistence(timeout: 2)
+        }
+        XCTAssertTrue(jump.exists, "scrolling up never stopped the captions following the newest line")
+        // The swipe's glide comes to rest.
+        Thread.sleep(forTimeInterval: 1.5)
+        let lines = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'of a long evening'"))
+        let screen = transcript.frame
+        guard let read = lines.allElementsBoundByIndex.first(where: { $0.frame.minY > screen.minY + screen.height * 0.3 && $0.frame.maxY < screen.minY + screen.height * 0.6 }) else {
+            XCTFail("no line in the middle of the screen after scrolling up")
+            return
+        }
+        let label = read.label
+        let before = read.frame.minY
+        capture(app, name: "reading-back-before")
+        // Two or three lines arrive meanwhile: each used to move it up a row.
+        Thread.sleep(forTimeInterval: 1.2)
+        let same = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", label)).firstMatch
+        capture(app, name: "reading-back-after")
+        XCTAssertTrue(same.exists, "the line read (\(label)) went off the screen")
+        XCTAssertEqual(same.frame.minY, before, accuracy: 2, "the line read (\(label)) moved from \(before) to \(same.frame.minY)")
+    }
+
     /// The Dynamic Island while captions run and she has gone to another
     /// app: beside the camera, then held open. It belongs to the system,
     /// not to the app's window, so only the device's screenshot shows it.

@@ -41,6 +41,9 @@ enum ScreenshotFixtures {
         /// family member would see the app on her phone.
         case galleryDark
         case galleryLight
+        /// Past the screen's line limit, with a new line every half second,
+        /// for the test that reads back while lines keep coming.
+        case readingBack
     }
 
     @MainActor
@@ -123,6 +126,20 @@ enum ScreenshotFixtures {
             // and its top sat under the clock.
             viewModel.display.fontSize = 32
             viewModel.display.theme = .light
+        case .readingBack:
+            viewModel.setAppLanguage(.english)
+            let pipeline = viewModel.pipeline
+            for number in 1...(CaptionLayout.onScreenLineLimit + 10) {
+                pipeline.addLineForScreenshots("Line number \(number) of a long evening")
+            }
+            Task { @MainActor in
+                var number = CaptionLayout.onScreenLineLimit + 10
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(500))
+                    number += 1
+                    pipeline.addLineForScreenshots("Line number \(number) of a long evening")
+                }
+            }
         }
 
         return viewModel
