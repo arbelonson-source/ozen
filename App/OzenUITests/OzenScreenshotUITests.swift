@@ -71,6 +71,32 @@ final class OzenScreenshotUITests: XCTestCase {
         try run(variant: "english", name: "english")
     }
 
+    /// The Dynamic Island while captions run and she has gone to another
+    /// app: beside the camera, then held open. It belongs to the system,
+    /// not to the app's window, so only the device's screenshot shows it.
+    func testDynamicIsland() throws {
+        for (variant, name) in [("galleryDark", "english"), ("hebrewDefault", "hebrew")] {
+            let app = XCUIApplication()
+            app.launchArguments = ["-uiTestScreenshots", variant]
+            app.launch()
+            let transcript = app.descendants(matching: .any)["transcriptScroll"]
+            XCTAssertTrue(transcript.waitForExistence(timeout: 10), "\(name): the transcript never appeared")
+            // The seeded captions count as running, so the app starts its
+            // Live Activity once it is in front.
+            Thread.sleep(forTimeInterval: 2)
+            XCUIDevice.shared.press(.home)
+            // At 3 seconds one run caught the island before its contents
+            // had faded in: an empty black pill.
+            Thread.sleep(forTimeInterval: 6)
+            capture(XCUIScreen.main.screenshot(), name: "dynamic-island-\(name)-compact")
+            let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+            springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.035)).press(forDuration: 1.2)
+            Thread.sleep(forTimeInterval: 1.5)
+            capture(XCUIScreen.main.screenshot(), name: "dynamic-island-\(name)-expanded")
+            app.terminate()
+        }
+    }
+
     /// A phone turned on its side was never in a screenshot (#261). On a
     /// 375-point iPhone 13 mini that leaves the captions and the bar 375
     /// points of height between them, at the largest text size too.
