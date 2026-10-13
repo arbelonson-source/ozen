@@ -134,6 +134,52 @@ final class OzenScreenshotUITests: XCTestCase {
         }
     }
 
+    /// The App Store's pictures, one set per store language: the captions
+    /// dark and light, a typed reply and the same reply in big letters, and
+    /// the sound alerts. Run on the 6.9-inch iPhone and the 13-inch iPad,
+    /// the two sizes the store asks for.
+    func testAppStoreEnglish() throws {
+        storeScreenshots(prefix: "store-en", dark: "galleryDark", light: "galleryLight", reply: "Could you say that again, a bit slower?", settingsTitle: "Settings")
+    }
+
+    func testAppStoreHebrew() throws {
+        storeScreenshots(prefix: "store-he", dark: "hebrewDefault", light: "hebrewLightTheme", reply: "אפשר לחזור על זה, קצת יותר לאט?", settingsTitle: "הגדרות")
+    }
+
+    private func storeScreenshots(prefix: String, dark: String, light: String, reply: String, settingsTitle: String) {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", dark]
+        app.launch()
+        let settingsButton = app.descendants(matching: .any)["settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "\(prefix): the caption screen never appeared")
+        capture(app, name: "\(prefix)-1-captions")
+
+        let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
+        XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "\(prefix): the reply button never appeared")
+        typeToSpeakButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["typeToSpeakScreen"].waitForExistence(timeout: 10), "\(prefix): the reply screen never appeared")
+        app.textFields.firstMatch.typeText(reply)
+        capture(app, name: "\(prefix)-3-reply")
+        let bigTextButton = app.descendants(matching: .any)["bigTextButton"]
+        XCTAssertTrue(bigTextButton.waitForExistence(timeout: 10), "\(prefix): the big letters button never appeared")
+        bigTextButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["bigTextScreen"].waitForExistence(timeout: 10), "\(prefix): big letters never appeared")
+        capture(app, name: "\(prefix)-4-big-letters")
+        app.terminate()
+
+        app.launch()
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "\(prefix): the caption screen never came back")
+        settingsButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "\(prefix): settings never appeared")
+        openSettingsRow(app, rowIdentifier: "soundAlertsRow", screenIdentifier: "soundAlertsScreen", captureName: "\(prefix)-5-sound-alerts", back: settingsTitle)
+        app.terminate()
+
+        app.launchArguments = ["-uiTestScreenshots", light]
+        app.launch()
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "\(prefix): the light caption screen never appeared")
+        capture(app, name: "\(prefix)-2-light")
+    }
+
     /// A phone turned on its side was never in a screenshot (#261). On a
     /// 375-point iPhone 13 mini that leaves the captions and the bar 375
     /// points of height between them, at the largest text size too.

@@ -11,6 +11,8 @@ on:
           - iPhone
           - iPad
           - iPhone 13 mini
+          - App Store iPhone 6.9-inch
+          - App Store iPad 13-inch
       test:
         description: Run only this test of OzenScreenshotUITests (e.g. testOnboardingGermanAccessibilityText); empty runs them all
         type: string
@@ -59,6 +61,11 @@ jobs:
             echo "udid=$UDID" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # The two sizes App Store Connect asks screenshots in.
+          case "$FAMILY" in
+            "App Store iPhone 6.9-inch") FAMILY="iPhone.*Pro Max" ;;
+            "App Store iPad 13-inch") FAMILY="iPad Pro 13" ;;
+          esac
           DEVICE=$(xcrun simctl list devices available -j \
             | jq -r --arg family "$FAMILY" '.devices | to_entries[] | .value[] | select(.name | test($family)) | "\(.udid) \(.name)"' \
             | head -n1)
@@ -70,6 +77,14 @@ jobs:
           UDID=${DEVICE%% *}
           echo "Using simulator: ${DEVICE#* } ($UDID)"
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Boot the simulator with a tidy status bar
+        run: |
+          xcrun simctl boot "${{ steps.sim.outputs.udid }}" || true
+          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}"
+          xcrun simctl status_bar "${{ steps.sim.outputs.udid }}" override \
+            --time 9:41 --batteryState charged --batteryLevel 100 \
+            --wifiBars 3 --cellularMode active --cellularBars 4
 
       - name: Run the screenshot UI tests
         env:
