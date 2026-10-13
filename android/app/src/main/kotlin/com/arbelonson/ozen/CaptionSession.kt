@@ -1023,7 +1023,7 @@ class CaptionSession(
     }
 
     /** Where a missing model is fetched from; device tests put one in that never downloads. */
-    var modelFetcher: ReleaseFileFetching = HTTPFileFetcher()
+    var modelFetcher: ReleaseFileFetching = newModelFetcher()
 
     private val backupState = MutableStateFlow<BackupModelStatus>(BackupModelStatus.NotNeeded)
     override val backupStatus: StateFlow<BackupModelStatus> = backupState
@@ -1119,6 +1119,13 @@ class CaptionSession(
     }
 
     companion object {
+        /**
+         * What each new session fetches models with. The device tests' runner
+         * swaps in one that never downloads: once the Hebrew model could be
+         * downloaded, every test session started in an empty folder pulled
+         * the real 574 MB file.
+         */
+        var newModelFetcher: () -> ReleaseFileFetching = { HTTPFileFetcher() }
         val MODEL_FILE = WhisperModelCatalog.phoneModelFile(UILanguage.Hebrew)
         const val HISTORY_FOLDER = "ozen-history"
         const val JOURNAL_FILE = "ozen-journal.log"

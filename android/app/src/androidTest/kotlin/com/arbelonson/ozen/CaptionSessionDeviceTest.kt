@@ -631,7 +631,13 @@ class CaptionSessionDeviceTest {
         manager.cancel(StoppedCaptionsNotice.IDENTIFIER, 0)
         val work = File(context.cacheDir, "stopped-notice-test").apply { deleteRecursively(); mkdirs() }
         val settings = SettingsHolder(SettingsStore(File(work, "settings.json")))
-        settings.change { it.notifyWhenInBackground = true }
+        // Stopped for good, with nothing the app retries by itself: cloud
+        // captions with no key. (A phone without its model used to be the
+        // case here; its download is now retried.)
+        settings.change {
+            it.notifyWhenInBackground = true
+            it.engine = TranscriptionEngineKind.Cloud
+        }
         val languageBefore = Localization.language
         Localization.language = UILanguage.English
         val session = withContext(Dispatchers.Main) {
@@ -648,7 +654,7 @@ class CaptionSessionDeviceTest {
         }
         try {
             withContext(Dispatchers.Main) { session.listen() }
-            assertNotNull(withTimeoutOrNull(30_000) { CaptionState.screen.first { it.phase.modelMissing } })
+            assertNotNull(withTimeoutOrNull(30_000) { CaptionState.screen.first { it.phase.failure?.engineUnavailability?.kind == EngineUnavailability.Kind.CloudKeyNeeded } })
             assertNotNull("never posted", withTimeoutOrNull(5_000) { while (notices().isEmpty()) delay(100) })
             assertEquals("Captions stopped", notices().single().notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
             assertTrue("not tried again on coming back", withContext(Dispatchers.Main) { session.retriesOnReturn })
@@ -984,8 +990,10 @@ class CaptionSessionDeviceTest {
         }
     }
 
+    // No model on the phone: in a device test its download always fails
+    // (OzenTestRunner), since every language now has one.
     private val PipelinePhase.modelMissing: Boolean
-        get() = this is PipelinePhase.Failed && reason.engineUnavailability?.kind == EngineUnavailability.Kind.ModelNotOnDevice
+        get() = this is PipelinePhase.Failed && reason.engineUnavailability?.kind in setOf(EngineUnavailability.Kind.ModelNotOnDevice, EngineUnavailability.Kind.ModelDownloadFailed)
 
     @Test
     fun aSmokeAlarmNearThePhoneBuzzesAndTakesTheBannerEvenWhileTheCaptionsCannotRun() = runBlocking {

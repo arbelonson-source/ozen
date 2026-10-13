@@ -1686,11 +1686,10 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("A question mark next to a line means it may not have been heard correctly.", substring = true).performScrollTo()
             compose.onNodeWithText("plus a notification if captions stopped and didn’t come back on their own.", substring = true).performScrollTo()
             compose.onNodeWithText("The code is saved only on the phone.", substring = true).performScrollTo()
-            compose.onNodeWithText(backupSentence, substring = true).assertDoesNotExist()
+            // Hebrew has a backup to download too, since Ozen's Hebrew model
+            // was published for Android.
+            compose.onNodeWithText(backupSentence, substring = true).performScrollTo().assertExists()
             for (iPhoneOnly in listOf("QR code", "VoiceOver", "LED Flash")) compose.onNodeWithText(iPhoneOnly, substring = true).assertDoesNotExist()
-
-            app.settings.change { it.spokenLanguage = UILanguage.English }
-            compose.waitUntil(5_000) { compose.onAllNodesWithText(backupSentence, substring = true).fetchSemanticsNodes().isNotEmpty() }
         } finally {
             app.settings.change { it.spokenLanguage = languageBefore }
         }

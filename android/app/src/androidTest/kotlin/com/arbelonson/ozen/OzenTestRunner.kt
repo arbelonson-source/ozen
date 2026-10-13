@@ -9,6 +9,7 @@ import java.net.URI
 
 class OzenTestRunner : AndroidJUnitRunner() {
     override fun callApplicationOnCreate(app: Application) {
+        CaptionSession.newModelFetcher = { NoDownloads }
         super.callApplicationOnCreate(app)
         (app as OzenApplication).settings.change { it.hasCompletedOnboarding = true }
         app.captions.launchHandled = true
