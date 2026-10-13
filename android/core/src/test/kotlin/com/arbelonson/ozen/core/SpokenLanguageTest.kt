@@ -4,7 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SpokenLanguageTest {
@@ -127,8 +126,18 @@ class SpokenLanguageTest {
     }
 
     @Test
-    fun `only the general model is downloaded, from one fixed revision of whisper cpp's public models, at the size and checksum it was published with`() {
-        assertNull(WhisperModelCatalog.phoneModelSource(UILanguage.Hebrew))
+    fun `the Hebrew model comes from its release of Ozen's models at the size and checksum it was published with`() {
+        val source = assertNotNull(WhisperModelCatalog.phoneModelSource(UILanguage.Hebrew))
+        assertEquals(
+            "https://github.com/arbelonson-source/ozen-models/releases/download/model-ozen-turbo-hebrew-a3-ggml-q5_0-1/ggml-ozen-a3-q5_0.bin",
+            source.url.toString(),
+        )
+        assertEquals(574_041_195L, source.bytes)
+        assertEquals("c74b66691f8f97b4a38d43b5d8ee4ec1b32b3951a99520250f36883822c910af", source.sha256)
+    }
+
+    @Test
+    fun `the general model is downloaded from one fixed revision of whisper cpp's public models, at the size and checksum it was published with`() {
         for (language in UILanguage.entries.filter { it != UILanguage.Hebrew }) {
             val source = assertNotNull(WhisperModelCatalog.phoneModelSource(language))
             assertEquals(

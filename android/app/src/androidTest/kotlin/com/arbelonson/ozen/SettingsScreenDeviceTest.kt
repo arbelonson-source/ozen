@@ -1237,10 +1237,10 @@ class SettingsScreenDeviceTest {
     }
 
     // As on the iPhone, the guide says what captions do while the computer is
-    // off. Only a language whose backup the phone can download hears about the
-    // backup: Hebrew has none to download on Android yet.
+    // off, and every language now has a backup to download: Hebrew too, since
+    // Ozen's Hebrew model was published for Android.
     @Test
-    fun theSetupGuideSaysWhatCaptionsDoWhileTheComputerIsOffAndMentionsTheBackupOnlyWhereOneCanBeDownloaded() {
+    fun theSetupGuideSaysWhatCaptionsDoWhileTheComputerIsOffAndMentionsTheBackupInHebrewToo() {
         val languageBefore = app.settings.current.value.spokenLanguage
         app.settings.change {
             it.engine = TranscriptionEngineKind.HomeServer
@@ -1249,8 +1249,7 @@ class SettingsScreenDeviceTest {
         try {
             compose.onNodeWithText("Settings").performClick()
             compose.onNodeWithText("How to set up the home computer").performScrollTo().performClick()
-            compose.onNodeWithText("When the computer is off or out of reach, captions wait for it and start again by themselves once it answers.").performScrollTo().assertExists()
-            compose.onNodeWithText("backup", substring = true).assertDoesNotExist()
+            compose.onNodeWithText("When the computer is off or out of reach, a phone that already has the backup downloaded keeps writing captions by itself, and goes back to the computer once it answers again. Without the backup, captions wait for the computer.").performScrollTo().assertExists()
             compose.onNodeWithText("Back").performClick()
 
             app.settings.change { it.spokenLanguage = UILanguage.German }

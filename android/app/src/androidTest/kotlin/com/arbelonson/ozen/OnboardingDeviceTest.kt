@@ -206,7 +206,7 @@ class OnboardingDeviceTest {
         assertFalse("סבתא" in app.settings.current.value.vocabulary)
 
         compose.onNodeWithText("The button below starts the captions. Good luck, Grandma.").assertExists()
-        compose.onNodeWithText(DOWNLOAD_NOTE).assertDoesNotExist()
+        compose.onNodeWithText(DOWNLOAD_NOTE).assertExists()
         compose.onNodeWithText("Skip").assertDoesNotExist()
         compose.onNodeWithText("Start").performClick()
         compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }

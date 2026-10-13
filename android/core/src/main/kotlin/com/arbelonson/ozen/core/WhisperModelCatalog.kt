@@ -227,14 +227,19 @@ object WhisperModelCatalog {
         if (language == UILanguage.Hebrew) "ggml-ozen-a3-q5_0.bin" else "ggml-large-v3-turbo-q5_0.bin"
 
     /**
-     * Where the phone downloads [phoneModelFile] from: one fixed revision of
-     * whisper.cpp's public models on Hugging Face, so the size and checksum
-     * it was published with keep holding. Null for Ozen's Hebrew model,
-     * which the Android app has nowhere to download from yet.
+     * Where the phone downloads [phoneModelFile] from: Ozen's Hebrew model
+     * from its own release of Ozen's models, where the iPhone's come from,
+     * and the general one from one fixed revision of whisper.cpp's public
+     * models on Hugging Face, so the size and checksum it was published
+     * with keep holding. Null for none today; callers still handle it.
      */
     fun phoneModelSource(language: UILanguage): PhoneModelSource? =
         if (language == UILanguage.Hebrew) {
-            null
+            PhoneModelSource(
+                url = URI("$OZEN_MODELS/model-ozen-turbo-hebrew-a3-ggml-q5_0-1/${phoneModelFile(language)}"),
+                bytes = 574_041_195,
+                sha256 = "c74b66691f8f97b4a38d43b5d8ee4ec1b32b3951a99520250f36883822c910af",
+            )
         } else {
             PhoneModelSource(
                 url = URI("$WHISPER_CPP_MODELS/${phoneModelFile(language)}"),
@@ -243,6 +248,7 @@ object WhisperModelCatalog {
             )
         }
 
+    private const val OZEN_MODELS = "https://github.com/arbelonson-source/ozen-models/releases/download"
     private const val WHISPER_CPP_MODELS = "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1"
 
     fun recommendedVariant(language: UILanguage): String = if (language == UILanguage.Hebrew) RECOMMENDED_VARIANT else GENERAL_VARIANT
