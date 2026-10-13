@@ -300,8 +300,9 @@ Open a section for the details.
 <summary><img src="docs/assets/icons/lock.svg" width="24" align="absmiddle" alt=""> <b>Lock screen and coming back</b>: the lock screen, what she missed, nothing lost</summary>
 
 - **Captions on the lock screen.** While captions run, the newest two
-  lines show on the lock screen as a Live Activity (the Dynamic Island
-  shows the newest one when it is opened), each saying who is talking when
+  lines show on the lock screen as a Live Activity (with the Dynamic
+  Island, the newest words show beside the camera while she is in another
+  app, and the two lines when it is held open), each saying who is talking when
   speaker names are on and the voice is known, so the last sentence can
   be read without unlocking the phone. A call or a failure keeps it there
   and says why the lines stopped; if iOS closes the app it says the lines

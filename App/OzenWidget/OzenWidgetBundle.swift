@@ -41,22 +41,36 @@ struct CaptionLiveActivity: Widget {
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    IslandMark(state: context.state, isStale: context.isStale)
+                        .font(.title2)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    IslandTalking(state: context.state, isStale: context.isStale)
+                        .font(.title2)
+                }
                 DynamicIslandExpandedRegion(.bottom) {
-                    // Less room than the lock screen: the newest line only.
-                    CaptionLinesView(state: context.state, isStale: context.isStale, fontSize: 17, newestOnly: true)
+                    CaptionLinesView(state: context.state, isStale: context.isStale, fontSize: 17, island: true)
                 }
             } compactLeading: {
-                // Named like the minimal mark: the lines themselves are
-                // only in the expanded island, so hiding it left nothing
-                // for VoiceOver to find.
+                // Named like the minimal mark, so VoiceOver finds the app
+                // and why the lines stopped, if they did.
                 IslandMark(state: context.state, isStale: context.isStale)
             } compactTrailing: {
-                Image(systemName: "ear")
-                    .accessibilityHidden(true)
+                IslandNewestWords(state: context.state, isStale: context.isStale)
             } minimal: {
                 IslandMark(state: context.state, isStale: context.isStale)
             }
         }
+    }
+}
+
+extension CaptionActivityAttributes.ContentState.Line {
+    /// The app starts a line with a right-to-left mark when it reads from
+    /// the right (`CaptionLayout.directed`). Laid out right to left whatever
+    /// they said, English captions sat against the right edge.
+    var readsRightToLeft: Bool {
+        text.hasPrefix("\u{200F}")
     }
 }
 
@@ -83,13 +97,80 @@ struct IslandMark: View {
     }
 }
 
+/// The end of the newest line beside the camera, so someone talking shows
+/// without holding the island open or going back to the app. Quiet for a
+/// minute, stopped or no longer updating, the ear instead: words left
+/// there would read as just said.
+struct IslandNewestWords: View {
+    let state: CaptionActivityAttributes.ContentState
+    let isStale: Bool
+
+    var body: some View {
+        if !isStale, state.status == nil, state.ageNote == nil, let line = state.lines.last {
+            Text(Self.newestWords(of: line))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(line.isFinal ? Color.white : Color.white.opacity(0.7))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                // A single word too long for the room still shows its end.
+                .truncationMode(.head)
+                .frame(maxWidth: 64)
+                // Laid out left to right, a Hebrew line lost its last letter
+                // at the edge of its room.
+                .environment(\.layoutDirection, line.readsRightToLeft ? .rightToLeft : .leftToRight)
+        } else {
+            Image(systemName: "ear")
+                .accessibilityHidden(true)
+        }
+    }
+}
+
+extension IslandNewestWords {
+    /// About this many letters fit beside the camera.
+    static let room = 10
+
+    /// The last whole words of the line that fit, after an ellipsis when
+    /// some were left out: cut by the letter, it showed "…ot sure if".
+    static func newestWords(of line: CaptionActivityAttributes.ContentState.Line) -> String {
+        let words = line.text.replacingOccurrences(of: "\u{200F}", with: "").split(separator: " ")
+        var picked: [Substring] = []
+        var length = 0
+        for word in words.reversed() {
+            let longer = length + word.count + (picked.isEmpty ? 0 : 1)
+            if longer > room, !picked.isEmpty { break }
+            picked.insert(word, at: 0)
+            length = longer
+        }
+        let shown = (picked.count < words.count ? "…" : "") + picked.joined(separator: " ")
+        return line.readsRightToLeft ? "\u{200F}" + shown : shown
+    }
+}
+
+/// Held open, beside the camera: a waveform while a line is still being
+/// written, so she can tell someone is talking right now.
+struct IslandTalking: View {
+    let state: CaptionActivityAttributes.ContentState
+    let isStale: Bool
+
+    var body: some View {
+        if !isStale, state.status == nil, state.ageNote == nil, let line = state.lines.last, !line.isFinal {
+            Image(systemName: "waveform")
+                .foregroundStyle(.white)
+                // The line below is read out, dimmer words and all.
+                .accessibilityHidden(true)
+        }
+    }
+}
+
 /// White text on black, like the caption screen: a line still being
 /// written is dimmer, and a name heads a speaker's run in yellow.
 struct CaptionLinesView: View {
     let state: CaptionActivityAttributes.ContentState
     let isStale: Bool
     let fontSize: CGFloat
-    var newestOnly = false
+    /// In the Dynamic Island, held open: less room than the lock screen,
+    /// so a line above the newest keeps to one row.
+    var island = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -111,10 +192,11 @@ struct CaptionLinesView: View {
                         // still too long (the newest line takes the room a
                         // short line above leaves) loses its start instead,
                         // as the app's own cut does.
-                        .lineLimit(isNewest ? 3 : (state.large ? 1 : 2))
+                        .lineLimit(isNewest ? 3 : (state.large || island ? 1 : 2))
                         .truncationMode(isNewest ? .head : .tail)
                         .minimumScaleFactor(0.8)
                         .fixedSize(horizontal: false, vertical: true)
+                        .inAppDirection(line.readsRightToLeft ? .rightToLeft : .leftToRight)
                 }
             }
             if isStale {
@@ -130,7 +212,6 @@ struct CaptionLinesView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .environment(\.layoutDirection, .rightToLeft)
     }
 
     /// A note under the lines: why they stopped coming, or how long ago
@@ -146,8 +227,8 @@ struct CaptionLinesView: View {
             .inAppDirection(appDirection)
     }
 
-    /// The captions read right to left whatever the app's language; its own
-    /// words follow the app's language.
+    /// Each caption line reads the way its own words do, whatever the app's
+    /// language; the app's own words follow the app's language.
     private var appDirection: LayoutDirection {
         (state.appRightToLeft ?? !state.english) ? .rightToLeft : .leftToRight
     }
@@ -159,10 +240,10 @@ struct CaptionLinesView: View {
             .inAppDirection(appDirection)
     }
 
-    /// Only the newest line under a note (two caption lines fill the lock
-    /// screen's room, leaving none for it) and in the Dynamic Island.
+    /// Only the newest line under a note: two caption lines fill the lock
+    /// screen's room, leaving none for it.
     private var shownLines: [CaptionActivityAttributes.ContentState.Line] {
-        guard newestOnly || state.status != nil || isStale, var newest = state.lines.last else {
+        guard state.status != nil || isStale, var newest = state.lines.last else {
             return state.lines
         }
         if newest.speaker == nil, newest.sameSpeakerAsAbove == true, state.lines.count > 1 {
@@ -179,7 +260,7 @@ struct CaptionLinesView: View {
         guard let speaker = line.speaker else { return words }
         // The line's own direction mark goes in front of the name: a name in
         // Latin letters ("Avi") first would set the paragraph left to right.
-        let mark = line.text.hasPrefix("\u{200F}") ? "\u{200F}" : ""
+        let mark = line.readsRightToLeft ? "\u{200F}" : ""
         return Text("\(mark)\(speaker): ").foregroundColor(.yellow) + words
     }
 }
