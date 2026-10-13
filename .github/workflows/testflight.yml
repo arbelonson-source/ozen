@@ -3,8 +3,10 @@ name: TestFlight
 on:
   workflow_dispatch:
   # Every GitHub release goes to TestFlight too, built from the same commit.
+  # The name must match release.yml's own `name:` exactly: when that grew
+  # "and Android APK", release 119 never reached TestFlight.
   workflow_run:
-    workflows: ["Build sideloadable IPA"]
+    workflows: ["Build sideloadable IPA and Android APK"]
     types: [completed]
 
 permissions:
