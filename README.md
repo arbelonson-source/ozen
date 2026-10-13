@@ -42,6 +42,8 @@ either unreliable with external microphones or too shallow to trust.
 - **Faster with a home computer.** Optionally, a PC with a graphics card
   writes the captions, faster and more accurately than the phone.
 
+**Website:** [ozen.live](https://ozen.live), in English and Hebrew.
+
 **Get it:** each [release](https://github.com/arbelonson-source/ozen/releases/latest)
 has `Ozen.apk` for Android phones and `Ozen.ipa` for iPhone and iPad; see
 [Installing on Android](#installing-on-android) and
