@@ -28,13 +28,13 @@ object PhoneNumbers {
         return found.sortedBy { it.start }
     }
 
-    private fun digitsOf(written: String): String = written.filter { it in '0'..'9' }
+    private fun digitsOf(written: String): String = written.mapNotNull { Character.digit(it, 10).takeIf { digit -> digit >= 0 } }.joinToString("")
 
     private val pattern: Pattern = unicodePattern(
         """(?<![\d+])(?!\d{1,2}[-./]\d{1,2}[-./]\d{2,4})(?:\+972[- \u00A0\u202F]?|0)(?:[2-489](?:[- \u00A0\u202F]?\d){7}|[57](?:[- \u00A0\u202F]?\d){8})(?!-?\d)""",
     )
 
     private val servicePattern: Pattern = unicodePattern(
-        """(?<![\d+*])1[- \u00A0\u202F]?(?:700|800|801|599)(?:[- \u00A0\u202F]?\d){6}(?!\d)""",
+        """(?<![\d+*])1[- \u00A0\u202F]?(?:700|800|801|599)(?:[- \u00A0\u202F]?\d){6}(?!-?\d)""",
     )
 }

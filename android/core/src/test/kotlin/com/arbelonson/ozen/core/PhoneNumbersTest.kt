@@ -76,4 +76,19 @@ class PhoneNumbersTest {
         assertEquals(listOf("+972501234567"), dialed("+972${nbsp}50${nbsp}123${nbsp}4567"))
         assertEquals(listOf("1800123456"), dialed("1${nbsp}800${nbsp}123${nbsp}456"))
     }
+
+    @Test
+    fun `a number written with other digits dials every digit, never a shorter number`() {
+        val nbsp = Char(0xA0)
+        assertEquals(listOf("1800123456"), dialed("1${nbsp}800${nbsp}123${nbsp}45\u0666"))
+        assertEquals(listOf("0501234567"), dialed("050-123-456\u0667"))
+    }
+
+    @Test
+    fun `a service number followed by a hyphen and a digit is longer than a service number, so it is no link`() {
+        val nbsp = Char(0xA0)
+        assertTrue(dialed("1${nbsp}800${nbsp}123${nbsp}456-7").isEmpty())
+        assertTrue(dialed("1-800-123-456-7").isEmpty())
+        assertEquals(listOf("1800123456"), dialed("1-800-123-456-"))
+    }
 }
