@@ -800,7 +800,7 @@ private fun CaptionScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = bannerRoom)
-                        .then(if (bannersOverflow) Modifier.verticalScroll(bannerScroll) else Modifier)
+                        .then(if (bannersOverflow) Modifier.fadeWhenMoreBelow(bannerScroll).verticalScroll(bannerScroll) else Modifier)
                         .onSizeChanged { bannersOverflow = it.height >= bannerRoomPixels - 1 },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
