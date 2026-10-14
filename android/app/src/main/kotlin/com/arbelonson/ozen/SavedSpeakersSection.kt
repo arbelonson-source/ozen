@@ -8,6 +8,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.UploadFile
+import androidx.compose.material.icons.rounded.Vibration
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
@@ -37,6 +44,9 @@ import com.arbelonson.ozen.core.RecordingImport
 import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SpeakerProfile
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.SettingRow
+import com.arbelonson.ozen.ui.SettingSwitchRow
+import com.arbelonson.ozen.ui.SettingsGroup
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -113,34 +123,52 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { picked ->
         if (picked.isNotEmpty()) RecordingImports.start(speakers, picked)
     }
-    for (speaker in SavedSpeaker.grouping(profiles)) {
-        Row(modifier = Modifier.fillMaxWidth().testTag("savedSpeaker:${speaker.name}"), verticalAlignment = Alignment.CenterVertically) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable(onClickLabel = tr("שינוי שם", "Rename")) { renaming = speaker.name }
-                    .padding(vertical = 8.dp),
-            ) {
-                Text(speaker.name, style = MaterialTheme.typography.bodyLarge)
-                // Voices saved before the September 2026 voice model are
-                // never matched again, silently.
-                if (speakers.needsNewRecording(speaker)) {
-                    Text(
-                        tr("נשמר בגרסה ישנה ולא מזוהה. כדי לתקן: \"הוספת דובר\" באותו שם.", "Saved by an older version and not recognized. To fix: “Add speaker” with the same name."),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = cautionOrange(),
-                    )
+    SettingsGroup(dividerInset = 56.dp) {
+        for (speaker in SavedSpeaker.grouping(profiles)) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("savedSpeaker:${speaker.name}").padding(start = 16.dp, end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Icon(Icons.Rounded.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(onClickLabel = tr("שינוי שם", "Rename")) { renaming = speaker.name }
+                            .padding(vertical = 8.dp),
+                    ) {
+                        Text(speaker.name, style = MaterialTheme.typography.bodyLarge)
+                        // Voices saved before the September 2026 voice model are
+                        // never matched again, silently.
+                        if (speakers.needsNewRecording(speaker)) {
+                            Text(
+                                tr("נשמר בגרסה ישנה ולא מזוהה. כדי לתקן: \"הוספת דובר\" באותו שם.", "Saved by an older version and not recognized. To fix: “Add speaker” with the same name."),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = cautionOrange(),
+                            )
+                        }
+                    }
+                    // Whose: a screen reader otherwise hears "Delete" once per person.
+                    val deleteWho = tr("מחיקת %1", "Delete %1", listOf(speaker.name))
+                    TextButton(onClick = { removing = speaker.name }, modifier = Modifier.semantics { contentDescription = deleteWho }) { Text(tr("מחיקה", "Delete")) }
                 }
             }
-            // Whose: a screen reader otherwise hears "Delete" once per person.
-            val deleteWho = tr("מחיקת %1", "Delete %1", listOf(speaker.name))
-            TextButton(onClick = { removing = speaker.name }, modifier = Modifier.semantics { contentDescription = deleteWho }) { Text(tr("מחיקה", "Delete")) }
         }
-    }
-    TextButton(onClick = onAdd) { Text(tr("הוספת דובר", "Add speaker")) }
-    TextButton(onClick = { pick.launch(arrayOf("audio/*")) }, enabled = !importing) {
-        Text(tr("הוספה מהקלטות קיימות", "Add from existing recordings"))
-        if (importing) CircularProgressIndicator(modifier = Modifier.padding(start = 8.dp).size(16.dp), strokeWidth = 2.dp)
+        item { SettingRow(tr("הוספת דובר", "Add speaker"), icon = Icons.Rounded.PersonAdd, onClick = onAdd) }
+        item {
+            SettingRow(
+                tr("הוספה מהקלטות קיימות", "Add from existing recordings"),
+                icon = Icons.Rounded.UploadFile,
+                onClick = { pick.launch(arrayOf("audio/*")) },
+                enabled = !importing,
+                trailing = if (importing && !ReducedMotion.isOn()) {
+                    { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
+                } else {
+                    null
+                },
+            )
+        }
     }
     Footnote(
         tr(
@@ -209,32 +237,40 @@ private fun RenameSpeakerDialog(name: String, onRename: (String) -> Unit, onDism
 @Composable
 internal fun BehaviourSection(buzzWhenTalkResumes: Boolean, onBuzz: (Boolean) -> Unit, separation: Float, onSeparation: (Float) -> Unit) {
     SectionHeader(tr("התנהגות", "Behavior"))
-    SwitchRow(tr("רטט כשמישהו מתחיל לדבר אחרי שקט", "Vibrate when someone starts talking after silence"), buzzWhenTalkResumes, onChange = onBuzz)
     var shown by remember(separation) { mutableFloatStateOf(separation) }
     val label = tr("רגישות הפרדת דוברים", "Speaker separation sensitivity")
     val value = String.format(Locale.ROOT, "%.2f", shown)
-    Row(modifier = Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    Slider(
-        value = shown,
-        onValueChange = { shown = it },
-        onValueChangeFinished = { onSeparation((shown * 100).roundToInt() / 100f) },
-        valueRange = 0.2f..0.95f,
-        steps = 74,
-        modifier = Modifier.semantics {
-            contentDescription = label
-            stateDescription = value
-        },
-    )
-    Row {
-        Text(tr("מאחד יותר", "More merging"), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-        Text(tr("מפריד יותר", "More separating"), style = MaterialTheme.typography.bodySmall)
-    }
     val usual = AppSettings.default.speakerSimilarityThreshold
-    if (abs(shown - usual) > 0.005f) {
-        TextButton(onClick = { onSeparation(usual) }) { Text(tr("חזרה להגדרה הרגילה", "Back to the usual setting")) }
+    SettingsGroup(dividerInset = 56.dp) {
+        item {
+            SettingSwitchRow(tr("רטט כשמישהו מתחיל לדבר אחרי שקט", "Vibrate when someone starts talking after silence"), buzzWhenTalkResumes, onBuzz, icon = Icons.Rounded.Vibration)
+        }
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(modifier = Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Slider(
+                    value = shown,
+                    onValueChange = { shown = it },
+                    onValueChangeFinished = { onSeparation((shown * 100).roundToInt() / 100f) },
+                    valueRange = 0.2f..0.95f,
+                    steps = 74,
+                    modifier = Modifier.semantics {
+                        contentDescription = label
+                        stateDescription = value
+                    },
+                )
+                Row {
+                    Text(tr("מאחד יותר", "More merging"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    Text(tr("מפריד יותר", "More separating"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (abs(shown - usual) > 0.005f) {
+                    TextButton(onClick = { onSeparation(usual) }) { Text(tr("חזרה להגדרה הרגילה", "Back to the usual setting")) }
+                }
+            }
+        }
     }
     Footnote(
         tr(
