@@ -363,6 +363,50 @@ class CaptionPipelineTokenTest {
     }
 
     @Test
+    fun `a line corrected to another known person leaves the first person's voice alone`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))
+        pipeline.enroll(SpeakerProfile(name = "Dana", embedding = floatArrayOf(1f, 0f, 0f)))
+        pipeline.enroll(SpeakerProfile(name = "Yossi", embedding = floatArrayOf(0f, 1f, 0f)))
+        pipeline.start(AppSettings.default)
+        val first = UUID.randomUUID()
+        engine.emit(token(first, "hello"))
+        assertTrue(eventually { pipeline.segments.size == 1 })
+        audio.push(FloatArray(24_000) { 0.5f })
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.speakerClusterID != null })
+        assertEquals("Dana", pipeline.displayName(pipeline.segments[0]))
+
+        val print = pipeline.nameSpeaker(pipeline.segments[0], "Yossi")
+
+        assertEquals("Yossi", pipeline.displayName(pipeline.segments[0]))
+        assertContentEquals(floatArrayOf(0f, 1f, 0f), print)
+        engine.emit(token(UUID.randomUUID(), "again"))
+        assertTrue(eventually { pipeline.segments.size == 2 })
+        audio.push(FloatArray(24_000) { 0.5f })
+        assertTrue(eventually { pipeline.segments.lastOrNull()?.speakerClusterID != null })
+        assertEquals("Dana", pipeline.displayName(pipeline.segments[1]))
+        assertEquals(listOf("Dana", "Yossi"), pipeline.speakerClusters.mapNotNull { it.name }.sorted())
+    }
+
+    @Test
+    fun `fixing the spelling of a name renames that voice in place`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))
+        pipeline.enroll(SpeakerProfile(name = "Dana", embedding = floatArrayOf(1f, 0f, 0f)))
+        pipeline.start(AppSettings.default)
+        engine.emit(token(UUID.randomUUID(), "hello"))
+        assertTrue(eventually { pipeline.segments.size == 1 })
+        audio.push(FloatArray(24_000) { 0.5f })
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.speakerClusterID != null })
+
+        val print = pipeline.nameSpeaker(pipeline.segments[0], "Dahna")
+
+        assertEquals("Dahna", pipeline.displayName(pipeline.segments[0]))
+        assertEquals(listOf("Dahna"), pipeline.speakerClusters.mapNotNull { it.name })
+        assertEquals(1f, print?.get(0))
+    }
+
+    @Test
     fun `an enrolled profile names the matching voice from its first window`() = runTest {
         val engine = FakeEngine()
         val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))

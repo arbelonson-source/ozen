@@ -1608,6 +1608,20 @@ class CaptionPipeline(
      */
     fun nameSpeaker(of: TranscriptSegment, name: String): FloatArray? {
         val clusterID = of.speakerClusterID ?: return null
+        // A line wrongly placed in one person's voice and corrected to
+        // another known person is that line's mistake: renaming the whole
+        // voice renamed every earlier and later line of the first person.
+        val currentName = clusterer.cluster(clusterID)?.name
+        val holder = if (currentName != null && currentName != name) clusterer.clusterNamed(name, clusterID) else null
+        if (holder != null) {
+            utteranceClusterAssignments[of.id] = holder.id
+            val index = segments.indexOfFirst { it.id == of.id }
+            if (index >= 0) {
+                setSegment(index, segments[index].copy(speakerClusterID = holder.id))
+                onCaptionsChanged?.invoke()
+            }
+            return holder.centroid
+        }
         clusterer.nameCluster(clusterID, name)
         speakerClusters = clusterer.clusters
         return clusterer.clusters.firstOrNull { it.id == clusterID }?.centroid
