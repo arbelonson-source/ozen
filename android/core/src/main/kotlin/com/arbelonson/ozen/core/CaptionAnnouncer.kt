@@ -54,9 +54,17 @@ class CaptionAnnouncer {
             // afterwards (a slow engine correcting one of the last lines),
             // not when a dropped connection only marked it cut off.
             val words = words(text)
-            if (announced[segment.id] == words) continue
+            val before = announced[segment.id]
+            if (before == words) continue
             announced[segment.id] = words
             if (text.isEmpty()) continue
+            val tail = grownTail(before, words)
+            if (tail != null) {
+                if (tail.isNotEmpty()) parts += tail
+                lastSpeaker = speakerName(segment)
+                lastLine = segment
+                continue
+            }
             val name = speakerName(segment)
             // After a quiet stretch the name comes again, as on screen.
             var part = text
@@ -123,6 +131,12 @@ class CaptionAnnouncer {
     companion object {
         /** Finished lines this close to the end are looked at again, for a correction that comes after a line was read out. */
         const val RECHECKED_LINES = 8
+
+        private fun grownTail(before: String?, now: String): String? {
+            if (before.isNullOrBlank() || !now.startsWith(before)) return null
+            if (now.length > before.length && !now[before.length].isWhitespace()) return null
+            return now.substring(before.length).trim()
+        }
 
         private fun words(text: String): String =
             if (!text.endsWith(CaptionStabilizer.CUT_OFF_MARK)) text else text.dropLast(CaptionStabilizer.CUT_OFF_MARK.length).trim()

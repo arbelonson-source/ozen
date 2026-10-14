@@ -64,7 +64,9 @@ internal object WhisperPassScoring {
         val perWord = ArrayList<List<Float>>()
         for (group in split) {
             val end = minOf(next + group.size, logprobs.size)
-            perWord.add(if (next < end) logprobs.subList(next, end).toList() else emptyList())
+            var scored = end
+            while (scored - 1 > next && isPunctuationOnly(decode(listOf(pieces[scored - 1])))) scored--
+            perWord.add(if (next < scored) logprobs.subList(next, scored).toList() else emptyList())
             next = end
         }
         return UncertainWords.pick(split.map { decode(it) }, perWord)
@@ -93,14 +95,16 @@ internal object WhisperPassScoring {
 
     private fun isSpace(char: Char): Boolean = char == '\t' || Character.getType(char).toByte() == Character.SPACE_SEPARATOR
 
+    private fun isPunctuationOnly(text: String): Boolean {
+        val stripped = text.trim { isSpace(it) }
+        return stripped.isNotEmpty() && stripped.codePoints().allMatch { Character.getType(it).toByte() in punctuationTypes }
+    }
+
     private fun splitOnSpaces(tokens: List<WhisperToken>): List<List<WhisperToken>> {
         val words = ArrayList<MutableList<WhisperToken>>()
         for (group in splitOnUnicode(tokens)) {
             val subword = decode(group)
-            val stripped = subword.trim { isSpace(it) }
-            val punctuation = stripped.isNotEmpty() && stripped.codePointCount(0, stripped.length) == 1 &&
-                Character.getType(stripped.codePointAt(0)).toByte() in punctuationTypes
-            if (group.first().isSpecial || subword.startsWith(" ") || punctuation || words.isEmpty()) {
+            if (group.first().isSpecial || subword.startsWith(" ") || words.isEmpty()) {
                 words.add(group.toMutableList())
             } else {
                 words.last().addAll(group)
