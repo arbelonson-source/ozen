@@ -2,11 +2,17 @@ package com.arbelonson.ozen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -34,6 +40,7 @@ internal fun NameSpeakerDialog(shown: String, hasVoice: Boolean, savedNames: Lis
     val save = { if (hasVoice && name.isNotBlank()) onSave(name.trim()) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Rounded.PersonAdd, contentDescription = null) },
         title = { Text(tr("שם לדובר", "Name the speaker")) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -44,9 +51,10 @@ internal fun NameSpeakerDialog(shown: String, hasVoice: Boolean, savedNames: Lis
                     onValueChange = { name = it },
                     label = { Text(tr("שם", "Name")) },
                     singleLine = true,
+                    shape = MaterialTheme.shapes.medium,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { save() }),
-                    modifier = Modifier.focusRequester(typing),
+                    modifier = Modifier.fillMaxWidth().focusRequester(typing),
                 )
                 Text(
                     if (hasVoice) {
@@ -54,11 +62,12 @@ internal fun NameSpeakerDialog(shown: String, hasVoice: Boolean, savedNames: Lis
                     } else {
                         tr("עדיין לא זוהה קול לשורה הזו. נסו שוב אחרי שידברו עוד קצת.", "No voice has been identified for this line yet. Try again after the person talks a bit more.")
                     },
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (hasVoice && savedNames.isNotEmpty()) {
                     Text(tr("דוברים שמורים", "Saved speakers"), style = MaterialTheme.typography.labelLarge)
-                    savedNames.forEach { saved -> TextButton(onClick = { onSave(saved) }) { Text(saved) } }
+                    savedNames.forEach { saved -> AssistChip(onClick = { onSave(saved) }, label = { Text(saved) }, leadingIcon = { Icon(Icons.Rounded.Person, contentDescription = null) }) }
                 }
             }
         },
