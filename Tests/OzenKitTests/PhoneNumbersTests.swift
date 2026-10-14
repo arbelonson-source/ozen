@@ -63,4 +63,12 @@ struct PhoneNumbersTests {
         let shown = CaptionLayout.displayText("תתקשרי ל-050-1234567.")
         #expect(PhoneNumbers.matches(in: shown).map(\.dialable) == ["0501234567"])
     }
+
+    @Test("no-break spaces and non-breaking hyphens between the groups are read as a number too")
+    func noBreakForms() {
+        #expect(dialed("תתקשרי 054\u{00A0}123\u{00A0}4567 מחר") == ["0541234567"])
+        #expect(dialed("תתקשרי 050\u{2011}1234567 מחר") == ["0501234567"])
+        #expect(dialed("+972\u{2011}3\u{2011}1234567") == ["+97231234567"])
+        #expect(dialed("המוקד 1\u{2011}700\u{2011}50\u{2011}50\u{2011}50") == ["1700505050"])
+    }
 }

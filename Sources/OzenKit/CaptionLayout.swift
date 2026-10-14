@@ -45,8 +45,27 @@ public enum CaptionLayout {
     /// copied and shared text gets only the number isolates (copiedText),
     /// and spoken text stays as recognized.
     public static func displayText(_ text: String, languageCode: String = "he") -> String {
-        directed(readableText(text), languageCode: languageCode)
+        directed(keepingNumbersTogether(readableText(text)), languageCode: languageCode)
     }
+
+    /// A phone number or a dose drawn on a line must not wrap in the
+    /// middle: its spaces become no-break spaces, its hyphens non-breaking
+    /// hyphens. For display only; the digits are the same.
+    static func keepingNumbersTogether(_ text: String) -> String {
+        var result = text
+        for match in PhoneNumbers.matches(in: text).reversed() {
+            let bound = String(text[match.range])
+                .replacingOccurrences(of: " ", with: "\u{00A0}")
+                .replacingOccurrences(of: "-", with: "\u{2011}")
+            result.replaceSubrange(match.range.clamped(to: result.startIndex..<result.endIndex), with: bound)
+        }
+        let whole = NSRange(result.startIndex..., in: result)
+        return doseSpace?.stringByReplacingMatches(in: result, range: whole, withTemplate: "\u{00A0}") ?? result
+    }
+
+    private static let doseSpace = try? NSRegularExpression(
+        pattern: #"(?<=\d) (?=(?:מ״ג|מ״ל|גרם|mg|ml)(?![\p{L}]))"#
+    )
 
     /// The marks alone, without breaking the text into paragraphs: for a
     /// one- or two-line preview.
