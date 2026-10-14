@@ -1,0 +1,46 @@
+language: "en-US"
+tone_instructions: "Plain, direct English. Point out real problems with a concrete fix. Skip praise and pure style nitpicks."
+reviews:
+  profile: chill
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - "!**/*.pbxproj"
+    - "!**/*.png"
+    - "!**/*.jpg"
+    - "!**/*.webp"
+    - "!**/*.bin"
+  path_instructions:
+    - path: "**"
+      instructions: |
+        Ozen is a free, open-source live-captions app for deaf and hard-of-hearing people.
+        Focus on: captions that are wrong, late or lost; crashes; races and cancellation bugs;
+        anything that sends audio or text off the device without the user choosing it;
+        accessibility regressions (VoiceOver, TalkBack, very large text, contrast, Reduce Motion);
+        Hebrew and other right-to-left layout.
+        Tests must never be weakened to make them pass.
+        Files of 100 lines or fewer have no comments on purpose; do not ask for comments there.
+        Hebrew text inside tr() calls and in tests is intended.
+    - path: "App/**"
+      instructions: |
+        SwiftUI iPhone and iPad app (iOS 17+). Every animation must respect Reduce Motion,
+        and layouts must hold at the largest accessibility text sizes.
+    - path: "Sources/OzenKit/**"
+      instructions: |
+        Shared Swift logic (Swift 6, strict concurrency), tested on Linux with Swift Testing.
+        Watch for actor isolation mistakes and work that keeps running after it was cancelled.
+    - path: "android/**"
+      instructions: |
+        Kotlin and Jetpack Compose. Check coroutine cancellation, state kept across rotation,
+        TalkBack semantics and 48 dp touch targets.
+    - path: "server/**"
+      instructions: |
+        Python home-computer server that the phone pairs with on the local network.
+        Check pairing and authentication carefully; nothing should be reachable without pairing.
+chat:
+  auto_reply: true
