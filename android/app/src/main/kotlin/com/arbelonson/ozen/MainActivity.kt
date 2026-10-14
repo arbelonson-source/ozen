@@ -74,8 +74,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -157,6 +155,7 @@ import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.UncertainWords
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.OzenTheme
 import java.util.UUID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -378,12 +377,10 @@ private fun OzenApp(
             recordingVoice != null ||
             state.keepsScreenOn(current.display.keepScreenAwake, awakeClock),
     )
-    val look = CaptionTheme.of(current.display.theme, isSystemInDarkTheme(), phoneAsksForMoreContrast())
+    val moreContrast = phoneAsksForMoreContrast()
+    val look = CaptionTheme.of(current.display.theme, isSystemInDarkTheme(), moreContrast)
     LaunchedEffect(look.isLight) { onLightScreen(look.isLight) }
-    MaterialTheme(
-        colorScheme = if (look.isLight) lightColorScheme() else darkColorScheme(),
-        typography = OzenTypography.of(MaterialTheme.typography),
-    ) {
+    OzenTheme(dark = !look.isLight, highContrast = moreContrast || current.display.theme == DisplayPreferences.Theme.HighContrast) {
         CompositionLocalProvider(LocalLayoutDirection provides direction) {
             val front = when {
                 !current.hasCompletedOnboarding -> FrontScreen(Front.Walkthrough)
