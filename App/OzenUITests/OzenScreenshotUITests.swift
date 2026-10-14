@@ -227,6 +227,45 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertEqual(same.frame.minY, before, accuracy: 2, "the line read (\(label)) moved from \(before) to \(same.frame.minY)")
     }
 
+    /// The bar slides away and comes back: the newest line must end above
+    /// it, not under it, in portrait and turned at the largest text size.
+    func testNewestLineClearsTheBarWhenItComesBack() throws {
+        let configs: [(name: String, category: String?, landscape: Bool)] = [
+            ("portrait", nil, false),
+            ("landscape-accessibility-text", "UICTContentSizeCategoryAccessibilityXXXL", true),
+        ]
+        for config in configs {
+            let app = XCUIApplication()
+            app.launchArguments = ["-uiTestScreenshots", "hebrewLargeText"] + (config.category.map { ["-UIPreferredContentSizeCategoryName", $0] } ?? [])
+            app.launch()
+            if config.landscape { XCUIDevice.shared.orientation = .landscapeLeft }
+
+            let transcript = app.descendants(matching: .any)["transcriptScroll"]
+            XCTAssertTrue(transcript.waitForExistence(timeout: 10), "\(config.name): the transcript never appeared")
+            let reveal = app.descendants(matching: .any)["showControlsButton"]
+            XCTAssertTrue(reveal.waitForExistence(timeout: 20), "\(config.name): the control bar never auto-hid")
+            let settings = app.descendants(matching: .any)["settingsButton"]
+            for _ in 0..<20 {
+                if settings.isHittable { break }
+                if reveal.exists, reveal.isHittable { reveal.tap() }
+                Thread.sleep(forTimeInterval: 0.3)
+            }
+            XCTAssertTrue(settings.isHittable, "\(config.name): the bar never came back")
+            // The slide and the scroll back to the newest line both animate.
+            Thread.sleep(forTimeInterval: 1.5)
+            let rows = app.descendants(matching: .any).matching(identifier: "captionRow").allElementsBoundByIndex
+            guard let last = rows.max(by: { $0.frame.minY < $1.frame.minY }) else {
+                XCTFail("\(config.name): no caption row on the screen")
+                return
+            }
+            capture(XCUIScreen.main.screenshot(), name: "newest-line-\(config.name)")
+            XCTAssertTrue(settings.isHittable, "\(config.name): the bar went away again before the check")
+            XCTAssertLessThanOrEqual(last.frame.maxY, settings.frame.minY + 1, "\(config.name): the newest line (\(last.frame)) is under the bar (settings button \(settings.frame))")
+            XCUIDevice.shared.orientation = .portrait
+            app.terminate()
+        }
+    }
+
     /// The Dynamic Island while captions run and she has gone to another
     /// app: beside the camera, then held open. It belongs to the system,
     /// not to the app's window, so only the device's screenshot shows it.

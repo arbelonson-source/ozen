@@ -85,6 +85,7 @@ struct LiveCaptionView: View {
                 state = value.magnification
             }
             .onEnded { value in
+                revealControls()
                 let size = DisplayPreferences.fontSize(viewModel.display.fontSize, scaledBy: value.magnification)
                 guard size != viewModel.display.fontSize else { return }
                 viewModel.display.fontSize = size
@@ -379,6 +380,17 @@ struct LiveCaptionView: View {
         }
         .onChange(of: isPinnedToBottom) { _, _ in
             updateControlsVisibility()
+        }
+        // The spacer under the lines changes size with the bar; the newest
+        // line is brought back above it once that layout has happened.
+        .onChange(of: controlsHidden) { _, _ in
+            scrollToLatestAfterLayout()
+        }
+        .onChange(of: controlBarHeight) { _, _ in
+            scrollToLatestAfterLayout()
+        }
+        .onChange(of: isCoveredBySheet) { _, covered in
+            if !covered { revealControls() }
         }
         .onChange(of: viewModel.segments.count) { _, _ in
             noteSpeechActivity()
@@ -1035,8 +1047,14 @@ struct LiveCaptionView: View {
     /// before, so a line that finishes while the last is still being read
     /// doesn't cut it off mid-sentence.
     private func announceNewLines() {
-        guard let text = viewModel.captionAnnouncement(voiceOverRunning: UIAccessibility.isVoiceOverRunning) else { return }
-        let announcement = NSAttributedString(string: text, attributes: [.accessibilitySpeechQueueAnnouncement: true])
+        guard let pieces = viewModel.captionAnnouncementPieces(voiceOverRunning: UIAccessibility.isVoiceOverRunning) else { return }
+        let announcement = NSMutableAttributedString()
+        for piece in pieces {
+            announcement.append(piece.isCaption
+                ? CaptionSpeechText.announcement(caption: piece.text, languageCode: viewModel.settings.languageCode)
+                : NSAttributedString(string: piece.text))
+        }
+        announcement.addAttribute(.accessibilitySpeechQueueAnnouncement, value: true, range: NSRange(location: 0, length: announcement.length))
         UIAccessibility.post(notification: .announcement, argument: announcement)
     }
 
@@ -1144,6 +1162,7 @@ struct LiveCaptionView: View {
             hasLines: !viewModel.segments.isEmpty,
             voiceOverRunning: UIAccessibility.isVoiceOverRunning,
             pausedForCall: viewModel.isInterruptedBySystem,
+            covered: isCoveredBySheet,
             lastTouchAt: lastTouchAt,
             now: Date().timeIntervalSince1970
         )
@@ -1153,7 +1172,17 @@ struct LiveCaptionView: View {
         } else {
             withAnimation(.easeInOut(duration: 0.3)) { controlsHidden = hide }
         }
-        scrollToLatestIfPinned()
+        scrollToLatestAfterLayout()
+    }
+
+    private var isCoveredBySheet: Bool {
+        openedConversation != nil || showingMicPicker || showingSettings || showingTypeToSpeak
+            || showingBigText || namingSegment != nil || fixingWordFromSegment != nil
+            || showingNameAlertForm
+    }
+
+    private func scrollToLatestAfterLayout() {
+        DispatchQueue.main.async { scrollToLatestIfPinned() }
     }
 
     private func scrollToLatestIfPinned() {
