@@ -48,8 +48,13 @@ either unreliable with external microphones or too shallow to trust.
 has `Ozen.apk` for Android phones and `Ozen.ipa` for iPhone and iPad; see
 [Installing on Android](#installing-on-android) and
 [Installing on a phone without a Mac](#installing-on-a-phone-without-a-mac).
-The Android app is new: it passes its tests on an emulator, but nobody has
-used it on a real phone yet.
+
+> [!NOTE]
+> **The Android app is new and still a little buggy.** It is in its first
+> round of fixes: on some phones text can overlap or sit out of place, and
+> those are being found and fixed now. It passes its tests on an emulator,
+> but nobody has used it on a real phone yet. If something looks wrong,
+> please [open an issue](https://github.com/arbelonson-source/ozen/issues).
 
 **Guides:** [Getting started](docs/getting-started.md) ·
 [Where your words go](docs/privacy.md) ·
