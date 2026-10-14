@@ -955,7 +955,13 @@ final class OzenScreenshotUITests: XCTestCase {
         capture(app, name: "speaker-enrollment-accessibility-text")
         app.buttons["ביטול"].tap()
 
-        openSettingsRow(app, rowIdentifier: "diagnosticsRow", screenIdentifier: "diagnosticsScreen", captureName: "diagnostics-accessibility-text")
+        openSettingsRow(app, rowIdentifier: "diagnosticsRow", screenIdentifier: "diagnosticsScreen", captureName: "diagnostics-accessibility-text") {
+            let label = app.staticTexts["diagnosticsWhisperModelLabel"]
+            let value = app.staticTexts["diagnosticsWhisperModelValue"]
+            XCTAssertTrue(label.waitForExistence(timeout: 10) && value.exists, "secondary screens: the Whisper model row is missing from diagnostics")
+            XCTAssertGreaterThanOrEqual(value.frame.minY, label.frame.maxY, "secondary screens: diagnostics value sits beside its label at the largest text size")
+            XCTAssertGreaterThanOrEqual(value.frame.width, app.windows.firstMatch.frame.width * 0.6, "secondary screens: diagnostics value is squeezed into a narrow column")
+        }
 
         app.buttons["סגירה"].firstMatch.tap()
 
