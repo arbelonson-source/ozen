@@ -776,10 +776,18 @@ final class OzenScreenshotUITests: XCTestCase {
             capture(app, name: "\(run.name)-1")
             picker.tap()
             let menuItem = app.buttons["Speechmatics"]
-            let opened = menuItem.waitForExistence(timeout: 5)
+            // At the largest text the choices are a page of their own, and on
+            // a 375-point phone its last, Speechmatics, starts below the
+            // bottom edge (iPhone 13 mini, run 38516152248): the first choice
+            // shows the page opened, and the last is scrolled to.
+            let opened = (run.size == nil ? menuItem : app.buttons["Soniox"]).waitForExistence(timeout: 5)
             // What was on screen instead, in the raw log the job keeps.
             if !opened { print(app.debugDescription) }
             XCTAssertTrue(opened, "\(run.name): the service menu never opened")
+            if run.size != nil {
+                _ = scrollDownUntilVisible(app, identifier: "Speechmatics", type: .button, maxSwipes: 6)
+                XCTAssertTrue(menuItem.exists, "\(run.name): Speechmatics is missing from the list of services")
+            }
             capture(app, name: "\(run.name)-services")
             if run.size == nil {
                 // A tap on the status bar left the menu open over every later
