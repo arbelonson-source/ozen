@@ -431,6 +431,8 @@ private struct OnboardingPage<Content: View>: View {
     /// there, and the setup page's last line showed straight through
     /// them, so the dots get a solid strip of their own under the fade.
     private static var dotsClearance: CGFloat { 46 }
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var arrived = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -460,6 +462,9 @@ private struct OnboardingPage<Content: View>: View {
             Image(systemName: symbol)
                 .font(.system(size: 72, weight: .light))
                 .foregroundStyle(.tint)
+                // The page's picture gives one hop as the page arrives.
+                .symbolEffect(.bounce, value: arrived)
+                .onAppear { if !reduceMotion { arrived = true } }
                 .frame(maxWidth: .infinity)
                 .padding(.top, 32)
                 .accessibilityHidden(true)

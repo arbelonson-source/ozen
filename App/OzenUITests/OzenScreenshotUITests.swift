@@ -458,13 +458,21 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(screen.waitForExistence(timeout: 10), "onboarding: the first page never appeared")
         capture(app, name: "onboarding-german-accessibility-text-page1-welcome")
 
-        // Side by side at this size, "Weiter" broke inside the word ("Weit",
-        // "er") and "Überspringen" took three lines. Next across the screen
-        // with Skip under it keeps both words whole.
+        // Side by side at this size on a phone, "Weiter" broke inside the
+        // word ("Weit", "er") and "Überspringen" took three lines. Next
+        // across the screen with Skip under it keeps both words whole. An
+        // iPad has room for both whole in one row, and keeps the row.
         let next = app.descendants(matching: .any)["onboardingNextButton"]
         let skip = app.descendants(matching: .any)["onboardingSkipButton"]
         XCTAssertTrue(skip.exists && next.exists, "onboarding: no Skip or Next on page 1")
-        XCTAssertGreaterThanOrEqual(skip.frame.minY, next.frame.maxY, "onboarding: Skip beside Next breaks their German words at this size (Skip \(skip.frame), Next \(next.frame))")
+        let window = app.windows.firstMatch.frame
+        let sideBySide = skip.frame.minY < next.frame.maxY && next.frame.minY < skip.frame.maxY
+        if window.width < 600 {
+            XCTAssertGreaterThanOrEqual(skip.frame.minY, next.frame.maxY, "onboarding: Skip beside Next breaks their German words at this size (Skip \(skip.frame), Next \(next.frame))")
+        } else if sideBySide {
+            XCTAssertLessThanOrEqual(skip.frame.maxX, next.frame.minX, "onboarding: Skip and Next run into each other (Skip \(skip.frame), Next \(next.frame))")
+            XCTAssertTrue(window.contains(skip.frame) && window.contains(next.frame), "onboarding: Skip or Next runs off the screen (Skip \(skip.frame), Next \(next.frame))")
+        }
 
         for (index, name) in ["page2-how-it-works", "page3-language", "page4-engine", "page5-microphone", "page6-name"].enumerated() {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "onboarding: no Next button on page \(index + 1)")

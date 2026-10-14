@@ -160,9 +160,23 @@ struct LiveCaptionView: View {
     /// The screen itself: captions, banners and the control bar.
     private var screen: some View {
         ZStack(alignment: .bottom) {
-            transcript
-                .simultaneousGesture(pinchToResize)
-                .mask(topScrollFadeMask)
+            // Above the captions, pushing them down, not drawn over them:
+            // over the lines, their words showed through a banner and
+            // around the yellow pill, letters on letters. A few at once, at
+            // large text on a small phone, took all the room on Android and
+            // left no line of the captions: past about half they scroll.
+            GeometryReader { space in
+                VStack(spacing: 0) {
+                    ViewThatFits(in: .vertical) {
+                        topBanners
+                        ScrollView { topBanners }
+                    }
+                    .frame(maxHeight: space.size.height * 0.55)
+                    transcript
+                        .simultaneousGesture(pinchToResize)
+                        .mask(topScrollFadeMask)
+                }
+            }
 
             if pinchScale != 1 {
                 Text(tr("גודל טקסט %1", "Text size %1", args: ["\(Int(liveDisplay.fontSize))"]))
@@ -208,54 +222,6 @@ struct LiveCaptionView: View {
                 try? await Task.sleep(for: .seconds(1))
             }
         }
-        .overlay(alignment: .top) {
-            VStack(spacing: 8) {
-                // A doorbell or smoke alarm lasts seconds; the warnings below
-                // stay until tapped and, at large text sizes, can fill the
-                // screen, so the sound comes first (as in `alertOverlay`).
-                if let alert = visibleSoundAlert {
-                    SoundAlertBanner(alert: alert) {
-                        withAnimation { visibleSoundAlert = nil }
-                        viewModel.dismissSoundAlert(id: alert.id)
-                    }
-                    .transition(.banner(from: .top, reduceMotion: reduceMotion))
-                }
-                if let hit = visibleKeywordHit {
-                    KeywordHitPill(hit: hit, speakerName: viewModel.speakerName(for: hit))
-                        .transition(.banner(from: .top, reduceMotion: reduceMotion))
-                }
-                if let expiresAt = installExpiryToWarn {
-                    InstallExpiryBanner(expiresAt: expiresAt, now: Date(timeIntervalSince1970: awakeClock)) {
-                        withAnimation { installExpiryDismissed = true }
-                    }
-                    .transition(.banner(from: .top, reduceMotion: reduceMotion))
-                }
-                if viewModel.savingTrouble.shouldShow {
-                    SavingTroubleBanner {
-                        withAnimation { viewModel.dismissSavingTrouble() }
-                    }
-                    .transition(.banner(from: .top, reduceMotion: reduceMotion))
-                }
-                if let title = viewModel.microphoneDrop.title {
-                    MicrophoneDropBanner(title: title, detail: MicrophoneDropNotice.detail(listening: viewModel.captionsAreRunning)) {
-                        withAnimation { viewModel.dismissMicrophoneDrop() }
-                        showingMicPicker = true
-                    } onDismiss: {
-                        withAnimation { viewModel.dismissMicrophoneDrop() }
-                    }
-                    .transition(.banner(from: .top, reduceMotion: reduceMotion))
-                }
-                if let notice = battery.notice {
-                    BatteryBanner(notice: notice) {
-                        withAnimation { battery.dismiss() }
-                    }
-                    .transition(.banner(from: .top, reduceMotion: reduceMotion))
-                }
-                awayJumpButton
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-        }
         // Captions reach VoiceOver and braille displays line by line; a
         // reader who can't see these two banners would never learn that
         // saving stopped or that captions now come through another microphone.
@@ -279,6 +245,64 @@ struct LiveCaptionView: View {
             }
         }
         .preferredColorScheme(theme.preferredScheme)
+    }
+
+    /// The banners over the top of the captions: a sound, a word from the
+    /// list, and the warnings that stay until tapped.
+    private var topBanners: some View {
+        VStack(spacing: 8) {
+            // A doorbell or smoke alarm lasts seconds; the warnings below
+            // stay until tapped and, at large text sizes, can fill the
+            // screen, so the sound comes first (as in `alertOverlay`).
+            if let alert = visibleSoundAlert {
+                SoundAlertBanner(alert: alert) {
+                    withAnimation { visibleSoundAlert = nil }
+                    viewModel.dismissSoundAlert(id: alert.id)
+                }
+                .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
+            if let hit = visibleKeywordHit {
+                KeywordHitPill(hit: hit, speakerName: viewModel.speakerName(for: hit))
+                    .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
+            if let expiresAt = installExpiryToWarn {
+                InstallExpiryBanner(expiresAt: expiresAt, now: Date(timeIntervalSince1970: awakeClock)) {
+                    withAnimation { installExpiryDismissed = true }
+                }
+                .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
+            if viewModel.savingTrouble.shouldShow {
+                SavingTroubleBanner {
+                    withAnimation { viewModel.dismissSavingTrouble() }
+                }
+                .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
+            if let title = viewModel.microphoneDrop.title {
+                MicrophoneDropBanner(title: title, detail: MicrophoneDropNotice.detail(listening: viewModel.captionsAreRunning)) {
+                    withAnimation { viewModel.dismissMicrophoneDrop() }
+                    showingMicPicker = true
+                } onDismiss: {
+                    withAnimation { viewModel.dismissMicrophoneDrop() }
+                }
+                .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
+            if let notice = battery.notice {
+                BatteryBanner(notice: notice) {
+                    withAnimation { battery.dismiss() }
+                }
+                .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
+            awayJumpButton
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, hasTopBanner ? 8 : 0)
+        .padding(.bottom, hasTopBanner ? 4 : 0)
+    }
+
+    private var hasTopBanner: Bool {
+        visibleSoundAlert != nil || visibleKeywordHit != nil || installExpiryToWarn != nil
+            || viewModel.savingTrouble.shouldShow || viewModel.microphoneDrop.title != nil || battery.notice != nil
+            || (awayMark != nil && viewModel.awayCatchUp.offersJump(in: viewModel.segments))
     }
 
     /// Everything that reacts to what happens: Siri requests, alerts,
@@ -1294,7 +1318,11 @@ struct LiveCaptionView: View {
                             .controlSize(.small)
                             .tint(current.tint.readable(on: theme.colorScheme))
                     } else {
+                        // Starting, pausing or a fault: the icon changes shape
+                        // in place and gives one hop, so the change is seen.
                         Image(systemName: current.systemImage)
+                            .contentTransition(.symbolEffect(.replace))
+                            .symbolEffect(.bounce, value: reduceMotion ? "" : current.systemImage)
                     }
                     if !statusIsNarrow {
                         Text(current.title)

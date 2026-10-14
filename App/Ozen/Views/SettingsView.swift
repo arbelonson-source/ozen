@@ -89,6 +89,7 @@ struct SettingsView: View {
         }
     }
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static var voiceSample: String { tr("שלום, זה קול הטלפון. ככה אני נשמע.", "Hello, this is the phone's voice. This is how I sound.") }
 
@@ -122,6 +123,10 @@ struct SettingsView: View {
                 aboutSection
             }
             .accessibilityIdentifier("settingsScreen")
+            // Choosing another engine, or turning quiet hours on, slides its
+            // rows in and out rather than having the form jump.
+            .animation(reduceMotion ? nil : .default, value: viewModel.settings.engine)
+            .animation(reduceMotion ? nil : .default, value: viewModel.quietHours.isEnabled)
             .modifier(ScrollsToFocus(focus: focus, proxy: proxy))
             }
             .onDisappear(perform: saveUnsavedEntries)

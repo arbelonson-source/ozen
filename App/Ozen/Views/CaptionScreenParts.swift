@@ -265,12 +265,17 @@ struct FixVocabularyWordSheet: View {
 struct SoundAlertBanner: View {
     let alert: SoundAlert
     let onDismiss: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var rung = false
 
     var body: some View {
         Button(action: onDismiss) {
             HStack(spacing: 14) {
+                // One hop as it arrives, to catch the eye.
                 Image(systemName: alert.event.systemImage)
                     .font(.system(size: 30, weight: .semibold))
+                    .symbolEffect(.bounce, value: rung)
+                    .onAppear { if !reduceMotion { rung = true } }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(alert.event.name)
                         .font(.title3.weight(.bold))
