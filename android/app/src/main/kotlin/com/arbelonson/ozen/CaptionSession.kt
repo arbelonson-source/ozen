@@ -933,7 +933,9 @@ class CaptionSession(
         val utcOffsetSeconds = TimeZone.getDefault().getOffset((now * 1_000).toLong()) / 1_000
         val told = hits.filter { hit ->
             awayAlerts.forWords(listOf(hit), line.text, appIsActive, settings.current.value, now, utcOffsetSeconds).map { content ->
-                notifier.post(content).also { if (it) pipeline.ignoreSounds(AwayAlerts.vibrationFor(content)) }
+                val delivery = notifier.deliver(content)
+                delivery.buzz?.let { pipeline.ignoreSounds(it) }
+                delivery.posted
             }.any { it }
         }
         attention.claim(hits - told.toSet())?.let { word ->
@@ -967,7 +969,7 @@ class CaptionSession(
         val now = System.currentTimeMillis() / 1_000.0
         val utcOffsetSeconds = TimeZone.getDefault().getOffset((now * 1_000).toLong()) / 1_000
         awayAlerts.forSound(alert, appIsActive, settings.current.value, now, utcOffsetSeconds)?.let { content ->
-            if (notifier.post(content)) pipeline.ignoreSounds(AwayAlerts.vibrationFor(content))
+            notifier.deliver(content).buzz?.let { pipeline.ignoreSounds(it) }
         }
     }
 

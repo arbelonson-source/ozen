@@ -73,4 +73,16 @@ class AwayAlertsTest {
         assertEquals(AlertVibration.keyword, AwayAlerts.vibrationFor(door))
         assertEquals(AlertVibration.keyword, AwayAlerts.vibrationFor(word))
     }
+
+    @Test
+    fun `the buzz to ignore is what the channel really plays, none when the user turned vibration off`() {
+        val asked = AlertVibration.keyword
+        assertNull(AlertNotifier.channelBuzz(shouldVibrate = false, pattern = asked.waveform().first, asked))
+        assertEquals(asked.waveform().first.toList(), AlertNotifier.channelBuzz(true, asked.waveform().first, asked)?.waveform()?.first?.toList())
+        val older = longArrayOf(0, 500, 200, 500)
+        val played = AlertNotifier.channelBuzz(true, older, asked)
+        assertEquals(older.toList(), played?.waveform()?.first?.toList())
+        assertEquals(1.2, played?.totalSeconds ?: 0.0, 0.001)
+        assertEquals(asked, AlertNotifier.channelBuzz(true, null, asked))
+    }
 }

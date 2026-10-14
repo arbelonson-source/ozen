@@ -9,7 +9,12 @@ class CaptionsStopAnnouncer {
     fun phaseChanged(phase: PipelinePhase, active: Boolean = true): Event? = when (phase) {
         is PipelinePhase.Failed -> {
             if (stoppedByFailure) {
-                null
+                if (pendingStop && active) {
+                    pendingStop = false
+                    Event.Stopped
+                } else {
+                    null
+                }
             } else {
                 stoppedByFailure = true
                 pendingStop = !active
@@ -35,7 +40,7 @@ class CaptionsStopAnnouncer {
 
     fun comingBack(phase: PipelinePhase): Event? {
         val owed = pendingStop && phase is PipelinePhase.Failed
-        pendingStop = false
+        if (phase is PipelinePhase.Failed) pendingStop = false
         return if (owed) Event.Stopped else null
     }
 }
