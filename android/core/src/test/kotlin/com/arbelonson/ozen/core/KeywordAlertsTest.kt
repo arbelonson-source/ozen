@@ -550,4 +550,36 @@ class OtherLettersTest {
         assertFalse(HebrewText.isInOtherLetters("112", "he"))
         assertFalse(HebrewText.isInOtherLetters("Sarah", "en"))
     }
+
+    private fun hits(stem: String, text: String) = KeywordAlertMatcher(listOf(KeywordAlert(phrase = stem))).matches(text).size
+
+    @Test
+    fun `everyday words that hide a short name do not match it`() {
+        listOf(
+            "בר" to "כבר אכלתי", "בר" to "וכבר", "בר" to "זה שבר", "שי" to "ביום ששי",
+            "נתן" to "מה שנתן לי", "אלה" to "דברים כאלה", "אלה" to "האלה באו", "לאה" to "ממחר והלאה",
+        ).forEach { (stem, text) -> assertEquals(0, hits(stem, text), "$stem in $text") }
+    }
+
+    @Test
+    fun `the name itself with a prefix still matches`() {
+        listOf(
+            "בר" to "אמרתי לבר", "בר" to "ובר בא", "נתן" to "נתן בא", "נתן" to "ולנתן", "אלה" to "ואלה באו",
+        ).forEach { (stem, text) -> assertEquals(1, hits(stem, text), "$stem in $text") }
+    }
+
+    @Test
+    fun `accents, hamza and yo are folded`() {
+        assertEquals(1, hits("Jose", "Hola José"))
+        assertEquals(1, hits("Mama", "¡Hola, mamá!"))
+        assertEquals(1, hits("Алена", "Алёна пришла"))
+        assertEquals(1, hits("احمد", "قال أحمد"))
+    }
+
+    @Test
+    fun `folding does not merge different words`() {
+        assertEquals(0, hits("Dan", "Dana"))
+        assertEquals(0, hits("мои", "мой"))
+        assertEquals(0, hits("nino", "niño"))
+    }
 }
