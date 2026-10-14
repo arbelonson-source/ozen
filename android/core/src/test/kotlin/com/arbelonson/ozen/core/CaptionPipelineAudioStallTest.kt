@@ -35,7 +35,62 @@ class CaptionPipelineRefreshTest {
     }
 }
 
+private fun silenceWatchdog() = AudioStallWatchdog(stallSeconds = 6.0, silenceSeconds = 0.5)
+
+private suspend fun FakeAudioCapturer.feed(chunks: List<FloatArray>) {
+    for (chunk in chunks) {
+        push(chunk)
+        delay(100.milliseconds)
+    }
+}
+
 class CaptionPipelineAudioStallTest {
+    @Test
+    fun `a microphone that delivers only exact silence becomes a visible audio failure`() = runTest {
+        val (pipeline, audio, _) = makePipeline(audioWatchdog = silenceWatchdog(), recovery = AutoRecoveryPolicy.disabled())
+        pipeline.start(AppSettings.default)
+
+        audio.feed(List(20) { FloatArray(1_600) })
+
+        assertEquals(PipelineFailure.Kind.AudioSessionFailed, pipeline.phase.failure?.kind)
+        assertEquals(1, pipeline.stats.audioStalls)
+    }
+
+    @Test
+    fun `a very quiet but real signal keeps listening`() = runTest {
+        val (pipeline, audio, _) = makePipeline(audioWatchdog = silenceWatchdog(), recovery = AutoRecoveryPolicy.disabled())
+        pipeline.start(AppSettings.default)
+
+        audio.feed(List(20) { FloatArray(1_600) { 1e-4f } })
+
+        assertTrue(pipeline.phase.isListening)
+        assertEquals(0, pipeline.stats.audioStalls)
+    }
+
+    @Test
+    fun `one chunk with a real sample starts the count of silence again`() = runTest {
+        val (pipeline, audio, _) = makePipeline(audioWatchdog = silenceWatchdog(), recovery = AutoRecoveryPolicy.disabled())
+        pipeline.start(AppSettings.default)
+        val sound = FloatArray(1_600).also { it[800] = 0.01f }
+
+        audio.feed(List(20) { if (it % 4 == 3) sound else FloatArray(1_600) })
+
+        assertTrue(pipeline.phase.isListening)
+        assertEquals(0, pipeline.stats.audioStalls)
+    }
+
+    @Test
+    fun `silence during a phone call is not counted`() = runTest {
+        val (pipeline, audio, _) = makePipeline(audioWatchdog = silenceWatchdog(), recovery = AutoRecoveryPolicy.disabled())
+        pipeline.start(AppSettings.default)
+        pipeline.systemInterruptionChanged(true)
+
+        audio.feed(List(20) { FloatArray(1_600) })
+
+        assertTrue(pipeline.phase.isListening)
+        assertEquals(0, pipeline.stats.audioStalls)
+    }
+
     @Test
     fun `a microphone that stops delivering audio becomes a visible audio failure`() = runTest {
         val (pipeline, audio, _) = makePipeline(audioWatchdog = quickWatchdog())

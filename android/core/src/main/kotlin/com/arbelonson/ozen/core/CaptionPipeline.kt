@@ -1791,6 +1791,7 @@ class CaptionPipeline(
             audioStream.collect { chunk ->
                 if (runID != run) throw StopLoop()
                 statsData.audioChunksReceived += 1
+                audioWatchdog.heard(chunk, systemInterrupted)
                 statsData.audioSecondsReceived += chunk.size.toDouble() / SAMPLE_RATE
                 statsData.lastAudioAt = now()
                 recentAudio.append(chunk)
@@ -2008,10 +2009,18 @@ class CaptionPipeline(
      */
     private fun checkAudioIsArriving() {
         if (!phase.isListening) return
-        if (!audioWatchdog.tick(statsData.audioChunksReceived, systemInterrupted)) return
+        val stalled = audioWatchdog.tick(statsData.audioChunksReceived, systemInterrupted)
+        // Chunks that are all exact zeros (a Bluetooth or USB microphone
+        // that is not routed, a blocked microphone on older Android) count
+        // as arriving above, yet carry nothing; the recovery limits stop a
+        // microphone that stays silent from restarting for ever.
+        val silent = !stalled && !systemInterrupted && audioWatchdog.isSilent
+        if (!stalled && !silent) return
         statsData.audioStalls += 1
         logEvent(PipelineEvent.Kind.MicrophoneStalled)
-        fail(PipelineFailure.Kind.AudioSessionFailed, "no audio from the microphone for ${audioWatchdog.stallSeconds.toInt()} s")
+        val reason = if (stalled) "no audio from the microphone for ${audioWatchdog.stallSeconds.toInt()} s"
+        else "the microphone delivered only silence for ${audioWatchdog.silenceSeconds.toInt()} s"
+        fail(PipelineFailure.Kind.AudioSessionFailed, reason)
     }
 
     /**
