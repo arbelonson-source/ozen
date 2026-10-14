@@ -2,9 +2,13 @@ package com.arbelonson.ozen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -32,6 +36,7 @@ internal fun FixWordDialog(shown: String, onAdd: (String) -> Unit, onDismiss: ()
     val add = { if (word.isNotBlank()) onAdd(word) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
         title = { Text(tr("תיקון מילה", "Fix a word")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -42,13 +47,15 @@ internal fun FixWordDialog(shown: String, onAdd: (String) -> Unit, onDismiss: ()
                     onValueChange = { word = it },
                     label = { Text(tr("המילה או השם הנכונים", "The correct word or name")) },
                     singleLine = true,
+                    shape = MaterialTheme.shapes.medium,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { add() }),
-                    modifier = Modifier.focusRequester(typing),
+                    modifier = Modifier.fillMaxWidth().focusRequester(typing),
                 )
                 Text(
                     tr("מהמשפט הבא, הכתוביות ינסו לזהות את המילה הזו נכון.", "From the next sentence, the captions will try to recognize this word correctly."),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         },
