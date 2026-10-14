@@ -26,6 +26,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.ui.unit.dp
 
 /**
@@ -49,7 +52,7 @@ fun ToolbarButton(
             .clip(MaterialTheme.shapes.medium)
             .selectable(selected = selected, enabled = enabled, role = Role.Button, onClick = onClick)
             .alpha(if (enabled) 1f else 0.5f)
-            .padding(horizontal = 4.dp, vertical = 8.dp),
+            .padding(horizontal = 2.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -59,7 +62,7 @@ fun ToolbarButton(
         ) {
             Icon(icon, contentDescription = null, tint = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant)
         }
-        Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) colors.onSurface else colors.onSurfaceVariant, textAlign = TextAlign.Center, maxLines = 2)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) colors.onSurface else colors.onSurfaceVariant, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 12.sp))
     }
 }
 

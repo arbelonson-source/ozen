@@ -1,8 +1,8 @@
 package com.arbelonson.ozen.ui
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -18,6 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -84,18 +87,36 @@ private fun RowLayout(
     enabled: Boolean,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    Row(
-        modifier.fillMaxWidth().heightIn(min = 56.dp).alpha(if (enabled) 1f else 0.5f).padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        if (icon != null) Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        if (trailing != null) {
-            trailing()
+    Layout(
+        content = {
+            if (icon != null) Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.layoutId("icon"))
+            Column(Modifier.layoutId("title")) {
+                Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (trailing != null) Box(Modifier.layoutId("trailing")) { trailing() }
+        },
+        modifier = modifier.fillMaxWidth().heightIn(min = 56.dp).alpha(if (enabled) 1f else 0.5f).padding(horizontal = 16.dp, vertical = 8.dp),
+    ) { measurables, constraints ->
+        val gap = 16.dp.roundToPx()
+        val iconM = measurables.firstOrNull { it.layoutId == "icon" }
+        val titleM = measurables.first { it.layoutId == "title" }
+        val trailingM = measurables.firstOrNull { it.layoutId == "trailing" }
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val iconP = iconM?.measure(loose)
+        var used = if (iconP != null) iconP.width + gap else 0
+        // The title keeps its longest word whole; the value takes what is left and wraps.
+        val titleFloor = titleM.minIntrinsicWidth(constraints.maxHeight).coerceAtMost(constraints.maxWidth - used)
+        val trailingP = trailingM?.measure(loose.copy(maxWidth = (constraints.maxWidth - used - titleFloor - gap).coerceAtLeast(0)))
+        if (trailingP != null) used += trailingP.width + gap
+        val titleP = titleM.measure(loose.copy(maxWidth = (constraints.maxWidth - used).coerceAtLeast(0)))
+        val height = maxOf(titleP.height, iconP?.height ?: 0, trailingP?.height ?: 0).coerceAtLeast(constraints.minHeight)
+        layout(constraints.maxWidth, height) {
+            fun place(p: Placeable, start: Int) = p.placeRelative(start, (height - p.height) / 2)
+            var x = 0
+            if (iconP != null) { place(iconP, x); x += iconP.width + gap }
+            place(titleP, x)
+            if (trailingP != null) place(trailingP, constraints.maxWidth - trailingP.width)
         }
     }
 }

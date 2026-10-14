@@ -150,7 +150,7 @@ internal fun BigTextScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
                 ) {
                     Icon(button.icon, contentDescription = null, tint = tint)
-                    Text(button.title, color = tint, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = 14.sp))
+                    Text(button.title, color = tint, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 14.sp))
                 }
             }
         }

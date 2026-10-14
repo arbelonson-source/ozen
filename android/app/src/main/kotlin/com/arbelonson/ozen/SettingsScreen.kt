@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
@@ -1338,13 +1339,12 @@ internal fun SettingsPageFrame(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-        Column(modifier = Modifier.fillMaxSize().imePadding().verticalScroll(scroll)) {
-            OzenTopBar(title, onClose = onClose, closeLabel = closeLabel, actions = actions)
+        Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Vertical)).imePadding().verticalScroll(scroll)) {
+            OzenTopBar(title, onClose = onClose, closeLabel = closeLabel, actions = actions, insets = false)
             Column(
                 modifier = Modifier
                     .padding(horizontal = OzenSpacing.Page)
                     .padding(bottom = OzenSpacing.Section)
-                    .navigationBarsPadding()
                     .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
                 verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit),
                 content = content,

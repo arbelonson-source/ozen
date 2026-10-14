@@ -171,35 +171,6 @@ private fun com.arbelonson.ozen.ui.SettingsGroupScope.soundRows(
     }
 }
 
-private fun soundIcon(systemImage: String): ImageVector = when (systemImage.substringBefore('.')) {
-    "light", "exclamationmark" -> Icons.Rounded.Warning
-    "drop" -> if (systemImage == "drop.triangle.fill") Icons.Rounded.Air else Icons.Rounded.WaterDrop
-    "flame" -> Icons.Rounded.LocalFireDepartment
-    "cross" -> Icons.Rounded.LocalHospital
-    "shield" -> Icons.Rounded.Shield
-    "person" -> Icons.Rounded.Person
-    "car" -> Icons.Rounded.DirectionsCar
-    "figure" -> Icons.Rounded.ChildCare
-    "hand" -> Icons.Rounded.PanTool
-    "hands" -> Icons.Rounded.WavingHand
-    "phone" -> Icons.Rounded.Phone
-    "alarm" -> Icons.Rounded.Alarm
-    "dog", "cat" -> Icons.Rounded.Pets
-    "cloud" -> Icons.Rounded.Thunderstorm
-    "sparkles" -> Icons.Rounded.AutoAwesome
-    "door" -> Icons.Rounded.DoorFront
-    "waveform" -> Icons.Rounded.GraphicEq
-    "microwave" -> Icons.Rounded.Microwave
-    "sink" -> Icons.Rounded.Plumbing
-    "toilet" -> Icons.Rounded.Wc
-    "fan" -> Icons.Rounded.CleaningServices
-    "lungs" -> Icons.Rounded.Sick
-    "wind" -> Icons.Rounded.Air
-    "face" -> Icons.Rounded.SentimentSatisfied
-    "music" -> Icons.Rounded.MusicNote
-    else -> Icons.Rounded.Hearing
-}
-
 internal fun soundFloorName(importance: SoundEvent.Importance): String = when (importance) {
     SoundEvent.Importance.Critical -> tr("רק חירום", "Emergency only")
     SoundEvent.Importance.High -> tr("חשוב ומעלה", "Important and above")

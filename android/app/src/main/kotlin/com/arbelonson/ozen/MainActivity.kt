@@ -946,12 +946,12 @@ private fun CaptionScreen(
                 CompositionLocalProvider(LocalDensity provides Density(density.density, minOf(density.fontScale, LARGEST_ORDINARY_FONT_SCALE))) {
                     Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
                         Row(Modifier.padding(horizontal = OzenSpacing.Unit / 2), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            ToolbarButton(Icons.Rounded.History, tr("היסטוריה", "History"), onHistory, Modifier.weight(1f))
+                            ToolbarButton(Icons.Rounded.History, tr("היסטוריה", "History"), onHistory, Modifier.weight(toolbarShare(tr("היסטוריה", "History"))))
                             ToolbarButton(
                                 Icons.Rounded.Mic,
                                 microphone,
                                 onMicrophone,
-                                Modifier.weight(1f).semantics {
+                                Modifier.weight(toolbarShare(microphone, 12f)).semantics {
                                     contentDescription = choose
                                     stateDescription = state.selectedInput?.portName ?: ""
                                 },
@@ -963,10 +963,10 @@ private fun CaptionScreen(
                                 if (state.speaking) Icons.Rounded.Stop else Icons.Rounded.Keyboard,
                                 tr("להגיד", "Say"),
                                 onSay,
-                                Modifier.weight(1f).semantics { contentDescription = say },
+                                Modifier.weight(toolbarShare(tr("להגיד", "Say"))).semantics { contentDescription = say },
                                 selected = state.speaking,
                             )
-                            ToolbarButton(Icons.Rounded.Settings, tr("הגדרות", "Settings"), onSettings, Modifier.weight(1f))
+                            ToolbarButton(Icons.Rounded.Settings, tr("הגדרות", "Settings"), onSettings, Modifier.weight(toolbarShare(tr("הגדרות", "Settings"))))
                         }
                     }
                 }
@@ -975,6 +975,9 @@ private fun CaptionScreen(
         if (hidden) ShowButtonsButton { lastTouchAt = secondsNow() }
     }
 }
+
+/** Room on the bottom toolbar in proportion to the label's length, so a long word stays whole beside short ones. */
+private fun toolbarShare(label: String, widest: Float = 14f): Float = label.length.toFloat().coerceIn(5f, widest)
 
 /**
  * Two fingers spreading or closing anywhere over the captions; one finger

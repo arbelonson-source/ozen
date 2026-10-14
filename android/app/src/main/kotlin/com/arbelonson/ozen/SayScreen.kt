@@ -218,10 +218,10 @@ internal fun SayScreen(
                         Text(tr("לשחזר את ברירת המחדל", "Restore defaults"), color = if (phrasesAreDefault) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
                     }
                 } else {
+                    val sayableNow = phrases.map { it to canSay(it) }
                     SettingsGroup {
-                        for (phrase in phrases) {
+                        for ((phrase, sayable) in sayableNow) {
                             item {
-                                val sayable = canSay(phrase)
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()

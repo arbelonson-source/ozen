@@ -37,9 +37,9 @@ fun OzenScreen(
             Column(
                 Modifier
                     .weight(1f)
+                    .navigationBarsPadding()
                     .then(if (scrolls) Modifier.verticalScroll(rememberScrollState()) else Modifier)
-                    .padding(horizontal = OzenSpacing.Page)
-                    .navigationBarsPadding(),
+                    .padding(horizontal = OzenSpacing.Page),
                 verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit),
                 content = content,
             )

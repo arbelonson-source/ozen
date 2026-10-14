@@ -216,37 +216,3 @@ internal fun soundIcon(systemImage: String): ImageVector = when {
         else -> Icons.Rounded.NotificationsActive
     }
 }
-
-internal fun soundSymbol(systemImage: String): String = when {
-    systemImage == "drop.triangle.fill" -> "♨️"
-    else -> when (systemImage.substringBefore('.')) {
-        "light" -> "🚨"
-        "flame" -> "🔥"
-        "cross" -> "🚑"
-        "shield" -> "🚓"
-        "exclamationmark" -> "⚠️"
-        "person" -> "🗣️"
-        "car" -> "🚗"
-        "figure" -> "👶"
-        "drop" -> "💧"
-        "hand" -> "✊"
-        "hands" -> "👏"
-        "phone" -> "📞"
-        "alarm" -> "⏰"
-        "dog" -> "🐕"
-        "cloud" -> "⛈️"
-        "sparkles" -> "🎆"
-        "door" -> "🚪"
-        "waveform" -> "🔊"
-        "microwave" -> "⏲️"
-        "sink" -> "🚰"
-        "toilet" -> "🚽"
-        "fan" -> "🧹"
-        "cat" -> "🐈"
-        "lungs" -> "😷"
-        "wind" -> "🤧"
-        "face" -> "😄"
-        "music" -> "🎵"
-        else -> "🔔"
-    }
-}
