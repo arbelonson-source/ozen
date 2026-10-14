@@ -16,7 +16,22 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +43,7 @@ import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -88,11 +104,13 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -364,116 +382,145 @@ private fun OzenApp(
     LaunchedEffect(look.isLight) { onLightScreen(look.isLight) }
     MaterialTheme(colorScheme = if (look.isLight) lightColorScheme() else darkColorScheme()) {
         CompositionLocalProvider(LocalLayoutDirection provides direction) {
-            val opened = reading
-            when {
-                !current.hasCompletedOnboarding -> {
-                    LaunchedEffect(Unit) { onboarding.shown() }
-                    OnboardingScreen(
-                        settings = current,
-                        microphone = onboarding.microphone.value,
-                        notifications = onboarding.notifications.value,
-                        onApproveMicrophone = onboarding.approveMicrophone,
-                        onApproveNotifications = onboarding.approveNotifications,
-                        onOpenPhoneSettings = onboarding.openPhoneSettings,
-                        onSpokenLanguage = app.engineSettings::chooseSpokenLanguage,
-                        onAddName = app.captions::addNameAlert,
-                        onAddAlert = app.captions::addAlert,
-                        onFinish = onboarding.finish,
-                    )
-                }
-                showingSettings.value -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false; settingsAtBackup.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, heardBy = { state.recentlyHeardBy[it.id]?.takeIf { current.display.showSpeakerNames } }, onAppLanguage = onAppLanguage, onShowWalkthrough = {
-                    app.captions.showWalkthroughAgain()
-                    showingSettings.value = false
-                }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value)
-                opened != null -> ConversationScreen(
-                    app.captions.savedConversations,
-                    opened.first,
-                    query = "",
-                    marksUncertain = current.display.markUncertainLines,
-                    emphasizeNumbers = current.display.emphasizeNumbers,
-                    // Renamed or deleted inside: the empty screen's offer follows.
-                    onClose = {
-                        reading = null
-                        app.captions.loadRecentConversation()
-                    },
-                    line = opened.second,
-                    languageCode = current.languageCode,
-                )
-                namingAlert -> NameAlertScreen(current, onAddName = app.captions::addNameAlert, onAddAlert = app.captions::addAlert, onClose = { namingAlert = false })
-                choosingMicrophone -> MicPickerScreen(
-                    inputs = state.inputs,
-                    selected = state.selectedInput,
-                    listening = state.phase.isListening,
-                    level = { app.captions.pipeline.inputLevel },
-                    onChoose = { app.captions.selectInput(it.uid) },
-                    onRefresh = app.captions::refreshInputs,
-                    onClose = { choosingMicrophone = false },
-                )
-                saying -> SayScreen(
-                    draft = sayDraft,
-                    onDraft = { sayDraft = it },
-                    speaking = state.speaking,
-                    phrases = QuickPhrases.shown(current.quickPhrases, Localization.language),
-                    canSay = app.captions::canSay,
-                    onSpeak = app.captions::speak,
-                    onStop = app.captions::stopSpeaking,
-                    onAddPhrase = app.captions::addQuickPhrase,
-                    onRemovePhrase = app.captions::removeQuickPhrase,
-                    onMovePhrase = app.captions::moveQuickPhrase,
-                    onRestorePhrases = app.captions::restoreQuickPhrases,
-                    phrasesAreDefault = QuickPhrases.isDefault(current.quickPhrases, Localization.language),
-                    look = look,
-                    captionSize = current.display.fontSize,
-                    onClose = { saying = false },
-                    voiceNotices = VoiceNotice.forSay(Localization.language, voices),
-                )
-                showingHistory -> HistoryScreen(
-                    app.captions.savedConversations,
-                    saving = current.saveHistory,
-                    retention = current.historyRetention,
-                    marksUncertain = current.display.markUncertainLines,
-                    emphasizeNumbers = current.display.emphasizeNumbers,
-                    onClose = { showingHistory = false },
-                    languageCode = current.languageCode,
-                )
-                else -> {
-                    LaunchedEffect(Unit) { if (app.captions.takeFirstAppearance()) onLaunch() }
-                    CaptionScreen(
-                        state,
-                        current.display,
-                        look,
-                        onStatusTap,
-                        onSettings = {
-                            settingsAtBackup.value = false
-                            showingSettings.value = true
-                        },
-                        onHistory = { showingHistory = true },
-                        onStar = { app.captions.toggleStar(it) },
-                        onOpen = { conversation, line ->
-                            app.captions.saveBeforeReading()
-                            reading = conversation to line
-                        },
-                        onAddWord = { app.captions.addWord(it) },
-                        onNameSpeaker = app.captions::nameSpeaker,
-                        savedSpeakerNames = { app.captions.savedSpeakerNames },
-                        onAskToRepeat = { app.captions.askToRepeat() }.takeIf { app.captions.canAskToRepeat() },
-                        onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
-                        onDismissSavingTrouble = app.captions::dismissSavingTrouble,
-                        onDismissMicrophoneDrop = app.captions::dismissMicrophoneDrop,
-                        onMarkProblem = app.captions::markProblem,
-                        onMicrophone = { choosingMicrophone = true },
-                        offersNameAlert = current.offersNameAlert,
-                        onNameAlert = { namingAlert = true },
-                        onDismissNameAlert = app.captions::dismissNameAlertOffer,
-                        buzzWhenTalkResumes = current.hapticOnSpeechResume,
-                        onBuzz = app.captions::buzz,
-                        soundSecondsLeft = app.captions::soundBannerSecondsLeft,
-                        onDismissSound = app.captions::dismissSoundAlert,
-                        onFontSize = { size -> app.settings.change { it.display = it.display.copy(fontSize = size) } },
-                        onOpenConversation = { reading = it to null },
-                        onDismissRecent = app.captions::dismissRecentConversation,
-                        onDismissBattery = app.captions::dismissBatteryWarning,
-                    )
+            val front = when {
+                !current.hasCompletedOnboarding -> FrontScreen(Front.Walkthrough)
+                showingSettings.value -> FrontScreen(Front.Settings)
+                reading != null -> FrontScreen(Front.Conversation, reading)
+                namingAlert -> FrontScreen(Front.NameAlert)
+                choosingMicrophone -> FrontScreen(Front.Microphones)
+                saying -> FrontScreen(Front.Say)
+                showingHistory -> FrontScreen(Front.History)
+                else -> FrontScreen(Front.Captions)
+            }
+            // A screen opened from another slides in from where the reading
+            // goes on (from the left in Hebrew and Arabic) and back out the
+            // same way, Material's shared axis: the one leaving fades before
+            // the one arriving shows, so their words never cross.
+            val shift = with(LocalDensity.current) { 30.dp.roundToPx() } * if (direction == LayoutDirection.Rtl) -1 else 1
+            AnimatedContent(
+                targetState = front,
+                transitionSpec = {
+                    val way = targetState.kind.depth.compareTo(initialState.kind.depth)
+                    (fadeIn(tween(210, delayMillis = 90)) + slideInHorizontally(tween(300)) { way * shift }) togetherWith
+                        (fadeOut(tween(90)) + slideOutHorizontally(tween(300)) { -way * shift })
+                },
+                label = "screen",
+            ) { screen ->
+                val opened = screen.reading
+                OnTabletWidth(screen.kind != Front.Captions && screen.kind != Front.Say) {
+                    when (screen.kind) {
+                        Front.Walkthrough -> {
+                            LaunchedEffect(Unit) { onboarding.shown() }
+                            OnboardingScreen(
+                                settings = current,
+                                microphone = onboarding.microphone.value,
+                                notifications = onboarding.notifications.value,
+                                onApproveMicrophone = onboarding.approveMicrophone,
+                                onApproveNotifications = onboarding.approveNotifications,
+                                onOpenPhoneSettings = onboarding.openPhoneSettings,
+                                onSpokenLanguage = app.engineSettings::chooseSpokenLanguage,
+                                onAddName = app.captions::addNameAlert,
+                                onAddAlert = app.captions::addAlert,
+                                onFinish = onboarding.finish,
+                            )
+                        }
+                        Front.Settings -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false; settingsAtBackup.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, heardBy = { state.recentlyHeardBy[it.id]?.takeIf { current.display.showSpeakerNames } }, onAppLanguage = onAppLanguage, onShowWalkthrough = {
+                            app.captions.showWalkthroughAgain()
+                            showingSettings.value = false
+                        }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value)
+                        Front.Conversation -> ConversationScreen(
+                            app.captions.savedConversations,
+                            opened!!.first,
+                            query = "",
+                            marksUncertain = current.display.markUncertainLines,
+                            emphasizeNumbers = current.display.emphasizeNumbers,
+                            // Renamed or deleted inside: the empty screen's offer follows.
+                            onClose = {
+                                reading = null
+                                app.captions.loadRecentConversation()
+                            },
+                            line = opened.second,
+                            languageCode = current.languageCode,
+                        )
+                        Front.NameAlert -> NameAlertScreen(current, onAddName = app.captions::addNameAlert, onAddAlert = app.captions::addAlert, onClose = { namingAlert = false })
+                        Front.Microphones -> MicPickerScreen(
+                            inputs = state.inputs,
+                            selected = state.selectedInput,
+                            listening = state.phase.isListening,
+                            level = { app.captions.pipeline.inputLevel },
+                            onChoose = { app.captions.selectInput(it.uid) },
+                            onRefresh = app.captions::refreshInputs,
+                            onClose = { choosingMicrophone = false },
+                        )
+                        Front.Say -> SayScreen(
+                            draft = sayDraft,
+                            onDraft = { sayDraft = it },
+                            speaking = state.speaking,
+                            phrases = QuickPhrases.shown(current.quickPhrases, Localization.language),
+                            canSay = app.captions::canSay,
+                            onSpeak = app.captions::speak,
+                            onStop = app.captions::stopSpeaking,
+                            onAddPhrase = app.captions::addQuickPhrase,
+                            onRemovePhrase = app.captions::removeQuickPhrase,
+                            onMovePhrase = app.captions::moveQuickPhrase,
+                            onRestorePhrases = app.captions::restoreQuickPhrases,
+                            phrasesAreDefault = QuickPhrases.isDefault(current.quickPhrases, Localization.language),
+                            look = look,
+                            captionSize = current.display.fontSize,
+                            onClose = { saying = false },
+                            voiceNotices = VoiceNotice.forSay(Localization.language, voices),
+                        )
+                        Front.History -> HistoryScreen(
+                            app.captions.savedConversations,
+                            saving = current.saveHistory,
+                            retention = current.historyRetention,
+                            marksUncertain = current.display.markUncertainLines,
+                            emphasizeNumbers = current.display.emphasizeNumbers,
+                            onClose = { showingHistory = false },
+                            languageCode = current.languageCode,
+                        )
+                        Front.Captions -> {
+                            LaunchedEffect(Unit) { if (app.captions.takeFirstAppearance()) onLaunch() }
+                            CaptionScreen(
+                                state,
+                                current.display,
+                                look,
+                                onStatusTap,
+                                onSettings = {
+                                    settingsAtBackup.value = false
+                                    showingSettings.value = true
+                                },
+                                onHistory = { showingHistory = true },
+                                onStar = { app.captions.toggleStar(it) },
+                                onOpen = { conversation, line ->
+                                    app.captions.saveBeforeReading()
+                                    reading = conversation to line
+                                },
+                                onAddWord = { app.captions.addWord(it) },
+                                onNameSpeaker = app.captions::nameSpeaker,
+                                savedSpeakerNames = { app.captions.savedSpeakerNames },
+                                onAskToRepeat = { app.captions.askToRepeat() }.takeIf { app.captions.canAskToRepeat() },
+                                onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
+                                onDismissSavingTrouble = app.captions::dismissSavingTrouble,
+                                onDismissMicrophoneDrop = app.captions::dismissMicrophoneDrop,
+                                onMarkProblem = app.captions::markProblem,
+                                onMicrophone = { choosingMicrophone = true },
+                                offersNameAlert = current.offersNameAlert,
+                                onNameAlert = { namingAlert = true },
+                                onDismissNameAlert = app.captions::dismissNameAlertOffer,
+                                // Not while it slides away under another screen: talk
+                                // that resumes then is heard there, not buzzed here.
+                                buzzWhenTalkResumes = current.hapticOnSpeechResume && transition.targetState == EnterExitState.Visible,
+                                onBuzz = app.captions::buzz,
+                                soundSecondsLeft = app.captions::soundBannerSecondsLeft,
+                                onDismissSound = app.captions::dismissSoundAlert,
+                                onFontSize = { size -> app.settings.change { it.display = it.display.copy(fontSize = size) } },
+                                onOpenConversation = { reading = it to null },
+                                onDismissRecent = app.captions::dismissRecentConversation,
+                                onDismissBattery = app.captions::dismissBatteryWarning,
+                            )
+                        }
+                    }
                 }
             }
             if (confirmingCellular.value) {
@@ -490,6 +537,12 @@ private fun OzenApp(
         }
     }
 }
+
+/** The screens in front of each other, by how far in from the captions each is. */
+private enum class Front(val depth: Int) { Walkthrough(0), Captions(0), History(1), Say(1), Microphones(1), NameAlert(1), Settings(1), Conversation(2) }
+
+/** The screen in front, with the conversation open on it, so one sliding away still shows what it showed. */
+private data class FrontScreen(val kind: Front, val reading: Pair<UUID, UUID?>? = null)
 
 /** As on the iPhone: "Tap to download now" on the waiting-for-Wi-Fi status asks first, saying what cellular data may cost. */
 @Composable
@@ -729,114 +782,137 @@ private fun CaptionScreen(
             .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Box(
-            modifier = Modifier.weight(1f).fillMaxWidth().pinchToResize(
-                onScale = { pinchScale *= it },
-                onEnd = {
-                    val size = DisplayPreferences.fontSize(savedSize, pinchScale)
-                    pinchScale = 1.0
-                    if (size != savedSize) onFontSize(size)
-                },
-            ),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (state.lines.isEmpty()) {
-                // Scrolls when it can't all fit, at the phone's largest text
-                // or turned sideways: the offer's last line was cut off there.
+        BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            // A few banners at once, at large text on a small phone, took
+            // all the room and left no line of the captions: past about
+            // half the room they scroll.
+            val bannerRoom = maxHeight * 0.55f
+            val bannerRoomPixels = constraints.maxHeight * 0.55f
+            // Only while they overflow: an empty strip that could scroll was a
+            // second list on the screen, for a screen reader and for tests.
+            var bannersOverflow by remember { mutableStateOf(false) }
+            val bannerScroll = rememberScrollState()
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Above the captions, pushing them down, not drawn over them: over
+                // the lines, their words showed through a banner and around the
+                // yellow pill, letters on letters.
                 Column(
-                    modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().verticalScroll(rememberScrollState()).padding(top = 40.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    // Not while a call holds the microphone: the phase stays
-                    // on listening, but nothing is being heard.
-                    val running = state.captionsRunning
-                    Text(
-                        text = if (running) tr("מקשיב.", "Listening.") else tr("הכתוביות יופיעו כאן.", "Captions will appear here."),
-                        color = look.text,
-                        fontSize = pinchedSize.sp,
-                        fontWeight = FontWeight.Medium,
-                    )
-                    Text(
-                        text = if (running) {
-                            tr(
-                                "כשמישהו ידבר, המילים יופיעו כאן בזמן אמת. השאירו אצבע על שורה כדי לסמן אותה כחשובה או לתת שם לדובר, וצבטו בשתי אצבעות כדי להגדיל או להקטין את הטקסט.",
-                                "When someone talks, the words will appear here in real time. Press and hold a line to mark it as important or name the speaker, and pinch with two fingers to make the text bigger or smaller.",
-                            )
-                        } else {
-                            tr("אפשר לבחור מיקרופון בכפתור למטה מימין ולשנות מנוע תמלול בהגדרות.", "You can choose a microphone with the microphone button at the bottom, and change the transcription engine in Settings.")
-                        },
-                        color = look.pendingText,
-                        fontSize = maxOf(17.0, pinchedSize * 0.6).sp,
-                    )
-                    val recent = state.recentConversation
-                    if (recent != null) {
-                        RecentConversationCard(recent, look, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent)
-                    } else if (offersNameAlert) {
-                        NameAlertOffer(look, onNameAlert, onDismissNameAlert)
-                    }
-                }
-            } else {
-                CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it.text }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
-                if (!following) {
-                    JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
-                        following = true
-                    }
-                }
-            }
-            if (pinchScale != 1.0) {
-                Text(
-                    tr("גודל טקסט %1", "Text size %1", listOf("${pinchedSize.toInt()}")),
-                    color = look.chrome,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
-                        .background(look.background.copy(alpha = 0.9f), RoundedCornerShape(50))
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                        .clearAndSetSemantics {},
-                )
-            }
-            Column(
-                modifier = Modifier.align(Alignment.TopCenter).padding(horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                shownSound?.let { alert ->
-                    SoundAlertBanner(alert) {
-                        shownSound = null
-                        onDismissSound(alert.id)
+                        .fillMaxWidth()
+                        .heightIn(max = bannerRoom)
+                        .then(if (bannersOverflow) Modifier.verticalScroll(bannerScroll) else Modifier)
+                        .onSizeChanged { bannersOverflow = it.height >= bannerRoomPixels - 1 },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    ArrivingBanner(shownSound) { alert ->
+                        SoundAlertBanner(alert) {
+                            shownSound = null
+                            onDismissSound(alert.id)
+                        }
                     }
-                }
-                shownWord?.let { word ->
-                    val speaker = state.lines.firstOrNull { it.id == word.line }?.speaker?.takeIf { display.showSpeakerNames }
-                    HeardPill(word.said, speaker, Modifier)
-                }
-                state.away?.takeIf { it.offersJump && !awayMarkShowing && state.lines.isNotEmpty() }?.let { mark ->
-                    AwayJump(mark.count, look) {
-                        CaptionState.acknowledgeAwayLines()
-                        countWhenLeft = lineCount
-                        following = false
-                        val index = state.lines.indexOfFirst { it.id == mark.line }
-                        if (index >= 0) scope.launch { list.scrollToItem(index) }
+                    ArrivingBanner(shownWord) { word ->
+                        val speaker = state.lines.firstOrNull { it.id == word.line }?.speaker?.takeIf { display.showSpeakerNames }
+                        HeardPill(word.said, speaker, Modifier)
                     }
+                    ArrivingBanner(state.away?.takeIf { it.offersJump && !awayMarkShowing && state.lines.isNotEmpty() }) { mark ->
+                        AwayJump(mark.count, look) {
+                            CaptionState.acknowledgeAwayLines()
+                            countWhenLeft = lineCount
+                            following = false
+                            val index = state.lines.indexOfFirst { it.id == mark.line }
+                            if (index >= 0) scope.launch { list.scrollToItem(index) }
+                        }
+                    }
+                    ArrivingBanner(Unit.takeIf { state.savingTrouble }) { SavingTroubleBanner(onDismissSavingTrouble) }
+                    ArrivingBanner(state.dropped) { lost ->
+                        MicrophoneDropBanner(
+                            title = MicrophoneDropNotice.titleFor(lost),
+                            detail = MicrophoneDropNotice.detail(state.captionsRunning),
+                            onChooseMicrophone = {
+                                onDismissMicrophoneDrop()
+                                onMicrophone()
+                            },
+                            onDismiss = onDismissMicrophoneDrop,
+                        )
+                    }
+                    ArrivingBanner(state.battery) { BatteryBanner(it, onDismissBattery) }
                 }
-                if (state.savingTrouble) SavingTroubleBanner(onDismissSavingTrouble)
-                state.dropped?.let { lost ->
-                    MicrophoneDropBanner(
-                        title = MicrophoneDropNotice.titleFor(lost),
-                        detail = MicrophoneDropNotice.detail(state.captionsRunning),
-                        onChooseMicrophone = {
-                            onDismissMicrophoneDrop()
-                            onMicrophone()
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth().pinchToResize(
+                        onScale = { pinchScale *= it },
+                        onEnd = {
+                            val size = DisplayPreferences.fontSize(savedSize, pinchScale)
+                            pinchScale = 1.0
+                            if (size != savedSize) onFontSize(size)
                         },
-                        onDismiss = onDismissMicrophoneDrop,
-                    )
+                    ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (state.lines.isEmpty()) {
+                        // Scrolls when it can't all fit, at the phone's largest text
+                        // or turned sideways: the offer's last line was cut off there,
+                        // and still looked cut until the edge faded to show there's more.
+                        val emptyScroll = rememberScrollState()
+                        Column(
+                            modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().fadeWhenMoreBelow(emptyScroll).verticalScroll(emptyScroll).padding(top = 40.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            // Not while a call holds the microphone: the phase stays
+                            // on listening, but nothing is being heard.
+                            val running = state.captionsRunning
+                            Text(
+                                text = if (running) tr("מקשיב.", "Listening.") else tr("הכתוביות יופיעו כאן.", "Captions will appear here."),
+                                color = look.text,
+                                fontSize = pinchedSize.sp,
+                                lineHeight = (pinchedSize * 1.25).sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                text = if (running) {
+                                    tr(
+                                        "כשמישהו ידבר, המילים יופיעו כאן בזמן אמת. השאירו אצבע על שורה כדי לסמן אותה כחשובה או לתת שם לדובר, וצבטו בשתי אצבעות כדי להגדיל או להקטין את הטקסט.",
+                                        "When someone talks, the words will appear here in real time. Press and hold a line to mark it as important or name the speaker, and pinch with two fingers to make the text bigger or smaller.",
+                                    )
+                                } else {
+                                    tr("אפשר לבחור מיקרופון בכפתור למטה מימין ולשנות מנוע תמלול בהגדרות.", "You can choose a microphone with the microphone button at the bottom, and change the transcription engine in Settings.")
+                                },
+                                color = look.pendingText,
+                                fontSize = maxOf(17.0, pinchedSize * 0.6).sp,
+                                lineHeight = (maxOf(17.0, pinchedSize * 0.6) * 1.35).sp,
+                            )
+                            val recent = state.recentConversation
+                            if (recent != null) {
+                                RecentConversationCard(recent, look, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent)
+                            } else if (offersNameAlert) {
+                                NameAlertOffer(look, onNameAlert, onDismissNameAlert)
+                            }
+                        }
+                    } else {
+                        CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it.text }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
+                        if (!following) {
+                            JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
+                                following = true
+                            }
+                        }
+                    }
+                    if (pinchScale != 1.0) {
+                        Text(
+                            tr("גודל טקסט %1", "Text size %1", listOf("${pinchedSize.toInt()}")),
+                            color = look.chrome,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .background(look.background.copy(alpha = 0.9f), RoundedCornerShape(50))
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                                .clearAndSetSemantics {},
+                        )
+                    }
                 }
-                state.battery?.let { BatteryBanner(it, onDismissBattery) }
             }
         }
         AnimatedVisibility(visible = !hidden) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                StatusButton(state.status, look.chrome, onStatusTap)
+                StatusButton(state.status, look.chrome, live = state.captionsRunning, onTap = onStatusTap)
                 val history = tr("היסטוריה", "History")
                 val microphone = state.selectedInput?.let(::inputShortName) ?: tr("מיקרופון", "Microphone")
                 val sayWord = if (state.speaking) "■ " + tr("להגיד", "Say") else tr("להגיד", "Say")
@@ -856,36 +932,47 @@ private fun CaptionScreen(
                     val buttonPadding = with(LocalDensity.current) { (BAR_SIDE_PADDING * 2).toPx() }
                     val padding = PaddingValues(horizontal = BAR_SIDE_PADDING, vertical = 8.dp)
                     val share = { word: String -> measurer.measure(word, barStyle, maxLines = 1).size.width + buttonPadding }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(onClick = onHistory, contentPadding = padding, modifier = Modifier.weight(share(history), fill = false)) {
-                            BarWord(history)
-                        }
-                        val choose = tr("בחירת מיקרופון", "Choose microphone")
-                        TextButton(
-                            onClick = onMicrophone,
-                            contentPadding = padding,
-                            modifier = Modifier.weight(share(microphone), fill = false).widthIn(max = 120.dp).semantics {
-                                contentDescription = choose
-                                stateDescription = state.selectedInput?.portName ?: ""
-                            },
-                        ) {
-                            // Shrunk to fit as on the iPhone; only a name too long even then is cut.
-                            Text(
-                                microphone,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = 18.sp),
-                            )
-                        }
-                        // While the phone talks, this stops it at once instead of
-                        // opening the Say screen, as on the iPhone: captions stay
-                        // paused for as long as it talks.
-                        val say = if (state.speaking) tr("עצירת הדיבור", "Stop speaking") else tr("להגיד משהו בקול", "Say something out loud")
-                        TextButton(onClick = onSay, contentPadding = padding, modifier = Modifier.weight(share(sayWord), fill = false).semantics { contentDescription = say }) {
-                            BarWord(sayWord)
-                        }
-                        TextButton(onClick = onSettings, contentPadding = padding, modifier = Modifier.weight(share(settingsWord), fill = false)) {
-                            BarWord(settingsWord)
+                    // The microphone's name gives way first: a long headset
+                    // name cut History, Say and Settings to "Histo…", "S…" and
+                    // "Settin…" on a small phone. The three keep their words
+                    // whole; the name takes what room is left, shrinking and,
+                    // past that, cut.
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        val shortest = with(LocalDensity.current) { 56.dp.toPx() }
+                        val widest = with(LocalDensity.current) { 120.dp.toPx() }
+                        val left = constraints.maxWidth - share(history) - share(sayWord) - share(settingsWord)
+                        val microphoneShare = minOf(share(microphone), widest, maxOf(left, shortest))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            TextButton(onClick = onHistory, contentPadding = padding, modifier = Modifier.weight(share(history), fill = false)) {
+                                BarWord(history)
+                            }
+                            val choose = tr("בחירת מיקרופון", "Choose microphone")
+                            TextButton(
+                                onClick = onMicrophone,
+                                contentPadding = padding,
+                                modifier = Modifier.weight(microphoneShare, fill = false).widthIn(max = 120.dp).semantics {
+                                    contentDescription = choose
+                                    stateDescription = state.selectedInput?.portName ?: ""
+                                },
+                            ) {
+                                // Shrunk to fit as on the iPhone; only a name too long even then is cut.
+                                Text(
+                                    microphone,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = 18.sp),
+                                )
+                            }
+                            // While the phone talks, this stops it at once instead of
+                            // opening the Say screen, as on the iPhone: captions stay
+                            // paused for as long as it talks.
+                            val say = if (state.speaking) tr("עצירת הדיבור", "Stop speaking") else tr("להגיד משהו בקול", "Say something out loud")
+                            TextButton(onClick = onSay, contentPadding = padding, modifier = Modifier.weight(share(sayWord), fill = false).semantics { contentDescription = say }) {
+                                BarWord(sayWord)
+                            }
+                            TextButton(onClick = onSettings, contentPadding = padding, modifier = Modifier.weight(share(settingsWord), fill = false)) {
+                                BarWord(settingsWord)
+                            }
                         }
                     }
                 }
@@ -1030,14 +1117,18 @@ private fun CaptionLines(
             val gap = line.afterQuiet
             val note = earlier?.takeIf { line.id == lines.first().id }
             val missed = away?.takeIf { line.id == it.line }
-            if (note != null || missed != null || gap != null) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    if (note != null) EarlierLinesNote(note, display.fontSize, look) { conversation -> onOpen(conversation, note.line) }
-                    if (missed != null) AwayDivider(missed.count, display.fontSize, look) else if (gap != null) QuietGapDivider(gap, display.fontSize, look)
+            // A new line fades in where it lands; the lines already there
+            // stay still, as moving them would move what she is reading.
+            Box(Modifier.animateItem(fadeInSpec = tween(250), placementSpec = null, fadeOutSpec = null)) {
+                if (note != null || missed != null || gap != null) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (note != null) EarlierLinesNote(note, display.fontSize, look) { conversation -> onOpen(conversation, note.line) }
+                        if (missed != null) AwayDivider(missed.count, display.fontSize, look) else if (gap != null) QuietGapDivider(gap, display.fontSize, look)
+                        row()
+                    }
+                } else {
                     row()
                 }
-            } else {
-                row()
             }
         }
     }
@@ -1543,6 +1634,25 @@ private fun HeardPill(said: String, speaker: String?, modifier: Modifier) {
     )
 }
 
+/**
+ * A banner above the captions slides down into place and folds away again
+ * as it goes, the lines moving with it rather than jumping. While it folds
+ * away it keeps showing what it said.
+ */
+@Composable
+private fun <T : Any> ArrivingBanner(shown: T?, content: @Composable (T) -> Unit) {
+    val kept = remember { arrayOfNulls<Any>(1) }
+    if (shown != null) kept[0] = shown
+    AnimatedVisibility(
+        visible = shown != null,
+        enter = expandVertically(expandFrom = Alignment.Top) + slideInVertically { -it / 2 } + fadeIn(),
+        exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+    ) {
+        @Suppress("UNCHECKED_CAST")
+        (kept[0] as T?)?.let { Box(Modifier.padding(bottom = 12.dp)) { content(it) } }
+    }
+}
+
 @Composable
 private fun StarMark(fontSize: Double, colour: Color) {
     val side = maxOf(14.0, fontSize * 0.6)
@@ -1607,7 +1717,7 @@ private fun DrawScope.drawDoubtDots(layout: TextLayoutResult, colour: Color) {
 }
 
 @Composable
-private fun StatusButton(status: PhasePresentation, chrome: Color, onTap: () -> Unit) {
+private fun StatusButton(status: PhasePresentation, chrome: Color, live: Boolean, onTap: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1622,7 +1732,11 @@ private fun StatusButton(status: PhasePresentation, chrome: Color, onTap: () -> 
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             // The title already says what it is busy with; only a download's bar is read out.
-            if (status.isBusy) CircularProgressIndicator(color = chrome, strokeWidth = 2.dp, modifier = Modifier.size(18.dp).testTag(STATUS_BUSY).clearAndSetSemantics {})
+            if (status.isBusy) {
+                CircularProgressIndicator(color = chrome, strokeWidth = 2.dp, modifier = Modifier.size(18.dp).testTag(STATUS_BUSY).clearAndSetSemantics {})
+            } else if (live) {
+                LiveDot()
+            }
             Text(text = status.title, color = chrome, fontSize = 22.sp, textAlign = TextAlign.Center)
         }
         status.detail?.let { detail ->
@@ -1635,3 +1749,40 @@ private fun StatusButton(status: PhasePresentation, chrome: Color, onTap: () -> 
 }
 
 internal const val STATUS_BUSY = "statusBusy"
+
+/**
+ * A red dot beside "Listening" that breathes while the microphone is on, as
+ * a recording light does; still for a phone that asks for less motion.
+ */
+@Composable
+private fun LiveDot() {
+    val breathing = !ReducedMotion.isOn()
+    val glow = if (breathing) {
+        rememberInfiniteTransition(label = "live").animateFloat(
+            initialValue = 1f,
+            targetValue = 0.35f,
+            animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+            label = "live dot",
+        ).value
+    } else {
+        1f
+    }
+    Box(Modifier.size(10.dp).graphicsLayer { alpha = glow }.background(LIVE_RED, CircleShape).clearAndSetSemantics {})
+}
+
+private val LIVE_RED = Color(0xFFE53935)
+
+/**
+ * On a tablet, reading screens keep a phone's line length in the middle
+ * instead of running each row from one edge of the glass to the other.
+ */
+@Composable
+private fun OnTabletWidth(capped: Boolean, content: @Composable () -> Unit) {
+    if (capped) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.TopCenter) {
+            Box(Modifier.widthIn(max = 720.dp).fillMaxSize()) { content() }
+        }
+    } else {
+        content()
+    }
+}

@@ -7,6 +7,14 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -65,6 +73,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -83,17 +93,15 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AlertVibration
-import com.arbelonson.ozen.core.SoundAlertPreferences
-import com.arbelonson.ozen.core.SoundEvent
-import com.arbelonson.ozen.core.SoundNearMisses
 import com.arbelonson.ozen.core.AppLanguage
-import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.DisplayPreferences
@@ -102,6 +110,9 @@ import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.QuietHours
+import com.arbelonson.ozen.core.SoundAlertPreferences
+import com.arbelonson.ozen.core.SoundEvent
+import com.arbelonson.ozen.core.SoundNearMisses
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
@@ -146,84 +157,100 @@ fun SettingsScreen(
         onClose()
     }
     var showingWords by rememberSaveable { mutableStateOf(false) }
-    if (showingWords) {
-        WordsScreen(current.vocabulary, current.speakerProfiles.map { it.name }, onWords, onClose = { showingWords = false })
-        return
-    }
     var showingDiagnostics by rememberSaveable { mutableStateOf(false) }
-    if (showingDiagnostics) {
-        DiagnosticsScreen(diagnostics, onClose = { showingDiagnostics = false })
-        return
-    }
     var showingGuide by rememberSaveable { mutableStateOf(false) }
-    if (showingGuide) {
-        HomeServerGuideScreen(current.spokenLanguage, onClose = { showingGuide = false })
-        return
-    }
     var showingSupport by rememberSaveable { mutableStateOf(false) }
-    if (showingSupport) {
-        SupportScreen(onClose = { showingSupport = false })
-        return
-    }
     var showingSounds by rememberSaveable { mutableStateOf(false) }
-    if (showingSounds) {
-        SoundAlertsScreen(current.soundAlerts, onSoundAlerts, soundNearMiss, onFeel, onClose = { showingSounds = false })
-        return
-    }
     var showingImportantWords by rememberSaveable { mutableStateOf(false) }
-    if (showingImportantWords) {
-        ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, current.spokenLanguage, heard, onImportantWords, onClose = { showingImportantWords = false }, heardBy = heardBy)
-        return
-    }
     var showingEnrollment by rememberSaveable { mutableStateOf(false) }
-    if (showingEnrollment) {
-        SpeakerEnrollmentScreen(speakers, onClose = { showingEnrollment = false })
-        return
+    val page = when {
+        showingWords -> SettingsPage.Words
+        showingDiagnostics -> SettingsPage.Diagnostics
+        showingGuide -> SettingsPage.Guide
+        showingSupport -> SettingsPage.Support
+        showingSounds -> SettingsPage.Sounds
+        showingImportantWords -> SettingsPage.ImportantWords
+        showingEnrollment -> SettingsPage.Enrollment
+        else -> SettingsPage.Main
     }
-    BackHandler(onBack = close)
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ScreenTitle(tr("הגדרות", "Settings")) {
-                TextButton(onClick = close) { Text(tr("סגירה", "Close")) }
+    // Kept out here, so back from a page of its own Settings is where it was
+    // left, not at its top again.
+    val scroll = rememberScrollState()
+    val shift = with(LocalDensity.current) { 30.dp.roundToPx() } * if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
+    AnimatedContent(
+        targetState = page,
+        transitionSpec = {
+            val way = if (targetState == SettingsPage.Main) -1 else 1
+            (fadeIn(tween(210, delayMillis = 90)) + slideInHorizontally(tween(300)) { way * shift }) togetherWith
+                (fadeOut(tween(90)) + slideOutHorizontally(tween(300)) { -way * shift })
+        },
+        label = "settings page",
+    ) { shown ->
+        when (shown) {
+            SettingsPage.Words -> WordsScreen(current.vocabulary, current.speakerProfiles.map { it.name }, onWords, onClose = { showingWords = false })
+            SettingsPage.Diagnostics -> DiagnosticsScreen(diagnostics, onClose = { showingDiagnostics = false })
+            SettingsPage.Guide -> HomeServerGuideScreen(current.spokenLanguage, onClose = { showingGuide = false })
+            SettingsPage.Support -> SupportScreen(onClose = { showingSupport = false })
+            SettingsPage.Sounds -> SoundAlertsScreen(current.soundAlerts, onSoundAlerts, soundNearMiss, onFeel, onClose = { showingSounds = false })
+            SettingsPage.ImportantWords -> ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, current.spokenLanguage, heard, onImportantWords, onClose = { showingImportantWords = false }, heardBy = heardBy)
+            SettingsPage.Enrollment -> SpeakerEnrollmentScreen(speakers, onClose = { showingEnrollment = false })
+            SettingsPage.Main -> {
+                BackHandler(onBack = close)
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .windowInsetsPadding(WindowInsets.safeDrawing)
+                            .verticalScroll(scroll)
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        ScreenTitle(tr("הגדרות", "Settings")) {
+                            TextButton(onClick = close) { Text(tr("סגירה", "Close")) }
+                        }
+                        DisplaySection(settings, current.display, current.engine)
+                        AlertsSection(current.keywordAlerts.count { it.isEnabled }, listed = current.keywordAlerts.isNotEmpty(), onOpen = { showingImportantWords = true }, sounds = current.soundAlerts, onSounds = { showingSounds = true })
+                        AwayAlertsRow(current.notifyWhenInBackground) { on -> settings.change { it.notifyWhenInBackground = on } }
+                        AnimatedVisibility(current.notifyWhenInBackground) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { QuietHoursRows(current.quietHours) { hours -> settings.change { it.quietHours = hours } } }
+                        }
+                        // The iPhone's Alerts footer, less the way to its camera flash.
+                        Footnote(tr("רטט והדגשה כשנאמרת מילה חשובה; כרזה כשנשמע פעמון דלת, טלפון, אזעקה ועוד. כשהטלפון בכיס או נעול, אותן התראות מגיעות כהודעה בטלפון, וגם הודעה אם הכתוביות נעצרו ולא חזרו לבד.", "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, and more are heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own."))
+                        SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak, voiceNotice)
+                        SpokenLanguageSection(current.spokenLanguage, engineSettings::chooseSpokenLanguage)
+                        LanguageSection(current.appLanguage, onAppLanguage)
+                        EngineSection(engineSettings, current)
+                        if (current.engine == TranscriptionEngineKind.WhisperKit || current.engine == TranscriptionEngineKind.AppleSpeech) {
+                            SwitchRow(tr("להוריד מודלים גם בחבילת הגלישה", "Download models on cellular data too"), current.allowCellularModelDownload, onChange = onCellularDownloads)
+                        }
+                        AnimatedVisibility(current.engine == TranscriptionEngineKind.Cloud) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { CloudSection(engineSettings, current, cloudKeyDraft) }
+                        }
+                        AnimatedVisibility(current.engine == TranscriptionEngineKind.HomeServer) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { HomeComputerSection(engineSettings, current, addressDraft, codeDraft, backup, scrollToBackup, onGuide = { showingGuide = true }) }
+                        }
+                        WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
+                        SavedSpeakersSection(current.speakerProfiles, speakers, onAdd = { showingEnrollment = true })
+                        BehaviourSection(
+                            current.hapticOnSpeechResume,
+                            onBuzz = { on -> settings.change { it.hapticOnSpeechResume = on } },
+                            current.speakerSimilarityThreshold,
+                            onSeparation = speakers::setSpeakerSeparation,
+                        )
+                        SectionHeader(tr("תחזוקה", "Maintenance"))
+                        DiagnosticsRow(onOpen = { showingDiagnostics = true })
+                        WalkthroughAgainRow(onShowWalkthrough)
+                        ClearCaptionsRow(current.saveHistory, historySaveFailing, onClearCaptions)
+                        AboutSection(onSupport = { showingSupport = true })
+                    }
+                }
             }
-            DisplaySection(settings, current.display, current.engine)
-            AlertsSection(current.keywordAlerts.count { it.isEnabled }, listed = current.keywordAlerts.isNotEmpty(), onOpen = { showingImportantWords = true }, sounds = current.soundAlerts, onSounds = { showingSounds = true })
-            AwayAlertsRow(current.notifyWhenInBackground) { on -> settings.change { it.notifyWhenInBackground = on } }
-            if (current.notifyWhenInBackground) QuietHoursRows(current.quietHours) { hours -> settings.change { it.quietHours = hours } }
-            // The iPhone's Alerts footer, less the way to its camera flash.
-            Footnote(tr("רטט והדגשה כשנאמרת מילה חשובה; כרזה כשנשמע פעמון דלת, טלפון, אזעקה ועוד. כשהטלפון בכיס או נעול, אותן התראות מגיעות כהודעה בטלפון, וגם הודעה אם הכתוביות נעצרו ולא חזרו לבד.", "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, and more are heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own."))
-            SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak, voiceNotice)
-            SpokenLanguageSection(current.spokenLanguage, engineSettings::chooseSpokenLanguage)
-            LanguageSection(current.appLanguage, onAppLanguage)
-            EngineSection(engineSettings, current)
-            if (current.engine == TranscriptionEngineKind.WhisperKit || current.engine == TranscriptionEngineKind.AppleSpeech) {
-                SwitchRow(tr("להוריד מודלים גם בחבילת הגלישה", "Download models on cellular data too"), current.allowCellularModelDownload, onChange = onCellularDownloads)
-            }
-            if (current.engine == TranscriptionEngineKind.Cloud) CloudSection(engineSettings, current, cloudKeyDraft)
-            if (current.engine == TranscriptionEngineKind.HomeServer) HomeComputerSection(engineSettings, current, addressDraft, codeDraft, backup, scrollToBackup, onGuide = { showingGuide = true })
-            WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
-            SavedSpeakersSection(current.speakerProfiles, speakers, onAdd = { showingEnrollment = true })
-            BehaviourSection(
-                current.hapticOnSpeechResume,
-                onBuzz = { on -> settings.change { it.hapticOnSpeechResume = on } },
-                current.speakerSimilarityThreshold,
-                onSeparation = speakers::setSpeakerSeparation,
-            )
-            SectionHeader(tr("תחזוקה", "Maintenance"))
-            DiagnosticsRow(onOpen = { showingDiagnostics = true })
-            WalkthroughAgainRow(onShowWalkthrough)
-            ClearCaptionsRow(current.saveHistory, historySaveFailing, onClearCaptions)
-            AboutSection(onSupport = { showingSupport = true })
         }
     }
 }
+
+/** The pages Settings opens over itself. */
+private enum class SettingsPage { Main, Words, Diagnostics, Guide, Support, Sounds, ImportantWords, Enrollment }
 
 /**
  * How the captions look, first as on the iPhone: the size is kept when the
@@ -1145,7 +1172,7 @@ internal fun ScreenTitle(title: String, actions: @Composable RowScope.() -> Unit
  * zu Hause" one letter to a line.
  */
 @Composable
-internal fun LabelAndValue(label: @Composable () -> Unit, value: @Composable () -> Unit, modifier: Modifier = Modifier, gap: Dp = 0.dp) {
+internal fun LabelAndValue(label: @Composable () -> Unit, value: @Composable () -> Unit, modifier: Modifier = Modifier, gap: Dp = 16.dp) {
     BesideOrUnder(start = label, end = value, underAtEnd = false, modifier = modifier, gap = gap)
 }
 

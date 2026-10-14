@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
@@ -124,11 +126,12 @@ internal fun BigTextScreen(
                             enabled = action != null,
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = look.chrome, disabledContentColor = look.chrome.copy(alpha = 0.38f)),
                             border = BorderStroke(1.dp, look.chrome.copy(alpha = if (action != null) 0.6f else 0.2f)),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                             modifier = Modifier.weight(1f).semantics {
                                 if (hint != null && action != null) onClick(label = hint) { action(); true }
                             },
                         ) {
-                            Text(title, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = 18.sp))
                         }
                     }
                     if (row.size == 1) Spacer(Modifier.weight(1f))

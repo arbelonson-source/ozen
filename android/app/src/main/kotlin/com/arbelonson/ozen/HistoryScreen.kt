@@ -282,8 +282,11 @@ fun HistoryScreen(
                 for (day in days) {
                     item(key = "day-${day.id}") { Heading(day.title) }
                     items(day.sessions, key = { it.id.toString() }) { session ->
-                        ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletion = session })
-                        HorizontalDivider()
+                        // A deleted conversation fades and the rest close up over it.
+                        Column(Modifier.animateItem()) {
+                            ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletion = session })
+                            HorizontalDivider()
+                        }
                     }
                 }
             }
@@ -507,8 +510,8 @@ private class OpenConversation(
     val starred: List<UUID>,
     val stats: ConversationStats?,
 ) {
-    /** The summary and the numbers come first in the list, before the lines a jump is aimed at. */
-    val headerItems: Int get() = (if (stats != null) 1 else 0) + (if (numbers?.listed?.isNotEmpty() == true) 1 else 0) + 1
+    /** The name, the summary and the numbers come first in the list, before the lines a jump is aimed at. */
+    val headerItems: Int get() = (if (record?.title != null) 1 else 0) + (if (stats != null) 1 else 0) + (if (numbers?.listed?.isNotEmpty() == true) 1 else 0) + 1
 }
 
 private fun opened(record: TranscriptSessionRecord?, query: String, marksUncertain: Boolean, languageCode: String) = OpenConversation(
@@ -602,7 +605,7 @@ internal fun ConversationScreen(
     var deleteError by remember { mutableStateOf<String?>(null) }
     var naming by rememberSaveable { mutableStateOf<String?>(null) }
     val record = loaded?.record
-    Screen(title = record?.title ?: tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {
+    Screen(title = tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {
         val shown = loaded
         when {
             shown == null -> CircularProgressIndicator(modifier = Modifier.padding(24.dp))
@@ -610,6 +613,10 @@ internal fun ConversationScreen(
             else -> {
                 val numbers = shown.numbers?.takeIf { it.listed.isNotEmpty() }
                 val header = shown.headerItems
+                val matched = shown.matches.toSet()
+                // Held above the lines, unlike the name: opened at a line far
+                // down, the conversation can still be shared, named or deleted,
+                // and each jump goes on from where the last one left the list.
                 FlowRow(modifier = Modifier.fillMaxWidth()) {
                     TextButton(onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { shareSheet(context, shown.record, marksUncertain) }) } }) {
                         Text(tr("שיתוף", "Share"))
@@ -640,8 +647,15 @@ internal fun ConversationScreen(
                         ) { Text(SearchMatches.starredTitle(starAt, shown.starred.size, jumpedToStar)) }
                     }
                 }
-                val matched = shown.matches.toSet()
                 LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Its name scrolls away with the lines: held above them, a
+                    // long name at the largest text took half the screen and left
+                    // the lines a strip.
+                    shown.record.title?.let { name ->
+                        item(key = "name") {
+                            Text(name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
+                        }
+                    }
                     shown.stats?.let { stats -> item(key = "summary") { SummarySection(stats) } }
                     if (numbers != null) {
                         item(key = "numbers") {
@@ -784,10 +798,12 @@ private fun SummarySection(stats: ConversationStats) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SummaryRow(label: String, value: String) {
-    FlowRow(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label)
-        Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+    LabelAndValue(
+        label = { Text(label) },
+        value = { Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        gap = 16.dp,
+    )
 }
 
 /** Above the conversation, as on the iPhone: each line with a number in it, a tap away from where it was said. */

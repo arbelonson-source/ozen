@@ -1,9 +1,13 @@
 package com.arbelonson.ozen
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -37,12 +41,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -299,12 +306,35 @@ private fun LanguagePage(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
 }
 
 @Composable
-private fun Page(symbol: String, title: String, content: @Composable () -> Unit) {
+private fun Page(symbol: String, title: String, content: @Composable () -> Unit) = BoxWithConstraints {
+    // A picture, not words: it stays one size at the phone's largest text,
+    // and a smaller one on a short screen, where the page's button was
+    // pushed out of sight below its text.
+    val roomy = maxHeight >= 520.dp * LocalDensity.current.fontScale
+    val symbolSize = with(LocalDensity.current) { (if (roomy) 64.dp else 44.dp).toSp() }
+    val scroll = rememberScrollState()
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 28.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        modifier = Modifier.fillMaxSize().fadeWhenMoreBelow(scroll).verticalScroll(scroll).padding(horizontal = 28.dp, vertical = if (roomy) 24.dp else 12.dp),
+        verticalArrangement = Arrangement.spacedBy(if (roomy) 20.dp else 14.dp),
     ) {
-        Text(symbol, fontSize = 64.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clearAndSetSemantics {})
+        // The page's picture springs into place as the page arrives.
+        var arrived by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { arrived = true }
+        val pop by animateFloatAsState(if (arrived) 1f else 0.5f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow), label = "page symbol")
+        Text(
+            symbol,
+            fontSize = symbolSize,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = if (roomy) 16.dp else 0.dp)
+                .graphicsLayer {
+                    scaleX = pop
+                    scaleY = pop
+                    alpha = ((pop - 0.5f) * 2f).coerceIn(0f, 1f)
+                }
+                .clearAndSetSemantics {},
+        )
         Text(
             title,
             style = MaterialTheme.typography.headlineLarge,
