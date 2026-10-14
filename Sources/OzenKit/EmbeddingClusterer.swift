@@ -143,7 +143,8 @@ public struct EmbeddingClusterer: Sendable {
 
     /// Seeds a cluster with a known name from a reference embedding
     /// recorded during enrollment, before any live audio has arrived for
-    /// that person.
+    /// that person. When that person was already heard as an unnamed
+    /// speaker, that cluster is named instead of a second one opened.
     ///
     /// The reference counts as several samples: it was recorded on purpose,
     /// close to the microphone, in a quiet moment, while live windows carry
@@ -151,7 +152,30 @@ public struct EmbeddingClusterer: Sendable {
     /// first live window move the profile halfway.
     @discardableResult
     public mutating func enroll(name: String, embedding: [Float], weight: Int = EmbeddingClusterer.enrollmentWeight) -> Int {
-        openCluster(with: Self.direction(of: embedding), name: name, sampleCount: max(1, weight))
+        let direction = Self.direction(of: embedding)
+        let weight = max(1, weight)
+        var best: (index: Int, similarity: Float)?
+        for index in clusters.indices where clusters[index].name == nil && clusters[index].centroid.count == direction.count {
+            let similarity = cosineSimilarity(direction, clusters[index].centroid)
+            if similarity >= similarityThreshold, similarity > (best?.similarity ?? -2) {
+                best = (index, similarity)
+            }
+        }
+        guard let (index, _) = best else {
+            return openCluster(with: direction, name: name, sampleCount: weight)
+        }
+        let heard = Float(clusters[index].sampleCount)
+        let added = Float(weight)
+        clusters[index].centroid = zip(clusters[index].centroid, direction).map { ($0 * heard + $1 * added) / (heard + added) }
+        clusters[index].sampleCount += weight
+        clusters[index].name = name
+        return clusters[index].id
+    }
+
+    /// A named cluster seeded from one line's own voice, never merged into
+    /// a voice heard before: the line was just said to be somebody else.
+    mutating func enrollWithoutMerging(name: String, embedding: [Float]) -> Int {
+        openCluster(with: Self.direction(of: embedding), name: name, sampleCount: 1)
     }
 
     /// A voice print scaled to length 1. Cosine similarity ignores length,
