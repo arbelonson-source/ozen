@@ -801,6 +801,7 @@ allow one outside its own payments.
 These companies gave or offered Ozen free plans or credits. Thank you.
 
 - AI code reviews provided by [CodeAnt](https://codeant.ai)
+- AI code reviews provided by [CodeRabbit](https://www.coderabbit.ai)
 - Security scanning by [Snyk](https://snyk.io)
 - Audio processing support from [LALAL.AI](https://www.lalal.ai)
 - GPU training credits provided by [GarageFarm.NET](https://www.garagefarm.net)
