@@ -44,6 +44,9 @@ enum ScreenshotFixtures {
         /// Past the screen's line limit, with a new line every half second,
         /// for the test that reads back while lines keep coming.
         case readingBack
+        /// Large English captions with the saving-failed banner up, to see
+        /// the banner push the captions down rather than cover them.
+        case banner
     }
 
     @MainActor
@@ -126,6 +129,10 @@ enum ScreenshotFixtures {
             // and its top sat under the clock.
             viewModel.display.fontSize = 32
             viewModel.display.theme = .light
+        case .banner:
+            viewModel.setAppLanguage(.english)
+            viewModel.display.fontSize = 50
+            viewModel.savesFailForScreenshots = true
         case .readingBack:
             viewModel.setAppLanguage(.english)
             let pipeline = viewModel.pipeline

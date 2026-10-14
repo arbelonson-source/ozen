@@ -33,6 +33,13 @@ public final class LiveCaptionViewModel {
     public private(set) var settingsSaveError: String?
     /// Whether the caption screen says saving is failing (a full phone).
     public private(set) var savingTrouble = SavingTroubleNotice()
+    #if DEBUG
+    /// A screenshot fixture's full phone: every save counts as failed, so
+    /// the banner stays up whatever is saved after it.
+    @ObservationIgnored var savesFailForScreenshots = false {
+        didSet { refreshSavingTrouble() }
+    }
+    #endif
     /// Where the lines said while the screen was away begin.
     var awayCatchUp = AwayCatchUp()
     @ObservationIgnored private var keywordAttention = KeywordAttentionPolicy()
@@ -1974,9 +1981,13 @@ public final class LiveCaptionViewModel {
     }
 
     private func refreshSavingTrouble() {
+        var settingsFailed = settingsSaveError != nil
+        #if DEBUG
+        settingsFailed = settingsFailed || savesFailForScreenshots
+        #endif
         var next = savingTrouble
         next.update(
-            settingsFailed: settingsSaveError != nil,
+            settingsFailed: settingsFailed,
             historyFailed: settings.saveHistory && historySaveFailure != nil
         )
         // Only a real change redraws the caption screen.

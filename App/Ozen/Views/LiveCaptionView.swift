@@ -15,6 +15,8 @@ struct LiveCaptionView: View {
     @State private var settingsFocus: SettingsView.Focus?
     @State private var showingTypeToSpeak = false
     @State private var confirmingClear = false
+    /// The banners' own height, which their strip above the captions is sized to.
+    @State private var bannerHeight: CGFloat = 0
     @State private var namingSegment: TranscriptSegment?
     @State private var fixingWordFromSegment: TranscriptSegment?
     @State private var isPinnedToBottom = true
@@ -165,13 +167,23 @@ struct LiveCaptionView: View {
             // around the yellow pill, letters on letters. A few at once, at
             // large text on a small phone, took all the room on Android and
             // left no line of the captions: past about half they scroll.
+            // A ScrollView takes all the room it is offered, so the strip is
+            // sized to the banners it holds: ViewThatFits left an empty
+            // strip half the screen tall over the captions.
             GeometryReader { space in
                 VStack(spacing: 0) {
-                    ViewThatFits(in: .vertical) {
+                    ScrollView {
                         topBanners
-                        ScrollView { topBanners }
+                            .background {
+                                GeometryReader { banners in
+                                    Color.clear
+                                        .onAppear { bannerHeight = banners.size.height }
+                                        .onChange(of: banners.size.height) { _, height in bannerHeight = height }
+                                }
+                            }
                     }
-                    .frame(maxHeight: space.size.height * 0.55)
+                    .scrollBounceBehavior(.basedOnSize)
+                    .frame(height: min(bannerHeight, space.size.height * 0.55))
                     transcript
                         .simultaneousGesture(pinchToResize)
                         .mask(topScrollFadeMask)

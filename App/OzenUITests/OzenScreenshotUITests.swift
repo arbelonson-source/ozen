@@ -143,10 +143,35 @@ final class OzenScreenshotUITests: XCTestCase {
         let transcript = app.descendants(matching: .any)["transcriptScroll"]
         XCTAssertTrue(transcript.waitForExistence(timeout: 10), "\(name): the transcript never appeared")
         capture(app, name: "\(name)-controls-visible")
+        // No banner is up, so the strip for them above the captions takes
+        // no room: an empty one, half the screen tall, once pushed the
+        // captions down under the buttons.
+        let captions = app.scrollViews.containing(.any, identifier: "transcriptScroll").firstMatch
+        let window = app.windows.firstMatch.frame
+        XCTAssertLessThan(captions.frame.minY, window.minY + window.height * 0.25, "\(name): the captions start \(captions.frame.minY) points down, under an empty banner strip")
 
         let revealChevron = app.descendants(matching: .any)["showControlsButton"]
         XCTAssertTrue(revealChevron.waitForExistence(timeout: 15), "\(name): the control bar never auto-hid")
         capture(app, name: "\(name)-controls-hidden")
+    }
+
+    /// A banner sits above the captions and pushes them down: drawn over
+    /// them, a banner's words and the lines' words ran into each other.
+    func testCaptionScreenBannerSitsAboveTheCaptions() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "banner"]
+        app.launch()
+
+        let transcript = app.descendants(matching: .any)["transcriptScroll"]
+        XCTAssertTrue(transcript.waitForExistence(timeout: 10), "banner: the transcript never appeared")
+        let banner = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Saving on the phone failed")).firstMatch
+        XCTAssertTrue(banner.waitForExistence(timeout: 10), "banner: the saving-failed banner never appeared")
+        capture(app, name: "caption-screen-banner")
+
+        let captions = app.scrollViews.containing(.any, identifier: "transcriptScroll").firstMatch
+        let window = app.windows.firstMatch.frame
+        XCTAssertLessThanOrEqual(banner.frame.maxY, captions.frame.minY + 1, "banner: the banner covers the captions (banner \(banner.frame), captions \(captions.frame))")
+        XCTAssertGreaterThan(captions.frame.height, window.height * 0.3, "banner: the banner left the captions too little room (\(captions.frame))")
     }
 
     func testHebrewDefault() throws {
