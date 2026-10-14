@@ -402,7 +402,9 @@ class OnDeviceWhisperEngine(
             var options = if (isFinal) finalPass else livePass
             options = options.copy(promptTokens = prompt)
             val windowSeconds = window.size.toDouble() / sampleRate
-            if (isFinal && windowSeconds < retryLineSeconds) {
+            // Live words already on screen stay if this pass comes back empty, so a short line can skip
+            // the slow retries; with nothing shown yet, the retries are the line's only chance.
+            if (isFinal && windowSeconds < retryLineSeconds && lastShownText.isNotEmpty()) {
                 options = options.copy(temperatureFallbackCount = 0)
             }
             if (!isFinal) {

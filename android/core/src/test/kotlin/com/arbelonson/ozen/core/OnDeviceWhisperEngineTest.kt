@@ -290,6 +290,20 @@ class OnDeviceWhisperEngineTest {
     }
 
     @Test
+    fun a_short_line_with_nothing_on_screen_yet_keeps_its_final_retries() = runTest {
+        val brief = rig()
+        brief.stream(speech(0.6)).toList()
+        assertTrue(brief.passes.live().isEmpty())
+        assertEquals(2, brief.passes.finals().single().options.temperatureFallbackCount)
+
+        val blank = rig()
+        blank.passes.reply = { call -> if (call.isFinal) hello else emptyList() }
+        blank.stream(speech(2.0)).toList()
+        assertTrue(blank.passes.live().isNotEmpty())
+        assertEquals(2, blank.passes.finals().single().options.temperatureFallbackCount)
+    }
+
+    @Test
     fun uncertain_words_come_only_from_final_passes() = runTest {
         val rig = rig()
         val unsure = listOf(
