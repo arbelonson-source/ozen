@@ -15,31 +15,42 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SearchOff
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -58,6 +69,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -65,7 +77,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
@@ -91,6 +102,15 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.EmptyState
+import com.arbelonson.ozen.ui.GroupFootnote
+import com.arbelonson.ozen.ui.OzenScreen
+import com.arbelonson.ozen.ui.ProgressState
+import com.arbelonson.ozen.ui.SectionHeader
+import com.arbelonson.ozen.ui.SettingRow
+import com.arbelonson.ozen.ui.SettingSwitchRow
+import com.arbelonson.ozen.ui.SettingsGroup
+import com.arbelonson.ozen.ui.TrailingValue
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
@@ -222,7 +242,7 @@ fun HistoryScreen(
     ) {
         val shown = loaded
         if (shown == null) {
-            CircularProgressIndicator(modifier = Modifier.padding(24.dp))
+            LoadingNote()
         } else {
             val chosen = speakerFilter
             val days = remember(shown, chosen) {
@@ -233,7 +253,12 @@ fun HistoryScreen(
                 val top = TranscriptSessionSummary.topSpeakerNames(shown.summaries)
                 if (chosen == null || chosen in top) top else listOf(chosen) + top
             }
-            LazyColumn(modifier = Modifier.fillMaxSize(), state = place) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().imePadding(),
+                state = place,
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 item(key = "search") {
                     SearchField(query, onChange = { query = it })
                 }
@@ -254,11 +279,10 @@ fun HistoryScreen(
                     StarredLinesRow(stars, onOpen = { showingStarred = true })
                 }
                 if (shown.onThisDate.isNotEmpty()) item(key = "on-this-date") {
-                    Column(modifier = Modifier.testTag(ON_THIS_DATE)) {
-                        Heading(tr("בתאריך הזה בשנים קודמות", "On this date in earlier years"))
+                    Column(modifier = Modifier.testTag(ON_THIS_DATE), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SectionHeader(tr("בתאריך הזה בשנים קודמות", "On this date in earlier years"))
                         for (session in shown.onThisDate) {
                             ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletion = session })
-                            HorizontalDivider()
                         }
                     }
                 }
@@ -270,22 +294,19 @@ fun HistoryScreen(
                 }
                 if (days.isEmpty()) {
                     item(key = "empty") {
-                        Column {
-                            Heading(tr("שיחות", "Conversations"))
-                            Text(
-                                HistoryTexts.emptyMessage(query, saving, chosen),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                        EmptyState(
+                            icon = if (searching) Icons.Rounded.SearchOff else Icons.Rounded.History,
+                            title = tr("שיחות", "Conversations"),
+                            body = HistoryTexts.emptyMessage(query, saving, chosen),
+                        )
                     }
                 }
                 for (day in days) {
-                    item(key = "day-${day.id}") { Heading(day.title) }
+                    item(key = "day-${day.id}") { SectionHeader(day.title) }
                     items(day.sessions, key = { it.id.toString() }) { session ->
                         // A deleted conversation fades and the rest close up over it.
-                        Column(Modifier.animateItem()) {
+                        Box(Modifier.animateItem()) {
                             ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletion = session })
-                            HorizontalDivider()
                         }
                     }
                 }
@@ -379,16 +400,20 @@ internal const val SPEAKER_SHARE = "speakerShare:"
 
 @Composable
 private fun SearchField(query: String, onChange: (String) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = onChange,
-            placeholder = { Text(tr("חיפוש במה שנאמר", "Search what was said")) },
-            singleLine = true,
-            modifier = Modifier.weight(1f),
-        )
-        if (query.isNotEmpty()) TextButton(onClick = { onChange("") }) { Text(tr("ניקוי", "Clear")) }
-    }
+    OutlinedTextField(
+        value = query,
+        onValueChange = onChange,
+        placeholder = { Text(tr("חיפוש במה שנאמר", "Search what was said")) },
+        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+        trailingIcon = if (query.isNotEmpty()) {
+            { TextButton(onClick = { onChange("") }) { Text(tr("ניקוי", "Clear")) } }
+        } else {
+            null
+        },
+        singleLine = true,
+        shape = MaterialTheme.shapes.extraLarge,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 /** Right above the list, as on the iPhone: whether to save, for how long, and where it is kept. */
@@ -401,7 +426,7 @@ private fun SavingSection(
     onSaving: (Boolean) -> Unit,
     onRetention: (HistoryRetention) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (saving && failure != null) {
             Text(
                 tr(
@@ -409,45 +434,34 @@ private fun SavingSection(
                     "The last conversation save failed, probably because the phone is out of space. What was said since then may not have been saved.",
                 ),
                 color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .toggleable(value = saving, role = Role.Switch, onValueChange = onSaving)
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(tr("לשמור שיחות", "Save conversations"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Switch(checked = saving, onCheckedChange = null)
         }
         var choosing by remember { mutableStateOf(false) }
-        Box {
-            LabelAndValue(
-                label = { Text(tr("מחיקה אוטומטית", "Automatic deletion"), style = MaterialTheme.typography.bodyLarge) },
-                value = { Text(HistoryTexts.name(retention), color = MaterialTheme.colorScheme.primary) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(role = Role.DropdownList) { choosing = true }
-                    .padding(vertical = 12.dp),
-            )
-            DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {
-                HistoryRetention.entries.forEach { choice ->
-                    DropdownMenuItem(
-                        text = { Text(HistoryTexts.name(choice)) },
-                        onClick = {
-                            choosing = false
-                            if (choice != retention) onRetention(choice)
-                        },
+        SettingsGroup {
+            item { SettingSwitchRow(tr("לשמור שיחות", "Save conversations"), checked = saving, onCheckedChange = onSaving) }
+            item {
+                Box {
+                    SettingRow(
+                        tr("מחיקה אוטומטית", "Automatic deletion"),
+                        onClick = { choosing = true },
+                        trailing = { TrailingValue(HistoryTexts.name(retention)) },
                     )
+                    DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {
+                        HistoryRetention.entries.forEach { choice ->
+                            DropdownMenuItem(
+                                text = { Text(HistoryTexts.name(choice)) },
+                                onClick = {
+                                    choosing = false
+                                    if (choice != retention) onRetention(choice)
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
-        Text(
-            HistoryTexts.savingFooter(saving, size, retention),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        GroupFootnote(HistoryTexts.savingFooter(saving, size, retention))
     }
 }
 
@@ -465,38 +479,50 @@ private fun ConversationRowView(row: ConversationRow, onOpen: () -> Unit, onDele
 
 @Composable
 private fun ConversationRowContent(row: ConversationRow, onOpen: () -> Unit, onHold: () -> Unit, actions: List<CustomAccessibilityAction>) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .onHold(onHold)
-            .clickable(onClick = onOpen)
-            .semantics { customActions = actions }
-            .padding(vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        row.title?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                row.time,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (row.title == null) FontWeight.SemiBold else FontWeight.Normal,
-                modifier = Modifier.weight(1f),
-            )
-            row.duration?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        }
-        row.speakers?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        Text(row.preview, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        // As on the iPhone, the starred lines' count beside the line count,
-        // heard as words rather than a star symbol and a number.
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(row.lines, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            row.starredSpoken?.let { spoken ->
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onHold(onHold)
+                .clickable(onClick = onOpen)
+                .semantics { customActions = actions }
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            row.title?.let { Text(it, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface) }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "★ ${row.starred}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = starColour(),
-                    modifier = Modifier.clearAndSetSemantics { contentDescription = spoken },
+                    row.time,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = if (row.title == null) FontWeight.SemiBold else FontWeight.Normal,
+                    modifier = Modifier.weight(1f),
                 )
+                row.duration?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            row.speakers?.let { names ->
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                    Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Rounded.Person, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(names, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            Text(row.preview, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface)
+            // As on the iPhone, the starred lines' count beside the line count,
+            // heard as words rather than a star symbol and a number.
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(row.lines, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                row.starredSpoken?.let { spoken ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clearAndSetSemantics { contentDescription = spoken },
+                    ) {
+                        Icon(Icons.Rounded.Star, contentDescription = null, modifier = Modifier.size(14.dp), tint = starColour())
+                        Text("${row.starred}", style = MaterialTheme.typography.labelMedium, color = starColour())
+                    }
+                }
             }
         }
     }
@@ -608,8 +634,8 @@ internal fun ConversationScreen(
     Screen(title = tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {
         val shown = loaded
         when {
-            shown == null -> CircularProgressIndicator(modifier = Modifier.padding(24.dp))
-            shown.record == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"))
+            shown == null -> LoadingNote()
+            shown.record == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 24.dp))
             else -> {
                 val numbers = shown.numbers?.takeIf { it.listed.isNotEmpty() }
                 val header = shown.headerItems
@@ -617,43 +643,46 @@ internal fun ConversationScreen(
                 // Held above the lines, unlike the name: opened at a line far
                 // down, the conversation can still be shared, named or deleted,
                 // and each jump goes on from where the last one left the list.
-                FlowRow(modifier = Modifier.fillMaxWidth()) {
-                    TextButton(onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { shareSheet(context, shown.record, marksUncertain) }) } }) {
-                        Text(tr("שיתוף", "Share"))
-                    }
-                    TextButton(onClick = { naming = shown.record.title ?: "" }) {
-                        Text(tr("מתן שם לשיחה", "Name this conversation"))
-                    }
-                    TextButton(onClick = { confirmingDelete = true }) {
-                        Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error)
-                    }
+                FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ActionChip(Icons.Rounded.Share, tr("שיתוף", "Share"), onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { shareSheet(context, shown.record, marksUncertain) }) } })
+                    ActionChip(Icons.Rounded.Edit, tr("מתן שם לשיחה", "Name this conversation"), onClick = { naming = shown.record.title ?: "" })
+                    ActionChip(Icons.Rounded.Delete, tr("מחיקה", "Delete"), onClick = { confirmingDelete = true }, colour = MaterialTheme.colorScheme.error)
                     if (shown.matches.size > 1) {
-                        TextButton(
+                        ActionChip(
+                            Icons.Rounded.KeyboardArrowDown,
+                            SearchMatches.nextTitle(current, shown.matches.size),
                             onClick = {
                                 current = (current + 1) % shown.matches.size
                                 val target = shown.lines.indexOfFirst { it.id == shown.matches[current] }
                                 if (target >= 0) scope.launch { list.scrollToItem(header + target) }
                             },
-                        ) { Text(SearchMatches.nextTitle(current, shown.matches.size)) }
+                        )
                     }
                     if (shown.starred.isNotEmpty()) {
-                        TextButton(
+                        ActionChip(
+                            Icons.Rounded.Star,
+                            SearchMatches.starredTitle(starAt, shown.starred.size, jumpedToStar),
                             onClick = {
                                 starAt = if (jumpedToStar) (starAt + 1) % shown.starred.size else 0
                                 jumpedToStar = true
                                 val target = shown.lines.indexOfFirst { it.id == shown.starred[starAt] }
                                 if (target >= 0) scope.launch { list.scrollToItem(header + target) }
                             },
-                        ) { Text(SearchMatches.starredTitle(starAt, shown.starred.size, jumpedToStar)) }
+                        )
                     }
                 }
-                LazyColumn(state = list, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                LazyColumn(
+                    state = list,
+                    modifier = Modifier.fillMaxSize().imePadding(),
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     // Its name scrolls away with the lines: held above them, a
                     // long name at the largest text took half the screen and left
                     // the lines a strip.
                     shown.record.title?.let { name ->
                         item(key = "name") {
-                            Text(name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
+                            Text(name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 16.dp).semantics { heading() })
                         }
                     }
                     shown.stats?.let { stats -> item(key = "summary") { SummarySection(stats) } }
@@ -666,7 +695,7 @@ internal fun ConversationScreen(
                         }
                     }
                     item(key = "when") {
-                        Heading(conversationHeading(shown.record.startedAt, now = System.currentTimeMillis() / 1_000.0))
+                        SectionHeader(conversationHeading(shown.record.startedAt, now = System.currentTimeMillis() / 1_000.0))
                     }
                     items(shown.lines, key = { it.id.toString() }) { line ->
                         SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers) {
@@ -677,7 +706,7 @@ internal fun ConversationScreen(
                         }
                     }
                     item(key = "source") {
-                        Text(shown.record.sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(shown.record.sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
                     }
                 }
             }
@@ -757,6 +786,32 @@ private fun DeletionFailed(error: String, onClose: () -> Unit) {
     )
 }
 
+@Composable
+private fun ActionChip(icon: ImageVector, label: String, onClick: () -> Unit, colour: Color = MaterialTheme.colorScheme.onSurface) {
+    AssistChip(
+        onClick = onClick,
+        label = { Text(label) },
+        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) },
+        colors = AssistChipDefaults.assistChipColors(labelColor = colour, leadingIconContentColor = colour),
+        modifier = Modifier.heightIn(min = 48.dp),
+    )
+}
+
+@Composable
+internal fun LoadingNote(icon: ImageVector = Icons.Rounded.History) {
+    ProgressState(icon, tr("רק רגע", "Just a moment"), Modifier.padding(top = 48.dp))
+}
+
+@Composable
+private fun GroupCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { heading() })
+            content()
+        }
+    }
+}
+
 /**
  * At the top, as on the iPhone: how long and how many words, who said how
  * much, the pace and the turns. Every number is a count or a span between
@@ -765,8 +820,7 @@ private fun DeletionFailed(error: String, onClose: () -> Unit) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SummarySection(stats: ConversationStats) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Heading(tr("סיכום", "Summary"))
+    GroupCard(tr("סיכום", "Summary")) {
         Text(stats.hebrewSummary, style = MaterialTheme.typography.titleMedium)
         for (speaker in stats.speakers) {
             val share = stats.wordFraction(speaker)
@@ -791,7 +845,6 @@ private fun SummarySection(stats: ConversationStats) {
         stats.longestTurn?.takeIf { stats.speakers.size > 1 }?.let {
             SummaryRow(tr("הדיבור הארוך ביותר", "Longest turn"), "${it.speakerName} · ${ConversationStats.wordsText(it.words)}")
         }
-        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
     }
 }
 
@@ -813,8 +866,7 @@ private fun NumbersSection(numbers: NumbersMentioned, isUncertain: (SavedSegment
     val copy = tr("העתקה", "Copy")
     val unsureLabel = tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ").trim()
     val context = LocalContext.current
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Heading(tr("מספרים שנאמרו", "Numbers mentioned"))
+    GroupCard(tr("מספרים שנאמרו", "Numbers mentioned")) {
         // As on the iPhone: each copies from a hold or the screen reader, and
         // one that may have been misheard says so, "10:30" or "11:30" being
         // where the doubt matters most.
@@ -855,7 +907,6 @@ private fun NumbersSection(numbers: NumbersMentioned, isUncertain: (SavedSegment
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
     }
 }
 
@@ -875,8 +926,9 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 10.dp)
             .background(if (isMatch || arrived) SEARCH_MATCH else Color.Transparent, RoundedCornerShape(8.dp))
-            .padding(horizontal = if (isMatch || arrived) 6.dp else 0.dp, vertical = if (isMatch || arrived) 4.dp else 0.dp)
+            .padding(horizontal = 6.dp, vertical = 4.dp)
             .clearAndSetSemantics {
                 contentDescription = line.spoken
                 if (isMatch) stateDescription = found
@@ -942,22 +994,8 @@ internal fun starColour() = starColour(light = MaterialTheme.colorScheme.backgro
 internal fun starColour(light: Boolean) = if (light) Color(red = 0.6f, green = 0.42f, blue = 0f) else Color(red = 1f, green = 0.84f, blue = 0.04f)
 
 @Composable
-internal fun Screen(title: String, close: String, onClose: () -> Unit, actions: @Composable () -> Unit = {}, content: @Composable () -> Unit) {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ScreenTitle(title) {
-                actions()
-                TextButton(onClick = onClose) { Text(close) }
-            }
-            content()
-        }
-    }
+internal fun Screen(title: String, close: String, onClose: () -> Unit, actions: @Composable () -> Unit = {}, content: @Composable ColumnScope.() -> Unit) {
+    OzenScreen(title, onClose = onClose, closeLabel = close, actions = { actions() }, scrolls = false, content = content)
 }
 
 @Composable
