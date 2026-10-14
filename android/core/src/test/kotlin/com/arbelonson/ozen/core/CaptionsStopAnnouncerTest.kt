@@ -42,4 +42,22 @@ class CaptionsStopAnnouncerTest {
         assertNull(announcer.phaseChanged(PipelinePhase.Listening))
         assertEquals(CaptionsStopAnnouncer.Event.Stopped, announcer.phaseChanged(stalled))
     }
+
+    @Test
+    fun `a stop while away is told once on return, and not when it healed or happened in front`() {
+        val stopped = CaptionsStopAnnouncer.Event.Stopped
+        val away = CaptionsStopAnnouncer()
+        assertEquals(stopped, away.phaseChanged(stalled, active = false))
+        assertEquals(stopped, away.comingBack(stalled))
+        assertNull(away.comingBack(stalled))
+
+        val healed = CaptionsStopAnnouncer()
+        healed.phaseChanged(stalled, active = false)
+        healed.phaseChanged(PipelinePhase.Listening, active = false)
+        assertNull(healed.comingBack(PipelinePhase.Listening))
+
+        val front = CaptionsStopAnnouncer()
+        front.phaseChanged(stalled, active = true)
+        assertNull(front.comingBack(stalled))
+    }
 }

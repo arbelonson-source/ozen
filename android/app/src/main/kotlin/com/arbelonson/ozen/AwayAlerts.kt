@@ -36,23 +36,29 @@ class AwayAlerts(private val policy: BackgroundAlertPolicy = BackgroundAlertPoli
         policy.quietHours = settings.quietHours
         return policy.notification(alert, appIsActive, now, utcOffsetSeconds)
     }
+
+    companion object {
+        fun vibrationFor(content: AlertNotificationContent): AlertVibration =
+            if (content.isUrgent && content.threadIdentifier == AlertNotifier.SOUNDS_THREAD) AlertVibration.pattern(SoundEvent.Importance.Critical) else AlertVibration.keyword
+    }
 }
 
 class AlertNotifier(private val context: Context) {
     fun post(content: AlertNotificationContent): Boolean {
         val manager = context.getSystemService(NotificationManager::class.java)
         val alarm = content.isUrgent && content.threadIdentifier == SOUNDS_THREAD
+        val vibration = AwayAlerts.vibrationFor(content)
         val shown = if (alarm) manager.areNotificationsEnabled() && manager.getNotificationChannel(ALARM_CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE else allowed(context)
         if (!shown) return false
         val channel = if (alarm) {
             NotificationChannel(ALARM_CHANNEL_ID, tr("חירום", "Emergency"), NotificationManager.IMPORTANCE_HIGH).apply {
                 enableVibration(true)
-                vibrationPattern = AlertVibration.pattern(SoundEvent.Importance.Critical).waveform().first
+                vibrationPattern = vibration.waveform().first
             }
         } else {
             NotificationChannel(CHANNEL_ID, tr("התראות", "Alerts"), NotificationManager.IMPORTANCE_HIGH).apply {
                 enableVibration(true)
-                vibrationPattern = AlertVibration.keyword.waveform().first
+                vibrationPattern = vibration.waveform().first
             }
         }
         manager.createNotificationChannel(channel)
@@ -82,7 +88,7 @@ class AlertNotifier(private val context: Context) {
     companion object {
         const val CHANNEL_ID = "alerts"
         const val ALARM_CHANNEL_ID = "alarms"
-        private const val SOUNDS_THREAD = "sounds"
+        const val SOUNDS_THREAD = "sounds"
         const val TEST_DELAY_MILLIS = 10_000L
 
         var allowed: (Context) -> Boolean = { context ->

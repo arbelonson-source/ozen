@@ -213,6 +213,9 @@ class CaptionSession(
         val cameBack = !appIsActive
         appIsActive = true
         if (cameBack) {
+            if (stopAnnouncer.comingBack(pipeline.phase) == CaptionsStopAnnouncer.Event.Stopped && ScreenReader.isOn(context)) {
+                ScreenReader.announce(context, stoppedText(pipeline.phase))
+            }
             untold?.let { word ->
                 untold = null
                 tell(word)
@@ -567,15 +570,17 @@ class CaptionSession(
      */
     private fun announceStopOrReturn() {
         val phase = pipeline.phase
-        val text = when (stopAnnouncer.phaseChanged(phase)) {
-            CaptionsStopAnnouncer.Event.Stopped -> {
-                val status = PhasePresentation(phase, pipeline.activeEngineKind, interruptedBySystem, pipeline.scheduledRetry)
-                tr("הכתוביות נעצרו: %1", "Captions stopped: %1", listOf(status.title))
-            }
+        val text = when (stopAnnouncer.phaseChanged(phase, appIsActive)) {
+            CaptionsStopAnnouncer.Event.Stopped -> stoppedText(phase)
             CaptionsStopAnnouncer.Event.Back -> tr("הכתוביות חזרו", "Captions are back")
             null -> return
         }
         if (appIsActive && ScreenReader.isOn(context)) ScreenReader.announce(context, text)
+    }
+
+    private fun stoppedText(phase: PipelinePhase): String {
+        val status = PhasePresentation(phase, pipeline.activeEngineKind, interruptedBySystem, pipeline.scheduledRetry)
+        return tr("הכתוביות נעצרו: %1", "Captions stopped: %1", listOf(status.title))
     }
 
     private val microphoneOn: Boolean get() = BatteryAdvisor.watches(pipeline.phase)
@@ -927,7 +932,9 @@ class CaptionSession(
         val now = System.currentTimeMillis() / 1_000.0
         val utcOffsetSeconds = TimeZone.getDefault().getOffset((now * 1_000).toLong()) / 1_000
         val told = hits.filter { hit ->
-            awayAlerts.forWords(listOf(hit), line.text, appIsActive, settings.current.value, now, utcOffsetSeconds).map(notifier::post).any { it }
+            awayAlerts.forWords(listOf(hit), line.text, appIsActive, settings.current.value, now, utcOffsetSeconds).map { content ->
+                notifier.post(content).also { if (it) pipeline.ignoreSounds(AwayAlerts.vibrationFor(content)) }
+            }.any { it }
         }
         attention.claim(hits - told.toSet())?.let { word ->
             CaptionState.heard(word)
@@ -959,7 +966,9 @@ class CaptionSession(
         }
         val now = System.currentTimeMillis() / 1_000.0
         val utcOffsetSeconds = TimeZone.getDefault().getOffset((now * 1_000).toLong()) / 1_000
-        awayAlerts.forSound(alert, appIsActive, settings.current.value, now, utcOffsetSeconds)?.let(notifier::post)
+        awayAlerts.forSound(alert, appIsActive, settings.current.value, now, utcOffsetSeconds)?.let { content ->
+            if (notifier.post(content)) pipeline.ignoreSounds(AwayAlerts.vibrationFor(content))
+        }
     }
 
     fun dismissSoundAlert(id: UUID) {
