@@ -1173,7 +1173,7 @@ struct CaptionPipelineLifecycleTests {
         let engine = FakeEngine()
         let audio = FakeAudioCapturer()
         audio.availableInputs.append(AudioInputDescriptor(uid: "usb", portName: "USB Microphone", portType: .usb))
-        let (pipeline, _, _) = makePipeline(audio: audio, engines: [.whisperKit: engine], recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []))
+        let (pipeline, _, _) = makePipeline(audio: audio, engines: [.whisperKit: engine], recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []))
         var settings = AppSettings.default
         settings.preferredInputUID = "builtin"
         await pipeline.start(settings: settings)
@@ -1196,7 +1196,7 @@ struct CaptionPipelineLifecycleTests {
     @Test("after tapping Retry once the automatic attempts ran out, the next glitch is retried by itself again")
     func retryTapGivesFreshAttempts() async {
         let engine = FakeEngine()
-        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine], recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []))
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine], recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []))
         await pipeline.start(settings: .default)
         #expect(await eventually { pipeline.phase == .listening })
         engine.endStream(throwing: TestError())
@@ -1416,7 +1416,7 @@ struct CaptionPipelineLifecycleTests {
                     return engine
                 },
                 embedder: FakeEmbedder(),
-                recovery: retryComing ? AutoRecoveryPolicy(glitchDelays: [600], downloadDelays: []) : .disabled
+                recovery: retryComing ? AutoRecoveryPolicy(glitchDelays: [600], downloadDelays: [], microphoneTailDelays: []) : .disabled
             )
             await pipeline.start(settings: .default)
             #expect(pipeline.phase.failure?.kind == .audioSessionFailed)
@@ -2012,7 +2012,7 @@ struct CaptionPipelineEnrollmentTests {
         let (pipeline, audio, _) = makePipeline(
             engines: [.whisperKit: engine],
             soundDetector: FakeSoundDetector(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [], microphoneTailDelays: [])
         )
         await pipeline.start(settings: .default)
         #expect(await eventually { pipeline.scheduledRetry != nil && pipeline.stats.soundDetectionRunning })
@@ -3168,7 +3168,7 @@ struct CaptionPipelineAudioStallTests {
     func microphoneChangeGivesFreshAttempts() async {
         let clock = TestClock()
         let (pipeline, audio, _) = makePipeline(
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []), now: { clock.now }
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []), now: { clock.now }
         )
         await pipeline.start(settings: .default)
         audio.onCaptureLost?()
@@ -3257,7 +3257,7 @@ struct CaptionPipelineAudioStallTests {
     @Test("automatic recovery starts capture again after a stall")
     func stallRecovers() async {
         let (pipeline, audio, _) = makePipeline(
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []),
             audioWatchdog: quickWatchdog
         )
         await pipeline.start(settings: .default)
@@ -3666,7 +3666,7 @@ struct CaptionPipelineDownloadNetworkTests {
             audio: FakeAudioCapturer(),
             engineFactory: { _ in engine },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []),
             network: network
         )
         pipeline.systemInterruptionChanged(active: true)
@@ -3690,7 +3690,7 @@ struct CaptionPipelineDownloadNetworkTests {
             audio: FakeAudioCapturer(),
             engineFactory: { _ in engine },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: []),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: [], microphoneTailDelays: []),
             network: network
         )
         await pipeline.start(settings: settings())

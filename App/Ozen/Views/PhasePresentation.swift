@@ -294,6 +294,14 @@ struct PhasePresentation {
                 tint: .orange,
                 action: .openEngineSettings
             )
+        case .cloudLanguageNotCovered:
+            self.init(
+                title: tr("השירות לא מתמלל את השפה הזו", "This service can't caption this language"),
+                detail: tr("בחרו שירות אחר · הקישו להגדרות", "Choose another service · Tap for Settings"),
+                systemImage: "globe",
+                tint: .orange,
+                action: .openEngineSettings
+            )
         case .cloudOutOfCredit:
             self.init(
                 title: tr("נגמר התקציב לתמלול בענן", "Cloud transcription’s budget ran out"),
