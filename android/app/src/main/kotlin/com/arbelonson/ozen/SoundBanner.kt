@@ -11,6 +11,44 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Alarm
+import androidx.compose.material.icons.rounded.Air
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.Celebration
+import androidx.compose.material.icons.rounded.ChildCare
+import androidx.compose.material.icons.rounded.CleaningServices
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DirectionsCar
+import androidx.compose.material.icons.rounded.DoorFront
+import androidx.compose.material.icons.rounded.Emergency
+import androidx.compose.material.icons.rounded.Plumbing
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.LocalPolice
+import androidx.compose.material.icons.rounded.Masks
+import androidx.compose.material.icons.rounded.MedicalServices
+import androidx.compose.material.icons.rounded.Microwave
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.PanTool
+import androidx.compose.material.icons.rounded.Pets
+import androidx.compose.material.icons.rounded.RecordVoiceOver
+import androidx.compose.material.icons.rounded.SentimentSatisfied
+import androidx.compose.material.icons.rounded.Thunderstorm
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Wc
+import androidx.compose.material.icons.rounded.WaterDrop
+import androidx.compose.material.icons.rounded.Whatshot
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.arbelonson.ozen.ui.IconBadge
+import com.arbelonson.ozen.ui.OzenSpacing
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,28 +75,57 @@ import kotlinx.coroutines.delay
 
 @Composable
 internal fun SoundAlertBanner(alert: SoundAlert, onDismiss: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(8.dp, shape)
-            .background(soundTint(alert.event.importance).copy(alpha = 0.92f), shape)
+    val critical = alert.event.importance == SoundEvent.Importance.Critical
+    NoticeBanner(
+        soundIcon(alert.event.systemImage),
+        soundTint(alert.event.importance),
+        alert.event.name,
+        if (critical) tr("שימו לב!", "Attention!") else tr("נשמע עכשיו", "Heard just now"),
+        Modifier
+            .shadow(4.dp, MaterialTheme.shapes.large)
             .clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button, onClick = onDismiss)
-            .semantics { contentDescription = tr("התראה: %1", "Alert: %1", listOf(alert.event.name)) }
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .semantics { contentDescription = tr("התראה: %1", "Alert: %1", listOf(alert.event.name)) },
+        large = true,
+    ) { Icon(Icons.Rounded.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.8f)) }
+}
+
+/**
+ * A rounded notice tinted by how urgent it is, white words on [tint]: an
+ * icon in a soft circle, a title and a line under it, and an optional
+ * [trailing] mark. Its clicking and TalkBack words come in on [modifier].
+ */
+@Composable
+internal fun NoticeBanner(
+    icon: ImageVector,
+    tint: Color,
+    title: String,
+    detail: String,
+    modifier: Modifier = Modifier,
+    large: Boolean = false,
+    trailing: @Composable () -> Unit = {},
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(tint).then(modifier).padding(horizontal = OzenSpacing.Page, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(soundSymbol(alert.event.systemImage), fontSize = 30.sp, modifier = Modifier.clearAndSetSemantics { })
+        IconBadge(icon, size = if (large) 48.dp else 40.dp, container = Color.White.copy(alpha = 0.2f), content = Color.White)
         Column(Modifier.weight(1f)) {
-            Text(alert.event.name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text(
-                if (alert.event.importance == SoundEvent.Importance.Critical) tr("שימו לב!", "Attention!") else tr("נשמע עכשיו", "Heard just now"),
-                color = Color.White.copy(alpha = 0.85f),
-                fontSize = 15.sp,
-            )
+            Text(title, color = Color.White, fontSize = if (large) 20.sp else 18.sp, fontWeight = FontWeight.SemiBold)
+            Text(detail, color = Color.White.copy(alpha = 0.92f), fontSize = if (large) 16.sp else 15.sp)
         }
-        Text("✕", color = Color.White.copy(alpha = 0.7f), fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics { })
+        trailing()
+    }
+}
+
+/** A 48 dp close button for the end of a banner, named for TalkBack by [label]. */
+@Composable
+internal fun BannerClose(label: String, tint: Color, onClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(OzenSpacing.MinTouch).clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = label },
+    ) {
+        Icon(Icons.Rounded.Close, contentDescription = null, tint = tint)
     }
 }
 
@@ -115,6 +182,39 @@ internal fun soundTint(importance: SoundEvent.Importance): Color = when (importa
     SoundEvent.Importance.High -> Color(0xFFB34D00)
     SoundEvent.Importance.Medium -> Color(0xFF0052BF)
     SoundEvent.Importance.Low -> Color(0xFF4D4D4D)
+}
+
+internal fun soundIcon(systemImage: String): ImageVector = when {
+    systemImage == "drop.triangle.fill" -> Icons.Rounded.Whatshot
+    else -> when (systemImage.substringBefore('.')) {
+        "light" -> Icons.Rounded.Emergency
+        "flame" -> Icons.Rounded.LocalFireDepartment
+        "cross" -> Icons.Rounded.MedicalServices
+        "shield" -> Icons.Rounded.LocalPolice
+        "exclamationmark" -> Icons.Rounded.Warning
+        "person" -> Icons.Rounded.RecordVoiceOver
+        "car" -> Icons.Rounded.DirectionsCar
+        "figure" -> Icons.Rounded.ChildCare
+        "drop" -> Icons.Rounded.WaterDrop
+        "hand" -> Icons.Rounded.PanTool
+        "hands" -> Icons.Rounded.Celebration
+        "phone" -> Icons.Rounded.Call
+        "alarm" -> Icons.Rounded.Alarm
+        "dog", "cat" -> Icons.Rounded.Pets
+        "cloud" -> Icons.Rounded.Thunderstorm
+        "sparkles" -> Icons.Rounded.AutoAwesome
+        "door" -> Icons.Rounded.DoorFront
+        "waveform" -> Icons.Rounded.GraphicEq
+        "microwave" -> Icons.Rounded.Microwave
+        "sink" -> Icons.Rounded.Plumbing
+        "toilet" -> Icons.Rounded.Wc
+        "fan" -> Icons.Rounded.CleaningServices
+        "lungs" -> Icons.Rounded.Masks
+        "wind" -> Icons.Rounded.Air
+        "face" -> Icons.Rounded.SentimentSatisfied
+        "music" -> Icons.Rounded.MusicNote
+        else -> Icons.Rounded.NotificationsActive
+    }
 }
 
 internal fun soundSymbol(systemImage: String): String = when {
