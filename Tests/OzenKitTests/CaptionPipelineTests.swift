@@ -2952,6 +2952,21 @@ struct CaptionPipelineNamingLineTests {
         #expect(pipeline.speakerClusters.filter { $0.name == "Dana" }.count == 1)
     }
 
+    @Test("a line from before a quiet break can still be named")
+    func lineFromAnEarlierConversationCanBeNamed() async {
+        let engine = FakeEngine()
+        let (pipeline, audio, _) = makePipeline(engines: [.whisperKit: engine])
+        await pipeline.start(settings: .default)
+        await line("שלום", engine: engine, audio: audio, pipeline: pipeline, count: 1)
+        let earlier = pipeline.segments[0]
+        pipeline.startNewConversation()
+
+        let print = pipeline.nameSpeaker(of: earlier, name: "Cohen")
+
+        #expect(print == [1, 0, 0])
+        #expect(pipeline.displayName(for: earlier) == "Cohen")
+    }
+
     @Test("fixing a spelling on a named voice's line still renames that voice everywhere")
     func spellingFixRenamesTheVoice() async {
         let (pipeline, engine, audio) = await listening()

@@ -1382,14 +1382,17 @@ public final class CaptionPipeline {
     /// own voice, and the other person's voice keeps their name.
     @discardableResult
     public func nameSpeaker(of segment: TranscriptSegment, name: String) -> [Float]? {
-        guard let clusterID = segment.speakerClusterID,
-              let cluster = clusterer.clusters.first(where: { $0.id == clusterID })
-        else { return nil }
-        if isRespelling(name, ofLine: segment) {
-            clusterer.nameCluster(id: clusterID, name: name)
-            speakerClusters = clusterer.clusters
-            return clusterer.clusters.first(where: { $0.id == clusterID })?.centroid
+        guard let clusterID = segment.speakerClusterID else { return nil }
+        let cluster = clusterer.clusters.first(where: { $0.id == clusterID })
+        if let cluster, !isRespelling(name, ofLine: segment) {
+            return moveLine(segment, to: name, from: cluster)
         }
+        clusterer.nameCluster(id: clusterID, name: name)
+        speakerClusters = clusterer.clusters
+        return clusterer.clusters.first(where: { $0.id == clusterID })?.centroid
+    }
+
+    private func moveLine(_ segment: TranscriptSegment, to name: String, from cluster: SpeakerCluster) -> [Float] {
         let heard = utteranceEmbeddings[segment.id]
         let target: Int
         if let existing = clusterer.clusters.first(where: { $0.name == name }) {
@@ -1411,9 +1414,8 @@ public final class CaptionPipeline {
     /// its voice already has (or names a voice that has none), rather than
     /// calling someone else.
     public func isRespelling(_ name: String, ofLine segment: TranscriptSegment) -> Bool {
-        guard let clusterID = segment.speakerClusterID,
-              let cluster = clusterer.clusters.first(where: { $0.id == clusterID })
-        else { return false }
+        guard let clusterID = segment.speakerClusterID else { return false }
+        guard let cluster = clusterer.clusters.first(where: { $0.id == clusterID }) else { return true }
         guard let old = cluster.name, old != name else { return true }
         if clusterer.clusters.contains(where: { $0.name == name }) { return false }
         let distance = Self.editDistance(Array(old.lowercased()), Array(name.lowercased()))
