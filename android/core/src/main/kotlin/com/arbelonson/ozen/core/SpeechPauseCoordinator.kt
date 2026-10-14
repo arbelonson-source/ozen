@@ -37,8 +37,8 @@ interface SpeechSynthesizing {
 
     /**
      * True unless the app is in a language beyond Hebrew and English with
-     * no voice on the phone. Hebrew has its own hint, and English always
-     * has a voice.
+     * no voice on the phone. Hebrew has its own hint. English is not exempt in
+     * the settings notice, which is shown when the phone has no English voice.
      */
     fun hasVoiceOrOwnHint(appLanguage: UILanguage): Boolean =
         appLanguage == UILanguage.Hebrew || appLanguage == UILanguage.English || hasVoice(appLanguage)
