@@ -68,6 +68,9 @@ class FakeAudioCapturer : AudioCapturing {
     var prepareError: Throwable? = null
     var startError: Throwable? = null
 
+    /** When set, capture returns this flow (a cold or failing one) instead of the hot channel. */
+    var captureFlow: (() -> Flow<FloatArray>)? = null
+
     /** Like the real session: capture can't start before one is prepared. */
     var requiresPreparedSession = false
     private var isPrepared = false
@@ -108,6 +111,7 @@ class FakeAudioCapturer : AudioCapturing {
         calls.add("startCapture")
         startError?.let { throw it }
         if (requiresPreparedSession && !isPrepared) throw FakeAudioError("FakeAudio", 2)
+        captureFlow?.let { return it() }
         val created = Channel<FloatArray>(Channel.UNLIMITED)
         channel = created
         return created.receiveAsFlow()

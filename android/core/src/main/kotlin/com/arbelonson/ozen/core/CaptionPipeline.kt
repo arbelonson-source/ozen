@@ -800,9 +800,15 @@ class CaptionPipeline(
             }
         }
 
-        val fan = FlowAudioFanOut(scope, source, count = if (soundDetector == null) 2 else 3) {
-            if (runID == run) statsData.glitchedAudioChunks += 1
-        }
+        val fan = FlowAudioFanOut(
+            scope,
+            source,
+            count = if (soundDetector == null) 2 else 3,
+            onGlitch = { if (runID == run) statsData.glitchedAudioChunks += 1 },
+            onFailure = { error ->
+                if (runID == run) fail(PipelineFailure.Kind.AudioSessionFailed, describe(error))
+            },
+        )
         fanOut = fan
         val tokens = engine.stream(settings.languageCode, fan.outputs[0])
         val embedderAudio = fan.outputs[1]
@@ -1524,6 +1530,9 @@ class CaptionPipeline(
                     }
                 } catch (error: CancellationException) {
                     wasCancelled = true
+                } catch (error: Exception) {
+                    // The microphone could not be opened or died: what was
+                    // heard is a short recording, refused like a quiet one.
                 }
                 deadline.cancel()
                 audio.stopCapture()
@@ -2442,7 +2451,7 @@ class CaptionPipeline(
         if (!soundPolicy.preferences.isEnabled) return
         val source = startCaptureOrNull() ?: return
         val run = runID
-        val fan = FlowAudioFanOut(scope, source, count = 1)
+        val fan = FlowAudioFanOut(scope, source, count = 1, onFailure = { if (runID == run) stopListeningForSounds() })
         fanOut = fan
         isListeningForSoundsOnly = true
         statsData.soundDetectionRunning = true

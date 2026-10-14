@@ -6,6 +6,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 
@@ -191,5 +192,20 @@ class CaptionPipelineStartupTest {
         pipeline.start(AppSettings.default)
 
         assertEquals(1, audio.calls.count { it == "startCapture" })
+    }
+
+    @Test
+    fun `a microphone that cannot be opened when collected fails the start and lines up a retry`() = runTest {
+        val audio = FakeAudioCapturer()
+        audio.captureFlow = { flow { throw IllegalStateException("microphone busy") } }
+        val (pipeline, _, _) = makePipeline(
+            audio = audio,
+            recovery = AutoRecoveryPolicy(glitchDelays = listOf(1000.0), downloadDelays = emptyList()),
+        )
+
+        pipeline.start(AppSettings.default)
+
+        assertTrue(eventually { pipeline.phase.failure?.kind == PipelineFailure.Kind.AudioSessionFailed })
+        assertTrue(eventually { pipeline.scheduledRetry != null })
     }
 }
