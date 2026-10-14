@@ -712,6 +712,11 @@ class CaptionPipeline(
         // its stream for the model instead of being lost.
         val earlySource: Flow<FloatArray>? = if (isCoveringForCloud) startCaptureOrNull() else null
         earlyCaptureRun = if (earlySource == null) null else run
+        // The real microphone only starts recording when its flow is first
+        // collected: collected from here, what is said while the model
+        // loads waits in the fan-out's buffers instead of being lost.
+        val earlyFan = if (earlySource == null) null else audioFanOut(earlySource, run)
+        fanOut = earlyFan
         val loadsModelOnPhone = settings.engine == TranscriptionEngineKind.WhisperKit
         if (loadsModelOnPhone) {
             isPreparingEngine = true
@@ -755,7 +760,7 @@ class CaptionPipeline(
             preparationWaiters.clear()
             waiting.forEach { it.complete(Unit) }
         }
-        if (runID != run) return
+        if (runID != run) return abandon(earlyFan)
         if (availability is EngineAvailability.Unavailable) {
             var why = availability.why
             // Refused because the only connection left is cellular: the
@@ -768,7 +773,7 @@ class CaptionPipeline(
             // downloads switched on meanwhile, is no reason to wait.
             if (why.kind == EngineUnavailability.Kind.ModelDownloadFailed) {
                 val pending = engine.pendingDownloadMegabytes()
-                if (runID != run) return
+                if (runID != run) return abandon(earlyFan)
                 val allowCellularNow = (settingsInUse?.allowCellularModelDownload ?: allowCellular) || cellularDownloadApproved
                 if (pending != null &&
                     ModelDownloadGate.decide(network?.current, allowCellularNow) == ModelDownloadGate.Decision.WaitForWiFi
@@ -784,31 +789,21 @@ class CaptionPipeline(
             return
         }
         engine.setVocabulary(primedVocabulary(settings.vocabulary))
-        if (runID != run) return
+        if (runID != run) return abandon(earlyFan)
         currentEngine = engine
 
         phase = PipelinePhase.StartingAudio
-        val source: Flow<FloatArray>
-        if (earlySource != null) {
-            source = earlySource
+        val fan: FlowAudioFanOut
+        if (earlyFan != null) {
+            fan = earlyFan
         } else {
             try {
-                source = audio.startCapture()
+                fan = audioFanOut(audio.startCapture(), run)
             } catch (error: Exception) {
                 fail(PipelineFailure.Kind.AudioSessionFailed, describe(error))
                 return
             }
         }
-
-        val fan = FlowAudioFanOut(
-            scope,
-            source,
-            count = if (soundDetector == null) 2 else 3,
-            onGlitch = { if (runID == run) statsData.glitchedAudioChunks += 1 },
-            onFailure = { error ->
-                if (runID == run) fail(PipelineFailure.Kind.AudioSessionFailed, describe(error))
-            },
-        )
         fanOut = fan
         val tokens = engine.stream(settings.languageCode, fan.outputs[0])
         val embedderAudio = fan.outputs[1]
@@ -1584,6 +1579,21 @@ class CaptionPipeline(
             return null
         }
         return startCaptureOrNull()
+    }
+
+    private fun audioFanOut(source: Flow<FloatArray>, run: UUID) = FlowAudioFanOut(
+        scope,
+        source,
+        count = if (soundDetector == null) 2 else 3,
+        onGlitch = { if (runID == run) statsData.glitchedAudioChunks += 1 },
+        onFailure = { error ->
+            if (runID == run) fail(PipelineFailure.Kind.AudioSessionFailed, describe(error))
+        },
+    )
+
+    private fun abandon(fan: FlowAudioFanOut?) {
+        fan?.cancel()
+        if (fanOut === fan) fanOut = null
     }
 
     private fun startCaptureOrNull(): Flow<FloatArray>? = try {
