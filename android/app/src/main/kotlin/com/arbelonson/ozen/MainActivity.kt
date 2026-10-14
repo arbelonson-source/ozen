@@ -380,7 +380,10 @@ private fun OzenApp(
     )
     val look = CaptionTheme.of(current.display.theme, isSystemInDarkTheme(), phoneAsksForMoreContrast())
     LaunchedEffect(look.isLight) { onLightScreen(look.isLight) }
-    MaterialTheme(colorScheme = if (look.isLight) lightColorScheme() else darkColorScheme()) {
+    MaterialTheme(
+        colorScheme = if (look.isLight) lightColorScheme() else darkColorScheme(),
+        typography = OzenTypography.of(MaterialTheme.typography),
+    ) {
         CompositionLocalProvider(LocalLayoutDirection provides direction) {
             val front = when {
                 !current.hasCompletedOnboarding -> FrontScreen(Front.Walkthrough)
