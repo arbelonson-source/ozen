@@ -8,19 +8,17 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -46,6 +44,9 @@ import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.DonationAddress
 import com.arbelonson.ozen.core.SupportOzen
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.GroupFootnote
+import com.arbelonson.ozen.ui.SettingsGroup
+import com.arbelonson.ozen.ui.TonalButton
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -62,32 +63,40 @@ import kotlinx.coroutines.delay
 @Composable
 internal fun SupportScreen(onClose: () -> Unit) {
     BackHandler(onBack = onClose)
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            ScreenTitle(tr("תמיכה באוזן", "Support Ozen")) {
-                TextButton(onClick = onClose) { Text(tr("חזרה", "Back")) }
+    SettingsPageFrame(tr("תמיכה באוזן", "Support Ozen"), onClose = onClose, closeLabel = tr("חזרה", "Back")) {
+        SettingsGroup(dividerInset = 56.dp) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Icon(Icons.Rounded.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        tr(
+                            "אוזן חינמית ותישאר חינמית, בלי פרסומות ובלי שום דבר נעול. תרומה היא לגמרי לפי רצונכם: אל תרגישו שום מחויבות, ותרמו רק אם המצב הכלכלי שלכם מאפשר זאת בנוחות. עצם השימוש באוזן והמלצה עליה לאחרים כבר עוזרים מאוד.",
+                            "Ozen is free and will stay free, with no ads and nothing locked. Donating is entirely up to you: please never feel obligated, and only donate if you’re in a financial position where you can comfortably afford it. Using Ozen and telling others about it already helps a lot.",
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
-            Text(
-                tr(
-                    "אוזן חינמית ותישאר חינמית, בלי פרסומות ובלי שום דבר נעול. תרומה היא לגמרי לפי רצונכם: אל תרגישו שום מחויבות, ותרמו רק אם המצב הכלכלי שלכם מאפשר זאת בנוחות. עצם השימוש באוזן והמלצה עליה לאחרים כבר עוזרים מאוד.",
-                    "Ozen is free and will stay free, with no ads and nothing locked. Donating is entirely up to you: please never feel obligated, and only donate if you’re in a financial position where you can comfortably afford it. Using Ozen and telling others about it already helps a lot.",
-                ),
-            )
-            Heading(tr("איך תורמים", "How to donate"))
-            Text(tr("1. פתחו את אפליקציית ארנק הקריפטו שלכם ובחרו ״שליחה״.", "1. Open your crypto wallet app and choose Send."))
-            Text(tr("2. בחרו את אותו מטבע שמופיע כאן. מטבע שנשלח לכתובת של מטבע אחר הולך לאיבוד.", "2. Pick the same coin as shown here. A coin sent to another coin’s address is lost."))
-            Text(tr("3. סרקו את הקוד עם הארנק, או העתיקו את הכתובת והדביקו אותה.", "3. Scan the code with the wallet, or copy the address and paste it."))
-            Text(tr("4. לפני השליחה, ודאו שהתווים הראשונים והאחרונים של הכתובת זהים.", "4. Before sending, check that the first and last few characters of the address match."))
-            for (donation in SupportOzen.addresses) DonationRow(donation)
         }
+        SectionHeader(tr("איך תורמים", "How to donate"))
+        SettingsGroup {
+            item { Step(tr("1. פתחו את אפליקציית ארנק הקריפטו שלכם ובחרו ״שליחה״.", "1. Open your crypto wallet app and choose Send.")) }
+            item { Step(tr("2. בחרו את אותו מטבע שמופיע כאן. מטבע שנשלח לכתובת של מטבע אחר הולך לאיבוד.", "2. Pick the same coin as shown here. A coin sent to another coin’s address is lost.")) }
+            item { Step(tr("3. סרקו את הקוד עם הארנק, או העתיקו את הכתובת והדביקו אותה.", "3. Scan the code with the wallet, or copy the address and paste it.")) }
+            item { Step(tr("4. לפני השליחה, ודאו שהתווים הראשונים והאחרונים של הכתובת זהים.", "4. Before sending, check that the first and last few characters of the address match.")) }
+        }
+        for (donation in SupportOzen.addresses) DonationRow(donation)
     }
+}
+
+@Composable
+private fun Step(text: String) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp))
 }
 
 @Composable
@@ -100,38 +109,41 @@ private fun DonationRow(donation: DonationAddress) {
             copied = false
         }
     }
-    Heading(donation.coin)
-    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        val code = remember(donation.id) { qrCode(donation.paymentURI) }
-        Image(
-            bitmap = code,
-            contentDescription = null,
-            filterQuality = FilterQuality.None,
-            modifier = Modifier.testTag("qr:${donation.id}").background(Color.White, RoundedCornerShape(12.dp)).padding(12.dp).size(196.dp),
-        )
-        // An address reads left to right in a Hebrew screen too, and a
-        // screen reader spells it out four characters at a time.
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            Text(
-                donation.address,
-                fontFamily = FontFamily.Monospace,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.fillMaxWidth().semantics { contentDescription = spokenAddress(donation.address) },
-            )
+    SectionHeader(donation.coin)
+    SettingsGroup {
+        item {
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                val code = remember(donation.id) { qrCode(donation.paymentURI) }
+                Image(
+                    bitmap = code,
+                    contentDescription = null,
+                    filterQuality = FilterQuality.None,
+                    modifier = Modifier.testTag("qr:${donation.id}").background(Color.White, RoundedCornerShape(12.dp)).padding(12.dp).size(196.dp),
+                )
+                // An address reads left to right in a Hebrew screen too, and a
+                // screen reader spells it out four characters at a time.
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Text(
+                        donation.address,
+                        fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = spokenAddress(donation.address) },
+                    )
+                }
+                TonalButton(
+                    if (copied) tr("הועתק", "Copied") else tr("העתקת כתובת ה־%1", "Copy the %1 address", listOf(donation.coin)),
+                    onClick = {
+                        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(donation.coin, donation.address))
+                        copied = true
+                    },
+                    icon = if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
-        OutlinedButton(
-            onClick = {
-                context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(donation.coin, donation.address))
-                copied = true
-            },
-        ) { Text(if (copied) tr("הועתק", "Copied") else tr("העתקת כתובת ה־%1", "Copy the %1 address", listOf(donation.coin))) }
     }
     if (donation == SupportOzen.ethereum) {
-        Text(
-            tr("רשת את׳ריום בלבד. אפשר לשלוח גם USDC ו־USDT ברשת את׳ריום.", "Ethereum network only. USDC and USDT on Ethereum are welcome too."),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        GroupFootnote(tr("רשת את׳ריום בלבד. אפשר לשלוח גם USDC ו־USDT ברשת את׳ריום.", "Ethereum network only. USDC and USDT on Ethereum are welcome too."))
     }
 }
 
