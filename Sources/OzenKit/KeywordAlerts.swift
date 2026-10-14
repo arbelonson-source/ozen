@@ -217,6 +217,10 @@ public enum HebrewText {
         "אביב": ["באביב", "האביב"],
         // A doctor's abbreviated title ("ד״ר") after the article spells the
         // name Hadar, which is said far more often than "the Dr.".
+        "אדם": ["האדם", "והאדם", "לאדם", "באדם"],
+        "שני": ["השני", "ושני", "בשני"],
+        "שחר": ["בשחר", "השחר"],
+        "נועם": ["בנועם", "הנועם"],
         "דר": ["הדר", "והדר", "שהדר", "להדר", "בהדר", "מהדר", "כשהדר", "וכשהדר", "ושהדר", "שמהדר"],
     ]
 
@@ -283,6 +287,42 @@ public enum HebrewText {
         "דר": ["דוקטור"],
         "דוקטור": ["דר"],
     ]
+
+    static func containsHan(_ text: String) -> Bool {
+        text.unicodeScalars.contains { (0x4E00...0x9FFF).contains($0.value) || (0x3400...0x4DBF).contains($0.value) }
+    }
+
+    static func containsHebrew(_ text: String) -> Bool {
+        text.unicodeScalars.contains { (0x0590...0x05FF).contains($0.value) || (0xFB1D...0xFB4F).contains($0.value) }
+    }
+
+    /// The app's own suggested everyday words, as said in each language it
+    /// offers them in. Only these get inflected endings matched; a name the
+    /// reader typed never does ("Dan" must not fire on "dance").
+    static let inflectableOfferedWords: Set<String> = {
+        var result = Set<String>()
+        for word in AlertSuggestions.words {
+            for language in UILanguage.allCases where language != .hebrew {
+                if let meaning = AlertSuggestions.meaning(of: word, in: language) {
+                    result.insert(normalize(meaning))
+                }
+            }
+        }
+        return result
+    }()
+
+    static let spellingVariants: [String: Set<String>] = ["mom": ["mum", "mommy", "mummy"]]
+
+    static let vowels: Set<Character> = Set("aeiouyаеёиоуыэюяіїєáéíóúàèìòùâêîôûäöüãõ")
+
+    static func isInflectedForm(_ word: String, of phrase: String) -> Bool {
+        guard phrase.count >= 4, word != phrase, !containsHebrew(phrase) else { return false }
+        var stem = phrase
+        if let last = stem.last, vowels.contains(last) { stem.removeLast() }
+        return word.hasPrefix(stem) && word.count - stem.count <= 2
+    }
+
+    static let wordsThatTakeNoName: Set<String> = ["לי", "לו", "לה", "לך"]
 
     static let finalLetters: [Character: Character] = ["ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ"]
 
@@ -379,12 +419,33 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
         let trimmedWords = rawWords.map(Self.trimmingEdgePunctuation)
 
         var unordered: [(match: KeywordMatch, sequence: Int)] = []
+        var repeatedInOneWord = Set<Int>()
         var sequence = 0
         for alert in alerts where alert.isEnabled {
             let phraseWords = HebrewText.words(alert.phrase)
             // No skipping a line with fewer words than the phrase: a name
             // saved as two words can be the whole line written as one.
             guard !phraseWords.isEmpty else { continue }
+
+            if HebrewText.containsHan(alert.phrase) {
+                for hit in Self.substringMatches(of: phraseWords.joined(separator: " "), in: normalizedWords) {
+                    let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: hit.text, wordIndex: hit.wordIndex)
+                    unordered.append((match, sequence))
+                    repeatedInOneWord.insert(sequence)
+                    sequence += 1
+                }
+                continue
+            }
+
+            if phraseWords.count == 1, HebrewText.inflectableOfferedWords.contains(phraseWords[0]) {
+                let variants = HebrewText.spellingVariants[phraseWords[0]] ?? []
+                for index in normalizedWords.indices
+                where variants.contains(normalizedWords[index]) || HebrewText.isInflectedForm(normalizedWords[index], of: phraseWords[0]) {
+                    let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: trimmedWords[index], wordIndex: index)
+                    unordered.append((match, sequence))
+                    sequence += 1
+                }
+            }
 
             for start in 0..<normalizedWords.count {
                 guard HebrewText.stripAttachedPrefixOrVariant(
@@ -434,6 +495,7 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
             } else if phraseWords.count == 1, joinedPhrase.count >= 4 {
                 for index in normalizedWords.indices.dropLast()
                 where !normalizedWords[index].isEmpty && !normalizedWords[index + 1].isEmpty
+                    && !HebrewText.wordsThatTakeNoName.contains(normalizedWords[index])
                     && !HebrewText.wordsThatNeverEndAName.contains(normalizedWords[index + 1])
                     && HebrewText.stripAttachedPrefix(
                         from: HebrewText.foldingFinalLetters(normalizedWords[index] + normalizedWords[index + 1]), leaving: joinedPhrase
@@ -456,8 +518,30 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
         var seen = Set<String>()
         return unordered
             .sorted { $0.match.wordIndex != $1.match.wordIndex ? $0.match.wordIndex < $1.match.wordIndex : $0.sequence < $1.sequence }
+            .filter { repeatedInOneWord.contains($0.sequence) || seen.insert("\($0.match.wordIndex) \($0.match.matchedText)").inserted }
             .map(\.match)
-            .filter { seen.insert("\($0.wordIndex) \($0.matchedText)").inserted }
+    }
+
+    private static func substringMatches(of phrase: String, in normalizedWords: [String]) -> [(text: String, wordIndex: Int)] {
+        var line: [Character] = []
+        var starts: [(offset: Int, index: Int)] = []
+        for (index, word) in normalizedWords.enumerated() where !word.isEmpty {
+            if !line.isEmpty { line.append(" ") }
+            starts.append((line.count, index))
+            line.append(contentsOf: word)
+        }
+        let target = Array(phrase)
+        var hits: [(text: String, wordIndex: Int)] = []
+        var position = 0
+        while !target.isEmpty, position + target.count <= line.count {
+            if Array(line[position..<position + target.count]) == target {
+                hits.append((phrase, starts.last { $0.offset <= position }?.index ?? 0))
+                position += target.count
+            } else {
+                position += 1
+            }
+        }
+        return hits
     }
 
     /// Strips only leading and trailing punctuation/symbol characters, leaving

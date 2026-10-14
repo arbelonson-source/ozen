@@ -629,3 +629,75 @@ struct OtherLettersTests {
         #expect(!HebrewText.isInOtherLetters("Sarah", captionLanguage: "en"))
     }
 }
+
+@Suite("Keyword matching: everyday words, Chinese, inflection")
+struct KeywordMatchingRound2Tests {
+    private func count(_ phrase: String, _ caption: String) -> Int {
+        KeywordAlertMatcher(alerts: [KeywordAlert(phrase: phrase)]).matches(in: caption).count
+    }
+
+    @Test("an everyday word with a prefix is not a name")
+    func everydayWordsAreNotNames() {
+        #expect(count("אדם", "לאדם צעיר") == 0)
+        #expect(count("אדם", "האדם בא") == 0)
+        #expect(count("שני", "הילד השני") == 0)
+        #expect(count("שחר", "בשחר") == 0)
+        #expect(count("שחר", "השחר עלה") == 0)
+        #expect(count("נועם", "בנועם") == 0)
+        #expect(count("נועם", "הנועם") == 0)
+        #expect(count("ליאור", "תן לי אור") == 0)
+    }
+
+    @Test("the name still matches where it is plausibly the person")
+    func namesStillMatch() {
+        #expect(count("אדם", "ואדם בא") == 1)
+        #expect(count("שני", "אמרתי לשני") == 1)
+        #expect(count("ליאור", "ליאור בא") == 1)
+        #expect(count("ליאור", "ל יאור") == 1)
+        #expect(count("ליאור", "אור לי") == 0)
+    }
+
+    @Test("Chinese words match inside unspaced sentences")
+    func chineseInsideSentence() {
+        #expect(count("奶奶", "奶奶来了") == 1)
+        #expect(count("医生", "我们去看医生吧") == 1)
+        #expect(count("妈妈", "妈妈，你好") == 1)
+        #expect(count("奶奶", "爷爷来了") == 0)
+        #expect(count("奶奶", "奶奶来了，奶奶好") == 2)
+        let match = KeywordAlertMatcher(alerts: [KeywordAlert(phrase: "医生")]).matches(in: "我们去看医生吧")
+        #expect(match[0].matchedText == "医生")
+        #expect(match[0].wordIndex == 0)
+        let spaced = KeywordAlertMatcher(alerts: [KeywordAlert(phrase: "医生")]).matches(in: "我们 去看医生吧")
+        #expect(spaced[0].wordIndex == 1)
+    }
+
+    @Test("other scripts are unchanged and a cut-off Chinese word is dropped")
+    func otherScriptsUnchanged() {
+        #expect(count("סבתא", "היום סבתא באה") == 1)
+        #expect(count("Dan", "Dan came") == 1)
+        #expect(count("Dan", "dance") == 0)
+        let matcher = KeywordAlertMatcher(alerts: [KeywordAlert(phrase: "奶奶")])
+        #expect(matcher.matches(inLiveText: "奶奶...").isEmpty)
+        #expect(matcher.matches(inLiveText: "你好 奶奶来了").count == 1)
+    }
+
+    @Test("offered everyday words match inflected forms")
+    func inflectedOfferedWords() {
+        #expect(count("Мама", "Позвони маме") == 1)
+        #expect(count("Бабушка", "Бабушке привет") == 1)
+        #expect(count("Medicine", "did you take the medicines") == 1)
+        #expect(count("Doctor", "two doctors came") == 1)
+        #expect(count("Mom", "call Mum") == 1)
+        #expect(count("Mom", "call Mommy") == 1)
+    }
+
+    @Test("inflection does not fire on look-alike words or typed names")
+    func inflectionLookAlikes() {
+        #expect(count("Мама", "мамонт") == 0)
+        #expect(count("Dan", "dance") == 0)
+        #expect(count("Doctor", "doctorate") == 0)
+        #expect(count("Mark", "market") == 0)
+        #expect(count("Anna", "annals") == 0)
+        #expect(count("Anna", "annas") == 0)
+    }
+}
