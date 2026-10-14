@@ -6,6 +6,10 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
@@ -207,5 +211,28 @@ class CaptionPipelineStartupTest {
 
         assertTrue(eventually { pipeline.phase.failure?.kind == PipelineFailure.Kind.AudioSessionFailed })
         assertTrue(eventually { pipeline.scheduledRetry != null })
+    }
+
+    @Test
+    fun `a microphone that fails inside the fan-out's constructor keeps the start failed and runs once`() = runTest {
+        val audio = FakeAudioCapturer()
+        audio.captureFlow = { flow { throw IllegalStateException("microphone busy") } }
+        val scope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob())
+        try {
+            val (pipeline, _, _) = makePipeline(
+                audio = audio,
+                recovery = AutoRecoveryPolicy(glitchDelays = listOf(3600.0), downloadDelays = emptyList()),
+                scope = scope,
+            )
+
+            pipeline.start(AppSettings.default)
+
+            assertEquals(PipelineFailure.Kind.AudioSessionFailed, pipeline.phase.failure?.kind)
+            assertFalse(pipeline.phase.isListening)
+            assertEquals(1, audio.calls.count { it == "startCapture" })
+            assertNotNull(pipeline.scheduledRetry)
+        } finally {
+            scope.cancel()
+        }
     }
 }

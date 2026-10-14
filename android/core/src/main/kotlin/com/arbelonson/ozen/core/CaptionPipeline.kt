@@ -717,6 +717,7 @@ class CaptionPipeline(
         // loads waits in the fan-out's buffers instead of being lost.
         val earlyFan = if (earlySource == null) null else audioFanOut(earlySource, run)
         fanOut = earlyFan
+        if (runID != run) return abandon(earlyFan)
         val loadsModelOnPhone = settings.engine == TranscriptionEngineKind.WhisperKit
         if (loadsModelOnPhone) {
             isPreparingEngine = true
@@ -804,6 +805,9 @@ class CaptionPipeline(
                 return
             }
         }
+        // The pump can run inline in the fan-out's constructor and fail the
+        // run before it returns; the dead fan-out must not start listening.
+        if (runID != run) return abandon(fan)
         fanOut = fan
         val tokens = engine.stream(settings.languageCode, fan.outputs[0])
         val embedderAudio = fan.outputs[1]

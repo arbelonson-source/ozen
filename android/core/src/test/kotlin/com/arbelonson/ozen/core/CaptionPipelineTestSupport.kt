@@ -493,8 +493,9 @@ fun TestScope.captionPipeline(
     availableStorageBytes: (() -> Long?)? = null,
     now: () -> Double = { virtualNow() },
     embedderContext: CoroutineContext = StandardTestDispatcher(testScheduler),
+    scope: kotlinx.coroutines.CoroutineScope = backgroundScope,
 ): CaptionPipeline = CaptionPipeline(
-    scope = backgroundScope,
+    scope = scope,
     audio = audio,
     engineFactory = engineFactory,
     embedder = embedder,
@@ -518,6 +519,7 @@ fun TestScope.makePipeline(
     recovery: AutoRecoveryPolicy = AutoRecoveryPolicy.disabled(),
     audioWatchdog: AudioStallWatchdog = AudioStallWatchdog(),
     now: () -> Double = { 1_000.0 },
+    scope: kotlinx.coroutines.CoroutineScope = backgroundScope,
 ): MadePipeline {
     val log = FactoryLog()
     val pipeline = captionPipeline(
@@ -531,6 +533,7 @@ fun TestScope.makePipeline(
         recovery = recovery,
         audioWatchdog = audioWatchdog,
         now = now,
+        scope = scope,
     )
     return MadePipeline(pipeline, audio, log)
 }
