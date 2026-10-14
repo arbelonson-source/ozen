@@ -43,4 +43,4 @@ reviews:
         Python home-computer server that the phone pairs with on the local network.
         Check pairing and authentication carefully; nothing should be reachable without pairing.
 chat:
-  auto_reply: true
+  auto_reply: false
