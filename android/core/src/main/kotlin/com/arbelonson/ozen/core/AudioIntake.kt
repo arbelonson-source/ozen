@@ -4,12 +4,13 @@ import kotlin.math.max
 import kotlin.math.min
 
 internal class AudioIntake(voiceScorer: ((FloatArray) -> Float?)?) {
-    class Status(val count: Int, val lastSpeechEnd: Int?, val finished: Boolean)
+    class Status(val count: Int, val lastSpeechEnd: Int?, val finished: Boolean, val firstSpeechStart: Int? = null)
 
     private val lock = Any()
     private var samples = FloatArray(16_000 * 30)
     private var size = 0
     private var lastSpeechEnd: Int? = null
+    private var firstSpeechStart: Int? = null
     private var finished = false
     private val detector = EnergyVoiceDetector.forWhisperLines()
     private val evidence: VoiceEvidence? = voiceScorer?.let { VoiceEvidence(it) }
@@ -22,6 +23,7 @@ internal class AudioIntake(voiceScorer: ((FloatArray) -> Float?)?) {
             chunk.copyInto(samples, size)
             size += chunk.size
             if (detector.isSpeech(chunk)) {
+                if (lastSpeechEnd == null) firstSpeechStart = size - chunk.size
                 lastSpeechEnd = size
             }
             evidence?.append(chunk)
@@ -36,7 +38,7 @@ internal class AudioIntake(voiceScorer: ((FloatArray) -> Float?)?) {
         synchronized(lock) { finished = true }
     }
 
-    fun status(): Status = synchronized(lock) { Status(size, lastSpeechEnd, finished) }
+    fun status(): Status = synchronized(lock) { Status(size, lastSpeechEnd, finished, firstSpeechStart) }
 
     fun copySamples(upTo: Int): FloatArray = synchronized(lock) {
         samples.copyOfRange(0, min(max(upTo, 0), size))
@@ -49,6 +51,7 @@ internal class AudioIntake(voiceScorer: ((FloatArray) -> Float?)?) {
             size -= dropped
             evidence?.drop(dropped)
             lastSpeechEnd?.let { end -> lastSpeechEnd = if (end > dropped) end - dropped else null }
+            firstSpeechStart = if (lastSpeechEnd == null) null else firstSpeechStart?.let { max(it - dropped, 0) }
         }
     }
 }
