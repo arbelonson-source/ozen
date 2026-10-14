@@ -27,6 +27,100 @@ final class OzenScreenshotUITests: XCTestCase {
 
     private func capture(_ app: XCUIApplication, name: String) {
         capture(app.screenshot(), name: name)
+        recordOverlaps(app, name: name)
+    }
+
+    /// Texts, buttons and pictures drawn over each other, found from the
+    /// frames the accessibility tree reports, so a pass over hundreds of
+    /// pictures doesn't rest on spotting each one by eye. Written to
+    /// overlaps.txt beside the pictures rather than failed on: a picture
+    /// taken mid-animation can catch two things crossing for a moment, and
+    /// only the picture tells that apart from a real overlap.
+    private func recordOverlaps(_ app: XCUIApplication, name: String) {
+        let report = Self.outputDirectory.appendingPathComponent("overlaps.txt")
+        var lines: [String] = []
+        do {
+            let root = try app.snapshot()
+            let window = root.frame
+            var leaves: [ShownElement] = []
+            var keyboards: [CGRect] = []
+            collectShown(root, inBar: false, scrolls: false, into: &leaves, keyboards: &keyboards)
+            let onScreen = leaves.compactMap { leaf -> ShownElement? in
+                let visible = leaf.frame.intersection(window)
+                guard !visible.isNull, visible.width >= 1, visible.height >= 1 else { return nil }
+                // Under the keyboard is hidden, not overlapped.
+                guard !keyboards.contains(where: { $0.intersects(visible) }) else { return nil }
+                var shown = leaf
+                shown.visible = visible
+                return shown
+            }
+            for (index, first) in onScreen.enumerated() {
+                if !first.scrolls, first.frame.minX < window.minX - 1 || first.frame.maxX > window.maxX + 1 {
+                    lines.append("\(name)\toff the side\t\(first)")
+                }
+                for second in onScreen[(index + 1)...] {
+                    // A list scrolled under a bar passes beneath it by design.
+                    if first.inBar != second.inBar, first.scrolls || second.scrolls { continue }
+                    let shared = first.visible.intersection(second.visible)
+                    if shared.width > 2, shared.height > 2 {
+                        lines.append("\(name)\toverlap\t\(first)\t\(second)")
+                    }
+                }
+            }
+        } catch {
+            lines.append("\(name)\tno snapshot\t\(error)")
+        }
+        if lines.isEmpty { lines.append("\(name)\tclean") }
+        let text = Data((lines.joined(separator: "\n") + "\n").utf8)
+        if let handle = try? FileHandle(forWritingTo: report) {
+            handle.seekToEndOfFile()
+            handle.write(text)
+            try? handle.close()
+        } else {
+            try? text.write(to: report)
+        }
+    }
+
+    private struct ShownElement: CustomStringConvertible {
+        let kind: String
+        let label: String
+        let frame: CGRect
+        var visible: CGRect = .null
+        let inBar: Bool
+        let scrolls: Bool
+
+        var description: String {
+            "\(kind) '\(label.prefix(50))' \(Int(frame.minX)),\(Int(frame.minY)) \(Int(frame.width))x\(Int(frame.height))"
+        }
+    }
+
+    private static let shownKinds: [XCUIElement.ElementType: String] = [
+        .staticText: "text", .button: "button", .image: "image", .switch: "switch", .toggle: "switch",
+        .textField: "field", .secureTextField: "field", .textView: "field", .link: "link",
+        .slider: "slider", .stepper: "stepper", .segmentedControl: "segments", .picker: "picker",
+    ]
+
+    /// The innermost texts, buttons and pictures: a button's own label is
+    /// its child, not a second thing on top of it.
+    @discardableResult
+    private func collectShown(_ node: XCUIElementSnapshot, inBar: Bool, scrolls: Bool, into leaves: inout [ShownElement], keyboards: inout [CGRect]) -> Bool {
+        if node.elementType == .keyboard {
+            keyboards.append(node.frame)
+            return true
+        }
+        let bar = inBar || [.navigationBar, .toolbar, .tabBar].contains(node.elementType)
+        let scroll = scrolls || [.scrollView, .table, .collectionView].contains(node.elementType)
+        var hasShownChild = false
+        for child in node.children {
+            if collectShown(child, inBar: bar, scrolls: scroll, into: &leaves, keyboards: &keyboards) {
+                hasShownChild = true
+            }
+        }
+        guard let kind = Self.shownKinds[node.elementType] else { return hasShownChild }
+        if !hasShownChild {
+            leaves.append(ShownElement(kind: kind, label: node.label.isEmpty ? node.identifier : node.label, frame: node.frame, inBar: bar, scrolls: scroll))
+        }
+        return true
     }
 
     private func capture(_ screenshot: XCUIScreenshot, name: String) {

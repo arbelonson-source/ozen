@@ -21,7 +21,8 @@ on:
 jobs:
   screenshots:
     runs-on: macos-15
-    timeout-minutes: 30
+    # Every test at once, on an iPad, runs well past half an hour.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
 
