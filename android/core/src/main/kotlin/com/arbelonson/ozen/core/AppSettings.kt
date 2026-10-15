@@ -279,6 +279,12 @@ class AppSettings(
      */
     var cloudProvider: CloudProvider = CloudProvider.Soniox,
     /**
+     * The services the person agreed to send microphone sound and the word
+     * lists to. A key is saved for a service only after this; keys saved
+     * before the question existed keep working, as on the iPhone.
+     */
+    var cloudSoundAcknowledged: Set<CloudProvider> = emptySet(),
+    /**
      * Where the home server is ("192.168.1.20", "pc.example:8765",
      * "wss://..."); the pairing code is kept in the secret store, not here.
      */
@@ -449,6 +455,7 @@ class AppSettings(
             allowServerFallbackForAppleSpeech = allowServerFallbackForAppleSpeech,
             cloudModel = cloudModel,
             cloudProvider = cloudProvider,
+            cloudSoundAcknowledged = cloudSoundAcknowledged,
             homeServerAddress = homeServerAddress,
             display = display,
             hapticOnSpeechResume = hapticOnSpeechResume,
@@ -475,7 +482,7 @@ class AppSettings(
 
     private fun fields(): List<Any?> = listOf(
         engine, languageCode, preferredInputUID, speakerProfiles, creditLine, whisperModelVariant,
-        allowServerFallbackForAppleSpeech, cloudModel, cloudProvider, homeServerAddress, homeServerBeam, display,
+        allowServerFallbackForAppleSpeech, cloudModel, cloudProvider, cloudSoundAcknowledged, homeServerAddress, homeServerBeam, display,
         hapticOnSpeechResume, speakerSimilarityThreshold, keywordAlerts, soundAlerts, saveHistory, quickPhrases,
         speechRate, vocabulary, hasCompletedOnboarding, appLanguage, notifyWhenInBackground,
         allowCellularModelDownload, historyRetention, quietHours, nameAlertOfferDismissed, betterModelOfferDeclines,
@@ -503,6 +510,7 @@ class AppSettings(
         put("allowServerFallbackForAppleSpeech", allowServerFallbackForAppleSpeech)
         put("cloudModel", cloudModel)
         put("cloudProvider", cloudProvider.rawValue)
+        put("cloudSoundAcknowledged", JsonArray(CloudProvider.entries.filter { it in cloudSoundAcknowledged }.map { JsonPrimitive(it.rawValue) }))
         put("homeServerAddress", homeServerAddress)
         put("homeServerBeam", homeServerBeam)
         put("display", display.toJsonObject())
@@ -648,6 +656,8 @@ class AppSettings(
                 cloudModel = container.lenientString("cloudModel")?.takeIf { it.isNotEmpty() } ?: defaults.cloudModel,
                 cloudProvider = container.lenientString("cloudProvider")?.let { raw -> CloudProvider.entries.firstOrNull { it.rawValue == raw } }
                     ?: CloudProvider.OpenRouter,
+                cloudSoundAcknowledged = container.lenientStrings("cloudSoundAcknowledged")
+                    ?.let { raws -> CloudProvider.entries.filter { it.rawValue in raws }.toSet() } ?: emptySet(),
                 homeServerAddress = container.lenientString("homeServerAddress") ?: defaults.homeServerAddress,
                 homeServerBeam = container.lenientInt("homeServerBeam")
                     ?.let { minOf(maxOf(it, homeServerBeamRange.first), homeServerBeamRange.last) } ?: defaults.homeServerBeam,

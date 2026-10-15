@@ -148,6 +148,7 @@ class SettingsScreenDeviceTest {
     private lateinit var engineBefore: TranscriptionEngineKind
     private lateinit var serviceBefore: CloudProvider
     private lateinit var addressBefore: String
+    private var acknowledgedBefore: Set<CloudProvider> = emptySet()
     private var codeBefore: String? = null
     private var beamBefore = 0
     private lateinit var modelBefore: String
@@ -167,6 +168,7 @@ class SettingsScreenDeviceTest {
         engineBefore = app.settings.current.value.engine
         serviceBefore = app.settings.current.value.cloudProvider
         addressBefore = app.settings.current.value.homeServerAddress
+        acknowledgedBefore = app.settings.current.value.cloudSoundAcknowledged
         codeBefore = app.homeServerCode.read()
         beamBefore = app.settings.current.value.homeServerBeam
         modelBefore = app.settings.current.value.cloudModel
@@ -182,7 +184,10 @@ class SettingsScreenDeviceTest {
         cellularBefore = app.settings.current.value.allowCellularModelDownload
         app.cloudKeys.remove(CloudProvider.Deepgram)
         app.homeServerCode.remove()
-        app.settings.change { it.homeServerAddress = "" }
+        app.settings.change {
+            it.homeServerAddress = ""
+            it.cloudSoundAcknowledged = emptySet()
+        }
     }
 
     @After
@@ -193,6 +198,7 @@ class SettingsScreenDeviceTest {
             it.engine = engineBefore
             it.cloudProvider = serviceBefore
             it.homeServerAddress = addressBefore
+            it.cloudSoundAcknowledged = acknowledgedBefore
             it.homeServerBeam = beamBefore
             it.cloudModel = modelBefore
             it.display = displayBefore
@@ -602,6 +608,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Deepgram").performScrollTo().performClick()
         compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-device-test")
         compose.onNodeWithText("Paste your Deepgram key here").performImeAction()
+        compose.onNodeWithText("Allow and save").performClick()
         compose.onNodeWithText("Key saved on the phone").performScrollTo()
         assertEquals("dg-device-test", app.cloudKeys.read(CloudProvider.Deepgram))
         assertEquals(TranscriptionEngineKind.Cloud, app.settings.current.value.engine)
@@ -626,6 +633,7 @@ class SettingsScreenDeviceTest {
         assertEquals("ws://192.168.1.20:8765", app.settings.current.value.homeServerAddress)
         compose.onNodeWithText("The pairing code from the computer").performScrollTo().performTextInput(" device-test-code ")
         compose.onNodeWithText("The pairing code from the computer").performImeAction()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Pairing code saved on the phone").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Pairing code saved on the phone").performScrollTo()
         compose.onNodeWithText("New code instead of the saved one").performScrollTo()
         assertEquals("device-test-code", app.homeServerCode.read())
@@ -633,14 +641,30 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
-    fun aKeyTypedButNeverSavedIsKeptWhenSettingsClose() {
+    fun aKeyTypedButNeverSavedIsKeptWhenSettingsCloseOnceTheServiceWasAgreedTo() {
+        app.settings.change { it.cloudSoundAcknowledged = it.cloudSoundAcknowledged + CloudProvider.Deepgram }
         compose.onNodeWithText("Settings").performClick()
         compose.onNodeWithText("Cloud transcription").performScrollTo().performClick()
         compose.onNodeWithText("Deepgram").performScrollTo().performClick()
         compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-kept-on-close")
         compose.onNodeWithText("Close").performScrollTo().performClick()
         compose.onNodeWithText("Close").assertDoesNotExist()
+        compose.waitUntil(5_000) { app.cloudKeys.read(CloudProvider.Deepgram) == "dg-kept-on-close" }
         assertEquals("dg-kept-on-close", app.cloudKeys.read(CloudProvider.Deepgram))
+    }
+
+    @Test
+    fun aKeyTypedForAServiceNeverAgreedToIsNotSavedWhenSettingsCloseAndNothingIsSent() {
+        app.settings.change { it.cloudSoundAcknowledged = emptySet() }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Cloud transcription").performScrollTo().performClick()
+        compose.onNodeWithText("Deepgram").performScrollTo().performClick()
+        compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-not-agreed")
+        compose.onNodeWithText("Close").performScrollTo().performClick()
+        compose.onNodeWithText("Close").assertDoesNotExist()
+        compose.waitForIdle()
+        assertNull(app.cloudKeys.read(CloudProvider.Deepgram))
+        assertEquals(emptySet<CloudProvider>(), app.settings.current.value.cloudSoundAcknowledged)
     }
 
     @Test
@@ -691,9 +715,24 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Pairing code saved on the phone").assertDoesNotExist()
         compose.runOnUiThread { app.pairing.open("ozen://pair?address=ws://192.168.1.20:8765&code=example-code-123") }
         compose.onNodeWithText("Connect").performClick()
+        compose.waitUntil(5_000) { app.homeServerCode.read() == "example-code-123" }
         assertEquals("example-code-123", app.homeServerCode.read())
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Pairing code saved on the phone").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Pairing code saved on the phone").performScrollTo()
         compose.onNodeWithText("Delete code").performScrollTo()
+    }
+
+    @Test
+    fun turningThePhoneRightAfterConnectingFromAPairingLinkStillSavesTheCodeAndShowsIt() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onAllNodesWithText("Home computer").onFirst().performScrollTo().performClick()
+        compose.runOnUiThread { app.pairing.open("ozen://pair?address=ws://192.168.1.20:8765&code=example-code-123") }
+        compose.onNodeWithText("Connect").performClick()
+        compose.activityRule.scenario.recreate()
+        compose.waitUntil(5_000) { app.homeServerCode.read() == "example-code-123" }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Pairing code saved on the phone").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Connect").assertDoesNotExist()
+        assertEquals("ws://192.168.1.20:8765", app.settings.current.value.homeServerAddress)
     }
 
     @Test
@@ -706,6 +745,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Until the computer’s QR code is scanned again", substring = true).assertExists()
         assertEquals("code-to-delete", app.homeServerCode.read())
         compose.onNodeWithText("Delete").performClick()
+        compose.waitUntil(5_000) { app.homeServerCode.read() == null }
         assertNull(app.homeServerCode.read())
         compose.onNodeWithText("Pairing code saved on the phone").assertDoesNotExist()
         compose.onNodeWithText("Delete code").assertDoesNotExist()

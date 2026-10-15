@@ -10,12 +10,16 @@ import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.WhisperModelCatalog
 import java.io.File
 import java.nio.file.Files
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -128,8 +132,83 @@ class EngineSettingsTest {
     }
 
     @Test
-    fun `a key is saved trimmed for the chosen service and restarts captions only while the cloud is the engine`() {
+    fun `a key is not saved until the person agreed to send sound to that service`() = runBlocking<Unit> {
         engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        assertFalse(engineSettings.saveCloudKey("dg-test-key"))
+        assertFalse(engineSettings.hasCloudKey())
+        assertNull(keys.read(CloudProvider.Deepgram))
+    }
+
+    @Test
+    fun `closing settings saves no typed key when sound was never agreed to go to the service`() = runBlocking<Unit> {
+        engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        engineSettings.saveUnsavedEntries(cloudKeyDraft = "dg-typed", addressDraft = "", pairingCodeDraft = "")
+        assertNull(keys.read(CloudProvider.Deepgram))
+        assertFalse(engineSettings.hasCloudKey())
+    }
+
+    @Test
+    fun `agreeing is remembered for that service only, survives a restart, and a key saved earlier keeps working`() = runBlocking<Unit> {
+        keys.save("sx-old-key", CloudProvider.Soniox)
+        engineSettings.loadKeyState()
+        assertTrue(engineSettings.hasCloudKey())
+        engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        engineSettings.acknowledgeCloud(CloudProvider.Deepgram)
+        assertEquals(setOf(CloudProvider.Deepgram), saved().cloudSoundAcknowledged)
+        assertTrue(engineSettings.saveCloudKey("dg-key"))
+        engineSettings.chooseCloudService(CloudProvider.Groq)
+        assertFalse(engineSettings.saveCloudKey("gq-key"))
+        assertNull(keys.read(CloudProvider.Groq))
+    }
+
+    private class WatchedCipher : CodeCipher {
+        val threads = mutableListOf<Thread>()
+        var opens = 0
+        private val inner = ReversingCipher()
+
+        override fun seal(plain: ByteArray): ByteArray {
+            threads.add(Thread.currentThread())
+            return inner.seal(plain)
+        }
+
+        override fun open(sealed: ByteArray): ByteArray {
+            threads.add(Thread.currentThread())
+            opens += 1
+            return inner.open(sealed)
+        }
+    }
+
+    @Test
+    fun `saving, deleting and looking up keys happens off the calling thread`() = runBlocking<Unit> {
+        val watched = WatchedCipher()
+        val off = EngineSettings(settings, CloudKeyStore(File(folder, "watched-keys"), watched), HomeServerCodeStore(File(folder, "watched-code"), watched), { HomeServerCheck.Unreachable }, scope) { restarts += 1 }
+        val caller = Thread.currentThread()
+        off.acknowledgeCloud(CloudProvider.Soniox)
+        assertTrue(off.saveCloudKey("sx-key"))
+        assertTrue(off.savePairingCode("code"))
+        off.loadKeyState()
+        off.deleteCloudKey()
+        off.deletePairingCode()
+        assertTrue(watched.threads.size >= 4)
+        assertTrue(watched.threads.none { it === caller })
+    }
+
+    @Test
+    fun `once saved, the settings screen asks for the code without opening the keystore again`() = runBlocking<Unit> {
+        val watched = WatchedCipher()
+        val cached = EngineSettings(settings, keys, HomeServerCodeStore(File(folder, "watched-code"), watched), { HomeServerCheck.Unreachable }, scope) { restarts += 1 }
+        assertTrue(cached.savePairingCode("code"))
+        val opensAfterSave = watched.opens
+        assertTrue(cached.hasPairingCode())
+        assertTrue(cached.hasPairingCode())
+        assertEquals(opensAfterSave, watched.opens)
+        assertEquals(0, opensAfterSave)
+    }
+
+    @Test
+    fun `a key is saved trimmed for the chosen service and restarts captions only while the cloud is the engine`() = runBlocking<Unit> {
+        engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        engineSettings.acknowledgeCloud(CloudProvider.Deepgram)
         assertTrue(engineSettings.saveCloudKey("  dg-test-key \n"))
         assertEquals("dg-test-key", keys.read(CloudProvider.Deepgram))
         assertNull(keys.read(CloudProvider.Soniox))
@@ -141,7 +220,7 @@ class EngineSettingsTest {
     }
 
     @Test
-    fun `a blank key is not saved and changes nothing`() {
+    fun `a blank key is not saved and changes nothing`() = runBlocking<Unit> {
         engineSettings.chooseEngine(TranscriptionEngineKind.Cloud)
         keys.save("sx-test-key", CloudProvider.Soniox)
         assertFalse(engineSettings.saveCloudKey("   "))
@@ -150,19 +229,22 @@ class EngineSettingsTest {
     }
 
     @Test
-    fun `a key the phone could not seal is reported and does not restart captions`() {
+    fun `a key the phone could not seal is reported and does not restart captions`() = runBlocking<Unit> {
         val failing = EngineSettings(settings, CloudKeyStore(File(folder, "cloud-keys"), ReversingCipher(failsToSeal = true)), codes, { HomeServerCheck.Unreachable }, scope) { restarts += 1 }
         failing.chooseEngine(TranscriptionEngineKind.Cloud)
+        failing.acknowledgeCloud(CloudProvider.Soniox)
         assertFalse(failing.saveCloudKey("sx-test-key"))
         assertFalse(failing.hasCloudKey())
         assertEquals(1, restarts)
     }
 
     @Test
-    fun `deleting removes only the chosen service's key and restarts captions while the cloud is the engine`() {
+    fun `deleting removes only the chosen service's key and restarts captions while the cloud is the engine`() = runBlocking<Unit> {
         keys.save("sx-test-key", CloudProvider.Soniox)
         keys.save("dg-test-key", CloudProvider.Deepgram)
         engineSettings.chooseEngine(TranscriptionEngineKind.Cloud)
+        engineSettings.loadKeyState()
+        assertTrue(engineSettings.hasCloudKey())
         engineSettings.deleteCloudKey()
         assertNull(keys.read(CloudProvider.Soniox))
         assertEquals("dg-test-key", keys.read(CloudProvider.Deepgram))
@@ -184,7 +266,7 @@ class EngineSettingsTest {
     }
 
     @Test
-    fun `a pairing code is saved trimmed and restarts captions only while the home computer is the engine`() {
+    fun `a pairing code is saved trimmed and restarts captions only while the home computer is the engine`() = runBlocking<Unit> {
         assertFalse(engineSettings.hasPairingCode())
         assertTrue(engineSettings.savePairingCode(" code-one "))
         assertEquals("code-one", codes.read())
@@ -199,8 +281,9 @@ class EngineSettingsTest {
     }
 
     @Test
-    fun `closing settings keeps a typed key, a working address and a code that were never saved, as the iphone does`() {
+    fun `closing settings keeps a typed key, a working address and a code that were never saved, as the iphone does`() = runBlocking<Unit> {
         engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        engineSettings.acknowledgeCloud(CloudProvider.Deepgram)
         engineSettings.saveUnsavedEntries(cloudKeyDraft = " dg-typed ", addressDraft = " ws://192.168.1.20:8765 ", pairingCodeDraft = " code-typed ")
         assertEquals("dg-typed", keys.read(CloudProvider.Deepgram))
         assertEquals("ws://192.168.1.20:8765", saved().homeServerAddress)
@@ -208,7 +291,7 @@ class EngineSettingsTest {
     }
 
     @Test
-    fun `closing settings drops an address that could not connect and changes nothing for entries left as they were`() {
+    fun `closing settings drops an address that could not connect and changes nothing for entries left as they were`() = runBlocking<Unit> {
         engineSettings.chooseEngine(TranscriptionEngineKind.HomeServer)
         engineSettings.saveHomeComputerAddress("ws://192.168.1.20:8765")
         restarts = 0
@@ -280,9 +363,9 @@ class EngineSettingsTest {
     }
 
     @Test
-    fun `a new address, code, language or computer restarts captions once, carrying a slider still settling`() {
+    fun `a new address, code, language or computer restarts captions once, carrying a slider still settling`() = runBlocking<Unit> {
         engineSettings.chooseEngine(TranscriptionEngineKind.HomeServer)
-        val changes = listOf<() -> Unit>(
+        val changes = listOf<suspend () -> Unit>(
             { engineSettings.saveHomeComputerAddress("wss://pc.example.com") },
             { assertTrue(engineSettings.savePairingCode("123456")) },
             { engineSettings.deletePairingCode() },
@@ -307,7 +390,7 @@ class EngineSettingsTest {
     }
 
     @Test
-    fun `deleting the pairing code removes it and restarts captions only while the home computer is the engine`() {
+    fun `deleting the pairing code removes it and restarts captions only while the home computer is the engine`() = runBlocking<Unit> {
         codes.save("code-one")
         engineSettings.deletePairingCode()
         assertNull(codes.read())
@@ -321,11 +404,68 @@ class EngineSettingsTest {
     }
 
     @Test
-    fun `a pairing code the phone could not seal is reported and does not restart captions`() {
+    fun `a pairing code the phone could not seal is reported and does not restart captions`() = runBlocking<Unit> {
         val failing = EngineSettings(settings, keys, HomeServerCodeStore(File(folder, "home-server-code"), ReversingCipher(failsToSeal = true)), { HomeServerCheck.Unreachable }, scope) { restarts += 1 }
         failing.chooseEngine(TranscriptionEngineKind.HomeServer)
         assertFalse(failing.savePairingCode("code-one"))
         assertFalse(failing.hasPairingCode())
         assertEquals(1, restarts)
+    }
+
+    @Test
+    fun `a slow look at the Keystore cannot bring back a code deleted while it was looking`() = runBlocking<Unit> {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val plain = ReversingCipher()
+        val slow = object : CodeCipher {
+            override fun seal(plain: ByteArray) = plainCipher.seal(plain)
+
+            override fun open(sealed: ByteArray): ByteArray {
+                entered.countDown()
+                release.await(5, TimeUnit.SECONDS)
+                return plainCipher.open(sealed)
+            }
+
+            val plainCipher = plain
+        }
+        val file = File(folder, "slow-code")
+        HomeServerCodeStore(file, plain).save("code-one")
+        val racing = EngineSettings(settings, keys, HomeServerCodeStore(file, slow), { HomeServerCheck.Connected(1) }, scope = scope) { }
+        val load = launch(Dispatchers.IO) { racing.loadKeyState() }
+        assertTrue(entered.await(5, TimeUnit.SECONDS))
+        val delete = launch(Dispatchers.IO) { racing.deletePairingCode() }
+        Thread.sleep(300)
+        release.countDown()
+        load.join()
+        delete.join()
+        assertFalse(racing.pairingCodeHeld.value)
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun `a code finished saving while its section was closed still shows as saved`() = runBlocking<Unit> {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val plain = ReversingCipher()
+        val slow = object : CodeCipher {
+            override fun seal(plain: ByteArray): ByteArray {
+                entered.countDown()
+                release.await(5, TimeUnit.SECONDS)
+                return plainCipher.seal(plain)
+            }
+
+            override fun open(sealed: ByteArray) = plainCipher.open(sealed)
+
+            val plainCipher = plain
+        }
+        val file = File(folder, "slow-save")
+        val racing = EngineSettings(settings, keys, HomeServerCodeStore(file, slow), { HomeServerCheck.Connected(1) }, scope = scope) { }
+        val save = launch(Dispatchers.IO) { racing.savePairingCode("code-one") }
+        assertTrue(entered.await(5, TimeUnit.SECONDS))
+        save.cancel()
+        release.countDown()
+        save.join()
+        assertTrue(file.exists())
+        assertTrue(racing.pairingCodeHeld.value)
     }
 }

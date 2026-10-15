@@ -5,9 +5,19 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.net.URI
 import java.net.URISyntaxException
 import java.util.Locale
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
-class PairingRequests(private val settings: SettingsHolder, private val saveCode: (String) -> Boolean) {
+class PairingRequests(
+    private val settings: SettingsHolder,
+    private val saveCode: (String) -> Boolean,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+) {
     val pending = MutableStateFlow<HomeServerPairing?>(null)
     val linkBroken = MutableStateFlow(false)
     val saveFailed = MutableStateFlow(false)
@@ -25,11 +35,17 @@ class PairingRequests(private val settings: SettingsHolder, private val saveCode
         linkBroken.value = pairing == null && if (url != null) HomeServerPairing.isPairingLink(url) else looksLikePairing(link)
     }
 
-    fun acceptPending(): Boolean = pending.value?.let(::accept) ?: false
+    suspend fun acceptPending(): Boolean = pending.value?.let { accept(it) } ?: false
 
-    fun accept(pairing: HomeServerPairing): Boolean {
+    private val oneAtATime = Mutex()
+
+    suspend fun accept(pairing: HomeServerPairing): Boolean {
         pending.value = null
-        if (!saveCode(pairing.code)) {
+        return withContext(NonCancellable) { oneAtATime.withLock { save(pairing) } }
+    }
+
+    private suspend fun save(pairing: HomeServerPairing): Boolean {
+        if (!withContext(io) { saveCode(pairing.code) }) {
             saveFailed.value = true
             return false
         }
