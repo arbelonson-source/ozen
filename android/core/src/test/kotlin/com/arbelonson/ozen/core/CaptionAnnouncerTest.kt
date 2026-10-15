@@ -190,4 +190,13 @@ class CaptionAnnouncerTest {
         val grown = said.copy(text = "הרופא אמר כדור אחד")
         assertEquals("כדור אחד", announcer.announcement(listOf(grown), names) { true })
     }
+
+    @Test
+    fun `a grown line whose speaker was found meanwhile leads with the name`() {
+        val announcer = CaptionAnnouncer()
+        val said = line("הרופא אמר")
+        assertEquals("הרופא אמר", announcer.announcement(listOf(said), names))
+        val grown = said.copy(text = "הרופא אמר כדור אחד", speakerClusterID = 1)
+        assertEquals("דנה: כדור אחד", announcer.announcement(listOf(grown), names))
+    }
 }

@@ -64,9 +64,16 @@ internal object WhisperPassScoring {
         val perWord = ArrayList<List<Float>>()
         for (group in split) {
             val end = minOf(next + group.size, logprobs.size)
-            var scored = end
-            while (scored - 1 > next && isPunctuationOnly(decode(listOf(pieces[scored - 1])))) scored--
-            perWord.add(if (next < scored) logprobs.subList(next, scored).toList() else emptyList())
+            val runs = splitOnUnicode(group)
+            val kept = ArrayList<Float>()
+            var at = next
+            for (run in runs) {
+                val runEnd = minOf(at + run.size, end)
+                if (!isPunctuationOnly(decode(run))) kept.addAll(logprobs.subList(at, runEnd))
+                at = runEnd
+            }
+            if (kept.isEmpty() && next < end) kept.addAll(logprobs.subList(next, minOf(next + runs.first().size, end)))
+            perWord.add(kept)
             next = end
         }
         return UncertainWords.pick(split.map { decode(it) }, perWord)

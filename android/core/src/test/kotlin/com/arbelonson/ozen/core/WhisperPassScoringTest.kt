@@ -41,4 +41,21 @@ class WhisperPassScoringTest {
         val found = doubtful("Hello, there", " Hello" to 0.1f, "," to 0.99f, " there" to 0.95f)
         assertEquals(listOf("Hello"), found)
     }
+
+    @Test
+    fun `a confident point inside a price does not lift a doubtful price`() {
+        val found = doubtful("it costs 3.5 now", " it" to 0.95f, " costs" to 0.95f, " 3" to 0.1f, "." to 0.99f, "5" to 0.2f, " now" to 0.95f)
+        assertEquals(listOf("3.5"), found)
+    }
+
+    @Test
+    fun `a confident ellipsis split over byte pieces does not hide a doubtful word`() {
+        val dots = "\u2026".toByteArray(Charsets.UTF_8)
+        val pieces = listOf(WhisperToken(100, " wait", 0.1f), WhisperToken(101, " ok", 0.95f)).toMutableList()
+        pieces.add(1, WhisperToken(102, byteArrayOf(dots[0]), 0.99f, false))
+        pieces.add(2, WhisperToken(103, byteArrayOf(dots[1]), 0.99f, false))
+        pieces.add(3, WhisperToken(104, byteArrayOf(dots[2]), 0.99f, false))
+        val found = UncertainWords.spoken("wait\u2026 ok", WhisperPassScoring.uncertainWords(WhisperSegment("", 0f, pieces), 50000, "en"))
+        assertEquals(listOf("wait"), found)
+    }
 }
