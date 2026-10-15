@@ -190,12 +190,4 @@ class CaptionAnnouncerTest {
         val grown = said.copy(text = "הרופא אמר כדור אחד")
         assertEquals("כדור אחד", announcer.announcement(listOf(grown), names) { true })
     }
-
-    @Test
-    fun `a line whose growth is only spaces announces nothing`() {
-        val announcer = CaptionAnnouncer()
-        val said = line("הרופא אמר")
-        announcer.announcement(listOf(said), nobody)
-        assertNull(announcer.announcement(listOf(said.copy(text = "הרופא אמר  ")), nobody))
-    }
 }

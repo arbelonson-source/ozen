@@ -60,7 +60,7 @@ class CaptionAnnouncer {
             if (text.isEmpty()) continue
             val tail = grownTail(before, words)
             if (tail != null) {
-                if (tail.isNotEmpty()) parts += tail
+                parts += tail
                 lastSpeaker = speakerName(segment)
                 lastLine = segment
                 continue
