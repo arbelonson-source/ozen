@@ -459,9 +459,9 @@ class WhisperResultFilter(
          */
         private val languageLines: Map<UILanguage, LanguageLines> = mapOf(
             UILanguage.German to LanguageLines(
-                setOf("Untertitel der Amara.org-Community", "Untertitel im Auftrag des ZDF", "Untertitel im Auftrag des ZDF für funk, 2017", "Untertitelung des ZDF", "Bis zum nächsten Mal"),
-                setOf("Danke", "Danke schön", "Vielen Dank", "Dankeschön"),
-                listOf("untertitel der", "untertitel im auftrag", "untertitel von", "untertitelung"),
+                setOf("Untertitel der Amara.org-Community", "Untertitel im Auftrag des ZDF", "Untertitel im Auftrag des ZDF für funk, 2017", "Untertitelung des ZDF"),
+                setOf("Danke", "Danke schön", "Vielen Dank", "Dankeschön", "Bis zum nächsten Mal"),
+                listOf("untertitel der amara.org-community", "untertitel der amara.org community", "untertitel im auftrag", "untertitelung des zdf", "untertitelung im auftrag"),
             ),
             UILanguage.French to LanguageLines(
                 setOf("Sous-titres réalisés para la communauté d'Amara.org", "Sous-titres réalisés par la communauté d'Amara.org", "Sous-titres par la communauté d'Amara.org"),
@@ -471,7 +471,7 @@ class WhisperResultFilter(
             UILanguage.Spanish to LanguageLines(
                 setOf("Subtítulos realizados por la comunidad de Amara.org", "Subtítulos por la comunidad de Amara.org"),
                 setOf("Gracias", "Muchas gracias", "Gracias por ver el video"),
-                listOf("subtítulos realizados por", "subtítulos por la comunidad", "subtítulos en español"),
+                listOf("subtítulos realizados por", "subtítulos por la comunidad", "subtítulos en español de"),
             ),
             UILanguage.Portuguese to LanguageLines(
                 setOf("Legendas pela comunidade Amara.org", "Legendas da comunidade Amara.org"),

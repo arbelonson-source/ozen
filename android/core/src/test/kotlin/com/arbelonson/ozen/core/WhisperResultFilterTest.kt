@@ -283,6 +283,25 @@ class WhisperResultFilterTest {
     }
 
     @Test
+    fun `a German farewell and everyday subtitle talk are kept at a confident score`() {
+        val german = filter.forSpeech("de")
+        assertTrue(german.accepts(segment("Bis zum nächsten Mal", logprob = -0.2f)))
+        assertFalse(german.accepts(segment("Bis zum nächsten Mal", logprob = -1.2f)))
+        assertTrue(german.accepts(segment("Untertitel der Sendung fehlen", logprob = -0.2f)))
+        assertTrue(german.accepts(segment("Untertitel von Filmen helfen mir", logprob = -0.2f)))
+        assertTrue(german.accepts(segment("Untertitelung ist wichtig", logprob = -0.2f)))
+        assertFalse(german.accepts(segment("Untertitel der Amara.org-Community 2020", logprob = -0.2f)))
+        assertFalse(german.accepts(segment("Untertitelung des ZDF, 2020", logprob = -0.2f)))
+    }
+
+    @Test
+    fun `a Spanish request for subtitles is kept at a confident score`() {
+        val spanish = filter.forSpeech("es")
+        assertTrue(spanish.accepts(segment("Subtítulos en español, por favor", logprob = -0.2f)))
+        assertFalse(spanish.accepts(segment("Subtítulos en español de España", logprob = -0.2f)))
+    }
+
+    @Test
     fun `ordinary sentences with a thank you in them are kept`() {
         assertTrue(filter.forSpeech("de").accepts(segment("Danke, dass du gekommen bist", logprob = -1.2f)))
         assertTrue(filter.forSpeech("fr").accepts(segment("Merci pour ton aide hier soir", logprob = -1.2f)))
