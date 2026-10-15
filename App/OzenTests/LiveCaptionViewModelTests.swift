@@ -1084,6 +1084,118 @@ struct LiveCaptionViewModelSpeechTests {
         #expect(viewModel.phase.isListening)
     }
 
+    @Test("launched by Siri to say something with no voice installed: nothing is spoken and the request reports failure")
+    func launchWithSpeechNoVoice() async {
+        let (viewModel, synthesizer) = makeViewModel()
+        synthesizer.hasHebrewVoice = false
+        var reported: [Bool] = []
+        viewModel.reportSpeak = { reported.append($0) }
+        await viewModel.launch(pending: .speak("תודה"))
+        #expect(synthesizer.requests.isEmpty)
+        #expect(reported == [false])
+    }
+
+    @Test("a spoken request that worked reports success")
+    func launchWithSpeechReportsSuccess() async {
+        let (viewModel, synthesizer) = makeViewModel()
+        var reported: [Bool] = []
+        viewModel.reportSpeak = { reported.append($0) }
+        let launch = Task { await viewModel.launch(pending: .speak("אני באה")) }
+        #expect(await eventually { synthesizer.requests == ["אני באה"] })
+        #expect(reported == [true])
+        synthesizer.startNext()
+        synthesizer.finishCurrent()
+        await launch.value
+    }
+
+    @Test("a spoken request that setup throws away is reported as discarded, not left to time out as a success")
+    func discardedSpeakIsReported() async {
+        let box = PendingAppAction()
+        box.post(.speak("אני באה"))
+        box.discardAll()
+        #expect(box.takeAll().isEmpty)
+        #expect(box.speakWasDiscarded)
+        #expect(await box.speakResult(waitingUpTo: .seconds(5)) == nil)
+    }
+
+    @Test("throwing away a request that was not speech does not mark speech as discarded")
+    func discardedOtherActionIsNotSpeech() {
+        let box = PendingAppAction()
+        box.post(.stopCaptions)
+        box.discardAll()
+        #expect(!box.speakWasDiscarded)
+        box.post(.speak("שלום"))
+        box.discardAll()
+        box.post(.speak("שוב"))
+        #expect(!box.speakWasDiscarded)
+    }
+
+    @Test("two spoken requests run one after the other, so each reads only its own outcome")
+    func speakRequestsAreSerialized() async {
+        let box = PendingAppAction()
+        #expect(await box.beginSpeakRequest())
+        let second = Task { await box.beginSpeakRequest() }
+        try? await Task.sleep(for: .milliseconds(350))
+        box.post(.speak("ראשון"))
+        box.reportSpeak(false)
+        #expect(box.lastSpeakWorked == false)
+        box.endSpeakRequest()
+        #expect(await second.value)
+        box.post(.speak("שני"))
+        #expect(box.lastSpeakWorked == nil)
+        box.reportSpeak(true)
+        #expect(box.lastSpeakWorked == true)
+    }
+
+    @Test("a cancelled wait for the speech slot gives up instead of spinning")
+    func cancelledSlotWaitStops() async {
+        let box = PendingAppAction()
+        #expect(await box.beginSpeakRequest())
+        let waiter = Task { await box.beginSpeakRequest() }
+        waiter.cancel()
+        #expect(await waiter.value == false)
+    }
+
+    @Test("the Siri phrase is trimmed, and a blank one is refused")
+    func siriPhraseCleaned() {
+        #expect(SpeakIntent.cleaned("   ") == nil)
+        #expect(SpeakIntent.cleaned(" hi ") == "hi")
+    }
+
+    @Test("a battery warning on the lock screen is taken down when the phone is plugged in")
+    func batteryWithdrawnWhenCleared() {
+        var withdrawn: [String] = []
+        let store = SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-bat-\(UUID()).json"))
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in FakeEngine() }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: pipeline, postNotification: { _ in }, withdrawNotification: { withdrawn.append($0) })
+        viewModel.sceneActivityChanged(isActive: false)
+        viewModel.batteryCleared()
+        #expect(withdrawn.isEmpty)
+        viewModel.batteryWarningRaised(.low(percent: 19))
+        viewModel.batteryCleared()
+        #expect(withdrawn == ["battery"])
+        viewModel.batteryCleared()
+        #expect(withdrawn == ["battery"])
+    }
+
+    @Test("a battery warning is also taken down when she returns to the app, and when captions stop")
+    func batteryWithdrawnOnReturnAndStop() async {
+        var withdrawn: [String] = []
+        let store = SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-bat-\(UUID()).json"))
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in FakeEngine() }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: pipeline, postNotification: { _ in }, withdrawNotification: { withdrawn.append($0) })
+        viewModel.sceneActivityChanged(isActive: false)
+        viewModel.batteryWarningRaised(.critical(percent: 9))
+        viewModel.sceneActivityChanged(isActive: true)
+        #expect(withdrawn.contains("battery"))
+        withdrawn.removeAll()
+        viewModel.sceneActivityChanged(isActive: false)
+        viewModel.batteryWarningRaised(.critical(percent: 8))
+        await viewModel.start()
+        await viewModel.perform(.stopCaptions)
+        #expect(await eventually { withdrawn.contains("battery") })
+    }
+
     @Test("two requests that launched the app together both happen, in order")
     func launchWithTwoRequests() async {
         let (viewModel, synthesizer) = makeViewModel()

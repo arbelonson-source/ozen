@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.font.FontWeight
 import com.arbelonson.ozen.core.CaptionLayout
+import com.arbelonson.ozen.core.UILanguage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -58,6 +59,27 @@ class CaptionTextTest {
         assertEquals("tel:0501234567", (link.item as LinkAnnotation.Url).url)
         assertEquals("0501234567", line.substring(link.start, link.end).filter { it.isDigit() })
         assertTrue(captionText(line, emphasizeNumbers = false, numberColor = null).getLinkAnnotations(0, line.length).isEmpty())
+    }
+
+    @Test
+    fun `with a decimal comma a dose is one span, without it the comma splits it`() {
+        val line = "nimm 2,5 mg"
+        assertEquals(1, captionText(line, emphasizeNumbers = true, numberColor = null, decimalComma = true).spanStyles.size)
+        assertEquals(2, captionText(line, emphasizeNumbers = true, numberColor = null).spanStyles.size)
+    }
+
+    @Test
+    fun `only the languages that write a decimal comma ask for it`() {
+        val commaLanguages = setOf(
+            UILanguage.French, UILanguage.Spanish, UILanguage.German,
+            UILanguage.Portuguese, UILanguage.Russian, UILanguage.Ukrainian,
+        )
+        for (language in UILanguage.entries) {
+            assertEquals(language in commaLanguages, usesDecimalComma(language), language.name)
+        }
+        assertTrue(usesDecimalComma("fr"))
+        assertEquals(false, usesDecimalComma("he"))
+        assertEquals(false, usesDecimalComma("en"))
     }
 
     @Test

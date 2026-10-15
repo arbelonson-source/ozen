@@ -555,7 +555,7 @@ private fun opened(record: TranscriptSessionRecord?, query: String, marksUncerta
     record = record,
     lines = record?.let { SavedLine.of(it, markUncertain = marksUncertain, languageCode = languageCode) } ?: emptyList(),
     matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
-    numbers = record?.takeIf { query.isBlank() }?.let(NumbersMentioned::of),
+    numbers = record?.takeIf { query.isBlank() }?.let { NumbersMentioned.of(it, usesDecimalComma(languageCode)) },
     starred = record?.takeIf { query.isBlank() }?.segments?.filter { it.isStarred }?.map { it.id } ?: emptyList(),
     stats = record?.let { ConversationStats.compute(it) }?.takeIf { it.totalWords > 0 },
 )
@@ -655,7 +655,7 @@ internal fun ConversationScreen(
                 // down, the conversation can still be shared, named or deleted,
                 // and each jump goes on from where the last one left the list.
                 FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ActionChip(Icons.Rounded.Share, tr("שיתוף", "Share"), onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { shareSheet(context, shown.record, marksUncertain) }) } })
+                    ActionChip(Icons.Rounded.Share, tr("שיתוף", "Share"), onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { shareSheet(context, shown.record, marksUncertain, languageCode) }) } })
                     ActionChip(Icons.Rounded.Edit, tr("מתן שם לשיחה", "Name this conversation"), onClick = { naming = shown.record.title ?: "" })
                     ActionChip(Icons.Rounded.Delete, tr("מחיקה", "Delete"), onClick = { confirmingDelete = true }, colour = MaterialTheme.colorScheme.error)
                     if (shown.matches.size > 1) {
@@ -906,7 +906,7 @@ private fun NumbersSection(numbers: NumbersMentioned, isUncertain: (SavedSegment
                     // The row's state says it once; the mark's own label would say it twice.
                     if (unsure) Box(Modifier.clearAndSetSemantics {}) { UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text(
-                        captionText(CaptionLayout.directed(said.text), emphasizeNumbers = true, numberColor = null),
+                        captionText(CaptionLayout.directed(said.text), emphasizeNumbers = true, numberColor = null, decimalComma = LocalDecimalComma.current),
                         style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
                     )
                 }
@@ -961,7 +961,7 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
                 Row {
                     if (line.starred) Text("★", color = starColour(), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 6.dp))
                     if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(captionText(line.text, emphasizeNumbers, numberColor = null, linkingPhoneNumbers = true), style = MaterialTheme.typography.bodyLarge)
+                    Text(captionText(line.text, emphasizeNumbers, numberColor = null, linkingPhoneNumbers = true, decimalComma = LocalDecimalComma.current), style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -1030,8 +1030,8 @@ private val SEARCH_MATCH = Color(red = 1f, green = 0.84f, blue = 0.04f, alpha = 
  */
 private const val LONGEST_SHARED_TEXT = 50_000
 
-private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksUncertain: Boolean): Intent =
-    textShareSheet(context, tr("שיחה מאוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain))
+private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksUncertain: Boolean, languageCode: String): Intent =
+    textShareSheet(context, tr("שיחה מאוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain, usesDecimalComma(languageCode)))
 
 /** The share sheet for a conversation or the starred lines: as a message, or past [LONGEST_SHARED_TEXT] as a file. */
 internal fun textShareSheet(context: Context, subject: String, text: String): Intent {

@@ -1,6 +1,8 @@
 import Foundation
 
 public enum BatteryWarning: Sendable, Equatable {
+    public static let notificationIdentifier = "battery"
+
     /// Worth plugging in soon.
     case low(percent: Int)
     /// The phone may switch off before the conversation ends.
@@ -20,7 +22,7 @@ public enum BatteryWarning: Sendable, Equatable {
         switch self {
         case .low(let percent):
             return AlertNotificationContent(
-                identifier: "battery",
+                identifier: Self.notificationIdentifier,
                 title: tr("הסוללה ב-%1%", "Battery at %1%", args: ["\(percent)"]),
                 body: tr(
                     "הכתוביות וההתראות ממשיכות, אבל כדאי לחבר למטען.",
@@ -31,7 +33,7 @@ public enum BatteryWarning: Sendable, Equatable {
             )
         case .critical(let percent):
             return AlertNotificationContent(
-                identifier: "battery",
+                identifier: Self.notificationIdentifier,
                 title: tr("הסוללה ב-%1%", "Battery at %1%", args: ["\(percent)"]),
                 body: tr(
                     "הטלפון עלול להיכבות, ואיתו הכתוביות וההתראות. חברו למטען.",
@@ -58,6 +60,11 @@ public struct BatteryAdvisor: Sendable, Equatable {
     /// How far above a threshold the level must climb to re-arm it.
     public var rearmMargin: Float
 
+    /// Whether the last reading found the phone on a charger.
+    public private(set) var isPluggedIn = false
+    /// A warning left in the notification list is stale once the phone is charging.
+    public var shouldWithdraw: Bool { isPluggedIn }
+
     private var warnedLow = false
     private var warnedCritical = false
 
@@ -83,6 +90,7 @@ public struct BatteryAdvisor: Sendable, Equatable {
     /// when unknown (the simulator reports -1). Returns a warning at most
     /// once per threshold per discharge.
     public mutating func update(level: Float?, isPluggedIn: Bool) -> BatteryWarning? {
+        self.isPluggedIn = isPluggedIn
         guard let level, level >= 0 else { return nil }
         if level > lowThreshold + rearmMargin { warnedLow = false }
         if level > criticalThreshold + rearmMargin { warnedCritical = false }
