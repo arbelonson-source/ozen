@@ -6,9 +6,9 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 object PrivateFileWrites {
-    fun write(file: File, bytes: ByteArray) = write(file, bytes, {}, { it.fd.sync() })
+    fun write(file: File, bytes: ByteArray) = write(file, bytes, {}, { it.fd.sync() }, ::syncDirectory)
 
-    internal fun write(file: File, bytes: ByteArray, beforeMove: (File) -> Unit, sync: (FileOutputStream) -> Unit) {
+    internal fun write(file: File, bytes: ByteArray, beforeMove: (File) -> Unit, sync: (FileOutputStream) -> Unit, syncParent: (File) -> Unit) {
         val target = file.absoluteFile
         val directory = target.parentFile
         directory.mkdirs()
@@ -24,9 +24,17 @@ object PrivateFileWrites {
             }
             beforeMove(temporary)
             Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+            try {
+                syncParent(directory)
+            } catch (_: Exception) {
+            }
         } finally {
             temporary.delete()
         }
+    }
+
+    private fun syncDirectory(directory: File) {
+        java.io.FileInputStream(directory).use { it.fd.sync() }
     }
 
     fun leftovers(directory: File): List<File> =

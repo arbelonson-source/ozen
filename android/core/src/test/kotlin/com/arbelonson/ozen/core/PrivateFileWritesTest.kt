@@ -44,7 +44,7 @@ class PrivateFileWritesTest {
         var syncs = 0
         var syncsAtMove = -1
         var lengthAtMove = -1L
-        PrivateFileWrites.write(file, payload, { syncsAtMove = syncs; lengthAtMove = it.length() }, { syncs++ })
+        PrivateFileWrites.write(file, payload, { syncsAtMove = syncs; lengthAtMove = it.length() }, { syncs++ }, {})
         assertEquals(1, syncs)
         assertEquals(1, syncsAtMove)
         assertEquals(payload.size.toLong(), lengthAtMove)
@@ -55,7 +55,7 @@ class PrivateFileWritesTest {
     fun `a failing sync does not stop the save`() {
         val directory = folder()
         val file = File(directory, "settings.json")
-        PrivateFileWrites.write(file, byteArrayOf(4, 5), {}, { throw java.io.IOException("no sync here") })
+        PrivateFileWrites.write(file, byteArrayOf(4, 5), {}, { throw java.io.IOException("no sync here") }, { throw java.io.IOException("no dir sync") })
         assertContentEquals(byteArrayOf(4, 5), file.readBytes())
         assertEquals(listOf("settings.json"), directory.list()!!.toList())
     }
@@ -65,9 +65,27 @@ class PrivateFileWritesTest {
         val directory = folder()
         val file = File(directory, "settings.json")
         val failure = runCatching {
-            PrivateFileWrites.write(file, byteArrayOf(1), { throw java.io.IOException("stop") }, {})
+            PrivateFileWrites.write(file, byteArrayOf(1), { throw java.io.IOException("stop") }, {}, {})
         }
         assertEquals(true, failure.isFailure)
         assertEquals(emptyList(), directory.list()!!.toList())
+    }
+
+    @Test
+    fun `the folder is synced after the file is moved into place`() {
+        val directory = folder()
+        val file = File(directory, "history.json")
+        var syncedFolder: File? = null
+        var existedAtSync = false
+        PrivateFileWrites.write(file, byteArrayOf(2), {}, {}, { syncedFolder = it; existedAtSync = file.exists() })
+        assertEquals(directory.absoluteFile, syncedFolder)
+        assertEquals(true, existedAtSync)
+    }
+
+    @Test
+    fun `a real write syncs the folder without failing`() {
+        val file = File(folder(), "real.json")
+        PrivateFileWrites.write(file, byteArrayOf(3))
+        assertContentEquals(byteArrayOf(3), file.readBytes())
     }
 }
