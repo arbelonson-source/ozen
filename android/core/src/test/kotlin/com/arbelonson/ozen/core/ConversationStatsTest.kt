@@ -226,4 +226,38 @@ class ConversationStatsTest {
         assertTrue("רותי" in stats.speakers.map { it.name })
         assertEquals(5, stats.speakers.first { it.name != "רותי" }.words)
     }
+
+    @Test
+    fun `Chinese counts one word per character`() {
+        assertEquals(13, ConversationStats.compute(listOf(line("我今天去了商店买了三个苹果", null, 0.0))).totalWords)
+    }
+
+    @Test
+    fun `Chinese speakers share and longest turn follow characters`() {
+        val stats = ConversationStats.compute(
+            listOf(
+                line("我".repeat(20), "A", 0.0),
+                line("你".repeat(5), "B", 5.0),
+            ),
+        )
+        assertEquals(0.8, stats.wordFraction(stats.speakers.first { it.name == "A" }), 1e-9)
+        assertEquals(0.2, stats.wordFraction(stats.speakers.first { it.name == "B" }), 1e-9)
+        assertEquals(20, stats.longestTurn?.words)
+    }
+
+    @Test
+    fun `Chinese mixed with a Latin word counts characters plus the word`() {
+        assertEquals(6, ConversationStats.compute(listOf(line("我用 iPhone 打电话", null, 0.0))).totalWords)
+    }
+
+    @Test
+    fun `Chinese punctuation is not counted`() {
+        assertEquals(4, ConversationStats.compute(listOf(line("你好，世界。", null, 0.0))).totalWords)
+    }
+
+    @Test
+    fun `Hebrew and English still count by words`() {
+        assertEquals(3, ConversationStats.compute(listOf(line("שלום לכולם היום", null, 0.0))).totalWords)
+        assertEquals(4, ConversationStats.compute(listOf(line("see you at noon", null, 0.0))).totalWords)
+    }
 }
