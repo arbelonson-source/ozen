@@ -2,11 +2,12 @@ import Foundation
 
 public enum SliderSpeech {
     public static func speechRate(_ rate: Double, in language: UILanguage) -> String {
-        let number = String(format: "%.2f", rate)
+        let step = Int((rate * 20).rounded())
+        let number = String(format: "%.2f", Double(step) / 20)
         let word: String
-        if rate < 0.4 {
+        if step < 8 {
             word = tr("לאט", "Slow", in: language)
-        } else if rate > 0.55 {
+        } else if step > 11 {
             word = tr("מהר", "Fast", in: language)
         } else {
             word = tr("רגיל", "Normal", in: language)
@@ -19,7 +20,7 @@ public enum SliderSpeech {
     }
 
     public static func textSize(_ size: Double, in language: UILanguage) -> String {
-        tr("%1 נקודות", "%1 points", args: ["\(Int(size))"], in: language)
+        tr("נקודות: %1", "Points: %1", args: ["\(Int(size))"], in: language)
     }
 
     public static func textSizeHint(in language: UILanguage) -> String {
