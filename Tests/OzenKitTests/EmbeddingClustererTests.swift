@@ -405,6 +405,19 @@ struct EmbeddingClustererDoubtfulTests {
         #expect(clusterer.clusters.count == 1)
     }
 
+    @Test("enrolling someone already heard as an unnamed speaker names that voice instead of opening a rival")
+    func enrollingNamesTheUnnamedVoiceAlreadyHeard() {
+        var clusterer = EmbeddingClusterer()
+        var heard = 0
+        for _ in 0..<8 { heard = clusterer.assign(embedding: [1, 0.3, 0]) }
+        let enrolled = clusterer.enroll(name: "Dana", embedding: [1, 0.5, 0])
+        let next = clusterer.assign(embedding: [1, 0.4, 0])
+        #expect(enrolled == heard)
+        #expect(next == heard)
+        #expect(clusterer.displayName(forClusterID: next) == "Dana")
+        #expect(clusterer.clusters.count == 1)
+    }
+
     @Test("a clearly different print still opens its own cluster")
     func enrollDifferentPrintOpensNew() {
         var clusterer = EmbeddingClusterer()
@@ -459,5 +472,31 @@ struct EmbeddingClustererDoubtfulTests {
         let enrolled = clusterer.enroll(name: "Dana", embedding: [1, 0, 0, 0])
         #expect(enrolled == middle)
         #expect(enrolled != weakest)
+    }
+
+    @Test("enrolling a voice nobody unnamed resembles still adds a cluster")
+    func enrollingAStrangerAddsACluster() {
+        var clusterer = EmbeddingClusterer()
+        _ = clusterer.assign(embedding: [1, 0.3, 0])
+        clusterer.enroll(name: "Dana", embedding: [0, 1, 0])
+        #expect(clusterer.clusters.count == 2)
+    }
+
+    @Test("enrolling never merges into a cluster that already has a name")
+    func enrollingNeverReusesANamedCluster() {
+        var clusterer = EmbeddingClusterer()
+        let first = clusterer.enroll(name: "Dana", embedding: [1, 0, 0])
+        let second = clusterer.enroll(name: "Yossi", embedding: [1, 0, 0])
+        #expect(first != second)
+        #expect(clusterer.clusters.map(\.name) == ["Dana", "Yossi"])
+    }
+
+    @Test("enrolling a print of another length is not merged into a heard voice")
+    func enrollingADifferentLengthPrintIsNotMerged() {
+        var clusterer = EmbeddingClusterer()
+        _ = clusterer.assign(embedding: [1, 0, 0])
+        clusterer.enroll(name: "Dana", embedding: [1, 0])
+        #expect(clusterer.clusters.count == 2)
+        #expect(clusterer.clusters.first?.name == nil)
     }
 }

@@ -143,7 +143,8 @@ public struct EmbeddingClusterer: Sendable {
 
     /// Seeds a cluster with a known name from a reference embedding
     /// recorded during enrollment, before any live audio has arrived for
-    /// that person.
+    /// that person. When that person was already heard as an unnamed
+    /// speaker, that cluster is named instead of a second one opened.
     ///
     /// The reference counts as several samples: it was recorded on purpose,
     /// close to the microphone, in a quiet moment, while live windows carry
@@ -180,6 +181,12 @@ public struct EmbeddingClusterer: Sendable {
                 return a != b ? a < b : $0.similarity < $1.similarity
             }
         return best?.index
+    }
+
+    /// A named cluster seeded from one line's own voice, never merged into
+    /// a voice heard before: the line was just said to be somebody else.
+    mutating func enrollWithoutMerging(name: String, embedding: [Float]) -> Int {
+        openCluster(with: Self.direction(of: embedding), name: name, sampleCount: 1)
     }
 
     /// A voice print scaled to length 1. Cosine similarity ignores length,

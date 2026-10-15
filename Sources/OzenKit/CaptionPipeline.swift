@@ -258,6 +258,14 @@ public final class CaptionPipeline {
     public private(set) var isListeningForSoundsOnly = false
     private var staleCommitTask: Task<Void, Never>?
     private var utteranceClusterAssignments: [UUID: Int] = [:]
+    /// The newest voice print heard for each recent line, so a line the
+    /// user says belongs to someone else can seed that person's cluster.
+    private var utteranceEmbeddings: [UUID: [Float]] = [:]
+    private var utteranceEmbeddingOrder: [UUID] = []
+    private static let utteranceEmbeddingLimit = 64
+    private var correctedUtterances: Set<UUID> = []
+    private let chunksArrivedCounter = ArrivalCounter()
+    private var chunksArrived: Int { chunksArrivedCounter.value }
     /// Decides whether an embedding window holds a voice at all. Silence
     /// and background noise must not open phantom speakers or drag a real
     /// person's voice profile toward the fridge hum.
@@ -616,6 +624,8 @@ public final class CaptionPipeline {
                 guard let self, self.runID == run else { return }
                 self.stats.glitchedAudioChunks += 1
             }
+        } onChunk: { [counter = chunksArrivedCounter] in
+            counter.increment()
         }
         fanOut = fan
         let engineAudio = replay.isEmpty ? fan.outputs[0] : replaying(replay, then: fan.outputs[0])
@@ -1384,13 +1394,70 @@ public final class CaptionPipeline {
     }
 
     /// Tags an inferred cluster with a real name after the fact, returning
-    /// the cluster centroid so the caller can persist it as a profile.
+    /// the voice print the caller should save for it.
+    ///
+    /// A name typed on a line whose voice already carries a different name
+    /// is a spelling fix only when it looks like one. Otherwise the phone
+    /// took this line for the wrong person: only this line moves, to the
+    /// cluster already named so, or to a new one seeded from the line's
+    /// own voice, and the other person's voice keeps their name.
     @discardableResult
     public func nameSpeaker(of segment: TranscriptSegment, name: String) -> [Float]? {
         guard let clusterID = segment.speakerClusterID else { return nil }
+        let cluster = clusterer.clusters.first(where: { $0.id == clusterID })
+        if let cluster, !isRespelling(name, ofLine: segment) {
+            return moveLine(segment, to: name, from: cluster)
+        }
         clusterer.nameCluster(id: clusterID, name: name)
         speakerClusters = clusterer.clusters
         return clusterer.clusters.first(where: { $0.id == clusterID })?.centroid
+    }
+
+    private func moveLine(_ segment: TranscriptSegment, to name: String, from cluster: SpeakerCluster) -> [Float]? {
+        let heard = utteranceEmbeddings[segment.id]
+        let ownVoice = heard ?? (utteranceClusterAssignments[segment.id] == cluster.id ? cluster.centroid : nil)
+        let target: Int
+        if let existing = clusterer.clusters.first(where: { $0.name == name }) {
+            target = existing.id
+        } else if let ownVoice {
+            target = clusterer.enrollWithoutMerging(name: name, embedding: ownVoice)
+        } else {
+            return nil
+        }
+        utteranceClusterAssignments[segment.id] = target
+        correctedUtterances.insert(segment.id)
+        if let index = segments.lastIndex(where: { $0.id == segment.id }) {
+            segments[index].speakerClusterID = target
+            onCaptionsChanged?()
+        }
+        speakerClusters = clusterer.clusters
+        return ownVoice
+    }
+
+    /// Whether `name`, typed on this line, fixes the spelling of the name
+    /// its voice already has (or names a voice that has none), rather than
+    /// calling someone else.
+    public func isRespelling(_ name: String, ofLine segment: TranscriptSegment) -> Bool {
+        guard let clusterID = segment.speakerClusterID else { return false }
+        guard let cluster = clusterer.clusters.first(where: { $0.id == clusterID }) else { return true }
+        guard let old = cluster.name, old != name else { return true }
+        if clusterer.clusters.contains(where: { $0.name == name }) { return false }
+        let distance = Self.editDistance(Array(old.lowercased()), Array(name.lowercased()))
+        return distance <= max(1, min(old.count, name.count) / 4)
+    }
+
+    private static func editDistance(_ a: [Character], _ b: [Character]) -> Int {
+        var row = Array(0...b.count)
+        for i in a.indices {
+            var diagonal = row[0]
+            row[0] = i + 1
+            for j in b.indices {
+                let above = row[j + 1]
+                row[j + 1] = min(above + 1, row[j] + 1, diagonal + (a[i] == b[j] ? 0 : 1))
+                diagonal = above
+            }
+        }
+        return row[b.count]
     }
 
     public func displayName(for segment: TranscriptSegment) -> String {
@@ -1405,6 +1472,9 @@ public final class CaptionPipeline {
         speakerClusters = clusterer.clusters
         recentSpeechCluster = nil
         utteranceClusterAssignments = [:]
+        utteranceEmbeddings = [:]
+        utteranceEmbeddingOrder = []
+        correctedUtterances = []
     }
 
     #if DEBUG
@@ -1747,6 +1817,16 @@ public final class CaptionPipeline {
                 recentSpeechCluster = (clusterID, now())
                 continue
             }
+            if utteranceEmbeddings.updateValue(embedding, forKey: currentUtteranceID) == nil {
+                utteranceEmbeddingOrder.append(currentUtteranceID)
+                if utteranceEmbeddingOrder.count > Self.utteranceEmbeddingLimit {
+                    let evicted = utteranceEmbeddingOrder.removeFirst()
+                    utteranceEmbeddings[evicted] = nil
+                    utteranceClusterAssignments[evicted] = nil
+                }
+            }
+            // A line the user moved to another person stays there.
+            if correctedUtterances.contains(currentUtteranceID) { continue }
             utteranceClusterAssignments[currentUtteranceID] = clusterID
             // Writing an unchanged value still tells every observer the
             // transcript changed and redraws the caption list, every 1.5 s
@@ -1870,7 +1950,7 @@ public final class CaptionPipeline {
     /// audio engine: the same thing a manual stop and start would do.
     private func checkAudioIsArriving() {
         guard phase.isListening else { return }
-        guard audioWatchdog.tick(chunksReceived: stats.audioChunksReceived, systemInterrupted: systemInterrupted) else { return }
+        guard audioWatchdog.tick(chunksReceived: chunksArrived, systemInterrupted: systemInterrupted) else { return }
         stats.audioStalls += 1
         logEvent(.microphoneStalled)
         fail(.audioSessionFailed, detail: "no audio from the microphone for \(Int(audioWatchdog.stallSeconds)) s")
@@ -2548,4 +2628,11 @@ public struct KeywordHit: Sendable, Equatable, Identifiable {
         self.match = match
         self.timestamp = timestamp
     }
+}
+
+final class ArrivalCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var value: Int { lock.withLock { count } }
+    func increment() { lock.withLock { count += 1 } }
 }
