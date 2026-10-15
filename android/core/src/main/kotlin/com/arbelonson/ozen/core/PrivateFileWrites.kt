@@ -33,8 +33,8 @@ object PrivateFileWrites {
         }
     }
 
-    private fun syncDirectory(directory: File) {
-        java.io.FileInputStream(directory).use { it.fd.sync() }
+    internal fun syncDirectory(directory: File) {
+        java.nio.channels.FileChannel.open(directory.toPath(), java.nio.file.StandardOpenOption.READ).use { it.force(true) }
     }
 
     fun leftovers(directory: File): List<File> =

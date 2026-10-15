@@ -88,4 +88,9 @@ class PrivateFileWritesTest {
         PrivateFileWrites.write(file, byteArrayOf(3))
         assertContentEquals(byteArrayOf(3), file.readBytes())
     }
+
+    @Test
+    fun `the real folder sync opens the folder and does not throw`() {
+        PrivateFileWrites.syncDirectory(folder())
+    }
 }
