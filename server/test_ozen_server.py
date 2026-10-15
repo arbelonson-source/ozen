@@ -1836,6 +1836,96 @@ class PhoneContract(unittest.TestCase):
         self.assertTrue(any("captions, Ozen test build, beam 3" in line for line in logged.output), logged.output)
 
 
+class ClosingSocket(PhoneSocket):
+    async def send(self, text):
+        raise S.websockets.ConnectionClosed()
+
+
+class HandshakeLeaks(unittest.TestCase):
+    """A phone that drops, or sends an odd hello, must never leave the
+    models counted as in use, or the graphics card is never freed."""
+
+    models = OnDemand.models
+
+    def run_handle(self, ws, models):
+        with self.assertLogs(S.log, "INFO"):
+            asyncio.run(asyncio.wait_for(S.handle(ws, models, "example-code-123", 1.0), 5))
+
+    def test_a_phone_that_drops_while_the_ready_frame_is_sent_leaves_no_connection(self):
+        models = self.models()
+        ws = ClosingSocket({"type": "hello", "token": "example-code-123"}, [])
+        self.run_handle(ws, models)
+        self.assertEqual(models.connections, 0)
+
+    def test_a_hello_with_no_word_list_still_gets_a_ready_frame_and_no_leak(self):
+        models = self.models()
+        ws = PhoneSocket({"type": "hello", "token": "example-code-123", "vocabulary": None},
+                         [json.dumps({"type": "end"})])
+        self.run_handle(ws, models)
+        self.assertEqual(json.loads(ws.sent[0])["type"], "ready")
+        self.assertEqual(models.connections, 0)
+
+    def test_a_word_list_update_with_no_terms_is_empty_not_a_crash(self):
+        models = self.models()
+        ws = PhoneSocket({"type": "hello", "token": "example-code-123"},
+                         [json.dumps({"type": "vocabulary", "terms": None}), json.dumps({"type": "end"})])
+        self.run_handle(ws, models)
+        self.assertEqual(models.connections, 0)
+
+    def test_a_load_nobody_claims_is_still_unloaded_when_idle(self):
+        release = threading.Event()
+        clock = [1000.0]
+
+        def slow():
+            release.wait(5)
+            return LoadedGPU()
+
+        models = S.OnDemandTranscriber(slow, "turbo", 5, 600, clock=lambda: clock[0])
+        ws = PhoneSocket({"type": "hello", "token": "example-code-123", "purpose": "check"},
+                         [json.dumps({"type": "end"})])
+
+        async def scenario():
+            await S.handle(ws, models, "example-code-123", 1.0)
+            release.set()
+            for _ in range(200):
+                if models._loading is None or models._loading.done():
+                    break
+                await asyncio.sleep(0.01)
+            await asyncio.sleep(0.05)
+            clock[0] += 601
+            return models.unload_if_idle(), models._loading, models._loaded
+
+        with self.assertLogs(S.log, "INFO"):
+            unloaded, loading, loaded = asyncio.run(asyncio.wait_for(scenario(), 10))
+        self.assertTrue(unloaded)
+        self.assertIsNone(loading)
+        self.assertIsNone(loaded)
+
+    def test_a_word_list_update_with_no_terms_clears_the_words(self):
+        made = []
+
+        class Recorded(S.Session):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                made.append(self)
+
+        ws = PhoneSocket({"type": "hello", "token": "example-code-123", "vocabulary": ["Noa"]},
+                         [json.dumps({"type": "vocabulary", "terms": None}), json.dumps({"type": "end"})])
+        with mock.patch.object(S, "Session", Recorded):
+            self.run_handle(ws, self.models())
+        self.assertEqual(made[0].vocabulary, [])
+
+    def test_models_that_fail_to_load_leave_no_connection(self):
+        def broken():
+            raise RuntimeError("card full")
+
+        models = self.models(load=broken)
+        ws = PhoneSocket({"type": "hello", "token": "example-code-123"},
+                         [*speech_frames(1.5), json.dumps({"type": "end"})])
+        self.run_handle(ws, models)
+        self.assertEqual(models.connections, 0)
+
+
 class OtherLanguages(unittest.TestCase):
     """The Hebrew models stay for Hebrew; a phone whose people speak another
     language is captioned by the general model, loaded only when such a

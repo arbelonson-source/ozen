@@ -434,6 +434,7 @@ class CaptionPipeline(
         private set
     private var staleCommitTask: Job? = null
     private var utteranceClusterAssignments = HashMap<UUID, Int>()
+    private var correctedUtterances = HashSet<UUID>()
 
     /**
      * Decides whether an embedding window holds a voice at all. Silence
@@ -712,6 +713,12 @@ class CaptionPipeline(
         // its stream for the model instead of being lost.
         val earlySource: Flow<FloatArray>? = if (isCoveringForCloud) startCaptureOrNull() else null
         earlyCaptureRun = if (earlySource == null) null else run
+        // The real microphone only starts recording when its flow is first
+        // collected: collected from here, what is said while the model
+        // loads waits in the fan-out's buffers instead of being lost.
+        val earlyFan = if (earlySource == null) null else audioFanOut(earlySource, run)
+        fanOut = earlyFan
+        if (runID != run) return abandon(earlyFan)
         val loadsModelOnPhone = settings.engine == TranscriptionEngineKind.WhisperKit
         if (loadsModelOnPhone) {
             isPreparingEngine = true
@@ -755,7 +762,7 @@ class CaptionPipeline(
             preparationWaiters.clear()
             waiting.forEach { it.complete(Unit) }
         }
-        if (runID != run) return
+        if (runID != run) return abandon(earlyFan)
         if (availability is EngineAvailability.Unavailable) {
             var why = availability.why
             // Refused because the only connection left is cellular: the
@@ -768,7 +775,7 @@ class CaptionPipeline(
             // downloads switched on meanwhile, is no reason to wait.
             if (why.kind == EngineUnavailability.Kind.ModelDownloadFailed) {
                 val pending = engine.pendingDownloadMegabytes()
-                if (runID != run) return
+                if (runID != run) return abandon(earlyFan)
                 val allowCellularNow = (settingsInUse?.allowCellularModelDownload ?: allowCellular) || cellularDownloadApproved
                 if (pending != null &&
                     ModelDownloadGate.decide(network?.current, allowCellularNow) == ModelDownloadGate.Decision.WaitForWiFi
@@ -784,25 +791,24 @@ class CaptionPipeline(
             return
         }
         engine.setVocabulary(primedVocabulary(settings.vocabulary))
-        if (runID != run) return
+        if (runID != run) return abandon(earlyFan)
         currentEngine = engine
 
         phase = PipelinePhase.StartingAudio
-        val source: Flow<FloatArray>
-        if (earlySource != null) {
-            source = earlySource
+        val fan: FlowAudioFanOut
+        if (earlyFan != null) {
+            fan = earlyFan
         } else {
             try {
-                source = audio.startCapture()
+                fan = audioFanOut(audio.startCapture(), run)
             } catch (error: Exception) {
                 fail(PipelineFailure.Kind.AudioSessionFailed, describe(error))
                 return
             }
         }
-
-        val fan = FlowAudioFanOut(scope, source, count = if (soundDetector == null) 2 else 3) {
-            if (runID == run) statsData.glitchedAudioChunks += 1
-        }
+        // The pump can run inline in the fan-out's constructor and fail the
+        // run before it returns; the dead fan-out must not start listening.
+        if (runID != run) return abandon(fan)
         fanOut = fan
         val tokens = engine.stream(settings.languageCode, fan.outputs[0])
         val embedderAudio = fan.outputs[1]
@@ -924,6 +930,20 @@ class CaptionPipeline(
             current == PipelinePhase.Idle || current == PipelinePhase.Paused -> dropEngines()
             current is PipelinePhase.Failed && scheduledRetry == null -> dropEngines()
             else -> Unit
+        }
+    }
+
+    /**
+     * The notification's Stop: running captions pause so they can be
+     * resumed, but a start still loading, or a failure waiting to retry by
+     * itself, is cancelled outright. Paused alone left that start going and
+     * the retry timer running after the notification was gone.
+     */
+    fun stopFromNotification() {
+        when (phase) {
+            PipelinePhase.Idle, PipelinePhase.Paused -> Unit
+            PipelinePhase.Listening -> pause()
+            else -> stop()
         }
     }
 
@@ -1524,6 +1544,9 @@ class CaptionPipeline(
                     }
                 } catch (error: CancellationException) {
                     wasCancelled = true
+                } catch (error: Exception) {
+                    // The microphone could not be opened or died: what was
+                    // heard is a short recording, refused like a quiet one.
                 }
                 deadline.cancel()
                 audio.stopCapture()
@@ -1577,6 +1600,21 @@ class CaptionPipeline(
         return startCaptureOrNull()
     }
 
+    private fun audioFanOut(source: Flow<FloatArray>, run: UUID) = FlowAudioFanOut(
+        scope,
+        source,
+        count = if (soundDetector == null) 2 else 3,
+        onGlitch = { if (runID == run) statsData.glitchedAudioChunks += 1 },
+        onFailure = { error ->
+            if (runID == run) fail(PipelineFailure.Kind.AudioSessionFailed, describe(error))
+        },
+    )
+
+    private fun abandon(fan: FlowAudioFanOut?) {
+        fan?.cancel()
+        if (fanOut === fan) fanOut = null
+    }
+
     private fun startCaptureOrNull(): Flow<FloatArray>? = try {
         audio.startCapture()
     } catch (error: Exception) {
@@ -1585,10 +1623,26 @@ class CaptionPipeline(
 
     /**
      * Tags an inferred cluster with a real name after the fact, returning
-     * the cluster centroid so the caller can persist it as a profile.
+     * the cluster centroid so the caller can persist it as a profile; null
+     * when the line only moved to a voice that is already known.
      */
     fun nameSpeaker(of: TranscriptSegment, name: String): FloatArray? {
         val clusterID = of.speakerClusterID ?: return null
+        // A line wrongly placed in one person's voice and corrected to
+        // another known person is that line's mistake: renaming the whole
+        // voice renamed every earlier and later line of the first person.
+        val currentName = clusterer.cluster(clusterID)?.name
+        val holder = if (currentName != null && currentName != name) clusterer.clusterNamed(name, clusterID) else null
+        if (holder != null) {
+            utteranceClusterAssignments[of.id] = holder.id
+            correctedUtterances.add(of.id)
+            val index = segments.indexOfFirst { it.id == of.id }
+            if (index >= 0) {
+                setSegment(index, segments[index].copy(speakerClusterID = holder.id))
+                onCaptionsChanged?.invoke()
+            }
+            return null
+        }
         clusterer.nameCluster(clusterID, name)
         speakerClusters = clusterer.clusters
         return clusterer.clusters.firstOrNull { it.id == clusterID }?.centroid
@@ -1606,6 +1660,7 @@ class CaptionPipeline(
         speakerClusters = clusterer.clusters
         recentSpeechCluster = null
         utteranceClusterAssignments = HashMap()
+        correctedUtterances = HashSet()
     }
 
     /** A saved speaker was renamed; lines already on screen follow. */
@@ -1753,7 +1808,9 @@ class CaptionPipeline(
             return
         }
         var enriched = token
-        if (enriched.speakerClusterID == null) {
+        if (token.utteranceID in correctedUtterances) {
+            enriched = enriched.copy(speakerClusterID = utteranceClusterAssignments[token.utteranceID])
+        } else if (enriched.speakerClusterID == null) {
             val assigned = utteranceClusterAssignments[token.utteranceID]
             val recent = recentSpeechCluster
             if (assigned != null) {
@@ -1782,6 +1839,7 @@ class CaptionPipeline(
             audioStream.collect { chunk ->
                 if (runID != run) throw StopLoop()
                 statsData.audioChunksReceived += 1
+                audioWatchdog.heard(chunk, systemInterrupted)
                 statsData.audioSecondsReceived += chunk.size.toDouble() / SAMPLE_RATE
                 statsData.lastAudioAt = now()
                 recentAudio.append(chunk)
@@ -1836,6 +1894,7 @@ class CaptionPipeline(
                     recentSpeechCluster = RecentSpeechCluster(clusterID, now())
                     return@collect
                 }
+                if (heardDuring in correctedUtterances) return@collect
                 utteranceClusterAssignments[heardDuring] = clusterID
                 // Writing an unchanged value still tells every observer the
                 // transcript changed and redraws the caption list, every 1.5 s
@@ -1999,10 +2058,18 @@ class CaptionPipeline(
      */
     private fun checkAudioIsArriving() {
         if (!phase.isListening) return
-        if (!audioWatchdog.tick(statsData.audioChunksReceived, systemInterrupted)) return
+        val stalled = audioWatchdog.tick(statsData.audioChunksReceived, systemInterrupted)
+        // Chunks that are all exact zeros (a Bluetooth or USB microphone
+        // that is not routed, a blocked microphone on older Android) count
+        // as arriving above, yet carry nothing; the recovery limits stop a
+        // microphone that stays silent from restarting for ever.
+        val silent = !stalled && !systemInterrupted && audioWatchdog.isSilent
+        if (!stalled && !silent) return
         statsData.audioStalls += 1
         logEvent(PipelineEvent.Kind.MicrophoneStalled)
-        fail(PipelineFailure.Kind.AudioSessionFailed, "no audio from the microphone for ${audioWatchdog.stallSeconds.toInt()} s")
+        val reason = if (stalled) "no audio from the microphone for ${audioWatchdog.stallSeconds.toInt()} s"
+        else "the microphone delivered only silence for ${audioWatchdog.silenceSeconds.toInt()} s"
+        fail(PipelineFailure.Kind.AudioSessionFailed, reason)
     }
 
     /**
@@ -2442,7 +2509,7 @@ class CaptionPipeline(
         if (!soundPolicy.preferences.isEnabled) return
         val source = startCaptureOrNull() ?: return
         val run = runID
-        val fan = FlowAudioFanOut(scope, source, count = 1)
+        val fan = FlowAudioFanOut(scope, source, count = 1, onFailure = { if (runID == run) stopListeningForSounds() })
         fanOut = fan
         isListeningForSoundsOnly = true
         statsData.soundDetectionRunning = true

@@ -15,12 +15,20 @@ object VoiceNotice {
         missingFor(language, installed) ?: if (language == UILanguage.Hebrew) missingHebrew(installed) else null
 
     fun forSay(language: UILanguage, installed: Set<UILanguage>?): List<String> =
-        listOfNotNull(missingFor(language, installed), missingHebrew(installed))
+        if (installed != null && installed.isEmpty()) listOfNotNull(missingFor(language, installed))
+        else listOfNotNull(missingFor(language, installed), missingHebrew(installed))
 
     fun openSettings(): String = tr("פתיחת הגדרות הטלפון", "Open phone settings")
 
     private fun missingFor(language: UILanguage, installed: Set<UILanguage>?): String? {
-        if (installed == null || language == UILanguage.Hebrew || language == UILanguage.English || language in installed) return null
+        if (installed == null) return null
+        if (installed.isEmpty()) {
+            return tr(
+                "אין בטלפון מנוע דיבור או קול מותקן, ולכן אי אפשר להקריא את המשפטים.",
+                "No speech engine or voice is installed on this phone, so phrases can’t be read aloud.",
+            )
+        }
+        if (language == UILanguage.Hebrew || language in installed) return null
         return tr(
             "אין בטלפון קול ל%1, ולכן אי אפשר להקריא את המשפטים.",
             "No voice for %1 is installed on this phone, so these phrases can’t be read aloud.",
