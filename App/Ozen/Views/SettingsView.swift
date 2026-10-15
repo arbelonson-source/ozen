@@ -237,7 +237,7 @@ struct SettingsView: View {
                 ForEach(TranscriptionEngineKind.allCases, id: \.self) { kind in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(engineName(kind))
-                        Text(engineSummary(kind))
+                        Text(Self.engineSummary(kind, spokenLanguage: viewModel.settings.spokenLanguage))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -257,12 +257,25 @@ struct SettingsView: View {
         kind.displayName
     }
 
-    private func engineSummary(_ kind: TranscriptionEngineKind) -> String {
+    static func engineSummary(_ kind: TranscriptionEngineKind, spokenLanguage: UILanguage) -> String {
+        let hebrew = spokenLanguage == .hebrew
         switch kind {
-        case .whisperKit: return tr("מודל קוד פתוח שרץ על הטלפון. עברית טובה, אפשר לבחור גודל מודל.", "An open-source model that runs on the phone. Good Hebrew, and you can choose the model size.")
-        case .appleSpeech: return tr("מובנה ב‑iOS. מהיר מאוד, אבל עברית במכשיר לא זמינה בכל גרסה.", "Built into iOS. Very fast, but on-device Hebrew isn’t available in every version.")
-        case .cloud: return tr("מודל באינטרנט, לטלפון שאיטי מדי למודל שבתוכו. בעברית הוא טועה יותר מהמודל שבטלפון. צריך אינטרנט ומפתח של שירות ענן.", "A model online, for a phone too slow for the one inside it. It gets more Hebrew wrong than the phone’s own model. Needs internet and a key for a cloud service.")
-        case .homeServer: return tr("מחשב של המשפחה עם כרטיס מסך כותב את הכתוביות: אותו מודל עברית, מהר בהרבה, והטלפון לא מתחמם. כשאין אליו חיבור, הטלפון ממשיך לבד אם יש בו גיבוי.", "A family computer with a graphics card writes the captions: the same Hebrew model, much faster, and the phone stays cool. When it can’t be reached, the phone carries on by itself if it has the backup.")
+        case .whisperKit:
+            return hebrew
+                ? tr("מודל קוד פתוח שרץ על הטלפון. עברית טובה, אפשר לבחור גודל מודל.", "An open-source model that runs on the phone. Good Hebrew, and you can choose the model size.")
+                : tr("מודל קוד פתוח שרץ על הטלפון. דיוק טוב, אפשר לבחור גודל מודל.", "An open-source model that runs on the phone. Good accuracy, and you can choose the model size.")
+        case .appleSpeech:
+            return hebrew
+                ? tr("מובנה ב‑iOS. מהיר מאוד, אבל עברית במכשיר לא זמינה בכל גרסה.", "Built into iOS. Very fast, but on-device Hebrew isn’t available in every version.")
+                : tr("מובנה ב‑iOS. מהיר מאוד, אבל תמיכה במכשיר בשפה שלכם לא זמינה בכל גרסה.", "Built into iOS. Very fast, but on-device support for your language isn’t available in every version.")
+        case .cloud:
+            return hebrew
+                ? tr("מודל באינטרנט, לטלפון שאיטי מדי למודל שבתוכו. בעברית הוא טועה יותר מהמודל שבטלפון. צריך אינטרנט ומפתח של שירות ענן.", "A model online, for a phone too slow for the one inside it. It gets more Hebrew wrong than the phone’s own model. Needs internet and a key for a cloud service.")
+                : tr("מודל באינטרנט, לטלפון שאיטי מדי למודל שבתוכו. הוא טועה יותר מהמודל שבטלפון. צריך אינטרנט ומפתח של שירות ענן.", "A model online, for a phone too slow for the one inside it. It gets more words wrong than the phone’s own model. Needs internet and a key for a cloud service.")
+        case .homeServer:
+            return hebrew
+                ? tr("מחשב של המשפחה עם כרטיס מסך כותב את הכתוביות: אותו מודל עברית, מהר בהרבה, והטלפון לא מתחמם. כשאין אליו חיבור, הטלפון ממשיך לבד אם יש בו גיבוי.", "A family computer with a graphics card writes the captions: the same Hebrew model, much faster, and the phone stays cool. When it can’t be reached, the phone carries on by itself if it has the backup.")
+                : tr("מחשב של המשפחה עם כרטיס מסך כותב את הכתוביות: אותו מודל, מהר בהרבה, והטלפון לא מתחמם. כשאין אליו חיבור, הטלפון ממשיך לבד אם יש בו גיבוי.", "A family computer with a graphics card writes the captions: the same model, much faster, and the phone stays cool. When it can’t be reached, the phone carries on by itself if it has the backup.")
         }
     }
 

@@ -53,7 +53,8 @@ struct PhasePresentation {
         coveringForCloud: Bool = false,
         coveredEngine: TranscriptionEngineKind? = nil,
         coverReason: EngineUnavailability.Kind? = nil,
-        offerBackup: Bool = false
+        offerBackup: Bool = false,
+        spokenLanguage: UILanguage = .hebrew
     ) {
         // Only captions the call interrupted come back when it ends: ones
         // she paused or stopped herself stay that way, and saying they
@@ -128,7 +129,7 @@ struct PhasePresentation {
             self.init(title: tr("מושהה", "Paused"), detail: tr("הקישו כדי להמשיך", "Tap to continue"), systemImage: "pause.circle.fill", tint: .orange, action: .resume)
 
         case .failed(let failure):
-            self.init(failure: failure, engine: engine)
+            self.init(failure: failure, engine: engine, spokenLanguage: spokenLanguage)
             if scheduledRetry != nil {
                 // The pipeline is already on it. Say so, calmly, and keep
                 // the tap as "try right now" rather than the only way out.
@@ -205,7 +206,7 @@ struct PhasePresentation {
         }
     }
 
-    private init(failure: PipelineFailure, engine: TranscriptionEngineKind?) {
+    private init(failure: PipelineFailure, engine: TranscriptionEngineKind?, spokenLanguage: UILanguage) {
         switch failure.kind {
         case .microphonePermissionDenied:
             self.init(
@@ -226,11 +227,11 @@ struct PhasePresentation {
             self.init(title: tr("התמלול נעצר", "Transcription stopped"), detail: tr("הקישו כדי להמשיך", "Tap to continue"), systemImage: "exclamationmark.triangle", tint: .orange, action: .retry)
 
         case .engineUnavailable:
-            self.init(engineFailure: failure.engineUnavailability, engine: engine)
+            self.init(engineFailure: failure.engineUnavailability, engine: engine, spokenLanguage: spokenLanguage)
         }
     }
 
-    private init(engineFailure: EngineUnavailability?, engine: TranscriptionEngineKind?) {
+    private init(engineFailure: EngineUnavailability?, engine: TranscriptionEngineKind?, spokenLanguage: UILanguage) {
         let engineName: String
         switch engine {
         case .appleSpeech: engineName = tr("זיהוי הדיבור של אפל", "Apple’s speech recognition")
@@ -249,7 +250,7 @@ struct PhasePresentation {
             )
         case .languageNotSupportedOnDevice:
             self.init(
-                title: tr("%1 לא זמין בעברית במכשיר הזה", "%1 isn’t available in Hebrew on this device", args: ["\(engineName)"]),
+                title: tr("%1 לא זמין בשפה %2 במכשיר הזה", "%1 isn’t available in %2 on this device", args: ["\(engineName)", "\(spokenLanguage.spokenName)"]),
                 detail: tr("הקישו כדי לעבור למנוע אחר בהגדרות", "Tap to switch engines in Settings"),
                 systemImage: "globe",
                 tint: .red,
