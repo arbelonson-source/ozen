@@ -55,8 +55,14 @@ public struct BackgroundAlertPolicy: Sendable, Equatable {
         // ringtone and a phone ringing) must share it, or the classifier
         // flipping labels notifies twice. The names only match in Hebrew.
         let key = "sound-\(alert.event.cooldownKey)"
-        guard shouldNotify(key: key, appIsActive: appIsActive, now: now) else { return nil }
         let urgent = alert.event.importance == .critical
+        // A continuing critical sound repeats on screen every
+        // `defaultCooldownSeconds`; one second less here keeps that repeat
+        // from being swallowed by a clock a hair apart from the other policy.
+        let cooldown = urgent
+            ? min(cooldownSeconds, SoundEventPolicy.defaultCooldownSeconds - 1)
+            : cooldownSeconds
+        guard shouldNotify(key: key, appIsActive: appIsActive, now: now, cooldown: cooldown) else { return nil }
         return AlertNotificationContent(
             identifier: key,
             title: alert.event.name,
@@ -73,7 +79,7 @@ public struct BackgroundAlertPolicy: Sendable, Equatable {
     ) -> AlertNotificationContent? {
         guard !quietHours.isQuiet(now: now, utcOffsetSeconds: utcOffsetSeconds) else { return nil }
         let key = "keyword-\(hit.match.alertID.uuidString)"
-        guard shouldNotify(key: key, appIsActive: appIsActive, now: now) else { return nil }
+        guard shouldNotify(key: key, appIsActive: appIsActive, now: now, cooldown: cooldownSeconds) else { return nil }
         return AlertNotificationContent(
             identifier: key,
             title: tr("נאמר: %1", "Said: %1", args: ["\(AlertSuggestions.shown(hit.match.phrase, in: Localization.language))"]),
@@ -86,7 +92,7 @@ public struct BackgroundAlertPolicy: Sendable, Equatable {
         )
     }
 
-    private mutating func shouldNotify(key: String, appIsActive: Bool, now: TimeInterval) -> Bool {
+    private mutating func shouldNotify(key: String, appIsActive: Bool, now: TimeInterval, cooldown: Double) -> Bool {
         guard isEnabled, !appIsActive else { return false }
         // `now` is wall-clock time, which can go backward (an NTP sync, a
         // manual clock change). Without the `now >= last` guard, a
@@ -94,7 +100,7 @@ public struct BackgroundAlertPolicy: Sendable, Equatable {
         // "under" the cooldown — silently suppressing a genuinely new
         // alert until real time catches back up to where the clock used
         // to read.
-        if let last = lastNotified[key], now >= last, now - last < cooldownSeconds {
+        if let last = lastNotified[key], now >= last, now - last < cooldown {
             return false
         }
         lastNotified[key] = now

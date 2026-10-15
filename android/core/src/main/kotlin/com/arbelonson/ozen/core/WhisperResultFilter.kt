@@ -302,23 +302,36 @@ class WhisperResultFilter(
      * other language it can only be the filler.
      */
     fun forSpeech(languageCode: String): WhisperResultFilter {
+        val language = UILanguage.match(languageCode)
         val you = normalize("you")
-        if (UILanguage.match(languageCode) != UILanguage.English || you !in knownHallucinations) return this
-        val english = WhisperResultFilter(
+        var known = knownHallucinations
+        var ambiguous = ambiguousHallucinations
+        var prefixes = hallucinatedCreditPrefixes
+        if (language == UILanguage.English && you in known) {
+            known = known - you
+            ambiguous = ambiguous + you
+        }
+        languageLines[language]?.let { lines ->
+            known = known + lines.known.map { normalize(it) }
+            ambiguous = ambiguous + lines.ambiguous.map { normalize(it) }
+            prefixes = prefixes + lines.creditPrefixes.map { normalize(it) }
+        }
+        if (known == knownHallucinations && ambiguous == ambiguousHallucinations && prefixes == hallucinatedCreditPrefixes) return this
+        val tuned = WhisperResultFilter(
             noSpeechThreshold = noSpeechThreshold,
             logprobThreshold = logprobThreshold,
             compressionRatioThreshold = compressionRatioThreshold,
-            knownHallucinations = knownHallucinations - you,
-            ambiguousHallucinations = ambiguousHallucinations + you,
+            knownHallucinations = known,
+            ambiguousHallucinations = ambiguous,
             ambiguousNoSpeechThreshold = ambiguousNoSpeechThreshold,
             ambiguousLogprobThreshold = ambiguousLogprobThreshold,
-            hallucinatedCreditPrefixes = hallucinatedCreditPrefixes,
+            hallucinatedCreditPrefixes = prefixes,
             hallucinatedCreditLabels = hallucinatedCreditLabels,
             maximumCreditLineWords = maximumCreditLineWords,
             maximumDashCreditLineWords = maximumDashCreditLineWords,
         )
-        english.minimumPhraseVoicedChunks = minimumPhraseVoicedChunks
-        return english
+        tuned.minimumPhraseVoicedChunks = minimumPhraseVoicedChunks
+        return tuned
     }
 
     fun accepts(segment: WhisperSegmentSummary): Boolean {
@@ -434,6 +447,61 @@ class WhisperResultFilter(
             "כתוביות ע״י", "תורגם ע״י", "תרגום ע״י", "תמלול ע״י",
             "תורגם וסונכרן", "סונכרן על ידי", "סונכרן ע״י",
             "subtitles by", "subtitled by", "translated by", "transcribed by", "captions by",
+        )
+
+        private class LanguageLines(val known: Set<String>, val ambiguous: Set<String>, val creditPrefixes: List<String>)
+
+        /**
+         * What Whisper writes on silence in each language beyond Hebrew and
+         * English: the community-subtitle credit it learned from Amara.org
+         * files and the channel outros. Plain thanks are only ambiguous, since
+         * people say them.
+         */
+        private val languageLines: Map<UILanguage, LanguageLines> = mapOf(
+            UILanguage.German to LanguageLines(
+                setOf("Untertitel der Amara.org-Community", "Untertitel im Auftrag des ZDF", "Untertitel im Auftrag des ZDF für funk, 2017", "Untertitelung des ZDF"),
+                setOf("Danke", "Danke schön", "Vielen Dank", "Dankeschön", "Bis zum nächsten Mal"),
+                listOf("untertitel der amara.org-community", "untertitel der amara.org community", "untertitel im auftrag", "untertitelung des zdf", "untertitelung im auftrag"),
+            ),
+            UILanguage.French to LanguageLines(
+                setOf("Sous-titres réalisés para la communauté d'Amara.org", "Sous-titres réalisés par la communauté d'Amara.org", "Sous-titres par la communauté d'Amara.org"),
+                setOf("Merci", "Merci beaucoup", "Merci à tous"),
+                listOf("sous-titres réalisés", "sous-titres par", "sous-titrage"),
+            ),
+            UILanguage.Spanish to LanguageLines(
+                setOf("Subtítulos realizados por la comunidad de Amara.org", "Subtítulos por la comunidad de Amara.org"),
+                setOf("Gracias", "Muchas gracias", "Gracias por ver el video"),
+                listOf("subtítulos realizados por", "subtítulos por la comunidad", "subtítulos en español de"),
+            ),
+            UILanguage.Portuguese to LanguageLines(
+                setOf("Legendas pela comunidade Amara.org", "Legendas da comunidade Amara.org"),
+                setOf("Obrigado", "Obrigada", "Muito obrigado", "Muito obrigada"),
+                listOf("legendas pela comunidade", "legendas da comunidade"),
+            ),
+            UILanguage.Russian to LanguageLines(
+                setOf("Субтитры сделаны сообществом Amara.org", "Продолжение следует"),
+                setOf("Спасибо", "Спасибо большое", "Большое спасибо"),
+                listOf("субтитры сделал", "субтитры создавал", "субтитры подогнал", "субтитры добавил", "редактор субтитров"),
+            ),
+            UILanguage.Ukrainian to LanguageLines(
+                setOf("Субтитри створені спільнотою Amara.org", "Субтитри зроблені спільнотою Amara.org"),
+                setOf("Дякую", "Дуже дякую", "Дякуємо"),
+                listOf("субтитри створені", "субтитри зроблені", "субтитри від"),
+            ),
+            UILanguage.ChineseSimplified to LanguageLines(
+                setOf(
+                    "字幕由Amara.org社群提供", "字幕由Amara.org社区提供", "由Amara.org社群提供的字幕", "由Amara.org社区提供的字幕",
+                    "请不吝点赞 订阅 转发 打赏支持明镜与点点栏目", "请不吝点赞订阅转发打赏支持明镜与点点栏目",
+                    "請不吝點贊 訂閱 轉發 打賞支持明鏡與點點欄目", "請不吝點贊訂閱轉發打賞支持明鏡與點點欄目",
+                ),
+                setOf("谢谢", "谢谢你", "谢谢大家", "謝謝", "謝謝大家", "xie xie"),
+                emptyList(),
+            ),
+            UILanguage.Arabic to LanguageLines(
+                setOf("اشتركوا في القناة", "اشترك في القناة", "لا تنسوا الاشتراك في القناة", "لا تنسى الاشتراك في القناة"),
+                setOf("شكرا", "شكرا لكم", "شكرا لك", "شكرا جزيلا", "shukran"),
+                listOf("ترجمة نانسي قنقر", "ترجمة المجتمع", "ترجمة وتدقيق", "تمت الترجمة بواسطة"),
+            ),
         )
 
         val defaultCreditLabels: List<String> = listOf(
@@ -659,8 +727,14 @@ class WhisperResultFilter(
             // never match `knownHallucinations`, which is stored unpointed, and
             // would reach the screen instead of being dropped.
             val withoutNiqqud = HebrewText.stripNiqqud(HebrewText.separatingJoiners(text))
-            val stripped = StringBuilder(withoutNiqqud.length)
+            // Arabic vowel marks and the stretching tatweel: Whisper's lines
+            // come with and without them.
+            val unmarked = StringBuilder(withoutNiqqud.length)
             withoutNiqqud.codePoints().forEach {
+                if (it !in 0x064B..0x065F && it != 0x0670 && it != 0x0640) unmarked.appendCodePoint(it)
+            }
+            val stripped = StringBuilder(unmarked.length)
+            unmarked.codePoints().forEach {
                 if (!isWhisperPunctuation(it) && !isWhisperSymbol(it) && Character.getType(it) != Character.FORMAT.toInt()) {
                     stripped.appendCodePoint(it)
                 }
