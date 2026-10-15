@@ -2966,6 +2966,21 @@ struct CaptionPipelineNamingLineTests {
         #expect(pipeline.displayName(for: earlier) == "Dana")
     }
 
+    @Test("a new name on a line that opened after its voice was heard still gets that voice")
+    func newNameOnLineHeardBeforeItOpenedKeepsTheVoice() async {
+        let (pipeline, engine, audio) = await listening()
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        try? await Task.sleep(for: .milliseconds(400))
+        engine.emit(token(UUID(), "שלום", final: true))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        #expect(await eventually { pipeline.segments[0].speakerClusterID != nil })
+
+        let print = pipeline.nameSpeaker(of: pipeline.segments[0], name: "Moshe")
+
+        #expect(print == [1, 0, 0])
+        #expect(pipeline.speakerClusters.contains { $0.name == "Moshe" })
+    }
+
     @Test("a line from before a quiet break can still be named")
     func lineFromAnEarlierConversationCanBeNamed() async {
         let engine = FakeEngine()

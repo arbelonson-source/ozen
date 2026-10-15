@@ -1394,11 +1394,12 @@ public final class CaptionPipeline {
 
     private func moveLine(_ segment: TranscriptSegment, to name: String, from cluster: SpeakerCluster) -> [Float]? {
         let heard = utteranceEmbeddings[segment.id]
+        let ownVoice = heard ?? (utteranceClusterAssignments[segment.id] == cluster.id ? cluster.centroid : nil)
         let target: Int
         if let existing = clusterer.clusters.first(where: { $0.name == name }) {
             target = existing.id
-        } else if let heard {
-            target = clusterer.enrollWithoutMerging(name: name, embedding: heard)
+        } else if let ownVoice {
+            target = clusterer.enrollWithoutMerging(name: name, embedding: ownVoice)
         } else {
             return nil
         }
@@ -1409,7 +1410,7 @@ public final class CaptionPipeline {
             onCaptionsChanged?()
         }
         speakerClusters = clusterer.clusters
-        return heard
+        return ownVoice
     }
 
     /// Whether `name`, typed on this line, fixes the spelling of the name
@@ -1788,7 +1789,9 @@ public final class CaptionPipeline {
             if utteranceEmbeddings.updateValue(embedding, forKey: currentUtteranceID) == nil {
                 utteranceEmbeddingOrder.append(currentUtteranceID)
                 if utteranceEmbeddingOrder.count > Self.utteranceEmbeddingLimit {
-                    utteranceEmbeddings[utteranceEmbeddingOrder.removeFirst()] = nil
+                    let evicted = utteranceEmbeddingOrder.removeFirst()
+                    utteranceEmbeddings[evicted] = nil
+                    utteranceClusterAssignments[evicted] = nil
                 }
             }
             // A line the user moved to another person stays there.
