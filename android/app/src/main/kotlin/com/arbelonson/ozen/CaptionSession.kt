@@ -62,6 +62,7 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.VocabularyHints
 import com.arbelonson.ozen.core.WebSocketConnector
+import com.arbelonson.ozen.core.PrivatePath
 import com.arbelonson.ozen.core.PrivateRoute
 import android.net.ConnectivityManager
 import android.net.Network
@@ -99,7 +100,7 @@ class CaptionSession(
     problemAudioFolder: File = File(context.filesDir, PROBLEM_AUDIO_FOLDER),
 ) : DiagnosticsSource, SpeakerBook, PhoneBackup {
     private val scope = MainScope()
-    private val connector = WebSocketConnector(privateRoute = { homeNetwork(it)?.socketFactory }, privateAddresses = { homeNetwork(it)?.getAllByName(it)?.toList() })
+    private val connector = WebSocketConnector(privateRoute = { host -> homeNetwork(host)?.let { network -> PrivatePath(network.socketFactory) { network.getAllByName(it).toList() } } })
     private fun homeNetwork(host: String): Network? {
         if (!HomeServer.isPrivate(host)) return null
         val manager = context.getSystemService(ConnectivityManager::class.java) ?: return null

@@ -28,6 +28,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
+/** One network chosen once for a connection: its sockets and the lookup that goes through it. */
+class PrivatePath(val sockets: SocketFactory, val resolve: (String) -> List<InetAddress>? = { null })
+
 /**
  * Opens WebSocket connections (RFC 6455) for the home computer and the
  * cloud services' live streams, the way the iPhone's URLSession socket
@@ -45,8 +48,7 @@ class WebSocketConnector(
     private val tlsSockets: SSLSocketFactory = SSLSocketFactory.getDefault() as SSLSocketFactory,
     private val connectTimeoutMillis: Int = 15_000,
     private val handshakeTimeoutMillis: Int = 10_000,
-    private val privateRoute: (String) -> SocketFactory? = { null },
-    private val privateAddresses: (String) -> List<InetAddress>? = { null },
+    private val privateRoute: (String) -> PrivatePath? = { null },
 ) : HomeServerConnecting, CloudSocketConnecting {
     override suspend fun open(url: URI): HomeServerSocket = open(url, emptyMap())
 
@@ -68,9 +70,9 @@ class WebSocketConnector(
         val secure = scheme == "wss"
         val port = if (url.port > 0) url.port else if (secure) 443 else 80
         val routed = privateRoute(host)
-        val addresses = if (routed == null) null else privateAddresses(host)?.takeIf { it.isNotEmpty() }
+        val addresses = routed?.resolve?.invoke(host)?.takeIf { it.isNotEmpty() }
         val targets = addresses?.map { InetSocketAddress(it, port) } ?: listOf(InetSocketAddress(host, port))
-        val plain = connectToAny(routed ?: plainSockets, targets, created)
+        val plain = connectToAny(routed?.sockets ?: plainSockets, targets, created)
         try {
             plain.tcpNoDelay = true
             plain.soTimeout = handshakeTimeoutMillis

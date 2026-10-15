@@ -478,7 +478,7 @@ class WebSocketConnectorRouteTest {
     fun `a home-network address uses the private route`() {
         val route = RecordingSockets()
         val default = RecordingSockets()
-        assertFailsWith<IOException> { WebSocketConnector(plainSockets = default, privateRoute = { route }).connect(URI("ws://192.168.1.20:8765")) }
+        assertFailsWith<IOException> { WebSocketConnector(plainSockets = default, privateRoute = { PrivatePath(route) }).connect(URI("ws://192.168.1.20:8765")) }
         assertEquals(1, route.connected.size)
         assertEquals(8765, route.connected.single().port)
         assertTrue(default.connected.isEmpty())
@@ -511,8 +511,7 @@ class WebSocketConnectorRouteTest {
         val asked = CopyOnWriteArrayList<String>()
         assertFailsWith<IOException> {
             WebSocketConnector(
-                privateRoute = { route },
-                privateAddresses = { host -> asked += host; listOf(resolved) },
+                privateRoute = { PrivatePath(route) { host -> asked += host; listOf(resolved) } },
             ).connect(URI("ws://grandma-pc.invalid:8765"))
         }
         assertEquals(listOf("grandma-pc.invalid"), asked)
@@ -525,8 +524,26 @@ class WebSocketConnectorRouteTest {
         val a = java.net.InetAddress.getByAddress(byteArrayOf(10, 0, 0, 7))
         val b = java.net.InetAddress.getByAddress(byteArrayOf(10, 0, 0, 8))
         assertFailsWith<IOException> {
-            WebSocketConnector(privateRoute = { route }, privateAddresses = { listOf(a, b) }).connect(URI("ws://grandma-pc.invalid"))
+            WebSocketConnector(privateRoute = { PrivatePath(route) { listOf(a, b) } }).connect(URI("ws://grandma-pc.invalid"))
         }
         assertEquals(listOf("10.0.0.7", "10.0.0.8"), route.connected.map { it.address.hostAddress })
+    }
+
+    @Test
+    fun `the network is chosen once and its sockets and lookup are used together`() {
+        val first = RecordingSockets()
+        val second = RecordingSockets()
+        val a = java.net.InetAddress.getByAddress(byteArrayOf(10, 0, 0, 7))
+        val b = java.net.InetAddress.getByAddress(byteArrayOf(10, 0, 0, 8))
+        var chosen = 0
+        assertFailsWith<IOException> {
+            WebSocketConnector(privateRoute = {
+                chosen++
+                if (chosen == 1) PrivatePath(first) { listOf(a) } else PrivatePath(second) { listOf(b) }
+            }).connect(URI("ws://grandma-pc.invalid"))
+        }
+        assertEquals(1, chosen)
+        assertEquals(listOf("10.0.0.7"), first.connected.map { it.address.hostAddress })
+        assertTrue(second.connected.isEmpty())
     }
 }
