@@ -47,6 +47,7 @@ public final class LiveCaptionViewModel {
     /// Alerts whose word went out as a notification since the app last
     /// left the screen.
     @ObservationIgnored private var keywordsNotifiedWhileAway: Set<UUID> = []
+    @ObservationIgnored private var postedAlertNotificationIDs: Set<String> = []
     /// Kept here, not in the caption screen: switching the app's language
     /// rebuilds that screen, and a flag of its own would take the next
     /// Siri request (or nothing at all) for the launch again, restarting
@@ -73,6 +74,9 @@ public final class LiveCaptionViewModel {
     private let postNotification: ((AlertNotificationContent) -> Void)?
     /// Removes a delivered notification by its identifier.
     private let withdrawNotification: ((String) -> Void)?
+    /// Removes every delivered sound and word alert, also ones a previous
+    /// run of the app posted.
+    private let withdrawDeliveredAlerts: (() -> Void)?
     /// Whether iOS shows Ozen's notifications (nil: never asked), looked
     /// at as the app leaves the screen.
     private let notificationsAllowed: (@MainActor () async -> Bool?)?
@@ -183,6 +187,7 @@ public final class LiveCaptionViewModel {
             synthesizer: SpeechSynthesizer(),
             postNotification: { AlertNotifier.shared.post($0) },
             withdrawNotification: { AlertNotifier.shared.withdraw(identifier: $0) },
+            withdrawDeliveredAlerts: { AlertNotifier.shared.withdrawDeliveredAlerts() },
             notificationsAllowed: { await AlertNotifier.shared.isAllowed() },
             phoneCalls: PhoneCallMonitor(),
             lockScreen: LockScreenCaptionsActivity(),
@@ -202,6 +207,7 @@ public final class LiveCaptionViewModel {
         synthesizer: (any SpeechSynthesizing)? = nil,
         postNotification: ((AlertNotificationContent) -> Void)? = nil,
         withdrawNotification: ((String) -> Void)? = nil,
+        withdrawDeliveredAlerts: (() -> Void)? = nil,
         notificationsAllowed: (@MainActor () async -> Bool?)? = nil,
         phoneCalls: PhoneCallMonitor? = nil,
         reclaimAudioSession: (@MainActor () async -> Bool)? = nil,
@@ -222,6 +228,7 @@ public final class LiveCaptionViewModel {
         self.synthesizer = synthesizer
         self.postNotification = postNotification
         self.withdrawNotification = withdrawNotification
+        self.withdrawDeliveredAlerts = withdrawDeliveredAlerts
         self.notificationsAllowed = notificationsAllowed
         self.phoneCalls = phoneCalls
         if let reclaimAudioSession {
@@ -412,11 +419,15 @@ public final class LiveCaptionViewModel {
     public func sceneActivityChanged(isActive: Bool) {
         if isActive != isAppActive {
             note(isActive ? "app back on screen" : "app left the screen (phase \(pipeline.phase.isListening ? "listening" : "not listening"))")
+            if !isActive { journal?.flush() }
         }
         isAppActive = isActive
         let now = Date().timeIntervalSince1970
         if isActive {
             keywordsNotifiedWhileAway.removeAll()
+            for identifier in postedAlertNotificationIDs { withdrawNotification?(identifier) }
+            postedAlertNotificationIDs.removeAll()
+            withdrawDeliveredAlerts?()
             awayCatchUp.screenReturned(at: now)
             // Coming back from installing or removing the Hebrew voice in
             // iOS Settings: without this, hasHebrewVoice stays whatever it
@@ -643,6 +654,7 @@ public final class LiveCaptionViewModel {
             for: alert, appIsActive: isAppActive, now: now, utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: now))
         ) else { return }
         postNotification?(content)
+        postedAlertNotificationIDs.insert(content.identifier)
     }
 
     private func alertRaised(keywords hits: [KeywordHit], in segment: TranscriptSegment) {
@@ -653,6 +665,7 @@ public final class LiveCaptionViewModel {
                 for: hit, lineText: segment.text, appIsActive: isAppActive, now: now, utcOffsetSeconds: utcOffsetSeconds
             ) {
                 postNotification?(content)
+                postedAlertNotificationIDs.insert(content.identifier)
                 if !isAppActive, !notificationsBlocked { keywordsNotifiedWhileAway.insert(hit.match.alertID) }
             }
             // Heard while the app was away, its word a notification since
@@ -855,6 +868,25 @@ public final class LiveCaptionViewModel {
     public func start() async {
         await pipeline.start(settings: settings)
         historySessionDidChangePhase()
+    }
+
+    /// What a tap on a model row does. Returns true when nothing happened
+    /// yet because the choice needs her confirmation first.
+    public func modelRowTapped(_ variant: String, isInstalled: Bool) async -> Bool {
+        if !isInstalled, settings.whisperModelVariant != variant, isListening { return true }
+        await chooseModel(variant)
+        return false
+    }
+
+    public func chooseModel(_ variant: String) async {
+        if settings.whisperModelVariant != variant {
+            await setWhisperModel(variant)
+        } else if let kind = pipeline.phase.failure?.engineUnavailability?.kind,
+                  kind == .modelDownloadFailed || kind == .waitingForWiFi {
+            await retry()
+        } else if pipeline.phase == .idle {
+            await start()
+        }
     }
 
     public func retry() async {

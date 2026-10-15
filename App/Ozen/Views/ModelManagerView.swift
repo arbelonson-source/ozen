@@ -71,7 +71,7 @@ struct ModelManagerView: View {
             presenting: pendingSwitch
         ) { option in
             Button(tr("להוריד ולעבור", "Download and switch")) {
-                Task { await viewModel.setWhisperModel(option.variant) }
+                Task { await viewModel.chooseModel(option.variant) }
             }
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
         } message: { option in
@@ -124,10 +124,8 @@ struct ModelManagerView: View {
             && StorageSpaceGate.shortfallMegabytes(downloadMegabytes: option.installMegabytes, availableBytes: freeBytes) != nil
 
         return Button {
-            if !isInstalled, !isSelected, viewModel.isListening {
-                pendingSwitch = option
-            } else {
-                Task { await viewModel.setWhisperModel(option.variant) }
+            Task {
+                if await viewModel.modelRowTapped(option.variant, isInstalled: isInstalled) { pendingSwitch = option }
             }
         } label: {
             VStack(alignment: .leading, spacing: 6) {

@@ -13,6 +13,18 @@ struct BackgroundAlertPolicyTests {
         KeywordHit(segmentID: UUID(), match: KeywordMatch(alertID: alertID, phrase: phrase, matchedText: phrase, wordIndex: 0), timestamp: 0)
     }
 
+    @Test("only sound and word alerts are picked out of the delivered notifications")
+    func alertIdentifiersOnly() {
+        var policy = BackgroundAlertPolicy()
+        let bell = policy.notification(for: sound("door_bell"), appIsActive: false, now: 0)!
+        let word = policy.notification(for: hit("Dana"), lineText: "Dana come", appIsActive: false, now: 0)!
+        #expect(AlertNotificationContent.isAlertIdentifier(bell.identifier))
+        #expect(AlertNotificationContent.isAlertIdentifier(word.identifier))
+        #expect(!AlertNotificationContent.isAlertIdentifier("test-alert"))
+        #expect(!AlertNotificationContent.isAlertIdentifier("captions-ended"))
+        #expect(!AlertNotificationContent.isAlertIdentifier(""))
+    }
+
     @Test("nothing is posted while the app is on screen: the banner is already there")
     func foregroundSilent() {
         var policy = BackgroundAlertPolicy()
@@ -164,5 +176,23 @@ struct BackgroundAlertPolicyTests {
         #expect(!BackgroundAlertPolicy.shouldAskPermission(alertsWhenScreenOff: true, allowed: false))
         #expect(!BackgroundAlertPolicy.shouldAskPermission(alertsWhenScreenOff: true, allowed: true))
         #expect(!BackgroundAlertPolicy.shouldAskPermission(alertsWhenScreenOff: false, allowed: nil))
+    }
+}
+
+@Suite("Return sweep")
+struct ReturnSweepTests {
+    @Test("a sweep started on return leaves an alert delivered after it started")
+    func newAlertSurvivesSweep() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let delivered: [(identifier: String, date: Date)] = [
+            ("sound-door_bell", start.addingTimeInterval(-60)),
+            ("keyword-1", start),
+            ("sound-door_bell", start.addingTimeInterval(0.5)),
+            ("captions-ended", start.addingTimeInterval(-60)),
+        ]
+        let ids = AlertNotificationContent.identifiersToWithdraw(delivered, startedAt: start)
+        #expect(ids == ["sound-door_bell", "keyword-1"])
+        let newer: [(identifier: String, date: Date)] = [("sound-door_bell", start.addingTimeInterval(0.5))]
+        #expect(AlertNotificationContent.identifiersToWithdraw(newer, startedAt: start).isEmpty)
     }
 }
