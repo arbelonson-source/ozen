@@ -415,8 +415,19 @@ class OnDemandTranscriber:
                 log.info("models loaded and warmed in %.1f s", time.monotonic() - started)
                 return transcriber
 
-            self._loading = asyncio.ensure_future(asyncio.to_thread(load))
+            loading = asyncio.ensure_future(asyncio.to_thread(load))
+            loading.add_done_callback(self._load_finished)
+            self._loading = loading
         return self._loading
+
+    def _load_finished(self, loading):
+        if self._loading is not loading:
+            return
+        if loading.cancelled() or loading.exception() is not None:
+            self._loading = None
+            return
+        self._loaded, self._loading = loading.result(), None
+        self.last_used = self._clock()
 
     async def loaded(self):
         if self._loaded is not None:

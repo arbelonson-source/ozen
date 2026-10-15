@@ -1872,6 +1872,49 @@ class HandshakeLeaks(unittest.TestCase):
         self.run_handle(ws, models)
         self.assertEqual(models.connections, 0)
 
+    def test_a_load_nobody_claims_is_still_unloaded_when_idle(self):
+        release = threading.Event()
+        clock = [1000.0]
+
+        def slow():
+            release.wait(5)
+            return LoadedGPU()
+
+        models = S.OnDemandTranscriber(slow, "turbo", 5, 600, clock=lambda: clock[0])
+        ws = PhoneSocket({"type": "hello", "token": "example-code-123", "purpose": "check"},
+                         [json.dumps({"type": "end"})])
+
+        async def scenario():
+            await S.handle(ws, models, "example-code-123", 1.0)
+            release.set()
+            for _ in range(200):
+                if models._loading is None or models._loading.done():
+                    break
+                await asyncio.sleep(0.01)
+            await asyncio.sleep(0.05)
+            clock[0] += 601
+            return models.unload_if_idle(), models._loading, models._loaded
+
+        with self.assertLogs(S.log, "INFO"):
+            unloaded, loading, loaded = asyncio.run(asyncio.wait_for(scenario(), 10))
+        self.assertTrue(unloaded)
+        self.assertIsNone(loading)
+        self.assertIsNone(loaded)
+
+    def test_a_word_list_update_with_no_terms_clears_the_words(self):
+        made = []
+
+        class Recorded(S.Session):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                made.append(self)
+
+        ws = PhoneSocket({"type": "hello", "token": "example-code-123", "vocabulary": ["Noa"]},
+                         [json.dumps({"type": "vocabulary", "terms": None}), json.dumps({"type": "end"})])
+        with mock.patch.object(S, "Session", Recorded):
+            self.run_handle(ws, self.models())
+        self.assertEqual(made[0].vocabulary, [])
+
     def test_models_that_fail_to_load_leave_no_connection(self):
         def broken():
             raise RuntimeError("card full")
