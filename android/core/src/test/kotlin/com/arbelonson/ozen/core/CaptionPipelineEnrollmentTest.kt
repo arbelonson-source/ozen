@@ -9,6 +9,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
@@ -285,5 +286,22 @@ class CaptionPipelineEnrollmentTest {
         assertTrue(eventually { pipeline.segments.size == 1 })
         assertEquals("ממשי", pipeline.segments.firstOrNull()?.text)
         assertEquals(2, pipeline.stats.tokensReceived)
+    }
+
+    @Test
+    fun `a microphone that fails during a voice sample gives a short sample and captions come back`() = runTest {
+        val (pipeline, audio, _) = makePipeline()
+        pipeline.start(AppSettings.default)
+        audio.captureFlow = {
+            audio.captureFlow = null
+            flow { emit(FloatArray(800) { 0.1f }); throw IllegalStateException("busy") }
+        }
+
+        val samples = pipeline.captureEnrollmentSamples(1.0)
+
+        assertEquals(800, samples.size)
+        assertEquals(false, pipeline.isRecordingVoice)
+        assertTrue(eventually { pipeline.phase == PipelinePhase.Listening })
+        assertTrue(audio.calls.contains("stopCapture"))
     }
 }

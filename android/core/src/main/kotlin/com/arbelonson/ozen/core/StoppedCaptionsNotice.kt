@@ -41,6 +41,9 @@ class StoppedCaptionsNotice {
      */
     private var told = false
 
+    /** A fresh instance may follow a process Android killed after it posted. */
+    private var firstUpdate = true
+
     /**
      * What to do with the phone's notifications given the current [cause].
      * Nothing is posted while the app is on screen (the status already
@@ -52,12 +55,14 @@ class StoppedCaptionsNotice {
      * the phone away again doesn't post it a second time.
      */
     fun update(cause: Cause?, appIsActive: Boolean, isEnabled: Boolean): Update? {
+        val first = firstUpdate
+        firstUpdate = false
         if (cause == null) {
             told = false
-            return withdrawIfPosted()
+            return withdrawIfPosted(sweep = first)
         }
         if (appIsActive) {
-            return withdrawIfPosted()
+            return withdrawIfPosted(sweep = first)
         }
         if (!isEnabled || told) return null
         posted = true
@@ -65,8 +70,8 @@ class StoppedCaptionsNotice {
         return Update.Post(content(cause))
     }
 
-    private fun withdrawIfPosted(): Update? {
-        if (!posted) return null
+    private fun withdrawIfPosted(sweep: Boolean): Update? {
+        if (!posted && !sweep) return null
         posted = false
         return Update.Withdraw(IDENTIFIER)
     }

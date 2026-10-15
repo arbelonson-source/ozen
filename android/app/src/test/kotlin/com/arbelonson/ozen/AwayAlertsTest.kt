@@ -1,11 +1,13 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.SoundAlert
+import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.SoundEventCatalog
 import com.arbelonson.ozen.core.UILanguage
 import java.util.UUID
@@ -60,5 +62,39 @@ class AwayAlertsTest {
             val off = AppSettings.default.also { it.notifyWhenInBackground = false }
             assertNull(AwayAlerts().forSound(sound("smoke_detector"), appIsActive = false, off, now, 0))
         }
+    }
+
+    @Test
+    fun `the phone's own buzz for an away alert matches what the channel plays`() {
+        val smoke = AwayAlerts().forSound(sound("smoke_detector"), appIsActive = false, AppSettings.default, now, 0)!!
+        val door = AwayAlerts().forSound(sound("door_bell"), appIsActive = false, AppSettings.default, now, 0)!!
+        val word = AwayAlerts().forWords(listOf(hit(UUID.randomUUID())), "סבתא", appIsActive = false, AppSettings.default, now, 0).first()
+        assertEquals(AlertVibration.pattern(SoundEvent.Importance.Critical), AwayAlerts.vibrationFor(smoke))
+        assertEquals(AlertVibration.keyword, AwayAlerts.vibrationFor(door))
+        assertEquals(AlertVibration.keyword, AwayAlerts.vibrationFor(word))
+    }
+
+    @Test
+    fun `the buzz to ignore is what the channel really plays, none when the user turned vibration off`() {
+        val asked = AlertVibration.keyword
+        assertNull(AlertNotifier.channelBuzz(shouldVibrate = false, pattern = asked.waveform().first, asked))
+        assertEquals(asked.waveform().first.toList(), AlertNotifier.channelBuzz(true, asked.waveform().first, asked)?.waveform()?.first?.toList())
+        val older = longArrayOf(0, 500, 200, 500)
+        val played = AlertNotifier.channelBuzz(true, older, asked)
+        assertEquals(older.toList(), played?.waveform()?.first?.toList())
+        assertEquals(1.2, played?.totalSeconds ?: 0.0, 0.001)
+        assertEquals(asked, AlertNotifier.channelBuzz(true, null, asked))
+    }
+
+    @Test
+    fun `no buzz is expected in do not disturb or with the ringer silent, unless the channel bypasses it`() {
+        val all = android.app.NotificationManager.INTERRUPTION_FILTER_ALL
+        val none = android.app.NotificationManager.INTERRUPTION_FILTER_NONE
+        val unknown = android.app.NotificationManager.INTERRUPTION_FILTER_UNKNOWN
+        assertEquals(false, AlertNotifier.buzzMuted(false, all, false))
+        assertEquals(false, AlertNotifier.buzzMuted(false, unknown, false))
+        assertEquals(true, AlertNotifier.buzzMuted(false, none, false))
+        assertEquals(true, AlertNotifier.buzzMuted(false, all, true))
+        assertEquals(false, AlertNotifier.buzzMuted(true, none, true))
     }
 }
