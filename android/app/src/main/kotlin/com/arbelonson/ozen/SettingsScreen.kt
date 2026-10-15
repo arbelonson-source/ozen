@@ -15,12 +15,67 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FormatBold
+import androidx.compose.material.icons.rounded.HelpOutline
+import androidx.compose.material.icons.rounded.Hearing
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.LightMode
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.Pin
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.RecordVoiceOver
+import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.Spellcheck
+import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.arbelonson.ozen.ui.Chevron
+import com.arbelonson.ozen.ui.OzenSpacing
+import com.arbelonson.ozen.ui.OzenSlider
+import com.arbelonson.ozen.ui.OzenTopBar
+import com.arbelonson.ozen.ui.PrimaryButton
+import com.arbelonson.ozen.ui.GroupFootnote
+import com.arbelonson.ozen.ui.SettingRow
+import com.arbelonson.ozen.ui.SettingSwitchRow
+import com.arbelonson.ozen.ui.SettingsGroup
+import com.arbelonson.ozen.ui.TonalButton
+import com.arbelonson.ozen.ui.TrailingValue
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -196,53 +251,45 @@ fun SettingsScreen(
             SettingsPage.Enrollment -> SpeakerEnrollmentScreen(speakers, onClose = { showingEnrollment = false })
             SettingsPage.Main -> {
                 BackHandler(onBack = close)
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .windowInsetsPadding(WindowInsets.safeDrawing)
-                            .verticalScroll(scroll)
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        ScreenTitle(tr("הגדרות", "Settings")) {
-                            TextButton(onClick = close) { Text(tr("סגירה", "Close")) }
-                        }
-                        DisplaySection(settings, current.display, current.engine)
-                        AlertsSection(current.keywordAlerts.count { it.isEnabled }, listed = current.keywordAlerts.isNotEmpty(), onOpen = { showingImportantWords = true }, sounds = current.soundAlerts, onSounds = { showingSounds = true })
-                        AwayAlertsRow(current.notifyWhenInBackground) { on -> settings.change { it.notifyWhenInBackground = on } }
-                        AnimatedVisibility(current.notifyWhenInBackground) {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { QuietHoursRows(current.quietHours) { hours -> settings.change { it.quietHours = hours } } }
-                        }
-                        // The iPhone's Alerts footer, less the way to its camera flash.
-                        Footnote(tr("רטט והדגשה כשנאמרת מילה חשובה; כרזה כשנשמע פעמון דלת, טלפון, אזעקה ועוד. כשהטלפון בכיס או נעול, אותן התראות מגיעות כהודעה בטלפון, וגם הודעה אם הכתוביות נעצרו ולא חזרו לבד.", "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, and more are heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own."))
-                        SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak, voiceNotice)
-                        SpokenLanguageSection(current.spokenLanguage, engineSettings::chooseSpokenLanguage)
-                        LanguageSection(current.appLanguage, onAppLanguage)
-                        EngineSection(engineSettings, current)
-                        if (current.engine == TranscriptionEngineKind.WhisperKit || current.engine == TranscriptionEngineKind.AppleSpeech) {
-                            SwitchRow(tr("להוריד מודלים גם בחבילת הגלישה", "Download models on cellular data too"), current.allowCellularModelDownload, onChange = onCellularDownloads)
-                        }
-                        AnimatedVisibility(current.engine == TranscriptionEngineKind.Cloud) {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { CloudSection(engineSettings, current, cloudKeyDraft) }
-                        }
-                        AnimatedVisibility(current.engine == TranscriptionEngineKind.HomeServer) {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { HomeComputerSection(engineSettings, current, addressDraft, codeDraft, backup, scrollToBackup, onGuide = { showingGuide = true }) }
-                        }
-                        WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
-                        SavedSpeakersSection(current.speakerProfiles, speakers, onAdd = { showingEnrollment = true })
-                        BehaviourSection(
-                            current.hapticOnSpeechResume,
-                            onBuzz = { on -> settings.change { it.hapticOnSpeechResume = on } },
-                            current.speakerSimilarityThreshold,
-                            onSeparation = speakers::setSpeakerSeparation,
-                        )
-                        SectionHeader(tr("תחזוקה", "Maintenance"))
-                        DiagnosticsRow(onOpen = { showingDiagnostics = true })
-                        WalkthroughAgainRow(onShowWalkthrough)
-                        ClearCaptionsRow(current.saveHistory, historySaveFailing, onClearCaptions)
-                        AboutSection(onSupport = { showingSupport = true })
+                SettingsPageFrame(tr("הגדרות", "Settings"), scroll = scroll, onClose = close, closeLabel = tr("סגירה", "Close")) {
+                    DisplaySection(settings, current.display, current.engine)
+                    AlertsSection(
+                        current.keywordAlerts.count { it.isEnabled },
+                        listed = current.keywordAlerts.isNotEmpty(),
+                        onOpen = { showingImportantWords = true },
+                        sounds = current.soundAlerts,
+                        onSounds = { showingSounds = true },
+                        notifyInBackground = current.notifyWhenInBackground,
+                        onNotifyInBackground = { on -> settings.change { it.notifyWhenInBackground = on } },
+                        quietHours = current.quietHours,
+                        onQuietHours = { hours -> settings.change { it.quietHours = hours } },
+                    )
+                    SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak, voiceNotice)
+                    SpokenLanguageSection(current.spokenLanguage, engineSettings::chooseSpokenLanguage)
+                    LanguageSection(current.appLanguage, onAppLanguage)
+                    EngineSection(engineSettings, current, onCellularDownloads)
+                    AnimatedVisibility(current.engine == TranscriptionEngineKind.Cloud) {
+                        Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) { CloudSection(engineSettings, current, cloudKeyDraft) }
                     }
+                    AnimatedVisibility(current.engine == TranscriptionEngineKind.HomeServer) {
+                        Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) { HomeComputerSection(engineSettings, current, addressDraft, codeDraft, backup, scrollToBackup, onGuide = { showingGuide = true }) }
+                    }
+                    WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
+                    SavedSpeakersSection(current.speakerProfiles, speakers, onAdd = { showingEnrollment = true })
+                    BehaviourSection(
+                        current.hapticOnSpeechResume,
+                        onBuzz = { on -> settings.change { it.hapticOnSpeechResume = on } },
+                        current.speakerSimilarityThreshold,
+                        onSeparation = speakers::setSpeakerSeparation,
+                    )
+                    MaintenanceSection(
+                        onDiagnostics = { showingDiagnostics = true },
+                        onWalkthrough = onShowWalkthrough,
+                        saving = current.saveHistory,
+                        saveFailing = historySaveFailing,
+                        onClear = onClearCaptions,
+                    )
+                    AboutSection(onSupport = { showingSupport = true })
                 }
             }
         }
@@ -263,104 +310,133 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
     var size by remember(display.fontSize) { mutableFloatStateOf(display.fontSize.toFloat()) }
     val sizeLabel = tr("גודל טקסט", "Text size")
     val look = CaptionTheme.of(display.theme, isSystemInDarkTheme(), phoneAsksForMoreContrast())
-    Row(modifier = Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
-        Text(sizeLabel, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text("${size.roundToInt()}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val lockScreenBlocked = lockScreenNotificationsBlocked()
+    SettingsGroup {
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(modifier = Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
+                    Text(sizeLabel, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Text(
+                        "${size.roundToInt()}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.background(MaterialTheme.colorScheme.secondaryContainer, CircleShape).padding(horizontal = 12.dp, vertical = 4.dp),
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("A", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clearAndSetSemantics {})
+                    OzenSlider(
+                        value = size,
+                        onValueChange = { size = it },
+                        onValueChangeFinished = { settings.change { it.display = it.display.copy(fontSize = size.roundToInt().toDouble()) } },
+                        valueRange = DisplayPreferences.minimumFontSize.toFloat()..DisplayPreferences.maximumFontSize.toFloat(),
+                        steps = ((DisplayPreferences.maximumFontSize - DisplayPreferences.minimumFontSize) / 2).toInt() - 1,
+                        modifier = Modifier.weight(1f).semantics {
+                            contentDescription = sizeLabel
+                            stateDescription = "${size.roundToInt()}"
+                        },
+                    )
+                    Text("A", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clearAndSetSemantics {})
+                }
+                if (size.roundToInt() != DisplayPreferences.default.fontSize.roundToInt()) {
+                    TextButton(
+                        onClick = { settings.change { it.display = it.display.copy(fontSize = DisplayPreferences.default.fontSize) } },
+                    ) { Text(tr("חזרה לגודל הרגיל", "Back to the usual size")) }
+                }
+            }
+        }
+        item {
+            Text(
+                captionText(
+                    tr("שלום סבתא, נגיע בשש עם שלושה ילדים.", "Hello grandma, we’ll arrive at six with three kids."),
+                    display.emphasizeNumbers,
+                    look.numberText,
+                ),
+                color = look.text,
+                fontSize = size.sp,
+                lineHeight = (size * 1.25f).sp,
+                fontWeight = if (display.boldText) FontWeight.Bold else FontWeight.Medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .background(look.background, MaterialTheme.shapes.medium)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
+                    .padding(16.dp),
+            )
+        }
     }
-    Slider(
-        value = size,
-        onValueChange = { size = it },
-        onValueChangeFinished = { settings.change { it.display = it.display.copy(fontSize = size.roundToInt().toDouble()) } },
-        valueRange = DisplayPreferences.minimumFontSize.toFloat()..DisplayPreferences.maximumFontSize.toFloat(),
-        steps = ((DisplayPreferences.maximumFontSize - DisplayPreferences.minimumFontSize) / 2).toInt() - 1,
-        modifier = Modifier.semantics {
-            contentDescription = sizeLabel
-            stateDescription = "${size.roundToInt()}"
-        },
-    )
-    if (size.roundToInt() != DisplayPreferences.default.fontSize.roundToInt()) {
-        TextButton(
-            onClick = { settings.change { it.display = it.display.copy(fontSize = DisplayPreferences.default.fontSize) } },
-        ) { Text(tr("חזרה לגודל הרגיל", "Back to the usual size")) }
-    }
-    Text(
-        captionText(
-            tr("שלום סבתא, נגיע בשש עם שלושה ילדים.", "Hello grandma, we’ll arrive at six with three kids."),
-            display.emphasizeNumbers,
-            look.numberText,
-        ),
-        color = look.text,
-        fontSize = size.sp,
-        lineHeight = (size * 1.25f).sp,
-        fontWeight = if (display.boldText) FontWeight.Bold else FontWeight.Medium,
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(look.background, RoundedCornerShape(10.dp))
-            .padding(12.dp),
-    )
-    Text(tr("צבעים", "Colors"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 8.dp))
-    Column(Modifier.selectableGroup()) {
+    SectionHeader(tr("צבעים", "Colors"))
+    SettingsGroup {
         for (theme in DisplayPreferences.Theme.entries) {
-            ChoiceRow(CaptionTheme.name(theme), summary = null, selected = display.theme == theme) {
-                settings.change { it.display = it.display.copy(theme = theme) }
+            item {
+                ChoiceRow(CaptionTheme.name(theme), summary = null, selected = display.theme == theme) {
+                    settings.change { it.display = it.display.copy(theme = theme) }
+                }
             }
         }
     }
-    SwitchRow(tr("טקסט מודגש", "Bold text"), display.boldText) { on -> settings.change { it.display = it.display.copy(boldText = on) } }
-    SwitchRow(tr("להציג שמות דוברים", "Show speaker names"), display.showSpeakerNames) { on ->
-        settings.change { it.display = it.display.copy(showSpeakerNames = on) }
-    }
-    SwitchRow(tr("המסך לא נכבה בזמן האזנה", "Screen doesn’t turn off while listening"), display.keepScreenAwake) { on ->
-        settings.change { it.display = it.display.copy(keepScreenAwake = on) }
-    }
-    SwitchRow(tr("להסתיר את הכפתורים בזמן האזנה", "Hide the buttons while captions are running"), display.autoHideControls) { on ->
-        settings.change { it.display = it.display.copy(autoHideControls = on) }
-    }
-    SwitchRow(
-        tr("סימן שאלה ליד שורות שהמנוע לא בטוח בהן, ונקודות מתחת למילים שבספק", "Question mark next to lines the engine isn’t sure about, and dots under the doubtful words"),
-        display.markUncertainLines,
-    ) { on -> settings.change { it.display = it.display.copy(markUncertainLines = on) } }
-    SwitchRow(tr("TalkBack מקריא שורות חדשות", "TalkBack reads new lines aloud"), display.announceNewLines) { on ->
-        settings.change { it.display = it.display.copy(announceNewLines = on) }
+    Spacer(Modifier.height(OzenSpacing.Unit))
+    SettingsGroup(dividerInset = 56.dp) {
+        item {
+            SettingSwitchRow(tr("טקסט מודגש", "Bold text"), display.boldText, { on -> settings.change { it.display = it.display.copy(boldText = on) } }, icon = Icons.Rounded.FormatBold)
+        }
+        item {
+            SettingSwitchRow(tr("להציג שמות דוברים", "Show speaker names"), display.showSpeakerNames, { on -> settings.change { it.display = it.display.copy(showSpeakerNames = on) } }, icon = Icons.Rounded.RecordVoiceOver)
+        }
+        item {
+            SettingSwitchRow(tr("המסך לא נכבה בזמן האזנה", "Screen doesn’t turn off while listening"), display.keepScreenAwake, { on -> settings.change { it.display = it.display.copy(keepScreenAwake = on) } }, icon = Icons.Rounded.LightMode)
+        }
+        item {
+            SettingSwitchRow(tr("להסתיר את הכפתורים בזמן האזנה", "Hide the buttons while captions are running"), display.autoHideControls, { on -> settings.change { it.display = it.display.copy(autoHideControls = on) } }, icon = Icons.Rounded.VisibilityOff)
+        }
+        item {
+            SettingSwitchRow(
+                tr("סימן שאלה ליד שורות שהמנוע לא בטוח בהן, ונקודות מתחת למילים שבספק", "Question mark next to lines the engine isn’t sure about, and dots under the doubtful words"),
+                display.markUncertainLines,
+                { on -> settings.change { it.display = it.display.copy(markUncertainLines = on) } },
+                icon = Icons.Rounded.HelpOutline,
+            )
+        }
+        item {
+            SettingSwitchRow(tr("TalkBack מקריא שורות חדשות", "TalkBack reads new lines aloud"), display.announceNewLines, { on -> settings.change { it.display = it.display.copy(announceNewLines = on) } }, icon = Icons.AutoMirrored.Rounded.VolumeUp)
+        }
+        item {
+            SettingSwitchRow(tr("מספרים בולטים (שעות, כמויות, טלפונים)", "Bold numbers (times, amounts, phone numbers)"), display.emphasizeNumbers, { on -> settings.change { it.display = it.display.copy(emphasizeNumbers = on) } }, icon = Icons.Rounded.Pin)
+        }
+        item {
+            SettingSwitchRow(tr("כתוביות גם במסך הנעילה", "Captions on the lock screen too"), display.lockScreenCaptions, { on -> settings.change { it.display = it.display.copy(lockScreenCaptions = on) } }, icon = Icons.Rounded.Lock)
+        }
+        if (display.lockScreenCaptions && lockScreenBlocked) item { LockScreenBlockedNotice() }
     }
     if (display.markUncertainLines && engine == TranscriptionEngineKind.Cloud) {
-        Footnote(tr("התמלול בענן לא מדווח כמה הוא בטוח, ולכן איתו שום דבר לא מסומן.", "Cloud transcription doesn’t report how sure it is, so with it nothing is marked."))
+        GroupFootnote(tr("התמלול בענן לא מדווח כמה הוא בטוח, ולכן איתו שום דבר לא מסומן.", "Cloud transcription doesn’t report how sure it is, so with it nothing is marked."))
     }
-    SwitchRow(tr("מספרים בולטים (שעות, כמויות, טלפונים)", "Bold numbers (times, amounts, phone numbers)"), display.emphasizeNumbers) { on ->
-        settings.change { it.display = it.display.copy(emphasizeNumbers = on) }
-    }
-    SwitchRow(tr("כתוביות גם במסך הנעילה", "Captions on the lock screen too"), display.lockScreenCaptions) { on ->
-        settings.change { it.display = it.display.copy(lockScreenCaptions = on) }
-    }
-    if (display.lockScreenCaptions) LockScreenBlockedNotice()
     // The iPhone's footer, less its sentence about VoiceOver.
-    Footnote(tr("סימן שאלה ליד שורה אומר שייתכן שהיא לא נשמעה נכון. מספרים כמו שעה, כמות כדורים או מספר טלפון מודגשים בצבע אחר, כדי שלא יתפספסו. לחיצה ארוכה על השורה מאפשרת לבקש שיחזרו עליה. אחרי רבע שעה בלי דיבור המסך ננעל כרגיל, והכתוביות וההתראות ממשיכות. כשהכתוביות רצות לבד, הכפתורים למטה יורדים אחרי כמה שניות כדי לא להסתיר את השורה החדשה; נגיעה במסך מחזירה אותם. השורות האחרונות מופיעות גם במסך הנעילה, בלי לפתוח את הטלפון; מי שמסתכל על הטלפון יכול לקרוא אותן.", "A question mark next to a line means it may not have been heard correctly. Numbers like the time, a pill count, or a phone number are highlighted in another color so they aren’t missed. A long press on a line lets you ask for it to be repeated. After a quarter hour without speech the screen locks as usual, and captions and alerts keep going. While captions are running on their own, the buttons at the bottom drop away after a few seconds so they don’t hide the new line; touching the screen brings them back. The last lines also appear on the lock screen without unlocking the phone; anyone looking at the phone can read them."))
+    GroupFootnote(tr("סימן שאלה ליד שורה אומר שייתכן שהיא לא נשמעה נכון. מספרים כמו שעה, כמות כדורים או מספר טלפון מודגשים בצבע אחר, כדי שלא יתפספסו. לחיצה ארוכה על השורה מאפשרת לבקש שיחזרו עליה. אחרי רבע שעה בלי דיבור המסך ננעל כרגיל, והכתוביות וההתראות ממשיכות. כשהכתוביות רצות לבד, הכפתורים למטה יורדים אחרי כמה שניות כדי לא להסתיר את השורה החדשה; נגיעה במסך מחזירה אותם. השורות האחרונות מופיעות גם במסך הנעילה, בלי לפתוח את הטלפון; מי שמסתכל על הטלפון יכול לקרוא אותן.", "A question mark next to a line means it may not have been heard correctly. Numbers like the time, a pill count, or a phone number are highlighted in another color so they aren’t missed. A long press on a line lets you ask for it to be repeated. After a quarter hour without speech the screen locks as usual, and captions and alerts keep going. While captions are running on their own, the buttons at the bottom drop away after a few seconds so they don’t hide the new line; touching the screen brings them back. The last lines also appear on the lock screen without unlocking the phone; anyone looking at the phone can read them."))
 }
 
 @Composable
-internal fun SwitchRow(title: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
-    }
-}
-
-@Composable
-private fun EngineSection(engineSettings: EngineSettings, current: AppSettings) {
+private fun EngineSection(engineSettings: EngineSettings, current: AppSettings, onCellularDownloads: (Boolean) -> Unit) {
     SectionHeader(tr("מנוע תמלול", "Transcription engine"))
     val chosen = if (current.engine == TranscriptionEngineKind.AppleSpeech) TranscriptionEngineKind.WhisperKit else current.engine
-    Column(Modifier.selectableGroup()) {
+    SettingsGroup(modifier = Modifier.selectableGroup()) {
         for (kind in engineSettings.engines) {
-            ChoiceRow(kind.displayName, engineSummary(kind), selected = chosen == kind) { engineSettings.chooseEngine(kind) }
+            item { ChoiceRow(kind.displayName, engineSummary(kind), selected = chosen == kind) { engineSettings.chooseEngine(kind) } }
         }
     }
-    Footnote(tr("שינוי המנוע מפעיל מחדש את ההאזנה. הכתוביות שכבר על המסך נשארות.", "Changing the engine restarts listening. Captions already on screen stay."))
+    GroupFootnote(tr("שינוי המנוע מפעיל מחדש את ההאזנה. הכתוביות שכבר על המסך נשארות.", "Changing the engine restarts listening. Captions already on screen stay."))
+    if (current.engine == TranscriptionEngineKind.WhisperKit || current.engine == TranscriptionEngineKind.AppleSpeech) {
+        SettingsGroup(dividerInset = 56.dp) {
+            item {
+                SettingSwitchRow(
+                    tr("להוריד מודלים גם בחבילת הגלישה", "Download models on cellular data too"),
+                    current.allowCellularModelDownload,
+                    onCellularDownloads,
+                    icon = Icons.Rounded.Download,
+                )
+            }
+        }
+    }
 }
 
 // The iPhone's summary of its own model offers a choice of model size,
@@ -396,42 +472,48 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
     }
 
     SectionHeader(tr("תמלול בענן", "Cloud transcription"))
-    Text(tr("שירות", "Service"), style = MaterialTheme.typography.titleSmall)
-    Column(Modifier.selectableGroup()) {
+    GroupLabel(tr("שירות", "Service"))
+    SettingsGroup(modifier = Modifier.selectableGroup()) {
         for (provider in CloudProvider.entries) {
-            ChoiceRow(provider.displayName, null, selected = provider == service) { engineSettings.chooseCloudService(provider) }
+            item { ChoiceRow(provider.displayName, null, selected = provider == service) { engineSettings.chooseCloudService(provider) } }
         }
     }
     if (!service.covers(current.languageCode)) {
         Warning(tr("השירות הזה לא יודע לכתוב כתוביות בשפה שמדברים בה. בחרו שירות אחר.", "This service can’t caption the language being spoken. Choose another service."))
     }
-    if (hasKey) Text(tr("מפתח שמור בטלפון", "Key saved on the phone"), color = savedGreen())
-    OutlinedTextField(
-        value = draft,
-        onValueChange = {
-            draft = it
-            saveFailed = false
-        },
-        label = {
-            Text(
+    SettingsGroup {
+        item {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
+                if (hasKey) Text(tr("מפתח שמור בטלפון", "Key saved on the phone"), color = savedGreen())
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = {
+                        draft = it
+                        saveFailed = false
+                    },
+                    label = {
+                        Text(
+                            if (hasKey) {
+                                tr("מפתח חדש במקום השמור", "New key instead of the saved one")
+                            } else {
+                                tr("הדביקו כאן מפתח %1", "Paste your %1 key here", listOf(service.displayName))
+                            },
+                        )
+                    },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { save() }),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (draft.isNotBlank()) PrimaryButton(tr("שמירת המפתח", "Save key"), onClick = save, modifier = Modifier.fillMaxWidth())
+                if (saveFailed) Warning(tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again."))
                 if (hasKey) {
-                    tr("מפתח חדש במקום השמור", "New key instead of the saved one")
-                } else {
-                    tr("הדביקו כאן מפתח %1", "Paste your %1 key here", listOf(service.displayName))
-                },
-            )
-        },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { save() }),
-        modifier = Modifier.fillMaxWidth(),
-    )
-    if (draft.isNotBlank()) Button(onClick = save) { Text(tr("שמירת המפתח", "Save key")) }
-    if (saveFailed) Warning(tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again."))
-    if (hasKey) {
-        TextButton(onClick = { confirmingDelete = true }) {
-            Text(tr("מחיקת המפתח", "Delete key"), color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = { confirmingDelete = true }) {
+                        Text(tr("מחיקת המפתח", "Delete key"), color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
         }
     }
     if (confirmingDelete) {
@@ -452,10 +534,10 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
         )
     }
     if (service == CloudProvider.OpenRouter) {
-        Text(tr("מודל", "Model"), style = MaterialTheme.typography.titleSmall)
-        Column(Modifier.selectableGroup()) {
+        GroupLabel(tr("מודל", "Model"))
+        SettingsGroup(modifier = Modifier.selectableGroup()) {
             for (model in CloudSpeech.models) {
-                ChoiceRow(EngineSettings.cloudModelName(model), null, selected = model == current.chosenCloudModel) { engineSettings.chooseCloudModel(model) }
+                item { ChoiceRow(EngineSettings.cloudModelName(model), null, selected = model == current.chosenCloudModel) { engineSettings.chooseCloudModel(model) } }
             }
         }
     }
@@ -522,83 +604,103 @@ private fun HomeComputerSection(
 
     SectionHeader(tr("המחשב בבית", "Home computer"))
     // As on the iPhone, the steps for setting the computer up come first.
-    Text(
-        tr("איך מכינים את המחשב בבית", "How to set up the home computer"),
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onGuide).padding(vertical = 12.dp),
-    )
-    OutlinedTextField(
-        value = address,
-        onValueChange = { address = it },
-        label = { Text(tr("כתובת המחשב", "Computer address")) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false, imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { saveAddress() }),
-        modifier = Modifier.fillMaxWidth(),
-    )
-    if (address.trim() != saved) Button(onClick = saveAddress) { Text(tr("שמירת הכתובת", "Save address")) }
-    if (HomeServer.needsEncryptedAddress(address)) {
-        Caution(tr("מחוץ לרשת הביתית, צריך את הכתובת שמתחילה ב-wss://", "Outside the home network, use the address that starts with wss://"))
-    } else if (address.isNotBlank() && HomeServer.url(address) == null) {
-        Caution(tr("הכתובת לא נראית תקינה", "That address doesn’t look right"))
-    }
-    if (hasCode) Text(tr("קוד צימוד שמור בטלפון", "Pairing code saved on the phone"), color = savedGreen())
-    OutlinedTextField(
-        value = code,
-        onValueChange = {
-            code = it
-            codeSaveFailed = false
-        },
-        label = {
-            Text(if (hasCode) tr("קוד חדש במקום השמור", "New code instead of the saved one") else tr("קוד הצימוד מהמחשב", "The pairing code from the computer"))
-        },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { saveCode() }),
-        modifier = Modifier.fillMaxWidth(),
-    )
-    if (code.isNotBlank()) Button(onClick = saveCode) { Text(tr("שמירת הקוד", "Save code")) }
-    if (codeSaveFailed) Warning(tr("הקוד לא נשמר. נסו שוב.", "The code wasn’t saved. Try again."))
-    if (engineSettings.canTestConnection(address, code, hasCode)) {
-        val checkingText = tr("בודק…", "Checking…")
-        Button(
-            onClick = { testConnection() },
-            enabled = !checking,
-            modifier = Modifier.semantics { if (checking) stateDescription = checkingText },
-        ) {
-            Text(tr("בדיקת חיבור", "Test connection"))
-            if (checking) {
-                Spacer(Modifier.width(8.dp))
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-            }
+    SettingsGroup(dividerInset = 56.dp) {
+        item {
+            SettingRow(tr("איך מכינים את המחשב בבית", "How to set up the home computer"), icon = Icons.Rounded.Computer, onClick = onGuide, trailing = { Chevron() })
         }
     }
-    check?.let { HomeComputerCheckLabel(it) }
-    var backupShown = false
+    var backupStatus: BackupModelStatus? = null
     if (backup != null) {
         LaunchedEffect(current.spokenLanguage, current.allowCellularModelDownload) { backup.refreshBackup() }
         val status by backup.backupStatus.collectAsStateWithLifecycle()
-        backupShown = status != BackupModelStatus.NotNeeded
-        // Opened from the status's offer of a backup: there, as on the iPhone.
-        val shown = remember { BringIntoViewRequester() }
-        if (scrollToBackup) {
-            LaunchedEffect(Unit) {
-                withFrameNanos {}
-                shown.bringIntoView()
+        backupStatus = status
+    }
+    val backupShown = backupStatus != null && backupStatus != BackupModelStatus.NotNeeded
+    // Opened from the status's offer of a backup: there, as on the iPhone.
+    val shown = remember { BringIntoViewRequester() }
+    if (backupShown && scrollToBackup) {
+        LaunchedEffect(Unit) {
+            withFrameNanos {}
+            shown.bringIntoView()
+        }
+    }
+    SettingsGroup {
+        item {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = { Text(tr("כתובת המחשב", "Computer address")) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { saveAddress() }),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (address.trim() != saved) TonalButton(tr("שמירת הכתובת", "Save address"), onClick = saveAddress, modifier = Modifier.fillMaxWidth())
+                if (HomeServer.needsEncryptedAddress(address)) {
+                    Caution(tr("מחוץ לרשת הביתית, צריך את הכתובת שמתחילה ב-wss://", "Outside the home network, use the address that starts with wss://"))
+                } else if (address.isNotBlank() && HomeServer.url(address) == null) {
+                    Caution(tr("הכתובת לא נראית תקינה", "That address doesn’t look right"))
+                }
             }
         }
-        Box(modifier = Modifier.bringIntoViewRequester(shown)) { PhoneBackupRow(status, onDownload = backup::downloadBackup) }
-    }
-    HomeComputerBeam(engineSettings, current.homeServerBeam, onMoved = forgetCheck)
-    if (hasCode) {
-        TextButton(onClick = { confirmingCodeDelete = true }) {
-            Text(tr("מחיקת הקוד", "Delete code"), color = MaterialTheme.colorScheme.error)
+        item {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
+                if (hasCode) Text(tr("קוד צימוד שמור בטלפון", "Pairing code saved on the phone"), color = savedGreen())
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = {
+                        code = it
+                        codeSaveFailed = false
+                    },
+                    label = {
+                        Text(if (hasCode) tr("קוד חדש במקום השמור", "New code instead of the saved one") else tr("קוד הצימוד מהמחשב", "The pairing code from the computer"))
+                    },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { saveCode() }),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (code.isNotBlank()) TonalButton(tr("שמירת הקוד", "Save code"), onClick = saveCode, modifier = Modifier.fillMaxWidth())
+                if (codeSaveFailed) Warning(tr("הקוד לא נשמר. נסו שוב.", "The code wasn’t saved. Try again."))
+            }
+        }
+        if (engineSettings.canTestConnection(address, code, hasCode) || check != null) {
+            item {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
+                    if (engineSettings.canTestConnection(address, code, hasCode)) {
+                        val checkingText = tr("בודק…", "Checking…")
+                        PrimaryButton(
+                            tr("בדיקת חיבור", "Test connection"),
+                            onClick = { testConnection() },
+                            icon = Icons.Rounded.Wifi,
+                            enabled = !checking,
+                            modifier = Modifier.fillMaxWidth().semantics { if (checking) stateDescription = checkingText },
+                        )
+                        if (checking && !ReducedMotion.isOn()) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+                    check?.let { HomeComputerCheckLabel(it) }
+                }
+            }
+        }
+        if (backupShown) {
+            item {
+                Box(modifier = Modifier.padding(16.dp).bringIntoViewRequester(shown)) { PhoneBackupRow(backupStatus!!, onDownload = backup!!::downloadBackup) }
+            }
+        }
+        item { HomeComputerBeam(engineSettings, current.homeServerBeam, onMoved = forgetCheck) }
+        if (hasCode) {
+            item {
+                TextButton(onClick = { confirmingCodeDelete = true }, modifier = Modifier.padding(horizontal = 8.dp)) {
+                    Text(tr("מחיקת הקוד", "Delete code"), color = MaterialTheme.colorScheme.error)
+                }
+            }
         }
     }
     // The iPhone's footer, less its QR code sentence, and the backup only
     // where there is one to download.
-    Footnote(
+    GroupFootnote(
         if (backupShown) tr("הקול נשלח למחשב שלכם, שכותב את הכתוביות ומחזיר אותן, רק בזמן שהכתוביות פועלות. באותה רשת Wi‑Fi כותבים את כתובת המחשב (למשל ‎192.168.1.20‎); מכל מקום אחר, כתובת שמתחילה ב‑wss://. הקוד נשמר רק בטלפון. כשאין חיבור למחשב, מודל ה‑Whisper שבטלפון ממשיך לבד, אחרי שהגיבוי למעלה הורד. \"מהירות מול דיוק\": כשמשפט נגמר, המחשב בודק כמה ניסוחים אפשריים ובוחר את הנכון ביותר. פחות ניסוחים מביאים את המשפט מהר יותר, אבל עם יותר טעויות.", "The audio goes to your own computer, which writes the captions and sends them back, only while captions are on. On the same Wi‑Fi, enter the computer’s address (for example 192.168.1.20); from anywhere else, an address starting with wss://. The code is saved only on the phone. When the computer can’t be reached, the Whisper model on the phone carries on by itself, once the backup above has been downloaded. “Speed or accuracy”: when a sentence ends, the computer weighs several possible wordings and picks the best. Fewer wordings bring the sentence sooner, with more mistakes.") else tr("הקול נשלח למחשב שלכם, שכותב את הכתוביות ומחזיר אותן, רק בזמן שהכתוביות פועלות. באותה רשת Wi‑Fi כותבים את כתובת המחשב (למשל ‎192.168.1.20‎); מכל מקום אחר, כתובת שמתחילה ב‑wss://. הקוד נשמר רק בטלפון. \"מהירות מול דיוק\": כשמשפט נגמר, המחשב בודק כמה ניסוחים אפשריים ובוחר את הנכון ביותר. פחות ניסוחים מביאים את המשפט מהר יותר, אבל עם יותר טעויות.", "The audio goes to your own computer, which writes the captions and sends them back, only while captions are on. On the same Wi‑Fi, enter the computer’s address (for example 192.168.1.20); from anywhere else, an address starting with wss://. The code is saved only on the phone. “Speed or accuracy”: when a sentence ends, the computer weighs several possible wordings and picks the best. Fewer wordings bring the sentence sooner, with more mistakes."),
     )
     if (confirmingCodeDelete) {
@@ -634,6 +736,11 @@ interface PhoneBackup {
 /** The iPhone's backup row: whether the phone can carry on by itself, and how the download is going. */
 @Composable
 internal fun PhoneBackupRow(status: BackupModelStatus, onDownload: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) { PhoneBackupContent(status, onDownload) }
+}
+
+@Composable
+private fun PhoneBackupContent(status: BackupModelStatus, onDownload: () -> Unit) {
     when (status) {
         BackupModelStatus.NotNeeded -> Unit
         BackupModelStatus.Ready -> Text(tr("גיבוי בטלפון מוכן: כשאין חיבור למחשב, הטלפון ממשיך לבד.", "Backup on the phone is ready: when the computer can’t be reached, the phone carries on by itself."), color = savedGreen())
@@ -657,9 +764,12 @@ internal fun PhoneBackupRow(status: BackupModelStatus, onDownload: () -> Unit) {
 
 @Composable
 private fun BackupDownloadButton(megabytes: Int?, onDownload: () -> Unit) {
-    TextButton(onClick = onDownload) {
-        Text(if (megabytes != null) tr("הורדת גיבוי לטלפון (%1)", "Download a backup to the phone (%1)", listOf(PhasePresentation.sizeText(megabytes))) else tr("הורדת גיבוי לטלפון", "Download a backup to the phone"))
-    }
+    TonalButton(
+        if (megabytes != null) tr("הורדת גיבוי לטלפון (%1)", "Download a backup to the phone (%1)", listOf(PhasePresentation.sizeText(megabytes))) else tr("הורדת גיבוי לטלפון", "Download a backup to the phone"),
+        onClick = onDownload,
+        icon = Icons.Rounded.Download,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -672,39 +782,45 @@ private fun HomeComputerBeam(engineSettings: EngineSettings, beam: Int, onMoved:
     val range = AppSettings.homeServerBeamRange
     val description = EngineSettings.beamDescription(beam)
     val label = tr("מהירות מול דיוק במחשב", "Speed or accuracy on the computer")
-    LabelAndValue(
-        label = { Text(tr("מהירות מול דיוק", "Speed or accuracy")) },
-        value = { Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-        modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
-    )
-    Slider(
-        value = beam.toFloat(),
-        onValueChange = {
-            val step = it.roundToInt()
-            if (step != beam) {
-                engineSettings.chooseBeam(step)
-                onMoved()
-            }
-        },
-        valueRange = range.first.toFloat()..range.last.toFloat(),
-        steps = range.last - range.first - 1,
-        modifier = Modifier.semantics {
-            contentDescription = label
-            stateDescription = description
-        },
-    )
-    Row(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
-        Text(tr("מהיר יותר", "Faster"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        Text(tr("מדויק יותר", "More accurate"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    Footnote(tr("ההבדל בזמן ההמתנה קטן מאוד, חלקיק שנייה. עדיף להשאיר על 5, אלא אם אתם יודעים מה אתם עושים.", "The difference in waiting time is very small, a fraction of a second. Leave it at 5 unless you know what you’re doing."))
-    if (beam != AppSettings.default.homeServerBeam) {
-        TextButton(
-            onClick = {
-                engineSettings.chooseBeam(AppSettings.default.homeServerBeam)
-                onMoved()
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        LabelAndValue(
+            label = { Text(tr("מהירות מול דיוק", "Speed or accuracy"), style = MaterialTheme.typography.bodyLarge) },
+            value = { Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
+        )
+        OzenSlider(
+            value = beam.toFloat(),
+            onValueChange = {
+                val step = it.roundToInt()
+                if (step != beam) {
+                    engineSettings.chooseBeam(step)
+                    onMoved()
+                }
             },
-        ) { Text(tr("חזרה להגדרה הרגילה", "Back to the usual setting")) }
+            valueRange = range.first.toFloat()..range.last.toFloat(),
+            steps = range.last - range.first - 1,
+            modifier = Modifier.semantics {
+                contentDescription = label
+                stateDescription = description
+            },
+        )
+        Row(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
+            Text(tr("מהיר יותר", "Faster"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            Text(tr("מדויק יותר", "More accurate"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(
+            tr("ההבדל בזמן ההמתנה קטן מאוד, חלקיק שנייה. עדיף להשאיר על 5, אלא אם אתם יודעים מה אתם עושים.", "The difference in waiting time is very small, a fraction of a second. Leave it at 5 unless you know what you’re doing."),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (beam != AppSettings.default.homeServerBeam) {
+            TextButton(
+                onClick = {
+                    engineSettings.chooseBeam(AppSettings.default.homeServerBeam)
+                    onMoved()
+                },
+            ) { Text(tr("חזרה להגדרה הרגילה", "Back to the usual setting")) }
+        }
     }
 }
 
@@ -760,50 +876,47 @@ private fun cloudServiceFooter(service: CloudProvider): String = when (service) 
 }
 
 @Composable
-internal fun ChoiceRow(title: String, summary: String?, selected: Boolean, enabled: Boolean = true, onSelect: () -> Unit) {
+internal fun ChoiceRow(title: String, summary: String?, selected: Boolean, enabled: Boolean = true, icon: ImageVector? = null, onSelect: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 56.dp)
             .selectable(selected = selected, enabled = enabled, onClick = onSelect, role = Role.RadioButton)
-            .padding(vertical = 8.dp),
+            .alpha(if (enabled) 1f else 0.5f)
+            .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        RadioButton(selected = selected, onClick = null, enabled = enabled)
-        Column(modifier = Modifier.padding(start = 12.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
+        if (icon != null) Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(end = 8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
             summary?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
+        RadioButton(selected = selected, onClick = null, enabled = enabled, modifier = Modifier.padding(12.dp))
     }
-}
-
-/** Right after how captions look, as on the iPhone: the words that buzz when said. */
-@Composable
-private fun AlertsSection(enabled: Int, listed: Boolean, onOpen: () -> Unit, sounds: SoundAlertPreferences, onSounds: () -> Unit) {
-    SectionHeader(tr("התראות", "Alerts"))
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(tr("מילים חשובות", "Important words"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(if (listed) "$enabled" else tr("אין", "None"), color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    LabelAndValue(
-        label = { Text(tr("צלילים בבית", "Sounds at home"), style = MaterialTheme.typography.bodyLarge) },
-        value = { Text(if (sounds.isEnabled) soundFloorName(sounds.minimumImportance) else tr("כבוי", "Off"), color = MaterialTheme.colorScheme.onSurfaceVariant) },
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onSounds).padding(vertical = 12.dp),
-    )
 }
 
 /**
- * Alerts with the screen off, on by default as on the iPhone. Android asks
- * for notifications when captions first start; switched on here without
- * that, it asks then, since otherwise every alert in a pocket is dropped.
- * While on, it offers a test notification, or, with Ozen's notifications
- * turned off in the phone, says so and leads there; that is checked again
- * on coming back, where she may just have turned them on.
+ * Alerts as on the iPhone: the words that buzz when said, the sounds at home,
+ * and alerts with the screen off, on by default. Android asks for
+ * notifications when captions first start; switched on here without that, it
+ * asks then, since otherwise every alert in a pocket is dropped. While on, it
+ * offers a test notification, or, with Ozen's notifications turned off in the
+ * phone, says so and leads there; that is checked again on coming back,
+ * where she may just have turned them on.
  */
 @Composable
-private fun AwayAlertsRow(on: Boolean, onChange: (Boolean) -> Unit) {
+private fun AlertsSection(
+    enabled: Int,
+    listed: Boolean,
+    onOpen: () -> Unit,
+    sounds: SoundAlertPreferences,
+    onSounds: () -> Unit,
+    notifyInBackground: Boolean,
+    onNotifyInBackground: (Boolean) -> Unit,
+    quietHours: QuietHours,
+    onQuietHours: (QuietHours) -> Unit,
+) {
     val context = LocalContext.current
     var blocked by remember { mutableStateOf(!AlertNotifier.allowed(context)) }
     var sent by remember { mutableStateOf(false) }
@@ -812,33 +925,97 @@ private fun AwayAlertsRow(on: Boolean, onChange: (Boolean) -> Unit) {
         onPauseOrDispose { }
     }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { blocked = !AlertNotifier.allowed(context) }
-    SwitchRow(tr("התראה בטלפון כשהמסך כבוי", "Alert on phone when the screen is off"), on) { switching ->
-        onChange(switching)
-        val granted = Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        if (switching && !granted) ask.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
-    if (!on) return
-    if (blocked) {
-        Warning(tr("ההודעות של אוזן כבויות בהגדרות הטלפון, אז כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."))
-        TextButton(
-            onClick = {
-                context.startActivity(
-                    Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName),
-                )
-            },
-        ) { Text(tr("לפתוח את הגדרות הטלפון", "Open the phone’s settings")) }
-    } else {
-        TextButton(onClick = { AlertNotifier(context.applicationContext).postTest(); sent = true }) {
-            Text(
-                if (sent) {
-                    tr("נשלחה. נעלו את הטלפון, ותוך 10 שניות היא תגיע", "Sent. Lock the phone, and it will arrive within 10 seconds")
-                } else {
-                    tr("לבדוק שהתראה מגיעה כשהטלפון נעול", "Test that an alert arrives when the phone is locked")
-                },
+    SectionHeader(tr("התראות", "Alerts"))
+    SettingsGroup(dividerInset = 56.dp) {
+        item {
+            SettingRow(
+                tr("מילים חשובות", "Important words"),
+                icon = Icons.Rounded.NotificationsActive,
+                onClick = onOpen,
+                trailing = { TrailingValue(if (listed) "$enabled" else tr("אין", "None")) },
             )
         }
+        item {
+            SettingRow(
+                tr("צלילים בבית", "Sounds at home"),
+                icon = Icons.Rounded.Hearing,
+                onClick = onSounds,
+                trailing = { TrailingValue(if (sounds.isEnabled) soundFloorName(sounds.minimumImportance) else tr("כבוי", "Off")) },
+            )
+        }
+        item {
+            SettingSwitchRow(
+                tr("התראה בטלפון כשהמסך כבוי", "Alert on phone when the screen is off"),
+                notifyInBackground,
+                { switching ->
+                    onNotifyInBackground(switching)
+                    val granted = Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                    if (switching && !granted) ask.launch(Manifest.permission.POST_NOTIFICATIONS)
+                },
+                icon = Icons.Rounded.PhoneAndroid,
+            )
+        }
+        if (notifyInBackground) {
+            item {
+                Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                    if (blocked) {
+                        Text(
+                            tr("ההודעות של אוזן כבויות בהגדרות הטלפון, אז כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                        TextButton(onClick = { openNotificationSettings(context) }) { Text(tr("לפתוח את הגדרות הטלפון", "Open the phone’s settings")) }
+                    } else {
+                        TextButton(onClick = { AlertNotifier(context.applicationContext).postTest(); sent = true }) {
+                            Text(
+                                if (sent) {
+                                    tr("נשלחה. נעלו את הטלפון, ותוך 10 שניות היא תגיע", "Sent. Lock the phone, and it will arrive within 10 seconds")
+                                } else {
+                                    tr("לבדוק שהתראה מגיעה כשהטלפון נעול", "Test that an alert arrives when the phone is locked")
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                SettingSwitchRow(
+                    tr("שעות שקטות", "Quiet hours"),
+                    quietHours.isEnabled,
+                    { on -> onQuietHours(QuietHours(on, quietHours.startHour, quietHours.endHour)) },
+                    icon = Icons.Rounded.Bedtime,
+                )
+            }
+            if (quietHours.isEnabled) {
+                item { HourStepper(tr("מתחילות", "Starts"), quietHours.startHour) { onQuietHours(QuietHours(true, it, quietHours.endHour)) } }
+                item { HourStepper(tr("מסתיימות", "Ends"), quietHours.endHour) { onQuietHours(QuietHours(true, quietHours.startHour, it)) } }
+                // An equal start and end is the whole day, deliberately; two
+                // equal hours on screen don't say that, so the note does, and
+                // the screen reader reads it out when it changes.
+                item {
+                    Text(
+                        if (quietHours.startHour == quietHours.endHour) {
+                            tr("כשהן מתחילות ומסתיימות באותה שעה, השעות השקטות נמשכות כל היום. צלילים דחופים כמו אזעקה עדיין יתריעו.", "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.")
+                        } else {
+                            tr("צלילים דחופים כמו אזעקה עדיין יתריעו.", "Urgent sounds like a siren still alert.")
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
+            }
+        }
     }
+    // The iPhone's Alerts footer, less the way to its camera flash.
+    GroupFootnote(tr("רטט והדגשה כשנאמרת מילה חשובה; כרזה כשנשמע פעמון דלת, טלפון, אזעקה ועוד. כשהטלפון בכיס או נעול, אותן התראות מגיעות כהודעה בטלפון, וגם הודעה אם הכתוביות נעצרו ולא חזרו לבד.", "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, and more are heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own."))
+}
+
+private fun openNotificationSettings(context: android.content.Context) {
+    context.startActivity(
+        Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName),
+    )
 }
 
 /**
@@ -848,47 +1025,27 @@ private fun AwayAlertsRow(on: Boolean, onChange: (Boolean) -> Unit) {
  * Activities are off; checked again on coming back.
  */
 @Composable
-private fun LockScreenBlockedNotice() {
+private fun lockScreenNotificationsBlocked(): Boolean {
     val context = LocalContext.current
     var blocked by remember { mutableStateOf(!ListeningService.shown(context)) }
     LifecycleResumeEffect(Unit) {
         blocked = !ListeningService.shown(context)
         onPauseOrDispose { }
     }
-    if (!blocked) return
-    Warning(tr("ההודעות של אוזן כבויות בהגדרות הטלפון, אז הכתוביות לא יופיעו במסך הנעילה.", "Ozen’s notifications are turned off in the phone’s settings, so captions won’t appear on the lock screen."))
-    TextButton(
-        onClick = {
-            context.startActivity(
-                Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName),
-            )
-        },
-    ) { Text(tr("לפתוח את הגדרות הטלפון", "Open the phone’s settings")) }
+    return blocked
 }
 
-/**
- * Quiet hours, offered only with alerts on while the screen is off, as on
- * the iPhone. An equal start and end is the whole day, deliberately; two
- * equal hours on screen don't say that, so the note under them does, and
- * the screen reader reads it out when it changes.
- */
 @Composable
-private fun QuietHoursRows(hours: QuietHours, onChange: (QuietHours) -> Unit) {
-    SwitchRow(tr("שעות שקטות", "Quiet hours"), hours.isEnabled) { on -> onChange(QuietHours(on, hours.startHour, hours.endHour)) }
-    if (!hours.isEnabled) return
-    HourStepper(tr("מתחילות", "Starts"), hours.startHour) { onChange(QuietHours(true, it, hours.endHour)) }
-    HourStepper(tr("מסתיימות", "Ends"), hours.endHour) { onChange(QuietHours(true, hours.startHour, it)) }
-    Text(
-        if (hours.startHour == hours.endHour) {
-            tr("כשהן מתחילות ומסתיימות באותה שעה, השעות השקטות נמשכות כל היום. צלילים דחופים כמו אזעקה עדיין יתריעו.", "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.")
-        } else {
-            tr("צלילים דחופים כמו אזעקה עדיין יתריעו.", "Urgent sounds like a siren still alert.")
-        },
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-    )
+private fun LockScreenBlockedNotice() {
+    val context = LocalContext.current
+    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+        Text(
+            tr("ההודעות של אוזן כבויות בהגדרות הטלפון, אז הכתוביות לא יופיעו במסך הנעילה.", "Ozen’s notifications are turned off in the phone’s settings, so captions won’t appear on the lock screen."),
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+        TextButton(onClick = { openNotificationSettings(context) }) { Text(tr("לפתוח את הגדרות הטלפון", "Open the phone’s settings")) }
+    }
 }
 
 /**
@@ -902,6 +1059,8 @@ private fun HourStepper(title: String, hour: Int, onChange: (Int) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .padding(start = 16.dp, end = 8.dp)
             .semantics(mergeDescendants = true) {
                 stateDescription = shown
                 progressBarRangeInfo = ProgressBarRangeInfo(hour.toFloat(), 0f..23f, steps = 22)
@@ -921,14 +1080,17 @@ private fun HourStepper(title: String, hour: Int, onChange: (Int) -> Unit) {
 /** The names and words every engine is given as a hint, after the engine as on the iPhone. */
 @Composable
 private fun WordsSection(count: Int, onOpen: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clickable(onClick = onOpen).padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(tr("שמות ומילים מיוחדות", "Names and special words"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(if (count == 0) tr("ריק", "Empty") else "$count", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    SettingsGroup(modifier = Modifier.padding(top = OzenSpacing.Unit), dividerInset = 56.dp) {
+        item {
+            SettingRow(
+                tr("שמות ומילים מיוחדות", "Names and special words"),
+                icon = Icons.Rounded.Spellcheck,
+                onClick = onOpen,
+                trailing = { TrailingValue(if (count == 0) tr("ריק", "Empty") else "$count") },
+            )
+        }
     }
-    Footnote(tr("כל המנועים מקבלים את הרשימה כרמז, כדי ששמות של בני משפחה ייכתבו נכון.", "Every engine gets the list as a hint, so family members’ names are spelled correctly."))
+    GroupFootnote(tr("כל המנועים מקבלים את הרשימה כרמז, כדי ששמות של בני משפחה ייכתבו נכון.", "Every engine gets the list as a hint, so family members’ names are spelled correctly."))
 }
 
 /**
@@ -942,32 +1104,37 @@ private fun SpeechSection(rate: Float, onRate: (Float) -> Unit, canSay: (String)
     val label = tr("מהירות דיבור", "Speech rate")
     // Written as on the iPhone, whatever the phone's own number format.
     val value = String.format(Locale.ROOT, "%.2f", shown)
-    Row(modifier = Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    Slider(
-        value = shown,
-        onValueChange = { shown = it },
-        onValueChangeFinished = { onRate((shown * 20).roundToInt() / 20f) },
-        valueRange = 0.2f..0.7f,
-        steps = 9,
-        modifier = Modifier.semantics {
-            contentDescription = label
-            stateDescription = value
-        },
-    )
-    Row(modifier = Modifier.clearAndSetSemantics {}) {
-        Text(tr("לאט", "Slow"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        Text(tr("מהר", "Fast"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
     val sample = tr("שלום, זה קול הטלפון. ככה אני נשמע.", "Hello, this is the phone's voice. This is how I sound.")
-    TextButton(onClick = { onSpeak(sample) }, enabled = canSay(sample)) { Text(tr("להשמיע דוגמה", "Play a sample")) }
+    SettingsGroup(dividerInset = 56.dp) {
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(modifier = Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Slider(
+                    value = shown,
+                    onValueChange = { shown = it },
+                    onValueChangeFinished = { onRate((shown * 20).roundToInt() / 20f) },
+                    valueRange = 0.2f..0.7f,
+                    steps = 9,
+                    modifier = Modifier.semantics {
+                        contentDescription = label
+                        stateDescription = value
+                    },
+                )
+                Row(modifier = Modifier.clearAndSetSemantics {}) {
+                    Text(tr("לאט", "Slow"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    Text(tr("מהר", "Fast"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        item { SettingRow(tr("להשמיע דוגמה", "Play a sample"), icon = Icons.Rounded.PlayArrow, onClick = { onSpeak(sample) }, enabled = canSay(sample)) }
+    }
     VoiceNotices(listOfNotNull(voiceNotice))
-    Footnote(tr("הכתוביות מושהות בזמן שהטלפון מדבר, ומתחדשות לבד.", "Captions pause while the phone is speaking, and resume on their own."))
+    GroupFootnote(tr("הכתוביות מושהות בזמן שהטלפון מדבר, ומתחדשות לבד.", "Captions pause while the phone is speaking, and resume on their own."))
 }
 
-/** Last, as on the iPhone, for whoever helps her: what the captions are doing and the report to send. */
 /**
  * After the speaking rate, as on the iPhone: every language by its own
  * name, since a reader picks "العربية" by recognizing it, and a menu
@@ -977,27 +1144,25 @@ private fun SpeechSection(rate: Float, onRate: (Float) -> Unit, canSay: (String)
 private fun LanguageSection(chosen: AppLanguage, onChoose: (AppLanguage) -> Unit) {
     SectionHeader(tr("שפת האפליקציה", "App language"))
     var open by remember { mutableStateOf(false) }
-    Box {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().clickable(onClickLabel = tr("שפת האפליקציה", "App language")) { open = true }.padding(vertical = 12.dp),
-        ) {
-            Text(languageName(chosen), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Text("▾", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.clearAndSetSemantics {})
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            for (language in AppLanguage.entries) {
-                DropdownMenuItem(
-                    text = { Text(languageName(language)) },
-                    onClick = {
-                        open = false
-                        if (language != chosen) onChoose(language)
-                    },
-                )
+    SettingsGroup(dividerInset = 56.dp) {
+        item {
+            Box {
+                SettingRow(languageName(chosen), icon = Icons.Rounded.Translate, onClick = { open = true }, trailing = { MenuArrow() })
+                DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                    for (language in AppLanguage.entries) {
+                        DropdownMenuItem(
+                            text = { Text(languageName(language)) },
+                            onClick = {
+                                open = false
+                                if (language != chosen) onChoose(language)
+                            },
+                        )
+                    }
+                }
             }
         }
     }
-    Footnote(tr("השפה של הכפתורים וההגדרות, לא של הכתוביות.", "The language of the buttons and settings, not of the captions."))
+    GroupFootnote(tr("השפה של הכפתורים וההגדרות, לא של הכתוביות.", "The language of the buttons and settings, not of the captions."))
 }
 
 /** The language people around her speak, which every engine is given, each named as it is spoken. */
@@ -1005,27 +1170,30 @@ private fun LanguageSection(chosen: AppLanguage, onChoose: (AppLanguage) -> Unit
 private fun SpokenLanguageSection(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
     SectionHeader(tr("שפת הדיבור", "Spoken language"))
     var open by remember { mutableStateOf(false) }
-    Box {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().clickable(onClickLabel = tr("שפת הדיבור", "Spoken language")) { open = true }.padding(vertical = 12.dp),
-        ) {
-            Text(chosen.spokenName, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Text("▾", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.clearAndSetSemantics {})
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            for (language in UILanguage.entries) {
-                DropdownMenuItem(
-                    text = { Text(language.spokenName) },
-                    onClick = {
-                        open = false
-                        onChoose(language)
-                    },
-                )
+    SettingsGroup(dividerInset = 56.dp) {
+        item {
+            Box {
+                SettingRow(chosen.spokenName, icon = Icons.Rounded.RecordVoiceOver, onClick = { open = true }, trailing = { MenuArrow() })
+                DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                    for (language in UILanguage.entries) {
+                        DropdownMenuItem(
+                            text = { Text(language.spokenName) },
+                            onClick = {
+                                open = false
+                                onChoose(language)
+                            },
+                        )
+                    }
+                }
             }
         }
     }
-    Footnote(tr("השפה שמדברים סביבך. הכתוביות נכתבות בה.", "The language people around you speak. The captions are written in it."))
+    GroupFootnote(tr("השפה שמדברים סביבך. הכתוביות נכתבות בה.", "The language people around you speak. The captions are written in it."))
+}
+
+@Composable
+private fun MenuArrow() {
+    Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 private fun languageName(language: AppLanguage): String =
@@ -1037,24 +1205,28 @@ private fun AboutSection(onSupport: () -> Unit) {
     val context = LocalContext.current
     val uris = LocalUriHandler.current
     SectionHeader(tr("אודות", "About"))
-    AboutRow(tr("נוצר על ידי", "Made by"), "Arbel")
-    AboutRow(tr("גרסה", "Version"), context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "")
-    Text(
-        tr("תמיכה באוזן (רק אם תרצו)", "Support Ozen (only if you want to)"),
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onSupport).padding(vertical = 12.dp),
-    )
-    Text(
-        tr("קוד המקור בגיטהאב", "Source code on GitHub"),
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.fillMaxWidth().clickable { uris.openUri(SOURCE_CODE) }.padding(vertical = 12.dp),
-    )
-    Text(
-        tr("whisper.cpp (MIT) — מנוע Whisper", "whisper.cpp (MIT) — Whisper engine"),
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.fillMaxWidth().clickable { uris.openUri(WHISPER_ENGINE) }.padding(vertical = 12.dp),
-    )
-    Footnote(
+    SettingsGroup(dividerInset = 56.dp) {
+        item { AboutRow(tr("נוצר על ידי", "Made by"), "Arbel", Icons.Rounded.Person) }
+        item { AboutRow(tr("גרסה", "Version"), context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "", Icons.Rounded.Info) }
+        item { SettingRow(tr("תמיכה באוזן (רק אם תרצו)", "Support Ozen (only if you want to)"), icon = Icons.Rounded.Favorite, onClick = onSupport, trailing = { Chevron() }) }
+        item {
+            SettingRow(
+                tr("קוד המקור בגיטהאב", "Source code on GitHub"),
+                icon = Icons.Rounded.Code,
+                onClick = { uris.openUri(SOURCE_CODE) },
+                trailing = { OpensOutside() },
+            )
+        }
+        item {
+            SettingRow(
+                tr("whisper.cpp (MIT) — מנוע Whisper", "whisper.cpp (MIT) — Whisper engine"),
+                icon = Icons.Rounded.Memory,
+                onClick = { uris.openUri(WHISPER_ENGINE) },
+                trailing = { OpensOutside() },
+            )
+        }
+    }
+    GroupFootnote(
         tr(
             "אוזן היא תוכנה חופשית בקוד פתוח (AGPL-3.0): כל עותק שלה חייב להישאר חופשי ופתוח. אלא אם בחרתם אחרת למעלה, כל העיבוד נעשה בטלפון ושום דבר לא נשלח החוצה.",
             "Ozen is free, open-source software (AGPL-3.0): every copy of it has to stay free and open. Unless you chose otherwise above, all processing happens on the phone and nothing is sent out.",
@@ -1063,11 +1235,17 @@ private fun AboutSection(onSupport: () -> Unit) {
 }
 
 @Composable
-private fun AboutRow(label: String, value: String) {
-    LabelAndValue(
-        label = { Text(label, style = MaterialTheme.typography.bodyLarge) },
-        value = { Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.padding(vertical = 8.dp),
+private fun OpensOutside() {
+    Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+@Composable
+private fun AboutRow(label: String, value: String, icon: ImageVector) {
+    SettingRow(
+        label,
+        modifier = Modifier.semantics(mergeDescendants = true) {},
+        icon = icon,
+        trailing = { Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) },
     )
 }
 
@@ -1077,22 +1255,19 @@ private const val SOURCE_CODE = "https://github.com/arbelonson-source/ozen"
 private const val WHISPER_ENGINE = "https://github.com/ggml-org/whisper.cpp"
 
 @Composable
-private fun DiagnosticsRow(onOpen: () -> Unit) {
-    Text(
-        tr("אבחון", "Diagnostics"),
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 12.dp),
-    )
+private fun MaintenanceSection(onDiagnostics: () -> Unit, onWalkthrough: () -> Unit, saving: Boolean, saveFailing: () -> Boolean, onClear: () -> Unit) {
+    SectionHeader(tr("תחזוקה", "Maintenance"))
+    SettingsGroup(dividerInset = 56.dp) {
+        item { SettingRow(tr("אבחון", "Diagnostics"), icon = Icons.Rounded.BugReport, onClick = onDiagnostics, trailing = { Chevron() }) }
+        item { WalkthroughAgainRow(onWalkthrough) }
+        item { ClearCaptionsRow(saving, saveFailing, onClear) }
+    }
 }
 
 @Composable
 private fun WalkthroughAgainRow(onShow: () -> Unit) {
     var asking by remember { mutableStateOf(false) }
-    Text(
-        tr("להציג שוב את ההסבר הראשוני", "Show the initial walkthrough again"),
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.fillMaxWidth().clickable { asking = true }.padding(vertical = 12.dp),
-    )
+    SettingRow(tr("להציג שוב את ההסבר הראשוני", "Show the initial walkthrough again"), icon = Icons.Rounded.Replay, onClick = { asking = true })
     if (asking) {
         AlertDialog(
             onDismissRequest = { asking = false },
@@ -1114,12 +1289,19 @@ private fun WalkthroughAgainRow(onShow: () -> Unit) {
 @Composable
 internal fun ClearCaptionsRow(saving: Boolean, saveFailing: () -> Boolean, onClear: () -> Unit) {
     var asking by remember { mutableStateOf(false) }
-    Text(
-        tr("ניקוי הכתוביות מהמסך", "Clear captions from the screen"),
-        style = MaterialTheme.typography.bodyLarge,
-        color = MaterialTheme.colorScheme.error,
-        modifier = Modifier.fillMaxWidth().clickable { asking = true }.padding(vertical = 12.dp),
-    )
+    val error = MaterialTheme.colorScheme.error
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clickable(role = Role.Button) { asking = true }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Icon(Icons.Rounded.DeleteSweep, contentDescription = null, tint = error)
+        Text(tr("ניקוי הכתוביות מהמסך", "Clear captions from the screen"), style = MaterialTheme.typography.bodyLarge, color = error, modifier = Modifier.weight(1f))
+    }
     if (asking) {
         val warning = remember { HistoryTexts.clearWarning(saving, saveFailing()) }
         AlertDialog(
@@ -1141,12 +1323,47 @@ internal fun ClearCaptionsRow(saving: Boolean, saveFailing: () -> Boolean, onCle
 
 @Composable
 internal fun SectionHeader(text: String) {
-    Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 16.dp).semantics { heading() })
+    com.arbelonson.ozen.ui.SectionHeader(text)
 }
 
 @Composable
 internal fun Footnote(text: String) {
-    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    GroupFootnote(text)
+}
+
+/** A small grey label over a group that has no header of its own, for example "Service". */
+@Composable
+private fun GroupLabel(text: String) {
+    Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 16.dp, top = OzenSpacing.Unit))
+}
+
+/**
+ * A scrolling settings page: the top bar scrolls with the content, so a
+ * page of any length ends in the same place, and its controls are found by scrolling to them. The body has 16 dp margins and 8 dp between its
+ * children.
+ */
+@Composable
+internal fun SettingsPageFrame(
+    title: String,
+    scroll: ScrollState = rememberScrollState(),
+    onClose: (() -> Unit)? = null,
+    closeLabel: String = tr("סיום", "Done"),
+    actions: @Composable RowScope.() -> Unit = com.arbelonson.ozen.ui.NoActions,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+        Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Vertical)).imePadding().verticalScroll(scroll)) {
+            OzenTopBar(title, onClose = onClose, closeLabel = closeLabel, actions = actions, insets = false)
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = OzenSpacing.Page)
+                    .padding(bottom = OzenSpacing.Section)
+                    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
+                verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit),
+                content = content,
+            )
+        }
+    }
 }
 
 /**

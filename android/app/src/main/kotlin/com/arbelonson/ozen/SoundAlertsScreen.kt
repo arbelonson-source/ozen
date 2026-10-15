@@ -3,36 +3,58 @@ package com.arbelonson.ozen
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Air
+import androidx.compose.material.icons.rounded.Alarm
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.ChildCare
+import androidx.compose.material.icons.rounded.CleaningServices
+import androidx.compose.material.icons.rounded.DirectionsCar
+import androidx.compose.material.icons.rounded.DoorFront
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Hearing
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.LocalHospital
+import androidx.compose.material.icons.rounded.Microwave
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.PanTool
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Pets
+import androidx.compose.material.icons.rounded.Phone
+import androidx.compose.material.icons.rounded.Plumbing
+import androidx.compose.material.icons.rounded.SentimentSatisfied
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Sick
+import androidx.compose.material.icons.rounded.Thunderstorm
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.RecordVoiceOver
+import androidx.compose.material.icons.rounded.Vibration
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.WaterDrop
+import androidx.compose.material.icons.rounded.Wc
+import androidx.compose.material.icons.rounded.WavingHand
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.SoundAlertPreferences
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.SoundEventCatalog
 import com.arbelonson.ozen.core.SoundNearMisses
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.OzenSpacing
+import com.arbelonson.ozen.ui.SettingRow
+import com.arbelonson.ozen.ui.SettingSwitchRow
+import com.arbelonson.ozen.ui.SettingsGroup
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
@@ -60,65 +82,64 @@ internal fun SoundAlertsScreen(
             value = SoundEventCatalog.listed.associateWith(nearMiss)
         }
     }
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ScreenTitle(tr("צלילים בבית", "Sounds at home")) {
-                TextButton(onClick = onClose) { Text(tr("חזרה", "Back")) }
+    SettingsPageFrame(tr("צלילים בבית", "Sounds at home"), onClose = onClose, closeLabel = tr("חזרה", "Back")) {
+        SettingsGroup(dividerInset = 56.dp) {
+            item {
+                SettingSwitchRow(tr("התראות על צלילים", "Sound alerts"), preferences.isEnabled, { on -> onChange(preferences.copy(isEnabled = on)) }, icon = Icons.Rounded.NotificationsActive)
             }
-            SwitchRow(tr("התראות על צלילים", "Sound alerts"), preferences.isEnabled) { on -> onChange(preferences.copy(isEnabled = on)) }
-            SectionHeader(tr("להתריע על", "Alert for"))
+        }
+        SectionHeader(tr("להתריע על", "Alert for"))
+        SettingsGroup(modifier = Modifier.selectableGroup()) {
             for (importance in SoundEvent.Importance.entries.reversed()) {
-                ChoiceRow(soundFloorName(importance), null, preferences.minimumImportance == importance, enabled = preferences.isEnabled) {
-                    onChange(preferences.copy(minimumImportance = importance))
+                item {
+                    ChoiceRow(soundFloorName(importance), null, preferences.minimumImportance == importance, enabled = preferences.isEnabled) {
+                        onChange(preferences.copy(minimumImportance = importance))
+                    }
                 }
             }
-            Footnote(
-                tr(
-                    "הזיהוי נעשה בטלפון בלבד, על אותו אודיו שמשמש לכתוביות. אותו צליל לא יופיע שוב במשך 20 שניות.",
-                    "Detection happens only on the phone, using the same audio as the captions. The same sound won’t appear again for 20 seconds.",
-                ),
-            )
+        }
+        Footnote(
+            tr(
+                "הזיהוי נעשה בטלפון בלבד, על אותו אודיו שמשמש לכתוביות. אותו צליל לא יופיע שוב במשך 20 שניות.",
+                "Detection happens only on the phone, using the same audio as the captions. The same sound won’t appear again for 20 seconds.",
+            ),
+        )
 
-            // Each kind of alert buzzes differently, which only helps once
-            // she knows which is which.
-            SectionHeader(tr("איך כל התראה מרגישה", "How each alert feels"))
-            val samples = listOf(
-                tr("חירום: אזעקה, גלאי עשן", "Emergency: alarm, smoke detector") to AlertVibration.pattern(SoundEvent.Importance.Critical),
-                tr("חשוב: פעמון, דפיקה בדלת, בכי של תינוק", "Important: doorbell, knock at the door, baby crying") to AlertVibration.pattern(SoundEvent.Importance.High),
-                tr("צליל אחר בבית", "Other sound at home") to AlertVibration.pattern(SoundEvent.Importance.Medium),
-                tr("מילה מהרשימה, כמו השם שלך", "A word from the list, like your name") to AlertVibration.keyword,
-                tr("מישהו מתחיל לדבר אחרי שקט", "Someone starts speaking after silence") to AlertVibration.speechResumed,
-            )
-            for ((title, vibration) in samples) {
-                TextButton(onClick = { onFeel(vibration) }, modifier = Modifier.fillMaxWidth()) { Text(title, modifier = Modifier.fillMaxWidth()) }
+        // Each kind of alert buzzes differently, which only helps once
+        // she knows which is which.
+        SectionHeader(tr("איך כל התראה מרגישה", "How each alert feels"))
+        val samples = listOf(
+            Triple(tr("חירום: אזעקה, גלאי עשן", "Emergency: alarm, smoke detector"), AlertVibration.pattern(SoundEvent.Importance.Critical), Icons.Rounded.LocalFireDepartment),
+            Triple(tr("חשוב: פעמון, דפיקה בדלת, בכי של תינוק", "Important: doorbell, knock at the door, baby crying"), AlertVibration.pattern(SoundEvent.Importance.High), Icons.Rounded.DoorFront),
+            Triple(tr("צליל אחר בבית", "Other sound at home"), AlertVibration.pattern(SoundEvent.Importance.Medium), Icons.Rounded.Home),
+            Triple(tr("מילה מהרשימה, כמו השם שלך", "A word from the list, like your name"), AlertVibration.keyword, Icons.Rounded.NotificationsActive),
+            Triple(tr("מישהו מתחיל לדבר אחרי שקט", "Someone starts speaking after silence"), AlertVibration.speechResumed, Icons.Rounded.RecordVoiceOver),
+        )
+        SettingsGroup(dividerInset = 56.dp) {
+            for ((title, vibration, icon) in samples) {
+                item { SettingRow(title, icon = icon, onClick = { onFeel(vibration) }, trailing = { Icon(Icons.Rounded.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }) }
             }
-            Footnote(
-                tr(
-                    "כשהאפליקציה פתוחה, כל סוג התראה רוטט אחרת, כך שאפשר לדעת מה קרה גם בלי להסתכל. הקישו כדי להרגיש.",
-                    "When the app is open, each kind of alert vibrates differently, so you can tell what happened without looking. Tap to feel it.",
-                ),
-            )
+        }
+        Footnote(
+            tr(
+                "כשהאפליקציה פתוחה, כל סוג התראה רוטט אחרת, כך שאפשר לדעת מה קרה גם בלי להסתכל. הקישו כדי להרגיש.",
+                "When the app is open, each kind of alert vibrates differently, so you can tell what happened without looking. Tap to feel it.",
+            ),
+        )
 
-            for (importance in SoundEvent.Importance.entries.reversed()) {
-                val events = SoundEventCatalog.listed.filter { it.importance == importance }
-                if (events.isEmpty()) continue
-                SectionHeader(soundGroupName(importance))
-                val enabled = preferences.isEnabled && importance >= preferences.minimumImportance
-                for (event in events) SoundRow(event, preferences, enabled, misses[event], onChange)
+        for (importance in SoundEvent.Importance.entries.reversed()) {
+            val events = SoundEventCatalog.listed.filter { it.importance == importance }
+            if (events.isEmpty()) continue
+            SectionHeader(soundGroupName(importance))
+            val enabled = preferences.isEnabled && importance >= preferences.minimumImportance
+            SettingsGroup(dividerInset = 56.dp) {
+                for (event in events) soundRows(event, preferences, enabled, misses[event], onChange)
             }
         }
     }
 }
 
-@Composable
-private fun SoundRow(
+private fun com.arbelonson.ozen.ui.SettingsGroupScope.soundRows(
     event: SoundEvent,
     preferences: SoundAlertPreferences,
     enabled: Boolean,
@@ -126,30 +147,30 @@ private fun SoundRow(
     onChange: (SoundAlertPreferences) -> Unit,
 ) {
     val on = !preferences.isMuted(event.identifier)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .toggleable(value = on, enabled = enabled, role = Role.Switch) { onChange(preferences.withMuted(event.identifier, !it)) }
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(soundSymbol(event.systemImage), fontSize = 22.sp, modifier = Modifier.width(40.dp).clearAndSetSemantics { })
-        Text(event.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(checked = on, onCheckedChange = null, enabled = enabled)
-    }
     // Offered after a near miss, and kept while it is on: a sound marked
     // sensitive stops being a near miss, and if the lower floor then brings
     // false alarms she needs the way back without turning the sound off.
     val sensitive = preferences.isSensitive(event.identifier)
-    if (on && (nearMiss != null || sensitive)) {
-        Footnote(
-            if (nearMiss != null) {
-                tr("נשמע ב-%1%, קצת חלש מדי", "Heard at %1%, a bit too faint", listOf("${(nearMiss.bestConfidence * 100).roundToInt()}"))
-            } else {
-                tr("מתריע גם על צליל חלש. הקישו כדי לבטל.", "Alerts on a faint sound too. Tap to undo.")
-            },
-        )
-        SwitchRow(tr("להתריע גם על צליל חלש יותר", "Alert on a fainter sound too"), sensitive, enabled) { onChange(preferences.withSensitive(event.identifier, it)) }
+    val offered = on && (nearMiss != null || sensitive)
+    item {
+        SettingSwitchRow(event.name, on, { onChange(preferences.withMuted(event.identifier, !it)) }, icon = soundIcon(event.systemImage), enabled = enabled)
+    }
+    if (offered) {
+        item {
+            Text(
+                if (nearMiss != null) {
+                    tr("נשמע ב-%1%, קצת חלש מדי", "Heard at %1%, a bit too faint", listOf("${(nearMiss.bestConfidence * 100).roundToInt()}"))
+                } else {
+                    tr("מתריע גם על צליל חלש. הקישו כדי לבטל.", "Alerts on a faint sound too. Tap to undo.")
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 56.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+            )
+        }
+        item {
+            SettingSwitchRow(tr("להתריע גם על צליל חלש יותר", "Alert on a fainter sound too"), sensitive, { onChange(preferences.withSensitive(event.identifier, it)) }, enabled = enabled)
+        }
     }
 }
 

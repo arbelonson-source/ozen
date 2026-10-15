@@ -17,11 +17,28 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Forum
+import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.Hearing
+import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -29,7 +46,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -75,6 +91,11 @@ import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.audioLeavesPhone
 import com.arbelonson.ozen.core.firstRunNote
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.IconBadge
+import com.arbelonson.ozen.ui.OzenSpacing
+import com.arbelonson.ozen.ui.PrimaryButton
+import com.arbelonson.ozen.ui.SettingsGroup
+import com.arbelonson.ozen.ui.TonalButton
 import kotlinx.coroutines.launch
 
 /**
@@ -125,7 +146,7 @@ internal fun OnboardingScreen(
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
                 when (page) {
-                    0 -> Page("👂", tr("אוזן", "Ozen")) {
+                    0 -> Page(Icons.Rounded.Hearing, tr("אוזן", "Ozen")) {
                         Body(tr("כתוביות חיות לשיחה.", "Live captions for conversation."))
                         Body(tr("מה שאומרים לידך מופיע על המסך, באותיות גדולות, תוך כדי הדיבור.", "What’s said near you appears on the screen, in large letters, as it’s spoken."))
                         if (settings.engine == TranscriptionEngineKind.HomeServer) {
@@ -134,16 +155,18 @@ internal fun OnboardingScreen(
                             Body(tr("הכל קורה בתוך הטלפון. שום דבר לא נשלח לאינטרנט.", "It all happens on the phone. Nothing is sent to the internet."))
                         }
                     }
-                    1 -> Page("💬", tr("איך זה עובד", "How it works")) {
-                        Point("🎙", tr("מניחים את הטלפון על השולחן, והכתוביות רצות לבד.", "Set the phone on the table, and the captions run on their own."))
-                        Point("👥", tr("האפליקציה מבדילה בין דוברים ויכולה ללמוד את השמות שלהם.", "The app tells speakers apart and can learn their names."))
-                        Point("🔔", tr("היא מתריעה על שמות שחשובים לך, ועל צלצול בדלת או אזעקה, ברטט שונה לכל אחד.", "It alerts you to names that matter to you, and to a doorbell or alarm, with a different vibration for each."))
-                        Point("⌨", tr("ואפשר להקליד תשובה, והטלפון יגיד אותה בקול.", "And you can type a reply, and the phone will speak it aloud."))
+                    1 -> Page(Icons.Rounded.Forum, tr("איך זה עובד", "How it works")) {
+                        SettingsGroup(dividerInset = 72.dp) {
+                            item { Point(Icons.Rounded.Mic, tr("מניחים את הטלפון על השולחן, והכתוביות רצות לבד.", "Set the phone on the table, and the captions run on their own.")) }
+                            item { Point(Icons.Rounded.Groups, tr("האפליקציה מבדילה בין דוברים ויכולה ללמוד את השמות שלהם.", "The app tells speakers apart and can learn their names.")) }
+                            item { Point(Icons.Rounded.NotificationsActive, tr("היא מתריעה על שמות שחשובים לך, ועל צלצול בדלת או אזעקה, ברטט שונה לכל אחד.", "It alerts you to names that matter to you, and to a doorbell or alarm, with a different vibration for each.")) }
+                            item { Point(Icons.Rounded.Keyboard, tr("ואפשר להקליד תשובה, והטלפון יגיד אותה בקול.", "And you can type a reply, and the phone will speak it aloud.")) }
+                        }
                     }
                     2 -> LanguagePage(settings.spokenLanguage, onSpokenLanguage)
                     3 -> MicrophonePage(settings, microphone, notifications, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
                     NAME_PAGE -> NamePage(settings, nameDraft, addDraft, onAddAlert)
-                    else -> Page("✅", tr("מוכן", "Ready")) {
+                    else -> Page(Icons.Rounded.CheckCircle, tr("מוכן", "Ready")) {
                         if (settings.engine.firstRunNote == FirstRunNote.ModelDownload) {
                             Body(tr("בהפעלה הראשונה אוזן תוריד את מודל השפה. זה לוקח כמה דקות ומוצג על המסך. אחר כך — מיד.", "The first time it runs, Ozen will download the language model. This takes a few minutes and shows on the screen. After that — instantly."))
                         }
@@ -172,7 +195,7 @@ private fun MicrophonePage(
     onApproveNotifications: () -> Unit,
     onOpenPhoneSettings: () -> Unit,
 ) {
-    Page("🎙", tr("המיקרופון", "The microphone")) {
+    Page(Icons.Rounded.Mic, tr("המיקרופון", "The microphone")) {
         Body(tr("כדי להציג כתוביות לשיחה, אוזן צריכה להאזין דרך המיקרופון.", "To caption the conversation, Ozen needs to listen through the microphone."))
         if (!settings.audioLeavesPhone) {
             Body(tr("הקול לא יוצא מהטלפון, ולא נשמר אלא אם מסמנים בעיה.", "The sound doesn’t leave the phone, and it isn’t kept unless you mark a problem."))
@@ -184,21 +207,15 @@ private fun MicrophonePage(
                 when (notifications) {
                     true -> Status("✓ " + tr("ההתראות מאושרות", "Notifications approved"), good = true)
                     false -> Body(tr("בלי התראות. אפשר לשנות בהגדרות.", "No notifications. This can be changed in Settings."))
-                    null -> OutlinedButton(onClick = onApproveNotifications, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                        Text(tr("לאשר התראות", "Approve notifications"), fontSize = 20.sp, textAlign = TextAlign.Center)
-                    }
+                    null -> TonalButton(tr("לאשר התראות", "Approve notifications"), onApproveNotifications, Modifier.fillMaxWidth(), icon = Icons.Rounded.NotificationsActive)
                 }
             }
             false -> {
                 Status("✕ " + tr("המיקרופון חסום", "Microphone blocked"), good = false)
                 Body(tr("בלי מיקרופון אין כתוביות. אפשר לאשר בהגדרות הטלפון.", "Without a microphone there are no captions. It can be approved in the phone’s Settings."))
-                OutlinedButton(onClick = onOpenPhoneSettings, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                    Text(tr("פתיחת הגדרות הטלפון", "Open phone settings"), fontSize = 20.sp, textAlign = TextAlign.Center)
-                }
+                TonalButton(tr("פתיחת הגדרות הטלפון", "Open phone settings"), onOpenPhoneSettings, Modifier.fillMaxWidth(), icon = Icons.Rounded.Settings)
             }
-            null -> Button(onClick = onApproveMicrophone, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                Text(tr("לאשר את המיקרופון", "Approve the microphone"), fontSize = 20.sp, textAlign = TextAlign.Center)
-            }
+            null -> PrimaryButton(tr("לאשר את המיקרופון", "Approve the microphone"), onApproveMicrophone, Modifier.fillMaxWidth(), icon = Icons.Rounded.Mic)
         }
     }
 }
@@ -210,7 +227,7 @@ private fun MicrophonePage(
  */
 @Composable
 private fun NamePage(settings: AppSettings, draft: MutableState<String>, addDraft: () -> Unit, onAddAlert: (String) -> Unit) {
-    Page("🔔", tr("כשקוראים לך", "When you’re called")) {
+    Page(Icons.Rounded.NotificationsActive, tr("כשקוראים לך", "When you’re called")) {
         Body(tr("כשמישהו אומר את השם שלך, הטלפון רוטט והשורה מסומנת, גם כשלא מסתכלים על המסך.", "When someone says your name, the phone vibrates and the line is highlighted, even when no one is looking at the screen."))
         NameAlertForm(settings, draft, addDraft, onAddAlert)
         Text(
@@ -238,16 +255,15 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
             onValueChange = { draft.value = it },
             placeholder = { Text(tr("השם שלך", "Your name")) },
             singleLine = true,
-            textStyle = MaterialTheme.typography.titleLarge,
+            textStyle = MaterialTheme.typography.titleMedium,
+            shape = MaterialTheme.shapes.medium,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { addDraft() }),
             modifier = modifier,
         )
     }
     val add = @Composable { modifier: Modifier ->
-        OutlinedButton(onClick = addDraft, enabled = draft.value.isNotBlank(), modifier = modifier.heightIn(min = 56.dp)) {
-            Text(tr("להוסיף", "Add"), fontSize = 18.sp)
-        }
+        TonalButton(tr("להוסיף", "Add"), addDraft, modifier, enabled = draft.value.isNotBlank())
     }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (stacked) {
@@ -269,8 +285,8 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
         val suggestions = @Composable { modifier: Modifier ->
             for (word in AlertSuggestions.offeredNames(settings.spokenLanguage)) {
                 val added = settings.keywordAlerts.any { it.isEnabled && HebrewText.normalize(it.phrase) == HebrewText.normalize(word) }
-                OutlinedButton(onClick = { onAddAlert(word) }, enabled = !added, modifier = modifier.heightIn(min = 56.dp)) {
-                    Text((if (added) "✓ " else "+ ") + AlertSuggestions.label(word, Localization.language), fontSize = 18.sp)
+                OutlinedButton(onClick = { onAddAlert(word) }, enabled = !added, shape = MaterialTheme.shapes.extraLarge, modifier = modifier.heightIn(min = 48.dp)) {
+                    Text((if (added) "✓ " else "+ ") + AlertSuggestions.label(word, Localization.language), style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
@@ -286,18 +302,26 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
 /** Before the microphone, as before the iPhone's engine page; Hebrew until she picks another. */
 @Composable
 private fun LanguagePage(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
-    Page("🌐", tr("באיזו שפה מדברים סביבך?", "Which language do people around you speak?")) {
-        Column(modifier = Modifier.selectableGroup()) {
+    Page(Icons.Rounded.Translate, tr("באיזו שפה מדברים סביבך?", "Which language do people around you speak?")) {
+        SettingsGroup(modifier = Modifier.selectableGroup()) {
             for (language in UILanguage.entries) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp)
-                        .selectable(selected = language == chosen, role = Role.RadioButton) { onChoose(language) },
-                ) {
-                    RadioButton(selected = language == chosen, onClick = null)
-                    Text(language.spokenName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 12.dp))
+                item {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 56.dp)
+                            .selectable(selected = language == chosen, role = Role.RadioButton) { onChoose(language) }
+                            .padding(horizontal = OzenSpacing.Page),
+                    ) {
+                        Text(
+                            language.spokenName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (language == chosen) FontWeight.Medium else FontWeight.Normal,
+                            modifier = Modifier.weight(1f),
+                        )
+                        RadioButton(selected = language == chosen, onClick = null)
+                    }
                 }
             }
         }
@@ -306,80 +330,89 @@ private fun LanguagePage(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
 }
 
 @Composable
-private fun Page(symbol: String, title: String, content: @Composable () -> Unit) = BoxWithConstraints {
+private fun Page(icon: ImageVector, title: String, content: @Composable () -> Unit) = BoxWithConstraints {
     // A picture, not words: it stays one size at the phone's largest text,
     // and a smaller one on a short screen, where the page's button was
     // pushed out of sight below its text.
     val roomy = maxHeight >= 520.dp * LocalDensity.current.fontScale
-    val symbolSize = with(LocalDensity.current) { (if (roomy) 64.dp else 44.dp).toSp() }
     val scroll = rememberScrollState()
     Column(
-        modifier = Modifier.fillMaxSize().fadeWhenMoreBelow(scroll).verticalScroll(scroll).padding(horizontal = 28.dp, vertical = if (roomy) 24.dp else 12.dp),
-        verticalArrangement = Arrangement.spacedBy(if (roomy) 20.dp else 14.dp),
+        modifier = Modifier.fillMaxSize().fadeWhenMoreBelow(scroll).verticalScroll(scroll).padding(horizontal = OzenSpacing.Page, vertical = if (roomy) 24.dp else 12.dp),
+        verticalArrangement = Arrangement.spacedBy(if (roomy) 16.dp else 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // The page's picture springs into place as the page arrives.
-        var arrived by remember { mutableStateOf(false) }
+        // The page's picture springs into place as the page arrives, unless
+        // the phone asks for less motion.
+        var arrived by remember { mutableStateOf(ReducedMotion.isOn()) }
         LaunchedEffect(Unit) { arrived = true }
         val pop by animateFloatAsState(if (arrived) 1f else 0.5f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow), label = "page symbol")
-        Text(
-            symbol,
-            fontSize = symbolSize,
-            textAlign = TextAlign.Center,
+        IconBadge(
+            icon,
+            size = if (roomy) 96.dp else 72.dp,
             modifier = Modifier
-                .fillMaxWidth()
                 .padding(top = if (roomy) 16.dp else 0.dp)
                 .graphicsLayer {
                     scaleX = pop
                     scaleY = pop
                     alpha = ((pop - 0.5f) * 2f).coerceIn(0f, 1f)
-                }
-                .clearAndSetSemantics {},
+                },
         )
         Text(
             title,
-            style = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).semantics { heading() },
         )
-        content()
+        Column(modifier = Modifier.widthIn(max = 400.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) { content() }
     }
 }
 
 @Composable
 private fun Body(text: String) {
-    Text(text, style = MaterialTheme.typography.titleLarge)
+    Text(text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
 }
 
 @Composable
-private fun Point(symbol: String, text: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(symbol, fontSize = 26.sp, modifier = Modifier.widthIn(min = 36.dp).clearAndSetSemantics {})
-        Text(text, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+private fun Point(icon: ImageVector, text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = OzenSpacing.Page, vertical = 12.dp),
+    ) {
+        IconBadge(icon)
+        Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
     }
 }
 
 @Composable
 private fun Status(text: String, good: Boolean) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.SemiBold,
-        color = if (good) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-    )
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = if (good) scheme.primaryContainer else scheme.errorContainer,
+        contentColor = if (good) scheme.onPrimaryContainer else scheme.onErrorContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(16.dp))
+    }
 }
 
 @Composable
 private fun Dots(pager: PagerState) {
+    val still = ReducedMotion.isOn()
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clearAndSetSemantics {
             contentDescription = tr("%1 מתוך %2", "%1 of %2", listOf("${pager.currentPage + 1}", "$PAGES"))
         },
     ) {
         repeat(PAGES) { page ->
-            val colour = if (page == pager.currentPage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-            Box(Modifier.size(8.dp).background(colour, CircleShape))
+            val current = page == pager.currentPage
+            val colour = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+            val width by animateDpAsState(if (current) 24.dp else 8.dp, if (still) snap() else tween(200), label = "page dot")
+            Box(Modifier.width(width).height(8.dp).background(colour, CircleShape))
         }
     }
 }
@@ -390,7 +423,7 @@ private fun Footer(pager: PagerState, onFinish: () -> Unit) {
     val focusManager = LocalFocusManager.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = OzenSpacing.Page, vertical = 16.dp),
     ) {
         if (pager.currentPage < PAGES - 1) {
             SideBySideOrStacked(
@@ -399,27 +432,24 @@ private fun Footer(pager: PagerState, onFinish: () -> Unit) {
                     // Bare text is too small a target beside Next, and a
                     // slip ends the walkthrough.
                     TextButton(onClick = onFinish, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text(tr("דילוג", "Skip"), fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tr("דילוג", "Skip"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 end = {
-                    Button(
+                    PrimaryButton(
+                        tr("הבא", "Next"),
                         onClick = {
                             // Let go of the name field first: focused, it
                             // pulled the pages back to itself mid-slide.
                             focusManager.clearFocus()
                             scope.launch { pager.animateScrollToPage(pager.currentPage + 1) }
                         },
-                        modifier = Modifier.widthIn(min = 120.dp).heightIn(min = 56.dp),
-                    ) {
-                        Text(tr("הבא", "Next"), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                    }
+                        modifier = Modifier.widthIn(min = 120.dp),
+                    )
                 },
             )
         } else {
-            Button(onClick = onFinish, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                Text(tr("להתחיל", "Start"), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            }
+            PrimaryButton(tr("להתחיל", "Start"), onFinish, Modifier.fillMaxWidth(), icon = Icons.Rounded.PlayArrow)
         }
     }
 }

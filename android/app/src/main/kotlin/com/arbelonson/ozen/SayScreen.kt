@@ -3,24 +3,40 @@ package com.arbelonson.ozen
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -47,8 +63,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.OzenTopBar
+import com.arbelonson.ozen.ui.PrimaryButton
+import com.arbelonson.ozen.ui.SettingsGroup
+import com.arbelonson.ozen.ui.TonalButton
 
 /**
  * The other direction of the conversation, as on the iPhone: she types a
@@ -102,111 +121,142 @@ internal fun SayScreen(
         return
     }
     val play = tr("להשמיע", "Play")
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            ScreenTitle(tr("להגיד משהו", "Say something")) {
-                TextButton(onClick = onClose) { Text(tr("סגירה", "Close")) }
-            }
-            OutlinedTextField(
-                value = draft,
-                onValueChange = onDraft,
-                placeholder = { Text(tr("הקלידו מה להגיד…", "Type what to say…")) },
-                textStyle = MaterialTheme.typography.titleLarge,
-                maxLines = 4,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { speakTyped() }),
-                modifier = Modifier.fillMaxWidth().focusRequester(focus),
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (speaking) {
-                    OutlinedButton(onClick = onStop, modifier = Modifier.weight(1f)) { Text(tr("עצירה", "Stop")) }
-                }
-                Button(onClick = speakTyped, enabled = draft.isNotBlank() && canSay(draft), modifier = Modifier.weight(1f)) { Text(play) }
-            }
-            lastTyped?.let { phrase ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(
-                        onClick = { onSpeak(phrase) },
-                        enabled = canSay(phrase),
-                        modifier = Modifier.weight(1f).semantics { contentDescription = tr("להשמיע שוב: %1", "Play again: %1", listOf(phrase)) },
-                    ) {
-                        Text("↻  $phrase", maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+        Column(modifier = Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())) {
+            OzenTopBar(tr("להגיד משהו", "Say something"), onClose = onClose, closeLabel = tr("סגירה", "Close"))
+            Column(
+                modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)).padding(horizontal = 16.dp).navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = onDraft,
+                    placeholder = { Text(tr("הקלידו מה להגיד…", "Type what to say…")) },
+                    textStyle = MaterialTheme.typography.titleLarge,
+                    maxLines = 4,
+                    shape = MaterialTheme.shapes.large,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { speakTyped() }),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (speaking) {
+                        TonalButton(tr("עצירה", "Stop"), onClick = onStop, icon = Icons.Rounded.Stop, modifier = Modifier.weight(1f))
                     }
-                    if (phrase !in phrases) {
-                        TextButton(onClick = { onAddPhrase(phrase) }, modifier = Modifier.semantics { contentDescription = tr("להוסיף למשפטים המוכנים", "Add to quick phrases") }) {
-                            Text("+", fontSize = 28.sp)
+                    PrimaryButton(
+                        play,
+                        onClick = speakTyped,
+                        icon = Icons.AutoMirrored.Rounded.VolumeUp,
+                        enabled = draft.isNotBlank() && canSay(draft),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                lastTyped?.let { phrase ->
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = { onSpeak(phrase) },
+                            enabled = canSay(phrase),
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics { contentDescription = tr("להשמיע שוב: %1", "Play again: %1", listOf(phrase)) },
+                        ) {
+                            Icon(Icons.Rounded.Replay, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(phrase, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        }
+                        if (phrase !in phrases) {
+                            IconButton(onClick = { onAddPhrase(phrase) }, modifier = Modifier.semantics { contentDescription = tr("להוסיף למשפטים המוכנים", "Add to quick phrases") }) {
+                                Icon(Icons.Rounded.Add, contentDescription = null)
+                            }
                         }
                     }
                 }
-            }
-            // As on the iPhone, a screen reader hears what the big letters are for.
-            val bigLettersFor = tr("לתת למישהו לכתוב לך, או להראות למי שמולך מה כתבת", "Let someone write to you, or show the person you’re talking with what you wrote")
-            OutlinedButton(
-                onClick = { bigLetters = true },
-                modifier = Modifier.fillMaxWidth().semantics { onClick(label = bigLettersFor) { bigLetters = true; true } },
-            ) {
-                Text(tr("מסך מלא באותיות גדולות", "Full screen, big letters"))
-            }
-            VoiceNotices(voiceNotices)
-            Row(modifier = Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("משפטים מוכנים", "Quick phrases"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f).semantics { heading() })
-                TextButton(
-                    onClick = {
-                        editing = !editing
-                        // The keyboard covered the editor that just opened.
-                        if (editing) focusManager.clearFocus()
-                    },
-                ) { Text(if (editing) tr("סיום", "Done") else tr("עריכה", "Edit")) }
-            }
-            if (editing) {
-                // Instead of the phrases to tap, not beside them as on the
-                // iPhone: the same phrase twice on one screen, once to say
-                // and once to delete, is one too many.
-                Text(tr("עריכת המשפטים", "Edit phrases"), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = newPhrase,
-                        onValueChange = { newPhrase = it },
-                        placeholder = { Text(tr("משפט חדש", "New phrase")) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { if (newPhrase.isNotBlank()) addPhrase() }),
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(onClick = addPhrase, enabled = newPhrase.isNotBlank(), modifier = Modifier.semantics { contentDescription = tr("הוספה", "Add") }) {
-                        Text("+", fontSize = 28.sp)
+                // As on the iPhone, a screen reader hears what the big letters are for.
+                val bigLettersFor = tr("לתת למישהו לכתוב לך, או להראות למי שמולך מה כתבת", "Let someone write to you, or show the person you’re talking with what you wrote")
+                TonalButton(
+                    tr("מסך מלא באותיות גדולות", "Full screen, big letters"),
+                    onClick = { bigLetters = true },
+                    icon = Icons.Rounded.Fullscreen,
+                    modifier = Modifier.fillMaxWidth().semantics { onClick(label = bigLettersFor) { bigLetters = true; true } },
+                )
+                VoiceNotices(voiceNotices)
+                Row(modifier = Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("משפטים מוכנים", "Quick phrases"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f).padding(start = 16.dp).semantics { heading() })
+                    TextButton(
+                        onClick = {
+                            editing = !editing
+                            // The keyboard covered the editor that just opened.
+                            if (editing) focusManager.clearFocus()
+                        },
+                    ) {
+                        if (!editing) {
+                            Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(if (editing) tr("סיום", "Done") else tr("עריכה", "Edit"))
                     }
                 }
-                phrases.forEachIndexed { at, phrase ->
-                    EditablePhraseRow(
-                        phrase,
-                        onMoveUp = { onMovePhrase(phrase, -1) }.takeIf { at > 0 },
-                        onMoveDown = { onMovePhrase(phrase, 1) }.takeIf { at < phrases.lastIndex },
-                        onDelete = { onRemovePhrase(phrase) },
-                    )
-                    HorizontalDivider()
+                if (editing) {
+                    // Instead of the phrases to tap, not beside them as on the
+                    // iPhone: the same phrase twice on one screen, once to say
+                    // and once to delete, is one too many.
+                    Text(tr("עריכת המשפטים", "Edit phrases"), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = newPhrase,
+                            onValueChange = { newPhrase = it },
+                            placeholder = { Text(tr("משפט חדש", "New phrase")) },
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.large,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { if (newPhrase.isNotBlank()) addPhrase() }),
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = addPhrase, enabled = newPhrase.isNotBlank(), modifier = Modifier.semantics { contentDescription = tr("הוספה", "Add") }) {
+                            Icon(Icons.Rounded.Add, contentDescription = null)
+                        }
+                    }
+                    SettingsGroup {
+                        phrases.forEachIndexed { at, phrase ->
+                            item {
+                                EditablePhraseRow(
+                                    phrase,
+                                    onMoveUp = { onMovePhrase(phrase, -1) }.takeIf { at > 0 },
+                                    onMoveDown = { onMovePhrase(phrase, 1) }.takeIf { at < phrases.lastIndex },
+                                    onDelete = { onRemovePhrase(phrase) },
+                                )
+                            }
+                        }
+                    }
+                    TextButton(onClick = { confirmingRestore = true }, enabled = !phrasesAreDefault) {
+                        Text(tr("לשחזר את ברירת המחדל", "Restore defaults"), color = if (phrasesAreDefault) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
+                    }
+                } else {
+                    val sayableNow = phrases.map { it to canSay(it) }
+                    SettingsGroup {
+                        for ((phrase, sayable) in sayableNow) {
+                            item {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable(enabled = sayable, onClickLabel = play) { onSpeak(phrase) }
+                                        .heightIn(min = 56.dp)
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                ) {
+                                    Text(
+                                        phrase,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = if (sayable) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = null, tint = if (sayable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
                 }
-                TextButton(onClick = { confirmingRestore = true }, enabled = !phrasesAreDefault) {
-                    Text(tr("לשחזר את ברירת המחדל", "Restore defaults"), color = if (phrasesAreDefault) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
-                }
-            } else {
-                for (phrase in phrases) {
-                    val sayable = canSay(phrase)
-                    Text(
-                        phrase,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (sayable) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth().clickable(enabled = sayable, onClickLabel = play) { onSpeak(phrase) }.padding(vertical = 12.dp),
-                    )
-                    HorizontalDivider()
-                }
+                Spacer(Modifier.height(16.dp))
             }
         }
     }
@@ -242,12 +292,13 @@ private fun EditablePhraseRow(phrase: String, onMoveUp: (() -> Unit)?, onMoveDow
     Box {
         Text(
             phrase,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier
                 .fillMaxWidth()
                 .onHold { menu = true }
                 .semantics { customActions = choices.map { (label, act) -> CustomAccessibilityAction(label) { act(); true } } }
-                .padding(vertical = 12.dp),
+                .heightIn(min = 56.dp)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
         )
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             for ((label, act) in choices) {
