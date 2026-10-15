@@ -91,4 +91,12 @@ class PhoneNumbersTest {
         assertTrue(dialed("1-800-123-456-7").isEmpty())
         assertEquals(listOf("1800123456"), dialed("1-800-123-456-"))
     }
+
+    @Test
+    fun `a digit outside the basic plane counts as one digit in the dialed number`() {
+        val mathSeven = String(Character.toChars(0x1D7D5))
+        val osmanyaSix = String(Character.toChars(0x104A6))
+        assertEquals(listOf("0501234567"), dialed("050-123-456$mathSeven"))
+        assertEquals(listOf("1800123456"), dialed("1-800-123-45$osmanyaSix"))
+    }
 }

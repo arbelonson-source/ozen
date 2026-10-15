@@ -28,7 +28,7 @@ object PhoneNumbers {
         return found.sortedBy { it.start }
     }
 
-    private fun digitsOf(written: String): String = written.mapNotNull { Character.digit(it, 10).takeIf { digit -> digit >= 0 } }.joinToString("")
+    private fun digitsOf(written: String): String = written.codePoints().map { Character.digit(it, 10) }.filter { it >= 0 }.toArray().joinToString("")
 
     private val pattern: Pattern = unicodePattern(
         """(?<![\d+])(?!\d{1,2}[-./]\d{1,2}[-./]\d{2,4})(?:\+972[- \u00A0\u202F]?|0)(?:[2-489](?:[- \u00A0\u202F]?\d){7}|[57](?:[- \u00A0\u202F]?\d){8})(?!-?\d)""",
