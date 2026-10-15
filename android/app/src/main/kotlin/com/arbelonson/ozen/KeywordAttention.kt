@@ -1,7 +1,9 @@
 package com.arbelonson.ozen
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.os.Build
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -10,6 +12,7 @@ import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.KeywordAttentionPolicy
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.SoundEvent
 import java.util.UUID
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -44,9 +47,25 @@ fun phoneVibrator(context: Context): Vibrator? = if (Build.VERSION.SDK_INT >= 31
 }
 
 object Buzz {
-    var play: (Context, AlertVibration) -> Unit = { context, vibration ->
+    enum class Usage { Alarm, Notification }
+
+    fun usageFor(importance: SoundEvent.Importance?): Usage =
+        if (importance == SoundEvent.Importance.Critical) Usage.Alarm else Usage.Notification
+
+    var play: (Context, AlertVibration, SoundEvent.Importance?) -> Unit = { context, vibration, importance ->
         val vibrator = phoneVibrator(context)
         val (timings, amplitudes) = vibration.waveform()
-        if (vibrator?.hasVibrator() == true) vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+        if (vibrator?.hasVibrator() == true) {
+            val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
+            val usage = usageFor(importance)
+            if (Build.VERSION.SDK_INT >= 33) {
+                val kind = if (usage == Usage.Alarm) VibrationAttributes.USAGE_ALARM else VibrationAttributes.USAGE_NOTIFICATION
+                vibrator.vibrate(effect, VibrationAttributes.Builder().setUsage(kind).build())
+            } else {
+                val kind = if (usage == Usage.Alarm) AudioAttributes.USAGE_ALARM else AudioAttributes.USAGE_NOTIFICATION
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(effect, AudioAttributes.Builder().setUsage(kind).build())
+            }
+        }
     }
 }

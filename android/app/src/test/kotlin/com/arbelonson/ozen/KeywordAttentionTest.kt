@@ -4,6 +4,7 @@ import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.UILanguage
 import java.util.UUID
 import kotlin.test.Test
@@ -45,5 +46,13 @@ class KeywordAttentionTest {
         val (timings, amplitudes) = AlertVibration.keyword.waveform()
         assertContentEquals(longArrayOf(0, 130, 110, 130, 110, 130), timings)
         assertContentEquals(intArrayOf(0, 255, 0, 255, 0, 255), amplitudes)
+    }
+
+    @Test
+    fun `only a critical sound buzzes as an alarm, everything else as a notification`() {
+        assertEquals(Buzz.Usage.Alarm, Buzz.usageFor(SoundEvent.Importance.Critical))
+        for (importance in listOf(SoundEvent.Importance.High, SoundEvent.Importance.Medium, SoundEvent.Importance.Low, null)) {
+            assertEquals(Buzz.Usage.Notification, Buzz.usageFor(importance))
+        }
     }
 }

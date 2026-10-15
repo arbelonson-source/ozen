@@ -6,6 +6,7 @@ import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URI
@@ -27,6 +28,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
+/** One network chosen once for a connection: its sockets and the lookup that goes through it. */
+class PrivatePath(val sockets: SocketFactory, val resolve: (String) -> List<InetAddress>? = { null })
+
 /**
  * Opens WebSocket connections (RFC 6455) for the home computer and the
  * cloud services' live streams, the way the iPhone's URLSession socket
@@ -44,6 +48,7 @@ class WebSocketConnector(
     private val tlsSockets: SSLSocketFactory = SSLSocketFactory.getDefault() as SSLSocketFactory,
     private val connectTimeoutMillis: Int = 15_000,
     private val handshakeTimeoutMillis: Int = 10_000,
+    private val privateRoute: (String) -> PrivatePath? = { null },
 ) : HomeServerConnecting, CloudSocketConnecting {
     override suspend fun open(url: URI): HomeServerSocket = open(url, emptyMap())
 
@@ -64,10 +69,15 @@ class WebSocketConnector(
         val host = requireNotNull(url.host) { "no host in $url" }.trim('[', ']')
         val secure = scheme == "wss"
         val port = if (url.port > 0) url.port else if (secure) 443 else 80
-        val plain = plainSockets.createSocket()
+        val routed = privateRoute(host)
+        val addresses = try {
+            routed?.resolve?.invoke(host)?.takeIf { it.isNotEmpty() }
+        } catch (_: IOException) {
+            null
+        }
+        val targets = addresses?.map { InetSocketAddress(it, port) } ?: listOf(InetSocketAddress(host, port))
+        val plain = connectToAny(routed?.sockets ?: plainSockets, targets, created)
         try {
-            created(plain)
-            plain.connect(InetSocketAddress(host, port), connectTimeoutMillis)
             plain.tcpNoDelay = true
             plain.soTimeout = handshakeTimeoutMillis
             if (!secure) return plain
@@ -82,6 +92,23 @@ class WebSocketConnector(
             plain.close()
             throw error
         }
+    }
+
+    private fun connectToAny(sockets: SocketFactory, targets: List<InetSocketAddress>, created: (Socket) -> Unit): Socket {
+        var failure: IOException? = null
+        for (target in targets) {
+            val socket = sockets.createSocket()
+            try {
+                created(socket)
+                socket.connect(target, connectTimeoutMillis)
+                return socket
+            } catch (error: IOException) {
+                socket.close()
+                failure?.let(error::addSuppressed)
+                failure = error
+            }
+        }
+        throw failure ?: IOException("no address")
     }
 
     private fun isAddressLiteral(host: String): Boolean =

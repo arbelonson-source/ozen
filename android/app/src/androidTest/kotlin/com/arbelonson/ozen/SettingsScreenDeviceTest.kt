@@ -1327,7 +1327,7 @@ class SettingsScreenDeviceTest {
     fun soundsAtHomeSwitchEachSoundTheFloorAndAllOfThemAndLetHerFeelEachBuzz() {
         val buzzed = CopyOnWriteArrayList<AlertVibration>()
         val before = Buzz.play
-        Buzz.play = { _, vibration -> buzzed += vibration }
+        Buzz.play = { _, vibration, _ -> buzzed += vibration }
         app.settings.change { it.soundAlerts = SoundAlertPreferences.default }
         try {
             compose.onNodeWithText("Settings").performClick()
