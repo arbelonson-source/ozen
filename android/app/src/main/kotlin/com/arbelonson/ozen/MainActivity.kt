@@ -268,7 +268,10 @@ class MainActivity : ComponentActivity() {
             PhasePresentation.Action.Pause -> ListeningService.pause(this)
             PhasePresentation.Action.OpenSystemSettings -> if (hasMicrophone()) startListening() else openAppSettings()
             PhasePresentation.Action.Start, PhasePresentation.Action.Resume, PhasePresentation.Action.Retry -> startListening()
-            PhasePresentation.Action.OpenEngineSettings -> showingSettings.value = true
+            PhasePresentation.Action.OpenEngineSettings -> {
+                settingsAtBackup.value = false
+                showingSettings.value = true
+            }
             PhasePresentation.Action.OpenBackupSettings -> {
                 settingsAtBackup.value = true
                 showingSettings.value = true
@@ -458,6 +461,7 @@ private fun OzenApp(
                         Front.Settings -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false; settingsAtBackup.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, heardBy = { state.recentlyHeardBy[it.id]?.takeIf { current.display.showSpeakerNames } }, onAppLanguage = onAppLanguage, onShowWalkthrough = {
                             app.captions.showWalkthroughAgain()
                             showingSettings.value = false
+                            settingsAtBackup.value = false
                         }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value, onScrolledToBackup = { settingsAtBackup.value = false })
                         Front.Conversation -> ConversationScreen(
                             app.captions.savedConversations,
@@ -557,7 +561,9 @@ private fun OzenApp(
                     }
                 }
             }
-            if (confirmingCellular.value) {
+            val asksForCellular = state.status.action == PhasePresentation.Action.ConfirmCellularDownload
+            LaunchedEffect(asksForCellular) { if (!asksForCellular) confirmingCellular.value = false }
+            if (confirmingCellular.value && asksForCellular) {
                 CellularDownloadDialog(
                     state.phase.failure?.engineUnavailability?.downloadMegabytes,
                     onDownload = {

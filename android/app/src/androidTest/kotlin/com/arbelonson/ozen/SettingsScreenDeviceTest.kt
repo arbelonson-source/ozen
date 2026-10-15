@@ -1626,6 +1626,64 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun showingTheWalkthroughAgainFromSettingsOpenedAtTheBackupDoesNotSendTheNextSettingsToTheBackup() {
+        val english = File(app.filesDir, WhisperModelCatalog.phoneModelFile(UILanguage.English))
+        assumeFalse("the English model is already on this phone", english.exists())
+        val before = app.settings.current.value
+        val offer = hasText("Download a backup to the phone", substring = true) and hasClickAction()
+        val unreachable = PipelinePhase.Failed(
+            PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "")),
+        )
+        val noModel = PipelinePhase.Failed(
+            PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", EngineUnavailability(EngineUnavailability.Kind.ModelNotOnDevice, "")),
+        )
+        try {
+            app.settings.change {
+                it.engine = TranscriptionEngineKind.WhisperKit
+                it.spokenLanguage = UILanguage.English
+                it.allowCellularModelDownload = true
+            }
+            compose.runOnUiThread {
+                CaptionState.show(unreachable, engine = TranscriptionEngineKind.HomeServer, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), offerBackup = true)
+            }
+            compose.waitForIdle()
+            assertEquals(PhasePresentation.Action.OpenBackupSettings, CaptionState.screen.value.status.action)
+            compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction()).performClick()
+            compose.onNodeWithText("Show the initial walkthrough again").performScrollTo().performClick()
+            compose.onNodeWithText("Show it").performClick()
+            compose.waitUntil(5_000) { !app.settings.current.value.hasCompletedOnboarding }
+            compose.onNodeWithText("Skip").performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
+            compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
+            compose.runOnUiThread { app.captions.pipeline.stop() }
+            compose.waitUntil(10_000) { app.captions.pipeline.phase == PipelinePhase.Idle }
+
+            app.settings.change { it.engine = TranscriptionEngineKind.HomeServer }
+            compose.runOnUiThread {
+                CaptionState.show(noModel, engine = TranscriptionEngineKind.WhisperKit, interruptedBySystem = false, scheduledRetry = null, segments = emptyList())
+            }
+            compose.waitForIdle()
+            assertEquals(PhasePresentation.Action.OpenEngineSettings, CaptionState.screen.value.status.action)
+            compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction()).performClick()
+            compose.waitUntil(5_000) { compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() }
+            compose.waitForIdle()
+            compose.onNode(offer).assertIsNotDisplayed()
+        } finally {
+            compose.runOnUiThread {
+                if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop()
+                app.captions.launchHandled = true
+                CaptionState.clear()
+            }
+            app.settings.change {
+                it.hasCompletedOnboarding = true
+                it.engine = before.engine
+                it.spokenLanguage = before.spokenLanguage
+                it.allowCellularModelDownload = before.allowCellularModelDownload
+            }
+        }
+    }
+
+    @Test
     fun clearingTheCaptionsFromSettingsAsksFirstThenEmptiesTheScreen() {
         val line = TranscriptSegment(id = UUID.randomUUID(), text = "Dinner is ready", isCommitted = true, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
         compose.runOnUiThread {
