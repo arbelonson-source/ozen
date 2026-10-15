@@ -281,6 +281,49 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun turningThePhoneWhileRereadingKeepsThePlaceTheButtonAndTheCountOfNewLines() {
+        val lines = (1..50).map { committed("Line $it here") }
+        showLines(lines)
+        repeat(3) { compose.onNode(hasScrollAction()).performTouchInput { swipeDown() } }
+        compose.waitForIdle()
+        showLines(lines + (51..52).map { committed("Line $it here") })
+        compose.onNodeWithText("2 new lines").assertExists()
+        assertFalse(displayed("Line 52 here"))
+
+        val first = compose.activity
+        compose.activityRule.scenario.recreate()
+        compose.waitUntil(5_000) { first.isDestroyed }
+        compose.waitForIdle()
+
+        compose.onNodeWithText("2 new lines").assertExists()
+        assertFalse(displayed("Line 52 here"))
+        assertFalse(displayed("Line 50 here"))
+    }
+
+    @Test
+    fun turningThePhoneKeepsTheMobileDataQuestion() {
+        val waiting = PipelinePhase.Failed(
+            PipelineFailure(
+                PipelineFailure.Kind.EngineUnavailable,
+                "test",
+                EngineUnavailability(EngineUnavailability.Kind.WaitingForWiFi, "test", downloadMegabytes = 550),
+            ),
+        )
+        compose.runOnUiThread { CaptionState.show(waiting, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
+        compose.onNodeWithText("Waiting for Wi", substring = true).performClick()
+        compose.onNodeWithText("Download the model over cellular data?").assertExists()
+
+        val first = compose.activity
+        compose.activityRule.scenario.recreate()
+        compose.waitUntil(5_000) { first.isDestroyed }
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Download the model over cellular data?").assertExists()
+        compose.onNodeWithText("Wait for Wi", substring = true).performClick()
+        compose.onNodeWithText("Download the model over cellular data?").assertDoesNotExist()
+    }
+
+    @Test
     fun theTimeTalkPickedUpIsDrawnAboveALineAfterABreakAndTheAwayMarkTakesItsPlace() {
         val now = System.currentTimeMillis() / 1_000.0
         val before = said("Before the break", at = now - 1_000)

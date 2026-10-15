@@ -208,6 +208,8 @@ class MainActivity : ComponentActivity() {
         // Turning the phone or a new theme rebuilds the activity; the
         // screens below Settings are kept by rememberSaveable already.
         showingSettings.value = savedInstanceState?.getBoolean(SHOWING_SETTINGS) == true
+        settingsAtBackup.value = savedInstanceState?.getBoolean(SETTINGS_AT_BACKUP) == true
+        confirmingCellular.value = savedInstanceState?.getBoolean(CONFIRMING_CELLULAR) == true
         val app = application as OzenApplication
         val phoneLanguages = LocaleList.getDefault().let { list -> (0 until list.size()).map { list[it].toLanguageTag() } }
         Localization.language = app.settings.current.value.appLanguage.resolved(phoneLanguages)
@@ -223,6 +225,8 @@ class MainActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putBoolean(SHOWING_SETTINGS, showingSettings.value)
+        outState.putBoolean(SETTINGS_AT_BACKUP, settingsAtBackup.value)
+        outState.putBoolean(CONFIRMING_CELLULAR, confirmingCellular.value)
     }
 
     override fun onStart() {
@@ -339,6 +343,8 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val SHOWING_SETTINGS = "showingSettings"
+        const val SETTINGS_AT_BACKUP = "settingsAtBackup"
+        const val CONFIRMING_CELLULAR = "confirmingCellular"
         const val TRANSPARENT = android.graphics.Color.TRANSPARENT
         // The scrims enableEdgeToEdge draws behind three-button navigation by default.
         val LIGHT_SCRIM = android.graphics.Color.argb(0xe6, 0xff, 0xff, 0xff)
@@ -452,7 +458,7 @@ private fun OzenApp(
                         Front.Settings -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false; settingsAtBackup.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, heardBy = { state.recentlyHeardBy[it.id]?.takeIf { current.display.showSpeakerNames } }, onAppLanguage = onAppLanguage, onShowWalkthrough = {
                             app.captions.showWalkthroughAgain()
                             showingSettings.value = false
-                        }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value)
+                        }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value, onScrolledToBackup = { settingsAtBackup.value = false })
                         Front.Conversation -> ConversationScreen(
                             app.captions.savedConversations,
                             opened!!.first,
@@ -743,8 +749,8 @@ private fun CaptionScreen(
         )
     }
     problemMarked?.let { keptSound -> ProblemMarkedDialog(keptSound, markedWithCaptions, onDismiss = { problemMarked = null }) }
-    var following by remember { mutableStateOf(true) }
-    var countWhenLeft by remember { mutableIntStateOf(0) }
+    var following by rememberSaveable { mutableStateOf(true) }
+    var countWhenLeft by rememberSaveable { mutableIntStateOf(0) }
     val lineCount by rememberUpdatedState(state.lineCount)
     // Only her own scrolling passes through here, not the screen following
     // the newest line, so a line growing past the bottom for a moment
