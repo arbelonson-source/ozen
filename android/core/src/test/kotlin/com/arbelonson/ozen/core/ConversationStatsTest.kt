@@ -251,6 +251,13 @@ class ConversationStatsTest {
     }
 
     @Test
+    fun `Rare Chinese characters outside the basic plane count one each`() {
+        val rare = String(Character.toChars(0x20000)) + String(Character.toChars(0x20001))
+        assertEquals(2, ConversationStats.compute(listOf(line(rare, null, 0.0))).totalWords)
+        assertEquals(5, ConversationStats.compute(listOf(line("我" + rare + " ok 你", null, 0.0))).totalWords)
+    }
+
+    @Test
     fun `Chinese punctuation is not counted`() {
         assertEquals(4, ConversationStats.compute(listOf(line("你好，世界。", null, 0.0))).totalWords)
     }
