@@ -6,67 +6,67 @@
         "am": {
           "stringUnit": {
             "state": "translated",
-            "value": "በ${applicationName} ትልቅ ጽሑፍ"
+            "value": "በ${applicationName} ጻፍልኝ"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "نص كبير في ${applicationName}"
+            "value": "اكتب لي في ${applicationName}"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Großer Text in ${applicationName}"
+            "value": "Schreib mir in ${applicationName}"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Big text in ${applicationName}"
+            "value": "Write to me in ${applicationName}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Texto grande en ${applicationName}"
+            "value": "Escríbeme en ${applicationName}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Grand texte dans ${applicationName}"
+            "value": "Écris-moi dans ${applicationName}"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "${applicationName} में बड़ा टेक्स्ट"
+            "value": "${applicationName} में मुझे लिखकर बताओ"
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "Texto grande no ${applicationName}"
+            "value": "Escreve-me no ${applicationName}"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Крупный текст в ${applicationName}"
+            "value": "Напиши мне в ${applicationName}"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Великий текст в ${applicationName}"
+            "value": "Напиши мені в ${applicationName}"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在${applicationName}中显示大字"
+            "value": "在${applicationName}中给我写字"
           }
         }
       }
