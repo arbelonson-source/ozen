@@ -1093,6 +1093,7 @@ final class OzenScreenshotUITests: XCTestCase {
             dragSheet(up: true)
             swipes += 1
         }
+        capture(app, name: "type-to-speak-accessibility-text-phrases-reached")
         XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in portrait")
 
         XCUIDevice.shared.orientation = .landscapeLeft
@@ -1103,6 +1104,7 @@ final class OzenScreenshotUITests: XCTestCase {
             dragSheet(up: false)
             tries += 1
         }
+        capture(app, name: "type-to-speak-accessibility-text-landscape")
         XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")
     }
 }
