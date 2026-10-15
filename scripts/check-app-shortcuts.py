@@ -10,6 +10,20 @@ INTENTS = ROOT / "App/Ozen/OzenIntents.swift"
 LANGUAGES = {"am", "ar", "de", "en", "es", "fr", "he", "hi", "pt-PT", "ru", "uk", "zh-Hans"}
 PLACEHOLDER = "${applicationName}"
 BIG_TEXT_KEY = "כתבו לי ב" + PLACEHOLDER
+EXPECTED_ENGLISH = "Write to me in " + PLACEHOLDER
+OLD_BIG_TEXT = {
+    "am": "በ${applicationName} ትልቅ ጽሑፍ",
+    "ar": "نص كبير في ${applicationName}",
+    "de": "Großer Text in ${applicationName}",
+    "en": "Big text in ${applicationName}",
+    "es": "Texto grande en ${applicationName}",
+    "fr": "Grand texte dans ${applicationName}",
+    "hi": "${applicationName} में बड़ा टेक्स्ट",
+    "pt-PT": "Texto grande no ${applicationName}",
+    "ru": "Крупный текст в ${applicationName}",
+    "uk": "Великий текст в ${applicationName}",
+    "zh-Hans": "在${applicationName}中显示大字",
+}
 
 
 def value(entry, lang):
@@ -36,8 +50,11 @@ def main():
         errors.append("big-text key is missing from the catalog")
     else:
         english = value(big, "en") or ""
-        if english.startswith("Big text"):
-            errors.append(f"big-text key: English {english!r} does not mean 'write to me'")
+        if english != EXPECTED_ENGLISH:
+            errors.append(f"big-text key: English {english!r} is not {EXPECTED_ENGLISH!r}")
+        for lang, old in OLD_BIG_TEXT.items():
+            if value(big, lang) == old:
+                errors.append(f"big-text key: {lang} still has the old wording {old!r}")
     if INTENTS.exists():
         swift = INTENTS.read_text(encoding="utf-8")
         for before, after in re.findall(r'"([^"\n]*?)\\\(\.applicationName\)([^"\n]*)"', swift):
