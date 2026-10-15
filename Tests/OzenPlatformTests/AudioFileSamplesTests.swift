@@ -50,6 +50,40 @@ struct AudioFileSamplesTests {
         #expect(cosineSimilarity(before, after) > 0.95)
     }
 
+    @Test("a long stereo recording is read in one-second blocks and comes out the same")
+    func readsInBlocks() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("long-\(UUID().uuidString).caf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let format = try #require(AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 48_000, channels: 2, interleaved: false))
+        let frames = 48_000 * 5 + 1_234
+        let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frames)))
+        buffer.frameLength = AVAudioFrameCount(frames)
+        let channels = try #require(buffer.floatChannelData)
+        for index in 0..<frames {
+            let t = Float(index) / 48_000
+            channels[0][index] = 0.4 * sin(2 * .pi * 300 * t)
+            channels[1][index] = 0.3 * sin(2 * .pi * 500 * t)
+        }
+        do {
+            let file = try AVAudioFile(forWriting: url, settings: format.settings, commonFormat: .pcmFormatFloat32, interleaved: false)
+            try file.write(from: buffer)
+        }
+        var requested: [AVAudioFrameCount] = []
+        let chunked = try #require(AudioFileSamples.load(url, sampleRate: 16_000, chunkSeconds: 1) { file, buffer, count in
+            requested.append(count)
+            try file.read(into: buffer, frameCount: count)
+        })
+        let whole = try #require(AudioFileSamples.load(url, sampleRate: 16_000, chunkSeconds: 100) { file, buffer, count in
+            try file.read(into: buffer, frameCount: count)
+        })
+        #expect((requested.max() ?? .max) <= 48_000)
+        #expect(requested.count > 1)
+        #expect(abs(chunked.count - whole.count) < 200)
+        let overlap = min(chunked.count, whole.count)
+        let largest = zip(chunked.prefix(overlap), whole.prefix(overlap)).map { abs($0 - $1) }.max() ?? 1
+        #expect(largest < 0.001)
+    }
+
     @Test("a file that isn't audio gives nothing instead of crashing")
     func notAudio() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("note-\(UUID().uuidString).m4a")
