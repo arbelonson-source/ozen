@@ -583,8 +583,9 @@ struct LiveCaptionView: View {
                         earlierLinesNote
                     }
                     let mark = awayMark
+                    let slots = speakerSlots
                     ForEach(onScreenLines, id: \.segment.id) { index, segment in
-                        transcriptRow(index: index, segment: segment, awayMark: mark)
+                        transcriptRow(index: index, segment: segment, awayMark: mark, slots: slots)
                     }
                     // A sentinel at the very end: while it's on screen the
                     // reader is at the bottom and auto-scroll stays on;
@@ -627,7 +628,7 @@ struct LiveCaptionView: View {
     }
 
     /// One caption line with everything a hold or a tap on it can do.
-    private func captionLine(index: Int, segment: TranscriptSegment) -> some View {
+    private func captionLine(index: Int, segment: TranscriptSegment, slots: SpeakerColorSlots) -> some View {
         let name = viewModel.display.showSpeakerNames && segment.speakerClusterID != nil
             ? viewModel.displayName(for: segment) : nil
         return CaptionRow(
@@ -635,6 +636,7 @@ struct LiveCaptionView: View {
             speakerName: name,
             // Like a chat: the name heads a run of lines by
             // one person instead of repeating on each.
+            speakerSlots: slots,
             showsSpeakerLabel: name != nil && CaptionLayout.showsSpeakerLabel(
                 for: segment,
                 after: index > 0 ? viewModel.segments[index - 1] : nil,
@@ -727,6 +729,13 @@ struct LiveCaptionView: View {
         }
     }
 
+    /// One slot per speaker on screen, read once per update like `awayMark`.
+    private var speakerSlots: SpeakerColorSlots {
+        SpeakerColorSlots(viewModel.segments.map {
+            (clusterID: $0.speakerClusterID, name: $0.speakerClusterID == nil ? nil : viewModel.displayName(for: $0))
+        })
+    }
+
     /// Where the lines said while the screen was away begin, as drawn (see
     /// `AwayCatchUp.drawnMarkIndex`). It scans the whole transcript, so the
     /// list reads it once per update rather than once per line.
@@ -742,14 +751,14 @@ struct LiveCaptionView: View {
     /// A caption line, with what goes above it: the mark where the lines
     /// said while she was away begin, or the time after a quiet stretch.
     @ViewBuilder
-    private func transcriptRow(index: Int, segment: TranscriptSegment, awayMark: (index: Int, segmentID: UUID, count: Int)?) -> some View {
+    private func transcriptRow(index: Int, segment: TranscriptSegment, awayMark: (index: Int, segmentID: UUID, count: Int)?, slots: SpeakerColorSlots) -> some View {
         let previous = index > 0 ? viewModel.segments[index - 1] : nil
         if let awayMark, index == awayMark.index {
             awayDivider(lineCount: awayMark.count)
         } else if let previous, CaptionLayout.startsAfterQuiet(segment, previous: previous) {
             quietGapDivider(from: previous, to: segment)
         }
-        captionLine(index: index, segment: segment)
+        captionLine(index: index, segment: segment, slots: slots)
     }
 
     /// The clock time the conversation picked up again, with the day when

@@ -10,6 +10,7 @@ import OzenKit
 struct CaptionRow: View {
     let segment: TranscriptSegment
     let speakerName: String?
+    var speakerSlots: SpeakerColorSlots?
     let showsSpeakerLabel: Bool
     let display: DisplayPreferences
     let theme: CaptionTheme
@@ -30,7 +31,7 @@ struct CaptionRow: View {
                     Circle()
                         .frame(width: 10, height: 10)
                 }
-                .foregroundStyle(SpeakerColor.color(forClusterID: segment.speakerClusterID, speakerName: speakerName, on: theme.colorScheme))
+                .foregroundStyle(SpeakerColor.color(forClusterID: segment.speakerClusterID, speakerName: speakerName, slots: speakerSlots, on: theme.colorScheme))
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
