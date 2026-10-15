@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -96,24 +97,28 @@ class EngineSettings(
     }
 
     suspend fun saveCloudKey(draft: String): Boolean {
-        val key = draft.trim()
-        if (key.isEmpty() || !cloudSoundAcknowledged()) return false
-        val service = provider
-        credentialWork.withLock {
-            if (!withContext(io) { cloudKeys.save(key, service) }) return false
-            cloudKeysHeld.value = cloudKeysHeld.value + service
+        return withContext(NonCancellable) {
+            val key = draft.trim()
+            if (key.isEmpty() || !cloudSoundAcknowledged()) return@withContext false
+            val service = provider
+            credentialWork.withLock {
+                if (!withContext(io) { cloudKeys.save(key, service) }) return@withContext false
+                cloudKeysHeld.value = cloudKeysHeld.value + service
+            }
+            if (cloudIsTheEngine) restart()
+            true
         }
-        if (cloudIsTheEngine) restart()
-        return true
     }
 
     suspend fun deleteCloudKey() {
-        val service = provider
-        credentialWork.withLock {
-            withContext(io) { cloudKeys.remove(service) }
-            cloudKeysHeld.value = cloudKeysHeld.value - service
+        withContext(NonCancellable) {
+            val service = provider
+            credentialWork.withLock {
+                withContext(io) { cloudKeys.remove(service) }
+                cloudKeysHeld.value = cloudKeysHeld.value - service
+            }
+            if (cloudIsTheEngine) restart()
         }
-        if (cloudIsTheEngine) restart()
     }
 
     fun saveHomeComputerAddress(draft: String) {
@@ -126,22 +131,26 @@ class EngineSettings(
     fun hasPairingCode(): Boolean = pairingCodeHeld.value
 
     suspend fun savePairingCode(draft: String): Boolean {
-        val code = draft.trim()
-        if (code.isEmpty()) return false
-        credentialWork.withLock {
-            if (!withContext(io) { homeServerCode.save(code) }) return false
-            pairingCodeHeld.value = true
+        return withContext(NonCancellable) {
+            val code = draft.trim()
+            if (code.isEmpty()) return@withContext false
+            credentialWork.withLock {
+                if (!withContext(io) { homeServerCode.save(code) }) return@withContext false
+                pairingCodeHeld.value = true
+            }
+            if (homeComputerIsTheEngine) restart()
+            true
         }
-        if (homeComputerIsTheEngine) restart()
-        return true
     }
 
     suspend fun deletePairingCode() {
-        credentialWork.withLock {
-            withContext(io) { homeServerCode.remove() }
-            pairingCodeHeld.value = false
+        withContext(NonCancellable) {
+            credentialWork.withLock {
+                withContext(io) { homeServerCode.remove() }
+                pairingCodeHeld.value = false
+            }
+            if (homeComputerIsTheEngine) restart()
         }
-        if (homeComputerIsTheEngine) restart()
     }
 
     fun chooseBeam(beam: Int) {

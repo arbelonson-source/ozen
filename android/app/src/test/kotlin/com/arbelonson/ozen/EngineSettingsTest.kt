@@ -441,4 +441,31 @@ class EngineSettingsTest {
         assertFalse(racing.pairingCodeHeld.value)
         assertFalse(file.exists())
     }
+
+    @Test
+    fun `a code finished saving while its section was closed still shows as saved`() = runBlocking<Unit> {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val plain = ReversingCipher()
+        val slow = object : CodeCipher {
+            override fun seal(plain: ByteArray): ByteArray {
+                entered.countDown()
+                release.await(5, TimeUnit.SECONDS)
+                return plainCipher.seal(plain)
+            }
+
+            override fun open(sealed: ByteArray) = plainCipher.open(sealed)
+
+            val plainCipher = plain
+        }
+        val file = File(folder, "slow-save")
+        val racing = EngineSettings(settings, keys, HomeServerCodeStore(file, slow), { HomeServerCheck.Connected(1) }, scope = scope) { }
+        val save = launch(Dispatchers.IO) { racing.savePairingCode("code-one") }
+        assertTrue(entered.await(5, TimeUnit.SECONDS))
+        save.cancel()
+        release.countDown()
+        save.join()
+        assertTrue(file.exists())
+        assertTrue(racing.pairingCodeHeld.value)
+    }
 }
