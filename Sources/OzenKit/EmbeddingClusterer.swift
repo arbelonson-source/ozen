@@ -151,7 +151,35 @@ public struct EmbeddingClusterer: Sendable {
     /// first live window move the profile halfway.
     @discardableResult
     public mutating func enroll(name: String, embedding: [Float], weight: Int = EmbeddingClusterer.enrollmentWeight) -> Int {
-        openCluster(with: Self.direction(of: embedding), name: name, sampleCount: max(1, weight))
+        let direction = Self.direction(of: embedding)
+        let count = max(1, weight)
+        guard let index = liveUnnamedIndex(closestTo: direction) else {
+            return openCluster(with: direction, name: name, sampleCount: count)
+        }
+        let had = Float(clusters[index].sampleCount)
+        let blended = zip(clusters[index].centroid, direction).map { ($0 * had + $1 * Float(count)) / (had + Float(count)) }
+        usedNumbers.remove(clusters[index].number)
+        clusters[index].centroid = blended
+        clusters[index].sampleCount += count
+        clusters[index].name = name
+        clusters[index].number = 0
+        return clusters[index].id
+    }
+
+    private func liveUnnamedIndex(closestTo direction: [Float]) -> Int? {
+        var best: (index: Int, similarity: Float)?
+        for (index, cluster) in clusters.enumerated() where cluster.name == nil && cluster.centroid.count == direction.count {
+            let similarity = cosineSimilarity(cluster.centroid, direction)
+            guard similarity >= similarityThreshold else { continue }
+            if let current = best {
+                let closer = similarity > current.similarity + 0.01
+                let tied = abs(similarity - current.similarity) <= 0.01
+                let fresher = lastHeard[cluster.id, default: 0] > lastHeard[clusters[current.index].id, default: 0]
+                if !(closer || (tied && fresher)) { continue }
+            }
+            best = (index, similarity)
+        }
+        return best?.index
     }
 
     /// A voice print scaled to length 1. Cosine similarity ignores length,

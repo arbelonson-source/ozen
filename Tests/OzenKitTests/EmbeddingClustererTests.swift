@@ -391,4 +391,56 @@ struct EmbeddingClustererDoubtfulTests {
         #expect(clusterer.clusters.contains { $0.id == steady })
         #expect(duplicated.isEmpty, "duplicate speaker numbers on screen: \(duplicated)")
     }
+
+    @Test("saving a name for someone already talking names the live voice")
+    func enrollNamesLiveUnnamedCluster() {
+        var clusterer = EmbeddingClusterer()
+        var live = 0
+        for _ in 0..<8 { live = clusterer.assign(embedding: [1, 0.3, 0]) }
+        let enrolled = clusterer.enroll(name: "Dana", embedding: [1, 0.5, 0])
+        let next = clusterer.assign(embedding: [1, 0.3, 0])
+        #expect(enrolled == live)
+        #expect(next == live)
+        #expect(clusterer.displayName(forClusterID: next) == "Dana")
+        #expect(clusterer.clusters.count == 1)
+    }
+
+    @Test("a clearly different print still opens its own cluster")
+    func enrollDifferentPrintOpensNew() {
+        var clusterer = EmbeddingClusterer()
+        let live = clusterer.assign(embedding: [1, 0.3, 0])
+        let enrolled = clusterer.enroll(name: "Dana", embedding: [0, 0, 1])
+        #expect(enrolled != live)
+        #expect(clusterer.clusters.count == 2)
+        #expect(clusterer.displayName(forClusterID: live) == "דובר 1")
+    }
+
+    @Test("a print of another length never adopts a live voice")
+    func enrollMismatchedLengthOpensNew() {
+        var clusterer = EmbeddingClusterer()
+        let live = clusterer.assign(embedding: [1, 0.3, 0])
+        let enrolled = clusterer.enroll(name: "Dana", embedding: [1, 0.3, 0, 0])
+        #expect(enrolled != live)
+        #expect(clusterer.clusters.count == 2)
+    }
+
+    @Test("a second print for a name does not take over a named cluster")
+    func enrollDoesNotStealNamedCluster() {
+        var clusterer = EmbeddingClusterer()
+        let first = clusterer.enroll(name: "Dana", embedding: [1, 0.3, 0])
+        let second = clusterer.enroll(name: "Dana", embedding: [1, 0.3, 0])
+        #expect(first != second)
+        #expect(clusterer.clusters.count == 2)
+    }
+
+    @Test("with two live voices only the closer one is named")
+    func enrollNamesOnlyTheCloserVoice() {
+        var clusterer = EmbeddingClusterer()
+        let near = clusterer.assign(embedding: [1, 0.3, 0])
+        let far = clusterer.assign(embedding: [0, 0.3, 1])
+        let enrolled = clusterer.enroll(name: "Dana", embedding: [1, 0.4, 0])
+        #expect(enrolled == near)
+        #expect(clusterer.displayName(forClusterID: near) == "Dana")
+        #expect(clusterer.displayName(forClusterID: far) == "דובר 2")
+    }
 }
