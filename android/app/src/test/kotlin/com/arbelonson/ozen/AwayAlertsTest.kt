@@ -85,4 +85,16 @@ class AwayAlertsTest {
         assertEquals(1.2, played?.totalSeconds ?: 0.0, 0.001)
         assertEquals(asked, AlertNotifier.channelBuzz(true, null, asked))
     }
+
+    @Test
+    fun `no buzz is expected in do not disturb or with the ringer silent, unless the channel bypasses it`() {
+        val all = android.app.NotificationManager.INTERRUPTION_FILTER_ALL
+        val none = android.app.NotificationManager.INTERRUPTION_FILTER_NONE
+        val unknown = android.app.NotificationManager.INTERRUPTION_FILTER_UNKNOWN
+        assertEquals(false, AlertNotifier.buzzMuted(false, all, false))
+        assertEquals(false, AlertNotifier.buzzMuted(false, unknown, false))
+        assertEquals(true, AlertNotifier.buzzMuted(false, none, false))
+        assertEquals(true, AlertNotifier.buzzMuted(false, all, true))
+        assertEquals(false, AlertNotifier.buzzMuted(true, none, true))
+    }
 }

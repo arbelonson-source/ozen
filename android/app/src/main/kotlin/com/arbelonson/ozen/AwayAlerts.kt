@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import com.arbelonson.ozen.core.AlertNotificationContent
@@ -79,7 +80,12 @@ class AlertNotifier(private val context: Context) {
             .build()
         manager.notify(content.identifier, 0, notification)
         val playing = manager.getNotificationChannel(channel.id) ?: channel
-        return Delivery(true, channelBuzz(playing.shouldVibrate(), playing.vibrationPattern, vibration))
+        val silenced = buzzMuted(
+            playing.canBypassDnd(),
+            manager.currentInterruptionFilter,
+            context.getSystemService(AudioManager::class.java)?.ringerMode == AudioManager.RINGER_MODE_SILENT,
+        )
+        return Delivery(true, channelBuzz(playing.shouldVibrate() && !silenced, playing.vibrationPattern, vibration))
     }
 
     fun withdraw(identifier: String) {
@@ -95,6 +101,13 @@ class AlertNotifier(private val context: Context) {
         const val ALARM_CHANNEL_ID = "alarms"
         const val SOUNDS_THREAD = "sounds"
         const val TEST_DELAY_MILLIS = 10_000L
+
+        fun buzzMuted(canBypassDnd: Boolean, interruptionFilter: Int, ringerSilent: Boolean): Boolean {
+            if (canBypassDnd) return false
+            val quiet = interruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL &&
+                interruptionFilter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN
+            return quiet || ringerSilent
+        }
 
         fun channelBuzz(shouldVibrate: Boolean, pattern: LongArray?, requested: AlertVibration): AlertVibration? {
             if (!shouldVibrate) return null
