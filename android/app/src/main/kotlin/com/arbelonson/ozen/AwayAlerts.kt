@@ -38,6 +38,8 @@ class AwayAlerts(private val policy: BackgroundAlertPolicy = BackgroundAlertPoli
         return policy.notification(alert, appIsActive, now, utcOffsetSeconds)
     }
 
+    fun takePostedIdentifiers(): List<String> = policy.takePostedIdentifiers()
+
     companion object {
         fun vibrationFor(content: AlertNotificationContent): AlertVibration =
             if (content.isUrgent && content.threadIdentifier == AlertNotifier.SOUNDS_THREAD) AlertVibration.pattern(SoundEvent.Importance.Critical) else AlertVibration.keyword
@@ -90,6 +92,13 @@ class AlertNotifier(private val context: Context) {
 
     fun withdraw(identifier: String) {
         context.getSystemService(NotificationManager::class.java).cancel(identifier, 0)
+    }
+
+    fun withdrawAwayAlerts() {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.activeNotifications
+            .filter { BackgroundAlertPolicy.isAwayAlertTag(it.tag) }
+            .forEach { manager.cancel(it.tag, it.id) }
     }
 
     fun postTest() {

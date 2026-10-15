@@ -1100,4 +1100,70 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(back.waitForExistence(timeout: 10), "secondary screens: no way back from \(screenIdentifier)")
         back.tap()
     }
+
+    /// At the largest text size, with the keyboard up, the Say sheet's
+    /// composer used to fill the sheet and leave the quick phrases no
+    /// height. The whole sheet must scroll to them, in portrait and in
+    /// landscape.
+    func testTypeToSpeakQuickPhrasesReachableAtLargeText() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+
+        let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
+        XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "say sheet: the button to open it never appeared")
+        typeToSpeakButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["typeToSpeakScreen"].waitForExistence(timeout: 10), "say sheet: the screen never appeared")
+
+        app.textFields.firstMatch.typeText("שלום")
+        let header = app.descendants(matching: .any)["quickPhrasesHeader"]
+        // Drags start just under the navigation bar, above the keyboard:
+        // a plain swipe starts mid-screen, which can be on the keyboard.
+        func dragSheet(up: Bool) {
+            let bar = app.navigationBars.firstMatch.frame
+            let window = app.windows.firstMatch.frame
+            let startY = (bar.maxY + 60) / window.height
+            let endY = (bar.maxY + 60 + (up ? -50 : 50)) / window.height
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY)))
+        }
+        var swipes = 0
+        while !(header.exists && header.isHittable) && swipes < 12 {
+            dragSheet(up: true)
+            swipes += 1
+        }
+        capture(app, name: "type-to-speak-accessibility-text-phrases-reached")
+        XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in portrait")
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer {
+            XCUIDevice.shared.orientation = .portrait
+            let upright = NSPredicate { _, _ in
+                let frame = app.windows.firstMatch.frame
+                return frame.height > frame.width
+            }
+            _ = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: upright, object: nil)], timeout: 10)
+            app.terminate()
+        }
+        let rotated = NSPredicate { _, _ in
+            let frame = app.windows.firstMatch.frame
+            return frame.width > frame.height
+        }
+        wait(for: [XCTNSPredicateExpectation(predicate: rotated, object: nil)], timeout: 10)
+        let play = app.buttons["להשמיע"].firstMatch
+        var tries = 0
+        while !(play.exists && play.isHittable) && tries < 12 {
+            dragSheet(up: false)
+            tries += 1
+        }
+        capture(app, name: "type-to-speak-accessibility-text-landscape")
+        XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")
+
+        swipes = 0
+        while !(header.exists && header.isHittable) && swipes < 12 {
+            dragSheet(up: true)
+            swipes += 1
+        }
+        XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in landscape")
+    }
 }
