@@ -4,6 +4,8 @@ import com.arbelonson.ozen.PhasePresentation.Action
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HomeServer
+import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ScheduledRetry
@@ -103,14 +105,44 @@ class PhasePresentationTest {
     }
 
     @Test
-    fun `a full phone says how much room to free, and a tap opens the model choice`() {
+    fun `a full phone says how much room to free, and a tap tries again rather than opening a model choice that does not exist`() {
         val presentation = present(
             failure(unavailable(EngineUnavailability.Kind.NotEnoughStorage, downloadMegabytes = 626, missingMegabytes = 1_300)),
             TranscriptionEngineKind.WhisperKit,
         )
-        assertEquals(Action.OpenEngineSettings, presentation.action)
+        assertEquals(Action.Retry, presentation.action)
         assertTrue(presentation.detail?.contains("1.3 GB") == true)
         assertEquals(PhaseTint.Problem, presentation.tint)
+    }
+
+    @Test
+    fun `neither the full phone nor the failed load sends her to pick a smaller model, which Android has no way to do`() {
+        val states = listOf(
+            unavailable(EngineUnavailability.Kind.NotEnoughStorage, downloadMegabytes = 626, missingMegabytes = 1_300),
+            unavailable(EngineUnavailability.Kind.ModelLoadFailed),
+        )
+        for (language in listOf(UILanguage.English, UILanguage.Hebrew)) {
+            Localization.withLanguage(language) {
+                for (state in states) {
+                    val presentation = present(failure(state), TranscriptionEngineKind.WhisperKit)
+                    val text = presentation.title + " " + presentation.detail.orEmpty()
+                    assertFalse(text.contains("smaller", ignoreCase = true) || text.contains("קטן"), "$language ${state.kind}: $text")
+                    assertFalse(text.contains("Settings") || text.contains("בהגדרות"), "$language ${state.kind}: $text")
+                    assertNotEquals(Action.OpenEngineSettings, presentation.action, "$language ${state.kind}")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `a full phone says how much to free and that a tap checks again once she has`() {
+        val state = unavailable(EngineUnavailability.Kind.NotEnoughStorage, downloadMegabytes = 626, missingMegabytes = 1_300)
+        Localization.withLanguage(UILanguage.English) {
+            assertTrue(present(failure(state), TranscriptionEngineKind.WhisperKit).detail.orEmpty().let { it.contains("free up") && it.contains("tap to try again", ignoreCase = true) })
+        }
+        Localization.withLanguage(UILanguage.Hebrew) {
+            assertTrue(present(failure(state), TranscriptionEngineKind.WhisperKit).detail.orEmpty().let { it.contains("לפנות") && it.contains("הקישו לנסות שוב") })
+        }
     }
 
     @Test
