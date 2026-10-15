@@ -43,6 +43,7 @@ class WebSocketConnector(
     private val plainSockets: SocketFactory = SocketFactory.getDefault(),
     private val tlsSockets: SSLSocketFactory = SSLSocketFactory.getDefault() as SSLSocketFactory,
     private val connectTimeoutMillis: Int = 15_000,
+    private val handshakeTimeoutMillis: Int = 10_000,
 ) : HomeServerConnecting, CloudSocketConnecting {
     override suspend fun open(url: URI): HomeServerSocket = open(url, emptyMap())
 
@@ -68,6 +69,7 @@ class WebSocketConnector(
             created(plain)
             plain.connect(InetSocketAddress(host, port), connectTimeoutMillis)
             plain.tcpNoDelay = true
+            plain.soTimeout = handshakeTimeoutMillis
             if (!secure) return plain
             val tls = tlsSockets.createSocket(plain, host, port, true) as SSLSocket
             val parameters = tls.sslParameters
@@ -230,6 +232,7 @@ private class WebSocketConnection(
             if (answer["sec-websocket-accept"] != WebSocketConnector.acceptKey(key)) {
                 throw IOException("the server's answer doesn't match this connection")
             }
+            socket.soTimeout = 0
             return Streams(socket, input, output)
         } catch (error: Throwable) {
             socket.close()
