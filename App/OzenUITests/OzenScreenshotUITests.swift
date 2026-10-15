@@ -1113,10 +1113,13 @@ final class OzenScreenshotUITests: XCTestCase {
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
         XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "say sheet: the button to open it never appeared")
         let revealControls = app.descendants(matching: .any)["showControlsButton"]
-        for _ in 0..<5 where !typeToSpeakButton.isHittable {
-            if revealControls.exists { revealControls.tap() }
-            Thread.sleep(forTimeInterval: 1)
+        for _ in 0..<40 {
+            if typeToSpeakButton.isHittable { break }
+            if revealControls.exists, revealControls.isHittable { revealControls.tap() }
+            Thread.sleep(forTimeInterval: 0.3)
         }
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertTrue(typeToSpeakButton.isHittable, "say sheet: the control bar never brought the button back")
         typeToSpeakButton.tap()
         let sayScreen = app.descendants(matching: .any)["typeToSpeakScreen"]
         if !sayScreen.waitForExistence(timeout: 4), typeToSpeakButton.exists {
