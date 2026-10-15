@@ -71,4 +71,17 @@ struct PhoneNumbersTests {
         #expect(dialed("+972\u{2011}3\u{2011}1234567") == ["+97231234567"])
         #expect(dialed("המוקד 1\u{2011}700\u{2011}50\u{2011}50\u{2011}50") == ["1700505050"])
     }
+
+    @Test("a service number with one more group after it is not dialed as its shorter prefix")
+    func serviceNumberNotCutShort() {
+        #expect(dialed("המוקד 1-700-50-50-50-1 פתוח").isEmpty)
+        #expect(dialed("המוקד 1\u{2011}700\u{2011}50\u{2011}50\u{2011}50\u{2011}1 פתוח").isEmpty)
+        #expect(dialed("המוקד 1-700-50-50-50, פתוח") == ["1700505050"])
+    }
+
+    @Test("a number written with other digits dials every digit, never a shorter number")
+    func otherDigitsNeverShorter() {
+        #expect(dialed("תתקשרי 050123456\u{0667} מחר") == ["0501234567"])
+        #expect(dialed("המוקד 1-700-50-50-5\u{0660} פתוח") == ["1700505050"])
+    }
 }

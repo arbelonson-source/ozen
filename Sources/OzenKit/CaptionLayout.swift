@@ -64,7 +64,7 @@ public enum CaptionLayout {
     }
 
     private static let doseSpace = try? NSRegularExpression(
-        pattern: #"(?<=\d) (?=(?:מ״ג|מ״ל|גרם|mg|ml)(?![\p{L}]))"#
+        pattern: #"(?<=\d) (?=(?:מיליגרם|מיליליטר|מ״ג|מ״ל|גרם|ליטר|mg|ml)(?![\p{L}]))"#
     )
 
     /// The marks alone, without breaking the text into paragraphs: for a

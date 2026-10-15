@@ -14,12 +14,12 @@ public enum PhoneNumbers {
         let services: [Match] = servicePattern.matches(in: text, range: whole).compactMap { found in
             guard let range = Range(found.range, in: text) else { return nil }
             let written = text[range]
-            return Match(range: range, dialable: String(written.filter(\.isASCIIDigit)))
+            return Match(range: range, dialable: digitsOf(written))
         }
         let phones: [Match] = pattern.matches(in: text, range: whole).compactMap { found in
             guard let range = Range(found.range, in: text) else { return nil }
             let written = text[range]
-            let digits = written.filter(\.isASCIIDigit)
+            let digits = digitsOf(written)
             if written.hasPrefix("+") {
                 guard digits.hasPrefix("972"), (11...12).contains(digits.count) else { return nil }
                 return Match(range: range, dialable: "+" + digits)
@@ -35,10 +35,14 @@ public enum PhoneNumbers {
     )
 
     private static let servicePattern = try? NSRegularExpression(
-        pattern: #"(?<![\d+*])1[-\x{2011}\x{00A0} ]?(?:700|800|801|599)(?:[-\x{2011}\x{00A0} ]?\d){6}(?!\d)"#
+        pattern: #"(?<![\d+*])1[-\x{2011}\x{00A0} ]?(?:700|800|801|599)(?:[-\x{2011}\x{00A0} ]?\d){6}(?![-\x{2011}]?\d)"#
     )
 }
 
-private extension Character {
-    var isASCIIDigit: Bool { isASCII && isNumber }
+private func digitsOf(_ written: Substring) -> String {
+    var digits = ""
+    for scalar in written.unicodeScalars where scalar.properties.numericType == .decimal {
+        if let value = scalar.properties.numericValue { digits += String(Int(value)) }
+    }
+    return digits
 }

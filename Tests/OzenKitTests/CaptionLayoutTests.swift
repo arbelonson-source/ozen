@@ -308,4 +308,13 @@ struct CaptionPipelineLongRunTests {
         let shown = CaptionLayout.displayText("תתקשרי 054 123 4567 מחר")
         #expect(PhoneNumbers.matches(in: shown).map(\.dialable) == ["0541234567"])
     }
+
+    @Test("a dose written with a long unit word is held together too")
+    func longUnitsHeldTogether() {
+        let nb = "\u{00A0}"
+        #expect(CaptionLayout.displayText("קחי 30 מיליגרם בבוקר").contains("30" + nb + "מיליגרם"))
+        #expect(CaptionLayout.displayText("קחי 5 מיליליטר בבוקר").contains("5" + nb + "מיליליטר"))
+        #expect(CaptionLayout.displayText("קחי 2 ליטר מים").contains("2" + nb + "ליטר"))
+        #expect(CaptionLayout.displayText("קחי 5 מיליליטרים").contains("5 מיליליטרים"))
+    }
 }
