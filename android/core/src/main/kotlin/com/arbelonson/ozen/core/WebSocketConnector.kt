@@ -6,6 +6,7 @@ import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URI
@@ -45,6 +46,7 @@ class WebSocketConnector(
     private val connectTimeoutMillis: Int = 15_000,
     private val handshakeTimeoutMillis: Int = 10_000,
     private val privateRoute: (String) -> SocketFactory? = { null },
+    private val privateAddresses: (String) -> List<InetAddress>? = { null },
 ) : HomeServerConnecting, CloudSocketConnecting {
     override suspend fun open(url: URI): HomeServerSocket = open(url, emptyMap())
 
@@ -65,10 +67,11 @@ class WebSocketConnector(
         val host = requireNotNull(url.host) { "no host in $url" }.trim('[', ']')
         val secure = scheme == "wss"
         val port = if (url.port > 0) url.port else if (secure) 443 else 80
-        val plain = (privateRoute(host) ?: plainSockets).createSocket()
+        val routed = privateRoute(host)
+        val addresses = if (routed == null) null else privateAddresses(host)?.takeIf { it.isNotEmpty() }
+        val targets = addresses?.map { InetSocketAddress(it, port) } ?: listOf(InetSocketAddress(host, port))
+        val plain = connectToAny(routed ?: plainSockets, targets, created)
         try {
-            created(plain)
-            plain.connect(InetSocketAddress(host, port), connectTimeoutMillis)
             plain.tcpNoDelay = true
             plain.soTimeout = handshakeTimeoutMillis
             if (!secure) return plain
@@ -83,6 +86,23 @@ class WebSocketConnector(
             plain.close()
             throw error
         }
+    }
+
+    private fun connectToAny(sockets: SocketFactory, targets: List<InetSocketAddress>, created: (Socket) -> Unit): Socket {
+        var failure: IOException? = null
+        for (target in targets) {
+            val socket = sockets.createSocket()
+            try {
+                created(socket)
+                socket.connect(target, connectTimeoutMillis)
+                return socket
+            } catch (error: IOException) {
+                socket.close()
+                failure?.let(error::addSuppressed)
+                failure = error
+            }
+        }
+        throw failure ?: IOException("no address")
     }
 
     private fun isAddressLiteral(host: String): Boolean =

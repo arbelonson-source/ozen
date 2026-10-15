@@ -503,4 +503,30 @@ class WebSocketConnectorRouteTest {
         assertFailsWith<IOException> { WebSocketConnector(plainSockets = default, privateRoute = { null }).connect(URI("ws://192.168.1.20:8765")) }
         assertEquals(1, default.connected.size)
     }
+
+    @Test
+    fun `a home name is looked up through the route and not on the default network`() {
+        val route = RecordingSockets()
+        val resolved = java.net.InetAddress.getByAddress("grandma-pc", byteArrayOf(10, 0, 0, 7))
+        val asked = CopyOnWriteArrayList<String>()
+        assertFailsWith<IOException> {
+            WebSocketConnector(
+                privateRoute = { route },
+                privateAddresses = { host -> asked += host; listOf(resolved) },
+            ).connect(URI("ws://grandma-pc.invalid:8765"))
+        }
+        assertEquals(listOf("grandma-pc.invalid"), asked)
+        assertEquals(listOf("10.0.0.7"), route.connected.map { it.address.hostAddress })
+    }
+
+    @Test
+    fun `each address the route found is tried`() {
+        val route = RecordingSockets()
+        val a = java.net.InetAddress.getByAddress(byteArrayOf(10, 0, 0, 7))
+        val b = java.net.InetAddress.getByAddress(byteArrayOf(10, 0, 0, 8))
+        assertFailsWith<IOException> {
+            WebSocketConnector(privateRoute = { route }, privateAddresses = { listOf(a, b) }).connect(URI("ws://grandma-pc.invalid"))
+        }
+        assertEquals(listOf("10.0.0.7", "10.0.0.8"), route.connected.map { it.address.hostAddress })
+    }
 }

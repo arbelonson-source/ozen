@@ -31,4 +31,14 @@ class PrivateRouteTest {
         assertNull(PrivateRoute.choose("pc.example.com", setOf(Transport.Cellular), listOf(cellular, wifi)))
         assertNull(PrivateRoute.choose("192.168.1.20", setOf(Transport.Cellular), listOf(cellular)))
     }
+
+    @Test
+    fun `a tailnet host keeps its own route when Wi-Fi is available`() {
+        val cell = setOf(Transport.Cellular)
+        assertNull(PrivateRoute.choose("pc.tailnet.ts.net", cell, listOf(cellular, wifi)))
+        assertNull(PrivateRoute.choose("[PC.Tailnet.TS.NET]", cell, listOf(cellular, wifi)))
+        assertNull(PrivateRoute.choose("100.64.0.5", cell, listOf(cellular, wifi)))
+        assertNull(PrivateRoute.choose("fd7a:115c:a1e0::1", cell, listOf(cellular, wifi)))
+        assertEquals("wifi", PrivateRoute.choose("172.20.0.1", cell, listOf(cellular, wifi)))
+    }
 }
