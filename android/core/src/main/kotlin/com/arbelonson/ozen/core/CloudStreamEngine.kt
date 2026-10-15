@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 fun SonioxEngine(
     http: CloudHTTP = UrlConnectionCloudHTTP(),
@@ -30,8 +31,9 @@ fun SonioxEngine(
     pongSeconds: Double = 8.0,
     approvalSeconds: Double = CloudSpeechEngine.DEFAULT_APPROVAL_SECONDS,
     timeSource: TimeSource = TimeSource.Monotonic,
+    handshakeSeconds: Double = CloudStreamEngine.DEFAULT_HANDSHAKE_SECONDS,
     apiKey: () -> String?,
-): CloudStreamEngine = CloudStreamEngine(SonioxSpeech, http, connector, pingSeconds, pongSeconds, approvalSeconds, timeSource, apiKey)
+): CloudStreamEngine = CloudStreamEngine(SonioxSpeech, http, connector, pingSeconds, pongSeconds, approvalSeconds, timeSource, handshakeSeconds, apiKey)
 
 fun SpeechmaticsEngine(
     http: CloudHTTP = UrlConnectionCloudHTTP(),
@@ -40,8 +42,9 @@ fun SpeechmaticsEngine(
     pongSeconds: Double = 8.0,
     approvalSeconds: Double = CloudSpeechEngine.DEFAULT_APPROVAL_SECONDS,
     timeSource: TimeSource = TimeSource.Monotonic,
+    handshakeSeconds: Double = CloudStreamEngine.DEFAULT_HANDSHAKE_SECONDS,
     apiKey: () -> String?,
-): CloudStreamEngine = CloudStreamEngine(SpeechmaticsSpeech, http, connector, pingSeconds, pongSeconds, approvalSeconds, timeSource, apiKey)
+): CloudStreamEngine = CloudStreamEngine(SpeechmaticsSpeech, http, connector, pingSeconds, pongSeconds, approvalSeconds, timeSource, handshakeSeconds, apiKey)
 
 fun AssemblyAIEngine(
     http: CloudHTTP = UrlConnectionCloudHTTP(),
@@ -50,8 +53,9 @@ fun AssemblyAIEngine(
     pongSeconds: Double = 8.0,
     approvalSeconds: Double = CloudSpeechEngine.DEFAULT_APPROVAL_SECONDS,
     timeSource: TimeSource = TimeSource.Monotonic,
+    handshakeSeconds: Double = CloudStreamEngine.DEFAULT_HANDSHAKE_SECONDS,
     apiKey: () -> String?,
-): CloudStreamEngine = CloudStreamEngine(AssemblyAISpeech, http, connector, pingSeconds, pongSeconds, approvalSeconds, timeSource, apiKey)
+): CloudStreamEngine = CloudStreamEngine(AssemblyAISpeech, http, connector, pingSeconds, pongSeconds, approvalSeconds, timeSource, handshakeSeconds, apiKey)
 
 /**
  * Live captions from a service that streams (see `CloudStreamService`)
@@ -78,11 +82,16 @@ class CloudStreamEngine(
     private val pongSeconds: Double = 8.0,
     private val approvalSeconds: Double = CloudSpeechEngine.DEFAULT_APPROVAL_SECONDS,
     private val timeSource: TimeSource = TimeSource.Monotonic,
+    private val handshakeSeconds: Double = DEFAULT_HANDSHAKE_SECONDS,
     private val apiKey: () -> String?,
 ) : TranscriptionEngine {
     override val kind: TranscriptionEngineKind = TranscriptionEngineKind.Cloud
     val provider: CloudProvider = service.provider
     val model: String = service.model
+
+    companion object {
+        const val DEFAULT_HANDSHAKE_SECONDS = 10.0
+    }
 
     private val lock = Any()
     private var vocabulary: List<String> = emptyList()
@@ -158,14 +167,21 @@ class CloudStreamEngine(
         }
         val settings = service.config(languageCode, currentVocabulary())
         if (settings.isNotEmpty()) {
-            try {
-                socket.send(settings)
+            val sent = try {
+                withTimeoutOrNull(handshakeSeconds.seconds) {
+                    socket.send(settings)
+                    true
+                }
             } catch (error: CancellationException) {
                 withContext(NonCancellable) { socket.close() }
                 throw error
             } catch (error: Exception) {
                 withContext(NonCancellable) { socket.close() }
                 throw failure(error)
+            }
+            if (sent == null) {
+                withContext(NonCancellable) { socket.close() }
+                throw CloudSpeechError.Offline
             }
         }
         val started = CompletableDeferred<Unit>()
@@ -223,6 +239,15 @@ class CloudStreamEngine(
         // A socket's receive doesn't notice cancellation: stopping captions
         // closes the connection, which ends it.
         val stopping = AtomicBoolean(false)
+        // A service that took the settings and never says it has started
+        // is a connection that is not really open: closing it ends the
+        // receive, which reports no internet.
+        val startWatch = workers.launch {
+            if (service.waitsForStart) {
+                delay(handshakeSeconds.seconds)
+                if (!started.isCompleted) withContext(NonCancellable) { socket.close() }
+            }
+        }
         val receiver = workers.async { receive(socket, key, languageCode, started, tokens, stopping) }
         try {
             receiver.await()
@@ -233,6 +258,7 @@ class CloudStreamEngine(
         } finally {
             sender.cancel()
             heartbeat.cancel()
+            startWatch.cancel()
         }
     }
 
