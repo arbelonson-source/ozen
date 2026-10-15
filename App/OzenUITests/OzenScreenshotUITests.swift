@@ -1136,7 +1136,15 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in portrait")
 
         XCUIDevice.shared.orientation = .landscapeLeft
-        defer { XCUIDevice.shared.orientation = .portrait }
+        defer {
+            XCUIDevice.shared.orientation = .portrait
+            let upright = NSPredicate { _, _ in
+                let frame = app.windows.firstMatch.frame
+                return frame.height > frame.width
+            }
+            _ = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: upright, object: nil)], timeout: 10)
+            app.terminate()
+        }
         let rotated = NSPredicate { _, _ in
             let frame = app.windows.firstMatch.frame
             return frame.width > frame.height
