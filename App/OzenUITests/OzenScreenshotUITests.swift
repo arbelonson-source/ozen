@@ -1121,15 +1121,13 @@ final class OzenScreenshotUITests: XCTestCase {
         // control, which is above the keyboard and never on the text
         // field: at the largest text size the field sits right under the
         // bar, and a drag that starts on it moves the cursor, not the sheet.
-        // A slow drag that holds at the end leaves no flick behind, which
-        // in landscape threw the phrases past the top in one swipe.
         func dragSheet(up: Bool) {
             let bar = app.navigationBars.firstMatch.frame
             let window = app.windows.firstMatch.frame
             let startY = (bar.maxY + 12) / window.height
             let endY = (bar.maxY + 12 + (up ? -50 : 50)) / window.height
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
-                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY)), withVelocity: .slow, thenHoldForDuration: 0.4)
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY)))
         }
         var swipes = 0
         while !(header.exists && header.isHittable) && swipes < 40 {
@@ -1163,9 +1161,18 @@ final class OzenScreenshotUITests: XCTestCase {
         capture(app, name: "type-to-speak-accessibility-text-landscape")
         XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")
 
+        // A swipe can flick the phrases past the top of the sheet in
+        // landscape, so once they have been seen and are gone again or
+        // sit above the bar, swipe back down.
         swipes = 0
+        var seen = false
         while !(header.exists && header.isHittable) && swipes < 40 {
-            dragSheet(up: true)
+            seen = seen || header.exists
+            let above = header.exists
+                ? header.frame.maxY < app.navigationBars.firstMatch.frame.maxY
+                : seen
+            dragSheet(up: !above)
+            if above && !header.exists { seen = false }
             swipes += 1
         }
         XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in landscape")
