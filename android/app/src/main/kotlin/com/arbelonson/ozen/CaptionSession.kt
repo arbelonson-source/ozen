@@ -240,6 +240,7 @@ class CaptionSession(
         appIsActive = true
         if (cameBack) {
             awayAlerts.takePostedIdentifiers().forEach(notifier::withdraw)
+            notifier.withdrawAwayAlerts()
             if (stopAnnouncer.comingBack(pipeline.phase) == CaptionsStopAnnouncer.Event.Stopped && ScreenReader.isOn(context)) {
                 ScreenReader.announce(context, stoppedText(pipeline.phase))
             }

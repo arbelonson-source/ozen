@@ -157,4 +157,15 @@ class BackgroundAlertPolicyTest {
         assertEquals(setOf(bell?.identifier, said?.identifier), policy.takePostedIdentifiers().toSet())
         assertEquals(emptyList(), policy.takePostedIdentifiers())
     }
+
+    @Test
+    fun `an alert left by a killed process is still recognised as an away alert by its tag`() {
+        val policy = BackgroundAlertPolicy()
+        val bell = policy.notification(sound("door_bell"), appIsActive = false, now = 0.0)
+        val said = policy.notification(hit("grandma"), "grandma", appIsActive = false, now = 0.0)
+        assertTrue(BackgroundAlertPolicy.isAwayAlertTag(bell?.identifier))
+        assertTrue(BackgroundAlertPolicy.isAwayAlertTag(said?.identifier))
+        assertFalse(BackgroundAlertPolicy.isAwayAlertTag(null))
+        assertFalse(BackgroundAlertPolicy.isAwayAlertTag(BackgroundAlertPolicy.testNotification.identifier))
+    }
 }

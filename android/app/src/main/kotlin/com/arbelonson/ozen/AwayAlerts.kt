@@ -94,6 +94,13 @@ class AlertNotifier(private val context: Context) {
         context.getSystemService(NotificationManager::class.java).cancel(identifier, 0)
     }
 
+    fun withdrawAwayAlerts() {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.activeNotifications
+            .filter { BackgroundAlertPolicy.isAwayAlertTag(it.tag) }
+            .forEach { manager.cancel(it.tag, it.id) }
+    }
+
     fun postTest() {
         Handler(Looper.getMainLooper()).postDelayed({ post(BackgroundAlertPolicy.testNotification) }, TEST_DELAY_MILLIS)
     }

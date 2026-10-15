@@ -86,6 +86,10 @@ class BackgroundAlertPolicy(
     }
 
     companion object {
+        /** Whether a notification tag is a sound or word alert posted while away, even one left by a process Android has since killed. */
+        fun isAwayAlertTag(tag: String?): Boolean =
+            tag != null && (tag.startsWith("sound-") || tag.startsWith("keyword-"))
+
         /**
          * Whether to ask for notification permission now. Alerts with the
          * screen off are on by default, but the only ask was a skippable
