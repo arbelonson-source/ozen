@@ -1573,6 +1573,7 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
         var reclaims = 0
         var posted: [AlertNotificationContent] = []
         var withdrawn: [String] = []
+        var sweeps = 0
         init(reclaimAnswer: Bool) { self.reclaimAnswer = reclaimAnswer }
     }
 
@@ -1595,6 +1596,7 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
             historyStore: TranscriptHistoryStore(directoryURL: directory),
             postNotification: { phone.posted.append($0) },
             withdrawNotification: { phone.withdrawn.append($0) },
+            withdrawDeliveredAlerts: { phone.sweeps += 1 },
             reclaimAudioSession: {
                 phone.reclaims += 1
                 if let first = phone.reclaimWorksFromTry { return phone.reclaims >= first }
@@ -1626,6 +1628,17 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
         viewModel.sceneActivityChanged(isActive: false)
         viewModel.sceneActivityChanged(isActive: true)
         #expect(phone.withdrawn.count == count)
+    }
+
+    @Test("coming back also sweeps alerts an earlier run of the app left, even when this run posted none")
+    func sweepsLeftoverAlertsOnReturn() async {
+        let phone = Phone(reclaimAnswer: true)
+        let viewModel = makeViewModel(phone: phone)
+        await viewModel.start()
+        viewModel.sceneActivityChanged(isActive: false)
+        #expect(phone.sweeps == 0)
+        viewModel.sceneActivityChanged(isActive: true)
+        #expect(phone.sweeps == 1)
     }
 
     @Test("a name notification is taken off the lock screen too")
@@ -1705,7 +1718,8 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
         #expect(viewModel.pipeline.phase.failure?.engineUnavailability?.kind == .modelDownloadFailed)
 
         engine.availability = .available
-        await viewModel.chooseModel(viewModel.settings.whisperModelVariant)
+        let needsConfirmation = await viewModel.modelRowTapped(viewModel.settings.whisperModelVariant, isInstalled: false)
+        #expect(!needsConfirmation)
         #expect(viewModel.pipeline.phase.isListening)
     }
 
@@ -1716,8 +1730,20 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
         await viewModel.start()
         let before = builds.count
 
-        await viewModel.chooseModel(viewModel.settings.whisperModelVariant)
+        _ = await viewModel.modelRowTapped(viewModel.settings.whisperModelVariant, isInstalled: true)
         #expect(builds.count == before)
+    }
+
+    @Test("tapping an uninstalled model while listening asks first and changes nothing")
+    func uninstalledModelWhileListeningAsksFirst() async {
+        let viewModel = modelViewModel(failing: false, builds: BuildCount())
+        await viewModel.start()
+        let before = viewModel.settings.whisperModelVariant
+        let other = WhisperModelCatalog.options.map(\.variant).first { $0 != before }!
+
+        let needsConfirmation = await viewModel.modelRowTapped(other, isInstalled: false)
+        #expect(needsConfirmation)
+        #expect(viewModel.settings.whisperModelVariant == before)
     }
 
     @Test("tapping another model still switches to it")
@@ -1726,7 +1752,8 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
         await viewModel.start()
         let other = WhisperModelCatalog.options.map(\.variant).first { $0 != viewModel.settings.whisperModelVariant }!
 
-        await viewModel.chooseModel(other)
+        let needsConfirmation = await viewModel.modelRowTapped(other, isInstalled: true)
+        #expect(!needsConfirmation)
         #expect(viewModel.settings.whisperModelVariant == other)
     }
 

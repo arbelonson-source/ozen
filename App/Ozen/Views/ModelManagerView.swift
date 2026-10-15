@@ -124,10 +124,8 @@ struct ModelManagerView: View {
             && StorageSpaceGate.shortfallMegabytes(downloadMegabytes: option.installMegabytes, availableBytes: freeBytes) != nil
 
         return Button {
-            if !isInstalled, !isSelected, viewModel.isListening {
-                pendingSwitch = option
-            } else {
-                Task { await viewModel.setWhisperModel(option.variant) }
+            Task {
+                if await viewModel.modelRowTapped(option.variant, isInstalled: isInstalled) { pendingSwitch = option }
             }
         } label: {
             VStack(alignment: .leading, spacing: 6) {

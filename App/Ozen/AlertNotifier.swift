@@ -80,6 +80,16 @@ nonisolated final class AlertNotifier: Sendable {
     func withdraw(identifier: String) {
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [identifier])
     }
+
+    /// Takes every sound and word alert still in Notification Center away,
+    /// including ones an earlier run of the app posted.
+    func withdrawDeliveredAlerts() {
+        UNUserNotificationCenter.current().getDeliveredNotifications { delivered in
+            let identifiers = delivered.map { $0.request.identifier }.filter(AlertNotificationContent.isAlertIdentifier)
+            guard !identifiers.isEmpty else { return }
+            UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: identifiers)
+        }
+    }
 }
 
 nonisolated private final class LockedErrorText: @unchecked Sendable {

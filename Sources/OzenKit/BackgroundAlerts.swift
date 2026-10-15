@@ -10,6 +10,12 @@ public struct AlertNotificationContent: Sendable, Equatable {
     /// Groups sounds and words separately in Notification Center.
     public let threadIdentifier: String
     public let isUrgent: Bool
+
+    /// Whether a delivered notification's identifier is one of the sound or
+    /// word alerts, as opposed to the app's other notices.
+    public static func isAlertIdentifier(_ identifier: String) -> Bool {
+        identifier.hasPrefix("sound-") || identifier.hasPrefix("keyword-")
+    }
 }
 
 /// Decides when an alert should also become a phone notification.
