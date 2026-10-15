@@ -63,4 +63,37 @@ struct PhoneNumbersTests {
         let shown = CaptionLayout.displayText("תתקשרי ל-050-1234567.")
         #expect(PhoneNumbers.matches(in: shown).map(\.dialable) == ["0501234567"])
     }
+
+    @Test("no-break spaces and non-breaking hyphens between the groups are read as a number too")
+    func noBreakForms() {
+        #expect(dialed("תתקשרי 054\u{00A0}123\u{00A0}4567 מחר") == ["0541234567"])
+        #expect(dialed("תתקשרי 050\u{2011}1234567 מחר") == ["0501234567"])
+        #expect(dialed("+972\u{2011}3\u{2011}1234567") == ["+97231234567"])
+        #expect(dialed("המוקד 1\u{2011}700\u{2011}50\u{2011}50\u{2011}50") == ["1700505050"])
+    }
+
+    @Test("a service number with one more group after it is not dialed as its shorter prefix")
+    func serviceNumberNotCutShort() {
+        #expect(dialed("המוקד 1-700-50-50-50-1 פתוח").isEmpty)
+        #expect(dialed("המוקד 1\u{2011}700\u{2011}50\u{2011}50\u{2011}50\u{2011}1 פתוח").isEmpty)
+        #expect(dialed("המוקד 1-700-50-50-50, פתוח") == ["1700505050"])
+    }
+
+    @Test("a number written with other digits dials every digit, never a shorter number")
+    func otherDigitsNeverShorter() {
+        #expect(dialed("תתקשרי 050123456\u{0667} מחר") == ["0501234567"])
+        #expect(dialed("המוקד 1-700-50-50-5\u{0660} פתוח") == ["1700505050"])
+    }
+
+    @Test("a digit outside the basic plane is counted, not dropped")
+    func supplementaryDigit() {
+        #expect(dialed("תתקשרי 050123456\u{1D7D5} מחר") == ["0501234567"])
+    }
+
+    @Test("a number followed by a no-break space and one more digit is not dialed as its shorter prefix")
+    func noBreakTrailingGroup() {
+        #expect(dialed("תתקשרי 050\u{00A0}123\u{00A0}4567\u{00A0}8 מחר").isEmpty)
+        #expect(dialed("המוקד 1\u{00A0}700\u{00A0}50\u{00A0}50\u{00A0}50\u{00A0}1 פתוח").isEmpty)
+        #expect(dialed("תתקשרי 050\u{00A0}123\u{00A0}4567 מחר") == ["0501234567"])
+    }
 }
