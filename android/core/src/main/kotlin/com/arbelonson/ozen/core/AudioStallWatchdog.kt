@@ -40,6 +40,7 @@ class AudioStallWatchdog private constructor(
 
     fun tick(chunksReceived: Int, systemInterrupted: Boolean): Boolean {
         if (!isEnabled) return false
+        if (systemInterrupted) silentSamples = 0
         if (systemInterrupted || chunksReceived != lastChunkCount) {
             lastChunkCount = chunksReceived
             quietTicks = 0

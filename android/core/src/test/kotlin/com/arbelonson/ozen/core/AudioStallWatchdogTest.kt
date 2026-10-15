@@ -76,4 +76,14 @@ class AudioStallWatchdogTest {
         repeat(6) { watchdog.heard(second, systemInterrupted = false) }
         assertTrue(watchdog.isSilent)
     }
+
+    @Test
+    fun `a call that pauses the microphone entirely still forgets the silence before it`() {
+        val watchdog = AudioStallWatchdog(stallSeconds = 6.0, silenceSeconds = 8.0)
+        val second = FloatArray(16_000)
+        repeat(7) { watchdog.heard(second, systemInterrupted = false) }
+        watchdog.tick(chunksReceived = 28, systemInterrupted = true)
+        watchdog.heard(second, systemInterrupted = false)
+        assertFalse(watchdog.isSilent)
+    }
 }
