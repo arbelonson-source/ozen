@@ -882,24 +882,24 @@ public struct TranscriptHistoryStore: Sendable {
     /// A saved voice was renamed: every saved conversation that said the
     /// old name now says the new one, so fixing a misspelling reaches the
     /// days before it too, and a search for the new name finds them. A
-    /// conversation whose search text doesn't hold the old name is skipped
-    /// without being opened. Returns how many conversations changed.
+    /// conversation is checked as raw JSON, so a line this build cannot read
+    /// is renamed too. Returns how many conversations changed.
     @discardableResult
     public func renameSpeaker(from oldName: String, to newName: String) throws -> Int {
         guard !oldName.isEmpty, !newName.isEmpty, oldName != newName else { return 0 }
-        let needle = Self.normalizedForSearch(oldName)
         var changed = 0
         for url in recordFiles() {
-            if let cached = cachedSearchText(forRecordFile: url).flatMap(Self.preparedSearch), !cached.words.contains(needle) { continue }
-            guard let record = Self.decodeRecord(at: url),
-                  record.segments.contains(where: { $0.speakerName == oldName })
-            else { continue }
             let patched = try patchRecordFile(at: url) { object in
-                guard var lines = object["segments"] as? [[String: Any]] else { return false }
-                for index in lines.indices where lines[index]["speakerName"] as? String == oldName {
-                    lines[index]["speakerName"] = newName
+                guard var entries = object["segments"] as? [Any] else { return false }
+                var found = false
+                for index in entries.indices {
+                    guard var line = entries[index] as? [String: Any], line["speakerName"] as? String == oldName else { continue }
+                    line["speakerName"] = newName
+                    entries[index] = line
+                    found = true
                 }
-                object["segments"] = lines
+                guard found else { return false }
+                object["segments"] = entries
                 return true
             }
             if patched { changed += 1 }
@@ -948,12 +948,14 @@ public struct TranscriptHistoryStore: Sendable {
     public func toggleStar(segmentID: UUID, inSession id: UUID) throws -> Bool? {
         var state: Bool?
         _ = try patchRecordFile(at: fileURL(for: id)) { object in
-            guard var lines = object["segments"] as? [[String: Any]],
-                  let index = lines.firstIndex(where: { ($0["id"] as? String).flatMap(UUID.init(uuidString:)) == segmentID })
+            guard var entries = object["segments"] as? [Any],
+                  let index = entries.firstIndex(where: { (($0 as? [String: Any])?["id"] as? String).flatMap(UUID.init(uuidString:)) == segmentID }),
+                  var line = entries[index] as? [String: Any]
             else { return false }
-            let starred = !((lines[index]["isStarred"] as? Bool) ?? false)
-            lines[index]["isStarred"] = starred
-            object["segments"] = lines
+            let starred = !((line["isStarred"] as? Bool) ?? false)
+            line["isStarred"] = starred
+            entries[index] = line
+            object["segments"] = entries
             state = starred
             return true
         }

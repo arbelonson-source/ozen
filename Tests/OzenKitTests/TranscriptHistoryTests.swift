@@ -865,6 +865,50 @@ struct TranscriptHistoryTests {
         let after = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
         #expect(after["segments"] as? String == "future format")
     }
+
+    @Test("a voice name only on an unreadable line is still fixed")
+    func renameSpeakerReachesNameOnUnreadableLine() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        let (_, url) = try damagedRecord(store, in: dir, ids: [UUID(), UUID(), UUID()])
+        var object = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        var lines = try #require(object["segments"] as? [[String: Any]])
+        lines[0]["speakerName"] = "Eli"
+        lines[2]["speakerName"] = "Eli"
+        lines[1]["speakerName"] = "Rina"
+        object["segments"] = lines
+        try JSONSerialization.data(withJSONObject: object).write(to: url)
+        _ = store.listSummaries()
+        let changed = try store.renameSpeaker(from: "Rina", to: "Rinat")
+        #expect(changed == 1)
+        #expect(try rawSegments(url).map { $0["speakerName"] as? String } == ["Eli", "Rinat", "Eli"])
+    }
+
+    @Test("a stray entry in the line list does not block fixing a voice name or starring")
+    func strayEntryDoesNotBlockEdits() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        let ids = [UUID(), UUID(), UUID()]
+        let (id, url) = try damagedRecord(store, in: dir, ids: ids)
+        var object = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        var entries = try #require(object["segments"] as? [Any])
+        entries.append("stray")
+        object["segments"] = entries
+        try JSONSerialization.data(withJSONObject: object).write(to: url)
+        let changed = try store.renameSpeaker(from: "Dana", to: "Dani")
+        #expect(changed == 1)
+        let starred = try store.toggleStar(segmentID: ids[0], inSession: id)
+        #expect(starred == true)
+        let after = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let kept = try #require(after["segments"] as? [Any])
+        #expect(kept.count == 4)
+        #expect(kept.last as? String == "stray")
+        let first = try #require(kept.first as? [String: Any])
+        #expect(first["speakerName"] as? String == "Dani")
+        #expect(first["isStarred"] as? Bool == true)
+    }
 }
 
 @Suite("Transcript history summary files")
