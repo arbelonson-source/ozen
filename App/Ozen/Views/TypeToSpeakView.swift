@@ -29,62 +29,73 @@ struct TypeToSpeakView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                composer
-                    .padding(16)
+            List {
+                Section {
+                    VStack(spacing: 0) {
+                        composer
+                            .padding(16)
 
-                // On this leaf view, not the VStack that wraps the whole
-                // screen: putting it there made the VStack swallow the
-                // accessibility identifier of everything nested inside it,
-                // including "bigTextButton" -- XCUITest could no longer
-                // find it at all, even though it rendered fine.
-                Divider()
-                    .accessibilityIdentifier("typeToSpeakScreen")
-
-                List {
-                    Section {
-                        ForEach(viewModel.quickPhrases, id: \.self) { phrase in
-                            Button {
-                                viewModel.speak(phrase)
-                            } label: {
-                                HStack {
-                                    Text(phrase)
-                                        .font(.title3)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                    Image(systemName: "speaker.wave.2")
-                                        .foregroundStyle(.secondary)
-                                }
-                                .contentShape(Rectangle())
-                            }
-                            .foregroundStyle(viewModel.canSay(phrase) ? .primary : .secondary)
-                            .disabled(!viewModel.canSay(phrase))
-                            .accessibilityLabel(phrase)
-                            .accessibilityHint(tr("להשמיע", "Play"))
-                        }
-                    } header: {
-                        HStack {
-                            Text(tr("משפטים מוכנים", "Quick phrases"))
-                            Spacer()
-                            Button(editingPhrases ? tr("סיום", "Done") : tr("עריכה", "Edit")) {
-                                editingPhrases.toggle()
-                                // The keyboard covered the editor that just opened.
-                                if editingPhrases { isTyping = false }
-                            }
-                                .font(.subheadline.weight(.semibold))
-                                .frame(minWidth: 44, minHeight: 44)
-                                .contentShape(Rectangle())
-                        }
+                        // On this leaf view, not the VStack that wraps the
+                        // composer: putting it there made the VStack swallow
+                        // the accessibility identifier of everything nested
+                        // inside it, including "bigTextButton" -- XCUITest
+                        // could no longer find it at all, even though it
+                        // rendered fine.
+                        Divider()
+                            .accessibilityIdentifier("typeToSpeakScreen")
                     }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                }
 
-                    if editingPhrases {
-                        QuickPhrasesEditor(viewModel: viewModel)
+                Section {
+                    ForEach(viewModel.quickPhrases, id: \.self) { phrase in
+                        Button {
+                            viewModel.speak(phrase)
+                        } label: {
+                            HStack {
+                                Text(phrase)
+                                    .font(.title3)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Image(systemName: "speaker.wave.2")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .foregroundStyle(viewModel.canSay(phrase) ? .primary : .secondary)
+                        .disabled(!viewModel.canSay(phrase))
+                        .accessibilityLabel(phrase)
+                        .accessibilityHint(tr("להשמיע", "Play"))
+                    }
+                } header: {
+                    HStack {
+                        Text(tr("משפטים מוכנים", "Quick phrases"))
+                            .accessibilityIdentifier("quickPhrasesHeader")
+                        Spacer()
+                        Button(editingPhrases ? tr("סיום", "Done") : tr("עריכה", "Edit")) {
+                            editingPhrases.toggle()
+                            // The keyboard covered the editor that just opened.
+                            if editingPhrases { isTyping = false }
+                        }
+                            .font(.subheadline.weight(.semibold))
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                 }
-                // Without edit mode the editor's rows had no delete or move
-                // handles: reordering needed a hidden long-press drag, and
-                // VoiceOver offered no way to move a phrase at all.
-                .environment(\.editMode, .constant(editingPhrases ? .active : .inactive))
+
+                if editingPhrases {
+                    QuickPhrasesEditor(viewModel: viewModel)
+                }
             }
+            // Without edit mode the editor's rows had no delete or move
+            // handles: reordering needed a hidden long-press drag, and
+            // VoiceOver offered no way to move a phrase at all.
+            .environment(\.editMode, .constant(editingPhrases ? .active : .inactive))
+            // At the largest text sizes the composer fills the sheet, so
+            // the whole sheet scrolls, and dragging it down puts the
+            // keyboard away.
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(tr("להגיד משהו", "Say something"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
