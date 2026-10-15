@@ -12,6 +12,8 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDisplayed
+import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
@@ -210,7 +212,17 @@ class ScreenTourDeviceTest {
         }
         step("line-menu") {
             showLines()
-            compose.onAllNodes(hasText(phrases()[1], substring = true)).onFirst().performTouchInput { longClick() }
+            val lines = phrases()
+            val centreOnScreen = { text: String ->
+                compose.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().firstOrNull()?.let { node ->
+                    val centre = node.positionInRoot + androidx.compose.ui.geometry.Offset(node.size.width / 2f, node.size.height / 2f)
+                    node.boundsInRoot.contains(centre)
+                } == true
+            }
+            val shown = (0..4).reversed().firstOrNull { centreOnScreen(lines[it]) }
+            assertTrue("none of the caption lines is on screen", shown != null)
+            compose.onAllNodes(hasText(lines[shown!!], substring = true)).onFirst().performTouchInput { longClick() }
+            compose.waitUntil(5_000) { compose.onAllNodes(hasText(tr("העתקה", "Copy"))).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
             shot("line-menu")
             pressBack()
             backToCaptions()
