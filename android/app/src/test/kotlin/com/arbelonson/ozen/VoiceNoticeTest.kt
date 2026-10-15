@@ -42,7 +42,7 @@ class VoiceNoticeTest {
             assertEquals(emptyList(), VoiceNotice.forSay(UILanguage.English, setOf(UILanguage.English, UILanguage.Hebrew)))
         }
         Localization.withLanguage(UILanguage.Hebrew) {
-            assertEquals(1, VoiceNotice.forSay(UILanguage.Hebrew, emptySet()).size)
+            assertEquals(listOf("אין בטלפון מנוע דיבור או קול מותקן, ולכן אי אפשר להקריא את המשפטים."), VoiceNotice.forSay(UILanguage.Hebrew, emptySet()))
         }
     }
 }
