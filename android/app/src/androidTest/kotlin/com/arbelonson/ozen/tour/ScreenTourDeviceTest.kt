@@ -213,7 +213,13 @@ class ScreenTourDeviceTest {
         step("line-menu") {
             showLines()
             val lines = phrases()
-            val shown = (0..4).reversed().firstOrNull { compose.onAllNodes(hasText(lines[it], substring = true)).fetchSemanticsNodes().isNotEmpty() && compose.onAllNodes(hasText(lines[it], substring = true)).onFirst().isDisplayed() }
+            val centreOnScreen = { text: String ->
+                compose.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().firstOrNull()?.let { node ->
+                    val centre = node.positionInRoot + androidx.compose.ui.geometry.Offset(node.size.width / 2f, node.size.height / 2f)
+                    node.boundsInRoot.contains(centre)
+                } == true
+            }
+            val shown = (0..4).reversed().firstOrNull { centreOnScreen(lines[it]) }
             assertTrue("none of the caption lines is on screen", shown != null)
             compose.onAllNodes(hasText(lines[shown!!], substring = true)).onFirst().performTouchInput { longClick() }
             compose.waitUntil(5_000) { compose.onAllNodes(hasText(tr("העתקה", "Copy"))).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }

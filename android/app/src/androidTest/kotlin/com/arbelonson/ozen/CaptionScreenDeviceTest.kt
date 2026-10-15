@@ -81,6 +81,7 @@ import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.DisplayPreferences
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.EnginePreparationProgress
@@ -821,14 +822,24 @@ class CaptionScreenDeviceTest {
             ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
         }
         val languageBefore = app.settings.current.value.appLanguage
+        val autoRotateBefore = shell("settings get system accelerometer_rotation").trim()
+        val userRotationBefore = shell("settings get system user_rotation").trim()
         val problems = mutableListOf<String>()
         try {
             shell("settings put system accelerometer_rotation 0")
             for (language in listOf(AppLanguage.English, AppLanguage.Hebrew)) {
                 app.settings.change { it.appLanguage = language }
+                compose.activityRule.scenario.recreate()
+                compose.waitUntil(10_000) { Localization.language.isRightToLeft == (language == AppLanguage.Hebrew) }
                 for (rotation in listOf(1, 3)) {
                     shell("settings put system user_rotation $rotation")
-                    compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
+                    compose.waitUntil(10_000) {
+                        compose.runOnUiThread {
+                            @Suppress("DEPRECATION")
+                            compose.activity.windowManager.defaultDisplay.rotation == rotation &&
+                                compose.activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                        }
+                    }
                     compose.waitForIdle()
                     compose.onNodeWithContentDescription(tr("להגיד משהו בקול", "Say something out loud")).performClick()
                     compose.waitUntil(5_000) { compose.onAllNodesWithText(tr("להגיד משהו", "Say something")).fetchSemanticsNodes().isNotEmpty() }
@@ -856,7 +867,8 @@ class CaptionScreenDeviceTest {
                 }
             }
         } finally {
-            shell("settings put system user_rotation 0")
+            shell(if (userRotationBefore == "null") "settings delete system user_rotation" else "settings put system user_rotation $userRotationBefore")
+            shell(if (autoRotateBefore == "null") "settings delete system accelerometer_rotation" else "settings put system accelerometer_rotation $autoRotateBefore")
             app.settings.change { it.appLanguage = languageBefore }
         }
         assertTrue(problems.joinToString("; "), problems.isEmpty())
