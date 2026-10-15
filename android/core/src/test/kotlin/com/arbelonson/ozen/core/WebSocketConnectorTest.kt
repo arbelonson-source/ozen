@@ -28,6 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 
 private class WireFrame(val isFinal: Boolean, val opcode: Int, val payload: ByteArray, val masked: Boolean) {
     val text: String get() = payload.toString(Charsets.UTF_8)
@@ -424,6 +425,33 @@ class WebSocketConnectorTest {
             val socket = WebSocketConnector().open(server.url())
             val error = assertFailsWith<IOException> { withTimeout(5_000) { socket.receive() } }
             assertTrue(error.message!!.contains("masked"), "$error")
+        }
+    }
+
+    @Test
+    fun `a far end that takes the connection and never answers the opening fails it within the handshake time`() = runBlocking<Unit> {
+        ServerSocket(0, 1, InetAddress.getByName("127.0.0.1")).use { server ->
+            val held = CopyOnWriteArrayList<Socket>()
+            thread(isDaemon = true) { runCatching { held.add(server.accept()) } }
+            val socket = WebSocketConnector(handshakeTimeoutMillis = 300).open(URI("ws://127.0.0.1:${server.localPort}/"))
+            val error = withTimeoutOrNull(5_000) { runCatching { socket.receive() }.exceptionOrNull() }
+            held.forEach { runCatching { it.close() } }
+            assertTrue(error != null, "the opening was still waiting for an answer after 5 s")
+            assertIs<SocketTimeoutException>(error)
+        }
+    }
+
+    @Test
+    fun `an opened connection that is quiet for longer than the handshake time is not cut off`() = runBlocking<Unit> {
+        ScriptedWebSocketServer {
+            Thread.sleep(900)
+            sendText("late")
+        }.use { server ->
+            val socket = WebSocketConnector(handshakeTimeoutMillis = 300).open(server.url())
+            assertEquals("late", withTimeout(5_000) { socket.receive() })
+            server.awaitScript()
+            assertTrue(server.failures.isEmpty(), "${server.failures}")
+            socket.close()
         }
     }
 }
