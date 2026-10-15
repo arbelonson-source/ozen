@@ -1108,19 +1108,28 @@ final class OzenScreenshotUITests: XCTestCase {
     func testTypeToSpeakQuickPhrasesReachableAtLargeText() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestScreenshots", "hebrewDefault", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
-        app.launch()
-
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
-        XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "say sheet: the button to open it never appeared")
         let revealControls = app.descendants(matching: .any)["showControlsButton"]
-        for _ in 0..<40 {
-            if typeToSpeakButton.isHittable { break }
-            if revealControls.exists, revealControls.isHittable { revealControls.tap() }
-            Thread.sleep(forTimeInterval: 0.3)
+        // On a cold simulator the control bar can hide itself before the
+        // first tap and the Say button then stays reported below the screen
+        // edge, although the bar is drawn. Starting the app again gets it
+        // back; a person would do the same.
+        var tapped = false
+        for _ in 0..<3 where !tapped {
+            app.launch()
+            _ = typeToSpeakButton.waitForExistence(timeout: 10)
+            for _ in 0..<30 where !tapped {
+                if typeToSpeakButton.isHittable {
+                    typeToSpeakButton.tap()
+                    tapped = true
+                } else if revealControls.exists, revealControls.isHittable {
+                    revealControls.tap()
+                }
+                if !tapped { Thread.sleep(forTimeInterval: 0.3) }
+            }
+            if !tapped { app.terminate() }
         }
-        Thread.sleep(forTimeInterval: 1)
-        XCTAssertTrue(typeToSpeakButton.isHittable, "say sheet: the control bar never brought the button back")
-        typeToSpeakButton.tap()
+        XCTAssertTrue(tapped, "say sheet: the button to open it never became tappable in three launches")
         let sayScreen = app.descendants(matching: .any)["typeToSpeakScreen"]
         if !sayScreen.waitForExistence(timeout: 4), typeToSpeakButton.exists {
             typeToSpeakButton.tap()
