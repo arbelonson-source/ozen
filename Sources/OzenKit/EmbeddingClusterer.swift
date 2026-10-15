@@ -167,18 +167,18 @@ public struct EmbeddingClusterer: Sendable {
     }
 
     private func liveUnnamedIndex(closestTo direction: [Float]) -> Int? {
-        var best: (index: Int, similarity: Float)?
+        var matches: [(index: Int, similarity: Float)] = []
         for (index, cluster) in clusters.enumerated() where cluster.name == nil && cluster.centroid.count == direction.count {
             let similarity = cosineSimilarity(cluster.centroid, direction)
-            guard similarity >= similarityThreshold else { continue }
-            if let current = best {
-                let closer = similarity > current.similarity + 0.01
-                let tied = abs(similarity - current.similarity) <= 0.01
-                let fresher = lastHeard[cluster.id, default: 0] > lastHeard[clusters[current.index].id, default: 0]
-                if !(closer || (tied && fresher)) { continue }
-            }
-            best = (index, similarity)
+            if similarity >= similarityThreshold { matches.append((index, similarity)) }
         }
+        guard let top = matches.map(\.similarity).max() else { return nil }
+        let best = matches
+            .filter { top - $0.similarity <= 0.01 }
+            .max {
+                let (a, b) = (lastHeard[clusters[$0.index].id, default: 0], lastHeard[clusters[$1.index].id, default: 0])
+                return a != b ? a < b : $0.similarity < $1.similarity
+            }
         return best?.index
     }
 

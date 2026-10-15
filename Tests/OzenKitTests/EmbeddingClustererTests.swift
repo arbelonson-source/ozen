@@ -443,4 +443,21 @@ struct EmbeddingClustererDoubtfulTests {
         #expect(clusterer.displayName(forClusterID: near) == "Dana")
         #expect(clusterer.displayName(forClusterID: far) == "דובר 2")
     }
+
+    @Test("a chain of near-ties does not drift to a clearly weaker voice")
+    func enrollNearTieChainKeepsStrongest() {
+        var clusterer = EmbeddingClusterer()
+        clusterer.newSpeakerMargin = 0
+        func voice(_ similarity: Float, _ angle: Float) -> [Float] {
+            let side = (1 - similarity * similarity).squareRoot()
+            return [similarity, side * cos(angle), side * sin(angle), 0]
+        }
+        let strongest = clusterer.assign(embedding: voice(0.901, 0))
+        let middle = clusterer.assign(embedding: voice(0.895, 2.0944))
+        let weakest = clusterer.assign(embedding: voice(0.889, 4.1888))
+        #expect(Set([strongest, middle, weakest]).count == 3)
+        let enrolled = clusterer.enroll(name: "Dana", embedding: [1, 0, 0, 0])
+        #expect(enrolled == middle)
+        #expect(enrolled != weakest)
+    }
 }
