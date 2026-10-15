@@ -519,6 +519,18 @@ class WebSocketConnectorRouteTest {
     }
 
     @Test
+    fun `a failed lookup through the route still tries the home name on the route's sockets`() {
+        val route = RecordingSockets()
+        assertFailsWith<IOException> {
+            WebSocketConnector(
+                privateRoute = { PrivatePath(route) { throw java.net.UnknownHostException("no such name") } },
+            ).connect(URI("ws://grandma-pc.invalid:8765"))
+        }
+        assertEquals(1, route.connected.size)
+        assertEquals("grandma-pc.invalid", route.connected.single().hostString)
+    }
+
+    @Test
     fun `each address the route found is tried`() {
         val route = RecordingSockets()
         val a = java.net.InetAddress.getByAddress(byteArrayOf(10, 0, 0, 7))

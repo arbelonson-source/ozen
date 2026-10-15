@@ -70,7 +70,11 @@ class WebSocketConnector(
         val secure = scheme == "wss"
         val port = if (url.port > 0) url.port else if (secure) 443 else 80
         val routed = privateRoute(host)
-        val addresses = routed?.resolve?.invoke(host)?.takeIf { it.isNotEmpty() }
+        val addresses = try {
+            routed?.resolve?.invoke(host)?.takeIf { it.isNotEmpty() }
+        } catch (_: IOException) {
+            null
+        }
         val targets = addresses?.map { InetSocketAddress(it, port) } ?: listOf(InetSocketAddress(host, port))
         val plain = connectToAny(routed?.sockets ?: plainSockets, targets, created)
         try {
