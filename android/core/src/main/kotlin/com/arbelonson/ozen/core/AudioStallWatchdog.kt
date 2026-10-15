@@ -16,7 +16,11 @@ class AudioStallWatchdog private constructor(
         get() = if (silenceSamples == Long.MAX_VALUE) Double.MAX_VALUE else silenceSamples.toDouble() / SAMPLE_RATE
 
     fun heard(chunk: FloatArray, systemInterrupted: Boolean) {
-        if (!isEnabled || systemInterrupted) return
+        if (!isEnabled) return
+        if (systemInterrupted) {
+            silentSamples = 0
+            return
+        }
         if (chunk.any { it != 0f }) {
             silentSamples = 0
             return

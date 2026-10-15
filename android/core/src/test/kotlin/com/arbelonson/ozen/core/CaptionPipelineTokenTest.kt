@@ -379,13 +379,37 @@ class CaptionPipelineTokenTest {
         val print = pipeline.nameSpeaker(pipeline.segments[0], "Yossi")
 
         assertEquals("Yossi", pipeline.displayName(pipeline.segments[0]))
-        assertContentEquals(floatArrayOf(0f, 1f, 0f), print)
+        assertNull(print)
         engine.emit(token(UUID.randomUUID(), "again"))
         assertTrue(eventually { pipeline.segments.size == 2 })
         audio.push(FloatArray(24_000) { 0.5f })
         assertTrue(eventually { pipeline.segments.lastOrNull()?.speakerClusterID != null })
         assertEquals("Dana", pipeline.displayName(pipeline.segments[1]))
         assertEquals(listOf("Dana", "Yossi"), pipeline.speakerClusters.mapNotNull { it.name }.sorted())
+    }
+
+    @Test
+    fun `a speaker corrected on a line still being spoken stays corrected as it grows`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))
+        pipeline.enroll(SpeakerProfile(name = "Dana", embedding = floatArrayOf(1f, 0f, 0f)))
+        pipeline.enroll(SpeakerProfile(name = "Yossi", embedding = floatArrayOf(0f, 1f, 0f)))
+        pipeline.start(AppSettings.default)
+        val line = UUID.randomUUID()
+        engine.emit(token(line, "hello"))
+        assertTrue(eventually { pipeline.segments.size == 1 })
+        audio.push(FloatArray(24_000) { 0.5f })
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.speakerClusterID != null })
+        assertEquals("Dana", pipeline.displayName(pipeline.segments[0]))
+
+        pipeline.nameSpeaker(pipeline.segments[0], "Yossi")
+        engine.emit(token(line, "hello there"))
+        assertTrue(eventually { pipeline.segments[0].text.contains("there") })
+        audio.push(FloatArray(24_000) { 0.5f })
+        engine.emit(token(line, "hello there friend"))
+        assertTrue(eventually { pipeline.segments[0].text.contains("friend") })
+
+        assertEquals("Yossi", pipeline.displayName(pipeline.segments[0]))
     }
 
     @Test

@@ -434,6 +434,7 @@ class CaptionPipeline(
         private set
     private var staleCommitTask: Job? = null
     private var utteranceClusterAssignments = HashMap<UUID, Int>()
+    private var correctedUtterances = HashSet<UUID>()
 
     /**
      * Decides whether an embedding window holds a voice at all. Silence
@@ -1608,7 +1609,8 @@ class CaptionPipeline(
 
     /**
      * Tags an inferred cluster with a real name after the fact, returning
-     * the cluster centroid so the caller can persist it as a profile.
+     * the cluster centroid so the caller can persist it as a profile; null
+     * when the line only moved to a voice that is already known.
      */
     fun nameSpeaker(of: TranscriptSegment, name: String): FloatArray? {
         val clusterID = of.speakerClusterID ?: return null
@@ -1619,12 +1621,13 @@ class CaptionPipeline(
         val holder = if (currentName != null && currentName != name) clusterer.clusterNamed(name, clusterID) else null
         if (holder != null) {
             utteranceClusterAssignments[of.id] = holder.id
+            correctedUtterances.add(of.id)
             val index = segments.indexOfFirst { it.id == of.id }
             if (index >= 0) {
                 setSegment(index, segments[index].copy(speakerClusterID = holder.id))
                 onCaptionsChanged?.invoke()
             }
-            return holder.centroid
+            return null
         }
         clusterer.nameCluster(clusterID, name)
         speakerClusters = clusterer.clusters
@@ -1643,6 +1646,7 @@ class CaptionPipeline(
         speakerClusters = clusterer.clusters
         recentSpeechCluster = null
         utteranceClusterAssignments = HashMap()
+        correctedUtterances = HashSet()
     }
 
     /** A saved speaker was renamed; lines already on screen follow. */
@@ -1790,7 +1794,9 @@ class CaptionPipeline(
             return
         }
         var enriched = token
-        if (enriched.speakerClusterID == null) {
+        if (token.utteranceID in correctedUtterances) {
+            enriched = enriched.copy(speakerClusterID = utteranceClusterAssignments[token.utteranceID])
+        } else if (enriched.speakerClusterID == null) {
             val assigned = utteranceClusterAssignments[token.utteranceID]
             val recent = recentSpeechCluster
             if (assigned != null) {
@@ -1874,6 +1880,7 @@ class CaptionPipeline(
                     recentSpeechCluster = RecentSpeechCluster(clusterID, now())
                     return@collect
                 }
+                if (heardDuring in correctedUtterances) return@collect
                 utteranceClusterAssignments[heardDuring] = clusterID
                 // Writing an unchanged value still tells every observer the
                 // transcript changed and redraws the caption list, every 1.5 s

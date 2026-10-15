@@ -64,4 +64,16 @@ class AudioStallWatchdogTest {
         assertFalse(fired)
         assertTrue(!watchdog.isEnabled)
     }
+
+    @Test
+    fun `silence before a phone call is not added to silence after it`() {
+        val watchdog = AudioStallWatchdog(stallSeconds = 6.0, silenceSeconds = 8.0)
+        val second = FloatArray(16_000)
+        repeat(7) { watchdog.heard(second, systemInterrupted = false) }
+        watchdog.heard(second, systemInterrupted = true)
+        repeat(2) { watchdog.heard(second, systemInterrupted = false) }
+        assertFalse(watchdog.isSilent)
+        repeat(6) { watchdog.heard(second, systemInterrupted = false) }
+        assertTrue(watchdog.isSilent)
+    }
 }
