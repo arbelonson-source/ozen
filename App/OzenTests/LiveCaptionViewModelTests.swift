@@ -1688,14 +1688,25 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
 
     @Test("tapping the selected model whose download failed tries the download again")
     func chosenModelRetriesFailedDownload() async {
-        let builds = BuildCount()
-        let viewModel = modelViewModel(failing: true, builds: builds)
+        let engine = FakeEngine(availability: .unavailable(.modelDownloadFailed, "offline"))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-choose-\(UUID())", isDirectory: true)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathExtension("json")),
+            pipeline: CaptionPipeline(
+                audio: FakeAudioCapturer(),
+                engineFactory: { _ in engine },
+                embedder: FakeEmbedder(),
+                recovery: .disabled,
+                audioWatchdog: .disabled
+            ),
+            historyStore: TranscriptHistoryStore(directoryURL: directory)
+        )
         await viewModel.start()
         #expect(viewModel.pipeline.phase.failure?.engineUnavailability?.kind == .modelDownloadFailed)
-        let before = builds.count
 
+        engine.availability = .available
         await viewModel.chooseModel(viewModel.settings.whisperModelVariant)
-        #expect(builds.count == before + 1)
+        #expect(viewModel.pipeline.phase.isListening)
     }
 
     @Test("tapping the selected model while captions work does nothing")
