@@ -149,6 +149,8 @@ public struct EngineUnavailability: Sendable, Equatable, Error {
         case cloudKeyNeeded
         /// The cloud key has used up its credit or spending limit.
         case cloudOutOfCredit
+        /// The chosen cloud service does not know the spoken language.
+        case cloudLanguageNotCovered
         /// Cloud captions can't reach the internet.
         case noInternet
         /// The home server didn't answer, or the connection to it dropped.
