@@ -36,6 +36,7 @@ val TranscriptSessionSummary.lastActiveAt: Double get() = endedAt ?: lastLineAt 
 val TranscriptSessionSummary.isKeptByChoice: Boolean get() = starredCount > 0 || title != null
 
 fun TranscriptHistoryStore.deleteConversations(inactiveBefore: Double, protecting: Set<UUID> = emptySet()): Int {
+    sweepStrayTemporaries()
     var deleted = 0
     for (summary in listSummaries()) {
         if (summary.lastActiveAt < inactiveBefore && !summary.isKeptByChoice && summary.id !in protecting) {

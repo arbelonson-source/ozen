@@ -7,10 +7,13 @@ on:
   # for a commit that was already tested.
   # A release's verified branch points at a commit this workflow already
   # passed on master; testing it again spent another macOS runner.
+  # Pushes alone: every branch is tested on push, and a pull request shows
+  # the checks of its head commit, so a pull_request trigger tested every
+  # pull-request commit a second time and doubled the queue for the scarce
+  # macOS runners. A pull request from a fork gets no run; push its branch
+  # here to test it.
   push:
     branches: ['**', '!release/verified-**']
-    paths-ignore: ['docs/**', '**/*.md', 'LICENSE']
-  pull_request:
     paths-ignore: ['docs/**', '**/*.md', 'LICENSE']
 
 # A newer push to the same branch tests everything an older run would
