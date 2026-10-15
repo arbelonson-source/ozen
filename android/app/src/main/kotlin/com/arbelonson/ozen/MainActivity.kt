@@ -529,6 +529,7 @@ private fun OzenApp(
                                 onDismissSavingTrouble = app.captions::dismissSavingTrouble,
                                 onDismissMicrophoneDrop = app.captions::dismissMicrophoneDrop,
                                 onMarkProblem = app.captions::markProblem,
+                                savesConversations = current.saveHistory,
                                 onMicrophone = { choosingMicrophone = true },
                                 offersNameAlert = current.offersNameAlert,
                                 onNameAlert = { namingAlert = true },
@@ -665,6 +666,7 @@ private fun CaptionScreen(
     onDismissSavingTrouble: () -> Unit,
     onDismissMicrophoneDrop: () -> Unit,
     onMarkProblem: () -> Boolean,
+    savesConversations: Boolean,
     onMicrophone: () -> Unit,
     offersNameAlert: Boolean,
     onNameAlert: () -> Unit,
@@ -687,6 +689,7 @@ private fun CaptionScreen(
     val pinchedSize = DisplayPreferences.fontSize(display.fontSize, pinchScale)
     val savedSize by rememberUpdatedState(display.fontSize)
     var problemMarked by remember { mutableStateOf<Boolean?>(null) }
+    var markedWithCaptions by remember { mutableStateOf(true) }
     val context = LocalContext.current
     var shownWord by remember { mutableStateOf<HeardWord?>(null) }
     // Counted from when this screen appeared: talk that resumed while she
@@ -739,7 +742,7 @@ private fun CaptionScreen(
             onDismiss = { naming = null },
         )
     }
-    problemMarked?.let { keptSound -> ProblemMarkedDialog(keptSound, onDismiss = { problemMarked = null }) }
+    problemMarked?.let { keptSound -> ProblemMarkedDialog(keptSound, markedWithCaptions, onDismiss = { problemMarked = null }) }
     var following by remember { mutableStateOf(true) }
     var countWhenLeft by remember { mutableIntStateOf(0) }
     val lineCount by rememberUpdatedState(state.lineCount)
@@ -919,7 +922,7 @@ private fun CaptionScreen(
                             }
                         }
                     } else {
-                        CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it.text }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { problemMarked = onMarkProblem() })
+                        CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it.text }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
                         if (!following) {
                             JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                                 following = true
@@ -941,7 +944,7 @@ private fun CaptionScreen(
                 }
             }
         }
-        var askingToClear by remember { mutableStateOf(false) }
+        var askingToClear by rememberSaveable { mutableStateOf(false) }
         AnimatedVisibility(visible = !hidden) {
             val microphone = state.selectedInput?.let(::inputShortName)?.takeIf { it.length <= 12 } ?: tr("מיקרופון", "Microphone")
             val choose = tr("בחירת מיקרופון", "Choose microphone")
@@ -949,10 +952,10 @@ private fun CaptionScreen(
             // The labels grow with the phone's text size only so far: past that
             // the five would break a few letters to a line.
             val density = LocalDensity.current
-            CompositionLocalProvider(LocalDensity provides Density(density.density, minOf(density.fontScale, TOOLBAR_FONT_SCALE))) {
-                Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
-                    Column {
-                        StatusLine(state.status, look, live = state.captionsRunning, onTap = onStatusTap)
+            Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
+                Column {
+                    StatusLine(state.status, look, live = state.captionsRunning, onTap = onStatusTap)
+                    CompositionLocalProvider(LocalDensity provides Density(density.density, minOf(density.fontScale, TOOLBAR_FONT_SCALE))) {
                         Row(Modifier.padding(horizontal = OzenSpacing.Unit / 2).padding(bottom = 4.dp)) {
                             ToolbarButton(Icons.Rounded.History, tr("היסטוריה", "History"), onHistory, Modifier.weight(toolbarShare(tr("היסטוריה", "History"))))
                             ToolbarButton(
@@ -1463,11 +1466,11 @@ private fun BellMark(fontSize: Double, colour: Color) {
  * whoever helps her: a kept sound is sent from its own row in Diagnostics.
  */
 @Composable
-private fun ProblemMarkedDialog(keptSound: Boolean, onDismiss: () -> Unit) {
+private fun ProblemMarkedDialog(keptSound: Boolean, keptCaptions: Boolean, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("הבעיה סומנה", "Problem marked")) },
-        text = { Text(if (keptSound) tr("פרטי התקלה, השורות האחרונות ו-30 השניות האחרונות של הקול נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לך: הגדרות ← אבחון.", "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.") else tr("פרטי התקלה והשורות האחרונות נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לך: הגדרות ← אבחון ← שליחת הדוח.", "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.")) },
+        text = { Text(ProblemNotes.marked(keptSound, keptCaptions)) },
         confirmButton = { TextButton(onClick = onDismiss) { Text(tr("אישור", "OK")) } },
     )
 }

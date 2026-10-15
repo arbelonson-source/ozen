@@ -13,6 +13,9 @@ public struct AutoRecoveryPolicy: Sendable, Equatable {
     public enum Schedule: Sendable, Equatable {
         /// Audio or recognizer glitch: retry quickly a few times.
         case glitch
+        /// The microphone is busy or missing, often because another app holds
+        /// it: retry quickly, then keep trying slowly for a long while.
+        case microphone
         /// Download failed, usually no connection: retry for a long while.
         case download
         /// A model that failed to load rarely fixes itself: try twice.
@@ -23,6 +26,7 @@ public struct AutoRecoveryPolicy: Sendable, Equatable {
 
     public var glitchDelays: [Double]
     public var downloadDelays: [Double]
+    public var microphoneTailDelays: [Double]
     /// Listening this long without trouble means the next failure is a new
     /// problem, not the same one again, so the attempt count starts over.
     public var healthyListeningSeconds: Double
@@ -32,6 +36,7 @@ public struct AutoRecoveryPolicy: Sendable, Equatable {
     /// never stop retrying. This bounds the whole streak regardless of how
     /// many different schedules it passes through.
     public var maxAttemptsAcrossSchedules = 10
+    public var maxMicrophoneAttempts = 40
     public private(set) var attempts = 0
     public private(set) var overallAttempts = 0
     /// The schedule `attempts` counts against. A retry for a glitch that
@@ -43,25 +48,29 @@ public struct AutoRecoveryPolicy: Sendable, Equatable {
     public init(
         glitchDelays: [Double] = [1, 3, 8, 20],
         downloadDelays: [Double] = [15, 30, 60, 120, 300, 600],
+        microphoneTailDelays: [Double] = [30, 60, 120, 300, 300],
         healthyListeningSeconds: Double = 60
     ) {
         self.glitchDelays = glitchDelays
         self.downloadDelays = downloadDelays
+        self.microphoneTailDelays = microphoneTailDelays
         self.healthyListeningSeconds = healthyListeningSeconds
     }
 
     /// Never retries. For tests that want a failure to stay put.
-    public static let disabled = AutoRecoveryPolicy(glitchDelays: [], downloadDelays: [])
+    public static let disabled = AutoRecoveryPolicy(glitchDelays: [], downloadDelays: [], microphoneTailDelays: [])
 
     public static func schedule(for failure: PipelineFailure) -> Schedule {
         switch failure.kind {
         case .microphonePermissionDenied:
             return .never
-        case .audioSessionFailed, .noAudioInputs, .transcriptionStopped:
+        case .audioSessionFailed, .noAudioInputs:
+            return .microphone
+        case .transcriptionStopped:
             return .glitch
         case .engineUnavailable:
             switch failure.engineUnavailability?.kind {
-            case .permissionDenied, .languageNotSupportedOnDevice, .cloudKeyNeeded, .cloudOutOfCredit, .homeServerRejected:
+            case .permissionDenied, .languageNotSupportedOnDevice, .cloudLanguageNotCovered, .cloudKeyNeeded, .cloudOutOfCredit, .homeServerRejected:
                 return .never
             case .waitingForWiFi:
                 // Retrying on a timer would only ask the same question of
@@ -96,10 +105,21 @@ public struct AutoRecoveryPolicy: Sendable, Equatable {
         let delays: [Double]
         switch schedule {
         case .never: return nil
+        case .microphone:
+            let all = glitchDelays + microphoneTailDelays
+            guard !microphoneTailDelays.isEmpty else { return glitchStep(all) }
+            let delay = attempts < all.count ? all[attempts] : microphoneTailDelays.last!
+            guard attempts < maxMicrophoneAttempts else { return nil }
+            attempts += 1
+            return delay
         case .glitch: delays = glitchDelays
         case .download: delays = downloadDelays
         case .loadFailure: delays = Array(glitchDelays.prefix(2))
         }
+        return glitchStep(delays)
+    }
+
+    private mutating func glitchStep(_ delays: [Double]) -> Double? {
         guard attempts < delays.count, overallAttempts < maxAttemptsAcrossSchedules else { return nil }
         let delay = delays[attempts]
         attempts += 1

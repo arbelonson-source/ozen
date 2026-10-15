@@ -123,6 +123,17 @@ class CaptionLayoutTest {
         val text = "מילה ".repeat(40).trim()
         assertEquals(text, CaptionLayout.readableText(text))
     }
+
+    @Test
+    fun `a phone number or a dose is kept on one line with no-break spaces`() {
+        val nbsp = Char(0xA0)
+        val shown = CaptionLayout.displayText("Call 050 123 4567 now", "en")
+        assertTrue(shown.contains("050${nbsp}123${nbsp}4567"), shown)
+        assertFalse(shown.contains("050 123 4567"), shown)
+        val dose = CaptionLayout.displayText("קח 3 כדורים", "he")
+        assertTrue(dose.contains("3${nbsp}כדורים"), dose)
+        assertEquals("Call 050 123 4567 now", CaptionLayout.copiedText("Call 050 123 4567 now").replace("\u2066", "").replace("\u2069", ""))
+    }
 }
 
 class CaptionLayoutNumberDirectionTest {
@@ -133,15 +144,15 @@ class CaptionLayoutNumberDirectionTest {
     @Test
     fun `a star code, a number in spaced groups and an international number are each kept left to right in a Hebrew line`() {
         assertEquals(mark + "תתקשרי לקופה " + open + "*2700" + close, CaptionLayout.displayText("תתקשרי לקופה *2700"))
-        assertEquals(mark + "תתקשרי " + open + "050 123 4567" + close + " מחר", CaptionLayout.displayText("תתקשרי 050 123 4567 מחר"))
+        assertEquals(mark + "תתקשרי " + open + "050\u00A0123\u00A04567" + close + " מחר", CaptionLayout.displayText("תתקשרי 050 123 4567 מחר"))
         assertEquals(mark + "אליו " + open + "+972-3-1234567" + close + ".", CaptionLayout.directed("אליו +972-3-1234567."))
         assertEquals(mark + "המוקד " + open + "1-700-50-50-50" + close + " פתוח", CaptionLayout.directed("המוקד 1-700-50-50-50 פתוח"))
     }
 
     @Test
-    fun `times, doses and English lines are left as they were, and the numbers still dial from the shown line`() {
-        assertEquals(mark + "בשעה 10:30, 3 כדורים", CaptionLayout.displayText("בשעה 10:30, 3 כדורים"))
-        assertEquals("call 050 123 4567", CaptionLayout.displayText("call 050 123 4567", languageCode = "en"))
+    fun `times stay as they were, doses and numbers keep their words together, and the numbers still dial from the shown line`() {
+        assertEquals(mark + "בשעה 10:30, 3\u00A0כדורים", CaptionLayout.displayText("בשעה 10:30, 3 כדורים"))
+        assertEquals("call 050\u00A0123\u00A04567", CaptionLayout.displayText("call 050 123 4567", languageCode = "en"))
         val shown = CaptionLayout.displayText("תתקשרי 050 123 4567 או +972-3-1234567 מחר")
         assertEquals(listOf("0501234567", "+97231234567"), PhoneNumbers.matches(shown).map { it.dialable })
     }

@@ -233,9 +233,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 }
             }
         }
-        Footnote(
-            tr("נשמר בטלפון גם כשהאפליקציה נסגרת, ונשלח רק עם הדוח. כשמסמנים בעיה נשמרות גם השורות האחרונות של הכתוביות.", "Kept on the phone even when the app closes, and sent only with the report. Marking a problem also keeps the last few caption lines."),
-        )
+        Footnote(ProblemNotes.diagnostics(now.settings.saveHistory))
 
         if (now.problemClips.isNotEmpty()) {
             SectionHeader(tr("הקול מהבעיות שסומנו", "Sound from marked problems"))
