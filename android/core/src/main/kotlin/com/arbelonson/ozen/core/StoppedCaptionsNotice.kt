@@ -70,6 +70,12 @@ class StoppedCaptionsNotice {
         return Update.Post(content(cause))
     }
 
+    /** The caller could not show the notice [update] returned, so it is tried again. */
+    fun postFailed() {
+        posted = false
+        told = false
+    }
+
     private fun withdrawIfPosted(sweep: Boolean): Update? {
         if (!posted && !sweep) return null
         posted = false

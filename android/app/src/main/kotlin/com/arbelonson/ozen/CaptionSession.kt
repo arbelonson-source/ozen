@@ -239,6 +239,8 @@ class CaptionSession(
         val cameBack = !appIsActive
         appIsActive = true
         if (cameBack) {
+            awayAlerts.takePostedIdentifiers().forEach(notifier::withdraw)
+            notifier.withdrawAwayAlerts()
             if (stopAnnouncer.comingBack(pipeline.phase) == CaptionsStopAnnouncer.Event.Stopped && ScreenReader.isOn(context)) {
                 ScreenReader.announce(context, stoppedText(pipeline.phase))
             }
@@ -558,7 +560,7 @@ class CaptionSession(
     private fun checkCaptionsStillRunning() {
         val cause = StoppedCaptionsNotice.cause(pipeline.phase, pipeline.isRecoveringByItself, interruptedBySystem, callEndedDuringInterruption = false)
         when (val update = stoppedCaptions.update(cause, appIsActive, settings.current.value.notifyWhenInBackground)) {
-            is StoppedCaptionsNotice.Update.Post -> notifier.post(update.content)
+            is StoppedCaptionsNotice.Update.Post -> if (!notifier.post(update.content)) stoppedCaptions.postFailed()
             is StoppedCaptionsNotice.Update.Withdraw -> notifier.withdraw(update.identifier)
             null -> Unit
         }

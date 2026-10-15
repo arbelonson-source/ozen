@@ -204,6 +204,15 @@ class StoppedCaptionsNoticeTest {
         )
         assertNull(notice.update(null, appIsActive = false, isEnabled = true))
     }
+
+    @Test
+    fun `a notice that could not be shown is tried again`() {
+        val notice = StoppedCaptionsNotice()
+        assertIs<StoppedCaptionsNotice.Update.Post>(notice.update(failed(glitch), appIsActive = false, isEnabled = true))
+        notice.postFailed()
+        assertIs<StoppedCaptionsNotice.Update.Post>(notice.update(failed(glitch), appIsActive = false, isEnabled = true))
+        assertNull(notice.update(failed(glitch), appIsActive = false, isEnabled = true))
+    }
 }
 
 class CaptionPipelinePhaseChangeTest {

@@ -24,6 +24,14 @@ class BackgroundAlertPolicy(
     var quietHours: QuietHours = QuietHours(),
 ) {
     private val lastNotified = HashMap<String, Double>()
+    private val posted = LinkedHashSet<String>()
+
+    /** The identifiers handed out since the last call, so they can be withdrawn once she is back. */
+    fun takePostedIdentifiers(): List<String> {
+        val taken = posted.toList()
+        posted.clear()
+        return taken
+    }
 
     fun notification(alert: SoundAlert, appIsActive: Boolean, now: Double, utcOffsetSeconds: Int = 0): AlertNotificationContent? {
         val critical = alert.event.importance == SoundEvent.Importance.Critical
@@ -73,10 +81,15 @@ class BackgroundAlertPolicy(
         val last = lastNotified[key]
         if (last != null && now >= last && now - last < cooldownSeconds) return false
         lastNotified[key] = now
+        posted.add(key)
         return true
     }
 
     companion object {
+        /** Whether a notification tag is a sound or word alert posted while away, even one left by a process Android has since killed. */
+        fun isAwayAlertTag(tag: String?): Boolean =
+            tag != null && (tag.startsWith("sound-") || tag.startsWith("keyword-"))
+
         /**
          * Whether to ask for notification permission now. Alerts with the
          * screen off are on by default, but the only ask was a skippable
