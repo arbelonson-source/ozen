@@ -216,6 +216,13 @@ class EmbeddingClusterer(
         usedNumbers.clear()
     }
 
+    fun cluster(id: Int): SpeakerCluster? =
+        clusterList.firstOrNull { it.id == id } ?: retired.lastOrNull { it.id == id }
+
+    /** The voice, still heard, that already carries [name], other than [excluding]. */
+    fun clusterNamed(name: String, excluding: Int): SpeakerCluster? =
+        clusterList.firstOrNull { it.name == name && it.id != excluding }
+
     fun displayName(forClusterID: Int?): String {
         val cluster = forClusterID?.let { id ->
             clusterList.firstOrNull { it.id == id } ?: retired.lastOrNull { it.id == id }

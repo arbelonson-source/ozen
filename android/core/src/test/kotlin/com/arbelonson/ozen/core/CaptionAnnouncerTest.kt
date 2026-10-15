@@ -143,7 +143,7 @@ class CaptionAnnouncerTest {
             announcer.announcement(lines, nobody)
         }
         lines[0] = provisional.copy(text = "הרופא אמר כדור אחד", isProvisionalCommit = false)
-        assertEquals("הרופא אמר כדור אחד", announcer.announcement(lines, nobody))
+        assertEquals("כדור אחד", announcer.announcement(lines, nobody))
     }
 
     @Test
@@ -163,6 +163,40 @@ class CaptionAnnouncerTest {
         assertNull(announcer.announcement(listOf(said), nobody))
         val reopened = said.copy(isCommitted = false, text = "הרופא אמר כדור אחד")
         assertNull(announcer.announcement(listOf(reopened), nobody))
-        assertEquals("הרופא אמר כדור אחד", announcer.announcement(listOf(reopened.copy(isCommitted = true)), nobody))
+        assertEquals("כדור אחד", announcer.announcement(listOf(reopened.copy(isCommitted = true)), nobody))
+    }
+
+    @Test
+    fun `a real correction that is not a prefix extension is read again in full`() {
+        val announcer = CaptionAnnouncer()
+        val said = line("הרופא אמר")
+        assertEquals("הרופא אמר", announcer.announcement(listOf(said), nobody))
+        assertEquals("הרופאה אמרה", announcer.announcement(listOf(said.copy(text = "הרופאה אמרה")), nobody))
+    }
+
+    @Test
+    fun `a word that only grew longer is read again in full`() {
+        val announcer = CaptionAnnouncer()
+        val said = line("לקחתי כדור")
+        assertEquals("לקחתי כדור", announcer.announcement(listOf(said), nobody))
+        assertEquals("לקחתי כדורים", announcer.announcement(listOf(said.copy(text = "לקחתי כדורים")), nobody))
+    }
+
+    @Test
+    fun `a grown line named for its speaker reads only the new words, with no name and no unsure prefix`() {
+        val announcer = CaptionAnnouncer()
+        val said = line("הרופא אמר", speaker = 1)
+        assertEquals("דנה: הרופא אמר", announcer.announcement(listOf(said), names))
+        val grown = said.copy(text = "הרופא אמר כדור אחד")
+        assertEquals("כדור אחד", announcer.announcement(listOf(grown), names) { true })
+    }
+
+    @Test
+    fun `a grown line whose speaker was found meanwhile leads with the name`() {
+        val announcer = CaptionAnnouncer()
+        val said = line("הרופא אמר")
+        assertEquals("הרופא אמר", announcer.announcement(listOf(said), names))
+        val grown = said.copy(text = "הרופא אמר כדור אחד", speakerClusterID = 1)
+        assertEquals("דנה: כדור אחד", announcer.announcement(listOf(grown), names))
     }
 }

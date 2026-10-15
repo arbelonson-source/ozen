@@ -832,7 +832,20 @@ class TranscriptHistoryStore(private val directory: File) {
         return toggled.isStarred
     }
 
+    fun sweepStrayTemporaries(olderThanMillis: Long = 60_000) {
+        val cutoff = System.currentTimeMillis() - olderThanMillis
+        for (folder in listOf(directory, summariesDirectory)) {
+            for (stray in PrivateFileWrites.leftovers(folder)) {
+                try {
+                    if (stray.lastModified() < cutoff) stray.delete()
+                } catch (_: Exception) {
+                }
+            }
+        }
+    }
+
     fun delete(id: UUID) {
+        sweepStrayTemporaries()
         val file = fileFor(id)
         summaryFile(file).delete()
         searchTextFile(file).delete()

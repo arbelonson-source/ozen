@@ -809,6 +809,7 @@ These companies gave or offered Ozen free plans or credits. Thank you.
 - Audio processing support from [Auphonic](https://auphonic.com)
 - Database tooling support from [Prisma](https://www.prisma.io) (credit offered)
 - GraphQL engine support from [Hasura](https://hasura.io) (credit offered)
+- Package hosting support from [Cloudsmith](https://cloudsmith.com) (open-source plan under review)
 
 ## License
 

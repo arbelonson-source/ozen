@@ -119,6 +119,12 @@ class OnDeviceWhisperEngine(
     /** Audio kept while waiting in silence, so the first syllable of the next sentence is already in the buffer when speech is detected. */
     private val leadingKeepSeconds = 0.5
 
+    /** Real speech needed in a line before its first live pass; a pass over the lead-in alone only costs time and comes back empty. */
+    private val firstPassSpeechSeconds = 1.0
+
+    /** Lines shorter than this get one final pass at temperature 0: a retry costs several more seconds before the next line's text. */
+    private val retryLineSeconds = 10.0
+
     /**
      * Whisper's window is 30 s; finalize before that so the model never
      * sees a truncated utterance. Sooner when the line's words would not
@@ -290,6 +296,7 @@ class OnDeviceWhisperEngine(
         val pauseSamples = (pauseSeconds * sampleRate).toInt()
         val padSamples = (trailingPadSeconds * sampleRate).toInt()
         val keepSamples = (leadingKeepSeconds * sampleRate).toInt()
+        val firstPassSpeechSamples = (firstPassSpeechSeconds * sampleRate).toInt()
         val longCutLookBack = (longCutLookBackSeconds * sampleRate).toInt()
         val longCutFrame = (longCutFrameSeconds * sampleRate).toInt()
         var lastLivePassSeconds: Double? = null
@@ -329,7 +336,9 @@ class OnDeviceWhisperEngine(
             val isFinal = pauseReached || tooLong || status.finished
             val interval = secondsBetweenLivePasses(lastLivePassSeconds)
             val enoughNewAudio = total - samplesAtLastPass >= (interval * sampleRate).toInt()
-            if (!isFinal && !enoughNewAudio) {
+            val speechSoFar = speechEnd - (status.firstSpeechStart ?: speechEnd)
+            val enoughSpeech = speechSoFar >= firstPassSpeechSamples
+            if (!isFinal && !(enoughNewAudio && enoughSpeech)) {
                 delay(50)
                 continue
             }
@@ -393,6 +402,11 @@ class OnDeviceWhisperEngine(
             var options = if (isFinal) finalPass else livePass
             options = options.copy(promptTokens = prompt)
             val windowSeconds = window.size.toDouble() / sampleRate
+            // Live words already on screen stay if this pass comes back empty, so a short line can skip
+            // the slow retries; with nothing shown yet, the retries are the line's only chance.
+            if (isFinal && windowSeconds < retryLineSeconds && lastShownText.isNotEmpty()) {
+                options = options.copy(temperatureFallbackCount = 0)
+            }
             if (!isFinal) {
                 options = options.copy(maxTokens = WhisperKitDecodeRoom.livePassTokens(windowSeconds))
             }

@@ -8,6 +8,7 @@ import kotlin.time.Duration.Companion.microseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -105,5 +106,34 @@ class FlowAudioFanOutTest {
     fun `a count below one still yields a single usable output`() = runTest {
         val source = Channel<FloatArray>(Channel.UNLIMITED)
         assertEquals(1, FlowAudioFanOut(backgroundScope, source.receiveAsFlow(), count = 0).outputs.size)
+    }
+
+    @Test
+    fun `a source that throws calls onFailure once and closes every output`() = runTest {
+        val failures = ArrayList<Throwable>()
+        val fan = FlowAudioFanOut(
+            backgroundScope,
+            flow { emit(floatArrayOf(1f)); throw IllegalStateException("busy") },
+            count = 2,
+            onFailure = { failures.add(it) }
+        )
+
+        for (output in fan.outputs) {
+            assertEquals(listOf(listOf(1f)), output.toList().map { it.toList() })
+        }
+        assertEquals(1, failures.size)
+        assertTrue(failures.single() is IllegalStateException)
+    }
+
+    @Test
+    fun `a cancelled source does not call onFailure`() = runTest {
+        val source = Channel<FloatArray>(Channel.UNLIMITED)
+        var failures = 0
+        val fan = FlowAudioFanOut(backgroundScope, source.receiveAsFlow(), count = 1, onFailure = { failures += 1 })
+        source.trySend(floatArrayOf(1f))
+        delay(10)
+        fan.cancel()
+        delay(10)
+        assertEquals(0, failures)
     }
 }

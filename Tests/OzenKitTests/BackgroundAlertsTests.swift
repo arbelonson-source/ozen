@@ -43,6 +43,30 @@ struct BackgroundAlertPolicyTests {
         #expect(policy.notification(for: hit("סבתא", alertID: alertID), lineText: "סבתא", appIsActive: false, now: 131) != nil)
     }
 
+    @Test("a siren that keeps sounding notifies on the same 20 s beat as on screen")
+    func continuingCriticalRepeats() {
+        var policy = BackgroundAlertPolicy()
+        #expect(policy.notification(for: sound("smoke_detector"), appIsActive: false, now: 0) != nil)
+        #expect(policy.notification(for: sound("smoke_detector"), appIsActive: false, now: 20) != nil)
+        var jitter = BackgroundAlertPolicy()
+        #expect(jitter.notification(for: sound("smoke_detector"), appIsActive: false, now: 0) != nil)
+        #expect(jitter.notification(for: sound("smoke_detector"), appIsActive: false, now: 19.5) != nil)
+        var third = BackgroundAlertPolicy()
+        #expect(third.notification(for: sound("smoke_detector"), appIsActive: false, now: 0) != nil)
+        #expect(third.notification(for: sound("smoke_detector"), appIsActive: false, now: 20) != nil)
+        #expect(third.notification(for: sound("smoke_detector"), appIsActive: false, now: 30) == nil)
+    }
+
+    @Test("an ordinary sound and a keyword keep the full cooldown")
+    func nonCriticalKeepsCooldown() {
+        var policy = BackgroundAlertPolicy()
+        #expect(policy.notification(for: sound("door_bell"), appIsActive: false, now: 0) != nil)
+        #expect(policy.notification(for: sound("door_bell"), appIsActive: false, now: 20) == nil)
+        let alertID = UUID()
+        #expect(policy.notification(for: hit("סבתא", alertID: alertID), lineText: "סבתא", appIsActive: false, now: 0) != nil)
+        #expect(policy.notification(for: hit("סבתא", alertID: alertID), lineText: "סבתא", appIsActive: false, now: 20) == nil)
+    }
+
     @Test("two sounds the catalog shows as the same sound share one cooldown, not two")
     func synonymSoundsShareCooldown() {
         var policy = BackgroundAlertPolicy(cooldownSeconds: 30)

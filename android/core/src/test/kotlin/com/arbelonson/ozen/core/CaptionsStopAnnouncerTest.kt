@@ -42,4 +42,43 @@ class CaptionsStopAnnouncerTest {
         assertNull(announcer.phaseChanged(PipelinePhase.Listening))
         assertEquals(CaptionsStopAnnouncer.Event.Stopped, announcer.phaseChanged(stalled))
     }
+
+    @Test
+    fun `a stop while away is told once on return, and not when it healed or happened in front`() {
+        val stopped = CaptionsStopAnnouncer.Event.Stopped
+        val away = CaptionsStopAnnouncer()
+        assertEquals(stopped, away.phaseChanged(stalled, active = false))
+        assertEquals(stopped, away.comingBack(stalled))
+        assertNull(away.comingBack(stalled))
+
+        val healed = CaptionsStopAnnouncer()
+        healed.phaseChanged(stalled, active = false)
+        healed.phaseChanged(PipelinePhase.Listening, active = false)
+        assertNull(healed.comingBack(PipelinePhase.Listening))
+
+        val front = CaptionsStopAnnouncer()
+        front.phaseChanged(stalled, active = true)
+        assertNull(front.comingBack(stalled))
+    }
+
+    @Test
+    fun `back in front while captions restart, a second failure there is still told`() {
+        val stopped = CaptionsStopAnnouncer.Event.Stopped
+        val announcer = CaptionsStopAnnouncer()
+        assertEquals(stopped, announcer.phaseChanged(stalled, active = false))
+        assertNull(announcer.phaseChanged(preparing, active = false))
+        assertNull(announcer.comingBack(preparing))
+        assertEquals(stopped, announcer.phaseChanged(stalled, active = true))
+        assertNull(announcer.phaseChanged(stalled, active = true))
+    }
+
+    @Test
+    fun `leaving again while captions restart and fail keeps the stop owed for the return`() {
+        val stopped = CaptionsStopAnnouncer.Event.Stopped
+        val announcer = CaptionsStopAnnouncer()
+        announcer.phaseChanged(stalled, active = false)
+        announcer.phaseChanged(preparing, active = false)
+        assertNull(announcer.phaseChanged(stalled, active = false))
+        assertEquals(stopped, announcer.comingBack(stalled))
+    }
 }

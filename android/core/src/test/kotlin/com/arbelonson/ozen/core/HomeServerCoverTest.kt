@@ -9,8 +9,12 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 
@@ -887,5 +891,76 @@ class HomeServerCoverTest {
         captions.restart(moved)
         assertTrue(eventually { captions.phase == PipelinePhase.Listening })
         assertEquals(listOf("10.0.0.5", "10.0.0.9"), addresses)
+    }
+
+    @Test
+    fun `speech during the phone model's load is heard because the microphone is collected from the start of the cover`() = runTest {
+        val audio = FakeAudioCapturer()
+        val microphone = MutableSharedFlow<FloatArray>(extraBufferCapacity = 64)
+        var collections = 0
+        var collecting = false
+        audio.captureFlow = {
+            flow {
+                collections += 1
+                collecting = true
+                try {
+                    emitAll(microphone)
+                } finally {
+                    collecting = false
+                }
+            }
+        }
+        val server = FakeEngine(kind = homeKind)
+        val phone = FakeEngine(kind = phoneKind)
+        val captions = serverPipeline(server, phone, audio = audio)
+        captions.start(serverSettings())
+        assertTrue(eventually { captions.phase == PipelinePhase.Listening && captions.activeEngineKind == homeKind })
+        val gate = PrepareGate()
+        phone.prepareGate = gate
+        server.endStream(throwing = unreachable())
+        assertTrue(eventually { phone.heldPrepares == 1 })
+
+        assertTrue(eventually(1.seconds) { collecting && collections == 2 }, "the microphone was not collected while the model loads")
+        microphone.tryEmit(FloatArray(1_600) { 0.1f })
+        microphone.tryEmit(FloatArray(1_600) { 0.1f })
+        delay(50.milliseconds)
+        gate.open()
+
+        assertTrue(eventually { captions.phase == PipelinePhase.Listening && captions.activeEngineKind == phoneKind })
+        assertTrue(eventually { phone.chunksSeen >= 2 }, "heard only ${phone.chunksSeen} chunks")
+    }
+
+    @Test
+    fun `stopping while the phone model loads ends the early microphone collection`() = runTest {
+        val audio = FakeAudioCapturer()
+        val microphone = MutableSharedFlow<FloatArray>(extraBufferCapacity = 64)
+        var collecting = false
+        var collections = 0
+        audio.captureFlow = {
+            flow {
+                collections += 1
+                collecting = true
+                try {
+                    emitAll(microphone)
+                } finally {
+                    collecting = false
+                }
+            }
+        }
+        val server = FakeEngine(kind = homeKind)
+        val phone = FakeEngine(kind = phoneKind)
+        val captions = serverPipeline(server, phone, audio = audio)
+        captions.start(serverSettings())
+        assertTrue(eventually { captions.phase == PipelinePhase.Listening && captions.activeEngineKind == homeKind })
+        val gate = PrepareGate()
+        phone.prepareGate = gate
+        server.endStream(throwing = unreachable())
+        assertTrue(eventually { phone.heldPrepares == 1 })
+        assertTrue(eventually(1.seconds) { collecting && collections == 2 })
+
+        captions.stop()
+
+        assertTrue(eventually(1.seconds) { !collecting })
+        gate.open()
     }
 }
