@@ -67,6 +67,10 @@ class StoppedCaptionsNoticeTest {
     @Test
     fun `posted once while the phone is put away, never while the app is on screen or switched off`() {
         val notice = StoppedCaptionsNotice()
+        assertEquals(
+            StoppedCaptionsNotice.Update.Withdraw(StoppedCaptionsNotice.IDENTIFIER),
+            notice.update(failed(glitch), appIsActive = true, isEnabled = true),
+        )
         assertNull(notice.update(failed(glitch), appIsActive = true, isEnabled = true))
         assertNull(notice.update(failed(glitch), appIsActive = false, isEnabled = false))
 
@@ -81,6 +85,10 @@ class StoppedCaptionsNoticeTest {
     @Test
     fun `once captions run again the notice is withdrawn, and a later stop is told again`() {
         val notice = StoppedCaptionsNotice()
+        assertEquals(
+            StoppedCaptionsNotice.Update.Withdraw(StoppedCaptionsNotice.IDENTIFIER),
+            notice.update(null, appIsActive = false, isEnabled = true),
+        )
         assertNull(notice.update(null, appIsActive = false, isEnabled = true))
         notice.update(StoppedCaptionsNotice.Cause.CallEnded, appIsActive = false, isEnabled = true)
 
@@ -174,6 +182,27 @@ class StoppedCaptionsNoticeTest {
             val computer = StoppedCaptionsNotice.content(failed(engineFailure(EngineUnavailability.Kind.HomeServerUnreachable))).body
             assertTrue(computer.startsWith("No answer from the computer"))
         }
+    }
+
+    @Test
+    fun `a fresh instance withdraws a notice left by a killed process, once`() {
+        val notice = StoppedCaptionsNotice()
+        assertEquals(
+            StoppedCaptionsNotice.Update.Withdraw("captions-stopped"),
+            notice.update(null, appIsActive = false, isEnabled = true),
+        )
+        assertNull(notice.update(null, appIsActive = false, isEnabled = true))
+    }
+
+    @Test
+    fun `a fresh instance with a cause posts and never sweeps on the post path`() {
+        val notice = StoppedCaptionsNotice()
+        assertIs<StoppedCaptionsNotice.Update.Post>(notice.update(failed(glitch), appIsActive = false, isEnabled = true))
+        assertEquals(
+            StoppedCaptionsNotice.Update.Withdraw(StoppedCaptionsNotice.IDENTIFIER),
+            notice.update(null, appIsActive = false, isEnabled = true),
+        )
+        assertNull(notice.update(null, appIsActive = false, isEnabled = true))
     }
 }
 
