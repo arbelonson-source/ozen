@@ -318,10 +318,12 @@ fun HistoryScreen(
             }
         }
     }
-    pendingRetention?.let { choice ->
+    val loadedSummaries = loaded?.summaries
+    if (pendingRetention != null && loadedSummaries != null) {
+        val choice = pendingRetention
         AlertDialog(
             onDismissRequest = { pendingRetentionValue = null },
-            title = { Text(HistoryTexts.expiryWarning(choice.expiringCount(loaded?.summaries, System.currentTimeMillis() / 1_000.0) ?: 0)) },
+            title = { Text(HistoryTexts.expiryWarning(choice.expiringCount(loadedSummaries, System.currentTimeMillis() / 1_000.0) ?: 0)) },
             text = { Text(tr("שיחות עם שורה מסומנת או עם שם לא יימחקו.", "Conversations with a starred line or a name won’t be deleted.")) },
             confirmButton = {
                 TextButton(

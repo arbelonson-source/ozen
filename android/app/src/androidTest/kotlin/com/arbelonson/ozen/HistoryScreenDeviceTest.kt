@@ -565,6 +565,10 @@ class HistoryScreenDeviceTest {
         compose.waitUntil(5_000) { store.load(id)?.title == "Eye doctor" }
     }
 
+    private fun waitForText(text: String) = compose.waitUntil(10_000) {
+        compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+    }
+
     private fun turnThePhone() {
         val first = compose.activity
         compose.activityRule.scenario.recreate()
@@ -580,6 +584,7 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Delete all").performClick()
         compose.onNodeWithText("Delete all saved conversations?").assertExists()
         turnThePhone()
+        waitForText("Delete all saved conversations?")
         compose.onNodeWithText("Delete all saved conversations?").assertIsDisplayed()
         compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
     }
@@ -593,6 +598,7 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Delete").performClick()
         compose.onNodeWithText("Delete this conversation?").assertExists()
         turnThePhone()
+        waitForText("Delete this conversation?")
         compose.onNodeWithText("Delete this conversation?").assertIsDisplayed()
         waitFor("Turning delete one line")
         compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
@@ -607,10 +613,43 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("After a month").performClick()
         compose.onNodeWithText("Delete and continue this way").assertExists()
         turnThePhone()
+        waitForText("Delete and continue this way")
         compose.onNodeWithText("Delete and continue this way").assertIsDisplayed()
         compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
         assertEquals(HistoryRetention.Forever, app.settings.current.value.historyRetention)
         assertNotNull(store.load(old))
+    }
+
+    @Test
+    fun turningThePhoneKeepsTheShorterKeepingTimeQuestionTrueAboutWhatConfirmingDeletes() {
+        app.settings.change { it.historyRetention = HistoryRetention.Forever }
+        val longAgo = System.currentTimeMillis() / 1_000.0 - 40 * 86_400
+        val oldOne = seed("Rotating retention old one" to null, startedAt = longAgo)
+        val oldTwo = seed("Rotating retention old two" to null, startedAt = longAgo - 60)
+        val recent = seed("Rotating retention recent line" to null)
+        repeat(400) { n -> seed(*Array(20) { "Rotating retention filler $n line $it" to null }) }
+        compose.onNodeWithText("History").performClick()
+        waitForText("Delete all")
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Rotating retention filler", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Automatic deletion").performClick()
+        compose.onNodeWithText("After a month").performClick()
+        compose.onNodeWithText("2 old conversations will be deleted now").assertExists()
+        turnThePhone()
+        var firstSeen = ""
+        compose.waitUntil(10_000) {
+            val buttons = compose.onAllNodesWithText("Delete and continue this way").fetchSemanticsNodes()
+            if (buttons.isNotEmpty() && firstSeen.isEmpty()) {
+                firstSeen = compose.onAllNodesWithText("will be deleted now", substring = true).fetchSemanticsNodes()
+                    .joinToString { node -> node.config.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }.orEmpty() }
+                    .ifEmpty { "(no warning text)" }
+            }
+            buttons.isNotEmpty()
+        }
+        assertEquals("2 old conversations will be deleted now", firstSeen)
+        compose.onNodeWithText("Delete and continue this way").performClick()
+        compose.waitUntil(10_000) { store.load(oldOne) == null && store.load(oldTwo) == null }
+        assertNotNull(store.load(recent))
+        assertEquals(HistoryRetention.Month, app.settings.current.value.historyRetention)
     }
 
     @Test
