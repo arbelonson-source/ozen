@@ -89,4 +89,11 @@ struct PhoneNumbersTests {
     func supplementaryDigit() {
         #expect(dialed("תתקשרי 050123456\u{1D7D5} מחר") == ["0501234567"])
     }
+
+    @Test("a number followed by a no-break space and one more digit is not dialed as its shorter prefix")
+    func noBreakTrailingGroup() {
+        #expect(dialed("תתקשרי 050\u{00A0}123\u{00A0}4567\u{00A0}8 מחר").isEmpty)
+        #expect(dialed("המוקד 1\u{00A0}700\u{00A0}50\u{00A0}50\u{00A0}50\u{00A0}1 פתוח").isEmpty)
+        #expect(dialed("תתקשרי 050\u{00A0}123\u{00A0}4567 מחר") == ["0501234567"])
+    }
 }
