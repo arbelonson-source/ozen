@@ -65,6 +65,7 @@ class PipelineStateTest {
         assertTrue(failure(EngineUnavailability.Kind.NoInternet).suggestsOtherEngine)
         assertFalse(failure(EngineUnavailability.Kind.CloudKeyNeeded).suggestsOtherEngine)
         assertFalse(failure(EngineUnavailability.Kind.CloudOutOfCredit).suggestsOtherEngine)
+        assertFalse(failure(EngineUnavailability.Kind.CloudLanguageNotCovered).suggestsOtherEngine)
         assertFalse(PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, "").suggestsOtherEngine)
     }
 

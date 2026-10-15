@@ -76,7 +76,7 @@ private fun TestScope.watchCauses(captions: CaptionPipeline): Causes {
 class CloudCoverTest {
     @Test
     fun `out of credit, no key or no internet - the downloaded phone model carries on`() = runTest {
-        for (kind in listOf(EngineUnavailability.Kind.CloudOutOfCredit, EngineUnavailability.Kind.CloudKeyNeeded, EngineUnavailability.Kind.NoInternet)) {
+        for (kind in listOf(EngineUnavailability.Kind.CloudOutOfCredit, EngineUnavailability.Kind.CloudKeyNeeded, EngineUnavailability.Kind.NoInternet, EngineUnavailability.Kind.CloudLanguageNotCovered)) {
             val cloud = FakeEngine(kind = cloudKind, availability = EngineAvailability.unavailable(kind, "test"))
             val phone = FakeEngine(kind = phoneKind)
             val captions = coverPipeline(cloud, phone)
@@ -507,7 +507,7 @@ class CloudCoverTest {
 
     @Test
     fun `a key or credit problem is left for a person, never asked again on its own`() = runTest {
-        for (kind in listOf(EngineUnavailability.Kind.CloudKeyNeeded, EngineUnavailability.Kind.CloudOutOfCredit)) {
+        for (kind in listOf(EngineUnavailability.Kind.CloudKeyNeeded, EngineUnavailability.Kind.CloudOutOfCredit, EngineUnavailability.Kind.CloudLanguageNotCovered)) {
             val cloud = FakeEngine(kind = cloudKind, availability = EngineAvailability.unavailable(kind, "test"))
             val phone = FakeEngine(kind = phoneKind)
             val captions = coverPipeline(cloud, phone)

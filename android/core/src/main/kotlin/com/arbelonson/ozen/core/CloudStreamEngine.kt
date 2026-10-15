@@ -118,6 +118,11 @@ class CloudStreamEngine(
 
     override suspend fun prepare(languageCode: String, progress: (EnginePreparationProgress) -> Unit): EngineAvailability {
         progress(EnginePreparationProgress(EnginePreparationProgress.Stage.CheckingSupport))
+        if (!provider.covers(languageCode)) {
+            return EngineAvailability.Unavailable(
+                EngineUnavailability(EngineUnavailability.Kind.CloudLanguageNotCovered, "the cloud service does not know this language"),
+            )
+        }
         val key = currentKey() ?: return EngineAvailability.Unavailable(CloudSpeechError.KeyMissing.unavailability)
         val trusted = synchronized(lock) {
             val at = approvedAt

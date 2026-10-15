@@ -276,6 +276,13 @@ class PhasePresentation private constructor(
                         Action.OpenEngineSettings,
                     )
 
+                coveringForCloud && coveredEngine == TranscriptionEngineKind.Cloud &&
+                    coverReason == EngineUnavailability.Kind.CloudLanguageNotCovered ->
+                    listening(
+                        tr("השירות לא מתמלל את השפה הזו, ממשיך עם הזיהוי שבטלפון · בחרו שירות אחר בהגדרות", "This service can’t caption this language, carrying on with the phone’s own · Choose another service in Settings"),
+                        Action.OpenEngineSettings,
+                    )
+
                 // Still captioning, so still active: the words keep coming, only
                 // from the phone's own model while the cloud can't be used.
                 coveringForCloud ->
@@ -521,6 +528,14 @@ class PhasePresentation private constructor(
                     title = tr("התמלול בענן לא מוגדר", "Cloud transcription isn’t set up"),
                     detail = tr("בקשו ממי שהתקין את הטלפון לתקן · הקישו להגדרות", "Ask whoever set up the phone to fix it · Tap for Settings"),
                     systemImage = "key",
+                    tint = PhaseTint.Attention,
+                    action = Action.OpenEngineSettings,
+                )
+
+                EngineUnavailability.Kind.CloudLanguageNotCovered -> PhasePresentation(
+                    title = tr("השירות לא מתמלל את השפה הזו", "This service can't caption this language"),
+                    detail = tr("בחרו שירות אחר · הקישו להגדרות", "Choose another service · Tap for Settings"),
+                    systemImage = "globe",
                     tint = PhaseTint.Attention,
                     action = Action.OpenEngineSettings,
                 )

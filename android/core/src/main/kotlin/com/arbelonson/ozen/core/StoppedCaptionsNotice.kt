@@ -147,6 +147,10 @@ class StoppedCaptionsNotice {
                         "יש בעיה במפתח של התמלול בענן. פתחו את אוזן לפרטים.",
                         "There's a problem with the cloud transcription key. Open Ozen for details.",
                     )
+                    why == EngineUnavailability.Kind.CloudLanguageNotCovered -> tr(
+                        "השירות הזה לא מתמלל את השפה הזו. פתחו את אוזן ובחרו שירות אחר.",
+                        "This service can't caption this language. Open Ozen and choose another service.",
+                    )
                     why == EngineUnavailability.Kind.CloudOutOfCredit -> tr(
                         "נגמר התקציב לתמלול בענן. פתחו את אוזן לפרטים.",
                         "Cloud transcription’s budget ran out. Open Ozen for details.",

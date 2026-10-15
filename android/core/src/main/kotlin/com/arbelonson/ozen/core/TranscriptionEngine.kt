@@ -169,6 +169,9 @@ data class EngineUnavailability(
         /** The phone doesn't have room for the model (see `StorageSpaceGate`). */
         NotEnoughStorage("notEnoughStorage"),
 
+        /** The chosen cloud service does not know the spoken language. */
+        CloudLanguageNotCovered("cloudLanguageNotCovered"),
+
         /** Cloud captions have no key, or the cloud service turned the key down. */
         CloudKeyNeeded("cloudKeyNeeded"),
 

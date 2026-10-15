@@ -377,4 +377,20 @@ class PhasePresentationTest {
         assertEquals(Action.OpenEngineSettings, rejected.action)
         assertTrue(rejected.detail?.contains("QR") == true)
     }
+
+    @Test
+    fun `a language the chosen service cannot caption says so, and the phone carries on while covering`() {
+        val failed = present(failure(unavailable(EngineUnavailability.Kind.CloudLanguageNotCovered)), TranscriptionEngineKind.Cloud)
+        assertEquals("השירות לא מתמלל את השפה הזו", failed.title)
+        assertEquals("בחרו שירות אחר · הקישו להגדרות", failed.detail)
+        assertEquals(Action.OpenEngineSettings, failed.action)
+        val covering = present(
+            PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
+            coveringForCloud = true, coveredEngine = TranscriptionEngineKind.Cloud,
+            coverReason = EngineUnavailability.Kind.CloudLanguageNotCovered,
+        )
+        assertEquals("השירות לא מתמלל את השפה הזו, ממשיך עם הזיהוי שבטלפון · בחרו שירות אחר בהגדרות", covering.detail)
+        assertEquals(Action.OpenEngineSettings, covering.action)
+        assertEquals(PhaseTint.Active, covering.tint)
+    }
 }

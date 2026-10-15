@@ -126,6 +126,7 @@ class AutoRecoveryPolicy(
                 EngineUnavailability.Kind.LanguageNotSupportedOnDevice,
                 EngineUnavailability.Kind.CloudKeyNeeded,
                 EngineUnavailability.Kind.CloudOutOfCredit,
+                EngineUnavailability.Kind.CloudLanguageNotCovered,
                 EngineUnavailability.Kind.HomeServerRejected,
                 -> Schedule.Never
                 // Retrying on a timer would only ask the same question of
