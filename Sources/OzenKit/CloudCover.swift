@@ -4,7 +4,7 @@ public enum CloudCover {
               let kind = failure.engineUnavailability?.kind
         else { return nil }
         switch kind {
-        case .cloudKeyNeeded, .cloudOutOfCredit, .noInternet, .homeServerUnreachable, .homeServerRejected:
+        case .cloudKeyNeeded, .cloudOutOfCredit, .cloudLanguageNotCovered, .noInternet, .homeServerUnreachable, .homeServerRejected:
             var onPhone = settings
             onPhone.engine = .whisperKit
             return onPhone

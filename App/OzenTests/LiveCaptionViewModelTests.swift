@@ -1476,7 +1476,7 @@ struct LiveCaptionViewModelMissedInterruptionEndTests {
             audio: FakeAudioCapturer(),
             engineFactory: { _ in engine },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         return LiveCaptionViewModel(
             settingsStore: SettingsStore(fileURL: directory.appendingPathExtension("json")),
@@ -1742,7 +1742,7 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
     func retriedFailureQuiet() async {
         let phone = Phone(reclaimAnswer: true)
         let engine = FakeEngine()
-        let viewModel = makeViewModel(phone: phone, engine: engine, recovery: AutoRecoveryPolicy(glitchDelays: [30], downloadDelays: []))
+        let viewModel = makeViewModel(phone: phone, engine: engine, recovery: AutoRecoveryPolicy(glitchDelays: [30], downloadDelays: [], microphoneTailDelays: []))
         await viewModel.start()
         viewModel.sceneActivityChanged(isActive: false)
 
@@ -2421,7 +2421,7 @@ struct LiveCaptionViewModelSavingTroubleTests {
             audio: audio,
             engineFactory: { _ in engine },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: [], microphoneTailDelays: [])
         )
         let history = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-retry-history-\(UUID())", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: history) }
