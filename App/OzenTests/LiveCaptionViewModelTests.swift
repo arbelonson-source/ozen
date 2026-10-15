@@ -1108,6 +1108,54 @@ struct LiveCaptionViewModelSpeechTests {
         await launch.value
     }
 
+    @Test("a spoken request that setup throws away is reported as discarded, not left to time out as a success")
+    func discardedSpeakIsReported() async {
+        let box = PendingAppAction()
+        box.post(.speak("אני באה"))
+        box.discardAll()
+        #expect(box.takeAll().isEmpty)
+        #expect(box.speakWasDiscarded)
+        #expect(await box.speakResult(waitingUpTo: .seconds(5)) == nil)
+    }
+
+    @Test("throwing away a request that was not speech does not mark speech as discarded")
+    func discardedOtherActionIsNotSpeech() {
+        let box = PendingAppAction()
+        box.post(.stopCaptions)
+        box.discardAll()
+        #expect(!box.speakWasDiscarded)
+        box.post(.speak("שלום"))
+        box.discardAll()
+        box.post(.speak("שוב"))
+        #expect(!box.speakWasDiscarded)
+    }
+
+    @Test("two spoken requests run one after the other, so each reads only its own outcome")
+    func speakRequestsAreSerialized() async {
+        let box = PendingAppAction()
+        #expect(await box.beginSpeakRequest())
+        let second = Task { await box.beginSpeakRequest() }
+        try? await Task.sleep(for: .milliseconds(350))
+        box.post(.speak("ראשון"))
+        box.reportSpeak(false)
+        #expect(box.lastSpeakWorked == false)
+        box.endSpeakRequest()
+        #expect(await second.value)
+        box.post(.speak("שני"))
+        #expect(box.lastSpeakWorked == nil)
+        box.reportSpeak(true)
+        #expect(box.lastSpeakWorked == true)
+    }
+
+    @Test("a cancelled wait for the speech slot gives up instead of spinning")
+    func cancelledSlotWaitStops() async {
+        let box = PendingAppAction()
+        #expect(await box.beginSpeakRequest())
+        let waiter = Task { await box.beginSpeakRequest() }
+        waiter.cancel()
+        #expect(await waiter.value == false)
+    }
+
     @Test("the Siri phrase is trimmed, and a blank one is refused")
     func siriPhraseCleaned() {
         #expect(SpeakIntent.cleaned("   ") == nil)

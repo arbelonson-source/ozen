@@ -44,10 +44,13 @@ struct SpeakIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let cleaned = Self.cleaned(text) else { throw SpeakIntentError.nothingToSay }
-        PendingAppAction.shared.post(.speak(cleaned))
-        if await PendingAppAction.shared.speakResult(waitingUpTo: .seconds(8)) == false {
-            throw SpeakIntentError.noVoice
-        }
+        let mailbox = PendingAppAction.shared
+        guard await mailbox.beginSpeakRequest() else { throw CancellationError() }
+        defer { mailbox.endSpeakRequest() }
+        mailbox.post(.speak(cleaned))
+        let worked = await mailbox.speakResult(waitingUpTo: .seconds(8))
+        if mailbox.speakWasDiscarded { throw SpeakIntentError.notReady }
+        if worked == false { throw SpeakIntentError.noVoice }
         return .result()
     }
 }
@@ -55,6 +58,7 @@ struct SpeakIntent: AppIntent {
 enum SpeakIntentError: Error, CustomLocalizedStringResourceConvertible {
     case nothingToSay
     case noVoice
+    case notReady
 
     var localizedStringResource: LocalizedStringResource {
         let message: String
@@ -63,6 +67,8 @@ enum SpeakIntentError: Error, CustomLocalizedStringResourceConvertible {
             message = tr("אין מה להגיד. כתבו משפט.", "There is nothing to say. Write a sentence.")
         case .noVoice:
             message = tr("אין קול מותקן לשפה הזו, אז לא נאמר דבר.", "No voice for this language is installed, so nothing was said.")
+        case .notReady:
+            message = tr("אוזן עוד לא מוכנה, אז לא נאמר דבר. סיימו את ההתחלה ונסו שוב.", "Ozen is not ready yet, so nothing was said. Finish setting up and try again.")
         }
         return "\(message)"
     }
@@ -144,6 +150,30 @@ final class PendingAppAction {
     private(set) var serial = 0
 
     private(set) var lastSpeakWorked: Bool?
+    private(set) var speakWasDiscarded = false
+    private var speakInFlight = false
+
+    /// One spoken request at a time, so two Siri calls running together
+    /// cannot read each other's outcome.
+    func beginSpeakRequest() async -> Bool {
+        while speakInFlight {
+            if (try? await Task.sleep(for: .milliseconds(100))) == nil { return false }
+        }
+        speakInFlight = true
+        return true
+    }
+
+    func endSpeakRequest() {
+        speakInFlight = false
+    }
+
+    /// Requests the app will never carry out (setup is still showing): the
+    /// waiting Siri call is told instead of timing out as if it had worked.
+    func discardAll() {
+        for action in takeAll() {
+            if case .speak = action { speakWasDiscarded = true }
+        }
+    }
 
     func reportSpeak(_ worked: Bool) {
         lastSpeakWorked = worked
@@ -151,14 +181,17 @@ final class PendingAppAction {
 
     func speakResult(waitingUpTo limit: Duration) async -> Bool? {
         let deadline = ContinuousClock.now + limit
-        while lastSpeakWorked == nil, ContinuousClock.now < deadline {
+        while lastSpeakWorked == nil, !speakWasDiscarded, ContinuousClock.now < deadline {
             if (try? await Task.sleep(for: .milliseconds(100))) == nil { break }
         }
         return lastSpeakWorked
     }
 
     func post(_ action: AppAction) {
-        if case .speak = action { lastSpeakWorked = nil }
+        if case .speak = action {
+            lastSpeakWorked = nil
+            speakWasDiscarded = false
+        }
         actions.append(action)
         serial += 1
     }
