@@ -187,14 +187,20 @@ object HebrewText {
      * The result is composed (NFC), so two spellings that Swift's string
      * comparison treats as equal compare equal here too.
      */
-    fun normalize(text: String): String {
+    fun normalize(text: String): String = foldAccents(normalizeKeepingAccents(text))
+
+    /**
+     * [normalize] without the accent folding: "si" and "sí" stay two strings,
+     * for the vocabulary list where they are two recognizer hints.
+     */
+    internal fun normalizeKeepingAccents(text: String): String {
         val withoutNiqqud = stripNiqqud(separatingJoiners(removingDirectionMarks(text)))
         val stripped = withoutNiqqud.filteringScalars {
             !isKeywordPunctuation(it) && !isKeywordSymbol(it) &&
                 Character.getType(it) != Character.FORMAT.toInt() && !isKeywordVariationSelector(it)
         }
         val joined = splitOnKeywordWhitespace(stripped.lowercase(Locale.ROOT).replace('ё', 'е')).joinToString(" ")
-        return foldAccents(joined)
+        return Normalizer.normalize(joined, Normalizer.Form.NFC)
     }
 
     /**

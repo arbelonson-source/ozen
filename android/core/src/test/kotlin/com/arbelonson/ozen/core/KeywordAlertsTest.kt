@@ -582,4 +582,11 @@ class OtherLettersTest {
         assertEquals(0, hits("мои", "мой"))
         assertEquals(0, hits("nino", "niño"))
     }
+
+    @Test
+    fun `hamza on waw and ya is folded like the one on alef, and a longer word stays apart`() {
+        assertEquals(1, hits("مومن", "قال مؤمن"))
+        assertEquals(1, hits("رايد", "قال رائد"))
+        assertEquals(0, hits("روس", "رؤوس كثيرة"))
+    }
 }
