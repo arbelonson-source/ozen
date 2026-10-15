@@ -851,7 +851,8 @@ struct SettingsView: View {
                 } maximumValueLabel: {
                     Image(systemName: "textformat.size.larger")
                 }
-                .accessibilityValue("\(Int(viewModel.display.fontSize))")
+                .accessibilityValue(SliderSpeech.textSize(viewModel.display.fontSize, in: Localization.language))
+                .accessibilityHint(SliderSpeech.textSizeHint(in: Localization.language))
                 // A pinch on the caption screen changes this too, and one
                 // made by accident had no quick way back.
                 if Int(viewModel.display.fontSize) != Int(DisplayPreferences.default.fontSize) {
@@ -1069,7 +1070,8 @@ struct SettingsView: View {
                 .accessibilityHidden(true)
                 Slider(value: $viewModel.speechRate, in: 0.2...0.7, step: 0.05)
                     .accessibilityLabel(tr("מהירות דיבור", "Speech rate"))
-                    .accessibilityValue(String(format: "%.2f", viewModel.speechRate))
+                    .accessibilityValue(SliderSpeech.speechRate(Double(viewModel.speechRate), in: Localization.language))
+                    .accessibilityHint(SliderSpeech.speechRateHint(in: Localization.language))
                 sliderLabelLayout {
                     Text(tr("לאט", "Slow"))
                         .frame(maxWidth: .infinity, alignment: .leading)
