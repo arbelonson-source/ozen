@@ -751,26 +751,30 @@ async def handle(ws, transcriber, token, live_interval, make_enhancer=None, gene
     on_demand = isinstance(transcriber, OnDemandTranscriber)
     if on_demand:
         transcriber.opened()
-        transcriber.prepare()
-    session = Session(ws, transcriber, language,
-                      [str(v) for v in hello.get("vocabulary", [])][:200], live_interval,
-                      make_enhancer() if make_enhancer else None, beam)
-    await ws.send(json.dumps({"type": "ready", "model": transcriber.name, "version": PROTOCOL_VERSION}))
-    purpose = str(hello.get("purpose", "captions"))[:20]
-    client = str(hello.get("client", ""))[:80]
-    log.info("session from %s: %s, %s, beam %s", peer, purpose, client or "unknown app", beam or transcriber.beam)
-    worker = asyncio.create_task(session.run())
-
-    # A pass that fails (a CUDA error, say) must end the connection: an
-    # open socket that never sends text again would keep the phone waiting
-    # instead of switching to its own model.
-    def worker_done(task):
-        if not task.cancelled() and worker_failed(task.exception()):
-            log.error("session from %s failed: %r", peer, task.exception())
-            asyncio.ensure_future(ws.close(code=1011, reason="transcription failed"))
-
-    worker.add_done_callback(worker_done)
+    worker = None
+    session = None
     try:
+        if on_demand:
+            transcriber.prepare()
+        vocabulary = hello.get("vocabulary")
+        session = Session(ws, transcriber, language,
+                          [str(v) for v in vocabulary][:200] if isinstance(vocabulary, list) else [],
+                          live_interval, make_enhancer() if make_enhancer else None, beam)
+        await ws.send(json.dumps({"type": "ready", "model": transcriber.name, "version": PROTOCOL_VERSION}))
+        purpose = str(hello.get("purpose", "captions"))[:20]
+        client = str(hello.get("client", ""))[:80]
+        log.info("session from %s: %s, %s, beam %s", peer, purpose, client or "unknown app", beam or transcriber.beam)
+        worker = asyncio.create_task(session.run())
+
+        # A pass that fails (a CUDA error, say) must end the connection: an
+        # open socket that never sends text again would keep the phone waiting
+        # instead of switching to its own model.
+        def worker_done(task):
+            if not task.cancelled() and worker_failed(task.exception()):
+                log.error("session from %s failed: %r", peer, task.exception())
+                asyncio.ensure_future(ws.close(code=1011, reason="transcription failed"))
+
+        worker.add_done_callback(worker_done)
         async for message in ws:
             if isinstance(message, bytes):
                 session.add_audio(message)
@@ -782,7 +786,8 @@ async def handle(ws, transcriber, token, live_interval, make_enhancer=None, gene
             if not isinstance(msg, dict):
                 continue
             if msg.get("type") == "vocabulary":
-                session.vocabulary = [str(v) for v in msg.get("terms", [])][:200]
+                terms = msg.get("terms")
+                session.vocabulary = [str(v) for v in terms][:200] if isinstance(terms, list) else []
             elif msg.get("type") == "report":
                 name = save_report(str(msg.get("text", "")), client)
                 log.info("report from %s saved as %s", peer, name)
@@ -800,10 +805,12 @@ async def handle(ws, transcriber, token, live_interval, make_enhancer=None, gene
     except Exception as error:
         log.error("session from %s ended with %r", peer, error)
     finally:
-        worker.cancel()
+        if worker is not None:
+            worker.cancel()
         if on_demand:
             transcriber.closed()
-        log.info("session from %s ended: %s", peer, session.summary())
+        if session is not None:
+            log.info("session from %s ended: %s", peer, session.summary())
 
 
 async def main():
