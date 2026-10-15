@@ -1139,14 +1139,20 @@ final class OzenScreenshotUITests: XCTestCase {
         app.textFields.firstMatch.typeText("שלום")
         let header = app.descendants(matching: .any)["quickPhrasesHeader"]
         // Drags start in the gap between the navigation bar and the first
-        // control, which is above the keyboard and never on the text
+        // control, which is above the keyboard (a downward drag stops short
+        // of it, as one that ends on it dismisses it) and never on the text
         // field: at the largest text size the field sits right under the
         // bar, and a drag that starts on it moves the cursor, not the sheet.
         func dragSheet(up: Bool, slow: Bool = false) {
             let bar = app.navigationBars.firstMatch.frame
             let window = app.windows.firstMatch.frame
             let startY = (bar.maxY + 12) / window.height
-            let endY = (bar.maxY + 12 + (up ? -50 : 50)) / window.height
+            var travel: CGFloat = up ? -50 : 50
+            let keyboard = app.keyboards.firstMatch
+            if !up, keyboard.exists {
+                travel = max(10, min(travel, keyboard.frame.minY - 6 - (bar.maxY + 12)))
+            }
+            let endY = (bar.maxY + 12 + travel) / window.height
             let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY))
             let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
             if slow {
@@ -1209,16 +1215,9 @@ final class OzenScreenshotUITests: XCTestCase {
         capture(app, name: "type-to-speak-accessibility-text-landscape")
         XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")
 
-        let keyboardAfterPlay = app.keyboards.firstMatch.exists
-        let field = app.textFields.firstMatch
-        if !keyboardAfterPlay {
-            reach(field, startUp: false)
-            field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-            _ = app.keyboards.firstMatch.waitForExistence(timeout: 5)
-        }
         reach(header, startUp: true)
         capture(app, name: "type-to-speak-accessibility-text-landscape-phrases")
         XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in landscape")
-        XCTAssertTrue(app.keyboards.firstMatch.exists, "say sheet: the keyboard is not showing where the quick phrases are reached in landscape (it was \(keyboardAfterPlay ? "up" : "gone") after the Play check)")
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "say sheet: the keyboard is not showing where the quick phrases are reached in landscape")
     }
 }
