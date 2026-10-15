@@ -74,6 +74,7 @@ import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.SoundEventCatalog
 import com.arbelonson.ozen.core.SpeakerProfile
+import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
@@ -810,6 +811,55 @@ class CaptionScreenDeviceTest {
         } finally {
             app.settings.change { it.quickPhrases = phrasesBefore }
         }
+    }
+
+    @Test
+    fun theSayFieldStaysInsideTheSideBarsWithThePhoneSidewaysInBothDirectionsAndLanguages() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val shell = { command: String ->
+            ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
+        }
+        val languageBefore = app.settings.current.value.appLanguage
+        val problems = mutableListOf<String>()
+        try {
+            shell("settings put system accelerometer_rotation 0")
+            for (language in listOf(AppLanguage.English, AppLanguage.Hebrew)) {
+                app.settings.change { it.appLanguage = language }
+                for (rotation in listOf(1, 3)) {
+                    shell("settings put system user_rotation $rotation")
+                    compose.waitUntil(10_000) { compose.activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
+                    compose.waitForIdle()
+                    compose.onNodeWithContentDescription(tr("להגיד משהו בקול", "Say something out loud")).performClick()
+                    compose.waitUntil(5_000) { compose.onAllNodesWithText(tr("להגיד משהו", "Say something")).fetchSemanticsNodes().isNotEmpty() }
+                    compose.onNode(hasSetTextAction()).performTextInput(tr("כן", "Yes"))
+                    val window = compose.activity.window
+                    compose.waitUntil(5_000) {
+                        compose.runOnUiThread { (ViewCompat.getRootWindowInsets(window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0) > 0 }
+                    }
+                    compose.waitForIdle()
+                    val field = compose.onNode(hasSetTextAction()).fetchSemanticsNode().boundsInWindow
+                    val inset = compose.runOnUiThread {
+                        val all = ViewCompat.getRootWindowInsets(window.decorView)!!
+                        val bars = all.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                        Pair(bars.left, bars.right)
+                    }
+                    val width = window.decorView.width
+                    val label = "$language rotation $rotation: field ${field.left.toInt()}..${field.right.toInt()} of $width, bar insets left ${inset.first} right ${inset.second}"
+                    if (inset.first + inset.second == 0) problems += "$label (no side bar to test against)"
+                    if (field.left < inset.first || field.right > width - inset.second) problems += label
+                    compose.onNodeWithText(tr("סגירה", "Close")).performScrollTo().performClick()
+                    compose.waitUntil(5_000) { compose.onAllNodesWithText(tr("להגיד משהו", "Say something")).fetchSemanticsNodes().isEmpty() }
+                    compose.waitUntil(5_000) {
+                        compose.runOnUiThread { (ViewCompat.getRootWindowInsets(window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0) == 0 }
+                    }
+                }
+            }
+        } finally {
+            shell("settings put system user_rotation 0")
+            app.settings.change { it.appLanguage = languageBefore }
+        }
+        assertTrue(problems.joinToString("; "), problems.isEmpty())
     }
 
     @Test
