@@ -1117,17 +1117,21 @@ final class OzenScreenshotUITests: XCTestCase {
 
         app.textFields.firstMatch.typeText("שלום")
         let header = app.descendants(matching: .any)["quickPhrasesHeader"]
-        // Drags start in the gap between the navigation bar and the first
-        // control, which is above the keyboard and never on the text
-        // field: at the largest text size the field sits right under the
-        // bar, and a drag that starts on it moves the cursor, not the sheet.
+        // Drags run between the navigation bar and the top of the keyboard
+        // and start just above the keyboard, which is never on the text
+        // field after the first swipe: at the largest text size the field
+        // sits right under the bar, and a drag that starts on it moves the
+        // cursor, not the sheet.
         func dragSheet(up: Bool) {
             let bar = app.navigationBars.firstMatch.frame
             let window = app.windows.firstMatch.frame
-            let startY = (bar.maxY + 12) / window.height
-            let endY = (bar.maxY + 12 + (up ? -50 : 50)) / window.height
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
-                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY)))
+            let keyboard = app.keyboards.firstMatch
+            let bottom = (keyboard.exists ? keyboard.frame.minY : window.height / 2) - 8
+            let top = bar.maxY + 8
+            let from = up ? bottom : top
+            let to = up ? top : bottom
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: from / window.height))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: to / window.height)))
         }
         var swipes = 0
         while !(header.exists && header.isHittable) && swipes < 12 {
