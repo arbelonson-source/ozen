@@ -1,11 +1,15 @@
 package com.arbelonson.ozen
 
 import android.app.Notification
+import android.app.PendingIntent
+import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.LockScreenCaptionContent
 import com.arbelonson.ozen.core.LockScreenCaptionLine
+import com.arbelonson.ozen.core.tr
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -52,5 +56,26 @@ class ListeningNotificationDeviceTest {
         assertEquals(emptyList<String>(), everything.filter { "dinner" in it || "cake" in it || "minutes ago" in it })
         assertNull(shown.text(Notification.EXTRA_TEXT))
         assertNull(shown.text(Notification.EXTRA_SUB_TEXT))
+    }
+
+    private fun assertCarriesOnlyTheStopButton(shown: Notification) {
+        val actions = shown.actions
+        assertEquals(1, actions?.size ?: 0)
+        assertEquals(tr("עצירה", "Stop"), actions[0].title.toString())
+        val pause = Intent(context, ListeningService::class.java).setAction(ListeningService.ACTION_PAUSE)
+        val same = PendingIntent.getService(context, 1, pause, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
+        assertNotNull(same)
+        assertEquals(same, actions[0].actionIntent)
+    }
+
+    @Test
+    fun theNotificationHasAStopButtonThatPausesListeningWithAndWithoutLockScreenCaptions() {
+        val content = LockScreenCaptionContent(
+            lines = listOf(LockScreenCaptionLine(speaker = null, text = "Hello", isFinal = true)),
+            status = "Listening",
+            ageNote = null,
+        )
+        assertCarriesOnlyTheStopButton(ListeningService.notification(context, content, public = true))
+        assertCarriesOnlyTheStopButton(ListeningService.notification(context, content, public = false))
     }
 }

@@ -910,6 +910,10 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithContentDescription("Say something out loud").performClick()
             keyboardAway()
             compose.onNodeWithText("Slower, please").performScrollTo().assertIsNotEnabled()
+            compose.onNodeWithText("No speech engine or voice is installed on this phone, so phrases can’t be read aloud.").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("No Hebrew voice is installed.").assertDoesNotExist()
+            compose.runOnUiThread { app.captions.voice.installed.value = setOf(UILanguage.English) }
+            compose.waitForIdle()
             compose.onNodeWithText("No Hebrew voice is installed.").performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("Open phone settings").performScrollTo().performClick()
             compose.waitUntil(5_000) { started.isNotEmpty() }
