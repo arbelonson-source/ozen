@@ -40,6 +40,9 @@ final class InstallExpiryStatus {
     }
 
     private func scheduleReminder(expiresAt: Date?) {
+        if !InstallExpiry.shouldKeepDeliveredReminder(expiresAt: expiresAt, now: Date()) {
+            AlertNotifier.shared.withdraw(identifier: InstallExpiry.reminderIdentifier)
+        }
         // The local clock as it will be then: a daylight-saving change can
         // fall inside the week.
         let offset = expiresAt.map { TimeZone.current.secondsFromGMT(for: $0) } ?? 0

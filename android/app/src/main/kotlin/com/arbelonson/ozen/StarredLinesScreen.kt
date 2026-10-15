@@ -8,17 +8,24 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -40,6 +46,11 @@ import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.EmptyState
+import com.arbelonson.ozen.ui.SectionHeader
+import com.arbelonson.ozen.ui.SettingRow
+import com.arbelonson.ozen.ui.SettingsGroup
+import com.arbelonson.ozen.ui.TrailingValue
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -48,16 +59,15 @@ import kotlinx.coroutines.withContext
 /** History's way in, shown only when some saved line has a star, as on the iPhone. */
 @Composable
 internal fun StarredLinesRow(count: Int, onOpen: () -> Unit) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("★", color = starColour(), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 8.dp).clearAndSetSemantics { })
-            Text(tr("השורות המסומנות", "Starred lines"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Text("$count", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    SettingsGroup {
+        item {
+            SettingRow(
+                tr("השורות המסומנות", "Starred lines"),
+                icon = Icons.Rounded.Star,
+                onClick = onOpen,
+                trailing = { TrailingValue("$count") },
+            )
         }
-        HorizontalDivider()
     }
 }
 
@@ -94,26 +104,31 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
         actions = {
             if (!shown.isNullOrEmpty()) {
                 TextButton(onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { starredShareSheet(context, shown, marksUncertain) }) } }) {
+                    Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text(tr("שיתוף", "Share"))
                 }
             }
         },
     ) {
         when {
-            shown == null -> CircularProgressIndicator(modifier = Modifier.padding(24.dp))
-            shown.isEmpty() -> Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 24.dp)) {
-                Text(tr("אין שורות מסומנות", "No starred lines"), style = MaterialTheme.typography.titleMedium)
-                Text(
-                    tr("לחיצה ארוכה על שורה בזמן השיחה מסמנת אותה כחשובה.", "Press and hold a line during the conversation to mark it as important."),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            shown == null -> LoadingNote(Icons.Rounded.Star)
+            shown.isEmpty() -> EmptyState(
+                icon = Icons.Rounded.Star,
+                title = tr("אין שורות מסומנות", "No starred lines"),
+                body = tr("לחיצה ארוכה על שורה בזמן השיחה מסמנת אותה כחשובה.", "Press and hold a line during the conversation to mark it as important."),
+            )
             else -> {
                 val now = System.currentTimeMillis() / 1_000.0
-                LazyColumn(modifier = Modifier.fillMaxSize(), state = place) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = place,
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     for ((session, starred) in shown.groupBy { it.sessionID }) {
                         item(key = "conversation-$session") {
-                            Heading(conversationHeading(starred.first().sessionStartedAt, now = now))
+                            SectionHeader(conversationHeading(starred.first().sessionStartedAt, now = now))
                         }
                         items(starred, key = { it.id.toString() }) { line ->
                             StarredLineView(SavedLine.of(line, markUncertain = marksUncertain, languageCode = languageCode), emphasizeNumbers, onOpen = { opened = line.sessionID to line.id })
@@ -131,29 +146,31 @@ private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: 
     val context = LocalContext.current
     val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, line.copied)) }
     var menu by remember { mutableStateOf(false) }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .onHold { menu = true }
-            .clickable(onClick = onOpen)
-            .clearAndSetSemantics {
-                contentDescription = line.spoken
-                customActions = listOf(CustomAccessibilityAction(copy) { copyLine(); true })
-            }
-            .padding(vertical = 8.dp),
-    ) {
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
-        }
-        LineDirection(line.rightToLeft) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = SpeakerColour.of(line.cluster, it, onLightScreen())) }
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onHold { menu = true }
+                .clickable(onClick = onOpen)
+                .clearAndSetSemantics {
+                    contentDescription = line.spoken
+                    customActions = listOf(CustomAccessibilityAction(copy) { copyLine(); true })
                 }
-                Row {
-                    if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(captionText(line.text, emphasizeNumbers, numberColor = null, decimalComma = LocalDecimalComma.current), style = MaterialTheme.typography.bodyLarge)
+                .padding(16.dp),
+        ) {
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
+            }
+            LineDirection(line.rightToLeft) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = SpeakerColour.of(line.cluster, it, onLightScreen())) }
+                    }
+                    Row {
+                        if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(captionText(line.text, emphasizeNumbers, numberColor = null, decimalComma = LocalDecimalComma.current), style = MaterialTheme.typography.bodyLarge)
+                    }
                 }
             }
         }

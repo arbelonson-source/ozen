@@ -163,4 +163,13 @@ struct InstallExpiryTests {
             #expect(ahead < InstallExpiry.reminderAheadSeconds + 14 * 3_600)
         }
     }
+
+    @Test("a delivered reminder is kept only while the expiry is within the warning window")
+    func deliveredReminderKept() {
+        let now = monday(12)
+        #expect(!InstallExpiry.shouldKeepDeliveredReminder(expiresAt: now.addingTimeInterval(6 * 86_400), now: now))
+        #expect(!InstallExpiry.shouldKeepDeliveredReminder(expiresAt: now.addingTimeInterval(-3_600), now: now))
+        #expect(!InstallExpiry.shouldKeepDeliveredReminder(expiresAt: nil, now: now))
+        #expect(InstallExpiry.shouldKeepDeliveredReminder(expiresAt: now.addingTimeInterval(20 * 3_600), now: now))
+    }
 }

@@ -9,6 +9,7 @@ import java.nio.file.attribute.FileTime
 import java.text.BreakIterator
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -1009,12 +1010,19 @@ class TranscriptHistoryStore(private val directory: File) {
         internal const val SAID_MARK = "§"
 
         /** A conversation's prepared search text, split back into its two halves. */
-        internal class PreparedSearch(val words: String, val said: List<String>)
+        internal class PreparedSearch(val words: String, private val saidText: String) {
+            val said: List<String> by lazy(LazyThreadSafetyMode.NONE) {
+                saidSplitCount.incrementAndGet()
+                saidText.split("\n")
+            }
+        }
+
+        internal val saidSplitCount = AtomicInteger()
 
         internal fun preparedSearch(text: String): PreparedSearch? {
             val mark = text.indexOf("\n" + SAID_MARK + "\n")
             if (mark < 0) return null
-            return PreparedSearch(text.substring(0, mark), text.substring(mark + SAID_MARK.length + 2).split("\n"))
+            return PreparedSearch(text.substring(0, mark), text.substring(mark + SAID_MARK.length + 2))
         }
 
         /**
