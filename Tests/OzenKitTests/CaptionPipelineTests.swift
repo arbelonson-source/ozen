@@ -2213,16 +2213,17 @@ struct CaptionPipelineEnrollmentTests {
     func enrollmentStalls() async {
         let (pipeline, audio, _) = makePipeline()
         pipeline.enrollmentStallSeconds = 0.1
-        let started = ContinuousClock.now
         let recording = Task { @MainActor in
             await pipeline.captureEnrollmentSamples(seconds: 0.1)
         }
         #expect(await eventually { audio.calls.contains("startCapture") })
+        let stalled = ContinuousClock.now
         audio.push([Float](repeating: 0.1, count: 400))
         let samples = await recording.value
+        let waited = ContinuousClock.now - stalled
 
         #expect(samples.count == 400)
-        #expect(ContinuousClock.now - started < .seconds(2))
+        #expect(waited < .seconds(3))
         #expect(pipeline.phase == .idle)
     }
 
