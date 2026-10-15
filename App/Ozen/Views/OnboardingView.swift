@@ -64,7 +64,7 @@ struct OnboardingView: View {
         // she finishes, long after it was asked: a sentence said out loud
         // out of nowhere, or captions that don't start.
         .task(id: PendingAppAction.shared.serial) {
-            _ = PendingAppAction.shared.takeAll()
+            PendingAppAction.shared.discardAll()
         }
         // Seven pages to read, a permission to grant, a name to type: long
         // enough that the phone's own lock timeout can end onboarding

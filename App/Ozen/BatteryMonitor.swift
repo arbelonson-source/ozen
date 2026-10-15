@@ -17,6 +17,9 @@ final class BatteryMonitor {
     /// Called with each new warning, e.g. to post it as a notification
     /// when the app isn't on screen.
     @ObservationIgnored var onWarning: ((BatteryWarning) -> Void)?
+    /// Called when the phone is on a charger or watching stops, so a
+    /// posted warning can be taken down.
+    @ObservationIgnored var onCleared: (() -> Void)?
     private var advisor = BatteryAdvisor()
     private var observers: [NSObjectProtocol] = []
     private var isActive = false
@@ -45,6 +48,7 @@ final class BatteryMonitor {
             // Nothing reads the charger from here on: a "plug in a charger"
             // left up would stay after she did.
             notice = nil
+            onCleared?()
         }
     }
 
@@ -56,10 +60,12 @@ final class BatteryMonitor {
         let device = UIDevice.current
         let pluggedIn = device.batteryState == .charging || device.batteryState == .full
         let level: Float? = device.batteryState == .unknown ? nil : device.batteryLevel
-        if pluggedIn {
+        let warning = advisor.update(level: level, isPluggedIn: pluggedIn)
+        if advisor.shouldWithdraw {
             notice = nil
+            onCleared?()
         }
-        if let warning = advisor.update(level: level, isPluggedIn: pluggedIn) {
+        if let warning {
             notice = Notice(warning: warning)
             onWarning?(warning)
         }

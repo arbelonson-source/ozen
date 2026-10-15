@@ -406,7 +406,7 @@ private fun OzenApp(
     val look = CaptionTheme.of(current.display.theme, isSystemInDarkTheme(), moreContrast)
     LaunchedEffect(look.isLight) { onLightScreen(look.isLight) }
     OzenTheme(dark = !look.isLight, highContrast = moreContrast || current.display.theme == DisplayPreferences.Theme.HighContrast) {
-        CompositionLocalProvider(LocalLayoutDirection provides direction) {
+        CompositionLocalProvider(LocalLayoutDirection provides direction, LocalDecimalComma provides usesDecimalComma(current.spokenLanguage)) {
             val front = when {
                 !current.hasCompletedOnboarding -> FrontScreen(Front.Walkthrough)
                 showingSettings.value -> FrontScreen(Front.Settings)
@@ -1399,6 +1399,7 @@ private fun CaptionLineWords(
                 numberColor = if (line.isFinal) look.numberText else null,
                 doubtfulWords = doubtful,
                 linkingPhoneNumbers = line.phones.isNotEmpty(),
+                decimalComma = LocalDecimalComma.current,
             ),
             style = LocalTextStyle.current.copy(textDirection = TextDirection.Content),
             color = colour,
