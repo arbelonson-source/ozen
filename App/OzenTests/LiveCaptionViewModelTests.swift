@@ -1141,7 +1141,7 @@ struct LiveCaptionViewModelSpeechTests {
         viewModel.batteryWarningRaised(.critical(percent: 8))
         await viewModel.start()
         await viewModel.perform(.stopCaptions)
-        #expect(withdrawn.contains("battery"))
+        #expect(await eventually { withdrawn.contains("battery") })
     }
 
     @Test("two requests that launched the app together both happen, in order")
