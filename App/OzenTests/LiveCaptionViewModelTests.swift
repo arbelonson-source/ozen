@@ -1476,7 +1476,7 @@ struct LiveCaptionViewModelMissedInterruptionEndTests {
             audio: FakeAudioCapturer(),
             engineFactory: { _ in engine },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         return LiveCaptionViewModel(
             settingsStore: SettingsStore(fileURL: directory.appendingPathExtension("json")),
@@ -1742,7 +1742,7 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
     func retriedFailureQuiet() async {
         let phone = Phone(reclaimAnswer: true)
         let engine = FakeEngine()
-        let viewModel = makeViewModel(phone: phone, engine: engine, recovery: AutoRecoveryPolicy(glitchDelays: [30], downloadDelays: []))
+        let viewModel = makeViewModel(phone: phone, engine: engine, recovery: AutoRecoveryPolicy(glitchDelays: [30], downloadDelays: [], microphoneTailDelays: []))
         await viewModel.start()
         viewModel.sceneActivityChanged(isActive: false)
 
@@ -2043,6 +2043,30 @@ struct LiveCaptionViewModelDeleteConversationTests {
         viewModel.nameSpeaker(of: viewModel.segments[0], name: "Ruti")
 
         #expect(viewModel.settings.speakerProfiles.map(\.name).sorted() == ["Dana", "Ruti", "Ruti"])
+    }
+
+    @Test("naming one line as a new person leaves the saved person's voice and name on screen alone")
+    func namingOneLineAsSomeoneNewKeepsTheOtherVoice() async throws {
+        let engine = FakeEngine()
+        let audio = FakeAudioCapturer()
+        let pipeline = CaptionPipeline(audio: audio, engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-rename-\(UUID())", isDirectory: true)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathComponent("settings.json")),
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { pipeline.speakerClusters.count == 1 })
+        await say("שלום", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        viewModel.nameSpeaker(of: viewModel.segments[0], name: "Dana")
+
+        viewModel.nameSpeaker(of: viewModel.segments[0], name: "Yossi")
+
+        #expect(pipeline.speakerClusters.contains { $0.name == "Dana" })
+        #expect(pipeline.speakerClusters.contains { $0.name == "Yossi" })
+        #expect(viewModel.settings.speakerProfiles.map(\.name).sorted() == ["Dana", "Yossi"])
     }
 
     @Test("fixing a name's spelling from one line relabels every voice print of that person on screen, not only the one tapped")
@@ -2421,7 +2445,7 @@ struct LiveCaptionViewModelSavingTroubleTests {
             audio: audio,
             engineFactory: { _ in engine },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: [], microphoneTailDelays: [])
         )
         let history = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-retry-history-\(UUID())", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: history) }

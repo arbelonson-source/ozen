@@ -159,10 +159,16 @@ public struct WhisperResultFilter: Sendable, Equatable {
         "כתוביות ע״י", "תורגם ע״י", "תרגום ע״י", "תמלול ע״י",
         "תורגם וסונכרן", "סונכרן על ידי", "סונכרן ע״י",
         "subtitles by", "subtitled by", "translated by", "transcribed by", "captions by",
+        "ترجمة نانسي قنقر", "تمت الترجمة بواسطة",
+        "subtítulos realizados por la comunidad de amara.org",
+        "sous-titres réalisés par la communauté d'amara.org",
+        "untertitel der amara.org-community",
+        "legendas pela comunidade amara.org",
+        "субтитры сделал",
     ]
 
     public static let defaultCreditLabels: [String] = [
-        "כתוביות", "תרגום", "תמלול", "הפקה", "עריכה", "סנכרון", "subtitles", "translation", "captions",
+        "כתוביות", "תרגום", "תמלול", "הפקה", "עריכה", "סנכרון", "subtitles", "translation", "captions", "ترجمة",
     ]
 
     /// Nobody says these to someone across a dinner table: they are
@@ -184,6 +190,8 @@ public struct WhisperResultFilter: Sendable, Equatable {
         // The same outros as Hebrew YouTube and subtitle files word them.
         "תודה רבה שצפיתם", "תודה רבה לכם שצפיתם", "תודה שצפיתם בסרטון",
         "הירשמו לערוץ", "תירשמו לערוץ", "אל תשכחו להירשם לערוץ",
+        "اشتركوا في القناة", "اشترك في القناة", "شكرا على المشاهدة", "شكرا لمشاهدتكم",
+        "продолжение следует",
     ]
 
     public static let defaultAmbiguousHallucinations: Set<String> = [
@@ -198,6 +206,8 @@ public struct WhisperResultFilter: Sendable, Equatable {
         // also unsure of itself.
         "see you next time", "see you in the next video",
         "נתראה בסרטון הבא", "צפייה מהנה", "צפיה מהנה",
+        "شكرا", "شكرا لكم",
+        "gracias", "merci", "danke", "obrigado", "спасибо",
     ]
 
     public init(
@@ -525,7 +535,8 @@ public struct WhisperResultFilter: Sendable, Equatable {
         // being dropped.
         let withoutNiqqud = HebrewText.stripNiqqud(HebrewText.separatingJoiners(text))
         let stripped = withoutNiqqud.unicodeScalars.filter { scalar in
-            !CharacterSet.punctuationCharacters.contains(scalar)
+            !(0x064B...0x065F).contains(scalar.value) && scalar.value != 0x0670 && scalar.value != 0x0640
+                && !CharacterSet.punctuationCharacters.contains(scalar)
                 && !CharacterSet.symbols.contains(scalar)
                 && scalar.properties.generalCategory != .format
         }

@@ -52,7 +52,7 @@ public struct PipelineFailure: Sendable, Equatable, Error {
             return true
         case .noInternet, .homeServerUnreachable:
             return true
-        case .permissionDenied, .waitingForWiFi, .cloudKeyNeeded, .cloudOutOfCredit, .homeServerRejected, .temporarilyUnavailable, .other:
+        case .permissionDenied, .waitingForWiFi, .cloudKeyNeeded, .cloudOutOfCredit, .cloudLanguageNotCovered, .homeServerRejected, .temporarilyUnavailable, .other:
             return false
         }
     }

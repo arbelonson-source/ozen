@@ -395,18 +395,26 @@ private fun isJoinerBetweenDigits(line: NumberEmphasisLine, index: Int): Boolean
  * Where a comma is a decimal mark (French, Spanish, German, Portuguese,
  * Russian, Ukrainian: "2,5 mg"): a digit before it, one or two digits after,
  * and neither side part of a longer run of digit groups ("1,2,3", or two phone
- * numbers "050-1234567,03-1234567", stay separate numbers).
+ * numbers "050-1234567,03-1234567", stay separate numbers). A hyphen then at
+ * most two digits is a range ("0,5-1 mg", "2,5-3,5 mg"), not a phone number.
  */
 private fun isDecimalComma(line: NumberEmphasisLine, index: Int): Boolean {
     if (index == 0 || !isEmphasisNumber(line.graphemes[index - 1])) return false
     var start = index - 1
     while (start > 0 && isEmphasisNumber(line.graphemes[start - 1])) start -= 1
-    if (start >= 2 && isJoinerBetweenDigits(line, start - 1) && isEmphasisNumber(line.graphemes[start - 2])) return false
+    if (start >= 2 && isJoinerBetweenDigits(line, start - 1) && isEmphasisNumber(line.graphemes[start - 2])) {
+        val endOfRange = line.graphemes[start - 1] != "," && index - start <= 2
+        if (!endOfRange) return false
+    }
     var cursor = index + 1
     while (cursor < line.count && isEmphasisNumber(line.graphemes[cursor])) cursor += 1
     val digitCount = cursor - index - 1
     if (digitCount !in 1..2) return false
-    return !(cursor + 1 < line.count && isJoinerBetweenDigits(line, cursor) && isEmphasisNumber(line.graphemes[cursor + 1]))
+    if (!(cursor + 1 < line.count && isJoinerBetweenDigits(line, cursor) && isEmphasisNumber(line.graphemes[cursor + 1]))) return true
+    if (line.graphemes[cursor] == ",") return false
+    var rangeCursor = cursor + 1
+    while (rangeCursor < line.count && isEmphasisNumber(line.graphemes[rangeCursor])) rangeCursor += 1
+    return rangeCursor - cursor - 1 <= 2
 }
 
 /**

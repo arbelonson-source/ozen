@@ -18,6 +18,12 @@ class NumberEmphasisTest {
     }
 
     @Test
+    fun decimalCommaKeepsDoseRangesWhole() {
+        assertEquals(listOf("0,5-1 mg"), emphasized("prenez 0,5-1 mg par jour", decimalComma = true))
+        assertEquals(listOf("2,5-3,5 mg"), emphasized("nimm 2,5-3,5 mg täglich", decimalComma = true))
+    }
+
+    @Test
     fun decimalCommaStillSplitsLists() {
         assertEquals(listOf("1", "2", "3"), emphasized("nimm 1,2,3 bitte", decimalComma = true))
         assertEquals(
