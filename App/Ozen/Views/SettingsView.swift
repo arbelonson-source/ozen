@@ -35,6 +35,7 @@ struct SettingsView: View {
     @State private var cloudKeyDraft = ""
     @State private var hasCloudKey = CloudKeyStore.hasKey()
     @State private var cloudKeySaveFailed = false
+    @State private var cloudKeyCheck: CloudKeyCheck?
     @State private var homeServerAddressDraft = ""
     /// The saved address last put in the field (see `HomeServer.addressField`).
     @State private var homeServerAddressLoaded = ""
@@ -47,6 +48,7 @@ struct SettingsView: View {
     /// Bumped whenever what a check tested changes, so an answer still on
     /// its way for the old address, code or setting is thrown away.
     @State private var homeServerCheckGeneration = 0
+    @State private var cloudKeyCheckGeneration = 0
     @State private var isCheckingHomeServer = false
     @State private var confirmingHomeServerCodeDelete = false
     @State private var confirmingCloudKeyDelete = false
@@ -343,6 +345,8 @@ struct SettingsView: View {
             set: { provider in
                 cloudKeyDraft = ""
                 cloudKeySaveFailed = false
+                cloudKeyCheck = nil
+                cloudKeyCheckGeneration += 1
                 hasCloudKey = CloudKeyStore.hasKey(for: provider)
                 Task { await viewModel.setCloudProvider(provider) }
             }
@@ -420,6 +424,9 @@ struct SettingsView: View {
                 Label(tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again."), systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.readable(.red))
             }
+            if let cloudKeyCheck {
+                cloudKeyCheckLabel(cloudKeyCheck)
+            }
             if hasCloudKey {
                 Button(tr("מחיקת המפתח", "Delete key"), role: .destructive) {
                     confirmingCloudKeyDelete = true
@@ -428,6 +435,7 @@ struct SettingsView: View {
                     Button(tr("למחוק", "Delete"), role: .destructive) {
                         CloudKeyStore.remove(for: viewModel.settings.cloudProvider)
                         hasCloudKey = false
+                        cloudKeyCheck = nil
                         Task { await viewModel.cloudKeyChanged() }
                     }
                     Button(tr("ביטול", "Cancel"), role: .cancel) {}
@@ -669,7 +677,6 @@ struct SettingsView: View {
             saveHomeServerAddress()
         }
         saveHomeServerCode()
-        saveCloudKey()
     }
 
     private func forgetHomeServerCheck() {
@@ -713,7 +720,35 @@ struct SettingsView: View {
         guard saved else { return }
         cloudKeyDraft = ""
         hasCloudKey = true
+        cloudKeyCheck = nil
+        cloudKeyCheckGeneration += 1
+        let generation = cloudKeyCheckGeneration
         Task { await viewModel.cloudKeyChanged() }
+        let provider = viewModel.settings.cloudProvider
+        Task {
+            let result = await CloudKeyCheck.result(for: provider, key: key, http: URLSessionCloudHTTP())
+            guard generation == cloudKeyCheckGeneration, viewModel.settings.cloudProvider == provider, CloudKeyStore.read(for: provider) == key else { return }
+            cloudKeyCheck = result
+            UIAccessibility.post(notification: .announcement, argument: result.message)
+        }
+    }
+
+    @ViewBuilder
+    private func cloudKeyCheckLabel(_ result: CloudKeyCheck) -> some View {
+        switch result {
+        case .accepted:
+            Label(result.message, systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.readable(.green))
+        case .rejected:
+            Label(result.message, systemImage: "xmark.octagon.fill")
+                .foregroundStyle(.readable(.red))
+        case .noCredit:
+            Label(result.message, systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.readable(.orange))
+        case .unreachable:
+            Label(result.message, systemImage: "wifi.exclamationmark")
+                .foregroundStyle(.readable(.orange))
+        }
     }
 
     // MARK: - Language

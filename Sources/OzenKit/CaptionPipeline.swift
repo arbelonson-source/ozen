@@ -175,6 +175,16 @@ public final class CaptionPipeline {
     /// captions stop.
     private var recentAudio = RecentAudio(seconds: 30, sampleRate: 16_000)
     public var recentAudioSamples: [Float] { recentAudio.samples() }
+    private var sessionAudioStart = 0
+    private var lastFinalHeard: (position: Int, text: String)?
+    private var pendingReplay: [Float] = []
+    private var pendingReplayDedupe: [String] = []
+    private var replayDedupe: [String] = []
+    private var replayUtterance: UUID?
+    private var utteranceFirstHeard: [UUID: Int] = [:]
+    private var replayTask: Task<Void, Never>?
+    static let replayMarginSeconds = 2.0
+    static let replayMaxSeconds = 20.0
     private var homeServerRecheck: Task<Void, Never>?
     private var cloudRecheck: Task<Void, Never>?
     /// The room the last download refused for want of space needed, so a
@@ -248,6 +258,14 @@ public final class CaptionPipeline {
     public private(set) var isListeningForSoundsOnly = false
     private var staleCommitTask: Task<Void, Never>?
     private var utteranceClusterAssignments: [UUID: Int] = [:]
+    /// The newest voice print heard for each recent line, so a line the
+    /// user says belongs to someone else can seed that person's cluster.
+    private var utteranceEmbeddings: [UUID: [Float]] = [:]
+    private var utteranceEmbeddingOrder: [UUID] = []
+    private static let utteranceEmbeddingLimit = 64
+    private var correctedUtterances: Set<UUID> = []
+    private let chunksArrivedCounter = ArrivalCounter()
+    private var chunksArrived: Int { chunksArrivedCounter.value }
     /// Decides whether an embedding window holds a voice at all. Silence
     /// and background noise must not open phantom speakers or drag a real
     /// person's voice profile toward the fridge hum.
@@ -403,6 +421,14 @@ public final class CaptionPipeline {
         stopListeningForSounds()
         let run = UUID()
         runID = run
+        sessionAudioStart = recentAudio.totalAppended
+        lastFinalHeard = nil
+        utteranceFirstHeard = [:]
+        let replay = pendingReplay
+        replayDedupe = pendingReplayDedupe
+        replayUtterance = nil
+        pendingReplay = []
+        pendingReplayDedupe = []
         activeSettings = settings
         isCoveringForCloud = nextStartCoversCloud
         nextStartCoversCloud = false
@@ -598,9 +624,12 @@ public final class CaptionPipeline {
                 guard let self, self.runID == run else { return }
                 self.stats.glitchedAudioChunks += 1
             }
+        } onChunk: { [counter = chunksArrivedCounter] in
+            counter.increment()
         }
         fanOut = fan
-        let tokens = engine.stream(languageCode: settings.languageCode, audio: fan.outputs[0])
+        let engineAudio = replay.isEmpty ? fan.outputs[0] : replaying(replay, then: fan.outputs[0])
+        let tokens = engine.stream(languageCode: settings.languageCode, audio: engineAudio)
         let embedderAudio = fan.outputs[1]
         let soundObservations = soundDetector.map { $0.observations(audio: fan.outputs[2]) }
 
@@ -678,6 +707,8 @@ public final class CaptionPipeline {
     public func stop() {
         stopCount += 1
         recentAudio.clear()
+        pendingReplay = []
+        pendingReplayDedupe = []
         homeServerRecheck?.cancel()
         homeServerRecheck = nil
         cloudRecheck?.cancel()
@@ -1363,13 +1394,70 @@ public final class CaptionPipeline {
     }
 
     /// Tags an inferred cluster with a real name after the fact, returning
-    /// the cluster centroid so the caller can persist it as a profile.
+    /// the voice print the caller should save for it.
+    ///
+    /// A name typed on a line whose voice already carries a different name
+    /// is a spelling fix only when it looks like one. Otherwise the phone
+    /// took this line for the wrong person: only this line moves, to the
+    /// cluster already named so, or to a new one seeded from the line's
+    /// own voice, and the other person's voice keeps their name.
     @discardableResult
     public func nameSpeaker(of segment: TranscriptSegment, name: String) -> [Float]? {
         guard let clusterID = segment.speakerClusterID else { return nil }
+        let cluster = clusterer.clusters.first(where: { $0.id == clusterID })
+        if let cluster, !isRespelling(name, ofLine: segment) {
+            return moveLine(segment, to: name, from: cluster)
+        }
         clusterer.nameCluster(id: clusterID, name: name)
         speakerClusters = clusterer.clusters
         return clusterer.clusters.first(where: { $0.id == clusterID })?.centroid
+    }
+
+    private func moveLine(_ segment: TranscriptSegment, to name: String, from cluster: SpeakerCluster) -> [Float]? {
+        let heard = utteranceEmbeddings[segment.id]
+        let ownVoice = heard ?? (utteranceClusterAssignments[segment.id] == cluster.id ? cluster.centroid : nil)
+        let target: Int
+        if let existing = clusterer.clusters.first(where: { $0.name == name }) {
+            target = existing.id
+        } else if let ownVoice {
+            target = clusterer.enrollWithoutMerging(name: name, embedding: ownVoice)
+        } else {
+            return nil
+        }
+        utteranceClusterAssignments[segment.id] = target
+        correctedUtterances.insert(segment.id)
+        if let index = segments.lastIndex(where: { $0.id == segment.id }) {
+            segments[index].speakerClusterID = target
+            onCaptionsChanged?()
+        }
+        speakerClusters = clusterer.clusters
+        return ownVoice
+    }
+
+    /// Whether `name`, typed on this line, fixes the spelling of the name
+    /// its voice already has (or names a voice that has none), rather than
+    /// calling someone else.
+    public func isRespelling(_ name: String, ofLine segment: TranscriptSegment) -> Bool {
+        guard let clusterID = segment.speakerClusterID else { return false }
+        guard let cluster = clusterer.clusters.first(where: { $0.id == clusterID }) else { return true }
+        guard let old = cluster.name, old != name else { return true }
+        if clusterer.clusters.contains(where: { $0.name == name }) { return false }
+        let distance = Self.editDistance(Array(old.lowercased()), Array(name.lowercased()))
+        return distance <= max(1, min(old.count, name.count) / 4)
+    }
+
+    private static func editDistance(_ a: [Character], _ b: [Character]) -> Int {
+        var row = Array(0...b.count)
+        for i in a.indices {
+            var diagonal = row[0]
+            row[0] = i + 1
+            for j in b.indices {
+                let above = row[j + 1]
+                row[j + 1] = min(above + 1, row[j] + 1, diagonal + (a[i] == b[j] ? 0 : 1))
+                diagonal = above
+            }
+        }
+        return row[b.count]
     }
 
     public func displayName(for segment: TranscriptSegment) -> String {
@@ -1384,6 +1472,9 @@ public final class CaptionPipeline {
         speakerClusters = clusterer.clusters
         recentSpeechCluster = nil
         utteranceClusterAssignments = [:]
+        utteranceEmbeddings = [:]
+        utteranceEmbeddingOrder = []
+        correctedUtterances = []
     }
 
     #if DEBUG
@@ -1578,6 +1669,16 @@ public final class CaptionPipeline {
         // ivrit.ai's model starts some lines with an invisible direction
         // mark; kept, it would travel into saved conversations and search.
         var cleaned = HebrewText.removingDirectionMarks(incoming.text)
+        guard let trimmed = trimmingReplayedWords(incoming, cleaned: cleaned) else { return }
+        cleaned = trimmed
+        if replayDedupe.isEmpty {
+            if utteranceFirstHeard.count > 64 { utteranceFirstHeard = [:] }
+            let heardAt = utteranceFirstHeard[incoming.utteranceID] ?? recentAudio.totalAppended
+            utteranceFirstHeard[incoming.utteranceID] = incoming.isFinal ? nil : heardAt
+            if incoming.isFinal, !cleaned.isEmpty {
+                lastFinalHeard = (heardAt, cleaned)
+            }
+        }
         incomingText[incoming.utteranceID] = incoming.isFinal ? nil : cleaned
         // A sentence cleared from the screen mid-way keeps arriving with all
         // of its words so far. Dropping it whole lost everything said after
@@ -1716,6 +1817,16 @@ public final class CaptionPipeline {
                 recentSpeechCluster = (clusterID, now())
                 continue
             }
+            if utteranceEmbeddings.updateValue(embedding, forKey: currentUtteranceID) == nil {
+                utteranceEmbeddingOrder.append(currentUtteranceID)
+                if utteranceEmbeddingOrder.count > Self.utteranceEmbeddingLimit {
+                    let evicted = utteranceEmbeddingOrder.removeFirst()
+                    utteranceEmbeddings[evicted] = nil
+                    utteranceClusterAssignments[evicted] = nil
+                }
+            }
+            // A line the user moved to another person stays there.
+            if correctedUtterances.contains(currentUtteranceID) { continue }
             utteranceClusterAssignments[currentUtteranceID] = clusterID
             // Writing an unchanged value still tells every observer the
             // transcript changed and redraws the caption list, every 1.5 s
@@ -1839,7 +1950,7 @@ public final class CaptionPipeline {
     /// audio engine: the same thing a manual stop and start would do.
     private func checkAudioIsArriving() {
         guard phase.isListening else { return }
-        guard audioWatchdog.tick(chunksReceived: stats.audioChunksReceived, systemInterrupted: systemInterrupted) else { return }
+        guard audioWatchdog.tick(chunksReceived: chunksArrived, systemInterrupted: systemInterrupted) else { return }
         stats.audioStalls += 1
         logEvent(.microphoneStalled)
         fail(.audioSessionFailed, detail: "no audio from the microphone for \(Int(audioWatchdog.stallSeconds)) s")
@@ -1934,6 +2045,9 @@ public final class CaptionPipeline {
             return
         }
         logEvent(.note("cloud unavailable, the phone's own model took over"))
+        if failure.engineUnavailability?.kind == .homeServerUnreachable {
+            prepareReplay()
+        }
         nextStartCoversCloud = true
         coverReason = failure.engineUnavailability?.kind
         coveredSettings = activeSettings
@@ -1956,6 +2070,105 @@ public final class CaptionPipeline {
             cloudSwitchedBackAt = nil
             recheckCloud()
         }
+    }
+
+    /// What was said while the home computer was already gone, but before
+    /// the phone gave up on it, never got a caption: the phone's model hears
+    /// it first, then the live audio. Only the speech after the last line the
+    /// home computer finished, a little before it so a half-heard word is
+    /// whole, and never more than `replayMaxSeconds`.
+    private func prepareReplay() {
+        pendingReplay = []
+        pendingReplayDedupe = []
+        let rate = Self.sampleRate
+        var begin = sessionAudioStart
+        if let heard = lastFinalHeard {
+            begin = max(begin, heard.position - Int(Self.replayMarginSeconds * rate))
+            pendingReplayDedupe = Self.comparableWords(heard.text)
+        }
+        let tail = recentAudio.tail(since: begin, maxSamples: Int(Self.replayMaxSeconds * rate))
+        var detector = EnergyVoiceDetector()
+        var heardSpeech = false
+        var index = 0
+        let step = Int(rate / 10)
+        while index < tail.count {
+            let end = min(index + step, tail.count)
+            if detector.isSpeech(Array(tail[index..<end])) { heardSpeech = true }
+            index = end
+        }
+        guard heardSpeech else {
+            pendingReplayDedupe = []
+            return
+        }
+        pendingReplay = tail
+    }
+
+    static func replayBufferLimit(replaySamples: Int) -> Int {
+        let step = Int(sampleRate / 5)
+        return (replaySamples + step - 1) / step + AudioFanOut.defaultBufferLimit
+    }
+
+    private func replaying(_ replay: [Float], then live: AsyncStream<[Float]>) -> AsyncStream<[Float]> {
+        let step = Int(Self.sampleRate / 5)
+        let (stream, continuation) = AsyncStream<[Float]>.makeStream(
+            bufferingPolicy: .bufferingNewest(Self.replayBufferLimit(replaySamples: replay.count)))
+        replayTask?.cancel()
+        let task = Task {
+            var index = 0
+            while index < replay.count, !Task.isCancelled {
+                let end = min(index + step, replay.count)
+                continuation.yield(Array(replay[index..<end]))
+                index = end
+            }
+            for await chunk in live {
+                if Task.isCancelled { break }
+                continuation.yield(chunk)
+            }
+            continuation.finish()
+        }
+        replayTask = task
+        continuation.onTermination = { _ in task.cancel() }
+        return stream
+    }
+
+    /// The replay starts before the home computer's last line, so the
+    /// phone's first utterance usually begins with the tail of that line
+    /// and then carries on with new speech. Returns `text` without the
+    /// words that were already shown, or nil when nothing new is left.
+    /// Every update of that utterance is trimmed again, so the words
+    /// after the overlap are kept as they arrive.
+    private func trimmingReplayedWords(_ token: TranscriptToken, cleaned: String) -> String? {
+        guard !replayDedupe.isEmpty else { return cleaned }
+        let raw = cleaned.split(whereSeparator: \.isWhitespace)
+        let words = raw.map { $0.trimmingCharacters(in: .punctuationCharacters).lowercased() }
+        guard !words.isEmpty else { return cleaned }
+        let known = replayDedupe.map { $0.lowercased() }
+        let ongoing = replayUtterance == token.utteranceID
+        if replayUtterance != nil, !ongoing {
+            replayDedupe = []
+            replayUtterance = nil
+            return cleaned
+        }
+        var overlap = 0
+        for count in stride(from: min(words.count, known.count), through: 1, by: -1)
+        where known.suffix(count).elementsEqual(words.prefix(count)) {
+            overlap = count
+            break
+        }
+        let wholeLine = overlap == words.count
+        let weak = overlap == 1 && known.count > 1
+        if overlap == 0 || (weak && !(wholeLine && !token.isFinal) && !ongoing) {
+            replayDedupe = []
+            replayUtterance = nil
+            return cleaned
+        }
+        replayUtterance = token.utteranceID
+        if token.isFinal {
+            replayDedupe = []
+            replayUtterance = nil
+        }
+        guard !wholeLine else { return nil }
+        return raw[overlap...].joined(separator: " ")
     }
 
     /// See `homeServerRecheckSeconds`. Goes back to the chosen settings
@@ -2371,6 +2584,8 @@ public final class CaptionPipeline {
         recentSpeechCluster = nil
         streamTask?.cancel()
         streamTask = nil
+        replayTask?.cancel()
+        replayTask = nil
         embeddingTask?.cancel()
         embeddingTask = nil
         soundTask?.cancel()
@@ -2413,4 +2628,11 @@ public struct KeywordHit: Sendable, Equatable, Identifiable {
         self.match = match
         self.timestamp = timestamp
     }
+}
+
+final class ArrivalCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var value: Int { lock.withLock { count } }
+    func increment() { lock.withLock { count += 1 } }
 }

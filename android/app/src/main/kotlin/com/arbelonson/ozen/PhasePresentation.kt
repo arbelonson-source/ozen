@@ -1,5 +1,31 @@
 package com.arbelonson.ozen
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.CreditCard
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.MicOff
+import androidx.compose.material.icons.rounded.PauseCircle
+import androidx.compose.material.icons.rounded.PlayCircle
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material.icons.rounded.WifiOff
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HomeServer
@@ -11,6 +37,10 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.EmptyState
+import com.arbelonson.ozen.ui.PrimaryButton
+import com.arbelonson.ozen.ui.ProgressState
+import com.arbelonson.ozen.ui.TonalButton
 import java.text.BreakIterator
 import kotlin.math.abs
 import kotlin.math.floor
@@ -68,6 +98,36 @@ class PhasePresentation private constructor(
         /** Ask before downloading the model over cellular data. */
         ConfirmCellularDownload,
     }
+
+    /** The Material symbol for [systemImage], whose names come from the shared status vocabulary. */
+    val icon: ImageVector
+        get() = when (systemImage) {
+            "phone.fill" -> Icons.Rounded.Call
+            "play.circle.fill" -> Icons.Rounded.PlayCircle
+            "pause.circle.fill" -> Icons.Rounded.PauseCircle
+            "mic.badge.plus", "mic" -> Icons.Rounded.Mic
+            "mic.slash" -> Icons.Rounded.MicOff
+            "waveform", "waveform.badge.plus" -> Icons.Rounded.GraphicEq
+            "speaker.wave.2.fill" -> Icons.Rounded.VolumeUp
+            "arrow.clockwise" -> Icons.Rounded.Refresh
+            "arrow.down.circle" -> Icons.Rounded.Download
+            "gearshape.2" -> Icons.Rounded.Settings
+            "cpu" -> Icons.Rounded.Memory
+            "flame" -> Icons.Rounded.Memory
+            "globe" -> Icons.Rounded.Public
+            "wifi" -> Icons.Rounded.Wifi
+            "wifi.slash", "wifi.exclamationmark" -> Icons.Rounded.WifiOff
+            "externaldrive.badge.exclamationmark" -> Icons.Rounded.Storage
+            "key" -> Icons.Rounded.Key
+            "creditcard" -> Icons.Rounded.CreditCard
+            "clock" -> Icons.Rounded.Schedule
+            "desktopcomputer.trianglebadge.exclamationmark" -> Icons.Rounded.Computer
+            else -> if (tint == PhaseTint.Problem) Icons.Rounded.ErrorOutline else Icons.Rounded.Warning
+        }
+
+    /** Whether this is a getting-ready state that finishes by itself, as against one that waits for a person. */
+    val isProgress: Boolean
+        get() = isBusy && tint == PhaseTint.Working
 
     val detailFitsInStatus: Boolean
         get() = (detail?.let(::characterCount) ?: 0) <= STATUS_DETAIL_CAPACITY
@@ -574,4 +634,38 @@ class PhasePresentation private constructor(
             return count
         }
     }
+}
+
+/**
+ * A page-sized view of [presentation]: a progress state with a title,
+ * percentage and Cancel while the phone gets ready or downloads, and an
+ * icon, explanation and a primary button for [actionLabel] when something
+ * stopped. [onCancel] shows Cancel only while a download or load runs.
+ */
+@Composable
+internal fun PhaseStateView(
+    presentation: PhasePresentation,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier,
+    actionLabel: String? = phaseActionLabel(presentation.action),
+    onCancel: (() -> Unit)? = null,
+) {
+    if (presentation.isProgress) {
+        val percent = presentation.progress?.let { (it * 100).toInt().coerceIn(0, 100) }
+        val title = if (percent != null) presentation.title.substringBeforeLast(" · ") else presentation.title
+        ProgressState(presentation.icon, title, modifier, percent = percent, detail = presentation.detail) {
+            if (onCancel != null) TonalButton(tr("ביטול", "Cancel"), onCancel, Modifier.fillMaxWidth())
+        }
+    } else {
+        EmptyState(presentation.icon, presentation.title, presentation.detail.orEmpty(), modifier) {
+            if (actionLabel != null) PrimaryButton(actionLabel, onAction, Modifier.fillMaxWidth())
+        }
+    }
+}
+
+private fun phaseActionLabel(action: PhasePresentation.Action): String? = when (action) {
+    PhasePresentation.Action.Retry -> tr("נסו שוב", "Try again")
+    PhasePresentation.Action.OpenSystemSettings -> tr("פתיחת הגדרות הטלפון", "Open phone settings")
+    PhasePresentation.Action.OpenEngineSettings, PhasePresentation.Action.OpenBackupSettings -> tr("הגדרות", "Settings")
+    else -> null
 }

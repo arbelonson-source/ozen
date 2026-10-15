@@ -27,6 +27,29 @@ struct SessionJournalTests {
         #expect(written == "1800000000.00\tlistening\n1800000065.50\tmicrophone stopped delivering audio\n1800000100.00\tapp started\n")
     }
 
+    @Test("flush puts the buffered lines on disk right away, and each line is still read once")
+    func flushWritesNow() throws {
+        let url = temporaryFile()
+        let journal = SessionJournal(fileURL: url)
+        journal.append("app left the screen", at: 1_800_000_000)
+        journal.append("listening", at: 1_800_000_001)
+        journal.flush()
+
+        let written = try String(decoding: Data(contentsOf: url), as: UTF8.self)
+        #expect(written == "1800000000.00\tapp left the screen\n1800000001.00\tlistening\n")
+        #expect(journal.entries().map(\.text) == ["app left the screen", "listening"])
+    }
+
+    @Test("without a flush the lines wait in memory for a moment")
+    func unflushedWaits() {
+        let url = temporaryFile()
+        let journal = SessionJournal(fileURL: url)
+        journal.append("app left the screen", at: 1_800_000_000)
+        let onDisk = (try? Data(contentsOf: url)) ?? Data()
+        #expect(onDisk.isEmpty)
+        _ = journal.entries()
+    }
+
     @Test("a line cut off when the app was killed mid-write doesn't swallow the next run's first line")
     func survivesATornLastLine() throws {
         let url = temporaryFile()

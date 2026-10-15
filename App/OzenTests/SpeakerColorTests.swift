@@ -36,4 +36,12 @@ struct SpeakerColorTests {
         let byID = SpeakerColor.color(forClusterID: 4, speakerName: nil, on: .dark)
         #expect(generic == byID)
     }
+
+    @Test("two saved people on one screen never share a color")
+    func slotsKeepNamesApart() {
+        let slots = SpeakerColorSlots([(clusterID: 0, name: "Mom"), (clusterID: 1, name: "Dad")])
+        let mom = SpeakerColor.color(forClusterID: 0, speakerName: "Mom", slots: slots, on: .dark)
+        let dad = SpeakerColor.color(forClusterID: 1, speakerName: "Dad", slots: slots, on: .dark)
+        #expect(mom != dad)
+    }
 }

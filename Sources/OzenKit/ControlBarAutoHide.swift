@@ -10,10 +10,11 @@ public enum ControlBarAutoHide {
         hasLines: Bool,
         voiceOverRunning: Bool,
         pausedForCall: Bool = false,
+        covered: Bool = false,
         lastTouchAt: TimeInterval,
         now: TimeInterval
     ) -> Bool {
-        guard enabled, isListening, followingLatest, hasLines, !voiceOverRunning, !pausedForCall else { return false }
+        guard enabled, isListening, followingLatest, hasLines, !voiceOverRunning, !pausedForCall, !covered else { return false }
         return now - lastTouchAt >= idleSeconds
     }
 }

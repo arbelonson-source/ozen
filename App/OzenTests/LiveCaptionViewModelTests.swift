@@ -1476,7 +1476,7 @@ struct LiveCaptionViewModelMissedInterruptionEndTests {
             audio: FakeAudioCapturer(),
             engineFactory: { _ in engine },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         return LiveCaptionViewModel(
             settingsStore: SettingsStore(fileURL: directory.appendingPathExtension("json")),
@@ -1573,6 +1573,7 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
         var reclaims = 0
         var posted: [AlertNotificationContent] = []
         var withdrawn: [String] = []
+        var sweeps = 0
         init(reclaimAnswer: Bool) { self.reclaimAnswer = reclaimAnswer }
     }
 
@@ -1595,6 +1596,7 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
             historyStore: TranscriptHistoryStore(directoryURL: directory),
             postNotification: { phone.posted.append($0) },
             withdrawNotification: { phone.withdrawn.append($0) },
+            withdrawDeliveredAlerts: { phone.sweeps += 1 },
             reclaimAudioSession: {
                 phone.reclaims += 1
                 if let first = phone.reclaimWorksFromTry { return phone.reclaims >= first }
@@ -1604,6 +1606,155 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
         viewModel.callEndGrace = .zero
         viewModel.reclaimRetryDelays = []
         return viewModel
+    }
+
+    private func door(_ identifier: String = "siren") -> SoundAlert {
+        SoundAlert(event: SoundEvent(identifier: identifier, name: "Siren", importance: .critical, systemImage: "bell"), confidence: 0.9, timestamp: 0)
+    }
+
+    @Test("alerts posted while the phone was away are taken off the lock screen when she opens the app")
+    func withdrawsSoundAlertsOnReturn() async throws {
+        let phone = Phone(reclaimAnswer: true)
+        let viewModel = makeViewModel(phone: phone)
+        await viewModel.start()
+        viewModel.sceneActivityChanged(isActive: false)
+        viewModel.pipeline.onSoundAlert?(door())
+        let posted = try #require(phone.posted.first { $0.threadIdentifier == "sounds" })
+        #expect(phone.withdrawn.isEmpty)
+
+        viewModel.sceneActivityChanged(isActive: true)
+        #expect(phone.withdrawn.contains(posted.identifier))
+        let count = phone.withdrawn.count
+        viewModel.sceneActivityChanged(isActive: false)
+        viewModel.sceneActivityChanged(isActive: true)
+        #expect(phone.withdrawn.count == count)
+    }
+
+    @Test("coming back also sweeps alerts an earlier run of the app left, even when this run posted none")
+    func sweepsLeftoverAlertsOnReturn() async {
+        let phone = Phone(reclaimAnswer: true)
+        let viewModel = makeViewModel(phone: phone)
+        await viewModel.start()
+        viewModel.sceneActivityChanged(isActive: false)
+        #expect(phone.sweeps == 0)
+        viewModel.sceneActivityChanged(isActive: true)
+        #expect(phone.sweeps == 1)
+    }
+
+    @Test("a name notification is taken off the lock screen too")
+    func withdrawsKeywordAlertsOnReturn() async throws {
+        let phone = Phone(reclaimAnswer: true)
+        let viewModel = makeViewModel(phone: phone)
+        await viewModel.start()
+        viewModel.sceneActivityChanged(isActive: false)
+        let hit = KeywordHit(
+            segmentID: UUID(),
+            match: KeywordMatch(alertID: UUID(), phrase: "Dana", matchedText: "Dana", wordIndex: 0),
+            timestamp: 0
+        )
+        let segment = TranscriptSegment(id: hit.segmentID, text: "Dana come here", isCommitted: true, speakerClusterID: nil, startTimestamp: 0, lastUpdateTimestamp: 1)
+        viewModel.pipeline.onKeywordHits?([hit], segment)
+        let posted = try #require(phone.posted.first { $0.threadIdentifier == "keywords" })
+
+        viewModel.sceneActivityChanged(isActive: true)
+        #expect(phone.withdrawn.contains(posted.identifier))
+    }
+
+    @Test("an alert raised while the app is on screen posts nothing and has nothing to withdraw")
+    func activeAlertsAreNotTracked() async {
+        let phone = Phone(reclaimAnswer: true)
+        let viewModel = makeViewModel(phone: phone)
+        await viewModel.start()
+        viewModel.sceneActivityChanged(isActive: true)
+        viewModel.pipeline.onSoundAlert?(door())
+        viewModel.sceneActivityChanged(isActive: false)
+        viewModel.sceneActivityChanged(isActive: true)
+        #expect(phone.posted.isEmpty)
+        #expect(phone.withdrawn.isEmpty)
+    }
+
+    private final class BuildCount: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = 0
+        var count: Int { lock.withLock { value } }
+        func add() { lock.withLock { value += 1 } }
+    }
+
+    private func modelViewModel(failing: Bool, builds: BuildCount) -> LiveCaptionViewModel {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-choose-\(UUID())", isDirectory: true)
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { _ in
+                builds.add()
+                return failing ? FakeEngine(availability: .unavailable(.modelDownloadFailed, "offline")) : FakeEngine()
+            },
+            embedder: FakeEmbedder(),
+            recovery: .disabled,
+            audioWatchdog: .disabled
+        )
+        return LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathExtension("json")),
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory)
+        )
+    }
+
+    @Test("tapping the selected model whose download failed tries the download again")
+    func chosenModelRetriesFailedDownload() async {
+        let engine = FakeEngine(availability: .unavailable(.modelDownloadFailed, "offline"))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-choose-\(UUID())", isDirectory: true)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathExtension("json")),
+            pipeline: CaptionPipeline(
+                audio: FakeAudioCapturer(),
+                engineFactory: { _ in engine },
+                embedder: FakeEmbedder(),
+                recovery: .disabled,
+                audioWatchdog: .disabled
+            ),
+            historyStore: TranscriptHistoryStore(directoryURL: directory)
+        )
+        await viewModel.start()
+        #expect(viewModel.pipeline.phase.failure?.engineUnavailability?.kind == .modelDownloadFailed)
+
+        engine.availability = .available
+        let needsConfirmation = await viewModel.modelRowTapped(viewModel.settings.whisperModelVariant, isInstalled: false)
+        #expect(!needsConfirmation)
+        #expect(viewModel.pipeline.phase.isListening)
+    }
+
+    @Test("tapping the selected model while captions work does nothing")
+    func chosenModelHealthyDoesNothing() async {
+        let builds = BuildCount()
+        let viewModel = modelViewModel(failing: false, builds: builds)
+        await viewModel.start()
+        let before = builds.count
+
+        _ = await viewModel.modelRowTapped(viewModel.settings.whisperModelVariant, isInstalled: true)
+        #expect(builds.count == before)
+    }
+
+    @Test("tapping an uninstalled model while listening asks first and changes nothing")
+    func uninstalledModelWhileListeningAsksFirst() async {
+        let viewModel = modelViewModel(failing: false, builds: BuildCount())
+        await viewModel.start()
+        let before = viewModel.settings.whisperModelVariant
+        let other = WhisperModelCatalog.options.map(\.variant).first { $0 != before }!
+
+        let needsConfirmation = await viewModel.modelRowTapped(other, isInstalled: false)
+        #expect(needsConfirmation)
+        #expect(viewModel.settings.whisperModelVariant == before)
+    }
+
+    @Test("tapping another model still switches to it")
+    func chosenOtherModelSwitches() async {
+        let viewModel = modelViewModel(failing: false, builds: BuildCount())
+        await viewModel.start()
+        let other = WhisperModelCatalog.options.map(\.variant).first { $0 != viewModel.settings.whisperModelVariant }!
+
+        let needsConfirmation = await viewModel.modelRowTapped(other, isInstalled: true)
+        #expect(!needsConfirmation)
+        #expect(viewModel.settings.whisperModelVariant == other)
     }
 
     @Test("a microphone still held right after the call is tried again, and captions return with the phone still locked", .timeLimit(.minutes(1)))
@@ -1742,7 +1893,7 @@ struct LiveCaptionViewModelStoppedCaptionsTests {
     func retriedFailureQuiet() async {
         let phone = Phone(reclaimAnswer: true)
         let engine = FakeEngine()
-        let viewModel = makeViewModel(phone: phone, engine: engine, recovery: AutoRecoveryPolicy(glitchDelays: [30], downloadDelays: []))
+        let viewModel = makeViewModel(phone: phone, engine: engine, recovery: AutoRecoveryPolicy(glitchDelays: [30], downloadDelays: [], microphoneTailDelays: []))
         await viewModel.start()
         viewModel.sceneActivityChanged(isActive: false)
 
@@ -2043,6 +2194,30 @@ struct LiveCaptionViewModelDeleteConversationTests {
         viewModel.nameSpeaker(of: viewModel.segments[0], name: "Ruti")
 
         #expect(viewModel.settings.speakerProfiles.map(\.name).sorted() == ["Dana", "Ruti", "Ruti"])
+    }
+
+    @Test("naming one line as a new person leaves the saved person's voice and name on screen alone")
+    func namingOneLineAsSomeoneNewKeepsTheOtherVoice() async throws {
+        let engine = FakeEngine()
+        let audio = FakeAudioCapturer()
+        let pipeline = CaptionPipeline(audio: audio, engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-rename-\(UUID())", isDirectory: true)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathComponent("settings.json")),
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { pipeline.speakerClusters.count == 1 })
+        await say("שלום", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        viewModel.nameSpeaker(of: viewModel.segments[0], name: "Dana")
+
+        viewModel.nameSpeaker(of: viewModel.segments[0], name: "Yossi")
+
+        #expect(pipeline.speakerClusters.contains { $0.name == "Dana" })
+        #expect(pipeline.speakerClusters.contains { $0.name == "Yossi" })
+        #expect(viewModel.settings.speakerProfiles.map(\.name).sorted() == ["Dana", "Yossi"])
     }
 
     @Test("fixing a name's spelling from one line relabels every voice print of that person on screen, not only the one tapped")
@@ -2421,7 +2596,7 @@ struct LiveCaptionViewModelSavingTroubleTests {
             audio: audio,
             engineFactory: { _ in engine },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: [], microphoneTailDelays: [])
         )
         let history = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-retry-history-\(UUID())", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: history) }

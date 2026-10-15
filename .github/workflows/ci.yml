@@ -38,6 +38,8 @@ jobs:
       - uses: actions/checkout@v5
       - name: Check translations
         run: python3 scripts/check-translations.py
+      - name: Check Siri phrase catalog
+        run: python3 scripts/check-app-shortcuts.py
       - name: Check that docs quote the app's current wording
         run: python3 scripts/check-doc-quotes.py
       - name: Check that no real pairing code or tailnet name is in the repo

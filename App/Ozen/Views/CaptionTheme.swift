@@ -77,9 +77,9 @@ extension Color {
     nonisolated var deepShade: Color {
         switch self {
         case .yellow: return Color(red: 0.55, green: 0.38, blue: 0)
-        case .orange: return Color(red: 0.70, green: 0.30, blue: 0)
+        case .orange: return Color(red: BannerPalette.orange.red, green: BannerPalette.orange.green, blue: BannerPalette.orange.blue)
         case .green: return Color(red: 0, green: 0.45, blue: 0.15)
-        case .red: return Color(red: 0.75, green: 0, blue: 0)
+        case .red: return Color(red: BannerPalette.red.red, green: BannerPalette.red.green, blue: BannerPalette.red.blue)
         case .purple: return Color(red: 0.45, green: 0.18, blue: 0.65)
         case .blue: return Color(red: 0, green: 0.32, blue: 0.75)
         // The system's secondary grey is see-through: under white text it

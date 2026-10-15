@@ -143,7 +143,8 @@ public struct EmbeddingClusterer: Sendable {
 
     /// Seeds a cluster with a known name from a reference embedding
     /// recorded during enrollment, before any live audio has arrived for
-    /// that person.
+    /// that person. When that person was already heard as an unnamed
+    /// speaker, that cluster is named instead of a second one opened.
     ///
     /// The reference counts as several samples: it was recorded on purpose,
     /// close to the microphone, in a quiet moment, while live windows carry
@@ -151,7 +152,41 @@ public struct EmbeddingClusterer: Sendable {
     /// first live window move the profile halfway.
     @discardableResult
     public mutating func enroll(name: String, embedding: [Float], weight: Int = EmbeddingClusterer.enrollmentWeight) -> Int {
-        openCluster(with: Self.direction(of: embedding), name: name, sampleCount: max(1, weight))
+        let direction = Self.direction(of: embedding)
+        let count = max(1, weight)
+        guard let index = liveUnnamedIndex(closestTo: direction) else {
+            return openCluster(with: direction, name: name, sampleCount: count)
+        }
+        let had = Float(clusters[index].sampleCount)
+        let blended = zip(clusters[index].centroid, direction).map { ($0 * had + $1 * Float(count)) / (had + Float(count)) }
+        usedNumbers.remove(clusters[index].number)
+        clusters[index].centroid = blended
+        clusters[index].sampleCount += count
+        clusters[index].name = name
+        clusters[index].number = 0
+        return clusters[index].id
+    }
+
+    private func liveUnnamedIndex(closestTo direction: [Float]) -> Int? {
+        var matches: [(index: Int, similarity: Float)] = []
+        for (index, cluster) in clusters.enumerated() where cluster.name == nil && cluster.centroid.count == direction.count {
+            let similarity = cosineSimilarity(cluster.centroid, direction)
+            if similarity >= similarityThreshold { matches.append((index, similarity)) }
+        }
+        guard let top = matches.map(\.similarity).max() else { return nil }
+        let best = matches
+            .filter { top - $0.similarity <= 0.01 }
+            .max {
+                let (a, b) = (lastHeard[clusters[$0.index].id, default: 0], lastHeard[clusters[$1.index].id, default: 0])
+                return a != b ? a < b : $0.similarity < $1.similarity
+            }
+        return best?.index
+    }
+
+    /// A named cluster seeded from one line's own voice, never merged into
+    /// a voice heard before: the line was just said to be somebody else.
+    mutating func enrollWithoutMerging(name: String, embedding: [Float]) -> Int {
+        openCluster(with: Self.direction(of: embedding), name: name, sampleCount: 1)
     }
 
     /// A voice print scaled to length 1. Cosine similarity ignores length,

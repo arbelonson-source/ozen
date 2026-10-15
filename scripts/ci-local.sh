@@ -14,6 +14,7 @@ step() {
     fi
 }
 step translations python3 scripts/check-translations.py
+step app-shortcuts python3 scripts/check-app-shortcuts.py
 step doc-quotes python3 scripts/check-doc-quotes.py
 step no-real-values python3 scripts/check-no-real-values.py
 step release-scripts python3 -m unittest discover -s scripts/model-release -p "test_*.py"
