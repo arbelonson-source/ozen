@@ -69,6 +69,18 @@ class PhoneModelStorageTest {
     }
 
     @Test
+    fun `deleting a bare part name frees only the part and keeps the model`() {
+        val dir = root()
+        dir.put(hebrew, 30)
+        val model = dir.put(general, 20)
+        val part = dir.put("$general.part", 7)
+        val freed = PhoneModelStorage(dir, hebrew).delete("$general.part")
+        assertEquals(7L, freed)
+        assertFalse(part.exists())
+        assertTrue(model.exists())
+    }
+
+    @Test
     fun `an unknown name is refused`() {
         val dir = root()
         val keep = dir.put("other.bin", 3)
