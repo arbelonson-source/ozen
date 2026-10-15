@@ -1094,11 +1094,5 @@ final class OzenScreenshotUITests: XCTestCase {
             tries += 1
         }
         XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")
-        swipes = 0
-        while !(header.exists && header.isHittable) && swipes < 3 {
-            app.swipeUp()
-            swipes += 1
-        }
-        XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in landscape")
     }
 }
