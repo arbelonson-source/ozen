@@ -891,33 +891,53 @@ public struct TranscriptHistoryStore: Sendable {
         var changed = 0
         for url in recordFiles() {
             if let cached = cachedSearchText(forRecordFile: url).flatMap(Self.preparedSearch), !cached.words.contains(needle) { continue }
-            guard var record = Self.decodeRecord(at: url),
+            guard let record = Self.decodeRecord(at: url),
                   record.segments.contains(where: { $0.speakerName == oldName })
             else { continue }
-            for index in record.segments.indices where record.segments[index].speakerName == oldName {
-                record.segments[index].speakerName = newName
+            let patched = try patchRecordFile(at: url) { object in
+                guard var lines = object["segments"] as? [[String: Any]] else { return false }
+                for index in lines.indices where lines[index]["speakerName"] as? String == oldName {
+                    lines[index]["speakerName"] = newName
+                }
+                object["segments"] = lines
+                return true
             }
-            let data = try JSONEncoder().encode(record)
-            try data.write(to: url, options: .privateFile)
-            let written = Self.modificationDate(of: url)
-            writeSummary(TranscriptSessionSummary(summarizing: record), forRecordFile: url, recordModifiedAt: written)
-            writeSearchText(Self.searchableText(of: record), forRecordFile: url, recordModifiedAt: written)
-            changed += 1
+            if patched { changed += 1 }
         }
         return changed
     }
 
+    /// Changes one field of a conversation file in place. The file is
+    /// patched as raw JSON, so a line this build cannot read, or a field it
+    /// does not know, is written back exactly as found instead of being
+    /// dropped by a decode and re-encode. `patch` returns false to leave the
+    /// file untouched. Returns whether the file was rewritten.
+    private func patchRecordFile(at url: URL, _ patch: (inout [String: Any]) -> Bool) throws -> Bool {
+        guard let data = try? Data(contentsOf: url),
+              var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              patch(&object)
+        else { return false }
+        let patched = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+        try patched.write(to: url, options: .privateFile)
+        if let record = try? JSONDecoder().decode(TranscriptSessionRecord.self, from: patched) {
+            let written = Self.modificationDate(of: url)
+            writeSummary(TranscriptSessionSummary(summarizing: record), forRecordFile: url, recordModifiedAt: written)
+            writeSearchText(Self.searchableText(of: record), forRecordFile: url, recordModifiedAt: written)
+        }
+        return true
+    }
+
     /// Names a saved conversation, or removes its name with an empty one.
     public func rename(id: UUID, title: String) throws {
-        guard var record = load(id: id) else { return }
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        record.title = trimmed.isEmpty ? nil : trimmed
-        let url = fileURL(for: id)
-        let data = try JSONEncoder().encode(record)
-        try data.write(to: url, options: .privateFile)
-        let written = Self.modificationDate(of: url)
-        writeSummary(TranscriptSessionSummary(summarizing: record), forRecordFile: url, recordModifiedAt: written)
-        writeSearchText(Self.searchableText(of: record), forRecordFile: url, recordModifiedAt: written)
+        _ = try patchRecordFile(at: fileURL(for: id)) { object in
+            if trimmed.isEmpty {
+                object.removeValue(forKey: "title")
+            } else {
+                object["title"] = trimmed
+            }
+            return true
+        }
     }
 
     /// Stars a saved line, or takes its star away, after the conversation
@@ -926,15 +946,18 @@ public struct TranscriptHistoryStore: Sendable {
     /// line's new state, or nil when the conversation or line is gone.
     @discardableResult
     public func toggleStar(segmentID: UUID, inSession id: UUID) throws -> Bool? {
-        guard var record = load(id: id),
-              let index = record.segments.firstIndex(where: { $0.id == segmentID })
-        else { return nil }
-        record.segments[index].isStarred.toggle()
-        let url = fileURL(for: id)
-        let data = try JSONEncoder().encode(record)
-        try data.write(to: url, options: .privateFile)
-        writeSummary(TranscriptSessionSummary(summarizing: record), forRecordFile: url, recordModifiedAt: Self.modificationDate(of: url))
-        return record.segments[index].isStarred
+        var state: Bool?
+        _ = try patchRecordFile(at: fileURL(for: id)) { object in
+            guard var lines = object["segments"] as? [[String: Any]],
+                  let index = lines.firstIndex(where: { ($0["id"] as? String).flatMap(UUID.init(uuidString:)) == segmentID })
+            else { return false }
+            let starred = !((lines[index]["isStarred"] as? Bool) ?? false)
+            lines[index]["isStarred"] = starred
+            object["segments"] = lines
+            state = starred
+            return true
+        }
+        return state
     }
 
     public func delete(id: UUID) throws {
