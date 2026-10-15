@@ -14,6 +14,8 @@ import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 private val engineFrames: List<String> =
@@ -270,5 +272,69 @@ class SonioxEngineTest {
         assertEquals(TranscriptionEngineKind.Cloud, soniox.kind)
         assertEquals(CloudProvider.Soniox, soniox.provider)
         assertEquals("stt-rt-v5", soniox.model)
+    }
+
+    @Test
+    fun `a service that takes the connection but never finishes opening it is no internet after the handshake time, with the socket closed`() = runTest(timeout = 1.minutes) {
+        val socket = HungSendSocket()
+        val soniox = SonioxEngine(connector = object : CloudSocketConnecting {
+            override suspend fun open(url: URI, headers: Map<String, String>): HomeServerSocket = socket
+        }, timeSource = testScheduler.timeSource, apiKey = { "sx-test" })
+        val heard = StreamHeard()
+        val job = launch { listen(soniox, streamAudio(1, ends = false), heard = heard) }
+        advanceTimeBy(15.seconds)
+        runCurrent()
+        assertEquals(CloudSpeechError.Offline, heard.error)
+        assertTrue(socket.isClosed)
+        job.cancel()
+    }
+
+    @Test
+    fun `a service that takes the settings but never says it has started is no internet after the handshake time, with the socket closed`() = runTest(timeout = 1.minutes) {
+        val socket = StreamSocket()
+        val engine = SpeechmaticsEngine(connector = StreamDialer(socket), timeSource = testScheduler.timeSource, apiKey = { "sm-test" })
+        val heard = StreamHeard()
+        val job = launch { listen(engine, streamAudio(1, ends = false), heard = heard) }
+        advanceTimeBy(15.seconds)
+        runCurrent()
+        assertEquals(CloudSpeechError.Offline, heard.error)
+        assertTrue(socket.isClosed)
+        job.cancel()
+    }
+
+    @Test
+    fun `a handshake that finishes in time is not cut off by the handshake timer`() = runTest(timeout = 1.minutes) {
+        val socket = StreamSocket(onConfig = listOf(frames[0]))
+        val heard = StreamHeard()
+        val job = launch { listen(engine(StreamDialer(socket), pingSeconds = 100.0, pongSeconds = 100.0), streamAudio(1, ends = false), heard = heard) }
+        advanceTimeBy(30.seconds)
+        runCurrent()
+        assertNull(heard.error)
+        assertTrue(!socket.isClosed)
+        job.cancel()
+    }
+}
+
+private class HungSendSocket : HomeServerSocket {
+    private val never = kotlinx.coroutines.CompletableDeferred<Unit>()
+
+    @Volatile
+    var isClosed = false
+        private set
+
+    override suspend fun send(text: String) = never.await()
+
+    override suspend fun send(data: ByteArray) = never.await()
+
+    override suspend fun receive(): String {
+        never.await()
+        return ""
+    }
+
+    override suspend fun ping() = never.await()
+
+    override suspend fun close() {
+        isClosed = true
+        never.cancel()
     }
 }
