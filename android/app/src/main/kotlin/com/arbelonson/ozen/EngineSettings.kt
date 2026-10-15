@@ -9,11 +9,14 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.core.tr
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class EngineSettings(
     private val settings: SettingsHolder,
@@ -21,6 +24,7 @@ class EngineSettings(
     private val homeServerCode: HomeServerCodeStore,
     private val checkHomeComputer: suspend () -> HomeServerCheck,
     private val scope: CoroutineScope,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
     private val restartIfRunning: () -> Unit,
 ) {
     private var beamRestart: Job? = null
@@ -67,7 +71,18 @@ class EngineSettings(
         if (cloudIsTheEngine) restart()
     }
 
-    fun hasCloudKey(): Boolean = cloudKeys.hasKey(provider)
+    /** What the Keystore held when last looked at, so drawing Settings never opens it on the main thread. */
+    val cloudKeysHeld = MutableStateFlow<Set<CloudProvider>>(emptySet())
+
+    val pairingCodeHeld = MutableStateFlow(false)
+
+    suspend fun loadKeyState() {
+        val held = withContext(io) { CloudProvider.entries.filter { cloudKeys.hasKey(it) }.toSet() to (homeServerCode.read() != null) }
+        cloudKeysHeld.value = held.first
+        pairingCodeHeld.value = held.second
+    }
+
+    fun hasCloudKey(): Boolean = provider in cloudKeysHeld.value
 
     fun cloudSoundAcknowledged(): Boolean = provider in settings.current.value.cloudSoundAcknowledged
 
@@ -76,15 +91,20 @@ class EngineSettings(
         settings.change { it.cloudSoundAcknowledged = it.cloudSoundAcknowledged + service }
     }
 
-    fun saveCloudKey(draft: String): Boolean {
+    suspend fun saveCloudKey(draft: String): Boolean {
         val key = draft.trim()
-        if (key.isEmpty() || !cloudSoundAcknowledged() || !cloudKeys.save(key, provider)) return false
+        if (key.isEmpty() || !cloudSoundAcknowledged()) return false
+        val service = provider
+        if (!withContext(io) { cloudKeys.save(key, service) }) return false
+        cloudKeysHeld.value = cloudKeysHeld.value + service
         if (cloudIsTheEngine) restart()
         return true
     }
 
-    fun deleteCloudKey() {
-        cloudKeys.remove(provider)
+    suspend fun deleteCloudKey() {
+        val service = provider
+        withContext(io) { cloudKeys.remove(service) }
+        cloudKeysHeld.value = cloudKeysHeld.value - service
         if (cloudIsTheEngine) restart()
     }
 
@@ -95,17 +115,19 @@ class EngineSettings(
         if (homeComputerIsTheEngine) restart()
     }
 
-    fun hasPairingCode(): Boolean = homeServerCode.read() != null
+    fun hasPairingCode(): Boolean = pairingCodeHeld.value
 
-    fun savePairingCode(draft: String): Boolean {
+    suspend fun savePairingCode(draft: String): Boolean {
         val code = draft.trim()
-        if (code.isEmpty() || !homeServerCode.save(code)) return false
+        if (code.isEmpty() || !withContext(io) { homeServerCode.save(code) }) return false
+        pairingCodeHeld.value = true
         if (homeComputerIsTheEngine) restart()
         return true
     }
 
-    fun deletePairingCode() {
-        homeServerCode.remove()
+    suspend fun deletePairingCode() {
+        withContext(io) { homeServerCode.remove() }
+        pairingCodeHeld.value = false
         if (homeComputerIsTheEngine) restart()
     }
 
@@ -126,6 +148,7 @@ class EngineSettings(
 
     /** A new computer paired from its code: captions start again on it. */
     fun pairedWithAComputer() {
+        pairingCodeHeld.value = true
         computerPairings.value += 1
         restart()
     }
@@ -151,7 +174,7 @@ class EngineSettings(
         return checkHomeComputer()
     }
 
-    fun saveUnsavedEntries(cloudKeyDraft: String, addressDraft: String, pairingCodeDraft: String) {
+    suspend fun saveUnsavedEntries(cloudKeyDraft: String, addressDraft: String, pairingCodeDraft: String) {
         HomeServer.unsavedAddress(addressDraft, settings.current.value.homeServerAddress)?.let { saveHomeComputerAddress(it) }
         savePairingCode(pairingCodeDraft)
         saveCloudKey(cloudKeyDraft)

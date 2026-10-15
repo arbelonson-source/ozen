@@ -11,6 +11,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
 
 class PairingRequestsTest {
     private val folder = Files.createTempDirectory("ozen-pairing").toFile()
@@ -24,7 +25,7 @@ class PairingRequestsTest {
     }
 
     @Test
-    fun `a home computer's pairing link waits for a yes, then saves the address and code and switches to it, and other links do nothing`() {
+    fun `a home computer's pairing link waits for a yes, then saves the address and code and switches to it, and other links do nothing`() = runBlocking<Unit> {
         val pairing = PairingRequests(settings, codes::save)
         pairing.open("https://example.com/pair?address=wss://x.net&code=abc")
         assertNull(pairing.pending.value)
@@ -44,7 +45,17 @@ class PairingRequestsTest {
     }
 
     @Test
-    fun `Connect pairs with the computer the alert named, even though closing the alert already cleared it, and not with one scanned since`() {
+    fun `accepting a link saves the code off the calling thread`() = runBlocking<Unit> {
+        var savedOn: Thread? = null
+        val pairing = PairingRequests(settings, { savedOn = Thread.currentThread(); true })
+        pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=testcode123")
+        assertTrue(pairing.acceptPending())
+        assertNotNull(savedOn)
+        assertTrue(savedOn !== Thread.currentThread())
+    }
+
+    @Test
+    fun `Connect pairs with the computer the alert named, even though closing the alert already cleared it, and not with one scanned since`() = runBlocking<Unit> {
         val pairing = PairingRequests(settings, codes::save)
         pairing.open("ozen://pair?address=wss://first.tail.ts.net&code=firstcode")
         val shown = assertNotNull(pairing.pending.value)
@@ -96,7 +107,7 @@ class PairingRequestsTest {
     }
 
     @Test
-    fun `captions hear of a pairing once it is saved and switched to, and not of one the phone couldn't keep`() {
+    fun `captions hear of a pairing once it is saved and switched to, and not of one the phone couldn't keep`() = runBlocking<Unit> {
         val told = mutableListOf<TranscriptionEngineKind>()
         val pairing = PairingRequests(settings, codes::save).apply { onPaired = { told += settings.current.value.engine } }
         pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=testcode123")
@@ -104,15 +115,15 @@ class PairingRequestsTest {
         assertTrue(pairing.acceptPending())
         assertEquals(listOf(TranscriptionEngineKind.HomeServer), told)
 
-        val refused = PairingRequests(settings) { false }.apply { onPaired = { told += settings.current.value.engine } }
+        val refused = PairingRequests(settings, { false }).apply { onPaired = { told += settings.current.value.engine } }
         refused.open("ozen://pair?address=wss://other.tail.ts.net&code=othercode")
         assertFalse(refused.acceptPending())
         assertEquals(1, told.size)
     }
 
     @Test
-    fun `a pairing code the phone won't keep changes nothing and says so`() {
-        val pairing = PairingRequests(settings) { false }
+    fun `a pairing code the phone won't keep changes nothing and says so`() = runBlocking<Unit> {
+        val pairing = PairingRequests(settings, { false })
         pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=testcode123")
         assertFalse(pairing.saveFailed.value)
         assertFalse(pairing.acceptPending())

@@ -599,6 +599,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
     val pending by pairing.pending.collectAsStateWithLifecycle()
     val saveFailed by pairing.saveFailed.collectAsStateWithLifecycle()
     val linkBroken by pairing.linkBroken.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
     pending?.let { shown ->
         AlertDialog(
             onDismissRequest = { pairing.pending.value = null },
@@ -612,7 +613,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
                     ),
                 )
             },
-            confirmButton = { TextButton(onClick = { pairing.accept(shown) }) { Text(tr("להתחבר", "Connect")) } },
+            confirmButton = { TextButton(onClick = { scope.launch { pairing.accept(shown) } }) { Text(tr("להתחבר", "Connect")) } },
             dismissButton = { TextButton(onClick = { pairing.pending.value = null }) { Text(tr("ביטול", "Cancel")) } },
         )
     }

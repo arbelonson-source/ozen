@@ -207,9 +207,13 @@ fun SettingsScreen(
     val codeDraft = rememberSaveable { mutableStateOf("") }
     // As on the iPhone, what was typed but never saved with Done or its
     // button is kept as Settings closes instead of silently dropped.
-    val close = {
-        engineSettings.saveUnsavedEntries(cloudKeyDraft.value, addressDraft.value, codeDraft.value)
-        onClose()
+    val closing = rememberCoroutineScope()
+    LaunchedEffect(Unit) { engineSettings.loadKeyState() }
+    val close: () -> Unit = {
+        closing.launch {
+            engineSettings.saveUnsavedEntries(cloudKeyDraft.value, addressDraft.value, codeDraft.value)
+            onClose()
+        }
     }
     var showingWords by rememberSaveable { mutableStateOf(false) }
     var showingDiagnostics by rememberSaveable { mutableStateOf(false) }
@@ -456,18 +460,20 @@ private fun engineSummary(kind: TranscriptionEngineKind): String? = when (kind) 
 @Composable
 private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, keyDraft: MutableState<String>) {
     val service = current.cloudProvider
-    var hasKey by remember(service) { mutableStateOf(engineSettings.hasCloudKey()) }
+    val keysHeld by engineSettings.cloudKeysHeld.collectAsStateWithLifecycle()
+    val hasKey = service in keysHeld
+    val scope = rememberCoroutineScope()
     var draft by keyDraft
     var saveFailed by remember(service) { mutableStateOf(false) }
     var confirmingDelete by remember { mutableStateOf(false) }
     var askingConsent by remember { mutableStateOf(false) }
     val saveNow = {
         if (draft.isNotBlank()) {
-            val saved = engineSettings.saveCloudKey(draft)
-            saveFailed = !saved
-            if (saved) {
-                draft = ""
-                hasKey = true
+            val typed = draft
+            scope.launch {
+                val saved = engineSettings.saveCloudKey(typed)
+                saveFailed = !saved
+                if (saved && draft == typed) draft = ""
             }
         }
     }
@@ -555,8 +561,7 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
             confirmButton = {
                 TextButton(
                     onClick = {
-                        engineSettings.deleteCloudKey()
-                        hasKey = false
+                        scope.launch { engineSettings.deleteCloudKey() }
                         confirmingDelete = false
                     },
                 ) { Text(tr("למחוק", "Delete"), color = MaterialTheme.colorScheme.error) }
@@ -590,8 +595,7 @@ private fun HomeComputerSection(
 ) {
     val saved = current.homeServerAddress
     var address by addressDraft
-    val pairings by engineSettings.computerPairings.collectAsStateWithLifecycle()
-    var hasCode by remember(pairings) { mutableStateOf(engineSettings.hasPairingCode()) }
+    val hasCode by engineSettings.pairingCodeHeld.collectAsStateWithLifecycle()
     var code by codeDraft
     var codeSaveFailed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -607,26 +611,26 @@ private fun HomeComputerSection(
         forgetCheck()
         engineSettings.saveHomeComputerAddress(address)
     }
-    val saveCode = {
+    val saveCode: suspend () -> Unit = {
         if (code.isNotBlank()) {
             val stored = engineSettings.savePairingCode(code)
             codeSaveFailed = !stored
             if (stored) {
                 code = ""
-                hasCode = true
                 forgetCheck()
             }
         }
     }
     // As on the iPhone, what is on screen is what gets tested: a code or
     // address typed but not saved yet is saved first.
+    val saveCodeNow = { scope.launch { saveCode() }; Unit }
     val testConnection = {
         checking = true
-        saveCode()
-        forgetCheck()
-        val generation = checkGeneration
         val typed = address
         scope.launch {
+            saveCode()
+            forgetCheck()
+            val generation = checkGeneration
             val result = engineSettings.testConnection(typed)
             checking = false
             if (generation == checkGeneration) check = result
@@ -690,10 +694,10 @@ private fun HomeComputerSection(
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { saveCode() }),
+                    keyboardActions = KeyboardActions(onDone = { saveCodeNow() }),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (code.isNotBlank()) TonalButton(tr("שמירת הקוד", "Save code"), onClick = saveCode, modifier = Modifier.fillMaxWidth())
+                if (code.isNotBlank()) TonalButton(tr("שמירת הקוד", "Save code"), onClick = saveCodeNow, modifier = Modifier.fillMaxWidth())
                 if (codeSaveFailed) Warning(tr("הקוד לא נשמר. נסו שוב.", "The code wasn’t saved. Try again."))
             }
         }
@@ -742,8 +746,7 @@ private fun HomeComputerSection(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        engineSettings.deletePairingCode()
-                        hasCode = false
+                        scope.launch { engineSettings.deletePairingCode() }
                         forgetCheck()
                         confirmingCodeDelete = false
                     },
