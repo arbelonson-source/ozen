@@ -63,4 +63,25 @@ class ProblemSnapshotTest {
         assertEquals(3, lines.size)
         assertTrue(lines[0].endsWith("microphone -"))
     }
+
+    @Test
+    fun `with saving conversations off, no spoken words are kept in the snapshot`() {
+        val segments = listOf(segment("secret words", committed = true))
+        val lines = ProblemSnapshot.lines(
+            settings = AppSettings.default, activeEngine = null, input = null, stats = PipelineStats(),
+            segments = segments, device = "-", utcOffsetSeconds = 0, includeCaptions = false,
+        )
+        assertTrue(lines.none { ProblemSnapshot.isCaptionLine(it) })
+        assertTrue(lines.none { it.contains("secret words") })
+        assertEquals(4, lines.size)
+    }
+
+    @Test
+    fun `with captions included the spoken words are kept`() {
+        val lines = ProblemSnapshot.lines(
+            settings = AppSettings.default, activeEngine = null, input = null, stats = PipelineStats(),
+            segments = listOf(segment("secret words", committed = true)), device = "-", utcOffsetSeconds = 0, includeCaptions = true,
+        )
+        assertTrue(lines.any { ProblemSnapshot.isCaptionLine(it) && it.contains("secret words") })
+    }
 }
