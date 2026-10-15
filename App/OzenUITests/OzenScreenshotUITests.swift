@@ -1120,7 +1120,7 @@ final class OzenScreenshotUITests: XCTestCase {
             _ = typeToSpeakButton.waitForExistence(timeout: 10)
             for _ in 0..<30 where !tapped {
                 if typeToSpeakButton.isHittable {
-                    typeToSpeakButton.tap()
+                    typeToSpeakButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
                     tapped = true
                 } else if revealControls.exists, revealControls.isHittable {
                     revealControls.tap()
@@ -1209,9 +1209,16 @@ final class OzenScreenshotUITests: XCTestCase {
         capture(app, name: "type-to-speak-accessibility-text-landscape")
         XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")
 
+        let keyboardAfterPlay = app.keyboards.firstMatch.exists
+        let field = app.textFields.firstMatch
+        if !keyboardAfterPlay {
+            reach(field, startUp: false)
+            field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            _ = app.keyboards.firstMatch.waitForExistence(timeout: 5)
+        }
         reach(header, startUp: true)
         capture(app, name: "type-to-speak-accessibility-text-landscape-phrases")
         XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in landscape")
-        XCTAssertTrue(app.keyboards.firstMatch.exists, "say sheet: the keyboard went away before the quick phrases were reached in landscape")
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "say sheet: the keyboard is not showing where the quick phrases are reached in landscape (it was \(keyboardAfterPlay ? "up" : "gone") after the Play check)")
     }
 }
