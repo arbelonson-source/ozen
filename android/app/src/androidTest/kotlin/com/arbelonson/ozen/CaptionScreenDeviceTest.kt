@@ -324,6 +324,48 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun theMobileDataQuestionGoesAwayWhenTheWaitingDownloadClearsAndDoesNotComeBackByItself() {
+        val waiting = PipelinePhase.Failed(
+            PipelineFailure(
+                PipelineFailure.Kind.EngineUnavailable,
+                "test",
+                EngineUnavailability(EngineUnavailability.Kind.WaitingForWiFi, "test", downloadMegabytes = 550),
+            ),
+        )
+        val question = "Download the model over cellular data?"
+        val showWaiting = { compose.runOnUiThread { CaptionState.show(waiting, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) } }
+        val clearWaiting = { compose.runOnUiThread { CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) } }
+        try {
+            showWaiting()
+            compose.onNodeWithText("Waiting for Wi", substring = true).performClick()
+            compose.onNodeWithText(question).assertExists()
+            clearWaiting()
+            compose.waitForIdle()
+            compose.onNodeWithText(question).assertDoesNotExist()
+            showWaiting()
+            compose.waitForIdle()
+            compose.onNodeWithText("Waiting for Wi", substring = true).assertExists()
+            compose.onNodeWithText(question).assertDoesNotExist()
+
+            compose.onNodeWithText("Waiting for Wi", substring = true).performClick()
+            compose.onNodeWithText(question).assertExists()
+            val first = compose.activity
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(5_000) { first.isDestroyed }
+            compose.waitForIdle()
+            compose.onNodeWithText(question).assertExists()
+            clearWaiting()
+            compose.waitForIdle()
+            compose.onNodeWithText(question).assertDoesNotExist()
+            showWaiting()
+            compose.waitForIdle()
+            compose.onNodeWithText(question).assertDoesNotExist()
+        } finally {
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
     fun theTimeTalkPickedUpIsDrawnAboveALineAfterABreakAndTheAwayMarkTakesItsPlace() {
         val now = System.currentTimeMillis() / 1_000.0
         val before = said("Before the break", at = now - 1_000)
