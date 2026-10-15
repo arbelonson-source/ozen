@@ -355,13 +355,13 @@ public struct AppSettings: Codable, Sendable, Equatable {
     }
 
     /// The phrases a hard-of-hearing person needs most often in
-    /// conversation, ready before she has typed anything.
+    /// conversation, ready before anyone has typed anything.
     public static let defaultQuickPhrases: [String] = [
         "רגע, לא הבנתי",
         "אפשר לחזור על זה?",
         "לאט יותר בבקשה",
         "דברו קרוב יותר לטלפון, בבקשה",
-        "אני קוראת את הכתוביות, תנו לי רגע",
+        "הכתוביות מולי, תנו לי רגע",
         "כן",
         "לא",
         "תודה",
@@ -385,19 +385,27 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// The ready-made phrases in the other interface languages: same order
     /// and meaning, and the Say screen speaks them aloud, so they are
     /// written as a person would say them, not as button labels. Where a
-    /// language marks the speaker's gender it follows the Hebrew list's
-    /// woman speaker.
+    /// language marks the speaker's gender they are worded to avoid it, so
+    /// they suit any speaker.
     static let otherQuickPhrases: [UILanguage: [String]] = [
         .arabic: ["لحظة، لم أفهم", "ممكن تعيد ذلك؟", "أبطأ من فضلك", "تكلّم أقرب إلى الهاتف من فضلك", "أنا أقرأ الترجمة النصية، أعطني لحظة", "نعم", "لا", "شكرًا", "لنتكلم واحدًا تلو الآخر"],
-        .russian: ["Подождите, я не поняла", "Можете повторить?", "Помедленнее, пожалуйста", "Говорите ближе к телефону, пожалуйста", "Я читаю субтитры, дайте мне минутку", "Да", "Нет", "Спасибо", "Давайте говорить по одному"],
+        .russian: ["Подождите, повторите, пожалуйста", "Можете повторить?", "Помедленнее, пожалуйста", "Говорите ближе к телефону, пожалуйста", "Я читаю субтитры, дайте мне минутку", "Да", "Нет", "Спасибо", "Давайте говорить по одному"],
         .amharic: ["ይቅርታ፣ አልገባኝም", "እባክዎ እንደገና ይድገሙት", "እባክዎ ቀስ ብለው ይናገሩ", "እባክዎ ወደ ስልኩ ቀርበው ይናገሩ", "ካፕሽኑን እያነበብኩ ነው፣ ትንሽ ይጠብቁኝ", "አዎ", "አይ", "አመሰግናለሁ", "አንድ በአንድ እንነጋገር"],
         .french: ["Attendez, je n’ai pas compris", "Vous pouvez répéter ?", "Plus lentement, s’il vous plaît", "Parlez plus près du téléphone, s’il vous plaît", "Je lis les sous-titres, laissez-moi un instant", "Oui", "Non", "Merci", "Parlons chacun à notre tour"],
         .spanish: ["Espera, no entendí", "¿Puedes repetirlo?", "Más despacio, por favor", "Habla más cerca del teléfono, por favor", "Estoy leyendo los subtítulos, dame un momento", "Sí", "No", "Gracias", "Hablemos de uno en uno"],
-        .ukrainian: ["Зачекайте, я не зрозуміла", "Можете повторити?", "Повільніше, будь ласка", "Говоріть ближче до телефону, будь ласка", "Я читаю субтитри, дайте мені хвилинку", "Так", "Ні", "Дякую", "Давайте говорити по одному"],
+        .ukrainian: ["Зачекайте, мені незрозуміло", "Можете повторити?", "Повільніше, будь ласка", "Говоріть ближче до телефону, будь ласка", "Я читаю субтитри, дайте мені хвилинку", "Так", "Ні", "Дякую", "Давайте говорити по одному"],
         .german: ["Moment, das habe ich nicht verstanden", "Können Sie das wiederholen?", "Langsamer, bitte", "Bitte sprechen Sie näher am Telefon", "Ich lese die Untertitel, einen Moment bitte", "Ja", "Nein", "Danke", "Bitte nacheinander sprechen"],
-        .portuguese: ["Espere, não percebi", "Pode repetir?", "Mais devagar, por favor", "Fale mais perto do telemóvel, por favor", "Estou a ler as legendas, dê-me um momento", "Sim", "Não", "Obrigada", "Vamos falar um de cada vez"],
+        .portuguese: ["Espere, não percebi", "Pode repetir?", "Mais devagar, por favor", "Fale mais perto do telemóvel, por favor", "Estou a ler as legendas, dê-me um momento", "Sim", "Não", "Agradeço", "Vamos falar um de cada vez"],
         .chineseSimplified: ["等一下，我没听懂", "可以再说一遍吗？", "请说慢一点", "请靠近手机说话", "我在看字幕，请稍等", "是的", "不是", "谢谢", "我们一个一个说吧"],
-        .hindi: ["रुकिए, मैं समझी नहीं", "क्या आप दोबारा कह सकते हैं?", "कृपया धीरे बोलिए", "कृपया फ़ोन के पास आकर बोलिए", "मैं कैप्शन पढ़ रही हूँ, मुझे एक पल दीजिए", "हाँ", "नहीं", "धन्यवाद", "चलिए, एक-एक करके बोलें"],
+        .hindi: ["रुकिए, समझ नहीं आया", "क्या आप दोबारा कह सकते हैं?", "कृपया धीरे बोलिए", "कृपया फ़ोन के पास आकर बोलिए", "कैप्शन देख रहे हैं, एक पल दीजिए", "हाँ", "नहीं", "धन्यवाद", "चलिए, एक-एक करके बोलें"],
+    ]
+
+    private static let legacyQuickPhrases: [[String]] = [
+        ["רגע, לא הבנתי", "אפשר לחזור על זה?", "לאט יותר בבקשה", "דברו קרוב יותר לטלפון, בבקשה", "אני קוראת את הכתוביות, תנו לי רגע", "כן", "לא", "תודה", "בואו נדבר אחד אחד"],
+        ["Подождите, я не поняла", "Можете повторить?", "Помедленнее, пожалуйста", "Говорите ближе к телефону, пожалуйста", "Я читаю субтитры, дайте мне минутку", "Да", "Нет", "Спасибо", "Давайте говорить по одному"],
+        ["Зачекайте, я не зрозуміла", "Можете повторити?", "Повільніше, будь ласка", "Говоріть ближче до телефону, будь ласка", "Я читаю субтитри, дайте мені хвилинку", "Так", "Ні", "Дякую", "Давайте говорити по одному"],
+        ["रुकिए, मैं समझी नहीं", "क्या आप दोबारा कह सकते हैं?", "कृपया धीरे बोलिए", "कृपया फ़ोन के पास आकर बोलिए", "मैं कैप्शन पढ़ रही हूँ, मुझे एक पल दीजिए", "हाँ", "नहीं", "धन्यवाद", "चलिए, एक-एक करके बोलें"],
+        ["Espere, não percebi", "Pode repetir?", "Mais devagar, por favor", "Fale mais perto do telemóvel, por favor", "Estou a ler as legendas, dê-me um momento", "Sim", "Não", "Obrigada", "Vamos falar um de cada vez"],
     ]
 
     public static func defaultQuickPhrases(for language: UILanguage) -> [String] {
@@ -414,7 +422,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// the app to another language left every ready-made phrase in Hebrew.
     /// A list she has changed in any way is hers and is shown as it is.
     public static func displayedQuickPhrases(stored: [String], language: UILanguage) -> [String] {
-        UILanguage.allCases.contains { defaultQuickPhrases(for: $0) == stored }
+        UILanguage.allCases.contains { defaultQuickPhrases(for: $0) == stored } || legacyQuickPhrases.contains(stored)
             ? defaultQuickPhrases(for: language)
             : stored
     }
