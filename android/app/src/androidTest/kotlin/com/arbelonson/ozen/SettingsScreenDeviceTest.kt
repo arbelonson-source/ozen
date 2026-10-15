@@ -182,7 +182,10 @@ class SettingsScreenDeviceTest {
         cellularBefore = app.settings.current.value.allowCellularModelDownload
         app.cloudKeys.remove(CloudProvider.Deepgram)
         app.homeServerCode.remove()
-        app.settings.change { it.homeServerAddress = "" }
+        app.settings.change {
+            it.homeServerAddress = ""
+            it.cloudSoundAcknowledged = emptySet()
+        }
     }
 
     @After
