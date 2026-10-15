@@ -1154,7 +1154,7 @@ class TranscriptHistoryStore(private val directory: File) {
          * conversation shared in winter keeps the clock times it was said at.
          * With [marksUncertain], a line the engine was unsure of says so.
          */
-        fun exportText(record: TranscriptSessionRecord, utcOffsetAt: (Double) -> Int, marksUncertain: Boolean = false): String {
+        fun exportText(record: TranscriptSessionRecord, utcOffsetAt: (Double) -> Int, marksUncertain: Boolean = false, decimalComma: Boolean = false): String {
             val formatted = record.segments.map { segment ->
                 val time = formattedClockTime(segment.startTimestamp, utcOffsetAt(segment.startTimestamp))
                 val star = if (segment.isStarred) "★ " else ""
@@ -1185,7 +1185,7 @@ class TranscriptHistoryStore(private val directory: File) {
                 emptyList()
             } else {
                 record.segments.zip(formatted)
-                    .filter { NumberEmphasis.hasListableNumber(it.first.text) }
+                    .filter { NumberEmphasis.hasListableNumber(it.first.text, decimalComma) }
                     .take(NUMBERS_BLOCK_LIMIT)
                     .map { it.second }
             }

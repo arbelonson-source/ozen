@@ -240,4 +240,11 @@ class NumberEmphasisTest {
         assertFalse(NumberEmphasis.hasListableNumber("נתראה ביום שני בבוקר"))
         assertFalse(NumberEmphasis.hasListableNumber("אחת ולתמיד, רק פעם אחת"))
     }
+
+    @Test
+    fun decimalCommaListsTheLineWithTheDose() {
+        assertTrue(NumberEmphasis.hasListableNumber("nimm 2,5 mg täglich", decimalComma = true))
+        assertTrue(NumberEmphasis.hasListableNumber("fièvre 37,5 hier", decimalComma = true))
+        assertFalse(NumberEmphasis.hasListableNumber("rien de special, merci", decimalComma = true))
+    }
 }

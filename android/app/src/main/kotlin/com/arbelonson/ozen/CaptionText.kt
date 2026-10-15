@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -20,6 +21,10 @@ fun usesDecimalComma(language: UILanguage): Boolean = when (language) {
     UILanguage.Russian, UILanguage.Ukrainian -> true
     else -> false
 }
+
+fun usesDecimalComma(languageCode: String): Boolean = usesDecimalComma(UILanguage.match(languageCode) ?: UILanguage.Hebrew)
+
+val LocalDecimalComma = staticCompositionLocalOf { false }
 
 const val DOUBTFUL_WORD = "doubtful"
 

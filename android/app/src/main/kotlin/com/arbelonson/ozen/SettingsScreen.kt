@@ -288,6 +288,7 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
             tr("שלום סבתא, נגיע בשש עם שלושה ילדים.", "Hello grandma, we’ll arrive at six with three kids."),
             display.emphasizeNumbers,
             look.numberText,
+            decimalComma = LocalDecimalComma.current,
         ),
         color = look.text,
         fontSize = size.sp,

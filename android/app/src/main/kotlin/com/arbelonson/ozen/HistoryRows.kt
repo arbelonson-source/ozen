@@ -202,8 +202,8 @@ class NumbersMentioned(val listed: List<SavedSegment>, val moreText: String?) {
     companion object {
         const val LISTED = 12
 
-        fun of(record: TranscriptSessionRecord): NumbersMentioned {
-            val numbered = record.segments.filter { NumberEmphasis.hasListableNumber(it.text) }
+        fun of(record: TranscriptSessionRecord, decimalComma: Boolean = false): NumbersMentioned {
+            val numbered = record.segments.filter { NumberEmphasis.hasListableNumber(it.text, decimalComma) }
             val more = numbered.size - LISTED
             return NumbersMentioned(
                 listed = numbered.take(LISTED),
