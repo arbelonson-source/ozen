@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.SoundAlertPreferences
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.SoundEventCatalog
@@ -98,6 +99,7 @@ internal fun SoundAlertsScreen(
                 }
             }
         }
+        Footnote(SoundAlertsText.safetyNote(Localization.language))
         Footnote(
             tr(
                 "הזיהוי נעשה בטלפון בלבד, על אותו אודיו שמשמש לכתוביות. אותו צליל לא יופיע שוב במשך 20 שניות.",
