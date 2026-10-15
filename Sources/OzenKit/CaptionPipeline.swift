@@ -1392,13 +1392,15 @@ public final class CaptionPipeline {
         return clusterer.clusters.first(where: { $0.id == clusterID })?.centroid
     }
 
-    private func moveLine(_ segment: TranscriptSegment, to name: String, from cluster: SpeakerCluster) -> [Float] {
+    private func moveLine(_ segment: TranscriptSegment, to name: String, from cluster: SpeakerCluster) -> [Float]? {
         let heard = utteranceEmbeddings[segment.id]
         let target: Int
         if let existing = clusterer.clusters.first(where: { $0.name == name }) {
             target = existing.id
+        } else if let heard {
+            target = clusterer.enrollWithoutMerging(name: name, embedding: heard)
         } else {
-            target = clusterer.enrollWithoutMerging(name: name, embedding: heard ?? cluster.centroid)
+            return nil
         }
         utteranceClusterAssignments[segment.id] = target
         correctedUtterances.insert(segment.id)
@@ -1407,7 +1409,7 @@ public final class CaptionPipeline {
             onCaptionsChanged?()
         }
         speakerClusters = clusterer.clusters
-        return heard ?? cluster.centroid
+        return heard
     }
 
     /// Whether `name`, typed on this line, fixes the spelling of the name

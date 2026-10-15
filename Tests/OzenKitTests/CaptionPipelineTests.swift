@@ -2952,6 +2952,20 @@ struct CaptionPipelineNamingLineTests {
         #expect(pipeline.speakerClusters.filter { $0.name == "Dana" }.count == 1)
     }
 
+    @Test("a new name on a line whose own voice is no longer kept does not copy the old speaker's voice")
+    func newNameWithoutTheLinesVoiceSavesNoPrint() async {
+        let (pipeline, engine, audio) = await listening()
+        await line("שלום", engine: engine, audio: audio, pipeline: pipeline, count: 1)
+        let earlier = pipeline.segments[0]
+        pipeline.startNewConversation()
+
+        let print = pipeline.nameSpeaker(of: earlier, name: "Moshe")
+
+        #expect(print == nil)
+        #expect(!pipeline.speakerClusters.contains { $0.name == "Moshe" })
+        #expect(pipeline.displayName(for: earlier) == "Dana")
+    }
+
     @Test("a line from before a quiet break can still be named")
     func lineFromAnEarlierConversationCanBeNamed() async {
         let engine = FakeEngine()
