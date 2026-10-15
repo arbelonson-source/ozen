@@ -1157,28 +1157,37 @@ final class OzenScreenshotUITests: XCTestCase {
         }
         // A fast swipe can flick the target past the top of the sheet in
         // landscape, where little of the sheet shows above the keyboard.
-        // Once the target is in view there the swipes are slow and leave no flick,
-        // and a target that was seen and is gone again is swiped back to.
+        // Once the target is in view there the swipes are slow and leave no flick.
+        // A target that was seen and is gone again was swiped past: the swipe
+        // that lost it is remembered, and the swipes go the other way until it
+        // is back in view, so recovery swipes never cancel against forward ones.
         func reach(_ target: XCUIElement, startUp: Bool) {
             var seen = false
+            var recoverUp: Bool?
+            var lastUp = startUp
             var swipes = 0
             while !(target.exists && target.isHittable) && swipes < 40 {
-                seen = seen || target.exists
                 let up: Bool
                 if target.exists {
+                    seen = true
+                    recoverUp = nil
                     up = target.frame.maxY >= app.navigationBars.firstMatch.frame.maxY
+                } else if seen {
+                    if recoverUp == nil { recoverUp = !lastUp }
+                    up = recoverUp ?? startUp
                 } else {
-                    up = seen ? !startUp : startUp
+                    up = startUp
                 }
                 let window = app.windows.firstMatch.frame
                 dragSheet(up: up, slow: target.exists && window.width > window.height)
-                if seen && !target.exists { seen = false }
+                lastUp = up
                 swipes += 1
             }
         }
         reach(header, startUp: true)
         capture(app, name: "type-to-speak-accessibility-text-phrases-reached")
         XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in portrait")
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "say sheet: the keyboard went away before the quick phrases were reached in portrait")
 
         XCUIDevice.shared.orientation = .landscapeLeft
         defer {
@@ -1201,6 +1210,8 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")
 
         reach(header, startUp: true)
+        capture(app, name: "type-to-speak-accessibility-text-landscape-phrases")
         XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in landscape")
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "say sheet: the keyboard went away before the quick phrases were reached in landscape")
     }
 }
