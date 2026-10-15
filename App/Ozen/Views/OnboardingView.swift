@@ -74,6 +74,28 @@ struct OnboardingView: View {
         // awake for as long as it's on screen at all.
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+        .onChange(of: page) { _, newPage in announce(page: newPage) }
+    }
+
+    private static var pageTitles: [String] {
+        [
+            tr("אוזן", "Ozen"),
+            tr("איך זה עובד", "How it works"),
+            tr("באיזו שפה מדברים סביבך?", "Which language do people around you speak?"),
+            tr("הכנה חד-פעמית", "One-time setup"),
+            tr("המיקרופון", "The microphone"),
+            tr("כשקוראים לך", "When you’re called"),
+            tr("מוכן", "Ready"),
+        ]
+    }
+
+    private func announce(page newPage: Int) {
+        guard UIAccessibility.isVoiceOverRunning else { return }
+        let titles = Self.pageTitles
+        guard titles.indices.contains(newPage) else { return }
+        let text = OnboardingPageAnnouncement.text(page: newPage, total: titles.count, title: titles[newPage])
+        let announcement = NSAttributedString(string: text, attributes: [.accessibilitySpeechQueueAnnouncement: true])
+        UIAccessibility.post(notification: .announcement, argument: announcement)
     }
 
     // MARK: - Pages
