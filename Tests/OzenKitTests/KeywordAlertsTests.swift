@@ -657,6 +657,11 @@ struct KeywordMatchingRound2Tests {
         #expect(count("ליאור", "אור לי") == 0)
     }
 
+    @Test("A rare Chinese character from the extension planes still matches inside a sentence")
+    func chineseExtensionPlaneInsideSentence() {
+        #expect(count("\u{20BB7}\u{20BB7}", "我在\u{20BB7}\u{20BB7}家吃饭") == 1)
+    }
+
     @Test("Chinese words match inside unspaced sentences")
     func chineseInsideSentence() {
         #expect(count("奶奶", "奶奶来了") == 1)

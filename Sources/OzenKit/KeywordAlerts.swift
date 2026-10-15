@@ -289,7 +289,7 @@ public enum HebrewText {
     ]
 
     static func containsHan(_ text: String) -> Bool {
-        text.unicodeScalars.contains { (0x4E00...0x9FFF).contains($0.value) || (0x3400...0x4DBF).contains($0.value) }
+        text.unicodeScalars.contains { (0x4E00...0x9FFF).contains($0.value) || (0x3400...0x4DBF).contains($0.value) || (0x20000...0x323AF).contains($0.value) }
     }
 
     static func containsHebrew(_ text: String) -> Bool {
