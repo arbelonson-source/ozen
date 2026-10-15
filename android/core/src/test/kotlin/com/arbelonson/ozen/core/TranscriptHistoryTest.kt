@@ -530,6 +530,45 @@ class TranscriptHistoryTest {
         }
     }
 
+    private fun strays(dir: File): Triple<File, File, File> {
+        val summaries = File(dir, TranscriptHistoryStore.SUMMARIES_FOLDER_NAME).also { it.mkdirs() }
+        val oldRecord = File(dir, "private-old.tmp").also { it.writeText("words") }
+        val oldSummary = File(summaries, "private-old.tmp").also { it.writeText("words") }
+        val fresh = File(dir, "private-fresh.tmp").also { it.writeText("words") }
+        val fiveMinutesAgo = System.currentTimeMillis() - 300_000
+        oldRecord.setLastModified(fiveMinutesAgo)
+        oldSummary.setLastModified(fiveMinutesAgo)
+        return Triple(oldRecord, oldSummary, fresh)
+    }
+
+    @Test
+    fun `retention sweep removes old stray temporaries but keeps a fresh one`() {
+        withHistoryDirectory("ozen-history") { dir ->
+            val store = TranscriptHistoryStore(dir)
+            val (oldRecord, oldSummary, fresh) = strays(dir)
+
+            store.deleteConversations(inactiveBefore = 0.0)
+            assertFalse(oldRecord.exists(), "old stray left in the conversations folder")
+            assertFalse(oldSummary.exists(), "old stray left in the summaries folder")
+            assertTrue(fresh.exists(), "a write in flight must survive")
+        }
+    }
+
+    @Test
+    fun `deleting one conversation removes old stray temporaries but keeps a fresh one`() {
+        withHistoryDirectory("ozen-history") { dir ->
+            val store = TranscriptHistoryStore(dir)
+            val saved = record(startedAt = 100.0, segments = listOf(segment(text = "words")))
+            store.save(saved)
+            val (oldRecord, oldSummary, fresh) = strays(dir)
+
+            store.delete(saved.id)
+            assertFalse(oldRecord.exists(), "old stray left in the conversations folder")
+            assertFalse(oldSummary.exists(), "old stray left in the summaries folder")
+            assertTrue(fresh.exists(), "a write in flight must survive")
+        }
+    }
+
     @Test
     fun `delete all still deletes every conversation when the cache folder can't be removed`() {
         withHistoryDirectory("ozen-history") { dir ->
