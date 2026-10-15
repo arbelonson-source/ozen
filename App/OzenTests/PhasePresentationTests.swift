@@ -309,6 +309,26 @@ struct PhasePresentationTests {
             #expect(shown.action == .openEngineSettings)
         }
     }
+
+    @Test("the engine error names the language being captioned, never Hebrew for someone captioning in Spanish")
+    func engineErrorNamesTheSpokenLanguage() {
+        let why = failure(EngineUnavailability(kind: .languageNotSupportedOnDevice, detail: ""))
+        let spanish = PhasePresentation(phase: why, engine: .appleSpeech, interruptedBySystem: false, spokenLanguage: .spanish)
+        #expect(spanish.title.contains(UILanguage.spanish.spokenName))
+        #expect(!spanish.title.contains("Hebrew") && !spanish.title.contains("עברית"))
+        let hebrew = PhasePresentation(phase: why, engine: .appleSpeech, interruptedBySystem: false)
+        #expect(hebrew.title.contains(UILanguage.hebrew.spokenName))
+        #expect(hebrew.action == .openEngineSettings)
+    }
+
+    @Test("the engine descriptions only claim Hebrew for Hebrew")
+    func engineSummariesFollowTheLanguage() {
+        for kind in TranscriptionEngineKind.allCases {
+            #expect(!SettingsView.engineSummary(kind, spokenLanguage: .spanish).contains("Hebrew"), "\(kind)")
+            #expect(!SettingsView.engineSummary(kind, spokenLanguage: .spanish).contains("עברית"), "\(kind)")
+        }
+        #expect(SettingsView.engineSummary(.appleSpeech, spokenLanguage: .hebrew).contains("עברית"))
+    }
 }
 
 /// Small pieces of wording she reads on the screen.
