@@ -46,6 +46,7 @@ public final class LiveCaptionViewModel {
     @ObservationIgnored private var handledKeywordHitIDs: Set<UUID> = []
     /// Alerts whose word went out as a notification since the app last
     /// left the screen.
+    @ObservationIgnored private var batteryNoticePosted = false
     @ObservationIgnored private var keywordsNotifiedWhileAway: Set<UUID> = []
     /// Kept here, not in the caption screen: switching the app's language
     /// rebuilds that screen, and a flag of its own would take the next
@@ -418,6 +419,7 @@ public final class LiveCaptionViewModel {
         if isActive {
             keywordsNotifiedWhileAway.removeAll()
             awayCatchUp.screenReturned(at: now)
+            batteryCleared()
             // Coming back from installing or removing the Hebrew voice in
             // iOS Settings: without this, hasHebrewVoice stays whatever it
             // was at launch until the app relaunches.
@@ -563,6 +565,7 @@ public final class LiveCaptionViewModel {
     /// Posts or withdraws the "captions stopped" notification to match what
     /// the pipeline is doing now (see `StoppedCaptionsNotice`).
     private func checkCaptionsStillRunning() {
+        if !BatteryAdvisor.watches(pipeline.phase) { batteryCleared() }
         let cause = StoppedCaptionsNotice.cause(
             phase: pipeline.phase,
             retryScheduled: pipeline.isRecoveringByItself,
@@ -635,6 +638,15 @@ public final class LiveCaptionViewModel {
     public func batteryWarningRaised(_ warning: BatteryWarning) {
         guard !isAppActive, settings.notifyWhenInBackground else { return }
         postNotification?(warning.notificationContent)
+        batteryNoticePosted = true
+    }
+
+    /// The phone is charging (or captions stopped): a posted warning would
+    /// otherwise sit on the lock screen for hours.
+    public func batteryCleared() {
+        guard batteryNoticePosted else { return }
+        batteryNoticePosted = false
+        withdrawNotification?(BatteryWarning.notificationIdentifier)
     }
 
     private func alertRaised(sound alert: SoundAlert) {
@@ -788,7 +800,7 @@ public final class LiveCaptionViewModel {
         case .stopCaptions:
             return
         case .speak(let text):
-            speak(text)
+            PendingAppAction.shared.reportSpeak(speak(text))
             await waitUntilSpeechEnds()
             await start()
         case .showBigText:
@@ -844,7 +856,7 @@ public final class LiveCaptionViewModel {
             pipeline.stop()
             historySessionDidChangePhase()
         case .speak(let text):
-            speak(text)
+            PendingAppAction.shared.reportSpeak(speak(text))
         case .showBigText:
             isShowingBigText = true
         }

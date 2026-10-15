@@ -1,6 +1,7 @@
 import AppIntents
 import Foundation
 import Observation
+import OzenKit
 
 // "Hey Siri, start captions in Ozen" — the whole app is one screen, so the
 // intents just open it and leave a note for the view to act on. They
@@ -35,10 +36,35 @@ struct SpeakIntent: AppIntent {
         Summary("להגיד \(\.$text)")
     }
 
+    static func cleaned(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     @MainActor
     func perform() async throws -> some IntentResult {
-        PendingAppAction.shared.post(.speak(text))
+        guard let cleaned = Self.cleaned(text) else { throw SpeakIntentError.nothingToSay }
+        PendingAppAction.shared.post(.speak(cleaned))
+        if await PendingAppAction.shared.speakResult(waitingUpTo: .seconds(8)) == false {
+            throw SpeakIntentError.noVoice
+        }
         return .result()
+    }
+}
+
+enum SpeakIntentError: Error, CustomLocalizedStringResourceConvertible {
+    case nothingToSay
+    case noVoice
+
+    var localizedStringResource: LocalizedStringResource {
+        let message: String
+        switch self {
+        case .nothingToSay:
+            message = tr("אין מה להגיד. כתבו משפט.", "There is nothing to say. Write a sentence.")
+        case .noVoice:
+            message = tr("אין קול מותקן לשפה הזו, אז לא נאמר דבר.", "No voice for this language is installed, so nothing was said.")
+        }
+        return "\(message)"
     }
 }
 
@@ -117,7 +143,22 @@ final class PendingAppAction {
     /// triggers `onChange`.
     private(set) var serial = 0
 
+    private(set) var lastSpeakWorked: Bool?
+
+    func reportSpeak(_ worked: Bool) {
+        lastSpeakWorked = worked
+    }
+
+    func speakResult(waitingUpTo limit: Duration) async -> Bool? {
+        let deadline = ContinuousClock.now + limit
+        while lastSpeakWorked == nil, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        return lastSpeakWorked
+    }
+
     func post(_ action: AppAction) {
+        if case .speak = action { lastSpeakWorked = nil }
         actions.append(action)
         serial += 1
     }
