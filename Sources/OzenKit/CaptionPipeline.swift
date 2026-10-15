@@ -175,6 +175,15 @@ public final class CaptionPipeline {
     /// captions stop.
     private var recentAudio = RecentAudio(seconds: 30, sampleRate: 16_000)
     public var recentAudioSamples: [Float] { recentAudio.samples() }
+    private var sessionAudioStart = 0
+    private var lastFinalHeard: (position: Int, text: String)?
+    private var pendingReplay: [Float] = []
+    private var pendingReplayDedupe: [String] = []
+    private var replayDedupe: [String] = []
+    private var replaySuppressed: Set<UUID> = []
+    private var replayTask: Task<Void, Never>?
+    static let replayMarginSeconds = 2.0
+    static let replayMaxSeconds = 20.0
     private var homeServerRecheck: Task<Void, Never>?
     private var cloudRecheck: Task<Void, Never>?
     /// The room the last download refused for want of space needed, so a
@@ -403,6 +412,13 @@ public final class CaptionPipeline {
         stopListeningForSounds()
         let run = UUID()
         runID = run
+        sessionAudioStart = recentAudio.totalAppended
+        lastFinalHeard = nil
+        let replay = pendingReplay
+        replayDedupe = pendingReplayDedupe
+        replaySuppressed = []
+        pendingReplay = []
+        pendingReplayDedupe = []
         activeSettings = settings
         isCoveringForCloud = nextStartCoversCloud
         nextStartCoversCloud = false
@@ -600,7 +616,8 @@ public final class CaptionPipeline {
             }
         }
         fanOut = fan
-        let tokens = engine.stream(languageCode: settings.languageCode, audio: fan.outputs[0])
+        let engineAudio = replay.isEmpty ? fan.outputs[0] : replaying(replay, then: fan.outputs[0])
+        let tokens = engine.stream(languageCode: settings.languageCode, audio: engineAudio)
         let embedderAudio = fan.outputs[1]
         let soundObservations = soundDetector.map { $0.observations(audio: fan.outputs[2]) }
 
@@ -678,6 +695,8 @@ public final class CaptionPipeline {
     public func stop() {
         stopCount += 1
         recentAudio.clear()
+        pendingReplay = []
+        pendingReplayDedupe = []
         homeServerRecheck?.cancel()
         homeServerRecheck = nil
         cloudRecheck?.cancel()
@@ -1578,6 +1597,10 @@ public final class CaptionPipeline {
         // ivrit.ai's model starts some lines with an invisible direction
         // mark; kept, it would travel into saved conversations and search.
         var cleaned = HebrewText.removingDirectionMarks(incoming.text)
+        if isRepeatOfReplayedLine(incoming, cleaned: cleaned) { return }
+        if incoming.isFinal, !cleaned.isEmpty, replayDedupe.isEmpty {
+            lastFinalHeard = (recentAudio.totalAppended, cleaned)
+        }
         incomingText[incoming.utteranceID] = incoming.isFinal ? nil : cleaned
         // A sentence cleared from the screen mid-way keeps arriving with all
         // of its words so far. Dropping it whole lost everything said after
@@ -1934,6 +1957,9 @@ public final class CaptionPipeline {
             return
         }
         logEvent(.note("cloud unavailable, the phone's own model took over"))
+        if failure.engineUnavailability?.kind == .homeServerUnreachable {
+            prepareReplay()
+        }
         nextStartCoversCloud = true
         coverReason = failure.engineUnavailability?.kind
         coveredSettings = activeSettings
@@ -1956,6 +1982,82 @@ public final class CaptionPipeline {
             cloudSwitchedBackAt = nil
             recheckCloud()
         }
+    }
+
+    /// What was said while the home computer was already gone, but before
+    /// the phone gave up on it, never got a caption: the phone's model hears
+    /// it first, then the live audio. Only the speech after the last line the
+    /// home computer finished, a little before it so a half-heard word is
+    /// whole, and never more than `replayMaxSeconds`.
+    private func prepareReplay() {
+        pendingReplay = []
+        pendingReplayDedupe = []
+        let rate = Self.sampleRate
+        var begin = sessionAudioStart
+        if let heard = lastFinalHeard {
+            begin = max(begin, heard.position - Int(Self.replayMarginSeconds * rate))
+            pendingReplayDedupe = Self.comparableWords(heard.text)
+        }
+        let tail = recentAudio.tail(since: begin, maxSamples: Int(Self.replayMaxSeconds * rate))
+        var detector = EnergyVoiceDetector()
+        var heardSpeech = false
+        var index = 0
+        let step = Int(rate / 10)
+        while index < tail.count {
+            let end = min(index + step, tail.count)
+            if detector.isSpeech(Array(tail[index..<end])) { heardSpeech = true }
+            index = end
+        }
+        guard heardSpeech else {
+            pendingReplayDedupe = []
+            return
+        }
+        pendingReplay = tail
+    }
+
+    private func replaying(_ replay: [Float], then live: AsyncStream<[Float]>) -> AsyncStream<[Float]> {
+        let (stream, continuation) = AsyncStream<[Float]>.makeStream(bufferingPolicy: .unbounded)
+        replayTask?.cancel()
+        let task = Task {
+            var index = 0
+            let step = Int(Self.sampleRate / 5)
+            while index < replay.count, !Task.isCancelled {
+                let end = min(index + step, replay.count)
+                continuation.yield(Array(replay[index..<end]))
+                index = end
+            }
+            for await chunk in live {
+                if Task.isCancelled { break }
+                continuation.yield(chunk)
+            }
+            continuation.finish()
+        }
+        replayTask = task
+        continuation.onTermination = { _ in task.cancel() }
+        return stream
+    }
+
+    private func isRepeatOfReplayedLine(_ token: TranscriptToken, cleaned: String) -> Bool {
+        guard !replayDedupe.isEmpty else { return false }
+        let words = Self.comparableWords(cleaned)
+        var repeated = replaySuppressed.contains(token.utteranceID)
+        if !repeated, !words.isEmpty {
+            let known = replayDedupe
+            repeated = words == known
+                || (words.count <= known.count && (known.starts(with: words) || known.suffix(words.count).elementsEqual(words)))
+                || (known.count >= 3 && words.starts(with: known))
+        }
+        if repeated {
+            replaySuppressed.insert(token.utteranceID)
+        } else if !words.isEmpty {
+            replayDedupe = []
+            replaySuppressed = []
+        }
+        if token.isFinal, repeated {
+            replayDedupe = []
+            replaySuppressed = []
+        }
+        return repeated
     }
 
     /// See `homeServerRecheckSeconds`. Goes back to the chosen settings
@@ -2371,6 +2473,8 @@ public final class CaptionPipeline {
         recentSpeechCluster = nil
         streamTask?.cancel()
         streamTask = nil
+        replayTask?.cancel()
+        replayTask = nil
         embeddingTask?.cancel()
         embeddingTask = nil
         soundTask?.cancel()
