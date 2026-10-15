@@ -476,9 +476,19 @@ struct SavedSpeakerTests {
         #expect(AppSettings.displayedQuickPhrases(stored: [], language: .english).isEmpty)
     }
 
+    @Test("the first phrase says the speaker did not understand, apart from the ask to repeat")
+    func firstPhraseIsNotTheRepeatRequest() {
+        for language in UILanguage.allCases {
+            let phrases = AppSettings.defaultQuickPhrases(for: language)
+            #expect(phrases[0] != phrases[1], "\(language)")
+        }
+        let russian = AppSettings.defaultQuickPhrases(for: .russian)
+        #expect(!russian[0].contains("повторите"))
+    }
+
     @Test("no ready-made phrase speaks in the feminine in any language")
     func quickPhrasesAreGenderNeutral() {
-        let markers = ["קוראת", "поняла", "зрозуміла", "समझी", "रही हूँ", "Obrigada"]
+        let markers = ["קוראת", "поняла", "зрозуміла", "समझी", "रही हूँ", "रहे हैं", "Obrigada"]
         for language in UILanguage.allCases {
             for phrase in AppSettings.defaultQuickPhrases(for: language) {
                 for marker in markers {

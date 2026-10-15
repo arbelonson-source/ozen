@@ -389,7 +389,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// they suit any speaker.
     static let otherQuickPhrases: [UILanguage: [String]] = [
         .arabic: ["لحظة، لم أفهم", "ممكن تعيد ذلك؟", "أبطأ من فضلك", "تكلّم أقرب إلى الهاتف من فضلك", "أنا أقرأ الترجمة النصية، أعطني لحظة", "نعم", "لا", "شكرًا", "لنتكلم واحدًا تلو الآخر"],
-        .russian: ["Подождите, повторите, пожалуйста", "Можете повторить?", "Помедленнее, пожалуйста", "Говорите ближе к телефону, пожалуйста", "Я читаю субтитры, дайте мне минутку", "Да", "Нет", "Спасибо", "Давайте говорить по одному"],
+        .russian: ["Подождите, мне непонятно", "Можете повторить?", "Помедленнее, пожалуйста", "Говорите ближе к телефону, пожалуйста", "Я читаю субтитры, дайте мне минутку", "Да", "Нет", "Спасибо", "Давайте говорить по одному"],
         .amharic: ["ይቅርታ፣ አልገባኝም", "እባክዎ እንደገና ይድገሙት", "እባክዎ ቀስ ብለው ይናገሩ", "እባክዎ ወደ ስልኩ ቀርበው ይናገሩ", "ካፕሽኑን እያነበብኩ ነው፣ ትንሽ ይጠብቁኝ", "አዎ", "አይ", "አመሰግናለሁ", "አንድ በአንድ እንነጋገር"],
         .french: ["Attendez, je n’ai pas compris", "Vous pouvez répéter ?", "Plus lentement, s’il vous plaît", "Parlez plus près du téléphone, s’il vous plaît", "Je lis les sous-titres, laissez-moi un instant", "Oui", "Non", "Merci", "Parlons chacun à notre tour"],
         .spanish: ["Espera, no entendí", "¿Puedes repetirlo?", "Más despacio, por favor", "Habla más cerca del teléfono, por favor", "Estoy leyendo los subtítulos, dame un momento", "Sí", "No", "Gracias", "Hablemos de uno en uno"],
@@ -397,7 +397,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         .german: ["Moment, das habe ich nicht verstanden", "Können Sie das wiederholen?", "Langsamer, bitte", "Bitte sprechen Sie näher am Telefon", "Ich lese die Untertitel, einen Moment bitte", "Ja", "Nein", "Danke", "Bitte nacheinander sprechen"],
         .portuguese: ["Espere, não percebi", "Pode repetir?", "Mais devagar, por favor", "Fale mais perto do telemóvel, por favor", "Estou a ler as legendas, dê-me um momento", "Sim", "Não", "Agradeço", "Vamos falar um de cada vez"],
         .chineseSimplified: ["等一下，我没听懂", "可以再说一遍吗？", "请说慢一点", "请靠近手机说话", "我在看字幕，请稍等", "是的", "不是", "谢谢", "我们一个一个说吧"],
-        .hindi: ["रुकिए, समझ नहीं आया", "क्या आप दोबारा कह सकते हैं?", "कृपया धीरे बोलिए", "कृपया फ़ोन के पास आकर बोलिए", "कैप्शन देख रहे हैं, एक पल दीजिए", "हाँ", "नहीं", "धन्यवाद", "चलिए, एक-एक करके बोलें"],
+        .hindi: ["रुकिए, समझ नहीं आया", "क्या आप दोबारा कह सकते हैं?", "कृपया धीरे बोलिए", "कृपया फ़ोन के पास आकर बोलिए", "कैप्शन पढ़ने के लिए एक पल दीजिए", "हाँ", "नहीं", "धन्यवाद", "चलिए, एक-एक करके बोलें"],
     ]
 
     private static let legacyQuickPhrases: [[String]] = [
