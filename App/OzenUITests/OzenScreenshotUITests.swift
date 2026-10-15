@@ -1121,13 +1121,15 @@ final class OzenScreenshotUITests: XCTestCase {
         // control, which is above the keyboard and never on the text
         // field: at the largest text size the field sits right under the
         // bar, and a drag that starts on it moves the cursor, not the sheet.
+        // A slow drag that holds at the end leaves no flick behind, which
+        // in landscape threw the phrases past the top in one swipe.
         func dragSheet(up: Bool) {
             let bar = app.navigationBars.firstMatch.frame
             let window = app.windows.firstMatch.frame
             let startY = (bar.maxY + 12) / window.height
             let endY = (bar.maxY + 12 + (up ? -50 : 50)) / window.height
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
-                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY)))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY)), withVelocity: .slow, thenHoldForDuration: 0.4)
         }
         var swipes = 0
         while !(header.exists && header.isHittable) && swipes < 40 {
