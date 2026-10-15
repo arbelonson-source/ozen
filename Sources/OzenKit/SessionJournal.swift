@@ -67,6 +67,12 @@ public final class SessionJournal: @unchecked Sendable {
         }
     }
 
+    /// Writes what is buffered now, for the moment iOS may end the app
+    /// before the delayed write would run.
+    public func flush() {
+        Self.queue.sync { Self.flush(fileURL) }
+    }
+
     /// Everything kept, oldest first. Flushes anything buffered first, so
     /// this always sees every line already asked to be appended; lines a
     /// full phone refused are listed from where they wait, or the report

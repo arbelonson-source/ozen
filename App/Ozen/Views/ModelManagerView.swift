@@ -71,7 +71,7 @@ struct ModelManagerView: View {
             presenting: pendingSwitch
         ) { option in
             Button(tr("להוריד ולעבור", "Download and switch")) {
-                Task { await viewModel.setWhisperModel(option.variant) }
+                Task { await viewModel.chooseModel(option.variant) }
             }
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
         } message: { option in
