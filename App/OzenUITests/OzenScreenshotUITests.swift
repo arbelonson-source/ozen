@@ -1137,6 +1137,11 @@ final class OzenScreenshotUITests: XCTestCase {
 
         XCUIDevice.shared.orientation = .landscapeLeft
         defer { XCUIDevice.shared.orientation = .portrait }
+        let rotated = NSPredicate { _, _ in
+            let frame = app.windows.firstMatch.frame
+            return frame.width > frame.height
+        }
+        wait(for: [XCTNSPredicateExpectation(predicate: rotated, object: nil)], timeout: 10)
         let play = app.buttons["להשמיע"].firstMatch
         var tries = 0
         while !(play.exists && play.isHittable) && tries < 12 {
@@ -1145,5 +1150,12 @@ final class OzenScreenshotUITests: XCTestCase {
         }
         capture(app, name: "type-to-speak-accessibility-text-landscape")
         XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")
+
+        swipes = 0
+        while !(header.exists && header.isHittable) && swipes < 12 {
+            dragSheet(up: true)
+            swipes += 1
+        }
+        XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in landscape")
     }
 }
