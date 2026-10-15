@@ -101,7 +101,7 @@ object VocabularyHints {
             .replace("\"", "ʺ")
             .replace("“", "ʺ")
             .replace("”", "ʺ")
-        return HebrewText.normalize(marked).lowercase(Locale.ROOT)
+        return HebrewText.normalizeKeepingAccents(marked).lowercase(Locale.ROOT)
     }
 
     /**

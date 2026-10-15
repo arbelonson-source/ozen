@@ -433,6 +433,11 @@ class CaptionSession(
         pipeline.pause()
     }
 
+    fun stopFromNotification() {
+        replies.userTookControl()
+        pipeline.stopFromNotification()
+    }
+
     /** Settings' "Clear captions from the screen": the conversation so far is saved first. */
     fun clearCaptions() {
         dismissRecentConversation()
