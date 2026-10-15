@@ -24,8 +24,15 @@ class WhisperAudioContextTest {
     }
 
     @Test
-    fun `a finished line keeps the full window, where the shorter one got more words wrong`() {
-        assertEquals(1_500, WhisperAudioContext.frames(8 * 16_000, isFinal = true))
-        assertEquals(1_500, WhisperAudioContext.frames(321, isFinal = true))
+    fun `a finished line gets its own frames and a five second margin`() {
+        assertEquals(650, WhisperAudioContext.frames(8 * 16_000, isFinal = true))
+        assertEquals(252, WhisperAudioContext.frames(321, isFinal = true))
+        assertEquals(400, WhisperAudioContext.frames(3 * 16_000, isFinal = true))
+    }
+
+    @Test
+    fun `a finished line near thirty seconds gets the full window`() {
+        assertEquals(1_500, WhisperAudioContext.frames(25 * 16_000, isFinal = true))
+        assertEquals(1_500, WhisperAudioContext.frames(28 * 16_000, isFinal = true))
     }
 }
