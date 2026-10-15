@@ -1,6 +1,7 @@
 package com.arbelonson.ozen.core
 
 import kotlin.math.max
+import kotlin.math.min
 
 enum class DeviceHeat(val rawValue: Int) {
     Nominal(0),
@@ -11,6 +12,7 @@ enum class DeviceHeat(val rawValue: Int) {
 
 object InferenceCadence {
     const val BASE_SECONDS = 0.6
+    const val MAX_REST_SECONDS = 1.5
 
     fun secondsBetweenLivePasses(heat: DeviceHeat, lowPowerMode: Boolean, lastPassSeconds: Double?): Double {
         var interval = when (heat) {
@@ -22,7 +24,7 @@ object InferenceCadence {
             interval = max(interval, 1.2)
         }
         if (lastPassSeconds != null && lastPassSeconds.isFinite() && lastPassSeconds > 0) {
-            interval = max(interval, lastPassSeconds * 2)
+            interval = max(interval, min(lastPassSeconds * 2, MAX_REST_SECONDS))
         }
         return interval
     }
