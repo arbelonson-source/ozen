@@ -1,6 +1,7 @@
 package com.arbelonson.ozen.core
 
 import kotlin.math.max
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -17,6 +18,7 @@ class FlowAudioFanOut(
     count: Int,
     bufferLimit: Int = AudioFanOut.DEFAULT_BUFFER_LIMIT,
     onGlitch: () -> Unit = {},
+    onFailure: (Throwable) -> Unit = {},
 ) {
     val outputs: List<Flow<FloatArray>>
     private val pump: Job
@@ -27,6 +29,7 @@ class FlowAudioFanOut(
         }
         outputs = channels.map { it.receiveAsFlow() }
         pump = scope.launch(start = CoroutineStart.ATOMIC) {
+            var failure: Exception? = null
             try {
                 source.collect { chunk ->
                     ensureActive()
@@ -35,9 +38,14 @@ class FlowAudioFanOut(
                     if (glitched) onGlitch()
                     for (channel in channels) channel.trySend(forwarded)
                 }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                failure = error
             } finally {
                 for (channel in channels) channel.close()
             }
+            failure?.let(onFailure)
         }
     }
 

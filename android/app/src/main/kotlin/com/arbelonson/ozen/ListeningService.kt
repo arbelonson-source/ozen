@@ -37,7 +37,7 @@ class ListeningService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_PAUSE) {
-            captions.pause()
+            captions.stopFromNotification()
             finish()
             return START_NOT_STICKY
         }
@@ -58,7 +58,7 @@ class ListeningService : Service() {
         showingOnLockScreen = false
         scope.cancel()
         val phase = captions.pipeline.phase
-        if (phase != PipelinePhase.Idle && phase != PipelinePhase.Paused) captions.pause()
+        if (phase != PipelinePhase.Idle && phase != PipelinePhase.Paused) captions.stopFromNotification()
         super.onDestroy()
     }
 
@@ -142,7 +142,7 @@ class ListeningService : Service() {
     companion object {
         const val CHANNEL_ID = "listening"
         private const val NOTIFICATION_ID = 1
-        private const val ACTION_PAUSE = "com.arbelonson.ozen.PAUSE"
+        internal const val ACTION_PAUSE = "com.arbelonson.ozen.PAUSE"
         private const val KEEP_ALIVE_MILLISECONDS = 30_000L
 
         fun start(context: Context) = context.startForegroundService(Intent(context, ListeningService::class.java))
@@ -166,10 +166,14 @@ class ListeningService : Service() {
             val open = PendingIntent.getActivity(
                 context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
             )
+            val stop = PendingIntent.getService(
+                context, 1, Intent(context, ListeningService::class.java).setAction(ACTION_PAUSE), PendingIntent.FLAG_IMMUTABLE,
+            )
             val builder = Notification.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_listening)
                 .setContentTitle(content.status)
                 .setContentIntent(open)
+                .addAction(Notification.Action.Builder(null, tr("עצירה", "Stop"), stop).build())
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)

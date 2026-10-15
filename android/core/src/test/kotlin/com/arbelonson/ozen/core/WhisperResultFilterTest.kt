@@ -240,6 +240,92 @@ class WhisperResultFilterTest {
         assertTrue(kept("תודה רבה שבאתם"))
         assertTrue(kept("הוא נרשם לערוץ של הנכד"))
     }
+
+    @Test
+    fun `a native Amara credit line is dropped at a confident score`() {
+        val lines = mapOf(
+            "de" to "Untertitel der Amara.org-Community",
+            "fr" to "Sous-titres réalisés para la communauté d'Amara.org",
+            "es" to "Subtítulos realizados por la comunidad de Amara.org",
+            "pt" to "Legendas pela comunidade Amara.org",
+            "ru" to "Субтитры сделаны сообществом Amara.org",
+            "uk" to "Субтитри створені спільнотою Amara.org",
+            "zh" to "字幕由Amara.org社群提供",
+            "ar" to "ترجمة نانسي قنقر",
+        )
+        for ((language, line) in lines) {
+            assertFalse(filter.forSpeech(language).accepts(segment(line, logprob = -0.2f)), language)
+        }
+    }
+
+    @Test
+    fun `other stock credits and outros are dropped in their language`() {
+        assertFalse(filter.forSpeech("de").accepts(segment("Untertitel im Auftrag des ZDF für funk, 2017", logprob = -0.2f)))
+        assertFalse(filter.forSpeech("ru").accepts(segment("Субтитры сделал DimaTorzok", logprob = -0.2f)))
+        assertFalse(filter.forSpeech("zh").accepts(segment("请不吝点赞 订阅 转发 打赏支持明镜与点点栏目", logprob = -0.2f)))
+        assertFalse(filter.forSpeech("ar").accepts(segment("اشتركوا في القناة", logprob = -0.2f)))
+    }
+
+    @Test
+    fun `a plain thank you is dropped only when the model was unsure`() {
+        val german = filter.forSpeech("de")
+        assertTrue(german.accepts(segment("Vielen Dank", noSpeech = 0.05f, logprob = -0.2f)))
+        assertFalse(german.accepts(segment("Vielen Dank", noSpeech = 0.05f, logprob = -1.2f)))
+        assertFalse(german.accepts(segment("Danke", noSpeech = 0.4f, logprob = -0.2f)))
+        assertTrue(filter.forSpeech("fr").accepts(segment("Merci", logprob = -0.2f)))
+        assertFalse(filter.forSpeech("fr").accepts(segment("Merci", logprob = -1.2f)))
+        assertTrue(filter.forSpeech("es").accepts(segment("Gracias", logprob = -0.2f)))
+        assertFalse(filter.forSpeech("es").accepts(segment("Gracias", logprob = -1.2f)))
+        assertFalse(filter.forSpeech("ru").accepts(segment("Спасибо", logprob = -1.2f)))
+        assertFalse(filter.forSpeech("zh").accepts(segment("谢谢", logprob = -1.2f)))
+        assertFalse(filter.forSpeech("ar").accepts(segment("شكرا", logprob = -1.2f)))
+        assertFalse(filter.forSpeech("pt").accepts(segment("Obrigado", logprob = -1.2f)))
+    }
+
+    @Test
+    fun `a German farewell and everyday subtitle talk are kept at a confident score`() {
+        val german = filter.forSpeech("de")
+        assertTrue(german.accepts(segment("Bis zum nächsten Mal", logprob = -0.2f)))
+        assertFalse(german.accepts(segment("Bis zum nächsten Mal", logprob = -1.2f)))
+        assertTrue(german.accepts(segment("Untertitel der Sendung fehlen", logprob = -0.2f)))
+        assertTrue(german.accepts(segment("Untertitel von Filmen helfen mir", logprob = -0.2f)))
+        assertTrue(german.accepts(segment("Untertitelung ist wichtig", logprob = -0.2f)))
+        assertFalse(german.accepts(segment("Untertitel der Amara.org-Community 2020", logprob = -0.2f)))
+        assertFalse(german.accepts(segment("Untertitelung des ZDF, 2020", logprob = -0.2f)))
+    }
+
+    @Test
+    fun `a Spanish request for subtitles is kept at a confident score`() {
+        val spanish = filter.forSpeech("es")
+        assertTrue(spanish.accepts(segment("Subtítulos en español, por favor", logprob = -0.2f)))
+        assertFalse(spanish.accepts(segment("Subtítulos en español de España", logprob = -0.2f)))
+    }
+
+    @Test
+    fun `ordinary sentences with a thank you in them are kept`() {
+        assertTrue(filter.forSpeech("de").accepts(segment("Danke, dass du gekommen bist", logprob = -1.2f)))
+        assertTrue(filter.forSpeech("fr").accepts(segment("Merci pour ton aide hier soir", logprob = -1.2f)))
+        assertTrue(filter.forSpeech("es").accepts(segment("Gracias por venir a la fiesta", logprob = -1.2f)))
+    }
+
+    @Test
+    fun `the language lists do not leak into Hebrew or English`() {
+        val german = "Untertitel der Amara.org-Community"
+        assertTrue(filter.forSpeech("he").accepts(segment(german, logprob = -0.2f)))
+        assertTrue(filter.forSpeech("en").accepts(segment(german, logprob = -0.2f)))
+        assertTrue(filter.forSpeech("en").accepts(segment("Danke", logprob = -1.2f)))
+        assertTrue(filter.forSpeech("he").accepts(segment("Gracias", logprob = -1.2f)))
+        assertFalse(filter.forSpeech("en").accepts(segment("Subtitles by the Amara.org community", logprob = -0.2f)))
+        assertFalse(filter.forSpeech("he").accepts(segment("תודה שצפיתם", logprob = -0.2f)))
+    }
+
+    @Test
+    fun `Arabic vowel marks and tatweel are ignored when comparing`() {
+        assertEquals("ترجمة نانسي قنقر", WhisperResultFilter.normalize("تَرْجَمَةُ نَانْسِي قَنْقَر"))
+        assertEquals("شكرا", WhisperResultFilter.normalize("شـــكـــرًا"))
+        assertEquals("ترجمة", WhisperResultFilter.normalize("تــرجمــة"))
+        assertFalse(filter.forSpeech("ar").accepts(segment("تَرْجَمَةُ نَانْسِي قَنْقَر", logprob = -0.2f)))
+    }
 }
 
 class WhisperRepeatCollapseTest {
