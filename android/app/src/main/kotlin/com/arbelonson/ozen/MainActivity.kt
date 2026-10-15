@@ -829,7 +829,7 @@ private fun CaptionScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = bannerRoom)
-                        .then(if (bannersOverflow) Modifier.verticalScroll(bannerScroll) else Modifier)
+                        .then(if (bannersOverflow) Modifier.fadeWhenMoreBelow(bannerScroll).verticalScroll(bannerScroll) else Modifier)
                         .onSizeChanged { bannersOverflow = it.height >= bannerRoomPixels - 1 },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
@@ -942,7 +942,7 @@ private fun CaptionScreen(
             }
         }
         AnimatedVisibility(visible = !hidden) {
-            val microphone = state.selectedInput?.let(::inputShortName) ?: tr("מיקרופון", "Microphone")
+            val microphone = state.selectedInput?.let(::inputShortName)?.takeIf { it.length <= 12 } ?: tr("מיקרופון", "Microphone")
             val choose = tr("בחירת מיקרופון", "Choose microphone")
             val say = if (state.speaking) tr("עצירת הדיבור", "Stop speaking") else tr("להגיד משהו בקול", "Say something out loud")
             var askingToClear by remember { mutableStateOf(false) }
@@ -1689,11 +1689,15 @@ private fun StatusLine(status: PhasePresentation, look: CaptionTheme, live: Bool
             } else if (live) {
                 LiveDot(OzenColors.statusGood(dark = !look.isLight))
             }
-            Text(text = status.title, color = colors.onSurface, style = MaterialTheme.typography.labelLarge)
-            status.detail?.let { detail ->
+            val inline = status.detail != null && !status.isBusy && status.progress == null
+            Text(text = status.title, color = colors.onSurface, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f, fill = false))
+            if (inline) {
                 Text(text = "·", color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelLarge, modifier = Modifier.clearAndSetSemantics {})
-                Text(text = detail, color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f, fill = false))
+                Text(text = status.detail.orEmpty(), color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f, fill = false))
             }
+        }
+        if (status.detail != null && (status.isBusy || status.progress != null)) {
+            Text(text = status.detail.orEmpty(), color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
         }
         status.progress?.let { progress ->
             LinearProgressIndicator(progress = { progress.toFloat() }, color = colors.primary, trackColor = colors.outlineVariant, modifier = Modifier.padding(top = 8.dp).widthIn(max = 200.dp).clearAndSetSemantics {})
