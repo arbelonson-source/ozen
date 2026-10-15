@@ -152,6 +152,9 @@ struct PhasePresentationTests {
         #expect(noKey.action == .openEngineSettings && noKey.tint == .green)
         #expect(noCredit.detail?.contains("התקציב") == true)
         #expect(noCredit.action == .openEngineSettings && noCredit.tint == .green)
+        let wrongLanguage = covering(.cloudLanguageNotCovered)
+        #expect(wrongLanguage.detail?.contains("שירות אחר") == true)
+        #expect(wrongLanguage.action == .openEngineSettings && wrongLanguage.tint == .green)
         // No internet still just says so and lets her keep going: nothing
         // in Settings would fix a dropped connection.
         #expect(offline.action == .pause)

@@ -108,6 +108,9 @@ struct PhasePresentation {
         case .listening where coveringForCloud && coveredEngine == .cloud && coverReason == .cloudOutOfCredit:
             self.init(title: tr("מקשיב", "Listening"), detail: tr("נגמר התקציב לתמלול בענן, ממשיך עם הזיהוי שבטלפון · בקשו עזרה ממי שהתקין את הטלפון", "Cloud transcription’s budget ran out, carrying on with the phone’s own · Ask whoever set up the phone for help"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
 
+        case .listening where coveringForCloud && coveredEngine == .cloud && coverReason == .cloudLanguageNotCovered:
+            self.init(title: tr("מקשיב", "Listening"), detail: tr("השירות לא מתמלל את השפה הזו, ממשיך עם הזיהוי שבטלפון · בחרו שירות אחר בהגדרות", "This service can’t caption this language, carrying on with the phone’s own · Choose another service in Settings"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
+
         case .listening where coveringForCloud:
             // Still captioning, so still green: the words keep coming, only
             // from the phone's own model while the cloud can't be used.
