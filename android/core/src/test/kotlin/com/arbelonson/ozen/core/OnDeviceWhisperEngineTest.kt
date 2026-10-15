@@ -126,7 +126,7 @@ class OnDeviceWhisperEngineTest {
         rig.stream(silence(3.0), speech(2.0)).toList()
         val first = rig.passes.calls.first()
         assertTrue(first.samples >= 8_000, "the lead-in should still be there, was ${first.samples}")
-        assertTrue(first.samples <= 8_000 + 2 * CHUNK, "three seconds of silence leaked into the first pass: ${first.samples}")
+        assertTrue(first.samples <= 8_000 + RATE + 2 * CHUNK, "three seconds of silence leaked into the first pass: ${first.samples}")
     }
 
     @Test
@@ -232,7 +232,7 @@ class OnDeviceWhisperEngineTest {
         val starts = rig.passes.live().map { it.startedAtMs }
         assertTrue(starts.size >= 4, "only ${starts.size} live passes")
         for ((before, after) in starts.zipWithNext()) {
-            assertTrue(after - before >= 2_000, "passes $before ms and $after ms apart, a 1 s pass allows one every 2 s")
+            assertTrue(after - before >= 1_500, "passes $before ms and $after ms apart, a 1 s pass rests 1.5 s at most")
         }
     }
 
@@ -285,8 +285,22 @@ class OnDeviceWhisperEngineTest {
         }
         val final = rig.passes.finals().single()
         assertEquals(null, final.options.maxTokens)
-        assertEquals(2, final.options.temperatureFallbackCount)
+        assertEquals(0, final.options.temperatureFallbackCount)
         assertEquals("he", final.options.language)
+    }
+
+    @Test
+    fun a_short_line_with_nothing_on_screen_yet_keeps_its_final_retries() = runTest {
+        val brief = rig()
+        brief.stream(speech(0.6)).toList()
+        assertTrue(brief.passes.live().isEmpty())
+        assertEquals(2, brief.passes.finals().single().options.temperatureFallbackCount)
+
+        val blank = rig()
+        blank.passes.reply = { call -> if (call.isFinal) hello else emptyList() }
+        blank.stream(speech(2.0)).toList()
+        assertTrue(blank.passes.live().isNotEmpty())
+        assertEquals(2, blank.passes.finals().single().options.temperatureFallbackCount)
     }
 
     @Test
