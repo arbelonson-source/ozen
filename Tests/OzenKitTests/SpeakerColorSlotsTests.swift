@@ -54,4 +54,10 @@ struct SpeakerColorSlotsTests {
         #expect(SpeakerColorSlots.speaker(clusterID: 3, name: generic) == .stranger(3))
         #expect(SpeakerColorSlots.speaker(clusterID: nil, name: nil) == nil)
     }
+
+    @Test("outside any screen a stranger keeps its id-based slot and a name its hashed one")
+    func aloneSlots() {
+        #expect(SpeakerColorSlots.aloneSlot(for: .stranger(7)) == 2)
+        #expect(SpeakerColorSlots.aloneSlot(for: .named("Mom")) == 2)
+    }
 }

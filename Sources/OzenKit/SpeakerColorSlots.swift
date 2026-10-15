@@ -38,6 +38,13 @@ public struct SpeakerColorSlots: Sendable, Equatable {
         slots[speaker] ?? Self.slot(for: speaker, taken: Set(slots.values))
     }
 
+    public static func aloneSlot(for speaker: Speaker) -> Int {
+        switch speaker {
+        case .named(let name): return stableIndex(name, count: slotCount)
+        case .stranger(let id): return ((id % slotCount) + slotCount) % slotCount
+        }
+    }
+
     private static func slot(for speaker: Speaker, taken: Set<Int>) -> Int {
         let count = slotCount
         let preferred: Int

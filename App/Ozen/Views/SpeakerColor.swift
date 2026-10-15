@@ -28,7 +28,7 @@ enum SpeakerColor {
         let grey: Color = scheme == .light ? Color(white: 0.4) : .gray
         guard let speaker = SpeakerColorSlots.speaker(clusterID: id, name: speakerName) else { return grey }
         let colors = scheme == .light ? deepPalette : palette
-        let slot = (slots ?? SpeakerColorSlots([speaker])).slot(for: speaker)
+        let slot = slots?.slot(for: speaker) ?? SpeakerColorSlots.aloneSlot(for: speaker)
         return colors[slot % colors.count]
     }
 }
