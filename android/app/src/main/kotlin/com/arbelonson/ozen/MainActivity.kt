@@ -941,11 +941,11 @@ private fun CaptionScreen(
                 }
             }
         }
+        var askingToClear by remember { mutableStateOf(false) }
         AnimatedVisibility(visible = !hidden) {
             val microphone = state.selectedInput?.let(::inputShortName)?.takeIf { it.length <= 12 } ?: tr("מיקרופון", "Microphone")
             val choose = tr("בחירת מיקרופון", "Choose microphone")
             val say = if (state.speaking) tr("עצירת הדיבור", "Stop speaking") else tr("להגיד משהו בקול", "Say something out loud")
-            var askingToClear by remember { mutableStateOf(false) }
             // The labels grow with the phone's text size only so far: past that
             // the five would break a few letters to a line.
             val density = LocalDensity.current
@@ -980,18 +980,18 @@ private fun CaptionScreen(
                     }
                 }
             }
-            if (askingToClear) {
-                val warning = remember { clearWarning() }
-                AlertDialog(
-                    onDismissRequest = { askingToClear = false },
-                    title = { Text(tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?")) },
-                    text = warning?.let { { Text(it) } },
-                    confirmButton = {
-                        TextButton(onClick = { askingToClear = false; onClear() }) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
-                    },
-                    dismissButton = { TextButton(onClick = { askingToClear = false }) { Text(tr("ביטול", "Cancel")) } },
-                )
-            }
+        }
+        if (askingToClear) {
+            val warning = remember { clearWarning() }
+            AlertDialog(
+                onDismissRequest = { askingToClear = false },
+                title = { Text(tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?")) },
+                text = warning?.let { { Text(it) } },
+                confirmButton = {
+                    TextButton(onClick = { askingToClear = false; onClear() }) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
+                },
+                dismissButton = { TextButton(onClick = { askingToClear = false }) { Text(tr("ביטול", "Cancel")) } },
+            )
         }
         if (hidden) ShowButtonsButton { lastTouchAt = secondsNow() }
     }
