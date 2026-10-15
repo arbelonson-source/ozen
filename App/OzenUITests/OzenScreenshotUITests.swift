@@ -1061,4 +1061,44 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(back.waitForExistence(timeout: 10), "secondary screens: no way back from \(screenIdentifier)")
         back.tap()
     }
+
+    /// At the largest text size, with the keyboard up, the Say sheet's
+    /// composer used to fill the sheet and leave the quick phrases no
+    /// height. The whole sheet must scroll to them, in portrait and in
+    /// landscape.
+    func testTypeToSpeakQuickPhrasesReachableAtLargeText() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+
+        let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
+        XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "say sheet: the button to open it never appeared")
+        typeToSpeakButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["typeToSpeakScreen"].waitForExistence(timeout: 10), "say sheet: the screen never appeared")
+
+        app.textFields.firstMatch.typeText("שלום")
+        let header = app.descendants(matching: .any)["quickPhrasesHeader"]
+        var swipes = 0
+        while !(header.exists && header.isHittable) && swipes < 3 {
+            app.swipeUp()
+            swipes += 1
+        }
+        XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in portrait")
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let play = app.buttons["להשמיע"].firstMatch
+        var tries = 0
+        while !(play.exists && play.isHittable) && tries < 3 {
+            app.swipeDown()
+            tries += 1
+        }
+        XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")
+        swipes = 0
+        while !(header.exists && header.isHittable) && swipes < 3 {
+            app.swipeUp()
+            swipes += 1
+        }
+        XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in landscape")
+    }
 }
