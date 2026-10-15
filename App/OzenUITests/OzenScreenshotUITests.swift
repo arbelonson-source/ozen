@@ -1118,7 +1118,11 @@ final class OzenScreenshotUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 1)
         }
         typeToSpeakButton.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["typeToSpeakScreen"].waitForExistence(timeout: 10), "say sheet: the screen never appeared")
+        let sayScreen = app.descendants(matching: .any)["typeToSpeakScreen"]
+        if !sayScreen.waitForExistence(timeout: 4), typeToSpeakButton.exists {
+            typeToSpeakButton.tap()
+        }
+        XCTAssertTrue(sayScreen.waitForExistence(timeout: 10), "say sheet: the screen never appeared")
 
         app.textFields.firstMatch.typeText("שלום")
         let header = app.descendants(matching: .any)["quickPhrasesHeader"]
@@ -1139,11 +1143,27 @@ final class OzenScreenshotUITests: XCTestCase {
                 start.press(forDuration: 0.1, thenDragTo: end)
             }
         }
-        var swipes = 0
-        while !(header.exists && header.isHittable) && swipes < 40 {
-            dragSheet(up: true)
-            swipes += 1
+        // A fast swipe can flick the target past the top of the sheet in
+        // landscape, where little of the sheet shows above the keyboard.
+        // Once the target is in view the swipes are slow and leave no flick,
+        // and a target that was seen and is gone again is swiped back to.
+        func reach(_ target: XCUIElement, startUp: Bool) {
+            var seen = false
+            var swipes = 0
+            while !(target.exists && target.isHittable) && swipes < 40 {
+                seen = seen || target.exists
+                let up: Bool
+                if target.exists {
+                    up = target.frame.maxY >= app.navigationBars.firstMatch.frame.maxY
+                } else {
+                    up = seen ? !startUp : startUp
+                }
+                dragSheet(up: up, slow: target.exists)
+                if seen && !target.exists { seen = false }
+                swipes += 1
+            }
         }
+        reach(header, startUp: true)
         capture(app, name: "type-to-speak-accessibility-text-phrases-reached")
         XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in portrait")
 
@@ -1163,29 +1183,11 @@ final class OzenScreenshotUITests: XCTestCase {
         }
         wait(for: [XCTNSPredicateExpectation(predicate: rotated, object: nil)], timeout: 10)
         let play = app.buttons["להשמיע"].firstMatch
-        var tries = 0
-        while !(play.exists && play.isHittable) && tries < 40 {
-            dragSheet(up: false)
-            tries += 1
-        }
+        reach(play, startUp: false)
         capture(app, name: "type-to-speak-accessibility-text-landscape")
         XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")
 
-        // A fast swipe can flick the phrases past the top of the sheet in
-        // landscape, where little of the sheet shows above the keyboard,
-        // so once they are in view the swipes are slow and leave no flick,
-        // and if they are seen and then gone, swipe back down.
-        swipes = 0
-        var seen = false
-        while !(header.exists && header.isHittable) && swipes < 40 {
-            seen = seen || header.exists
-            let above = header.exists
-                ? header.frame.maxY < app.navigationBars.firstMatch.frame.maxY
-                : seen
-            dragSheet(up: !above, slow: header.exists)
-            if above && !header.exists { seen = false }
-            swipes += 1
-        }
+        reach(header, startUp: true)
         XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in landscape")
     }
 }
