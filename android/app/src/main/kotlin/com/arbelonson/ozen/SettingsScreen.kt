@@ -200,6 +200,7 @@ fun SettingsScreen(
     onCellularDownloads: (Boolean) -> Unit,
     backup: PhoneBackup? = null,
     scrollToBackup: Boolean = false,
+    onScrolledToBackup: () -> Unit = {},
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
@@ -272,7 +273,7 @@ fun SettingsScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) { CloudSection(engineSettings, current, cloudKeyDraft) }
                     }
                     AnimatedVisibility(current.engine == TranscriptionEngineKind.HomeServer) {
-                        Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) { HomeComputerSection(engineSettings, current, addressDraft, codeDraft, backup, scrollToBackup, onGuide = { showingGuide = true }) }
+                        Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) { HomeComputerSection(engineSettings, current, addressDraft, codeDraft, backup, scrollToBackup, onScrolledToBackup, onGuide = { showingGuide = true }) }
                     }
                     WordsSection(current.vocabulary.size, onOpen = { showingWords = true })
                     SavedSpeakersSection(current.speakerProfiles, speakers, onAdd = { showingEnrollment = true })
@@ -555,6 +556,7 @@ private fun HomeComputerSection(
     codeDraft: MutableState<String>,
     backup: PhoneBackup?,
     scrollToBackup: Boolean,
+    onScrolledToBackup: () -> Unit,
     onGuide: () -> Unit,
 ) {
     val saved = current.homeServerAddress
@@ -622,6 +624,7 @@ private fun HomeComputerSection(
         LaunchedEffect(Unit) {
             withFrameNanos {}
             shown.bringIntoView()
+            onScrolledToBackup()
         }
     }
     SettingsGroup {

@@ -39,6 +39,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.isDisplayed
@@ -60,6 +61,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -1737,7 +1739,44 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
-    fun turningThePhoneInSettingsOpenedAtTheBackupStaysAtTheBackup() {
+    fun turningThePhoneJustAsSettingsOpensAtTheBackupStillEndsAtTheBackup() {
+        val english = File(app.filesDir, WhisperModelCatalog.phoneModelFile(UILanguage.English))
+        assumeFalse("the English model is already on this phone", english.exists())
+        val languageBefore = app.settings.current.value.spokenLanguage
+        val cellularBefore = app.settings.current.value.allowCellularModelDownload
+        val offer = hasText("Download a backup to the phone", substring = true) and hasClickAction()
+        try {
+            app.settings.change {
+                it.engine = TranscriptionEngineKind.HomeServer
+                it.spokenLanguage = UILanguage.English
+                it.allowCellularModelDownload = true
+            }
+            val unreachable = PipelinePhase.Failed(
+                PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "")),
+            )
+            compose.runOnUiThread {
+                CaptionState.show(unreachable, engine = TranscriptionEngineKind.HomeServer, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), offerBackup = true)
+            }
+            compose.waitForIdle()
+            compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction()).performClick()
+            val first = compose.activity
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(5_000) { first.isDestroyed }
+            compose.waitForIdle()
+
+            compose.waitUntil(5_000) { compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { compose.onNode(offer).isDisplayed() }
+        } finally {
+            app.settings.change {
+                it.spokenLanguage = languageBefore
+                it.allowCellularModelDownload = cellularBefore
+            }
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
+    fun turningThePhoneAfterScrollingAwayFromTheBackupDoesNotPullTheScreenBackToIt() {
         val english = File(app.filesDir, WhisperModelCatalog.phoneModelFile(UILanguage.English))
         assumeFalse("the English model is already on this phone", english.exists())
         val languageBefore = app.settings.current.value.spokenLanguage
@@ -1760,13 +1799,18 @@ class SettingsScreenDeviceTest {
             compose.waitUntil(5_000) { compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() }
             compose.waitUntil(5_000) { compose.onNode(offer).isDisplayed() }
 
+            compose.onNodeWithText("Settings").assertExists()
+            compose.onNode(hasScrollAction()).performTouchInput { swipeDown(); swipeDown(); swipeDown() }
+            compose.waitForIdle()
+            val awayBefore = compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() && compose.onNode(offer).isDisplayed()
             val first = compose.activity
             compose.activityRule.scenario.recreate()
             compose.waitUntil(5_000) { first.isDestroyed }
             compose.waitForIdle()
 
-            compose.waitUntil(5_000) { compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() }
-            compose.waitUntil(5_000) { compose.onNode(offer).isDisplayed() }
+            val awayAfter = compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() && compose.onNode(offer).isDisplayed()
+            assertEquals(awayBefore, awayAfter)
+            assertFalse("the test never scrolled away", awayBefore)
         } finally {
             app.settings.change {
                 it.spokenLanguage = languageBefore
