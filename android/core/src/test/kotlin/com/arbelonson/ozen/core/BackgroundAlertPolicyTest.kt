@@ -146,4 +146,15 @@ class BackgroundAlertPolicyTest {
         assertFalse(BackgroundAlertPolicy.shouldAskPermission(alertsWhenScreenOff = true, allowed = true))
         assertFalse(BackgroundAlertPolicy.shouldAskPermission(alertsWhenScreenOff = false, allowed = null))
     }
+
+    @Test
+    fun `the policy hands back the identifiers it notified, once`() {
+        val policy = BackgroundAlertPolicy()
+        val bell = policy.notification(sound("door_bell"), appIsActive = false, now = 0.0)
+        val said = policy.notification(hit("סבתא"), "סבתא בואי", appIsActive = false, now = 0.0)
+        policy.notification(sound("door_bell"), appIsActive = false, now = 1.0)
+        policy.notification(sound("civil_defense_siren"), appIsActive = true, now = 0.0)
+        assertEquals(setOf(bell?.identifier, said?.identifier), policy.takePostedIdentifiers().toSet())
+        assertEquals(emptyList(), policy.takePostedIdentifiers())
+    }
 }

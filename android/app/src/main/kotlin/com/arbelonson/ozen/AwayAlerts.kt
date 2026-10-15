@@ -38,6 +38,8 @@ class AwayAlerts(private val policy: BackgroundAlertPolicy = BackgroundAlertPoli
         return policy.notification(alert, appIsActive, now, utcOffsetSeconds)
     }
 
+    fun takePostedIdentifiers(): List<String> = policy.takePostedIdentifiers()
+
     companion object {
         fun vibrationFor(content: AlertNotificationContent): AlertVibration =
             if (content.isUrgent && content.threadIdentifier == AlertNotifier.SOUNDS_THREAD) AlertVibration.pattern(SoundEvent.Importance.Critical) else AlertVibration.keyword
