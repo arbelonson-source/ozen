@@ -32,4 +32,11 @@ struct CloudKeyCheckTests {
     @Test func okWithNoCreditLeftIsNoCredit() async {
         #expect(await check(.openRouter, .status(200, #"{"data":{"limit_remaining":0}}"#)) == .noCredit)
     }
+
+    @Test func everyResultHasItsOwnMessage() {
+        let all: [CloudKeyCheck] = [.accepted, .rejected, .noCredit, .unreachable]
+        let messages = Set(all.map(\.message))
+        #expect(messages.count == 4)
+        #expect(!messages.contains(""))
+    }
 }

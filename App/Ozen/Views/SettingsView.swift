@@ -48,6 +48,7 @@ struct SettingsView: View {
     /// Bumped whenever what a check tested changes, so an answer still on
     /// its way for the old address, code or setting is thrown away.
     @State private var homeServerCheckGeneration = 0
+    @State private var cloudKeyCheckGeneration = 0
     @State private var isCheckingHomeServer = false
     @State private var confirmingHomeServerCodeDelete = false
     @State private var confirmingCloudKeyDelete = false
@@ -675,7 +676,6 @@ struct SettingsView: View {
             saveHomeServerAddress()
         }
         saveHomeServerCode()
-        saveCloudKey()
     }
 
     private func forgetHomeServerCheck() {
@@ -720,12 +720,15 @@ struct SettingsView: View {
         cloudKeyDraft = ""
         hasCloudKey = true
         cloudKeyCheck = nil
+        cloudKeyCheckGeneration += 1
+        let generation = cloudKeyCheckGeneration
         Task { await viewModel.cloudKeyChanged() }
         let provider = viewModel.settings.cloudProvider
         Task {
             let result = await CloudKeyCheck.result(for: provider, key: key, http: URLSessionCloudHTTP())
-            guard viewModel.settings.cloudProvider == provider, CloudKeyStore.read(for: provider) == key else { return }
+            guard generation == cloudKeyCheckGeneration, viewModel.settings.cloudProvider == provider, CloudKeyStore.read(for: provider) == key else { return }
             cloudKeyCheck = result
+            UIAccessibility.post(notification: .announcement, argument: result.message)
         }
     }
 
@@ -733,16 +736,16 @@ struct SettingsView: View {
     private func cloudKeyCheckLabel(_ result: CloudKeyCheck) -> some View {
         switch result {
         case .accepted:
-            Label(tr("המפתח נבדק והשירות קיבל אותו", "The key was checked and the service accepted it"), systemImage: "checkmark.circle.fill")
+            Label(result.message, systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.readable(.green))
         case .rejected:
-            Label(tr("השירות לא קיבל את המפתח. בדקו שהעתקתם אותו במלואו.", "The service didn’t accept this key. Check that you copied all of it."), systemImage: "xmark.octagon.fill")
+            Label(result.message, systemImage: "xmark.octagon.fill")
                 .foregroundStyle(.readable(.red))
         case .noCredit:
-            Label(tr("המפתח תקין, אבל אין בו יתרה. הוסיפו יתרה בשירות.", "The key is valid, but it has no credit left. Add credit at the service."), systemImage: "exclamationmark.triangle.fill")
+            Label(result.message, systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.readable(.orange))
         case .unreachable:
-            Label(tr("לא הצלחנו לבדוק את המפתח עכשיו. הוא נשמר, ונבדוק שוב כשהכתוביות יתחילו.", "Couldn’t check the key right now. It’s saved, and it’s checked again when captions start."), systemImage: "wifi.exclamationmark")
+            Label(result.message, systemImage: "wifi.exclamationmark")
                 .foregroundStyle(.readable(.orange))
         }
     }
