@@ -634,9 +634,9 @@ struct LiveCaptionView: View {
         return CaptionRow(
             segment: segment,
             speakerName: name,
+            speakerSlots: slots,
             // Like a chat: the name heads a run of lines by
             // one person instead of repeating on each.
-            speakerSlots: slots,
             showsSpeakerLabel: name != nil && CaptionLayout.showsSpeakerLabel(
                 for: segment,
                 after: index > 0 ? viewModel.segments[index - 1] : nil,
