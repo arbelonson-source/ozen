@@ -1117,13 +1117,15 @@ final class OzenScreenshotUITests: XCTestCase {
 
         app.textFields.firstMatch.typeText("שלום")
         let header = app.descendants(matching: .any)["quickPhrasesHeader"]
-        // Drags start just under the navigation bar, above the keyboard:
-        // a plain swipe starts mid-screen, which can be on the keyboard.
+        // Drags start in the gap between the navigation bar and the first
+        // control, which is above the keyboard and never on the text
+        // field: at the largest text size the field sits right under the
+        // bar, and a drag that starts on it moves the cursor, not the sheet.
         func dragSheet(up: Bool) {
             let bar = app.navigationBars.firstMatch.frame
             let window = app.windows.firstMatch.frame
-            let startY = (bar.maxY + 60) / window.height
-            let endY = (bar.maxY + 60 + (up ? -50 : 50)) / window.height
+            let startY = (bar.maxY + 12) / window.height
+            let endY = (bar.maxY + 12 + (up ? -50 : 50)) / window.height
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
                 .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY)))
         }
