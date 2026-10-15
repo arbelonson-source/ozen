@@ -16,6 +16,16 @@ struct CaptionAnnouncerTests {
         }
     }
 
+    @Test("the pieces mark which words are the caption, so only they get the caption's language")
+    func piecesMarkCaptionWords() {
+        var announcer = CaptionAnnouncer()
+        let first = line("בוקר טוב")
+        let second = line("hello")
+        let pieces = announcer.announcementPieces(for: [first, second], speakerName: { _ in "Dana" })
+        #expect(pieces?.filter(\.isCaption).map(\.text) == ["בוקר טוב", "hello"])
+        #expect(pieces?.filter { !$0.isCaption }.map(\.text) == ["Dana: ", "\n"])
+    }
+
     @Test("a finished line is announced once; a line still changing is not announced yet")
     func onlyFinishedLinesOnce() {
         var announcer = CaptionAnnouncer()
