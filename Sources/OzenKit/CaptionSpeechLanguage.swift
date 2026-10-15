@@ -2,7 +2,7 @@ import Foundation
 
 public enum CaptionSpeechLanguage {
     private static let nonLatin: Set<String> = [
-        "he", "iw", "yi", "ar", "fa", "ur", "ru", "uk", "bg", "sr", "el", "hi", "th", "zh", "ja", "ko", "ka", "hy",
+        "he", "iw", "yi", "am", "ar", "fa", "ur", "ru", "uk", "bg", "sr", "el", "hi", "th", "zh", "ja", "ko", "ka", "hy",
     ]
 
     public static func bcp47(forLine line: String, languageCode: String) -> String {

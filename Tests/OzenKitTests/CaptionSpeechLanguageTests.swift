@@ -26,4 +26,10 @@ struct CaptionSpeechLanguageTests {
         #expect(CaptionSpeechLanguage.bcp47(forLine: "Bonjour", languageCode: "fr") == "fr")
         #expect(CaptionSpeechLanguage.bcp47(forLine: "Olá, tudo bem", languageCode: "pt-BR") == "pt-BR")
     }
+
+    @Test("a Latin-only line under an Amharic setting is English, not read with the Amharic voice")
+    func latinUnderAmharic() {
+        #expect(CaptionSpeechLanguage.bcp47(forLine: "hello", languageCode: "am") == "en")
+        #expect(CaptionSpeechLanguage.bcp47(forLine: "hello", languageCode: "am-ET") == "en")
+    }
 }

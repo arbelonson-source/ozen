@@ -1178,7 +1178,7 @@ struct LiveCaptionView: View {
     private var isCoveredBySheet: Bool {
         openedConversation != nil || showingMicPicker || showingSettings || showingTypeToSpeak
             || showingBigText || namingSegment != nil || fixingWordFromSegment != nil
-            || showingNameAlertForm
+            || showingNameAlertForm || confirmingClear || confirmingCellularDownload || showingProblemMarked
     }
 
     private func scrollToLatestAfterLayout() {

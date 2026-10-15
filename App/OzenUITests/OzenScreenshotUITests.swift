@@ -254,8 +254,8 @@ final class OzenScreenshotUITests: XCTestCase {
             // The slide and the scroll back to the newest line both animate.
             Thread.sleep(forTimeInterval: 1.5)
             let rows = app.descendants(matching: .any).matching(identifier: "captionRow").allElementsBoundByIndex
-            guard let last = rows.max(by: { $0.frame.minY < $1.frame.minY }) else {
-                XCTFail("\(config.name): no caption row on the screen")
+            guard let last = rows.first(where: { $0.label.contains("עוד לא ברור לי אם") }) else {
+                XCTFail("\(config.name): the newest caption row is not on the screen")
                 return
             }
             capture(XCUIScreen.main.screenshot(), name: "newest-line-\(config.name)")
