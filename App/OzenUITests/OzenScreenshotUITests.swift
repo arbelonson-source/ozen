@@ -1145,7 +1145,7 @@ final class OzenScreenshotUITests: XCTestCase {
         }
         // A fast swipe can flick the target past the top of the sheet in
         // landscape, where little of the sheet shows above the keyboard.
-        // Once the target is in view the swipes are slow and leave no flick,
+        // Once the target is in view there the swipes are slow and leave no flick,
         // and a target that was seen and is gone again is swiped back to.
         func reach(_ target: XCUIElement, startUp: Bool) {
             var seen = false
@@ -1158,7 +1158,8 @@ final class OzenScreenshotUITests: XCTestCase {
                 } else {
                     up = seen ? !startUp : startUp
                 }
-                dragSheet(up: up, slow: target.exists)
+                let window = app.windows.firstMatch.frame
+                dragSheet(up: up, slow: target.exists && window.width > window.height)
                 if seen && !target.exists { seen = false }
                 swipes += 1
             }
