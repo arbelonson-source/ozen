@@ -1,15 +1,14 @@
 package com.arbelonson.ozen
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,8 +20,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Flip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,15 +38,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -111,34 +119,44 @@ internal fun BigTextScreen(
         }
         // As on the iPhone, a screen reader hears what flipping is for.
         val flipHint = tr("להפוך את הטקסט כדי שמי שיושב מולך יוכל לקרוא", "Flip the text so the person sitting across from you can read it")
-        val buttons = buildList<Triple<String, String?, (() -> Unit)?>> {
-            add(Triple(tr("ניקוי", "Clear"), null, { onText(""); flipped = false }.takeUnless { empty }))
-            add(Triple(if (flipped) tr("חזרה", "Back") else tr("להפוך", "Flip"), flipHint.takeUnless { flipped }, { flipped = !flipped }.takeUnless { empty }))
-            if (canSpeak) add(Triple(tr("להשמיע", "Speak"), null, onSpeak.takeUnless { empty }))
-            add(Triple(tr("סגירה", "Close"), null, onClose))
+        val buttons = buildList<BigAction> {
+            add(BigAction(Icons.Rounded.Delete, tr("ניקוי", "Clear"), null, { onText(""); flipped = false }.takeUnless { empty }))
+            add(
+                BigAction(
+                    if (flipped) Icons.AutoMirrored.Rounded.ArrowBack else Icons.Rounded.Flip,
+                    if (flipped) tr("חזרה", "Back") else tr("להפוך", "Flip"),
+                    flipHint.takeUnless { flipped },
+                    { flipped = !flipped }.takeUnless { empty },
+                ),
+            )
+            if (canSpeak) add(BigAction(Icons.AutoMirrored.Rounded.VolumeUp, tr("להשמיע", "Speak"), null, onSpeak.takeUnless { empty }))
+            add(BigAction(Icons.Rounded.Close, tr("סגירה", "Close"), null, onClose))
         }
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            for (row in buttons.chunked(2)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    for ((title, hint, action) in row) {
-                        OutlinedButton(
-                            onClick = { action?.invoke() },
-                            enabled = action != null,
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = look.chrome, disabledContentColor = look.chrome.copy(alpha = 0.38f)),
-                            border = BorderStroke(1.dp, look.chrome.copy(alpha = if (action != null) 0.6f else 0.2f)),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                            modifier = Modifier.weight(1f).semantics {
-                                if (hint != null && action != null) onClick(label = hint) { action(); true }
-                            },
-                        ) {
-                            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = 18.sp))
-                        }
-                    }
-                    if (row.size == 1) Spacer(Modifier.weight(1f))
+        HorizontalDivider(color = look.chrome.copy(alpha = 0.2f))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            for (button in buttons) {
+                val tint = look.chrome.copy(alpha = if (button.action != null) 1f else 0.38f)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 64.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(enabled = button.action != null, role = Role.Button, onClickLabel = button.hint) { button.action?.invoke() }
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+                ) {
+                    Icon(button.icon, contentDescription = null, tint = tint)
+                    Text(button.title, color = tint, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 14.sp))
                 }
             }
         }
     }
 }
+
+private class BigAction(val icon: ImageVector, val title: String, val hint: String?, val action: (() -> Unit)?)
 
 private const val FONT_SIZE = 52.0

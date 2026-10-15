@@ -3,20 +3,21 @@ package com.arbelonson.ozen
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.Spellcheck
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -34,12 +35,19 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.VocabularyHints
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.EmptyState
+import com.arbelonson.ozen.ui.OzenScreen
+import com.arbelonson.ozen.ui.OzenSpacing
+import com.arbelonson.ozen.ui.SettingRow
+import com.arbelonson.ozen.ui.SettingsGroup
+import com.arbelonson.ozen.ui.TonalButton
+import com.arbelonson.ozen.ui.GroupFootnote
+import com.arbelonson.ozen.ui.SectionHeader as GroupHeader
 
 @Composable
 internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChange: (List<String>) -> Unit, onClose: () -> Unit) {
@@ -56,54 +64,48 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
     }
     val typing = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (words.isEmpty()) typing.requestFocus() }
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ScreenTitle(tr("שמות ומילים", "Names and words")) {
-                TextButton(onClick = onClose) { Text(tr("חזרה", "Back")) }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it },
-                    placeholder = { Text(tr("שם או מילה", "Name or word")) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { add() }),
-                    modifier = Modifier.weight(1f).focusRequester(typing),
-                )
-                TextButton(onClick = add, enabled = canAdd) { Text(tr("הוספה", "Add")) }
-            }
-            val note = when {
-                listed != null -> tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", listOf(listed))
-                full -> tr("הרשימה מלאה. מחקו מילה כדי להוסיף אחרת.", "The list is full. Delete a word to add another.")
-                else -> null
-            }
-            note?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            Text(
-                tr(
-                    "שמות של בני משפחה, שכנים, רופאים, תרופות, מקומות — כל מילה שהכתוביות מתקשות איתה. הראשונים ברשימה חשובים ביותר.",
-                    "Names of family members, neighbors, doctors, medicines, places — any word the captions struggle with. The first ones on the list matter most.",
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+    OzenScreen(tr("שמות ומילים", "Names and words"), modifier = Modifier.imePadding(), onClose = onClose, closeLabel = tr("חזרה", "Back"), scrolls = false) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                placeholder = { Text(tr("שם או מילה", "Name or word")) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { add() }),
+                modifier = Modifier.weight(1f).focusRequester(typing),
             )
-            if (VocabularyHints.normalized(words + speakerNames) != words) {
-                TextButton(onClick = { onChange(words + speakerNames) }) { Text(tr("להוסיף את שמות הדוברים השמורים", "Add the saved speaker names")) }
+            TonalButton(tr("הוספה", "Add"), onClick = add, enabled = canAdd)
+        }
+        val note = when {
+            listed != null -> tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", listOf(listed))
+            full -> tr("הרשימה מלאה. מחקו מילה כדי להוסיף אחרת.", "The list is full. Delete a word to add another.")
+            else -> null
+        }
+        note?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp)) }
+        GroupFootnote(
+            tr(
+                "שמות של בני משפחה, שכנים, רופאים, תרופות, מקומות — כל מילה שהכתוביות מתקשות איתה. הראשונים ברשימה חשובים ביותר.",
+                "Names of family members, neighbors, doctors, medicines, places — any word the captions struggle with. The first ones on the list matter most.",
+            ),
+        )
+        if (VocabularyHints.normalized(words + speakerNames) != words) {
+            SettingsGroup(dividerInset = 56.dp) {
+                item { SettingRow(tr("להוסיף את שמות הדוברים השמורים", "Add the saved speaker names"), icon = Icons.Rounded.PersonAdd, onClick = { onChange(words + speakerNames) }) }
             }
-            Row(modifier = Modifier.padding(top = 8.dp)) {
-                Text(tr("הרשימה", "List"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f).semantics { heading() })
-                Text("${words.size} / ${VocabularyHints.maximumTerms}", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (words.isEmpty()) {
-                Text(tr("עדיין אין שמות", "No names yet"), style = MaterialTheme.typography.titleMedium)
-                Text(tr("הוסיפו את השמות שנאמרים הכי הרבה בבית.", "Add the names said most often at home."), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                Text(tr("לחיצה ארוכה על שם מאפשרת להזיז אותו או למחוק אותו.", "Press and hold a name to move it or delete it."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+        }
+        Row(verticalAlignment = Alignment.Bottom) {
+            GroupHeader(tr("הרשימה", "List"), modifier = Modifier.weight(1f))
+            Text("${words.size} / ${VocabularyHints.maximumTerms}", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 16.dp))
+        }
+        if (words.isEmpty()) {
+            EmptyState(Icons.Rounded.Spellcheck, tr("עדיין אין שמות", "No names yet"), tr("הוסיפו את השמות שנאמרים הכי הרבה בבית.", "Add the names said most often at home."))
+        } else {
+            GroupFootnote(tr("לחיצה ארוכה על שם מאפשרת להזיז אותו או למחוק אותו.", "Press and hold a name to move it or delete it."))
+            Surface(modifier = Modifier.weight(1f, fill = false), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
+                LazyColumn {
                     itemsIndexed(words, key = { _, word -> word }) { at, word ->
+                        if (at > 0) HorizontalDivider(Modifier.padding(start = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
                         WordRow(
                             word,
                             onMoveUp = { onChange(movingWord(word, -1, words)) }.takeIf { at > 0 },
@@ -113,12 +115,11 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
                     }
                 }
             }
-            Text(
-                tr("השינויים נכנסים לתוקף מהמשפט הבא, בלי להפעיל מחדש.", "Changes take effect from the next sentence, without restarting."),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
+        GroupFootnote(
+            tr("השינויים נכנסים לתוקף מהמשפט הבא, בלי להפעיל מחדש.", "Changes take effect from the next sentence, without restarting."),
+            modifier = Modifier.padding(bottom = OzenSpacing.Unit),
+        )
     }
 }
 
@@ -138,12 +139,14 @@ private fun WordRow(word: String, onMoveUp: (() -> Unit)?, onMoveDown: (() -> Un
     Box {
         Text(
             word,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 56.dp)
                 .onHold { menu = true }
                 .semantics { customActions = choices.map { (label, act) -> CustomAccessibilityAction(label) { act(); true } } }
-                .padding(vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
         )
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             for ((label, act) in choices) {
