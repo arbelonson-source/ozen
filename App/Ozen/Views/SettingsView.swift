@@ -346,6 +346,7 @@ struct SettingsView: View {
                 cloudKeyDraft = ""
                 cloudKeySaveFailed = false
                 cloudKeyCheck = nil
+                cloudKeyCheckGeneration += 1
                 hasCloudKey = CloudKeyStore.hasKey(for: provider)
                 Task { await viewModel.setCloudProvider(provider) }
             }
