@@ -178,3 +178,21 @@ struct BackgroundAlertPolicyTests {
         #expect(!BackgroundAlertPolicy.shouldAskPermission(alertsWhenScreenOff: false, allowed: nil))
     }
 }
+
+@Suite("Return sweep")
+struct ReturnSweepTests {
+    @Test("a sweep started on return leaves an alert delivered after it started")
+    func newAlertSurvivesSweep() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let delivered: [(identifier: String, date: Date)] = [
+            ("sound-door_bell", start.addingTimeInterval(-60)),
+            ("keyword-1", start),
+            ("sound-door_bell", start.addingTimeInterval(0.5)),
+            ("captions-ended", start.addingTimeInterval(-60)),
+        ]
+        let ids = AlertNotificationContent.identifiersToWithdraw(delivered, startedAt: start)
+        #expect(ids == ["sound-door_bell", "keyword-1"])
+        let newer: [(identifier: String, date: Date)] = [("sound-door_bell", start.addingTimeInterval(0.5))]
+        #expect(AlertNotificationContent.identifiersToWithdraw(newer, startedAt: start).isEmpty)
+    }
+}

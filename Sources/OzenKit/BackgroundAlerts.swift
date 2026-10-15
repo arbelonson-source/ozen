@@ -16,6 +16,16 @@ public struct AlertNotificationContent: Sendable, Equatable {
     public static func isAlertIdentifier(_ identifier: String) -> Bool {
         identifier.hasPrefix("sound-") || identifier.hasPrefix("keyword-")
     }
+
+    /// The alerts a return-to-screen sweep may remove: those delivered no
+    /// later than when the sweep began, so one that arrives while the
+    /// asynchronous listing is still running (the phone already away
+    /// again) stays.
+    public static func identifiersToWithdraw(_ delivered: [(identifier: String, date: Date)], startedAt: Date) -> [String] {
+        delivered
+            .filter { $0.date <= startedAt && isAlertIdentifier($0.identifier) }
+            .map(\.identifier)
+    }
 }
 
 /// Decides when an alert should also become a phone notification.
