@@ -1078,9 +1078,19 @@ final class OzenScreenshotUITests: XCTestCase {
 
         app.textFields.firstMatch.typeText("שלום")
         let header = app.descendants(matching: .any)["quickPhrasesHeader"]
+        // Drags start just under the navigation bar, above the keyboard:
+        // a plain swipe starts mid-screen, which can be on the keyboard.
+        func dragSheet(up: Bool) {
+            let bar = app.navigationBars.firstMatch.frame
+            let window = app.windows.firstMatch.frame
+            let startY = (bar.maxY + 60) / window.height
+            let endY = (bar.maxY + 60 + (up ? -50 : 50)) / window.height
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY)))
+        }
         var swipes = 0
-        while !(header.exists && header.isHittable) && swipes < 3 {
-            app.swipeUp()
+        while !(header.exists && header.isHittable) && swipes < 12 {
+            dragSheet(up: true)
             swipes += 1
         }
         XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in portrait")
@@ -1089,8 +1099,8 @@ final class OzenScreenshotUITests: XCTestCase {
         defer { XCUIDevice.shared.orientation = .portrait }
         let play = app.buttons["להשמיע"].firstMatch
         var tries = 0
-        while !(play.exists && play.isHittable) && tries < 3 {
-            app.swipeDown()
+        while !(play.exists && play.isHittable) && tries < 12 {
+            dragSheet(up: false)
             tries += 1
         }
         XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")
