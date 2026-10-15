@@ -933,6 +933,20 @@ class CaptionPipeline(
         }
     }
 
+    /**
+     * The notification's Stop: running captions pause so they can be
+     * resumed, but a start still loading, or a failure waiting to retry by
+     * itself, is cancelled outright. Paused alone left that start going and
+     * the retry timer running after the notification was gone.
+     */
+    fun stopFromNotification() {
+        when (phase) {
+            PipelinePhase.Idle, PipelinePhase.Paused -> Unit
+            PipelinePhase.Listening -> pause()
+            else -> stop()
+        }
+    }
+
     fun pause() {
         if (!phase.isListening) return
         listeningSince = null
