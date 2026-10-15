@@ -12,8 +12,10 @@ public struct RecentAudio: Sendable {
     }
 
     public var count: Int { isFull ? capacity : next }
+    public private(set) var totalAppended = 0
 
     public mutating func append(_ samples: [Float]) {
+        totalAppended += samples.count
         let tail = samples.count > capacity ? samples.suffix(capacity) : samples[...]
         guard !tail.isEmpty else { return }
         let sanitized = tail.map { $0.isFinite ? $0 : 0 }
@@ -40,6 +42,12 @@ public struct RecentAudio: Sendable {
         result.append(contentsOf: storage[next...])
         result.append(contentsOf: storage[..<next])
         return result
+    }
+
+    public func tail(since position: Int, maxSamples: Int) -> [Float] {
+        let wanted = min(max(totalAppended - position, 0), maxSamples, count)
+        guard wanted > 0 else { return [] }
+        return Array(samples().suffix(wanted))
     }
 
     public mutating func clear() {

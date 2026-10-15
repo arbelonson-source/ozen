@@ -1319,6 +1319,12 @@ public final class LiveCaptionViewModel {
     /// setting is, are skipped for good, so turning either on later
     /// doesn't read out the backlog.
     public func captionAnnouncement(voiceOverRunning: Bool) -> String? {
+        captionAnnouncementPieces(voiceOverRunning: voiceOverRunning)?.map(\.text).joined()
+    }
+
+    /// The same announcement in pieces, so the caption words can be spoken
+    /// in their own language and the rest in the phone's.
+    public func captionAnnouncementPieces(voiceOverRunning: Bool) -> [CaptionAnnouncer.Piece]? {
         let segments = pipeline.segments
         guard voiceOverRunning, settings.display.announceNewLines else {
             announcer.skipLinesSoFar(segments)
@@ -1329,7 +1335,7 @@ public final class LiveCaptionViewModel {
         let scoring = transcribingSettings
         let engine = scoring.engine
         let model = scoring.whisperModelVariant
-        return announcer.announcement(
+        return announcer.announcementPieces(
             for: segments,
             speakerName: { [pipeline] segment in
                 namesShown && segment.speakerClusterID != nil ? pipeline.displayName(for: segment) : nil

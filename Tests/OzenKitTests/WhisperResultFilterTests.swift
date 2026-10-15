@@ -249,6 +249,62 @@ struct WhisperResultFilterTests {
         #expect(kept("תודה רבה שבאתם"))
         #expect(kept("הוא נרשם לערוץ של הנכד"))
     }
+
+    @Test("stock credit and outro lines in other spoken languages are dropped")
+    func otherLanguageCreditLinesDropped() {
+        let lines = [
+            "ترجمة نانسي قنقر", "تمت الترجمة بواسطة فلان", "اشتركوا في القناة", "اشترك في القناة",
+            "شكرا على المشاهدة", "شكرا لمشاهدتكم",
+            "Subtítulos realizados por la comunidad de Amara.org",
+            "Sous-titres réalisés par la communauté d'Amara.org",
+            "Untertitel der Amara.org-Community",
+            "Legendas pela comunidade Amara.org",
+            "Субтитры сделал DimaTorzok", "Продолжение следует...",
+        ]
+        for line in lines {
+            #expect(filter.acceptedText(from: [segment(line)]) == "", "\(line)")
+        }
+    }
+
+    @Test("a bare Arabic thanks drops only when the model was unsure")
+    func arabicThanksAmbiguous() {
+        #expect(!filter.accepts(segment("شكرا", noSpeech: 0.9)))
+        #expect(!filter.accepts(segment("شكرا لكم", noSpeech: 0.9)))
+        #expect(filter.accepts(segment("شكرا")))
+    }
+
+    @Test("a bare thanks in another language is kept on a clean score")
+    func otherThanksKept() {
+        for word in ["Gracias", "Merci", "Danke", "Obrigado", "Спасибо"] {
+            #expect(filter.accepts(segment(word)), "\(word)")
+            #expect(!filter.accepts(segment(word, noSpeech: 0.9)), "\(word)")
+        }
+    }
+
+    @Test("Arabic vowel marks and tatweel do not hide a phrase")
+    func arabicDiacriticsNormalized() {
+        #expect(WhisperResultFilter.normalize("شُكْرًا") == WhisperResultFilter.normalize("شكرا"))
+        #expect(WhisperResultFilter.normalize("شكــرا") == "شكرا")
+    }
+
+    @Test("a short spoken sentence starting with the Arabic word for translation is kept")
+    func shortArabicSentenceKept() {
+        #expect(filter.accepts(segment("ترجمة هذا النص صعبة")))
+        #expect(filter.accepts(segment("ترجمة هذا الكتاب جيدة")))
+        #expect(!filter.accepts(segment("ترجمة: نانسي")))
+    }
+
+    @Test("the Arabic superscript alef does not hide a phrase")
+    func arabicSuperscriptAlefNormalized() {
+        #expect(WhisperResultFilter.normalize("عَلَىٰ") == WhisperResultFilter.normalize("على"))
+        #expect(filter.acceptedText(from: [segment("شكرا عَلَىٰ المشاهدة")]) == "")
+    }
+
+    @Test("a long real sentence starting with the Arabic word for translation is kept")
+    func longArabicSentenceKept() {
+        let sentence = "ترجمة هذا الكتاب إلى العربية استغرقت منا ثلاث سنوات كاملة"
+        #expect(filter.accepts(segment(sentence)))
+    }
 }
 
 @Suite("Whisper repeated-word loops")

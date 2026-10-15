@@ -61,6 +61,16 @@ struct StarredLinesView: View {
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .environment(\.layoutDirection, CaptionLayout.readsRightToLeft(line.segment.text, languageCode: viewModel.settings.languageCode) ? .rightToLeft : .leftToRight)
+                                    .accessibilityElement(children: .ignore)
+                                    .accessibilityLabel(Text(CaptionSpeechText.label(
+                                        whole: SavedLineSpeech.label(
+                                            for: line.segment,
+                                            time: Date(timeIntervalSince1970: line.segment.startTimestamp).formatted(inAppLanguage: .omitted, time: .shortened),
+                                            uncertain: viewModel.display.markUncertainLines && line.isUncertain
+                                        ),
+                                        endingWith: line.segment.text,
+                                        languageCode: viewModel.settings.languageCode
+                                    )))
                                 }
                                 .contextMenu { copyButton(line.segment.text) }
                                 .accessibilityActions { copyButton(line.segment.text) }

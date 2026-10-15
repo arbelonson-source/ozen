@@ -83,6 +83,9 @@ public actor CloudSpeechEngine: TranscriptionEngine {
         progress: @escaping @Sendable (EnginePreparationProgress) -> Void
     ) async -> EngineAvailability {
         progress(EnginePreparationProgress(stage: .checkingSupport))
+        guard provider.covers(languageCode: languageCode) else {
+            return .unavailable(EngineUnavailability(kind: .cloudLanguageNotCovered, detail: "the cloud service does not know this language"))
+        }
         guard let key = currentKey() else {
             return .unavailable(CloudSpeechError.keyMissing.unavailability)
         }

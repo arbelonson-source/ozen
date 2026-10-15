@@ -66,4 +66,37 @@ class PhoneNumbersTest {
         val shown = CaptionLayout.displayText("תתקשרי ל-050-1234567.")
         assertEquals(listOf("0501234567"), PhoneNumbers.matches(shown).map { it.dialable })
     }
+
+    @Test
+    fun `numbers written with no-break or narrow spaces still match and dial as digits`() {
+        val nbsp = Char(0xA0)
+        val narrow = Char(0x202F)
+        assertEquals(listOf("0501234567"), dialed("050${nbsp}123${nbsp}4567"))
+        assertEquals(listOf("0501234567"), dialed("050${narrow}123${narrow}4567"))
+        assertEquals(listOf("+972501234567"), dialed("+972${nbsp}50${nbsp}123${nbsp}4567"))
+        assertEquals(listOf("1800123456"), dialed("1${nbsp}800${nbsp}123${nbsp}456"))
+    }
+
+    @Test
+    fun `a number written with other digits dials every digit, never a shorter number`() {
+        val nbsp = Char(0xA0)
+        assertEquals(listOf("1800123456"), dialed("1${nbsp}800${nbsp}123${nbsp}45\u0666"))
+        assertEquals(listOf("0501234567"), dialed("050-123-456\u0667"))
+    }
+
+    @Test
+    fun `a service number followed by a hyphen and a digit is longer than a service number, so it is no link`() {
+        val nbsp = Char(0xA0)
+        assertTrue(dialed("1${nbsp}800${nbsp}123${nbsp}456-7").isEmpty())
+        assertTrue(dialed("1-800-123-456-7").isEmpty())
+        assertEquals(listOf("1800123456"), dialed("1-800-123-456-"))
+    }
+
+    @Test
+    fun `a digit outside the basic plane counts as one digit in the dialed number`() {
+        val mathSeven = String(Character.toChars(0x1D7D5))
+        val osmanyaSix = String(Character.toChars(0x104A6))
+        assertEquals(listOf("0501234567"), dialed("050-123-456$mathSeven"))
+        assertEquals(listOf("1800123456"), dialed("1-800-123-45$osmanyaSix"))
+    }
 }

@@ -510,7 +510,7 @@ private struct SavedLineRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .environment(\.layoutDirection, CaptionLayout.readsRightToLeft(segment.text, languageCode: languageCode) ? .rightToLeft : .leftToRight)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityText)
+        .accessibilityLabel(Text(accessibilityText))
         .accessibilityHint(isMatch ? tr("מכילה את מה שחיפשת", "Contains what you searched for") : "")
         .accessibilityActions {
             ForEach(PhoneNumbers.matches(in: segment.text), id: \.dialable) { phone in
@@ -531,7 +531,11 @@ private struct SavedLineRow: View {
 
     /// VoiceOver hears the time the screen shows above the line, and no
     /// "Unknown speaker:" before every line of an unrecognised voice.
-    private var accessibilityText: String {
-        SavedLineSpeech.label(for: segment, time: showsTime ? timeText : nil, uncertain: isUncertain)
+    private var accessibilityText: AttributedString {
+        CaptionSpeechText.label(
+            whole: SavedLineSpeech.label(for: segment, time: showsTime ? timeText : nil, uncertain: isUncertain),
+            endingWith: segment.text,
+            languageCode: languageCode
+        )
     }
 }

@@ -930,7 +930,7 @@ struct HomeServerCoverTests {
             audio: FakeAudioCapturer(),
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
         captions.homeServerWaitSeconds = 0.05
@@ -954,7 +954,7 @@ struct HomeServerCoverTests {
             audio: FakeAudioCapturer(),
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
         captions.homeServerWaitSeconds = 0.05
@@ -975,7 +975,7 @@ struct HomeServerCoverTests {
             audio: FakeAudioCapturer(),
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         #expect(captions.homeServerWaitSeconds * 4 <= captions.homeServerRecheckSeconds)
         captions.homeServerRecheckSeconds = 1000
@@ -1004,7 +1004,7 @@ struct HomeServerCoverTests {
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
             soundDetector: detector,
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         captions.homeServerRecheckSeconds = 1000
         captions.homeServerWaitSeconds = 0.05
@@ -1048,7 +1048,7 @@ struct HomeServerCoverTests {
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
             soundDetector: detector,
-            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [], microphoneTailDelays: [])
         )
         await captions.start(settings: serverSettings)
         #expect(await eventually { captions.scheduledRetry != nil && captions.stats.soundDetectionRunning })
@@ -1114,7 +1114,7 @@ struct HomeServerCoverTests {
             audio: FakeAudioCapturer(),
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
         captions.homeServerWaitSeconds = 0.05
@@ -1141,7 +1141,7 @@ struct HomeServerCoverTests {
                 return settings.whisperModelVariant == "second-pick" ? secondPick : firstPick
             },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
         captions.homeServerWaitSeconds = 0.05
@@ -1165,7 +1165,7 @@ struct HomeServerCoverTests {
             audio: FakeAudioCapturer(),
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
         captions.homeServerWaitSeconds = 0.05
@@ -1188,7 +1188,7 @@ struct HomeServerCoverTests {
             audio: FakeAudioCapturer(),
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
         captions.homeServerWaitSeconds = 0.05
@@ -1214,7 +1214,7 @@ struct HomeServerCoverTests {
             audio: FakeAudioCapturer(),
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
         captions.homeServerWaitSeconds = 0.05
@@ -1241,7 +1241,7 @@ struct HomeServerCoverTests {
             audio: FakeAudioCapturer(),
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
         captions.homeServerWaitSeconds = 0.05
@@ -1267,7 +1267,7 @@ struct HomeServerCoverTests {
             audio: audio,
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
         captions.homeServerWaitSeconds = 0.05
@@ -1296,7 +1296,7 @@ struct HomeServerCoverTests {
             audio: audio,
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.2], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.2], downloadDelays: [], microphoneTailDelays: [])
         )
         captions.homeServerRecheckSeconds = 60
         captions.homeServerWaitSeconds = 60
@@ -1386,7 +1386,7 @@ struct HomeServerCoverTests {
             audio: FakeAudioCapturer(),
             engineFactory: { $0.engine == .homeServer ? server : phone },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
         )
         captions.homeServerRecheckSeconds = 0.05
         captions.homeServerWaitSeconds = 0.05

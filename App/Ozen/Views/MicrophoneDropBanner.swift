@@ -18,7 +18,7 @@ struct MicrophoneDropBanner: View {
                             .font(.headline)
                         Text(detail)
                             .font(.subheadline)
-                            .opacity(0.9)
+                            .opacity(BannerPalette.subtitleOpacity)
                     }
                     Spacer(minLength: 0)
                 }
@@ -33,7 +33,7 @@ struct MicrophoneDropBanner: View {
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
                     .font(.headline)
-                    .opacity(0.8)
+                    .opacity(BannerPalette.subtitleOpacity)
                     .frame(minWidth: 44, minHeight: 44)
                     .padding(.trailing, 6)
                     .contentShape(Rectangle())
@@ -43,7 +43,7 @@ struct MicrophoneDropBanner: View {
             .accessibilityIdentifier("microphoneDropBannerClose")
         }
         .frame(maxWidth: .infinity)
-        .background(Color.orange.deepShade.opacity(0.92), in: RoundedRectangle(cornerRadius: 16))
+        .background(Color.orange.deepShade.opacity(BannerPalette.fillAlpha), in: RoundedRectangle(cornerRadius: 16))
         .foregroundStyle(.white)
         .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
     }
