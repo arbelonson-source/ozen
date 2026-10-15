@@ -16,6 +16,7 @@ object ProblemSnapshot {
         segments: List<TranscriptSegment>,
         device: String,
         utcOffsetSeconds: Int,
+        includeCaptions: Boolean = true,
     ): List<String> {
         val engine = activeEngine ?: settings.engine
         val microphone = input?.let { "${it.portName} [${it.portType.rawValue}]" } ?: "-"
@@ -24,7 +25,8 @@ object ProblemSnapshot {
             "  lag ${number(stats.captionLagSeconds, "%.2f")}s levels ${stats.inputLevels.summary ?: "-"} speech ${number(stats.speechShare?.let { it * 100 }, "%.0f")}% floor ${number(stats.noiseFloorDecibels, "%.1f")} margin ${number(stats.noiseMarginDecibels, "%.1f")}dB restarts ${stats.engineRestarts} stalls ${stats.audioStalls} updates ${stats.tokensReceived} lines ${stats.segmentsCommitted}",
             "  $device",
         )
-        for (segment in segments.takeLast(lineCount)) {
+        if (!includeCaptions) lines.add("  caption lines not kept (saving conversations is off)")
+        for (segment in if (includeCaptions) segments.takeLast(lineCount) else emptyList()) {
             val sureness = segment.confidence?.let { String.format(Locale.ROOT, "%.2f", it) } ?: "-"
             val time = TranscriptHistoryStore.formattedClockTime(segment.lastUpdateTimestamp, utcOffsetSeconds)
             lines.add("$CAPTION_LINE_PREFIX${if (segment.isCommitted) "final" else "live"}, sure $sureness, $time): ${segment.text}")

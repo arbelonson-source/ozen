@@ -75,10 +75,11 @@ struct HistoryDetailView: View {
     }
 
     private func transcriptList(_ record: TranscriptSessionRecord) -> some View {
-        ScrollViewReader { proxy in
+        let slots = SpeakerColorSlots(record.segments.map { (clusterID: $0.speakerClusterID, name: $0.speakerName) })
+        return ScrollViewReader { proxy in
             List {
                 if let stats, stats.totalWords > 0 {
-                    ConversationSummarySection(stats: stats)
+                    ConversationSummarySection(stats: stats, slots: slots)
                 }
                 if !isSearch, !numberLineIDs.isEmpty {
                     numbersSection(record, proxy: proxy)
@@ -89,6 +90,7 @@ struct HistoryDetailView: View {
                         SavedLineRow(
                             segment: segment,
                             previous: index > 0 ? record.segments[index - 1] : nil,
+                            slots: slots,
                             showsTime: timeMarks.contains(segment.id),
                             markUncertain: viewModel.display.markUncertainLines,
                             engine: record.engine,
@@ -409,6 +411,7 @@ private struct ConversationSummarySection: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let stats: ConversationStats
+    let slots: SpeakerColorSlots
 
     // A speaker's name is free text from enrollment, with no length limit,
     // so at the largest accessibility text size it can wrap; a plain
@@ -437,7 +440,7 @@ private struct ConversationSummarySection: View {
                             .monospacedDigit()
                     }
                     ProgressView(value: stats.wordFraction(of: speaker))
-                        .tint(SpeakerColor.color(forClusterID: speaker.clusterID, speakerName: speaker.name, on: colorScheme))
+                        .tint(SpeakerColor.color(forClusterID: speaker.clusterID, speakerName: speaker.name, slots: slots, on: colorScheme))
                         .accessibilityHidden(true)
                 }
                 .accessibilityElement(children: .combine)
@@ -463,6 +466,7 @@ private struct SavedLineRow: View {
     @Environment(\.openURL) private var openURL
     let segment: SavedSegment
     let previous: SavedSegment?
+    let slots: SpeakerColorSlots
     let showsTime: Bool
     let markUncertain: Bool
     let engine: TranscriptionEngineKind
@@ -486,7 +490,7 @@ private struct SavedLineRow: View {
             if let name = segment.speakerName, CaptionLayout.showsSpeakerLabel(for: segment, after: previous) {
                 Text(name)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(SpeakerColor.color(forClusterID: segment.speakerClusterID, speakerName: name, on: colorScheme))
+                    .foregroundStyle(SpeakerColor.color(forClusterID: segment.speakerClusterID, speakerName: name, slots: slots, on: colorScheme))
             }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 if segment.isStarred {
@@ -510,7 +514,7 @@ private struct SavedLineRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .environment(\.layoutDirection, CaptionLayout.readsRightToLeft(segment.text, languageCode: languageCode) ? .rightToLeft : .leftToRight)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityText)
+        .accessibilityLabel(Text(accessibilityText))
         .accessibilityHint(isMatch ? tr("מכילה את מה שחיפשת", "Contains what you searched for") : "")
         .accessibilityActions {
             ForEach(PhoneNumbers.matches(in: segment.text), id: \.dialable) { phone in
@@ -531,7 +535,11 @@ private struct SavedLineRow: View {
 
     /// VoiceOver hears the time the screen shows above the line, and no
     /// "Unknown speaker:" before every line of an unrecognised voice.
-    private var accessibilityText: String {
-        SavedLineSpeech.label(for: segment, time: showsTime ? timeText : nil, uncertain: isUncertain)
+    private var accessibilityText: AttributedString {
+        CaptionSpeechText.label(
+            whole: SavedLineSpeech.label(for: segment, time: showsTime ? timeText : nil, uncertain: isUncertain),
+            endingWith: segment.text,
+            languageCode: languageCode
+        )
     }
 }

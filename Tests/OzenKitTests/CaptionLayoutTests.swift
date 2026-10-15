@@ -117,7 +117,7 @@ struct CaptionLayoutNumberDirectionTests {
     @Test("a star code, a number in spaced groups and an international number are each kept left to right in a Hebrew line")
     func numbersIsolated() {
         #expect(CaptionLayout.displayText("תתקשרי לקופה *2700") == mark + "תתקשרי לקופה " + open + "*2700" + close)
-        #expect(CaptionLayout.displayText("תתקשרי 050 123 4567 מחר") == mark + "תתקשרי " + open + "050 123 4567" + close + " מחר")
+        #expect(CaptionLayout.displayText("תתקשרי 050 123 4567 מחר") == mark + "תתקשרי " + open + "050\u{00A0}123\u{00A0}4567" + close + " מחר")
         #expect(CaptionLayout.directed("אליו +972-3-1234567.") == mark + "אליו " + open + "+972-3-1234567" + close + ".")
         #expect(CaptionLayout.directed("המוקד 1-700-50-50-50 פתוח") == mark + "המוקד " + open + "1-700-50-50-50" + close + " פתוח")
     }
@@ -125,7 +125,7 @@ struct CaptionLayoutNumberDirectionTests {
     @Test("times, doses and English lines are left as they were, and the numbers still dial from the shown line")
     func otherTextUntouched() {
         #expect(CaptionLayout.displayText("בשעה 10:30, 3 כדורים") == mark + "בשעה 10:30, 3 כדורים")
-        #expect(CaptionLayout.displayText("call 050 123 4567", languageCode: "en") == "call 050 123 4567")
+        #expect(CaptionLayout.displayText("call 050 123 4567", languageCode: "en") == "call 050\u{00A0}123\u{00A0}4567")
         let shown = CaptionLayout.displayText("תתקשרי 050 123 4567 או +972-3-1234567 מחר")
         #expect(PhoneNumbers.matches(in: shown).map(\.dialable) == ["0501234567", "+97231234567"])
     }
@@ -295,5 +295,26 @@ struct CaptionPipelineLongRunTests {
         #expect(pipeline.segments.last?.isCommitted == true)
         #expect(pipeline.segments.first?.text == "שורה 0")
     }
-}
 
+    @Test("a shown phone number and a dose are held together so they cannot wrap, and a copied line keeps plain spaces")
+    func numbersHeldTogether() {
+        let nb = "\u{00A0}"
+        #expect(CaptionLayout.displayText("תתקשרי 054 123 4567 מחר").contains("054" + nb + "123" + nb + "4567"))
+        #expect(CaptionLayout.displayText("קחי 500 מ״ג פעמיים").contains("500" + nb + "מ״ג"))
+        #expect(CaptionLayout.displayText("take 500 mg", languageCode: "en") == "take 500" + nb + "mg")
+        #expect(CaptionLayout.displayText("תתקשרי 050-1234567").contains("050\u{2011}1234567"))
+        #expect(CaptionLayout.copiedText("תתקשרי 054 123 4567").contains("054 123 4567"))
+        #expect(CaptionLayout.copiedText("קחי 500 מ״ג").contains("500 מ״ג"))
+        let shown = CaptionLayout.displayText("תתקשרי 054 123 4567 מחר")
+        #expect(PhoneNumbers.matches(in: shown).map(\.dialable) == ["0541234567"])
+    }
+
+    @Test("a dose written with a long unit word is held together too")
+    func longUnitsHeldTogether() {
+        let nb = "\u{00A0}"
+        #expect(CaptionLayout.displayText("קחי 30 מיליגרם בבוקר").contains("30" + nb + "מיליגרם"))
+        #expect(CaptionLayout.displayText("קחי 5 מיליליטר בבוקר").contains("5" + nb + "מיליליטר"))
+        #expect(CaptionLayout.displayText("קחי 2 ליטר מים").contains("2" + nb + "ליטר"))
+        #expect(CaptionLayout.displayText("קחי 5 מיליליטרים").contains("5 מיליליטרים"))
+    }
+}

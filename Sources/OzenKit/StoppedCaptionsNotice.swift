@@ -129,6 +129,11 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
                     "יש בעיה במפתח של התמלול בענן. פתחו את אוזן לפרטים.",
                     "There's a problem with the cloud transcription key. Open Ozen for details."
                 )
+            case (_, .cloudLanguageNotCovered?):
+                return tr(
+                    "השירות הזה לא מתמלל את השפה הזו. פתחו את אוזן ובחרו שירות אחר.",
+                    "This service can't caption this language. Open Ozen and choose another service."
+                )
             case (_, .cloudOutOfCredit?):
                 return tr(
                     "נגמר התקציב לתמלול בענן. פתחו את אוזן לפרטים.",

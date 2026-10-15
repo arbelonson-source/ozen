@@ -187,14 +187,50 @@ object HebrewText {
      * The result is composed (NFC), so two spellings that Swift's string
      * comparison treats as equal compare equal here too.
      */
-    fun normalize(text: String): String {
+    fun normalize(text: String): String = foldAccents(normalizeKeepingAccents(text))
+
+    /**
+     * [normalize] without the accent folding: "si" and "sí" stay two strings,
+     * for the vocabulary list where they are two recognizer hints.
+     */
+    internal fun normalizeKeepingAccents(text: String): String {
         val withoutNiqqud = stripNiqqud(separatingJoiners(removingDirectionMarks(text)))
         val stripped = withoutNiqqud.filteringScalars {
             !isKeywordPunctuation(it) && !isKeywordSymbol(it) &&
                 Character.getType(it) != Character.FORMAT.toInt() && !isKeywordVariationSelector(it)
         }
-        val joined = splitOnKeywordWhitespace(stripped.lowercase(Locale.ROOT)).joinToString(" ")
+        val joined = splitOnKeywordWhitespace(stripped.lowercase(Locale.ROOT).replace('ё', 'е')).joinToString(" ")
         return Normalizer.normalize(joined, Normalizer.Form.NFC)
+    }
+
+    /**
+     * Drops accents, Arabic vowel marks and tatweel, and merges the Arabic
+     * hamza-carrying alefs, alef maksura and ta marbuta with their plain
+     * letters, so a name typed without them still matches the caption. The
+     * breve on и (й) and the tilde on ñ are kept: those are different letters.
+     */
+    private fun foldAccents(text: String): String {
+        val decomposed = Normalizer.normalize(text, Normalizer.Form.NFD)
+        val out = StringBuilder(decomposed.length)
+        var previous = 0
+        for (c in decomposed) {
+            val keep = when (c.code) {
+                in 0x0300..0x036F -> (c.code == 0x0306 && previous == 'и'.code) || (c.code == 0x0303 && previous == 'n'.code)
+                in 0x064B..0x065F, 0x0670, 0x0640 -> false
+                else -> true
+            }
+            if (!keep) continue
+            out.append(
+                when (c) {
+                    'أ', 'إ', 'آ' -> 'ا'
+                    'ى' -> 'ي'
+                    'ة' -> 'ه'
+                    else -> c
+                },
+            )
+            previous = c.code
+        }
+        return Normalizer.normalize(out, Normalizer.Form.NFC)
     }
 
     /**
@@ -280,7 +316,11 @@ object HebrewText {
         // Found in real speech the home computer wrote: "pains of" (as in
         // headaches), "full", "buildings of"; and a name never takes "the".
         "אבי" to setOf("כאבי", "וכאבי"),
-        "לאה" to setOf("מלאה", "ומלאה", "שמלאה"),
+        "לאה" to setOf("מלאה", "ומלאה", "שמלאה", "הלאה", "והלאה"),
+        "בר" to setOf("כבר", "וכבר", "שבר", "ושבר", "הבר"),
+        "אלה" to setOf("כאלה", "וכאלה", "האלה", "והאלה"),
+        "שי" to setOf("ששי", "וששי"),
+        "נתן" to setOf("שנתן", "כשנתן", "ושנתן"),
         "בני" to setOf("מבני", "ומבני"),
         "מרים" to setOf("המרים", "והמרים", "שהמרים"),
         "אור" to setOf("האור", "באור", "לאור"),
