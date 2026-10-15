@@ -16,6 +16,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class EngineSettings(
@@ -76,7 +78,9 @@ class EngineSettings(
 
     val pairingCodeHeld = MutableStateFlow(false)
 
-    suspend fun loadKeyState() {
+    private val credentialWork = Mutex()
+
+    suspend fun loadKeyState() = credentialWork.withLock {
         val held = withContext(io) { CloudProvider.entries.filter { cloudKeys.hasKey(it) }.toSet() to (homeServerCode.read() != null) }
         cloudKeysHeld.value = held.first
         pairingCodeHeld.value = held.second
@@ -95,16 +99,20 @@ class EngineSettings(
         val key = draft.trim()
         if (key.isEmpty() || !cloudSoundAcknowledged()) return false
         val service = provider
-        if (!withContext(io) { cloudKeys.save(key, service) }) return false
-        cloudKeysHeld.value = cloudKeysHeld.value + service
+        credentialWork.withLock {
+            if (!withContext(io) { cloudKeys.save(key, service) }) return false
+            cloudKeysHeld.value = cloudKeysHeld.value + service
+        }
         if (cloudIsTheEngine) restart()
         return true
     }
 
     suspend fun deleteCloudKey() {
         val service = provider
-        withContext(io) { cloudKeys.remove(service) }
-        cloudKeysHeld.value = cloudKeysHeld.value - service
+        credentialWork.withLock {
+            withContext(io) { cloudKeys.remove(service) }
+            cloudKeysHeld.value = cloudKeysHeld.value - service
+        }
         if (cloudIsTheEngine) restart()
     }
 
@@ -119,15 +127,20 @@ class EngineSettings(
 
     suspend fun savePairingCode(draft: String): Boolean {
         val code = draft.trim()
-        if (code.isEmpty() || !withContext(io) { homeServerCode.save(code) }) return false
-        pairingCodeHeld.value = true
+        if (code.isEmpty()) return false
+        credentialWork.withLock {
+            if (!withContext(io) { homeServerCode.save(code) }) return false
+            pairingCodeHeld.value = true
+        }
         if (homeComputerIsTheEngine) restart()
         return true
     }
 
     suspend fun deletePairingCode() {
-        withContext(io) { homeServerCode.remove() }
-        pairingCodeHeld.value = false
+        credentialWork.withLock {
+            withContext(io) { homeServerCode.remove() }
+            pairingCodeHeld.value = false
+        }
         if (homeComputerIsTheEngine) restart()
     }
 

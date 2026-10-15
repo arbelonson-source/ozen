@@ -10,12 +10,16 @@ import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.WhisperModelCatalog
 import java.io.File
 import java.nio.file.Files
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -406,5 +410,35 @@ class EngineSettingsTest {
         assertFalse(failing.savePairingCode("code-one"))
         assertFalse(failing.hasPairingCode())
         assertEquals(1, restarts)
+    }
+
+    @Test
+    fun `a slow look at the Keystore cannot bring back a code deleted while it was looking`() = runBlocking<Unit> {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val plain = ReversingCipher()
+        val slow = object : CodeCipher {
+            override fun seal(plain: ByteArray) = plainCipher.seal(plain)
+
+            override fun open(sealed: ByteArray): ByteArray {
+                entered.countDown()
+                release.await(5, TimeUnit.SECONDS)
+                return plainCipher.open(sealed)
+            }
+
+            val plainCipher = plain
+        }
+        val file = File(folder, "slow-code")
+        HomeServerCodeStore(file, plain).save("code-one")
+        val racing = EngineSettings(settings, keys, HomeServerCodeStore(file, slow), { HomeServerCheck.Connected(1) }, scope = scope) { }
+        val load = launch(Dispatchers.IO) { racing.loadKeyState() }
+        assertTrue(entered.await(5, TimeUnit.SECONDS))
+        val delete = launch(Dispatchers.IO) { racing.deletePairingCode() }
+        Thread.sleep(300)
+        release.countDown()
+        load.join()
+        delete.join()
+        assertFalse(racing.pairingCodeHeld.value)
+        assertFalse(file.exists())
     }
 }

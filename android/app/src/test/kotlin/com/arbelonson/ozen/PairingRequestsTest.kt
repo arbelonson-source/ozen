@@ -3,6 +3,9 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import java.nio.file.Files
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -11,6 +14,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class PairingRequestsTest {
@@ -130,5 +135,50 @@ class PairingRequestsTest {
         assertTrue(pairing.saveFailed.value)
         assertEquals(TranscriptionEngineKind.WhisperKit, settings.current.value.engine)
         assertNull(pairing.pending.value)
+    }
+
+    @Test
+    fun `leaving the screen while the code saves still finishes the pairing, so the address and code stay a pair`() = runBlocking<Unit> {
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val pairing = PairingRequests(settings, { started.countDown(); release.await(5, TimeUnit.SECONDS); true })
+        pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=testcode123")
+        val screen = launch(Dispatchers.Default) { pairing.acceptPending() }
+        assertTrue(started.await(5, TimeUnit.SECONDS))
+        screen.cancel()
+        release.countDown()
+        screen.join()
+        assertEquals("wss://desktop.tail.ts.net", settings.current.value.homeServerAddress)
+        assertEquals(TranscriptionEngineKind.HomeServer, settings.current.value.engine)
+    }
+
+    @Test
+    fun `a second link accepted while the first still saves waits, so the saved code always belongs to the saved address`() = runBlocking<Unit> {
+        val firstStarted = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val addressWhenSecondSaved = AtomicReference<String?>()
+        val pairing = PairingRequests(settings, { code ->
+            if (code == "firstcode") {
+                firstStarted.countDown()
+                release.await(5, TimeUnit.SECONDS)
+            } else {
+                addressWhenSecondSaved.set(settings.current.value.homeServerAddress)
+            }
+            true
+        })
+        pairing.open("ozen://pair?address=wss://first.tail.ts.net&code=firstcode")
+        val first = assertNotNull(pairing.pending.value)
+        pairing.pending.value = null
+        pairing.open("ozen://pair?address=wss://second.tail.ts.net&code=secondcode")
+        val second = assertNotNull(pairing.pending.value)
+        val one = launch(Dispatchers.Default) { pairing.accept(first) }
+        assertTrue(firstStarted.await(5, TimeUnit.SECONDS))
+        val two = launch(Dispatchers.Default) { pairing.accept(second) }
+        Thread.sleep(300)
+        release.countDown()
+        one.join()
+        two.join()
+        assertEquals("wss://first.tail.ts.net", addressWhenSecondSaved.get())
+        assertEquals("wss://second.tail.ts.net", settings.current.value.homeServerAddress)
     }
 }

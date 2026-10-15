@@ -614,10 +614,11 @@ private fun HomeComputerSection(
     }
     val saveCode: suspend () -> Unit = {
         if (code.isNotBlank()) {
-            val stored = engineSettings.savePairingCode(code)
+            val typed = code
+            val stored = engineSettings.savePairingCode(typed)
             codeSaveFailed = !stored
             if (stored) {
-                code = ""
+                if (code == typed) code = ""
                 forgetCheck()
             }
         }

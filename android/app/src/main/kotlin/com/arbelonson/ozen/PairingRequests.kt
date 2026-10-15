@@ -7,7 +7,10 @@ import java.net.URISyntaxException
 import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class PairingRequests(
@@ -34,8 +37,14 @@ class PairingRequests(
 
     suspend fun acceptPending(): Boolean = pending.value?.let { accept(it) } ?: false
 
+    private val oneAtATime = Mutex()
+
     suspend fun accept(pairing: HomeServerPairing): Boolean {
         pending.value = null
+        return withContext(NonCancellable) { oneAtATime.withLock { save(pairing) } }
+    }
+
+    private suspend fun save(pairing: HomeServerPairing): Boolean {
         if (!withContext(io) { saveCode(pairing.code) }) {
             saveFailed.value = true
             return false
