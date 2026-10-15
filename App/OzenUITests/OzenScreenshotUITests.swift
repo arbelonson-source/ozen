@@ -1121,13 +1121,18 @@ final class OzenScreenshotUITests: XCTestCase {
         // control, which is above the keyboard and never on the text
         // field: at the largest text size the field sits right under the
         // bar, and a drag that starts on it moves the cursor, not the sheet.
-        func dragSheet(up: Bool) {
+        func dragSheet(up: Bool, slow: Bool = false) {
             let bar = app.navigationBars.firstMatch.frame
             let window = app.windows.firstMatch.frame
             let startY = (bar.maxY + 12) / window.height
             let endY = (bar.maxY + 12 + (up ? -50 : 50)) / window.height
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
-                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY)))
+            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY))
+            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
+            if slow {
+                start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.5)
+            } else {
+                start.press(forDuration: 0.1, thenDragTo: end)
+            }
         }
         var swipes = 0
         while !(header.exists && header.isHittable) && swipes < 40 {
@@ -1161,9 +1166,10 @@ final class OzenScreenshotUITests: XCTestCase {
         capture(app, name: "type-to-speak-accessibility-text-landscape")
         XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")
 
-        // A swipe can flick the phrases past the top of the sheet in
-        // landscape, so once they have been seen and are gone again or
-        // sit above the bar, swipe back down.
+        // A fast swipe can flick the phrases past the top of the sheet in
+        // landscape, where little of the sheet shows above the keyboard,
+        // so once they are in view the swipes are slow and leave no flick,
+        // and if they are seen and then gone, swipe back down.
         swipes = 0
         var seen = false
         while !(header.exists && header.isHittable) && swipes < 40 {
@@ -1171,7 +1177,7 @@ final class OzenScreenshotUITests: XCTestCase {
             let above = header.exists
                 ? header.frame.maxY < app.navigationBars.firstMatch.frame.maxY
                 : seen
-            dragSheet(up: !above)
+            dragSheet(up: !above, slow: header.exists)
             if above && !header.exists { seen = false }
             swipes += 1
         }
