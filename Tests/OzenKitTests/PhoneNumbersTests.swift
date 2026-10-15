@@ -84,4 +84,9 @@ struct PhoneNumbersTests {
         #expect(dialed("תתקשרי 050123456\u{0667} מחר") == ["0501234567"])
         #expect(dialed("המוקד 1-700-50-50-5\u{0660} פתוח") == ["1700505050"])
     }
+
+    @Test("a digit outside the basic plane is counted, not dropped")
+    func supplementaryDigit() {
+        #expect(dialed("תתקשרי 050123456\u{1D7D5} מחר") == ["0501234567"])
+    }
 }
