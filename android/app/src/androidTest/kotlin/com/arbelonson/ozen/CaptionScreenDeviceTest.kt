@@ -2241,7 +2241,11 @@ class CaptionScreenDeviceTest {
     }
 
     private fun lineText(text: String) =
-        compose.onAllNodes(hasText(text, substring = true) and SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)).onFirst()
+        compose.onAllNodes(shownAs(text) and SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)).onFirst()
+
+    private fun shownAs(text: String) = SemanticsMatcher("shows \"$text\" (a no-break space counts as a space)") { node ->
+        (if (SemanticsProperties.Text in node.config) node.config[SemanticsProperties.Text] else emptyList()).any { it.text.replace('\u00A0', ' ').contains(text) }
+    }
 
     private fun copied(): String? {
         var text: String? = null
