@@ -54,7 +54,25 @@ object CaptionLayout {
      * and spoken text stays as recognized.
      */
     fun displayText(text: String, languageCode: String = "he"): String =
-        directed(readableText(text), languageCode)
+        directed(joiningNumbers(readableText(text)), languageCode)
+
+    /**
+     * Spaces inside a phone number, or between an amount and what it is of
+     * ("3 pills"), become no-break spaces so a caption line never wraps in
+     * the middle of one. Same length, so offsets stay valid. Display only.
+     */
+    internal fun joiningNumbers(text: String): String {
+        val spans = PhoneNumbers.matches(text).map { it.start until it.end } +
+            NumberEmphasis.ranges(text).map { it.start until it.endExclusive }
+        if (spans.isEmpty()) return text
+        val result = StringBuilder(text)
+        for (span in spans) {
+            for (index in span) if (result[index] == ' ') result.setCharAt(index, NO_BREAK_SPACE)
+        }
+        return result.toString()
+    }
+
+    private const val NO_BREAK_SPACE = '\u00A0'
 
     /**
      * The marks alone, without breaking the text into paragraphs: for a
