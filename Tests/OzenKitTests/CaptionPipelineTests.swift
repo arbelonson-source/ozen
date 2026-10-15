@@ -159,6 +159,9 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
     private let lock = NSLock()
     private var tokenContinuation: AsyncThrowingStream<TranscriptToken, Error>.Continuation?
     private(set) var chunksSeen = 0
+    private var heardSamples: [Float] = []
+    /// Every sample `stream` was handed, in order.
+    var samplesSeen: [Float] { lock.withLock { heardSamples } }
     private var vocabularyHistory: [[String]] = []
     /// Every list handed to `setVocabulary`, in order.
     var vocabularySeen: [[String]] { lock.withLock { vocabularyHistory } }
@@ -237,8 +240,11 @@ final class FakeEngine: TranscriptionEngine, @unchecked Sendable {
         AsyncThrowingStream { continuation in
             lock.withLock { tokenContinuation = continuation }
             Task {
-                for await _ in audio {
-                    self.lock.withLock { self.chunksSeen += 1 }
+                for await chunk in audio {
+                    self.lock.withLock {
+                        self.chunksSeen += 1
+                        self.heardSamples.append(contentsOf: chunk)
+                    }
                 }
             }
         }
@@ -1173,7 +1179,7 @@ struct CaptionPipelineLifecycleTests {
         let engine = FakeEngine()
         let audio = FakeAudioCapturer()
         audio.availableInputs.append(AudioInputDescriptor(uid: "usb", portName: "USB Microphone", portType: .usb))
-        let (pipeline, _, _) = makePipeline(audio: audio, engines: [.whisperKit: engine], recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []))
+        let (pipeline, _, _) = makePipeline(audio: audio, engines: [.whisperKit: engine], recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []))
         var settings = AppSettings.default
         settings.preferredInputUID = "builtin"
         await pipeline.start(settings: settings)
@@ -1196,7 +1202,7 @@ struct CaptionPipelineLifecycleTests {
     @Test("after tapping Retry once the automatic attempts ran out, the next glitch is retried by itself again")
     func retryTapGivesFreshAttempts() async {
         let engine = FakeEngine()
-        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine], recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []))
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine], recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []))
         await pipeline.start(settings: .default)
         #expect(await eventually { pipeline.phase == .listening })
         engine.endStream(throwing: TestError())
@@ -1416,7 +1422,7 @@ struct CaptionPipelineLifecycleTests {
                     return engine
                 },
                 embedder: FakeEmbedder(),
-                recovery: retryComing ? AutoRecoveryPolicy(glitchDelays: [600], downloadDelays: []) : .disabled
+                recovery: retryComing ? AutoRecoveryPolicy(glitchDelays: [600], downloadDelays: [], microphoneTailDelays: []) : .disabled
             )
             await pipeline.start(settings: .default)
             #expect(pipeline.phase.failure?.kind == .audioSessionFailed)
@@ -2012,7 +2018,7 @@ struct CaptionPipelineEnrollmentTests {
         let (pipeline, audio, _) = makePipeline(
             engines: [.whisperKit: engine],
             soundDetector: FakeSoundDetector(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [])
+            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [], microphoneTailDelays: [])
         )
         await pipeline.start(settings: .default)
         #expect(await eventually { pipeline.scheduledRetry != nil && pipeline.stats.soundDetectionRunning })
@@ -3168,7 +3174,7 @@ struct CaptionPipelineAudioStallTests {
     func microphoneChangeGivesFreshAttempts() async {
         let clock = TestClock()
         let (pipeline, audio, _) = makePipeline(
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []), now: { clock.now }
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []), now: { clock.now }
         )
         await pipeline.start(settings: .default)
         audio.onCaptureLost?()
@@ -3257,7 +3263,7 @@ struct CaptionPipelineAudioStallTests {
     @Test("automatic recovery starts capture again after a stall")
     func stallRecovers() async {
         let (pipeline, audio, _) = makePipeline(
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []),
             audioWatchdog: quickWatchdog
         )
         await pipeline.start(settings: .default)
@@ -3666,7 +3672,7 @@ struct CaptionPipelineDownloadNetworkTests {
             audio: FakeAudioCapturer(),
             engineFactory: { _ in engine },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []),
             network: network
         )
         pipeline.systemInterruptionChanged(active: true)
@@ -3690,7 +3696,7 @@ struct CaptionPipelineDownloadNetworkTests {
             audio: FakeAudioCapturer(),
             engineFactory: { _ in engine },
             embedder: FakeEmbedder(),
-            recovery: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: []),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: [], microphoneTailDelays: []),
             network: network
         )
         await pipeline.start(settings: settings())
@@ -4059,4 +4065,224 @@ struct CaptionPipelineRetryGuardTests {
 private final class BeamLog {
     private(set) var values: [Int] = []
     func add(_ beam: Int) { values.append(beam) }
+}
+
+@Suite("CaptionPipeline home computer loss")
+@MainActor
+struct CaptionPipelineHomeLossTests {
+    private func rig() -> (CaptionPipeline, FakeAudioCapturer, FakeEngine, FakeEngine) {
+        let home = FakeEngine(kind: .homeServer)
+        let phone = FakeEngine(kind: .whisperKit)
+        let audio = FakeAudioCapturer()
+        let pipeline = CaptionPipeline(
+            audio: audio,
+            engineFactory: { $0.engine == .homeServer ? home : phone },
+            embedder: FakeEmbedder(),
+            recovery: .disabled
+        )
+        return (pipeline, audio, home, phone)
+    }
+
+    private var homeSettings: AppSettings {
+        var settings = AppSettings.default
+        settings.engine = .homeServer
+        return settings
+    }
+
+    private func speech(seconds: Double, level: Float = 0.2) -> [[Float]] {
+        (0..<Int(seconds * 10)).map { _ in
+            (0..<1_600).map { $0 % 2 == 0 ? level : -level }
+        }
+    }
+
+    private func lose(_ home: FakeEngine, _ pipeline: CaptionPipeline) async {
+        home.endStream(throwing: EngineUnavailability(kind: .homeServerUnreachable, detail: "gone"))
+        #expect(await eventually { pipeline.isCoveringForCloud && pipeline.phase.isListening })
+    }
+
+    private func listen(_ pipeline: CaptionPipeline, _ audio: FakeAudioCapturer, _ home: FakeEngine, line: String = "hello there") async {
+        await pipeline.start(settings: homeSettings)
+        #expect(pipeline.phase.isListening)
+        audio.push([Float](repeating: 0, count: 1_600))
+        home.emit(TranscriptToken(utteranceID: UUID(), text: line, isFinal: true, timestamp: 1_000))
+        #expect(await eventually { pipeline.segments.count == 1 })
+    }
+
+    @Test("speech said after the home computer's last line, before the phone took over, is captioned by the phone first")
+    func replaysTheLostSpeech() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home)
+        for chunk in speech(seconds: 10) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 10.05 })
+        await lose(home, pipeline)
+        audio.push([Float](repeating: 0.5, count: 1_600))
+        #expect(await eventually { phone.samplesSeen.contains(0.5) })
+
+        let heard = phone.samplesSeen
+        let live = heard.firstIndex(of: 0.5) ?? 0
+        #expect(heard[..<live].filter { abs($0) == 0.2 }.count == 160_000)
+        #expect(heard[live...].allSatisfy { $0 == 0.5 })
+    }
+
+    @Test("a stretch with no speech in it is not replayed")
+    func silenceIsNotReplayed() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home)
+        for _ in 0..<100 { audio.push([Float](repeating: 0, count: 1_600)) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 10.05 })
+        await lose(home, pipeline)
+        audio.push([Float](repeating: 0.5, count: 1_600))
+        #expect(await eventually { phone.samplesSeen.count >= 1_600 })
+
+        #expect(phone.samplesSeen.count == 1_600)
+    }
+
+    @Test("no more than about twenty seconds are replayed")
+    func replayIsCapped() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home)
+        for chunk in speech(seconds: 40) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 40.05 })
+        await lose(home, pipeline)
+        audio.push([Float](repeating: 0.5, count: 1_600))
+        #expect(await eventually { phone.samplesSeen.count >= 1_600 + 320_000 })
+        try? await Task.sleep(for: .milliseconds(100))
+
+        #expect(phone.samplesSeen.count == 320_000 + 1_600)
+    }
+
+    @Test("a replayed line that repeats the home computer's last line is dropped")
+    func repeatedLineDropped() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home, line: "see you at noon tomorrow")
+        for chunk in speech(seconds: 5) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 5.05 })
+        await lose(home, pipeline)
+        #expect(await eventually { phone.samplesSeen.count >= 80_000 })
+
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "at noon tomorrow", isFinal: true, timestamp: 1_001))
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "bring the keys", isFinal: true, timestamp: 1_002))
+        #expect(await eventually { pipeline.segments.count == 2 })
+
+        #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "bring the keys"])
+    }
+
+    @Test("a replayed partial that grows past the overlap keeps the new words")
+    func growingPartialKeepsNewWords() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home, line: "see you at noon tomorrow")
+        for chunk in speech(seconds: 5) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 5.05 })
+        await lose(home, pipeline)
+        #expect(await eventually { phone.samplesSeen.count >= 80_000 })
+        let id = UUID()
+        phone.emit(TranscriptToken(utteranceID: id, text: "tomorrow", isFinal: false, timestamp: 1_001))
+        phone.emit(TranscriptToken(utteranceID: id, text: "tomorrow bring the keys", isFinal: false, timestamp: 1_002))
+        phone.emit(TranscriptToken(utteranceID: id, text: "tomorrow bring the keys", isFinal: true, timestamp: 1_003))
+        #expect(await eventually { pipeline.segments.count == 2 })
+
+        #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "bring the keys"])
+    }
+
+    @Test("one phone line of the overlap plus new speech shows the overlap once")
+    func mergedOverlapAndNewSpeech() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home, line: "see you at noon tomorrow")
+        for chunk in speech(seconds: 5) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 5.05 })
+        await lose(home, pipeline)
+        #expect(await eventually { phone.samplesSeen.count >= 80_000 })
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "at noon tomorrow bring the keys", isFinal: true, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+
+        #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "bring the keys"])
+    }
+
+    @Test("a new line equal to the last word of the previous line is not lost")
+    func newLineEqualToLastWordIsKept() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home, line: "see you at noon tomorrow")
+        for chunk in speech(seconds: 5) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 5.05 })
+        await lose(home, pipeline)
+        #expect(await eventually { phone.samplesSeen.count >= 80_000 })
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "tomorrow", isFinal: true, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+
+        #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "tomorrow"])
+    }
+
+    @Test("a new line equal to the first words of the previous line is not lost")
+    func newLineEqualToFirstWordsIsKept() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home, line: "see you at noon tomorrow")
+        for chunk in speech(seconds: 5) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 5.05 })
+        await lose(home, pipeline)
+        #expect(await eventually { phone.samplesSeen.count >= 80_000 })
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "see you", isFinal: true, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+
+        #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "see you"])
+    }
+
+    @Test("a final that comes long after its speech does not move the replay start forward")
+    func slowFinalKeepsReplayStart() async {
+        let (pipeline, audio, home, phone) = rig()
+        await pipeline.start(settings: homeSettings)
+        audio.push([Float](repeating: 0, count: 1_600))
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 0.05 })
+        let id = UUID()
+        home.emit(TranscriptToken(utteranceID: id, text: "hello", isFinal: false, timestamp: 1_000))
+        #expect(await eventually { pipeline.stats.tokensReceived >= 1 })
+        for chunk in speech(seconds: 8) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 8.05 })
+        home.emit(TranscriptToken(utteranceID: id, text: "hello there", isFinal: true, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        await lose(home, pipeline)
+        audio.push([Float](repeating: 0.5, count: 1_600))
+        #expect(await eventually { phone.samplesSeen.contains(0.5) })
+
+        let heard = phone.samplesSeen
+        let live = heard.firstIndex(of: 0.5) ?? 0
+        #expect(heard[..<live].filter { abs($0) == 0.2 }.count == 128_000)
+    }
+
+    @Test("a new line that starts with the last word of the previous line keeps that word")
+    func oneSharedWordIsKept() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home, line: "see you at noon tomorrow")
+        for chunk in speech(seconds: 5) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 5.05 })
+        await lose(home, pipeline)
+        #expect(await eventually { phone.samplesSeen.count >= 80_000 })
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "tomorrow we go", isFinal: true, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+
+        #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "tomorrow we go"])
+    }
+
+    @Test("the replay hand-over holds a bounded number of chunks")
+    func replayBufferIsBounded() {
+        #expect(CaptionPipeline.replayBufferLimit(replaySamples: 320_000) == 100 + AudioFanOut.defaultBufferLimit)
+        #expect(CaptionPipeline.replayBufferLimit(replaySamples: 0) == AudioFanOut.defaultBufferLimit)
+    }
+
+    @Test("stopping while the phone is taking over replays nothing")
+    func stopCancelsReplay() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home)
+        for chunk in speech(seconds: 10) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 10.05 })
+        let gate = PrepareGate()
+        phone.prepareGate = gate
+        home.endStream(throwing: EngineUnavailability(kind: .homeServerUnreachable, detail: "gone"))
+        #expect(await eventually { phone.heldPrepares == 1 })
+        pipeline.stop()
+        await gate.open()
+        try? await Task.sleep(for: .milliseconds(200))
+
+        #expect(phone.samplesSeen.isEmpty)
+        #expect(pipeline.phase == .idle)
+    }
 }

@@ -14,8 +14,8 @@ struct AutoRecoveryPolicyTests {
         #expect(AutoRecoveryPolicy.schedule(for: failure(.engineUnavailable, engine: .permissionDenied)) == .never)
         #expect(AutoRecoveryPolicy.schedule(for: failure(.engineUnavailable, engine: .languageNotSupportedOnDevice)) == .never)
         #expect(AutoRecoveryPolicy.schedule(for: failure(.transcriptionStopped)) == .glitch)
-        #expect(AutoRecoveryPolicy.schedule(for: failure(.audioSessionFailed)) == .glitch)
-        #expect(AutoRecoveryPolicy.schedule(for: failure(.noAudioInputs)) == .glitch)
+        #expect(AutoRecoveryPolicy.schedule(for: failure(.audioSessionFailed)) == .microphone)
+        #expect(AutoRecoveryPolicy.schedule(for: failure(.noAudioInputs)) == .microphone)
         #expect(AutoRecoveryPolicy.schedule(for: failure(.engineUnavailable, engine: .temporarilyUnavailable)) == .glitch)
         #expect(AutoRecoveryPolicy.schedule(for: failure(.engineUnavailable, engine: .modelDownloadFailed)) == .download)
         #expect(AutoRecoveryPolicy.schedule(for: failure(.engineUnavailable, engine: .modelLoadFailed)) == .loadFailure)
@@ -32,6 +32,38 @@ struct AutoRecoveryPolicyTests {
         )
         #expect(AutoRecoveryPolicy.schedule(for: plain) == .never)
         #expect(AutoRecoveryPolicy.schedule(for: failure(.engineUnavailable, engine: .homeServerUnreachable)) == .glitch)
+    }
+
+    @Test("a microphone another app holds is retried on a slow tail, not given up on")
+    func microphoneTail() {
+        for kind in [PipelineFailure.Kind.audioSessionFailed, .noAudioInputs] {
+            var policy = AutoRecoveryPolicy()
+            let held = failure(kind)
+            let delays = (0..<12).map { _ in policy.nextDelay(for: held) }
+            #expect(Array(delays.prefix(4)) == [1, 3, 8, 20])
+            #expect((delays[4] ?? 0) >= 30)
+            #expect(delays[11] != nil)
+            var count = 12
+            while policy.nextDelay(for: held) != nil { count += 1 }
+            #expect(count == 40)
+        }
+    }
+
+    @Test("a stopped recognizer still gives up on the glitch schedule")
+    func stoppedStillStops() {
+        var policy = AutoRecoveryPolicy()
+        let stopped = failure(.transcriptionStopped)
+        let delays = (0..<5).map { _ in policy.nextDelay(for: stopped) }
+        #expect(delays == [1, 3, 8, 20, nil])
+    }
+
+    @Test("a download streak still stops at ten tries")
+    func downloadStreakStops() {
+        var policy = AutoRecoveryPolicy(downloadDelays: Array(repeating: 15, count: 20))
+        let download = failure(.engineUnavailable, engine: .modelDownloadFailed)
+        var count = 0
+        while policy.nextDelay(for: download) != nil { count += 1 }
+        #expect(count == 10)
     }
 
     @Test("glitches back off through their delays and then stop")
@@ -52,7 +84,7 @@ struct AutoRecoveryPolicyTests {
 
     @Test("a model that won't load gets two tries, not the full glitch schedule")
     func loadFailureCap() {
-        var policy = AutoRecoveryPolicy(glitchDelays: [1, 3, 8, 20], downloadDelays: [])
+        var policy = AutoRecoveryPolicy(glitchDelays: [1, 3, 8, 20], downloadDelays: [], microphoneTailDelays: [])
         let broken = failure(.engineUnavailable, engine: .modelLoadFailed)
         let delays = (0..<3).map { _ in policy.nextDelay(for: broken) }
         #expect(delays == [1, 3, nil])
@@ -60,7 +92,7 @@ struct AutoRecoveryPolicyTests {
 
     @Test("a new kind of trouble gets its own fresh tries, not runoff from an unrelated one")
     func differentKindGetsFreshBudget() {
-        var policy = AutoRecoveryPolicy(glitchDelays: [1, 3, 8, 20], downloadDelays: [15])
+        var policy = AutoRecoveryPolicy(glitchDelays: [1, 3, 8, 20], downloadDelays: [15], microphoneTailDelays: [])
         let glitch = failure(.transcriptionStopped)
         let loadFailure = failure(.engineUnavailable, engine: .modelLoadFailed)
 
@@ -77,7 +109,7 @@ struct AutoRecoveryPolicyTests {
 
     @Test("a problem that keeps switching kind still stops retrying eventually")
     func alternatingKindsStillExhausts() {
-        var policy = AutoRecoveryPolicy(glitchDelays: [1, 3, 8, 20], downloadDelays: [15])
+        var policy = AutoRecoveryPolicy(glitchDelays: [1, 3, 8, 20], downloadDelays: [15], microphoneTailDelays: [])
         let download = failure(.engineUnavailable, engine: .modelDownloadFailed)
         let loadFailure = failure(.engineUnavailable, engine: .modelLoadFailed)
 
@@ -109,7 +141,7 @@ struct AutoRecoveryPolicyTests {
 
     @Test("reset starts the count over, and the disabled policy never retries")
     func resetAndDisabled() {
-        var policy = AutoRecoveryPolicy(glitchDelays: [1], downloadDelays: [])
+        var policy = AutoRecoveryPolicy(glitchDelays: [1], downloadDelays: [], microphoneTailDelays: [])
         let stopped = failure(.transcriptionStopped)
         _ = policy.nextDelay(for: stopped)
         #expect(policy.nextDelay(for: stopped) == nil)
@@ -136,7 +168,7 @@ final class TestClock: @unchecked Sendable {
 @Suite("CaptionPipeline automatic recovery")
 @MainActor
 struct CaptionPipelineRecoveryTests {
-    private let fast = AutoRecoveryPolicy(glitchDelays: [0.01, 0.01], downloadDelays: [0.01])
+    private let fast = AutoRecoveryPolicy(glitchDelays: [0.01, 0.01], downloadDelays: [0.01], microphoneTailDelays: [])
 
     private func makeRecoveringPipeline(
         audio: FakeAudioCapturer = FakeAudioCapturer(),
@@ -172,7 +204,7 @@ struct CaptionPipelineRecoveryTests {
         let engine = FakeEngine()
         let clock = TestClock()
         let pipeline = makeRecoveringPipeline(
-            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [30], downloadDelays: []), clock: clock
+            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [30], downloadDelays: [], microphoneTailDelays: []), clock: clock
         )
         await pipeline.start(settings: .default)
         engine.endStream(throwing: TestError())
@@ -184,7 +216,7 @@ struct CaptionPipelineRecoveryTests {
     func handStartDropsTheLinedUpRetry() async {
         let engine = FakeEngine()
         let pipeline = makeRecoveringPipeline(
-            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [30], downloadDelays: []), clock: TestClock()
+            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [30], downloadDelays: [], microphoneTailDelays: []), clock: TestClock()
         )
         await pipeline.start(settings: .default)
         engine.endStream(throwing: TestError())
@@ -253,7 +285,7 @@ struct CaptionPipelineRecoveryTests {
     @Test("stopping by hand cancels a retry that was waiting")
     func stopCancels() async {
         let engine = FakeEngine()
-        let pipeline = makeRecoveringPipeline(engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.15], downloadDelays: []))
+        let pipeline = makeRecoveringPipeline(engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.15], downloadDelays: [], microphoneTailDelays: []))
         await pipeline.start(settings: .default)
         engine.endStream(throwing: TestError())
         #expect(await eventually { pipeline.scheduledRetry != nil })
@@ -267,7 +299,7 @@ struct CaptionPipelineRecoveryTests {
     func waitsOutInterruption() async {
         let audio = FakeAudioCapturer()
         audio.startError = TestError()
-        let pipeline = makeRecoveringPipeline(audio: audio, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []))
+        let pipeline = makeRecoveringPipeline(audio: audio, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []))
         pipeline.systemInterruptionChanged(active: true)
         await pipeline.start(settings: .default)
         #expect(pipeline.phase.failure != nil)
@@ -283,7 +315,7 @@ struct CaptionPipelineRecoveryTests {
     func healthyListeningResets() async {
         let engine = FakeEngine()
         let clock = TestClock()
-        let pipeline = makeRecoveringPipeline(engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], healthyListeningSeconds: 60), clock: clock)
+        let pipeline = makeRecoveringPipeline(engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [], healthyListeningSeconds: 60), clock: clock)
         await pipeline.start(settings: .default)
 
         engine.endStream(throwing: TestError())
@@ -301,7 +333,7 @@ struct CaptionPipelineRecoveryTests {
     func stopGivesFreshAttempts() async {
         let engine = FakeEngine()
         let pipeline = makeRecoveringPipeline(
-            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []), clock: TestClock()
+            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []), clock: TestClock()
         )
         await pipeline.start(settings: .default)
         engine.endStream(throwing: TestError())
@@ -319,7 +351,7 @@ struct CaptionPipelineRecoveryTests {
     func restartGivesFreshAttempts() async {
         let engine = FakeEngine()
         let pipeline = makeRecoveringPipeline(
-            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []), clock: TestClock()
+            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []), clock: TestClock()
         )
         await pipeline.start(settings: .default)
         engine.endStream(throwing: TestError())
@@ -336,7 +368,7 @@ struct CaptionPipelineRecoveryTests {
     func phoneCallHoldsTheLinedUpRetry() async throws {
         let engine = FakeEngine()
         let pipeline = makeRecoveringPipeline(
-            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: []), clock: TestClock()
+            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.3], downloadDelays: [], microphoneTailDelays: []), clock: TestClock()
         )
         await pipeline.start(settings: .default)
         engine.endStream(throwing: TestError())
@@ -354,7 +386,7 @@ struct CaptionPipelineRecoveryTests {
     func phoneCallEndGivesFreshAttempts() async {
         let engine = FakeEngine()
         let pipeline = makeRecoveringPipeline(
-            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []), clock: TestClock()
+            engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []), clock: TestClock()
         )
         await pipeline.start(settings: .default)
         engine.endStream(throwing: TestError())
@@ -373,7 +405,7 @@ struct CaptionPipelineRecoveryTests {
     @Test("failing again right after a recovery does not get a fresh set of attempts")
     func quickRefailExhausts() async {
         let engine = FakeEngine()
-        let pipeline = makeRecoveringPipeline(engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: []))
+        let pipeline = makeRecoveringPipeline(engine: engine, policy: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: []))
         await pipeline.start(settings: .default)
 
         engine.endStream(throwing: TestError())

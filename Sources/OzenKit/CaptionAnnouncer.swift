@@ -29,6 +29,11 @@ public struct CaptionAnnouncer: Sendable, Equatable {
 
     public init() {}
 
+    public struct Piece: Equatable, Sendable {
+        public let text: String
+        public let isCaption: Bool
+    }
+
     /// The text to announce for lines finished since the last call, or nil
     /// when there is nothing new. `speakerName` returns nil for lines whose
     /// speaker shouldn't be named; `isUncertain` says which lines carry the
@@ -38,8 +43,16 @@ public struct CaptionAnnouncer: Sendable, Equatable {
         speakerName: (TranscriptSegment) -> String?,
         isUncertain: (TranscriptSegment) -> Bool = { _ in false }
     ) -> String? {
+        announcementPieces(for: segments, speakerName: speakerName, isUncertain: isUncertain)?.map(\.text).joined()
+    }
+
+    public mutating func announcementPieces(
+        for segments: [TranscriptSegment],
+        speakerName: (TranscriptSegment) -> String?,
+        isUncertain: (TranscriptSegment) -> Bool = { _ in false }
+    ) -> [Piece]? {
         forgetLinesNoLongerShown(segments)
-        var parts: [String] = []
+        var parts: [[Piece]] = []
         let start = scanStart(in: segments)
         noteScanned(segments, from: start)
         for segment in segments[start...] where segment.isCommitted {
@@ -53,16 +66,18 @@ public struct CaptionAnnouncer: Sendable, Equatable {
             guard !text.isEmpty else { continue }
             let name = speakerName(segment)
             // After a quiet stretch the name comes again, as on screen.
-            var part = text
+            var part: [Piece] = []
+            if isUncertain(segment) { part.append(Piece(text: tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. "), isCaption: false)) }
             if let name, name != lastSpeaker || CaptionLayout.startsAfterQuiet(segment, previous: lastLine) {
-                part = "\(name): \(text)"
+                part.append(Piece(text: "\(name): ", isCaption: false))
             }
-            if isUncertain(segment) { part = tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") + part }
+            part.append(Piece(text: text, isCaption: true))
             parts.append(part)
             lastSpeaker = name
             lastLine = segment
         }
-        return parts.isEmpty ? nil : parts.joined(separator: "\n")
+        if parts.isEmpty { return nil }
+        return Array(parts.joined(separator: [Piece(text: "\n", isCaption: false)]))
     }
 
     /// Treats every line already there as read, so turning VoiceOver (or

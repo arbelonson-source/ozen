@@ -746,6 +746,7 @@ class CaptionSession(
             segments = pipeline.segments,
             device = deviceState(),
             utcOffsetSeconds = utcOffsetAt(now),
+            includeCaptions = settings.current.value.saveHistory,
         )
         lines.forEach { journal.append(it, now) }
         // With saving conversations off, the room's sound isn't kept either.

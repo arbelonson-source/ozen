@@ -17,7 +17,7 @@ struct SavingTroubleBanner: View {
                         .font(.headline)
                     Text(SavingTroubleNotice.detail)
                         .font(.subheadline)
-                        .opacity(0.9)
+                        .opacity(BannerPalette.subtitleOpacity)
                 }
                 Spacer()
                 Image(systemName: "xmark")
@@ -27,7 +27,7 @@ struct SavingTroubleBanner: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity)
-            .background(Color.orange.deepShade.opacity(0.92), in: RoundedRectangle(cornerRadius: 16))
+            .background(Color.orange.deepShade.opacity(BannerPalette.fillAlpha), in: RoundedRectangle(cornerRadius: 16))
             .foregroundStyle(.white)
             .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
         }

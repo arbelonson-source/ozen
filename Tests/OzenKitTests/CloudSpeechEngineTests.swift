@@ -570,3 +570,52 @@ final class KeyBox: @unchecked Sendable {
         set { lock.withLock { stored = newValue } }
     }
 }
+
+@Suite("CloudSpeechEngine language cover")
+struct CloudLanguageCoverTests {
+    private func prepared(_ engine: any TranscriptionEngine, _ code: String) async -> EngineAvailability {
+        await engine.prepare(languageCode: code, progress: { _ in })
+    }
+
+    private func expectNotCovered(_ result: EngineAvailability) {
+        guard case .unavailable(let why) = result else {
+            Issue.record("a language the service lacks was accepted")
+            return
+        }
+        #expect(why.kind == .cloudLanguageNotCovered)
+    }
+
+    @Test("Deepgram does not get audio in a language it lacks")
+    func deepgram() async {
+        let http = FakeCloudHTTP()
+        let engine = CloudSpeechEngine(provider: .deepgram, http: http, apiKey: { "k" })
+        expectNotCovered(await prepared(engine, "am"))
+        #expect(http.requests.isEmpty)
+    }
+
+    @Test("Speechmatics does not get audio in a language it lacks")
+    func speechmatics() async {
+        let http = FakeCloudHTTP()
+        let engine = SpeechmaticsEngine(http: http, connector: StreamDialer(nil), apiKey: { "k" })
+        expectNotCovered(await prepared(engine, "am"))
+        #expect(http.requests.isEmpty)
+    }
+
+    @Test("AssemblyAI does not get audio in a language it lacks")
+    func assemblyAI() async {
+        let http = FakeCloudHTTP()
+        let engine = AssemblyAIEngine(http: http, connector: StreamDialer(nil), apiKey: { "k" })
+        expectNotCovered(await prepared(engine, "uk"))
+        #expect(http.requests.isEmpty)
+    }
+
+    @Test("a language the service covers still reaches the key check")
+    func coveredReachesKeyCheck() async {
+        let noKey = CloudSpeechEngine(provider: .deepgram, http: FakeCloudHTTP(), apiKey: { nil })
+        guard case .unavailable(let why) = await prepared(noKey, "he") else {
+            Issue.record("expected the key check to fail")
+            return
+        }
+        #expect(why.kind == .cloudKeyNeeded)
+    }
+}

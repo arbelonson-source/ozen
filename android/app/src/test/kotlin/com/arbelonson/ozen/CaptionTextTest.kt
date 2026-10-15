@@ -59,4 +59,23 @@ class CaptionTextTest {
         assertEquals("0501234567", line.substring(link.start, link.end).filter { it.isDigit() })
         assertTrue(captionText(line, emphasizeNumbers = false, numberColor = null).getLinkAnnotations(0, line.length).isEmpty())
     }
+
+    @Test
+    fun `a tap-to-dial link over a no-break number covers the whole number`() {
+        val line = CaptionLayout.displayText("Call 050 123 4567 now", "en")
+        val links = captionText(line, emphasizeNumbers = false, numberColor = null, linkingPhoneNumbers = true).getLinkAnnotations(0, line.length)
+        val link = links.single()
+        assertEquals("tel:0501234567", (link.item as LinkAnnotation.Url).url)
+        assertEquals("050${Char(0xA0)}123${Char(0xA0)}4567", line.substring(link.start, link.end))
+    }
+
+    @Test
+    fun `bold numbers cover the same words once their spaces are no-break`() {
+        val plain = "\u05E7\u05D7 3 \u05DB\u05D3\u05D5\u05E8\u05D9\u05DD \u05D1\u05E9\u05E2\u05D4 10:30"
+        val joined = CaptionLayout.displayText(plain, "en")
+        val before = captionText(plain, emphasizeNumbers = true, numberColor = null).spanStyles.map { it.start to it.end }
+        val after = captionText(joined, emphasizeNumbers = true, numberColor = null).spanStyles.map { it.start to it.end }
+        assertEquals(before, after)
+        assertTrue(before.isNotEmpty())
+    }
 }

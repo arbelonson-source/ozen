@@ -99,7 +99,7 @@ struct BatteryBanner: View {
                         .font(.headline)
                     Text(advice)
                         .font(.subheadline)
-                        .opacity(0.9)
+                        .opacity(BannerPalette.subtitleOpacity)
                 }
                 Spacer()
                 Image(systemName: "xmark")
@@ -111,7 +111,7 @@ struct BatteryBanner: View {
             .frame(maxWidth: .infinity)
             // White on the system orange is under 3:1: the deeper shade
             // keeps the percentage readable at a glance.
-            .background((isCritical ? Color.red : Color.orange).deepShade.opacity(0.92), in: RoundedRectangle(cornerRadius: 16))
+            .background((isCritical ? Color.red : Color.orange).deepShade.opacity(BannerPalette.fillAlpha), in: RoundedRectangle(cornerRadius: 16))
             .foregroundStyle(.white)
             .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
         }
