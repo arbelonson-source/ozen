@@ -1088,17 +1088,21 @@ struct LiveCaptionViewModelSpeechTests {
     func launchWithSpeechNoVoice() async {
         let (viewModel, synthesizer) = makeViewModel()
         synthesizer.hasHebrewVoice = false
+        var reported: [Bool] = []
+        viewModel.reportSpeak = { reported.append($0) }
         await viewModel.launch(pending: .speak("תודה"))
         #expect(synthesizer.requests.isEmpty)
-        #expect(PendingAppAction.shared.lastSpeakWorked == false)
+        #expect(reported == [false])
     }
 
     @Test("a spoken request that worked reports success")
     func launchWithSpeechReportsSuccess() async {
         let (viewModel, synthesizer) = makeViewModel()
+        var reported: [Bool] = []
+        viewModel.reportSpeak = { reported.append($0) }
         let launch = Task { await viewModel.launch(pending: .speak("אני באה")) }
         #expect(await eventually { synthesizer.requests == ["אני באה"] })
-        #expect(PendingAppAction.shared.lastSpeakWorked == true)
+        #expect(reported == [true])
         synthesizer.startNext()
         synthesizer.finishCurrent()
         await launch.value

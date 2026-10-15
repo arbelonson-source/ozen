@@ -152,7 +152,7 @@ final class PendingAppAction {
     func speakResult(waitingUpTo limit: Duration) async -> Bool? {
         let deadline = ContinuousClock.now + limit
         while lastSpeakWorked == nil, ContinuousClock.now < deadline {
-            try? await Task.sleep(for: .milliseconds(100))
+            if (try? await Task.sleep(for: .milliseconds(100))) == nil { break }
         }
         return lastSpeakWorked
     }

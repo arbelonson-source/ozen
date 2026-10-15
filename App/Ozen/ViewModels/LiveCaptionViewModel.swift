@@ -44,9 +44,12 @@ public final class LiveCaptionViewModel {
     var awayCatchUp = AwayCatchUp()
     @ObservationIgnored private var keywordAttention = KeywordAttentionPolicy()
     @ObservationIgnored private var handledKeywordHitIDs: Set<UUID> = []
+    @ObservationIgnored private var batteryNoticePosted = false
+    /// Where a spoken request's outcome goes, so Siri can answer; tests
+    /// swap it for their own.
+    @ObservationIgnored var reportSpeak: (Bool) -> Void = { PendingAppAction.shared.reportSpeak($0) }
     /// Alerts whose word went out as a notification since the app last
     /// left the screen.
-    @ObservationIgnored private var batteryNoticePosted = false
     @ObservationIgnored private var keywordsNotifiedWhileAway: Set<UUID> = []
     /// Kept here, not in the caption screen: switching the app's language
     /// rebuilds that screen, and a flag of its own would take the next
@@ -800,7 +803,7 @@ public final class LiveCaptionViewModel {
         case .stopCaptions:
             return
         case .speak(let text):
-            PendingAppAction.shared.reportSpeak(speak(text))
+            reportSpeak(speak(text))
             await waitUntilSpeechEnds()
             await start()
         case .showBigText:
@@ -856,7 +859,7 @@ public final class LiveCaptionViewModel {
             pipeline.stop()
             historySessionDidChangePhase()
         case .speak(let text):
-            PendingAppAction.shared.reportSpeak(speak(text))
+            reportSpeak(speak(text))
         case .showBigText:
             isShowingBigText = true
         }
