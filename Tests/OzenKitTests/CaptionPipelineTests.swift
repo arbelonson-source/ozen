@@ -2908,6 +2908,114 @@ struct CaptionPipelineSpeakerNameTests {
     }
 }
 
+@Suite("CaptionPipeline naming a line")
+@MainActor
+struct CaptionPipelineNamingLineTests {
+    private func listening() async -> (CaptionPipeline, FakeEngine, FakeAudioCapturer) {
+        let engine = FakeEngine()
+        let (pipeline, audio, _) = makePipeline(engines: [.whisperKit: engine])
+        pipeline.enroll(profile: SpeakerProfile(name: "Dana", embedding: [1, 0, 0]))
+        pipeline.enroll(profile: SpeakerProfile(name: "Yossi", embedding: [0, 1, 0]))
+        await pipeline.start(settings: .default)
+        return (pipeline, engine, audio)
+    }
+
+    private func line(_ text: String, engine: FakeEngine, audio: FakeAudioCapturer, pipeline: CaptionPipeline, count: Int) async {
+        engine.emit(token(UUID(), text))
+        #expect(await eventually { pipeline.segments.count == count })
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { pipeline.segments[count - 1].speakerClusterID != nil })
+    }
+
+    @Test("correcting one line to a name another cluster already has moves only that line")
+    func correctionToExistingNameMovesOnlyTheLine() async {
+        let (pipeline, engine, audio) = await listening()
+        await line("שלום", engine: engine, audio: audio, pipeline: pipeline, count: 1)
+        let danaID = pipeline.segments[0].speakerClusterID
+        let yossiBefore = pipeline.speakerClusters.first { $0.name == "Yossi" }
+
+        pipeline.nameSpeaker(of: pipeline.segments[0], name: "Yossi")
+        await line("מה נשמע", engine: engine, audio: audio, pipeline: pipeline, count: 2)
+
+        #expect(pipeline.displayName(for: pipeline.segments[0]) == "Yossi")
+        #expect(pipeline.displayName(for: pipeline.segments[1]) == "Dana")
+        #expect(pipeline.segments[1].speakerClusterID == danaID)
+        #expect(pipeline.speakerClusters.first { $0.name == "Yossi" } == yossiBefore)
+        #expect(pipeline.speakerClusters.filter { $0.name == "Dana" }.count == 1)
+    }
+
+    @Test("a new name typed on a named voice's line opens a cluster from that line's own voice")
+    func newNameOpensItsOwnCluster() async {
+        let (pipeline, engine, audio) = await listening()
+        await line("שלום", engine: engine, audio: audio, pipeline: pipeline, count: 1)
+
+        let print = pipeline.nameSpeaker(of: pipeline.segments[0], name: "Moshe")
+        await line("מה נשמע", engine: engine, audio: audio, pipeline: pipeline, count: 2)
+
+        #expect(print == [1, 0, 0])
+        #expect(pipeline.displayName(for: pipeline.segments[0]) == "Moshe")
+        #expect(pipeline.displayName(for: pipeline.segments[1]) == "Dana")
+        #expect(pipeline.speakerClusters.filter { $0.name == "Dana" }.count == 1)
+    }
+
+    @Test("a new name on a line whose own voice is no longer kept does not copy the old speaker's voice")
+    func newNameWithoutTheLinesVoiceSavesNoPrint() async {
+        let (pipeline, engine, audio) = await listening()
+        await line("שלום", engine: engine, audio: audio, pipeline: pipeline, count: 1)
+        let earlier = pipeline.segments[0]
+        pipeline.startNewConversation()
+
+        let print = pipeline.nameSpeaker(of: earlier, name: "Moshe")
+
+        #expect(print == nil)
+        #expect(!pipeline.speakerClusters.contains { $0.name == "Moshe" })
+        #expect(pipeline.displayName(for: earlier) == "Dana")
+    }
+
+    @Test("a new name on a line that opened after its voice was heard still gets that voice")
+    func newNameOnLineHeardBeforeItOpenedKeepsTheVoice() async {
+        let (pipeline, engine, audio) = await listening()
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        try? await Task.sleep(for: .milliseconds(400))
+        engine.emit(token(UUID(), "שלום", final: true))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        #expect(await eventually { pipeline.segments[0].speakerClusterID != nil })
+
+        let print = pipeline.nameSpeaker(of: pipeline.segments[0], name: "Moshe")
+
+        #expect(print == [1, 0, 0])
+        #expect(pipeline.speakerClusters.contains { $0.name == "Moshe" })
+    }
+
+    @Test("a line from before a quiet break can still be named")
+    func lineFromAnEarlierConversationCanBeNamed() async {
+        let engine = FakeEngine()
+        let (pipeline, audio, _) = makePipeline(engines: [.whisperKit: engine])
+        await pipeline.start(settings: .default)
+        await line("שלום", engine: engine, audio: audio, pipeline: pipeline, count: 1)
+        let earlier = pipeline.segments[0]
+        pipeline.startNewConversation()
+
+        let print = pipeline.nameSpeaker(of: earlier, name: "Cohen")
+
+        #expect(print == [1, 0, 0])
+        #expect(pipeline.displayName(for: earlier) == "Cohen")
+    }
+
+    @Test("fixing a spelling on a named voice's line still renames that voice everywhere")
+    func spellingFixRenamesTheVoice() async {
+        let (pipeline, engine, audio) = await listening()
+        await line("שלום", engine: engine, audio: audio, pipeline: pipeline, count: 1)
+
+        pipeline.nameSpeaker(of: pipeline.segments[0], name: "Dane")
+        await line("מה נשמע", engine: engine, audio: audio, pipeline: pipeline, count: 2)
+
+        #expect(pipeline.displayName(for: pipeline.segments[0]) == "Dane")
+        #expect(pipeline.displayName(for: pipeline.segments[1]) == "Dane")
+        #expect(!pipeline.speakerClusters.contains { $0.name == "Dana" })
+    }
+}
+
 @Suite("CaptionPipeline alert hooks")
 @MainActor
 struct CaptionPipelineAlertHookTests {
@@ -3096,6 +3204,44 @@ struct CaptionPipelineRefreshTests {
 @MainActor
 struct CaptionPipelineAudioStallTests {
     private let quickWatchdog = AudioStallWatchdog(stallSeconds: 0.5)
+
+    @Test("a slow speaker-voice step is not mistaken for a dead microphone", .timeLimit(.minutes(1)))
+    func slowEmbeddingIsNotAStall() async throws {
+        let engine = FakeEngine()
+        let audio = FakeAudioCapturer()
+        let embedder = GatedEmbedder()
+        let pipeline = CaptionPipeline(
+            audio: audio, engineFactory: { _ in engine }, embedder: embedder,
+            recovery: .disabled, audioWatchdog: quickWatchdog, now: { 1_000 }
+        )
+        await pipeline.start(settings: .default)
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { embedder.callsStarted == 1 })
+        for _ in 0..<12 {
+            audio.push([Float](repeating: 0.5, count: 1_600))
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        embedder.release()
+        #expect(pipeline.phase.isListening)
+        #expect(pipeline.stats.audioStalls == 0)
+    }
+
+    @Test("with the slow voice step and no audio arriving, the stall is still caught", .timeLimit(.minutes(1)))
+    func slowEmbeddingAndSilenceStillStalls() async {
+        let engine = FakeEngine()
+        let audio = FakeAudioCapturer()
+        let embedder = GatedEmbedder()
+        let pipeline = CaptionPipeline(
+            audio: audio, engineFactory: { _ in engine }, embedder: embedder,
+            recovery: .disabled, audioWatchdog: quickWatchdog, now: { 1_000 }
+        )
+        await pipeline.start(settings: .default)
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { embedder.callsStarted == 1 })
+        #expect(await eventually { pipeline.phase.failure?.kind == .audioSessionFailed })
+        embedder.release()
+        #expect(pipeline.stats.audioStalls == 1)
+    }
 
     @Test("a microphone that stops delivering audio becomes a visible audio failure")
     func deadMicrophoneFails() async {
