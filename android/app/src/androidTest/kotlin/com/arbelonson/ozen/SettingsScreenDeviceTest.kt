@@ -1737,6 +1737,46 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun turningThePhoneInSettingsOpenedAtTheBackupStaysAtTheBackup() {
+        val english = File(app.filesDir, WhisperModelCatalog.phoneModelFile(UILanguage.English))
+        assumeFalse("the English model is already on this phone", english.exists())
+        val languageBefore = app.settings.current.value.spokenLanguage
+        val cellularBefore = app.settings.current.value.allowCellularModelDownload
+        val offer = hasText("Download a backup to the phone", substring = true) and hasClickAction()
+        try {
+            app.settings.change {
+                it.engine = TranscriptionEngineKind.HomeServer
+                it.spokenLanguage = UILanguage.English
+                it.allowCellularModelDownload = true
+            }
+            val unreachable = PipelinePhase.Failed(
+                PipelineFailure(PipelineFailure.Kind.EngineUnavailable, "", EngineUnavailability(EngineUnavailability.Kind.HomeServerUnreachable, "")),
+            )
+            compose.runOnUiThread {
+                CaptionState.show(unreachable, engine = TranscriptionEngineKind.HomeServer, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), offerBackup = true)
+            }
+            compose.waitForIdle()
+            compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction()).performClick()
+            compose.waitUntil(5_000) { compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { compose.onNode(offer).isDisplayed() }
+
+            val first = compose.activity
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(5_000) { first.isDestroyed }
+            compose.waitForIdle()
+
+            compose.waitUntil(5_000) { compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { compose.onNode(offer).isDisplayed() }
+        } finally {
+            app.settings.change {
+                it.spokenLanguage = languageBefore
+                it.allowCellularModelDownload = cellularBefore
+            }
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
     fun withTheHomeComputerChosenSettingsOffersTheBackupForALanguageThePhoneCanDownloadAndTapsReachTheDownload() {
         val languageBefore = app.settings.current.value.spokenLanguage
         val english = File(app.filesDir, WhisperModelCatalog.phoneModelFile(UILanguage.English))
