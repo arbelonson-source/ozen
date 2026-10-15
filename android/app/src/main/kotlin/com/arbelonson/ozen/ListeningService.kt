@@ -37,7 +37,7 @@ class ListeningService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_PAUSE) {
-            captions.pause()
+            captions.stopFromNotification()
             finish()
             return START_NOT_STICKY
         }
@@ -58,7 +58,7 @@ class ListeningService : Service() {
         showingOnLockScreen = false
         scope.cancel()
         val phase = captions.pipeline.phase
-        if (phase != PipelinePhase.Idle && phase != PipelinePhase.Paused) captions.pause()
+        if (phase != PipelinePhase.Idle && phase != PipelinePhase.Paused) captions.stopFromNotification()
         super.onDestroy()
     }
 
