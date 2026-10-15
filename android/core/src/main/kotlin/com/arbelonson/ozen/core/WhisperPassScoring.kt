@@ -64,7 +64,16 @@ internal object WhisperPassScoring {
         val perWord = ArrayList<List<Float>>()
         for (group in split) {
             val end = minOf(next + group.size, logprobs.size)
-            perWord.add(if (next < end) logprobs.subList(next, end).toList() else emptyList())
+            val runs = splitOnUnicode(group)
+            val kept = ArrayList<Float>()
+            var at = next
+            for (run in runs) {
+                val runEnd = minOf(at + run.size, end)
+                if (!isPunctuationOnly(decode(run))) kept.addAll(logprobs.subList(at, runEnd))
+                at = runEnd
+            }
+            if (kept.isEmpty() && next < end) kept.addAll(logprobs.subList(next, minOf(next + runs.first().size, end)))
+            perWord.add(kept)
             next = end
         }
         return UncertainWords.pick(split.map { decode(it) }, perWord)
@@ -93,14 +102,16 @@ internal object WhisperPassScoring {
 
     private fun isSpace(char: Char): Boolean = char == '\t' || Character.getType(char).toByte() == Character.SPACE_SEPARATOR
 
+    private fun isPunctuationOnly(text: String): Boolean {
+        val stripped = text.trim { isSpace(it) }
+        return stripped.isNotEmpty() && stripped.codePoints().allMatch { Character.getType(it).toByte() in punctuationTypes }
+    }
+
     private fun splitOnSpaces(tokens: List<WhisperToken>): List<List<WhisperToken>> {
         val words = ArrayList<MutableList<WhisperToken>>()
         for (group in splitOnUnicode(tokens)) {
             val subword = decode(group)
-            val stripped = subword.trim { isSpace(it) }
-            val punctuation = stripped.isNotEmpty() && stripped.codePointCount(0, stripped.length) == 1 &&
-                Character.getType(stripped.codePointAt(0)).toByte() in punctuationTypes
-            if (group.first().isSpecial || subword.startsWith(" ") || punctuation || words.isEmpty()) {
+            if (group.first().isSpecial || subword.startsWith(" ") || words.isEmpty()) {
                 words.add(group.toMutableList())
             } else {
                 words.last().addAll(group)

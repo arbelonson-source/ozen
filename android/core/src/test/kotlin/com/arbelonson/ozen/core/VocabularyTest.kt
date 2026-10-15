@@ -110,6 +110,15 @@ class VocabularyTest {
         val clipped = VocabularyHints.normalized(listOf(pointed)).single()
         assertEquals("שָׁ".repeat(VocabularyHints.maximumTermLength), clipped)
     }
+
+    @Test
+    fun `words that differ only by an accent are both kept as hints`() {
+        assertEquals(listOf("si", "sí"), VocabularyHints.normalized(listOf("si", "sí")))
+        assertEquals(listOf("si", "SÍ"), VocabularyHints.normalized(listOf("si", "SÍ", "sí")))
+        assertEquals("sí", VocabularyHints.listedEntry("sí", listOf("si", "sí")))
+        assertEquals(null, VocabularyHints.listedEntry("sí", listOf("si")))
+    }
+
 }
 
 class PromptEchoDetectorTest {
