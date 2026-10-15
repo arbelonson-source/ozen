@@ -17,6 +17,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -65,6 +67,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.arbelonson.ozen.ui.Chevron
 import com.arbelonson.ozen.ui.OzenSpacing
+import com.arbelonson.ozen.ui.OzenSlider
 import com.arbelonson.ozen.ui.OzenTopBar
 import com.arbelonson.ozen.ui.PrimaryButton
 import com.arbelonson.ozen.ui.GroupFootnote
@@ -313,19 +316,28 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Row(modifier = Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
                     Text(sizeLabel, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    Text("${size.roundToInt()}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "${size.roundToInt()}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.background(MaterialTheme.colorScheme.secondaryContainer, CircleShape).padding(horizontal = 12.dp, vertical = 4.dp),
+                    )
                 }
-                Slider(
-                    value = size,
-                    onValueChange = { size = it },
-                    onValueChangeFinished = { settings.change { it.display = it.display.copy(fontSize = size.roundToInt().toDouble()) } },
-                    valueRange = DisplayPreferences.minimumFontSize.toFloat()..DisplayPreferences.maximumFontSize.toFloat(),
-                    steps = ((DisplayPreferences.maximumFontSize - DisplayPreferences.minimumFontSize) / 2).toInt() - 1,
-                    modifier = Modifier.semantics {
-                        contentDescription = sizeLabel
-                        stateDescription = "${size.roundToInt()}"
-                    },
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("A", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clearAndSetSemantics {})
+                    OzenSlider(
+                        value = size,
+                        onValueChange = { size = it },
+                        onValueChangeFinished = { settings.change { it.display = it.display.copy(fontSize = size.roundToInt().toDouble()) } },
+                        valueRange = DisplayPreferences.minimumFontSize.toFloat()..DisplayPreferences.maximumFontSize.toFloat(),
+                        steps = ((DisplayPreferences.maximumFontSize - DisplayPreferences.minimumFontSize) / 2).toInt() - 1,
+                        modifier = Modifier.weight(1f).semantics {
+                            contentDescription = sizeLabel
+                            stateDescription = "${size.roundToInt()}"
+                        },
+                    )
+                    Text("A", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clearAndSetSemantics {})
+                }
                 if (size.roundToInt() != DisplayPreferences.default.fontSize.roundToInt()) {
                     TextButton(
                         onClick = { settings.change { it.display = it.display.copy(fontSize = DisplayPreferences.default.fontSize) } },
@@ -346,8 +358,9 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
                 fontWeight = if (display.boldText) FontWeight.Bold else FontWeight.Medium,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
                     .background(look.background, MaterialTheme.shapes.medium)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
                     .padding(16.dp),
             )
         }
@@ -775,7 +788,7 @@ private fun HomeComputerBeam(engineSettings: EngineSettings, beam: Int, onMoved:
             value = { Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant) },
             modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
         )
-        Slider(
+        OzenSlider(
             value = beam.toFloat(),
             onValueChange = {
                 val step = it.roundToInt()
@@ -863,22 +876,23 @@ private fun cloudServiceFooter(service: CloudProvider): String = when (service) 
 }
 
 @Composable
-internal fun ChoiceRow(title: String, summary: String?, selected: Boolean, enabled: Boolean = true, onSelect: () -> Unit) {
+internal fun ChoiceRow(title: String, summary: String?, selected: Boolean, enabled: Boolean = true, icon: ImageVector? = null, onSelect: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
             .selectable(selected = selected, enabled = enabled, onClick = onSelect, role = Role.RadioButton)
             .alpha(if (enabled) 1f else 0.5f)
-            .padding(start = 4.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
+            .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        RadioButton(selected = selected, onClick = null, enabled = enabled, modifier = Modifier.padding(12.dp))
+        if (icon != null) Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(end = 8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
             summary?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
+        RadioButton(selected = selected, onClick = null, enabled = enabled, modifier = Modifier.padding(12.dp))
     }
 }
 
@@ -1325,8 +1339,7 @@ private fun GroupLabel(text: String) {
 
 /**
  * A scrolling settings page: the top bar scrolls with the content, so a
- * page of any length ends in the same place, and its controls are found
- * by scrolling to them. The body has 16 dp margins and 8 dp between its
+ * page of any length ends in the same place, and its controls are found by scrolling to them. The body has 16 dp margins and 8 dp between its
  * children.
  */
 @Composable
@@ -1335,7 +1348,7 @@ internal fun SettingsPageFrame(
     scroll: ScrollState = rememberScrollState(),
     onClose: (() -> Unit)? = null,
     closeLabel: String = tr("סיום", "Done"),
-    actions: @Composable RowScope.() -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = com.arbelonson.ozen.ui.NoActions,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {

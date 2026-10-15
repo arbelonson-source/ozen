@@ -3,6 +3,11 @@ package com.arbelonson.ozen
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Stop
@@ -119,7 +125,7 @@ internal fun SayScreen(
         Column(modifier = Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())) {
             OzenTopBar(tr("להגיד משהו", "Say something"), onClose = onClose, closeLabel = tr("סגירה", "Close"))
             Column(
-                modifier = Modifier.padding(horizontal = 16.dp).navigationBarsPadding(),
+                modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)).padding(horizontal = 16.dp).navigationBarsPadding(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedTextField(
@@ -133,6 +139,7 @@ internal fun SayScreen(
                     keyboardActions = KeyboardActions(onSend = { speakTyped() }),
                     modifier = Modifier.fillMaxWidth().focusRequester(focus),
                 )
+                Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (speaking) {
                         TonalButton(tr("עצירה", "Stop"), onClick = onStop, icon = Icons.Rounded.Stop, modifier = Modifier.weight(1f))
@@ -172,7 +179,7 @@ internal fun SayScreen(
                     modifier = Modifier.fillMaxWidth().semantics { onClick(label = bigLettersFor) { bigLetters = true; true } },
                 )
                 VoiceNotices(voiceNotices)
-                Row(modifier = Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(tr("משפטים מוכנים", "Quick phrases"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f).padding(start = 16.dp).semantics { heading() })
                     TextButton(
                         onClick = {
@@ -180,7 +187,13 @@ internal fun SayScreen(
                             // The keyboard covered the editor that just opened.
                             if (editing) focusManager.clearFocus()
                         },
-                    ) { Text(if (editing) tr("סיום", "Done") else tr("עריכה", "Edit")) }
+                    ) {
+                        if (!editing) {
+                            Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(if (editing) tr("סיום", "Done") else tr("עריכה", "Edit"))
+                    }
                 }
                 if (editing) {
                     // Instead of the phrases to tap, not beside them as on the

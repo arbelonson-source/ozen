@@ -67,6 +67,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BatteryAlert
 import androidx.compose.material.icons.rounded.BatteryChargingFull
@@ -540,6 +543,8 @@ private fun OzenApp(
                                 onOpenConversation = { reading = it to null },
                                 onDismissRecent = app.captions::dismissRecentConversation,
                                 onDismissBattery = app.captions::dismissBatteryWarning,
+                                onClear = app.captions::clearCaptions,
+                                clearWarning = { HistoryTexts.clearWarning(current.saveHistory, app.captions.savedConversations.lastSaveFailure != null) },
                             )
                         }
                     }
@@ -672,6 +677,8 @@ private fun CaptionScreen(
     onOpenConversation: (UUID) -> Unit,
     onDismissRecent: () -> Unit,
     onDismissBattery: () -> Unit,
+    onClear: () -> Unit,
+    clearWarning: () -> String?,
 ) {
     val list = rememberLazyListState()
     // As on the iPhone: the text grows under the fingers and only the
@@ -801,15 +808,15 @@ private fun CaptionScreen(
                 }
             }
             .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(horizontal = OzenSpacing.Page, vertical = OzenSpacing.Page),
+        verticalArrangement = Arrangement.spacedBy(OzenSpacing.Page),
     ) {
-        BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = OzenSpacing.Unit)) {
             // A few banners at once, at large text on a small phone, took
             // all the room and left no line of the captions: past about
             // half the room they scroll.
-            val bannerRoom = maxHeight * 0.55f
-            val bannerRoomPixels = constraints.maxHeight * 0.55f
+            val bannerRoom = maxHeight * 0.5f
+            val bannerRoomPixels = constraints.maxHeight * 0.5f
             // Only while they overflow: an empty strip that could scroll was a
             // second list on the screen, for a screen reader and for tests.
             var bannersOverflow by remember { mutableStateOf(false) }
@@ -822,7 +829,7 @@ private fun CaptionScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = bannerRoom)
-                        .then(if (bannersOverflow) Modifier.fadeWhenMoreBelow(bannerScroll).verticalScroll(bannerScroll) else Modifier)
+                        .then(if (bannersOverflow) Modifier.verticalScroll(bannerScroll) else Modifier)
                         .onSizeChanged { bannersOverflow = it.height >= bannerRoomPixels - 1 },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
@@ -872,23 +879,23 @@ private fun CaptionScreen(
                 ) {
                     if (state.lines.isEmpty()) {
                         // Scrolls when it can't all fit, at the phone's largest text
-                        // or turned sideways: the offer's last line was cut off there,
-                        // and still looked cut until the edge faded to show there's more.
+                        // or turned sideways. Centred in the free room when it fits.
                         val emptyScroll = rememberScrollState()
                         Column(
-                            modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().fadeWhenMoreBelow(emptyScroll).verticalScroll(emptyScroll).padding(top = 40.dp),
-                            verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit * 2),
+                            modifier = Modifier.fillMaxSize().fadeWhenMoreBelow(emptyScroll).verticalScroll(emptyScroll),
+                            verticalArrangement = Arrangement.spacedBy(OzenSpacing.Page, Alignment.CenterVertically),
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             // Not while a call holds the microphone: the phase stays
                             // on listening, but nothing is being heard.
                             val running = state.captionsRunning
-                            IconBadge(if (running) Icons.Rounded.Hearing else Icons.Rounded.MicOff, size = 56.dp)
+                            IconBadge(if (running) Icons.Rounded.Hearing else Icons.Rounded.MicOff, size = 72.dp)
                             Text(
                                 text = if (running) tr("מקשיב.", "Listening.") else tr("הכתוביות יופיעו כאן.", "Captions will appear here."),
                                 color = look.text,
-                                fontSize = pinchedSize.sp,
-                                lineHeight = (pinchedSize * 1.25).sp,
+                                style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center,
                             )
                             Text(
                                 text = if (running) {
@@ -900,8 +907,9 @@ private fun CaptionScreen(
                                     tr("אפשר לבחור מיקרופון בכפתור למטה מימין ולשנות מנוע תמלול בהגדרות.", "You can choose a microphone with the microphone button at the bottom, and change the transcription engine in Settings.")
                                 },
                                 color = look.pendingText,
-                                fontSize = maxOf(17.0, pinchedSize * 0.6).sp,
-                                lineHeight = (maxOf(17.0, pinchedSize * 0.6) * 1.35).sp,
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.widthIn(max = 360.dp),
                             )
                             val recent = state.recentConversation
                             if (recent != null) {
@@ -934,24 +942,24 @@ private fun CaptionScreen(
             }
         }
         AnimatedVisibility(visible = !hidden) {
-            Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit * 2)) {
-                StatusButton(state.status, look, live = state.captionsRunning, onTap = onStatusTap)
-                val microphone = state.selectedInput?.let(::inputShortName) ?: tr("מיקרופון", "Microphone")
-                val choose = tr("בחירת מיקרופון", "Choose microphone")
-                val say = if (state.speaking) tr("עצירת הדיבור", "Stop speaking") else tr("להגיד משהו בקול", "Say something out loud")
-                // The labels grow with the phone's text size only so far, as the
-                // iPhone's stop at its xxxLarge: past that the four would break
-                // a few letters to a line.
-                val density = LocalDensity.current
-                CompositionLocalProvider(LocalDensity provides Density(density.density, minOf(density.fontScale, LARGEST_ORDINARY_FONT_SCALE))) {
-                    Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
-                        Row(Modifier.padding(horizontal = OzenSpacing.Unit / 2), horizontalArrangement = Arrangement.SpaceEvenly) {
+            val microphone = state.selectedInput?.let(::inputShortName) ?: tr("מיקרופון", "Microphone")
+            val choose = tr("בחירת מיקרופון", "Choose microphone")
+            val say = if (state.speaking) tr("עצירת הדיבור", "Stop speaking") else tr("להגיד משהו בקול", "Say something out loud")
+            var askingToClear by remember { mutableStateOf(false) }
+            // The labels grow with the phone's text size only so far: past that
+            // the five would break a few letters to a line.
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, minOf(density.fontScale, TOOLBAR_FONT_SCALE))) {
+                Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
+                    Column {
+                        StatusLine(state.status, look, live = state.captionsRunning, onTap = onStatusTap)
+                        Row(Modifier.padding(horizontal = OzenSpacing.Unit / 2).padding(bottom = 4.dp)) {
                             ToolbarButton(Icons.Rounded.History, tr("היסטוריה", "History"), onHistory, Modifier.weight(toolbarShare(tr("היסטוריה", "History"))))
                             ToolbarButton(
                                 Icons.Rounded.Mic,
                                 microphone,
                                 onMicrophone,
-                                Modifier.weight(toolbarShare(microphone, 12f)).semantics {
+                                Modifier.weight(toolbarShare(microphone)).semantics {
                                     contentDescription = choose
                                     stateDescription = state.selectedInput?.portName ?: ""
                                 },
@@ -966,10 +974,23 @@ private fun CaptionScreen(
                                 Modifier.weight(toolbarShare(tr("להגיד", "Say"))).semantics { contentDescription = say },
                                 selected = state.speaking,
                             )
+                            ToolbarButton(Icons.Rounded.DeleteSweep, tr("ניקוי", "Clear"), { askingToClear = true }, Modifier.weight(toolbarShare(tr("ניקוי", "Clear"))), enabled = state.lines.isNotEmpty())
                             ToolbarButton(Icons.Rounded.Settings, tr("הגדרות", "Settings"), onSettings, Modifier.weight(toolbarShare(tr("הגדרות", "Settings"))))
                         }
                     }
                 }
+            }
+            if (askingToClear) {
+                val warning = remember { clearWarning() }
+                AlertDialog(
+                    onDismissRequest = { askingToClear = false },
+                    title = { Text(tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?")) },
+                    text = warning?.let { { Text(it) } },
+                    confirmButton = {
+                        TextButton(onClick = { askingToClear = false; onClear() }) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
+                    },
+                    dismissButton = { TextButton(onClick = { askingToClear = false }) { Text(tr("ביטול", "Cancel")) } },
+                )
             }
         }
         if (hidden) ShowButtonsButton { lastTouchAt = secondsNow() }
@@ -977,7 +998,7 @@ private fun CaptionScreen(
 }
 
 /** Room on the bottom toolbar in proportion to the label's length, so a long word stays whole beside short ones. */
-private fun toolbarShare(label: String, widest: Float = 14f): Float = label.length.toFloat().coerceIn(5f, widest)
+private fun toolbarShare(label: String): Float = label.length.toFloat().coerceIn(7f, 12f)
 
 /**
  * Two fingers spreading or closing anywhere over the captions; one finger
@@ -1011,11 +1032,7 @@ private const val AWAY_MARK_SEEN_MILLIS = 1_000L
 
 internal const val LARGEST_ORDINARY_FONT_SCALE = 1.5f
 
-// A deep orange as on the iPhone, with white words on it at 5.5:1.
-private val TROUBLE_ORANGE = Color(red = 0.7f, green = 0.28f, blue = 0f)
-
-// The deeper red for a battery about to run out, white words on it at 6.6:1.
-private val CRITICAL_RED = Color(red = 0.7f, green = 0.1f, blue = 0.1f)
+private const val TOOLBAR_FONT_SCALE = 1.3f
 
 @Composable
 private fun screenReaderOn(): Boolean {
@@ -1459,11 +1476,11 @@ private fun ProblemMarkedDialog(keptSound: Boolean, onDismiss: () -> Unit) {
 private fun SavingTroubleBanner(onDismiss: () -> Unit) {
     NoticeBanner(
         Icons.Rounded.Warning,
-        TROUBLE_ORANGE,
+        NoticeTone.Warning,
         SavingTroubleNotice.title,
         SavingTroubleNotice.detail,
         Modifier.clickable(onClickLabel = tr("סגירה", "Close"), onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
-    ) { Icon(Icons.Rounded.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.8f)) }
+    ) { Icon(Icons.Rounded.Close, contentDescription = null) }
 }
 
 /** "Battery at 19%", as the iPhone's: deeper red when the phone may shut down, a tap anywhere puts it away. */
@@ -1472,7 +1489,7 @@ private fun BatteryBanner(warning: BatteryWarning, onDismiss: () -> Unit) {
     val critical = warning is BatteryWarning.Critical
     NoticeBanner(
         if (critical) Icons.Rounded.BatteryAlert else Icons.Rounded.BatteryChargingFull,
-        if (critical) CRITICAL_RED else TROUBLE_ORANGE,
+        if (critical) NoticeTone.Emergency else NoticeTone.Warning,
         tr("הסוללה ב-%1%", "Battery at %1%", listOf("${warning.percent}")),
         if (critical) {
             tr("הטלפון עלול להיכבות באמצע השיחה. חברו למטען.", "The phone might shut down mid-conversation. Plug in a charger.")
@@ -1480,48 +1497,44 @@ private fun BatteryBanner(warning: BatteryWarning, onDismiss: () -> Unit) {
             tr("כדאי לחבר למטען.", "Consider plugging in a charger.")
         },
         Modifier.clickable(onClickLabel = tr("סגירה", "Close"), onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
-    ) { Icon(Icons.Rounded.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.8f)) }
+    ) { Icon(Icons.Rounded.Close, contentDescription = null) }
 }
 
 /** As the iPhone's: a tap on the words opens the microphone picker, the close button only puts the notice away. */
 @Composable
 private fun MicrophoneDropBanner(title: String, detail: String, onChooseMicrophone: () -> Unit, onDismiss: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().background(TROUBLE_ORANGE, MaterialTheme.shapes.large),
-    ) {
-        NoticeBanner(
-            Icons.Rounded.MicOff,
-            Color.Transparent,
-            title,
-            detail,
-            Modifier
-                .weight(1f)
-                .clickable(onClickLabel = tr("בחירת מיקרופון", "Choose microphone"), onClick = onChooseMicrophone)
-                .semantics { liveRegion = LiveRegionMode.Polite },
-        )
-        BannerClose(tr("סגירה", "Close"), Color.White.copy(alpha = 0.8f), onDismiss)
-    }
+    NoticeBanner(
+        Icons.Rounded.MicOff,
+        NoticeTone.Warning,
+        title,
+        detail,
+        Modifier
+            .clickable(onClickLabel = tr("בחירת מיקרופון", "Choose microphone"), onClick = onChooseMicrophone)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }
 
 /** As the iPhone's card, for a phone whose walkthrough was skipped: the buzz for her name only works once the name is in. */
 @Composable
 private fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.Top,
-        modifier = Modifier.padding(top = 32.dp).fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.large),
+        modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh),
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.weight(1f).clickable(onClick = onOpen).padding(start = 14.dp, top = 14.dp, bottom = 14.dp),
-        ) {
-            IconBadge(Icons.Rounded.NotificationsActive)
-            Column {
-                Text(tr("שהטלפון ירטוט כשקוראים לך?", "Have the phone buzz when someone calls your name?"), color = MaterialTheme.colorScheme.onSurface, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Text(tr("הקישו כדי לכתוב את השם שלך", "Tap to write your name"), color = MaterialTheme.colorScheme.primary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Column(Modifier.weight(1f).clickable(onClick = onOpen).padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Unit)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
+                Text(tr("שהטלפון ירטוט כשקוראים לך?", "Have the phone buzz when someone calls your name?"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
             }
+            Text(
+                tr("הקישו כדי לכתוב את השם שלך", "Tap to write your name"),
+                color = colors.primary,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.align(Alignment.End).heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+            )
         }
-        BannerClose(tr("לא עכשיו", "Not now"), MaterialTheme.colorScheme.onSurfaceVariant, onDismiss)
+        BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, onDismiss)
     }
 }
 
@@ -1531,17 +1544,17 @@ private fun RecentConversationCard(recent: TranscriptSessionSummary, look: Capti
     val minutes = RecentConversation.minutesAgo(recent, now = secondsNow())
     Row(
         verticalAlignment = Alignment.Top,
-        modifier = Modifier.padding(top = 8.dp).fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.large),
+        modifier = Modifier.padding(top = 8.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.weight(1f).clickable(onClick = onOpen).padding(start = 14.dp, top = 14.dp, bottom = 14.dp),
+            modifier = Modifier.weight(1f).clickable(onClick = onOpen).padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Page),
         ) {
             IconBadge(Icons.Rounded.ChatBubble)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(tr("השיחה מ%1 נשמרה", "The conversation from %1 was saved", listOf(HebrewTime.minutesAgo(minutes))), color = MaterialTheme.colorScheme.onSurface, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Text(CaptionLayout.directed(recent.title ?: recent.preview), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(tr("הקישו כדי לקרוא אותה", "Tap to read it"), color = MaterialTheme.colorScheme.primary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text(tr("השיחה מ%1 נשמרה", "The conversation from %1 was saved", listOf(HebrewTime.minutesAgo(minutes))), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall)
+                Text(CaptionLayout.directed(recent.title ?: recent.preview), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(tr("הקישו כדי לקרוא אותה", "Tap to read it"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
             }
         }
         BannerClose(tr("סגירה", "Close"), MaterialTheme.colorScheme.onSurfaceVariant, onDismiss)
@@ -1555,17 +1568,17 @@ private fun RecentConversationCard(recent: TranscriptSessionSummary, look: Capti
  */
 @Composable
 private fun HeardPill(said: String, speaker: String?, modifier: Modifier) {
+    val colors = MaterialTheme.colorScheme
     Row(
-        modifier = modifier.background(Color.Yellow.copy(alpha = 0.9f), CircleShape).padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier = modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh).padding(horizontal = OzenSpacing.Page, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(Icons.Rounded.Hearing, contentDescription = null, tint = Color.Black, modifier = Modifier.size(22.dp))
+        IconBadge(Icons.Rounded.Hearing)
         Text(
             speaker?.let { tr("%1 — נאמר: %2", "%1 said: %2", listOf(it, said)) } ?: tr("נאמר: %1", "Said: %1", listOf(said)),
-            color = Color.Black,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
+            color = colors.onSurface,
+            style = MaterialTheme.typography.titleMedium,
         )
     }
 }
@@ -1653,34 +1666,34 @@ private fun DrawScope.drawDoubtDots(layout: TextLayoutResult, colour: Color) {
 }
 
 @Composable
-private fun StatusButton(status: PhasePresentation, look: CaptionTheme, live: Boolean, onTap: () -> Unit) {
+private fun StatusLine(status: PhasePresentation, look: CaptionTheme, live: Boolean, onTap: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
+            .heightIn(min = OzenSpacing.MinTouch)
             .clip(MaterialTheme.shapes.large)
-            .background(colors.surfaceContainerHigh)
             // As on the iPhone, no button while a tap would do nothing.
             .clickable(enabled = status.action != PhasePresentation.Action.None, onClick = onTap)
             // A download's bar is read with the button, in one stop: the
             // bar alone is an item of its own to TalkBack.
             .semantics { status.progress?.let { progressBarRangeInfo = ProgressBarRangeInfo(it.toFloat(), 0f..1f) } }
-            .padding(horizontal = OzenSpacing.Page, vertical = 12.dp),
+            .padding(horizontal = OzenSpacing.Page, vertical = OzenSpacing.Unit),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
             // The title already says what it is busy with; only a download's bar is read out.
             if (status.isBusy) {
-                CircularProgressIndicator(color = colors.primary, strokeWidth = 2.dp, modifier = Modifier.size(18.dp).testTag(STATUS_BUSY).clearAndSetSemantics {})
+                CircularProgressIndicator(color = colors.primary, strokeWidth = 2.dp, modifier = Modifier.size(16.dp).testTag(STATUS_BUSY).clearAndSetSemantics {})
             } else if (live) {
                 LiveDot(OzenColors.statusGood(dark = !look.isLight))
             }
-            Text(text = status.title, color = colors.onSurface, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-        }
-        status.detail?.let { detail ->
-            Text(text = detail, color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+            Text(text = status.title, color = colors.onSurface, style = MaterialTheme.typography.labelLarge)
+            status.detail?.let { detail ->
+                Text(text = "·", color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelLarge, modifier = Modifier.clearAndSetSemantics {})
+                Text(text = detail, color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f, fill = false))
+            }
         }
         status.progress?.let { progress ->
             LinearProgressIndicator(progress = { progress.toFloat() }, color = colors.primary, trackColor = colors.outlineVariant, modifier = Modifier.padding(top = 8.dp).widthIn(max = 200.dp).clearAndSetSemantics {})
@@ -1707,7 +1720,7 @@ private fun LiveDot(colour: Color) {
     } else {
         1f
     }
-    Box(Modifier.size(10.dp).graphicsLayer { alpha = glow }.background(colour, CircleShape).clearAndSetSemantics {})
+    Box(Modifier.size(8.dp).graphicsLayer { alpha = glow }.background(colour, CircleShape).clearAndSetSemantics {})
 }
 
 /**

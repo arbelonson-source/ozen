@@ -25,6 +25,11 @@ object OzenColors {
     /** Amber for "paused / attention" dots in StatusPill. */
     fun statusWarn(dark: Boolean): Color = if (dark) Color(0xFFFFB74D) else Color(0xFF9A5B00)
 
+    /** Amber notice card for trouble that is not an emergency: text on it passes AA. */
+    fun warningContainer(dark: Boolean): Color = if (dark) Color(0xFF5A3600) else Color(0xFFFFE2C2)
+
+    fun onWarningContainer(dark: Boolean): Color = if (dark) Color(0xFFFFE2C2) else Color(0xFF3B1F00)
+
     internal val Light = lightColorScheme(
         primary = Color(0xFF1A5BC4),
         onPrimary = Color(0xFFFFFFFF),
@@ -59,15 +64,15 @@ object OzenColors {
         surfaceDim = Color(0xFFD8DBE2),
         surfaceContainerLowest = Color(0xFFFFFFFF),
         surfaceContainerLow = Color(0xFFF2F4F8),
-        surfaceContainer = Color(0xFFECEFF4),
-        surfaceContainerHigh = Color(0xFFE6E9F0),
-        surfaceContainerHighest = Color(0xFFE0E4EB),
+        surfaceContainer = Color(0xFFE4E8F0),
+        surfaceContainerHigh = Color(0xFFDEE3EB),
+        surfaceContainerHighest = Color(0xFFD8DDE6),
     )
 
     internal val Dark = darkColorScheme(
         primary = Color(0xFFA9C7FF),
         onPrimary = Color(0xFF07306F),
-        primaryContainer = Color(0xFF1F4590),
+        primaryContainer = Color(0xFF2A4A85),
         onPrimaryContainer = Color(0xFFD9E6FF),
         secondary = Color(0xFFBEC7DC),
         onSecondary = Color(0xFF283245),
@@ -75,7 +80,7 @@ object OzenColors {
         onSecondaryContainer = Color(0xFFDCE4F3),
         tertiary = Color(0xFFA9C7FF),
         onTertiary = Color(0xFF07306F),
-        tertiaryContainer = Color(0xFF1F4590),
+        tertiaryContainer = Color(0xFF2A4A85),
         onTertiaryContainer = Color(0xFFD9E6FF),
         background = Color(0xFF101318),
         onBackground = Color(0xFFE2E5EB),
@@ -98,9 +103,9 @@ object OzenColors {
         surfaceDim = Color(0xFF101318),
         surfaceContainerLowest = Color(0xFF0B0E12),
         surfaceContainerLow = Color(0xFF181B20),
-        surfaceContainer = Color(0xFF1C1F25),
-        surfaceContainerHigh = Color(0xFF262A30),
-        surfaceContainerHighest = Color(0xFF31353B),
+        surfaceContainer = Color(0xFF20242B),
+        surfaceContainerHigh = Color(0xFF2A2E35),
+        surfaceContainerHighest = Color(0xFF353A41),
     )
 
     internal val LightHighContrast = Light.copy(

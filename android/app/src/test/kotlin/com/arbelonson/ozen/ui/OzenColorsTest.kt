@@ -62,6 +62,22 @@ class OzenColorsTest {
     }
 
     @Test
+    fun warningNoticeTextPassesAAInLightAndDark() {
+        for (dark in listOf(false, true)) {
+            val ratio = contrast(OzenColors.onWarningContainer(dark), OzenColors.warningContainer(dark))
+            assertTrue(ratio >= 4.5, "warning notice dark=$dark is only %.2f:1".format(ratio))
+        }
+    }
+
+    @Test
+    fun cardsStandOutFromThePageByAtLeastOnePointOneFive() {
+        for ((variant, scheme) in variants.take(2)) {
+            val ratio = contrast(scheme.surface, scheme.surfaceContainer)
+            assertTrue(ratio >= 1.15, "$variant card against page is only %.2f:1".format(ratio))
+        }
+    }
+
+    @Test
     fun highContrastVariantsAreStrongerThanTheNormalOnes() {
         assertTrue(contrast(OzenColors.scheme(false, true).onSurfaceVariant, OzenColors.scheme(false, true).surfaceContainer) >= 7.0)
         assertTrue(contrast(OzenColors.scheme(true, true).onSurfaceVariant, OzenColors.scheme(true, true).surfaceContainer) >= 7.0)

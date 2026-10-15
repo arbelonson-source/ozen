@@ -43,7 +43,7 @@ fun SettingsGroup(
     ) {
         Column {
             rows.forEachIndexed { index, row ->
-                if (index > 0) HorizontalDivider(Modifier.padding(start = dividerInset), color = MaterialTheme.colorScheme.outlineVariant)
+                if (index > 0) HorizontalDivider(Modifier.padding(start = dividerInset, end = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 row()
             }
         }

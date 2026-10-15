@@ -314,8 +314,13 @@ private fun LanguagePage(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
                             .selectable(selected = language == chosen, role = Role.RadioButton) { onChoose(language) }
                             .padding(horizontal = OzenSpacing.Page),
                     ) {
+                        Text(
+                            language.spokenName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (language == chosen) FontWeight.Medium else FontWeight.Normal,
+                            modifier = Modifier.weight(1f),
+                        )
                         RadioButton(selected = language == chosen, onClick = null)
-                        Text(language.spokenName, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 16.dp))
                     }
                 }
             }
@@ -359,13 +364,13 @@ private fun Page(icon: ImageVector, title: String, content: @Composable () -> Un
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).semantics { heading() },
         )
-        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) { content() }
+        Column(modifier = Modifier.widthIn(max = 400.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) { content() }
     }
 }
 
 @Composable
 private fun Body(text: String) {
-    Text(text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+    Text(text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
 }
 
 @Composable

@@ -8,6 +8,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bluetooth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.material.icons.rounded.SettingsInputAntenna
+import androidx.compose.material.icons.rounded.Hearing
+import androidx.compose.material.icons.rounded.Headset
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MicOff
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Usb
@@ -78,10 +84,10 @@ internal fun MicPickerScreen(
             )
         } else {
             SectionHeader(tr("מיקרופונים זמינים", "Available microphones"))
-            SettingsGroup(modifier = Modifier.selectableGroup()) {
+            SettingsGroup(modifier = Modifier.selectableGroup(), dividerInset = 56.dp) {
                 for (input in inputs) {
                     item {
-                        ChoiceRow(input.portName, inputTypeName(input.portType), selected = input.uid == selected?.uid) {
+                        ChoiceRow(input.portName, inputTypeName(input.portType), selected = input.uid == selected?.uid, icon = inputIcon(input.portType)) {
                             refused = if (onChoose(input)) null else input.portName
                         }
                     }
@@ -155,11 +161,26 @@ internal fun LevelMeter(level: () -> Float, active: Boolean) {
     val percent = tr("%1 אחוז", "%1 percent", listOf("${(shown * 100).roundToInt()}"))
     LinearProgressIndicator(
         progress = { shown },
-        modifier = Modifier.fillMaxWidth().semantics {
+        color = MaterialTheme.colorScheme.primary,
+        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        strokeCap = StrokeCap.Round,
+        gapSize = 0.dp,
+        drawStopIndicator = {},
+        modifier = Modifier.fillMaxWidth().height(12.dp).semantics {
             contentDescription = label
             stateDescription = percent
         },
     )
+}
+
+private fun inputIcon(type: AudioPortType): ImageVector = when (type) {
+    AudioPortType.BuiltInMic -> Icons.Rounded.Mic
+    AudioPortType.Bluetooth -> Icons.Rounded.Bluetooth
+    AudioPortType.Wired -> Icons.Rounded.Headset
+    AudioPortType.Usb -> Icons.Rounded.Usb
+    AudioPortType.HearingAid -> Icons.Rounded.Hearing
+    AudioPortType.RemoteMic -> Icons.Rounded.SettingsInputAntenna
+    AudioPortType.Other -> Icons.Rounded.Mic
 }
 
 internal fun inputTypeName(type: AudioPortType): String = when (type) {

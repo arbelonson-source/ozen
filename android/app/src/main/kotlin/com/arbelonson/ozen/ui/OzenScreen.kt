@@ -27,7 +27,7 @@ fun OzenScreen(
     onBack: (() -> Unit)? = null,
     onClose: (() -> Unit)? = null,
     closeLabel: String = tr("סיום", "Done"),
-    actions: @Composable RowScope.() -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = com.arbelonson.ozen.ui.NoActions,
     scrolls: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {

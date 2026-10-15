@@ -4,6 +4,18 @@ import android.animation.ValueAnimator
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.style.TextOverflow
+import com.arbelonson.ozen.ui.OzenColors
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -78,43 +90,74 @@ internal fun SoundAlertBanner(alert: SoundAlert, onDismiss: () -> Unit) {
     val critical = alert.event.importance == SoundEvent.Importance.Critical
     NoticeBanner(
         soundIcon(alert.event.systemImage),
-        soundTint(alert.event.importance),
+        soundTone(alert.event.importance),
         alert.event.name,
         if (critical) tr("שימו לב!", "Attention!") else tr("נשמע עכשיו", "Heard just now"),
         Modifier
-            .shadow(4.dp, MaterialTheme.shapes.large)
             .clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button, onClick = onDismiss)
             .semantics { contentDescription = tr("התראה: %1", "Alert: %1", listOf(alert.event.name)) },
-        large = true,
-    ) { Icon(Icons.Rounded.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.8f)) }
+    ) { Icon(Icons.Rounded.Close, contentDescription = null) }
+}
+
+internal enum class NoticeTone { Emergency, Warning, Info, Quiet }
+
+internal fun soundTone(importance: SoundEvent.Importance): NoticeTone = when (importance) {
+    SoundEvent.Importance.Critical -> NoticeTone.Emergency
+    SoundEvent.Importance.High -> NoticeTone.Warning
+    SoundEvent.Importance.Medium -> NoticeTone.Info
+    SoundEvent.Importance.Low -> NoticeTone.Quiet
 }
 
 /**
- * A rounded notice tinted by how urgent it is, white words on [tint]: an
- * icon in a soft circle, a title and a line under it, and an optional
- * [trailing] mark. Its clicking and TalkBack words come in on [modifier].
+ * The one notice card above the captions: a 16 dp rounded card tinted by [tone]
+ * (tonal containers, never a saturated fill), an icon in a 40 dp circle, a title,
+ * a line under it that wraps in full (the banner area scrolls when several are showing), and an optional [trailing]
+ * mark. An emergency also has a strong edge on its leading side, and a phone that
+ * asks for more contrast gets a 2 dp outline. Clicking and TalkBack words come in on [modifier].
  */
 @Composable
 internal fun NoticeBanner(
     icon: ImageVector,
-    tint: Color,
+    tone: NoticeTone,
     title: String,
     detail: String,
     modifier: Modifier = Modifier,
-    large: Boolean = false,
     trailing: @Composable () -> Unit = {},
 ) {
+    val colors = MaterialTheme.colorScheme
+    val dark = colors.surface.luminance() < 0.5f
+    val (container, content) = when (tone) {
+        NoticeTone.Emergency -> colors.errorContainer to colors.onErrorContainer
+        NoticeTone.Warning -> OzenColors.warningContainer(dark) to OzenColors.onWarningContainer(dark)
+        NoticeTone.Info -> colors.secondaryContainer to colors.onSecondaryContainer
+        NoticeTone.Quiet -> colors.surfaceContainerHigh to colors.onSurface
+    }
+    val shape = MaterialTheme.shapes.large
     Row(
-        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(tint).then(modifier).padding(horizontal = OzenSpacing.Page, vertical = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(container)
+            .then(if (phoneAsksForMoreContrast()) Modifier.border(2.dp, content, shape) else Modifier)
+            .then(modifier)
+            .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        IconBadge(icon, size = if (large) 48.dp else 40.dp, container = Color.White.copy(alpha = 0.2f), content = Color.White)
-        Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = if (large) 20.sp else 18.sp, fontWeight = FontWeight.SemiBold)
-            Text(detail, color = Color.White.copy(alpha = 0.92f), fontSize = if (large) 16.sp else 15.sp)
+        if (tone == NoticeTone.Emergency) Box(Modifier.width(4.dp).fillMaxHeight().background(colors.error))
+        Row(
+            Modifier.weight(1f).padding(start = OzenSpacing.Page - if (tone == NoticeTone.Emergency) 4.dp else 0.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            IconBadge(icon, size = 40.dp, container = content.copy(alpha = 0.12f), content = content)
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = content)
+                Text(detail, style = MaterialTheme.typography.bodyMedium, color = content)
+            }
         }
-        trailing()
+        Box(Modifier.padding(end = 4.dp).size(OzenSpacing.MinTouch).align(Alignment.Top), contentAlignment = Alignment.Center) {
+            CompositionLocalProvider(LocalContentColor provides content) { trailing() }
+        }
     }
 }
 

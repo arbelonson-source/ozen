@@ -51,6 +51,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -236,7 +239,7 @@ fun HistoryScreen(
         onClose = onClose,
         actions = {
             TextButton(onClick = { confirmingDeleteAll = true }, enabled = loaded?.summaries?.isNotEmpty() == true) {
-                Text(tr("מחיקת הכול", "Delete all"))
+                Text(tr("מחיקת הכול", "Delete all"), color = if (loaded?.summaries?.isNotEmpty() == true) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
     ) {
@@ -262,6 +265,12 @@ fun HistoryScreen(
                 item(key = "search") {
                     SearchField(query, onChange = { query = it })
                 }
+                // A chosen name keeps filtering while she searches, so its
+                // chip stays too: hidden, it would drop every other
+                // conversation from the results with no way to clear it.
+                if ((!searching || chosen != null) && names.isNotEmpty()) item(key = "speakers") {
+                    SpeakerFilterChips(names, chosen, onChoose = { name -> speakerFilter = if (name == chosen) null else name })
+                }
                 if (!searching) item(key = "saving") {
                     SavingSection(
                         saving = saving,
@@ -285,12 +294,6 @@ fun HistoryScreen(
                             ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletion = session })
                         }
                     }
-                }
-                // A chosen name keeps filtering while she searches, so its
-                // chip stays too: hidden, it would drop every other
-                // conversation from the results with no way to clear it.
-                if ((!searching || chosen != null) && names.isNotEmpty()) item(key = "speakers") {
-                    SpeakerFilterChips(names, chosen, onChoose = { name -> speakerFilter = if (name == chosen) null else name })
                 }
                 if (days.isEmpty()) {
                     item(key = "empty") {
@@ -382,6 +385,8 @@ private fun SpeakerFilterChips(names: List<String>, chosen: String?, onChoose: (
                 selected = name == chosen,
                 onClick = { onChoose(name) },
                 label = { Text(name) },
+                shape = MaterialTheme.shapes.extraLarge,
+                leadingIcon = if (name == chosen) { { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp)) } } else null,
                 // The chip itself is the tap area, so it is a full 48 dp tall, as the iPhone's 44 points.
                 modifier = Modifier.testTag("speakerChip:$name").heightIn(min = 48.dp),
             )
@@ -400,7 +405,7 @@ internal const val SPEAKER_SHARE = "speakerShare:"
 
 @Composable
 private fun SearchField(query: String, onChange: (String) -> Unit) {
-    OutlinedTextField(
+    TextField(
         value = query,
         onValueChange = onChange,
         placeholder = { Text(tr("חיפוש במה שנאמר", "Search what was said")) },
@@ -412,7 +417,13 @@ private fun SearchField(query: String, onChange: (String) -> Unit) {
         },
         singleLine = true,
         shape = MaterialTheme.shapes.extraLarge,
-        modifier = Modifier.fillMaxWidth(),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+        ),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
     )
 }
 

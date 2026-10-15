@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -198,7 +199,6 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
         }
         Footnote(tr("החדש ביותר למעלה. הדוח המועתק כולל את כל הרשימה.", "Newest at the top. The copied report includes the full list."))
 
-        SectionHeader(tr("יומן, כולל הפעלות קודמות", "Journal, previous runs included"))
         TonalButton(
             tr("לסמן בעיה עכשיו", "Mark a problem now"),
             onClick = {
@@ -206,8 +206,9 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 refresh()
             },
             icon = Icons.Rounded.Flag,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.align(Alignment.Start),
         )
+        SectionHeader(tr("יומן, כולל הפעלות קודמות", "Journal, previous runs included"))
         SettingsGroup {
             item {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
