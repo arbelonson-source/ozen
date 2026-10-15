@@ -128,8 +128,38 @@ class EngineSettingsTest {
     }
 
     @Test
+    fun `a key is not saved until the person agreed to send sound to that service`() {
+        engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        assertFalse(engineSettings.saveCloudKey("dg-test-key"))
+        assertFalse(engineSettings.hasCloudKey())
+        assertNull(keys.read(CloudProvider.Deepgram))
+    }
+
+    @Test
+    fun `closing settings saves no typed key when sound was never agreed to go to the service`() {
+        engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        engineSettings.saveUnsavedEntries(cloudKeyDraft = "dg-typed", addressDraft = "", pairingCodeDraft = "")
+        assertNull(keys.read(CloudProvider.Deepgram))
+        assertFalse(engineSettings.hasCloudKey())
+    }
+
+    @Test
+    fun `agreeing is remembered for that service only, survives a restart, and a key saved earlier keeps working`() {
+        keys.save("sx-old-key", CloudProvider.Soniox)
+        assertTrue(engineSettings.hasCloudKey())
+        engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        engineSettings.acknowledgeCloud(CloudProvider.Deepgram)
+        assertEquals(setOf(CloudProvider.Deepgram), saved().cloudSoundAcknowledged)
+        assertTrue(engineSettings.saveCloudKey("dg-key"))
+        engineSettings.chooseCloudService(CloudProvider.Groq)
+        assertFalse(engineSettings.saveCloudKey("gq-key"))
+        assertNull(keys.read(CloudProvider.Groq))
+    }
+
+    @Test
     fun `a key is saved trimmed for the chosen service and restarts captions only while the cloud is the engine`() {
         engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        engineSettings.acknowledgeCloud(CloudProvider.Deepgram)
         assertTrue(engineSettings.saveCloudKey("  dg-test-key \n"))
         assertEquals("dg-test-key", keys.read(CloudProvider.Deepgram))
         assertNull(keys.read(CloudProvider.Soniox))
@@ -153,6 +183,7 @@ class EngineSettingsTest {
     fun `a key the phone could not seal is reported and does not restart captions`() {
         val failing = EngineSettings(settings, CloudKeyStore(File(folder, "cloud-keys"), ReversingCipher(failsToSeal = true)), codes, { HomeServerCheck.Unreachable }, scope) { restarts += 1 }
         failing.chooseEngine(TranscriptionEngineKind.Cloud)
+        failing.acknowledgeCloud(CloudProvider.Soniox)
         assertFalse(failing.saveCloudKey("sx-test-key"))
         assertFalse(failing.hasCloudKey())
         assertEquals(1, restarts)
@@ -201,6 +232,7 @@ class EngineSettingsTest {
     @Test
     fun `closing settings keeps a typed key, a working address and a code that were never saved, as the iphone does`() {
         engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        engineSettings.acknowledgeCloud(CloudProvider.Deepgram)
         engineSettings.saveUnsavedEntries(cloudKeyDraft = " dg-typed ", addressDraft = " ws://192.168.1.20:8765 ", pairingCodeDraft = " code-typed ")
         assertEquals("dg-typed", keys.read(CloudProvider.Deepgram))
         assertEquals("ws://192.168.1.20:8765", saved().homeServerAddress)

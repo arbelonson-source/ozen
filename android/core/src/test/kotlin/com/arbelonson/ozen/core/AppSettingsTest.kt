@@ -69,6 +69,15 @@ class AppSettingsTest {
     }
 
     @Test
+    fun `the services agreed to for cloud sound are saved and a file from before has none`() {
+        val agreed = AppSettings.default.copy()
+        agreed.cloudSoundAcknowledged = setOf(CloudProvider.Deepgram, CloudProvider.Groq)
+        assertEquals(setOf(CloudProvider.Deepgram, CloudProvider.Groq), roundTripped(agreed).cloudSoundAcknowledged)
+        assertEquals(emptySet(), roundTripped(AppSettings.default.copy()).cloudSoundAcknowledged)
+        assertEquals(emptySet(), AppSettings.fromJson("{\"engine\":\"cloud\"}").cloudSoundAcknowledged)
+    }
+
+    @Test
     fun `a voice saved with the old loudness number keeps matching, that number is dropped on load`() {
         val oldPrint = floatArrayOf(-180f, 12f, -3f, 4f, -5f, 6f, -7f, 8f, -9f, 10f, -11f, 1.5f, -0.5f)
         val other = floatArrayOf(1f, 2f, 3f)

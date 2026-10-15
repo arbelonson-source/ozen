@@ -69,9 +69,16 @@ class EngineSettings(
 
     fun hasCloudKey(): Boolean = cloudKeys.hasKey(provider)
 
+    fun cloudSoundAcknowledged(): Boolean = provider in settings.current.value.cloudSoundAcknowledged
+
+    fun acknowledgeCloud(service: CloudProvider) {
+        if (service in settings.current.value.cloudSoundAcknowledged) return
+        settings.change { it.cloudSoundAcknowledged = it.cloudSoundAcknowledged + service }
+    }
+
     fun saveCloudKey(draft: String): Boolean {
         val key = draft.trim()
-        if (key.isEmpty() || !cloudKeys.save(key, provider)) return false
+        if (key.isEmpty() || !cloudSoundAcknowledged() || !cloudKeys.save(key, provider)) return false
         if (cloudIsTheEngine) restart()
         return true
     }

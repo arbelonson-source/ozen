@@ -460,7 +460,8 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
     var draft by keyDraft
     var saveFailed by remember(service) { mutableStateOf(false) }
     var confirmingDelete by remember { mutableStateOf(false) }
-    val save = {
+    var askingConsent by remember { mutableStateOf(false) }
+    val saveNow = {
         if (draft.isNotBlank()) {
             val saved = engineSettings.saveCloudKey(draft)
             saveFailed = !saved
@@ -468,6 +469,11 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
                 draft = ""
                 hasKey = true
             }
+        }
+    }
+    val save = {
+        if (draft.isNotBlank()) {
+            if (current.cloudProvider in current.cloudSoundAcknowledged) saveNow() else askingConsent = true
         }
     }
 
@@ -515,6 +521,31 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
                 }
             }
         }
+    }
+    if (askingConsent) {
+        AlertDialog(
+            onDismissRequest = { askingConsent = false },
+            title = { Text(tr("לשלוח את הקול ל־%1?", "Send the audio to %1?", listOf(service.displayName))) },
+            text = {
+                Text(
+                    tr(
+                        "כשהכתוביות מגיעות מ־%1, הקול מהמיקרופון נשלח אליו דרך האינטרנט, יחד עם השמות והמילים המיוחדות והמילים החשובות. על מה שנשלח חלים התנאים ומדיניות הפרטיות של %1. בלי אישור, המפתח לא יישמר ושום דבר לא יישלח.",
+                        "While captions come from %1, the audio from the microphone is sent to it over the internet, together with the names and special words and the important words. %1’s own terms and privacy policy apply to what it receives. Without your OK, the key isn’t saved and nothing is sent.",
+                        listOf(service.displayName),
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        askingConsent = false
+                        engineSettings.acknowledgeCloud(service)
+                        saveNow()
+                    },
+                ) { Text(tr("לאשר ולשמור", "Allow and save")) }
+            },
+            dismissButton = { TextButton(onClick = { askingConsent = false }) { Text(tr("ביטול", "Cancel")) } },
+        )
     }
     if (confirmingDelete) {
         AlertDialog(
