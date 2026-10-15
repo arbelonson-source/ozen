@@ -6,8 +6,31 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class NumberEmphasisTest {
-    private fun emphasized(text: String): List<String> =
-        NumberEmphasis.ranges(text).map { text.substring(it.start, it.endExclusive) }
+    private fun emphasized(text: String, decimalComma: Boolean = false): List<String> =
+        NumberEmphasis.ranges(text, decimalComma).map { text.substring(it.start, it.endExclusive) }
+
+    @Test
+    fun decimalCommaKeepsDoseWhole() {
+        assertEquals(listOf("2,5 mg"), emphasized("nimm 2,5 mg täglich", decimalComma = true))
+        assertEquals(listOf("37,5"), emphasized("fièvre 37,5 hier", decimalComma = true))
+        assertEquals(listOf("10,5%"), emphasized("sube 10,5% más", decimalComma = true))
+        assertEquals(listOf("1,234 mg"), emphasized("es 1,234 mg", decimalComma = true))
+    }
+
+    @Test
+    fun decimalCommaStillSplitsLists() {
+        assertEquals(listOf("1", "2", "3"), emphasized("nimm 1,2,3 bitte", decimalComma = true))
+        assertEquals(
+            listOf("050-1234567", "03-1234567"),
+            emphasized("050-1234567,03-1234567", decimalComma = true),
+        )
+    }
+
+    @Test
+    fun defaultKeepsDecimalCommaSplit() {
+        assertEquals(listOf("2", "5 mg"), emphasized("nimm 2,5 mg täglich"))
+        assertEquals(listOf("1", "2", "3"), emphasized("קח כדורים 1,2,3 ותנוח"))
+    }
 
     @Test
     fun `"one" or "pa'am" as the very last word of a line, even before a trailing space, is read safely`() {

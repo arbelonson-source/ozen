@@ -90,9 +90,9 @@ object NumberEmphasis {
      * kadur" - "half a pill", "500 mg"), since the amount alone doesn't say
      * what of.
      */
-    fun ranges(text: String): List<OpenEndRange<Int>> {
+    fun ranges(text: String, decimalComma: Boolean = false): List<OpenEndRange<Int>> {
         val line = NumberEmphasisLine(text)
-        val words = emphasisWords(line)
+        val words = emphasisWords(line, decimalComma)
         val result = mutableListOf<OpenEndRange<Int>>()
         var lastJoined = -1
         for ((position, word) in words.withIndex()) {
@@ -105,7 +105,7 @@ object NumberEmphasis {
             var end = found.second
             var last = position
             var afterFraction = word.core?.let { emphasisReading(it) }?.let { it.number in fractionWords } ?: false
-            var endsWord = found.second == word.end && !emphasisFollowedByComma(line, end)
+            var endsWord = found.second == word.end && !emphasisFollowedByComma(line, end, decimalComma)
             // Spoken numbers above ten are compound words: teens ("chamesh
             // esreh" - "fifteen"), tens and units ("esrim u-shlosha" -
             // "twenty-three"), and a following "va-chatzi" ("and a half") in a
@@ -117,14 +117,14 @@ object NumberEmphasis {
                 val chained = emphasisChained(words[last + 1]) ?: break
                 last += 1
                 end = chained
-                endsWord = end == words[last].end && !emphasisFollowedByComma(line, end)
+                endsWord = end == words[last].end && !emphasisFollowedByComma(line, end, decimalComma)
             }
             while (endsWord && last + 1 < words.size) {
                 val joined = emphasisJoinedWord(line, words[last + 1], allowingFraction = last == position, afterFraction = afterFraction)
                     ?: break
                 last += 1
                 end = joined.end
-                endsWord = end == words[last].end && !emphasisFollowedByComma(line, end)
+                endsWord = end == words[last].end && !emphasisFollowedByComma(line, end, decimalComma)
                 if (!joined.isFraction) break
                 afterFraction = true
             }
@@ -141,7 +141,7 @@ object NumberEmphasis {
      * Monday"); a list of every line with them in it would be most of the
      * conversation.
      */
-    fun hasListableNumber(text: String): Boolean = ranges(text).any { range ->
+    fun hasListableNumber(text: String, decimalComma: Boolean = false): Boolean = ranges(text, decimalComma).any { range ->
         val found = emphasisCharacters(text.substring(range.start, range.endExclusive))
         if (found.any { isEmphasisNumber(it) }) return@any true
         // The number is the first word; a unit may follow it.
@@ -333,13 +333,13 @@ private fun isOncePerPeriod(core: String, position: Int, words: List<NumberEmpha
     return period in NumberEmphasis.periodWords || period in NumberEmphasis.numberWords
 }
 
-private fun emphasisWords(line: NumberEmphasisLine): List<NumberEmphasisWord> {
+private fun emphasisWords(line: NumberEmphasisLine, decimalComma: Boolean): List<NumberEmphasisWord> {
     val words = mutableListOf<NumberEmphasisWord>()
     var start: Int? = null
     var index = 0
     while (true) {
         val atEnd = index == line.count
-        if (atEnd || emphasisSeparates(line, index)) {
+        if (atEnd || emphasisSeparates(line, index, decimalComma)) {
             val wordStart = start
             if (wordStart != null) {
                 val first = (wordStart until index).firstOrNull { isEmphasisLetter(line.graphemes[it]) }
@@ -366,10 +366,10 @@ private fun emphasisWords(line: NumberEmphasisLine): List<NumberEmphasisWord> {
  * ("shlosha-asar" - "thirteen", "be-3" - "in 3"), except between two digits,
  * where it is part of the number ("050-1234567", "3/4", "10:30-11:00").
  */
-private fun emphasisSeparates(line: NumberEmphasisLine, index: Int): Boolean {
+private fun emphasisSeparates(line: NumberEmphasisLine, index: Int, decimalComma: Boolean): Boolean {
     val character = line.graphemes[index]
     if (isEmphasisWhitespace(character)) return true
-    if (character == ",") return !isThousandsGroupComma(line, index)
+    if (character == ",") return !(isThousandsGroupComma(line, index) || (decimalComma && isDecimalComma(line, index)))
     if (character.codePointCount(0, character.length) != 1 || character.codePointAt(0) !in HebrewText.wordJoiners) return false
     if (index == 0) return true
     val after = index + 1
@@ -382,8 +382,32 @@ private fun emphasisSeparates(line: NumberEmphasisLine, index: Int): Boolean {
  * (see [isThousandsGroupComma]), still ends it the way any other punctuation
  * does: "be-sha'a 10:30, kadurim" ("at 10:30, pills") isn't "10:30" pills.
  */
-private fun emphasisFollowedByComma(line: NumberEmphasisLine, index: Int): Boolean =
-    index < line.count && line.graphemes[index] == ","
+private fun emphasisFollowedByComma(line: NumberEmphasisLine, index: Int, decimalComma: Boolean): Boolean =
+    index < line.count && line.graphemes[index] == "," && !(decimalComma && isDecimalComma(line, index))
+
+private fun isJoinerBetweenDigits(line: NumberEmphasisLine, index: Int): Boolean {
+    val character = line.graphemes[index]
+    if (character == ",") return true
+    return character.codePointCount(0, character.length) == 1 && character.codePointAt(0) in HebrewText.wordJoiners
+}
+
+/**
+ * Where a comma is a decimal mark (French, Spanish, German, Portuguese,
+ * Russian, Ukrainian: "2,5 mg"): a digit before it, one or two digits after,
+ * and neither side part of a longer run of digit groups ("1,2,3", or two phone
+ * numbers "050-1234567,03-1234567", stay separate numbers).
+ */
+private fun isDecimalComma(line: NumberEmphasisLine, index: Int): Boolean {
+    if (index == 0 || !isEmphasisNumber(line.graphemes[index - 1])) return false
+    var start = index - 1
+    while (start > 0 && isEmphasisNumber(line.graphemes[start - 1])) start -= 1
+    if (start >= 2 && isJoinerBetweenDigits(line, start - 1) && isEmphasisNumber(line.graphemes[start - 2])) return false
+    var cursor = index + 1
+    while (cursor < line.count && isEmphasisNumber(line.graphemes[cursor])) cursor += 1
+    val digitCount = cursor - index - 1
+    if (digitCount !in 1..2) return false
+    return !(cursor + 1 < line.count && isJoinerBetweenDigits(line, cursor) && isEmphasisNumber(line.graphemes[cursor + 1]))
+}
 
 /**
  * A comma joins one number only as a thousands group: a digit before it, and

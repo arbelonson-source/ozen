@@ -10,9 +10,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import com.arbelonson.ozen.core.NumberEmphasis
 import com.arbelonson.ozen.core.PhoneNumbers
+import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.UncertainWords
 
 val NUMBER_YELLOW = Color(red = 1.0f, green = 0.88f, blue = 0.2f)
+
+fun usesDecimalComma(language: UILanguage): Boolean = when (language) {
+    UILanguage.French, UILanguage.Spanish, UILanguage.German, UILanguage.Portuguese,
+    UILanguage.Russian, UILanguage.Ukrainian -> true
+    else -> false
+}
 
 const val DOUBTFUL_WORD = "doubtful"
 
@@ -22,8 +29,9 @@ fun captionText(
     numberColor: Color?,
     doubtfulWords: List<String> = emptyList(),
     linkingPhoneNumbers: Boolean = false,
+    decimalComma: Boolean = false,
 ): AnnotatedString {
-    val ranges = if (emphasizeNumbers) NumberEmphasis.ranges(shown) else emptyList()
+    val ranges = if (emphasizeNumbers) NumberEmphasis.ranges(shown, decimalComma) else emptyList()
     val doubted = if (doubtfulWords.isEmpty()) emptyList() else UncertainWords.ranges(shown, doubtfulWords)
     val phones = if (linkingPhoneNumbers) PhoneNumbers.matches(shown) else emptyList()
     if (ranges.isEmpty() && doubted.isEmpty() && phones.isEmpty()) return AnnotatedString(shown)
