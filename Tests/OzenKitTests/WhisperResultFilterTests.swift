@@ -287,6 +287,19 @@ struct WhisperResultFilterTests {
         #expect(WhisperResultFilter.normalize("شكــرا") == "شكرا")
     }
 
+    @Test("a short spoken sentence starting with the Arabic word for translation is kept")
+    func shortArabicSentenceKept() {
+        #expect(filter.accepts(segment("ترجمة هذا النص صعبة")))
+        #expect(filter.accepts(segment("ترجمة هذا الكتاب جيدة")))
+        #expect(!filter.accepts(segment("ترجمة: نانسي")))
+    }
+
+    @Test("the Arabic superscript alef does not hide a phrase")
+    func arabicSuperscriptAlefNormalized() {
+        #expect(WhisperResultFilter.normalize("عَلَىٰ") == WhisperResultFilter.normalize("على"))
+        #expect(filter.acceptedText(from: [segment("شكرا عَلَىٰ المشاهدة")]) == "")
+    }
+
     @Test("a long real sentence starting with the Arabic word for translation is kept")
     func longArabicSentenceKept() {
         let sentence = "ترجمة هذا الكتاب إلى العربية استغرقت منا ثلاث سنوات كاملة"
