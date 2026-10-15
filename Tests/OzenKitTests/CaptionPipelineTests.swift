@@ -4167,6 +4167,65 @@ struct CaptionPipelineHomeLossTests {
         #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "bring the keys"])
     }
 
+    @Test("a replayed partial that grows past the overlap keeps the new words")
+    func growingPartialKeepsNewWords() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home, line: "see you at noon tomorrow")
+        for chunk in speech(seconds: 5) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 5.05 })
+        await lose(home, pipeline)
+        #expect(await eventually { phone.samplesSeen.count >= 80_000 })
+        let id = UUID()
+        phone.emit(TranscriptToken(utteranceID: id, text: "tomorrow", isFinal: false, timestamp: 1_001))
+        phone.emit(TranscriptToken(utteranceID: id, text: "tomorrow bring the keys", isFinal: false, timestamp: 1_002))
+        phone.emit(TranscriptToken(utteranceID: id, text: "tomorrow bring the keys", isFinal: true, timestamp: 1_003))
+        #expect(await eventually { pipeline.segments.count == 2 })
+
+        #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "bring the keys"])
+    }
+
+    @Test("one phone line of the overlap plus new speech shows the overlap once")
+    func mergedOverlapAndNewSpeech() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home, line: "see you at noon tomorrow")
+        for chunk in speech(seconds: 5) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 5.05 })
+        await lose(home, pipeline)
+        #expect(await eventually { phone.samplesSeen.count >= 80_000 })
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "at noon tomorrow bring the keys", isFinal: true, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+
+        #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "bring the keys"])
+    }
+
+    @Test("a new line equal to the last word of the previous line is not lost")
+    func newLineEqualToLastWordIsKept() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home, line: "see you at noon tomorrow")
+        for chunk in speech(seconds: 5) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 5.05 })
+        await lose(home, pipeline)
+        #expect(await eventually { phone.samplesSeen.count >= 80_000 })
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "tomorrow", isFinal: true, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+
+        #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "tomorrow"])
+    }
+
+    @Test("a new line equal to the first words of the previous line is not lost")
+    func newLineEqualToFirstWordsIsKept() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home, line: "see you at noon tomorrow")
+        for chunk in speech(seconds: 5) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 5.05 })
+        await lose(home, pipeline)
+        #expect(await eventually { phone.samplesSeen.count >= 80_000 })
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "see you", isFinal: true, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+
+        #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "see you"])
+    }
+
     @Test("stopping while the phone is taking over replays nothing")
     func stopCancelsReplay() async {
         let (pipeline, audio, home, phone) = rig()

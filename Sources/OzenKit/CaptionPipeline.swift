@@ -180,7 +180,7 @@ public final class CaptionPipeline {
     private var pendingReplay: [Float] = []
     private var pendingReplayDedupe: [String] = []
     private var replayDedupe: [String] = []
-    private var replaySuppressed: Set<UUID> = []
+    private var replayUtterance: UUID?
     private var replayTask: Task<Void, Never>?
     static let replayMarginSeconds = 2.0
     static let replayMaxSeconds = 20.0
@@ -416,7 +416,7 @@ public final class CaptionPipeline {
         lastFinalHeard = nil
         let replay = pendingReplay
         replayDedupe = pendingReplayDedupe
-        replaySuppressed = []
+        replayUtterance = nil
         pendingReplay = []
         pendingReplayDedupe = []
         activeSettings = settings
@@ -1597,7 +1597,8 @@ public final class CaptionPipeline {
         // ivrit.ai's model starts some lines with an invisible direction
         // mark; kept, it would travel into saved conversations and search.
         var cleaned = HebrewText.removingDirectionMarks(incoming.text)
-        if isRepeatOfReplayedLine(incoming, cleaned: cleaned) { return }
+        guard let trimmed = trimmingReplayedWords(incoming, cleaned: cleaned) else { return }
+        cleaned = trimmed
         if incoming.isFinal, !cleaned.isEmpty, replayDedupe.isEmpty {
             lastFinalHeard = (recentAudio.totalAppended, cleaned)
         }
@@ -2037,27 +2038,44 @@ public final class CaptionPipeline {
         return stream
     }
 
-    private func isRepeatOfReplayedLine(_ token: TranscriptToken, cleaned: String) -> Bool {
-        guard !replayDedupe.isEmpty else { return false }
-        let words = Self.comparableWords(cleaned)
-        var repeated = replaySuppressed.contains(token.utteranceID)
-        if !repeated, !words.isEmpty {
-            let known = replayDedupe
-            repeated = words == known
-                || (words.count <= known.count && (known.starts(with: words) || known.suffix(words.count).elementsEqual(words)))
-                || (known.count >= 3 && words.starts(with: known))
-        }
-        if repeated {
-            replaySuppressed.insert(token.utteranceID)
-        } else if !words.isEmpty {
+    /// The replay starts before the home computer's last line, so the
+    /// phone's first utterance usually begins with the tail of that line
+    /// and then carries on with new speech. Returns `text` without the
+    /// words that were already shown, or nil when nothing new is left.
+    /// Every update of that utterance is trimmed again, so the words
+    /// after the overlap are kept as they arrive.
+    private func trimmingReplayedWords(_ token: TranscriptToken, cleaned: String) -> String? {
+        guard !replayDedupe.isEmpty else { return cleaned }
+        let raw = cleaned.split(whereSeparator: \.isWhitespace)
+        let words = raw.map { $0.trimmingCharacters(in: .punctuationCharacters).lowercased() }
+        guard !words.isEmpty else { return cleaned }
+        let known = replayDedupe.map { $0.lowercased() }
+        let ongoing = replayUtterance == token.utteranceID
+        if replayUtterance != nil, !ongoing {
             replayDedupe = []
-            replaySuppressed = []
+            replayUtterance = nil
+            return cleaned
         }
-        if token.isFinal, repeated {
+        var overlap = 0
+        for count in stride(from: min(words.count, known.count), through: 1, by: -1)
+        where known.suffix(count).elementsEqual(words.prefix(count)) {
+            overlap = count
+            break
+        }
+        let wholeLine = overlap == words.count
+        let lone = wholeLine && overlap == 1 && known.count > 1
+        if overlap == 0 || (lone && token.isFinal && !ongoing) {
             replayDedupe = []
-            replaySuppressed = []
+            replayUtterance = nil
+            return cleaned
         }
-        return repeated
+        replayUtterance = token.utteranceID
+        if token.isFinal {
+            replayDedupe = []
+            replayUtterance = nil
+        }
+        guard !wholeLine else { return nil }
+        return raw[overlap...].joined(separator: " ")
     }
 
     /// See `homeServerRecheckSeconds`. Goes back to the chosen settings
