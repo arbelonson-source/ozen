@@ -1418,7 +1418,7 @@ class CaptionScreenDeviceTest {
         val wanted = app.settings.current.value.hapticOnSpeechResume
         val buzzed = CopyOnWriteArrayList<AlertVibration>()
         val before = Buzz.play
-        Buzz.play = { _, vibration -> buzzed += vibration }
+        Buzz.play = { _, vibration, _ -> buzzed += vibration }
         try {
             app.settings.change { it.hapticOnSpeechResume = true }
             val hello = committed("Hello")
@@ -1462,7 +1462,7 @@ class CaptionScreenDeviceTest {
     fun aLineWithAnImportantWordIsMarkedAndAFreshMentionBuzzesAndSaysSoForFiveSeconds() {
         val buzzed = CopyOnWriteArrayList<AlertVibration>()
         val before = Buzz.play
-        Buzz.play = { _, vibration -> buzzed += vibration }
+        Buzz.play = { _, vibration, _ -> buzzed += vibration }
         try {
             val name = committed("Grandma, dinner is ready")
             val other = committed("Pass the salt")
@@ -1781,7 +1781,7 @@ class CaptionScreenDeviceTest {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val buzzed = CopyOnWriteArrayList<AlertVibration>()
         val before = Buzz.play
-        Buzz.play = { _, vibration -> buzzed += vibration }
+        Buzz.play = { _, vibration, _ -> buzzed += vibration }
         val line = committed("Doctor, the results are in")
         val hit = KeywordHit(segmentID = line.id, match = KeywordMatch(UUID.randomUUID(), "Doctor", "Doctor", 0), timestamp = System.currentTimeMillis() / 1_000.0)
         try {
@@ -1807,7 +1807,7 @@ class CaptionScreenDeviceTest {
         val clearAlerts = { manager.activeNotifications.filter { it.notification.channelId == AlertNotifier.CHANNEL_ID }.forEach { manager.cancel(it.tag, it.id) } }
         val buzzed = CopyOnWriteArrayList<AlertVibration>()
         val before = Buzz.play
-        Buzz.play = { _, vibration -> buzzed += vibration }
+        Buzz.play = { _, vibration, _ -> buzzed += vibration }
         val notifyBefore = app.settings.current.value.notifyWhenInBackground
         val line = committed("Doctor, the results are in")
         fun hit() = KeywordHit(segmentID = line.id, match = KeywordMatch(UUID.randomUUID(), "Doctor", "Doctor", 0), timestamp = System.currentTimeMillis() / 1_000.0)
@@ -1842,7 +1842,7 @@ class CaptionScreenDeviceTest {
         val buzzed = CopyOnWriteArrayList<AlertVibration>()
         val before = Buzz.play
         val allowedBefore = AlertNotifier.allowed
-        Buzz.play = { _, vibration -> buzzed += vibration }
+        Buzz.play = { _, vibration, _ -> buzzed += vibration }
         AlertNotifier.allowed = { false }
         val notifyBefore = app.settings.current.value.notifyWhenInBackground
         val line = committed("Doctor, the results are in")

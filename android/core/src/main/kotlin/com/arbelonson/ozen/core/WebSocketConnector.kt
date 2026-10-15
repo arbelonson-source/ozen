@@ -44,6 +44,7 @@ class WebSocketConnector(
     private val tlsSockets: SSLSocketFactory = SSLSocketFactory.getDefault() as SSLSocketFactory,
     private val connectTimeoutMillis: Int = 15_000,
     private val handshakeTimeoutMillis: Int = 10_000,
+    private val privateRoute: (String) -> SocketFactory? = { null },
 ) : HomeServerConnecting, CloudSocketConnecting {
     override suspend fun open(url: URI): HomeServerSocket = open(url, emptyMap())
 
@@ -64,7 +65,7 @@ class WebSocketConnector(
         val host = requireNotNull(url.host) { "no host in $url" }.trim('[', ']')
         val secure = scheme == "wss"
         val port = if (url.port > 0) url.port else if (secure) 443 else 80
-        val plain = plainSockets.createSocket()
+        val plain = (privateRoute(host) ?: plainSockets).createSocket()
         try {
             created(plain)
             plain.connect(InetSocketAddress(host, port), connectTimeoutMillis)

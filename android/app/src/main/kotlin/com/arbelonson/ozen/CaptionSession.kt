@@ -22,6 +22,7 @@ import com.arbelonson.ozen.core.DeviceHeat
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HTTPFileFetcher
 import com.arbelonson.ozen.core.HistoryRetention
+import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.BackupModel
@@ -61,6 +62,11 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.VocabularyHints
 import com.arbelonson.ozen.core.WebSocketConnector
+import com.arbelonson.ozen.core.PrivateRoute
+import javax.net.SocketFactory
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.whisper.ModelFileLoader
 import com.arbelonson.ozen.whisper.SileroVoiceScorer
@@ -94,7 +100,27 @@ class CaptionSession(
     problemAudioFolder: File = File(context.filesDir, PROBLEM_AUDIO_FOLDER),
 ) : DiagnosticsSource, SpeakerBook, PhoneBackup {
     private val scope = MainScope()
-    private val connector = WebSocketConnector()
+    private val connector = WebSocketConnector(privateRoute = ::homeNetworkSockets)
+    private fun homeNetworkSockets(host: String): SocketFactory? {
+        if (!HomeServer.isPrivate(host)) return null
+        val manager = context.getSystemService(ConnectivityManager::class.java) ?: return null
+        return try {
+            fun transports(network: Network): Set<PrivateRoute.Transport> {
+                val caps = manager.getNetworkCapabilities(network) ?: return emptySet()
+                return buildSet {
+                    if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) add(PrivateRoute.Transport.Wifi)
+                    if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) add(PrivateRoute.Transport.Ethernet)
+                    if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) add(PrivateRoute.Transport.Cellular)
+                    if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) add(PrivateRoute.Transport.Vpn)
+                }
+            }
+            val default = manager.activeNetwork?.let(::transports).orEmpty()
+            PrivateRoute.choose(host, default, manager.allNetworks.map { it to transports(it) })?.socketFactory
+        } catch (_: RuntimeException) {
+            null
+        }
+    }
+
     private val voiceScorer by lazy { SileroVoiceScorer.fromAssets(context) }
     private var interruptedBySystem = false
 
@@ -966,7 +992,7 @@ class CaptionSession(
     private fun soundHeard(alert: SoundAlert) {
         CaptionState.soundHeard(pipeline.currentBannerSoundAlert, alert)
         if (appIsActive) {
-            buzz(AlertVibration.pattern(alert.event.importance))
+            buzz(AlertVibration.pattern(alert.event.importance), alert.event.importance)
             val critical = alert.event.importance == SoundEvent.Importance.Critical
             val said = if (critical) tr("שימו לב! %1", "Attention! %1", listOf(alert.event.name)) else tr("התראה: %1", "Alert: %1", listOf(alert.event.name))
             if (ScreenReader.isOn(context)) ScreenReader.announce(context, said)
@@ -986,9 +1012,9 @@ class CaptionSession(
     fun soundBannerSecondsLeft(alert: SoundAlert) = pipeline.bannerSecondsLeft(alert)
 
     /** Buzzes with sounds that could be the buzz ignored meanwhile, so the phone on a table isn't heard ringing. */
-    fun buzz(vibration: AlertVibration) {
+    fun buzz(vibration: AlertVibration, importance: SoundEvent.Importance? = null) {
         pipeline.ignoreSounds(vibration)
-        Buzz.play(context, vibration)
+        Buzz.play(context, vibration, importance)
     }
 
     /** Stars a caption line or takes its star away, in its conversation and on screen. */

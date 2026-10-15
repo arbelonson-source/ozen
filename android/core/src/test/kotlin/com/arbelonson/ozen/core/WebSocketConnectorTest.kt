@@ -3,6 +3,8 @@ package com.arbelonson.ozen.core
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.net.InetSocketAddress
+import javax.net.SocketFactory
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetAddress
@@ -453,5 +455,52 @@ class WebSocketConnectorTest {
             assertTrue(server.failures.isEmpty(), "${server.failures}")
             socket.close()
         }
+    }
+}
+
+private class RecordingSockets : SocketFactory() {
+    val connected = CopyOnWriteArrayList<InetSocketAddress>()
+    private fun socket() = object : Socket() {
+        override fun connect(endpoint: java.net.SocketAddress, timeout: Int) {
+            connected += endpoint as InetSocketAddress
+            throw IOException("recorded")
+        }
+    }
+    override fun createSocket(): Socket = socket()
+    override fun createSocket(host: String?, port: Int): Socket = socket()
+    override fun createSocket(host: String?, port: Int, local: java.net.InetAddress?, localPort: Int): Socket = socket()
+    override fun createSocket(host: java.net.InetAddress?, port: Int): Socket = socket()
+    override fun createSocket(host: java.net.InetAddress?, port: Int, local: java.net.InetAddress?, localPort: Int): Socket = socket()
+}
+
+class WebSocketConnectorRouteTest {
+    @Test
+    fun `a home-network address uses the private route`() {
+        val route = RecordingSockets()
+        val default = RecordingSockets()
+        assertFailsWith<IOException> { WebSocketConnector(plainSockets = default, privateRoute = { route }).connect(URI("ws://192.168.1.20:8765")) }
+        assertEquals(1, route.connected.size)
+        assertEquals(8765, route.connected.single().port)
+        assertTrue(default.connected.isEmpty())
+    }
+
+    @Test
+    fun `a tailnet name over wss uses the default sockets and the route is asked about its host`() {
+        val route = RecordingSockets()
+        val default = RecordingSockets()
+        val asked = CopyOnWriteArrayList<String>()
+        assertFailsWith<IOException> {
+            WebSocketConnector(plainSockets = default, privateRoute = { host -> asked += host; null }).connect(URI("wss://pc.tailnet.ts.net"))
+        }
+        assertEquals(listOf("pc.tailnet.ts.net"), asked)
+        assertEquals(1, default.connected.size)
+        assertTrue(route.connected.isEmpty())
+    }
+
+    @Test
+    fun `a route with nothing to offer falls back to the default sockets`() {
+        val default = RecordingSockets()
+        assertFailsWith<IOException> { WebSocketConnector(plainSockets = default, privateRoute = { null }).connect(URI("ws://192.168.1.20:8765")) }
+        assertEquals(1, default.connected.size)
     }
 }
