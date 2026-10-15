@@ -31,8 +31,19 @@ class InferenceCadenceTest {
     }
 
     @Test
-    fun `a pass that took longer than the interval doubles it, so an actual rest follows a slow pass`() {
-        assertEquals(3.4, InferenceCadence.secondsBetweenLivePasses(DeviceHeat.Nominal, lowPowerMode = false, lastPassSeconds = 1.7))
+    fun `a pass that took longer than the interval doubles it, up to the rest cap`() {
+        assertEquals(1.2, InferenceCadence.secondsBetweenLivePasses(DeviceHeat.Nominal, lowPowerMode = false, lastPassSeconds = 0.6))
+    }
+
+    @Test
+    fun `a slow pass never makes the next one wait more than the rest cap`() {
+        assertEquals(InferenceCadence.MAX_REST_SECONDS, InferenceCadence.secondsBetweenLivePasses(DeviceHeat.Nominal, lowPowerMode = false, lastPassSeconds = 1.7))
+        assertEquals(InferenceCadence.MAX_REST_SECONDS, InferenceCadence.secondsBetweenLivePasses(DeviceHeat.Nominal, lowPowerMode = false, lastPassSeconds = 12.0))
+    }
+
+    @Test
+    fun `the rest cap does not speed up a hot phone`() {
+        assertEquals(4.0, InferenceCadence.secondsBetweenLivePasses(DeviceHeat.Critical, lowPowerMode = false, lastPassSeconds = 12.0))
     }
 
     @Test
