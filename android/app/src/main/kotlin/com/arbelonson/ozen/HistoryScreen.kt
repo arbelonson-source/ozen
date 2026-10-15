@@ -214,10 +214,12 @@ fun HistoryScreen(
         speakerFilter = TranscriptSessionSummary.speakerFilter(speakerFilter, keptAfterLoading = list.summaries, everyConversation = !searching)
     }
     val scope = rememberCoroutineScope()
-    var pendingRetention by remember { mutableStateOf<HistoryRetention?>(null) }
-    var pendingDeletion by remember { mutableStateOf<TranscriptSessionSummary?>(null) }
-    var confirmingDeleteAll by remember { mutableStateOf(false) }
-    var deleteError by remember { mutableStateOf<String?>(null) }
+    var pendingRetentionValue by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingDeletionID by rememberSaveable { mutableStateOf<String?>(null) }
+    var confirmingDeleteAll by rememberSaveable { mutableStateOf(false) }
+    var deleteError by rememberSaveable { mutableStateOf<String?>(null) }
+    val pendingRetention = pendingRetentionValue?.let(HistoryRetention::fromRawValue)
+    val pendingDeletion = pendingDeletionID?.let { id -> loaded?.summaries?.firstOrNull { it.id.toString() == id } }
     val deleting = { delete: () -> Unit ->
         try {
             delete()
@@ -279,7 +281,7 @@ fun HistoryScreen(
                         failure = conversations.lastSaveFailure,
                         onSaving = conversations::switchSaving,
                         onRetention = { choice ->
-                            if (choice.expiringCount(shown.summaries, System.currentTimeMillis() / 1_000.0) != 0) pendingRetention = choice else keepFor(choice)
+                            if (choice.expiringCount(shown.summaries, System.currentTimeMillis() / 1_000.0) != 0) pendingRetentionValue = choice.rawValue else keepFor(choice)
                         },
                     )
                 }
@@ -291,7 +293,7 @@ fun HistoryScreen(
                     Column(modifier = Modifier.testTag(ON_THIS_DATE), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SectionHeader(tr("בתאריך הזה בשנים קודמות", "On this date in earlier years"))
                         for (session in shown.onThisDate) {
-                            ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletion = session })
+                            ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletionID = session.id.toString() })
                         }
                     }
                 }
@@ -309,7 +311,7 @@ fun HistoryScreen(
                     items(day.sessions, key = { it.id.toString() }) { session ->
                         // A deleted conversation fades and the rest close up over it.
                         Box(Modifier.animateItem()) {
-                            ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletion = session })
+                            ConversationRowView(ConversationRow.of(session), onOpen = { openID = session.id.toString() }, onDelete = { pendingDeletionID = session.id.toString() })
                         }
                     }
                 }
@@ -318,34 +320,34 @@ fun HistoryScreen(
     }
     pendingRetention?.let { choice ->
         AlertDialog(
-            onDismissRequest = { pendingRetention = null },
+            onDismissRequest = { pendingRetentionValue = null },
             title = { Text(HistoryTexts.expiryWarning(choice.expiringCount(loaded?.summaries, System.currentTimeMillis() / 1_000.0) ?: 0)) },
             text = { Text(tr("שיחות עם שורה מסומנת או עם שם לא יימחקו.", "Conversations with a starred line or a name won’t be deleted.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        pendingRetention = null
+                        pendingRetentionValue = null
                         keepFor(choice)
                     },
                 ) { Text(tr("למחוק ולהמשיך כך", "Delete and continue this way"), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { pendingRetention = null }) { Text(tr("ביטול", "Cancel")) } },
+            dismissButton = { TextButton(onClick = { pendingRetentionValue = null }) { Text(tr("ביטול", "Cancel")) } },
         )
     }
     pendingDeletion?.let { session ->
         AlertDialog(
-            onDismissRequest = { pendingDeletion = null },
+            onDismissRequest = { pendingDeletionID = null },
             title = { Text(tr("למחוק את השיחה הזו?", "Delete this conversation?")) },
             text = { Text(session.title ?: CaptionLayout.directed(session.preview)) },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        pendingDeletion = null
+                        pendingDeletionID = null
                         deleting { conversations.delete(session.id) }
                     },
                 ) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { pendingDeletion = null }) { Text(tr("ביטול", "Cancel")) } },
+            dismissButton = { TextButton(onClick = { pendingDeletionID = null }) { Text(tr("ביטול", "Cancel")) } },
         )
     }
     if (confirmingDeleteAll) {
@@ -638,8 +640,8 @@ internal fun ConversationScreen(
     }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    var confirmingDelete by remember { mutableStateOf(false) }
-    var deleteError by remember { mutableStateOf<String?>(null) }
+    var confirmingDelete by rememberSaveable { mutableStateOf(false) }
+    var deleteError by rememberSaveable { mutableStateOf<String?>(null) }
     var naming by rememberSaveable { mutableStateOf<String?>(null) }
     val record = loaded?.record
     Screen(title = tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {

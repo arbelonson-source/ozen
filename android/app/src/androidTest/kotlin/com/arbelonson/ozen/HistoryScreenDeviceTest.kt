@@ -565,6 +565,54 @@ class HistoryScreenDeviceTest {
         compose.waitUntil(5_000) { store.load(id)?.title == "Eye doctor" }
     }
 
+    private fun turnThePhone() {
+        val first = compose.activity
+        compose.activityRule.scenario.recreate()
+        compose.waitUntil(5_000) { first.isDestroyed }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun turningThePhoneKeepsTheDeleteAllQuestionOpen() {
+        seed("Turning delete all line" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Turning delete all line")
+        compose.onNodeWithText("Delete all").performClick()
+        compose.onNodeWithText("Delete all saved conversations?").assertExists()
+        turnThePhone()
+        compose.onNodeWithText("Delete all saved conversations?").assertIsDisplayed()
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+    }
+
+    @Test
+    fun turningThePhoneKeepsTheDeleteOneQuestionOpen() {
+        seed("Turning delete one line" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Turning delete one line")
+        compose.onNodeWithText("Turning delete one line", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText("Delete").performClick()
+        compose.onNodeWithText("Delete this conversation?").assertExists()
+        turnThePhone()
+        compose.onNodeWithText("Delete this conversation?").assertIsDisplayed()
+        waitFor("Turning delete one line")
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+    }
+
+    @Test
+    fun turningThePhoneKeepsTheShorterKeepingTimeQuestionOpen() {
+        app.settings.change { it.historyRetention = HistoryRetention.Forever }
+        val old = seed("Turning retention old line" to null, startedAt = System.currentTimeMillis() / 1_000.0 - 40 * 86_400)
+        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText("Automatic deletion").performClick()
+        compose.onNodeWithText("After a month").performClick()
+        compose.onNodeWithText("Delete and continue this way").assertExists()
+        turnThePhone()
+        compose.onNodeWithText("Delete and continue this way").assertIsDisplayed()
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+        assertEquals(HistoryRetention.Forever, app.settings.current.value.historyRetention)
+        assertNotNull(store.load(old))
+    }
+
     @Test
     fun savedLinesSayWhichWereStarredAndWhichMayBeMisheardWhileTheMarksAreOn() {
         val startedAt = System.currentTimeMillis() / 1_000.0 - 60
