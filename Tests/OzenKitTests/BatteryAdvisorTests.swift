@@ -8,6 +8,17 @@ struct BatteryAdvisorTests {
         readings.map { advisor.update(level: $0.0, isPluggedIn: $0.1) }
     }
 
+    @Test("a warned phone that is then plugged in has its notification withdrawn, under a shared identifier")
+    func withdrawWhenPluggedIn() {
+        var advisor = BatteryAdvisor()
+        _ = advisor.update(level: 0.09, isPluggedIn: false)
+        #expect(!advisor.shouldWithdraw)
+        _ = advisor.update(level: 0.09, isPluggedIn: true)
+        #expect(advisor.shouldWithdraw)
+        #expect(BatteryWarning.notificationIdentifier == "battery")
+        #expect(BatteryWarning.low(percent: 19).notificationContent.identifier == BatteryWarning.notificationIdentifier)
+    }
+
     @Test("a draining phone gets one low warning and one critical warning, not one per percent")
     func drain() {
         var advisor = BatteryAdvisor()
