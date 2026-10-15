@@ -18,7 +18,8 @@ import Foundation
 /// hiccup) can carry NaN or infinite samples, which spoil everything they
 /// touch: a Whisper window turns to nonsense, a voice print never matches.
 /// They reach the consumers as silence, and `onGlitch` hears of each such
-/// chunk.
+/// chunk. `onChunk` hears of every chunk the moment it arrives, before any
+/// consumer has touched it.
 public struct AudioFanOut: Sendable {
     public let outputs: [AsyncStream<[Float]>]
     private let pump: Task<Void, Never>
@@ -32,7 +33,8 @@ public struct AudioFanOut: Sendable {
         source: AsyncStream<[Float]>,
         count: Int,
         bufferLimit: Int = AudioFanOut.defaultBufferLimit,
-        onGlitch: @escaping @Sendable () -> Void = {}
+        onGlitch: @escaping @Sendable () -> Void = {},
+        onChunk: @escaping @Sendable () -> Void = {}
     ) {
         var streams: [AsyncStream<[Float]>] = []
         var continuations: [AsyncStream<[Float]>.Continuation] = []
@@ -47,6 +49,7 @@ public struct AudioFanOut: Sendable {
         pump = Task {
             for await chunk in source {
                 if Task.isCancelled { break }
+                onChunk()
                 let glitched = !chunk.allSatisfy(\.isFinite)
                 let chunk = glitched ? Self.withoutGlitches(chunk) : chunk
                 if glitched { onGlitch() }

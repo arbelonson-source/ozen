@@ -10,6 +10,7 @@ import OzenKit
 struct CaptionRow: View {
     let segment: TranscriptSegment
     let speakerName: String?
+    var speakerSlots: SpeakerColorSlots?
     let showsSpeakerLabel: Bool
     let display: DisplayPreferences
     let theme: CaptionTheme
@@ -30,7 +31,7 @@ struct CaptionRow: View {
                     Circle()
                         .frame(width: 10, height: 10)
                 }
-                .foregroundStyle(SpeakerColor.color(forClusterID: segment.speakerClusterID, speakerName: speakerName, on: theme.colorScheme))
+                .foregroundStyle(SpeakerColor.color(forClusterID: segment.speakerClusterID, speakerName: speakerName, slots: speakerSlots, on: theme.colorScheme))
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -93,7 +94,8 @@ struct CaptionRow: View {
         .accessibilityElement(children: .ignore)
         // VoiceOver reads the speaker on every line, even where the
         // screen leaves the repeated name out.
-        .accessibilityLabel(accessibilityText)
+        .accessibilityLabel(Text(accessibilityLabelText))
+        .accessibilityIdentifier("captionRow")
         .accessibilityHint(isKeywordHit ? tr("מכילה מילה חשובה", "Contains an important word") : "")
         // The line is one element for VoiceOver, so the tappable number in
         // it is offered as an action instead.
@@ -108,14 +110,17 @@ struct CaptionRow: View {
         }
     }
 
-    private var accessibilityText: String {
-        var line = speakerName.map { "\($0): \(segment.text)" } ?? segment.text
-        if isUncertain { line = tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") + line }
+    private var accessibilityLabelText: AttributedString {
+        var before = ""
+        if isStarred { before += tr("מסומן כחשוב. ", "Marked as important. ") }
+        if isUncertain { before += tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") }
+        if let speakerName { before += "\(speakerName): " }
+        var after = ""
         let doubtful = UncertainWords.spoken(in: segment.text, words: marksUncertainWords && segment.isCommitted ? segment.uncertainWords : [])
         if !doubtful.isEmpty {
-            line += " " + tr("מילים שאולי לא נשמעו נכון: %1", "Words that may be wrong: %1", args: ["\(doubtful.joined(separator: ", "))"])
+            after = " " + tr("מילים שאולי לא נשמעו נכון: %1", "Words that may be wrong: %1", args: ["\(doubtful.joined(separator: ", "))"])
         }
-        return isStarred ? tr("מסומן כחשוב. %1", "Marked as important. %1", args: ["\(line)"]) : line
+        return CaptionSpeechText.label(before: before, caption: segment.text, after: after, languageCode: languageCode)
     }
 }
 
@@ -281,7 +286,7 @@ struct SoundAlertBanner: View {
                         .font(.title3.weight(.bold))
                     Text(alert.event.importance == .critical ? tr("שימו לב!", "Attention!") : tr("נשמע עכשיו", "Heard just now"))
                         .font(.subheadline)
-                        .opacity(0.85)
+                        .opacity(BannerPalette.subtitleOpacity)
                 }
                 Spacer()
                 Image(systemName: "xmark")
@@ -293,7 +298,7 @@ struct SoundAlertBanner: View {
             .frame(maxWidth: .infinity)
             // White on the system orange of a doorbell alert is under 3:1;
             // the deeper shade keeps the words readable at a glance.
-            .background(SoundAlertsView.tint(alert.event.importance).deepShade.opacity(0.92), in: RoundedRectangle(cornerRadius: 16))
+            .background(SoundAlertsView.tint(alert.event.importance).deepShade.opacity(BannerPalette.fillAlpha), in: RoundedRectangle(cornerRadius: 16))
             .foregroundStyle(.white)
             .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
         }

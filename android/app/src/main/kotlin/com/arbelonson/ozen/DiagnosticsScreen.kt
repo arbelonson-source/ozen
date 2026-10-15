@@ -6,23 +6,25 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AudioFile
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -34,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -51,6 +54,12 @@ import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.OzenSpacing
+import com.arbelonson.ozen.ui.PrimaryButton
+import com.arbelonson.ozen.ui.SettingRow
+import com.arbelonson.ozen.ui.SettingsGroup
+import com.arbelonson.ozen.ui.SettingsGroupScope
+import com.arbelonson.ozen.ui.TonalButton
 import java.io.File
 import java.util.Locale
 import java.util.TimeZone
@@ -103,39 +112,31 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val stats = now.stats
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            ScreenTitle(tr("אבחון", "Diagnostics")) {
-                TextButton(onClick = onClose) { Text(tr("חזרה", "Back")) }
-            }
-            Header(tr("מצב", "Status"))
-            Value(tr("שלב", "Stage"), DiagnosticsReport.stage(now.phase))
-            Value(tr("מנוע פעיל", "Active engine"), now.activeEngine?.displayName ?: "—")
-            Value(tr("מודל Whisper", "Whisper model"), now.settings.whisperModelVariant)
-            Value(tr("שפה", "Language"), now.settings.languageCode)
-            now.phase.failure?.let { Value(tr("פרטי תקלה", "Failure details"), it.detail) }
+    SettingsPageFrame(tr("אבחון", "Diagnostics"), onClose = onClose, closeLabel = tr("חזרה", "Back")) {
+        SectionHeader(tr("מצב", "Status"))
+        SettingsGroup {
+            value(tr("שלב", "Stage"), DiagnosticsReport.stage(now.phase))
+            value(tr("מנוע פעיל", "Active engine"), now.activeEngine?.displayName ?: "—")
+            value(tr("מודל Whisper", "Whisper model"), now.settings.whisperModelVariant)
+            value(tr("שפה", "Language"), now.settings.languageCode)
+            now.phase.failure?.let { value(tr("פרטי תקלה", "Failure details"), it.detail) }
+        }
 
-            Header(tr("אודיו", "Audio"))
-            Value(tr("מיקרופון נבחר", "Selected microphone"), now.selectedInput?.portName ?: "—")
-            Value(tr("מיקרופונים זמינים", "Available microphones"), "${now.availableInputs.size}")
+        SectionHeader(tr("אודיו", "Audio"))
+        SettingsGroup {
+            value(tr("מיקרופון נבחר", "Selected microphone"), now.selectedInput?.portName ?: "—")
+            value(tr("מיקרופונים זמינים", "Available microphones"), "${now.availableInputs.size}")
             for (input in now.availableInputs) {
-                Text("${input.portName} · ${inputTypeName(input.portType)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                item { Note("${input.portName} · ${inputTypeName(input.portType)}") }
             }
-            Value(tr("חבילות אודיו", "Audio chunks"), "${stats.audioChunksReceived}")
-            Value(tr("שניות אודיו", "Audio seconds"), format("%.1f", stats.audioSecondsReceived))
-            Value(tr("החלפות מיקרופון", "Microphone changes"), "${stats.inputChanges}")
-            Value(tr("המיקרופון נתקע", "Microphone stalls"), "${stats.audioStalls}")
-            Value(tr("רמות קול (dBFS)", "Sound levels (dBFS)"), levels(stats.inputLevels))
-            Value(tr("עוצמה עכשיו", "Level now"), format("%.0f%%", level * 100.0))
-            Value(tr("נשמע כדיבור", "Sounded like speech"), stats.speechShare?.let { format("%.0f%%", it * 100) } ?: "—")
-            Value(
+            value(tr("חבילות אודיו", "Audio chunks"), "${stats.audioChunksReceived}")
+            value(tr("שניות אודיו", "Audio seconds"), format("%.1f", stats.audioSecondsReceived))
+            value(tr("החלפות מיקרופון", "Microphone changes"), "${stats.inputChanges}")
+            value(tr("המיקרופון נתקע", "Microphone stalls"), "${stats.audioStalls}")
+            value(tr("רמות קול (dBFS)", "Sound levels (dBFS)"), levels(stats.inputLevels))
+            value(tr("עוצמה עכשיו", "Level now"), format("%.0f%%", level * 100.0))
+            value(tr("נשמע כדיבור", "Sounded like speech"), stats.speechShare?.let { format("%.0f%%", it * 100) } ?: "—")
+            value(
                 tr("זיהוי צלילים", "Sound detection"),
                 when {
                     stats.soundDetectionRunning -> tr("פועל", "Running")
@@ -143,173 +144,193 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                     else -> "—"
                 },
             )
+        }
 
-            val misses = DiagnosticsReport.nearMisses(now.soundNearMisses)
-            if (misses.isNotEmpty()) {
-                Header(tr("צלילים שנשמעו חלש מדי להתראה", "Sounds heard too faint to alert"))
-                for ((name, heard) in misses) Value(name, heard)
-                Text(DiagnosticsReport.nearMissNote(now.soundAlertConfidence), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val misses = DiagnosticsReport.nearMisses(now.soundNearMisses)
+        if (misses.isNotEmpty()) {
+            SectionHeader(tr("צלילים שנשמעו חלש מדי להתראה", "Sounds heard too faint to alert"))
+            SettingsGroup {
+                for ((name, heard) in misses) value(name, heard)
             }
+            Footnote(DiagnosticsReport.nearMissNote(now.soundAlertConfidence))
+        }
 
-            Header(tr("תמלול", "Transcription"))
-            Value(tr("עדכונים מהמנוע", "Updates from engine"), "${stats.tokensReceived}")
-            Value(tr("שורות שנסגרו", "Lines closed"), "${stats.segmentsCommitted}")
-            Value(tr("שורות על המסך", "Lines on screen"), "${now.linesOnScreen}")
-            Value(tr("פיגור כתוביות", "Caption lag"), stats.captionLagSeconds?.let { format(tr("%.1f שנ׳", "%.1f s"), it) } ?: "—")
-            Value(tr("הפעלות מחדש", "Restarts"), "${stats.engineRestarts}")
-            Value(tr("דוברים שזוהו", "Speakers identified"), "${now.speakersIdentified}")
-            Value(tr("דוברים חדשים מאז שהאפליקציה נפתחה", "New speakers since the app opened"), "${stats.speakerClustersOpened}")
+        SectionHeader(tr("תמלול", "Transcription"))
+        SettingsGroup {
+            value(tr("עדכונים מהמנוע", "Updates from engine"), "${stats.tokensReceived}")
+            value(tr("שורות שנסגרו", "Lines closed"), "${stats.segmentsCommitted}")
+            value(tr("שורות על המסך", "Lines on screen"), "${now.linesOnScreen}")
+            value(tr("פיגור כתוביות", "Caption lag"), stats.captionLagSeconds?.let { format(tr("%.1f שנ׳", "%.1f s"), it) } ?: "—")
+            value(tr("הפעלות מחדש", "Restarts"), "${stats.engineRestarts}")
+            value(tr("דוברים שזוהו", "Speakers identified"), "${now.speakersIdentified}")
+            value(tr("דוברים חדשים מאז שהאפליקציה נפתחה", "New speakers since the app opened"), "${stats.speakerClustersOpened}")
             stats.sessionStartedAt?.let { started ->
-                Value(tr("ההאזנה התחילה", "Listening started"), TranscriptHistoryStore.formattedClockTime(started, TimeZone.getDefault().getOffset((started * 1_000).toLong()) / 1_000))
+                value(tr("ההאזנה התחילה", "Listening started"), TranscriptHistoryStore.formattedClockTime(started, TimeZone.getDefault().getOffset((started * 1_000).toLong()) / 1_000))
             }
+        }
 
-            Header(tr("התאוששות", "Recovery"))
-            Value(tr("ניסיון חוזר אוטומטי", "Automatic retry"), DiagnosticsReport.retry(now.scheduledRetry, System.currentTimeMillis() / 1_000.0))
-            Value(tr("שיחת טלפון תופסת את האודיו", "Phone call is using the audio"), if (now.interruptedBySystem) tr("כן", "Yes") else tr("לא", "No"))
-            Value(tr("שמירת הגדרות", "Settings save"), if (now.settingsSaveFailed) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
-            Value(tr("שמירת שיחות", "Conversation history save"), if (now.historySaveFailure != null) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
-            Value(tr("הודעות בטלפון", "Phone notifications"), if (now.notificationsAllowed) tr("תקינות", "OK") else tr("כבויות בהגדרות של Android", "Turned off in Android settings"))
-            Value(tr("רטט להתראות", "Alert vibration"), if (now.canVibrate) tr("תקין", "OK") else tr("לא נתמך במכשיר", "Not supported on this device"))
-            Value(tr("חיבור לאינטרנט", "Internet connection"), DiagnosticsReport.network(now.network))
+        SectionHeader(tr("התאוששות", "Recovery"))
+        SettingsGroup {
+            value(tr("ניסיון חוזר אוטומטי", "Automatic retry"), DiagnosticsReport.retry(now.scheduledRetry, System.currentTimeMillis() / 1_000.0))
+            value(tr("שיחת טלפון תופסת את האודיו", "Phone call is using the audio"), if (now.interruptedBySystem) tr("כן", "Yes") else tr("לא", "No"))
+            value(tr("שמירת הגדרות", "Settings save"), if (now.settingsSaveFailed) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
+            value(tr("שמירת שיחות", "Conversation history save"), if (now.historySaveFailure != null) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
+            value(tr("הודעות בטלפון", "Phone notifications"), if (now.notificationsAllowed) tr("תקינות", "OK") else tr("כבויות בהגדרות של Android", "Turned off in Android settings"))
+            value(tr("רטט להתראות", "Alert vibration"), if (now.canVibrate) tr("תקין", "OK") else tr("לא נתמך במכשיר", "Not supported on this device"))
+            value(tr("חיבור לאינטרנט", "Internet connection"), DiagnosticsReport.network(now.network))
+        }
 
-            Header(tr("אירועים אחרונים", "Recent events"))
-            if (now.events.isEmpty()) {
-                Text(tr("עוד לא קרה כלום", "Nothing has happened yet"), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                // English, so left to right even with the app in Hebrew.
+        SectionHeader(tr("אירועים אחרונים", "Recent events"))
+        SettingsGroup {
+            item {
+                if (now.events.isEmpty()) {
+                    Note(tr("עוד לא קרה כלום", "Nothing has happened yet"))
+                } else {
+                    // English, so left to right even with the app in Hebrew.
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Column(modifier = Modifier.testTag(DIAGNOSTICS_EVENTS).padding(16.dp)) {
+                            for (line in now.events.takeLast(RECENT_EVENTS).reversed()) {
+                                Text(line, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, modifier = Modifier.fillMaxWidth())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Footnote(tr("החדש ביותר למעלה. הדוח המועתק כולל את כל הרשימה.", "Newest at the top. The copied report includes the full list."))
+
+        TonalButton(
+            tr("לסמן בעיה עכשיו", "Mark a problem now"),
+            onClick = {
+                source.markProblem()
+                refresh()
+            },
+            icon = Icons.Rounded.Flag,
+            modifier = Modifier.align(Alignment.Start),
+        )
+        SectionHeader(tr("יומן, כולל הפעלות קודמות", "Journal, previous runs included"))
+        SettingsGroup {
+            item {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    Column(modifier = Modifier.testTag(DIAGNOSTICS_EVENTS)) {
-                        for (line in now.events.takeLast(RECENT_EVENTS).reversed()) {
+                    Column(modifier = Modifier.testTag(DIAGNOSTICS_JOURNAL).padding(16.dp)) {
+                        for (line in now.journal.takeLast(JOURNAL_LINES).reversed()) {
                             Text(line, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, modifier = Modifier.fillMaxWidth())
                         }
                     }
                 }
             }
-            Text(tr("החדש ביותר למעלה. הדוח המועתק כולל את כל הרשימה.", "Newest at the top. The copied report includes the full list."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-            Header(tr("יומן, כולל הפעלות קודמות", "Journal, previous runs included"))
-            OutlinedButton(
-                onClick = {
-                    source.markProblem()
-                    refresh()
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(tr("לסמן בעיה עכשיו", "Mark a problem now"))
-            }
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                Column(modifier = Modifier.testTag(DIAGNOSTICS_JOURNAL)) {
-                    for (line in now.journal.takeLast(JOURNAL_LINES).reversed()) {
-                        Text(line, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, modifier = Modifier.fillMaxWidth())
+            if (now.hasMarkedCaptionLines) {
+                item {
+                    TextButton(
+                        onClick = {
+                            source.deleteMarkedCaptionLines()
+                            refresh()
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    ) {
+                        Text(tr("מחיקת שורות הכתוביות שנשמרו כאן", "Delete the caption lines kept here"), color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
-            if (now.hasMarkedCaptionLines) {
-                TextButton(
-                    onClick = {
-                        source.deleteMarkedCaptionLines()
-                        refresh()
-                    },
-                ) {
-                    Text(tr("מחיקת שורות הכתוביות שנשמרו כאן", "Delete the caption lines kept here"), color = MaterialTheme.colorScheme.error)
-                }
-            }
-            Text(
-                tr("נשמר בטלפון גם כשהאפליקציה נסגרת, ונשלח רק עם הדוח. כשמסמנים בעיה נשמרות גם השורות האחרונות של הכתוביות.", "Kept on the phone even when the app closes, and sent only with the report. Marking a problem also keeps the last few caption lines."),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        }
+        Footnote(ProblemNotes.diagnostics(now.settings.saveHistory))
 
-            if (now.problemClips.isNotEmpty()) {
-                Header(tr("הקול מהבעיות שסומנו", "Sound from marked problems"))
+        if (now.problemClips.isNotEmpty()) {
+            SectionHeader(tr("הקול מהבעיות שסומנו", "Sound from marked problems"))
+            SettingsGroup(dividerInset = 56.dp) {
                 for (clip in now.problemClips) {
-                    ClipRow(
-                        DiagnosticsReport.clipTitle(clip.name),
-                        onSend = { context.startActivity(clipSheet(context, clip)) },
-                        onDelete = {
-                            source.deleteProblemClip(clip)
-                            refresh()
-                        },
-                    )
+                    item {
+                        ClipRow(
+                            DiagnosticsReport.clipTitle(clip.name),
+                            onSend = { context.startActivity(clipSheet(context, clip)) },
+                            onDelete = {
+                                source.deleteProblemClip(clip)
+                                refresh()
+                            },
+                        )
+                    }
                 }
-                Text(
-                    tr("כשמסמנים בעיה נשמרות 30 השניות האחרונות של הקול, רק בטלפון, כדי להשוות מה נאמר למה שנכתב. נשמרות עד 5; שליחה רק כשלוחצים עליהן. לחיצה ארוכה מוחקת.", "Marking a problem keeps the last 30 seconds of sound, on the phone only, to compare what was said with what was shown. Up to 5 are kept, and they’re sent only when you tap one. Hold one to delete it."),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
+            Footnote(
+                tr("כשמסמנים בעיה נשמרות 30 השניות האחרונות של הקול, רק בטלפון, כדי להשוות מה נאמר למה שנכתב. נשמרות עד 5; שליחה רק כשלוחצים עליהן. לחיצה ארוכה מוחקת.", "Marking a problem keeps the last 30 seconds of sound, on the phone only, to compare what was said with what was shown. Up to 5 are kept, and they’re sent only when you tap one. Hold one to delete it."),
+            )
+        }
 
-            Header(tr("מודל ומילים", "Model and words"))
-            Value(tr("מצב המודל", "Model state"), if (now.modelInstalled) tr("מותקן (לא אומת)", "Installed (unverified)") else tr("לא הורד", "Not downloaded"))
-            Value(tr("שמות ומילים", "Names and words"), "${now.settings.vocabulary.size}")
-            Value(tr("התראות מילים", "Word alerts"), "${now.settings.keywordAlerts.count { it.isEnabled }}")
+        SectionHeader(tr("מודל ומילים", "Model and words"))
+        SettingsGroup {
+            value(tr("מצב המודל", "Model state"), if (now.modelInstalled) tr("מותקן (לא אומת)", "Installed (unverified)") else tr("לא הורד", "Not downloaded"))
+            value(tr("שמות ומילים", "Names and words"), "${now.settings.vocabulary.size}")
+            value(tr("התראות מילים", "Word alerts"), "${now.settings.keywordAlerts.count { it.isEnabled }}")
+        }
 
-            Header(tr("מכשיר", "Device"))
-            Value(tr("חום", "Temperature"), DiagnosticsReport.temperature(now.thermalStatus))
-            Value(tr("חיסכון בסוללה", "Battery Saver"), if (now.batterySaver) tr("פעיל", "On") else tr("כבוי", "Off"))
-            Value(tr("סוללה", "Battery"), DiagnosticsReport.battery(now.batteryPercent, now.charging))
-            Value(tr("מקום פנוי", "Free space"), ByteSize.text(now.freeBytes))
-            Value(tr("זיכרון", "Memory"), DiagnosticsReport.memory(now.memoryInUseBytes, now.memoryAvailableBytes))
-            Value(tr("דגם", "Model"), "${Build.MANUFACTURER} ${Build.MODEL}")
-            Value("Android", Build.VERSION.RELEASE)
-            Value(tr("אפליקציה", "App"), now.appVersion)
+        SectionHeader(tr("מכשיר", "Device"))
+        SettingsGroup {
+            value(tr("חום", "Temperature"), DiagnosticsReport.temperature(now.thermalStatus))
+            value(tr("חיסכון בסוללה", "Battery Saver"), if (now.batterySaver) tr("פעיל", "On") else tr("כבוי", "Off"))
+            value(tr("סוללה", "Battery"), DiagnosticsReport.battery(now.batteryPercent, now.charging))
+            value(tr("מקום פנוי", "Free space"), ByteSize.text(now.freeBytes))
+            value(tr("זיכרון", "Memory"), DiagnosticsReport.memory(now.memoryInUseBytes, now.memoryAvailableBytes))
+            value(tr("דגם", "Model"), "${Build.MANUFACTURER} ${Build.MODEL}")
+            value("Android", Build.VERSION.RELEASE)
+            value(tr("אפליקציה", "App"), now.appVersion)
+        }
 
-            OutlinedButton(onClick = { context.startActivity(reportSheet(DiagnosticsReport.text(facts()))) }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-                Text(tr("שליחת הדוח", "Send report"))
-            }
-            OutlinedButton(
-                onClick = {
-                    copyReport(context, DiagnosticsReport.text(facts()))
-                    copied = true
+        Spacer(Modifier.height(OzenSpacing.Unit))
+        PrimaryButton(tr("שליחת הדוח", "Send report"), onClick = { context.startActivity(reportSheet(DiagnosticsReport.text(facts()))) }, icon = Icons.Rounded.Share, modifier = Modifier.fillMaxWidth())
+        TonalButton(
+            if (copied) tr("הועתק", "Copied") else tr("העתקת הדוח", "Copy report"),
+            onClick = {
+                copyReport(context, DiagnosticsReport.text(facts()))
+                copied = true
+            },
+            icon = if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (HomeServer.url(now.settings.homeServerAddress) != null && now.homeServerCodeSaved) {
+            TonalButton(
+                when (sentHome) {
+                    true -> tr("הדוח נשמר במחשב בבית", "Saved on the home computer")
+                    false -> tr("המחשב בבית לא קיבל את הדוח. נסו שוב", "The home computer didn’t get it. Try again")
+                    null -> tr("שליחת הדוח למחשב בבית", "Send the report to the home computer")
                 },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(if (copied) tr("הועתק", "Copied") else tr("העתקת הדוח", "Copy report"))
-            }
-            if (HomeServer.url(now.settings.homeServerAddress) != null && now.homeServerCodeSaved) {
-                OutlinedButton(
-                    onClick = {
-                        sendingHome = true
-                        val report = DiagnosticsReport.text(facts())
-                        scope.launch {
-                            try {
-                                sentHome = source.sendReportHome(report)
-                            } finally {
-                                sendingHome = false
-                            }
+                onClick = {
+                    sendingHome = true
+                    val report = DiagnosticsReport.text(facts())
+                    scope.launch {
+                        try {
+                            sentHome = source.sendReportHome(report)
+                        } finally {
+                            sendingHome = false
                         }
-                    },
-                    enabled = !sendingHome,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        when (sentHome) {
-                            true -> tr("הדוח נשמר במחשב בבית", "Saved on the home computer")
-                            false -> tr("המחשב בבית לא קיבל את הדוח. נסו שוב", "The home computer didn’t get it. Try again")
-                            null -> tr("שליחת הדוח למחשב בבית", "Send the report to the home computer")
-                        },
-                    )
-                }
-            }
+                    }
+                },
+                icon = Icons.Rounded.Computer,
+                enabled = !sendingHome,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
 
-@Composable
-private fun Header(text: String) {
-    Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 16.dp).semantics { heading() })
+private fun SettingsGroupScope.value(label: String, value: String) {
+    item { ValueRow(label, value) }
 }
 
 @Composable
-private fun Value(label: String, value: String) {
+private fun ValueRow(label: String, value: String) {
     // A long value, a failure's details say, took the whole row and left
     // its label a letter wide; it goes under the label instead.
     LabelAndValue(
         label = { Text(label, style = MaterialTheme.typography.bodyLarge) },
         value = { Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp),
         gap = 12.dp,
     )
+}
+
+@Composable
+private fun Note(text: String) {
+    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp))
 }
 
 
@@ -326,14 +347,14 @@ private fun ClipRow(title: String, onSend: () -> Unit, onDelete: () -> Unit) {
     val delete = tr("מחיקה", "Delete")
     var menu by remember { mutableStateOf(false) }
     Box {
-        Text(
+        SettingRow(
             title,
             modifier = Modifier
-                .fillMaxWidth()
                 .onHold { menu = true }
-                .clickable(onClick = onSend)
-                .semantics { customActions = listOf(CustomAccessibilityAction(delete) { onDelete(); true }) }
-                .padding(vertical = 10.dp),
+                .semantics { customActions = listOf(CustomAccessibilityAction(delete) { onDelete(); true }) },
+            icon = Icons.Rounded.AudioFile,
+            onClick = onSend,
+            trailing = { Icon(Icons.Rounded.Share, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
         )
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { Text(delete) }, onClick = { menu = false; onDelete() })

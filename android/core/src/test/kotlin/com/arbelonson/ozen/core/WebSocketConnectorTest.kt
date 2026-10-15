@@ -3,6 +3,8 @@ package com.arbelonson.ozen.core
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.net.InetSocketAddress
+import javax.net.SocketFactory
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetAddress
@@ -453,5 +455,107 @@ class WebSocketConnectorTest {
             assertTrue(server.failures.isEmpty(), "${server.failures}")
             socket.close()
         }
+    }
+}
+
+private class RecordingSockets : SocketFactory() {
+    val connected = CopyOnWriteArrayList<InetSocketAddress>()
+    private fun socket() = object : Socket() {
+        override fun connect(endpoint: java.net.SocketAddress, timeout: Int) {
+            connected += endpoint as InetSocketAddress
+            throw IOException("recorded")
+        }
+    }
+    override fun createSocket(): Socket = socket()
+    override fun createSocket(host: String?, port: Int): Socket = socket()
+    override fun createSocket(host: String?, port: Int, local: java.net.InetAddress?, localPort: Int): Socket = socket()
+    override fun createSocket(host: java.net.InetAddress?, port: Int): Socket = socket()
+    override fun createSocket(host: java.net.InetAddress?, port: Int, local: java.net.InetAddress?, localPort: Int): Socket = socket()
+}
+
+class WebSocketConnectorRouteTest {
+    @Test
+    fun `a home-network address uses the private route`() {
+        val route = RecordingSockets()
+        val default = RecordingSockets()
+        assertFailsWith<IOException> { WebSocketConnector(plainSockets = default, privateRoute = { PrivatePath(route) }).connect(URI("ws://192.168.1.20:8765")) }
+        assertEquals(1, route.connected.size)
+        assertEquals(8765, route.connected.single().port)
+        assertTrue(default.connected.isEmpty())
+    }
+
+    @Test
+    fun `a tailnet name over wss uses the default sockets and the route is asked about its host`() {
+        val route = RecordingSockets()
+        val default = RecordingSockets()
+        val asked = CopyOnWriteArrayList<String>()
+        assertFailsWith<IOException> {
+            WebSocketConnector(plainSockets = default, privateRoute = { host -> asked += host; null }).connect(URI("wss://pc.tailnet.ts.net"))
+        }
+        assertEquals(listOf("pc.tailnet.ts.net"), asked)
+        assertEquals(1, default.connected.size)
+        assertTrue(route.connected.isEmpty())
+    }
+
+    @Test
+    fun `a route with nothing to offer falls back to the default sockets`() {
+        val default = RecordingSockets()
+        assertFailsWith<IOException> { WebSocketConnector(plainSockets = default, privateRoute = { null }).connect(URI("ws://192.168.1.20:8765")) }
+        assertEquals(1, default.connected.size)
+    }
+
+    @Test
+    fun `a home name is looked up through the route and not on the default network`() {
+        val route = RecordingSockets()
+        val resolved = java.net.InetAddress.getByAddress("grandma-pc", byteArrayOf(10, 0, 0, 7))
+        val asked = CopyOnWriteArrayList<String>()
+        assertFailsWith<IOException> {
+            WebSocketConnector(
+                privateRoute = { PrivatePath(route) { host -> asked += host; listOf(resolved) } },
+            ).connect(URI("ws://grandma-pc.invalid:8765"))
+        }
+        assertEquals(listOf("grandma-pc.invalid"), asked)
+        assertEquals(listOf("10.0.0.7"), route.connected.map { it.address.hostAddress })
+    }
+
+    @Test
+    fun `a failed lookup through the route still tries the home name on the route's sockets`() {
+        val route = RecordingSockets()
+        assertFailsWith<IOException> {
+            WebSocketConnector(
+                privateRoute = { PrivatePath(route) { throw java.net.UnknownHostException("no such name") } },
+            ).connect(URI("ws://grandma-pc.invalid:8765"))
+        }
+        assertEquals(1, route.connected.size)
+        assertEquals("grandma-pc.invalid", route.connected.single().hostString)
+    }
+
+    @Test
+    fun `each address the route found is tried`() {
+        val route = RecordingSockets()
+        val a = java.net.InetAddress.getByAddress(byteArrayOf(10, 0, 0, 7))
+        val b = java.net.InetAddress.getByAddress(byteArrayOf(10, 0, 0, 8))
+        assertFailsWith<IOException> {
+            WebSocketConnector(privateRoute = { PrivatePath(route) { listOf(a, b) } }).connect(URI("ws://grandma-pc.invalid"))
+        }
+        assertEquals(listOf("10.0.0.7", "10.0.0.8"), route.connected.map { it.address.hostAddress })
+    }
+
+    @Test
+    fun `the network is chosen once and its sockets and lookup are used together`() {
+        val first = RecordingSockets()
+        val second = RecordingSockets()
+        val a = java.net.InetAddress.getByAddress(byteArrayOf(10, 0, 0, 7))
+        val b = java.net.InetAddress.getByAddress(byteArrayOf(10, 0, 0, 8))
+        var chosen = 0
+        assertFailsWith<IOException> {
+            WebSocketConnector(privateRoute = {
+                chosen++
+                if (chosen == 1) PrivatePath(first) { listOf(a) } else PrivatePath(second) { listOf(b) }
+            }).connect(URI("ws://grandma-pc.invalid"))
+        }
+        assertEquals(1, chosen)
+        assertEquals(listOf("10.0.0.7"), first.connected.map { it.address.hostAddress })
+        assertTrue(second.connected.isEmpty())
     }
 }

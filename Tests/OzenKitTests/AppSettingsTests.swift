@@ -476,6 +476,50 @@ struct SavedSpeakerTests {
         #expect(AppSettings.displayedQuickPhrases(stored: [], language: .english).isEmpty)
     }
 
+    @Test("the first phrase says the speaker did not understand, apart from the ask to repeat")
+    func firstPhraseIsNotTheRepeatRequest() {
+        for language in UILanguage.allCases {
+            let phrases = AppSettings.defaultQuickPhrases(for: language)
+            #expect(phrases[0] != phrases[1], "\(language)")
+        }
+        let russian = AppSettings.defaultQuickPhrases(for: .russian)
+        #expect(!russian[0].contains("повторите"))
+    }
+
+    @Test("no ready-made phrase speaks in the feminine in any language")
+    func quickPhrasesAreGenderNeutral() {
+        let markers = ["קוראת", "поняла", "зрозуміла", "समझी", "रही हूँ", "रहे हैं", "Obrigada"]
+        for language in UILanguage.allCases {
+            for phrase in AppSettings.defaultQuickPhrases(for: language) {
+                for marker in markers {
+                    #expect(!phrase.contains(marker), "\(language): \(phrase)")
+                }
+            }
+        }
+    }
+
+    @Test("a list saved with the older feminine wording counts as unedited and follows the language")
+    func oldFeminineListsMigrate() {
+        let hebrew = ["רגע, לא הבנתי", "אפשר לחזור על זה?", "לאט יותר בבקשה", "דברו קרוב יותר לטלפון, בבקשה", "אני קוראת את הכתוביות, תנו לי רגע", "כן", "לא", "תודה", "בואו נדבר אחד אחד"]
+        let russian = ["Подождите, я не поняла", "Можете повторить?", "Помедленнее, пожалуйста", "Говорите ближе к телефону, пожалуйста", "Я читаю субтитры, дайте мне минутку", "Да", "Нет", "Спасибо", "Давайте говорить по одному"]
+        let ukrainian = ["Зачекайте, я не зрозуміла", "Можете повторити?", "Повільніше, будь ласка", "Говоріть ближче до телефону, будь ласка", "Я читаю субтитри, дайте мені хвилинку", "Так", "Ні", "Дякую", "Давайте говорити по одному"]
+        let hindi = ["रुकिए, मैं समझी नहीं", "क्या आप दोबारा कह सकते हैं?", "कृपया धीरे बोलिए", "कृपया फ़ोन के पास आकर बोलिए", "मैं कैप्शन पढ़ रही हूँ, मुझे एक पल दीजिए", "हाँ", "नहीं", "धन्यवाद", "चलिए, एक-एक करके बोलें"]
+        let portuguese = ["Espere, não percebi", "Pode repetir?", "Mais devagar, por favor", "Fale mais perto do telemóvel, por favor", "Estou a ler as legendas, dê-me um momento", "Sim", "Não", "Obrigada", "Vamos falar um de cada vez"]
+        let english = AppSettings.defaultQuickPhrasesEnglish
+        for old in [hebrew, russian, ukrainian, hindi, portuguese] {
+            #expect(AppSettings.displayedQuickPhrases(stored: old, language: .english) == english)
+        }
+        #expect(AppSettings.displayedQuickPhrases(stored: hebrew, language: .hebrew) == AppSettings.defaultQuickPhrases)
+        var edited = hebrew
+        edited[0] = "רגע"
+        #expect(AppSettings.displayedQuickPhrases(stored: edited, language: .english) == edited)
+        var editedRussian = russian
+        editedRussian.append("Ещё")
+        #expect(AppSettings.displayedQuickPhrases(stored: editedRussian, language: .english) == editedRussian)
+        let current = AppSettings.defaultQuickPhrases(for: .russian)
+        #expect(AppSettings.displayedQuickPhrases(stored: current, language: .english) == english)
+    }
+
     @Test("the home computer's beam defaults to 5, and a file outside 1...7 gets the nearest edge")
     func homeServerBeamClamped() throws {
         func decoded(_ json: String) throws -> AppSettings {

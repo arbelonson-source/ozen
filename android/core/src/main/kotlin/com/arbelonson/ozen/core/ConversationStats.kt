@@ -81,7 +81,7 @@ data class ConversationStats(
 
             for (segment in segments) {
                 val name = speakerName(segment)
-                val words = HebrewText.words(segment.text).size
+                val words = countWords(segment.text)
                 if (name !in wordsBySpeaker) {
                     order.add(name)
                     wordsBySpeaker[name] = 0
@@ -113,6 +113,27 @@ data class ConversationStats(
                 else -> 0.0
             }
             return ConversationStats(totalWords, totalTurns, duration, speakers, longest)
+        }
+
+        private fun isHan(cp: Int): Boolean =
+            cp in 0x3400..0x4DBF || cp in 0x4E00..0x9FFF || cp in 0x20000..0x323AF
+
+        private fun countWords(text: String): Int {
+            var han = 0
+            val rest = StringBuilder()
+            var i = 0
+            while (i < text.length) {
+                val cp = text.codePointAt(i)
+                i += Character.charCount(cp)
+                if (isHan(cp)) {
+                    han++
+                    rest.append(' ')
+                } else {
+                    rest.appendCodePoint(cp)
+                }
+            }
+            if (han == 0) return HebrewText.words(text).size
+            return han + HebrewText.words(rest.toString()).count { token -> token.any { it.isLetterOrDigit() } }
         }
 
         private fun speakerName(segment: SavedSegment): String {

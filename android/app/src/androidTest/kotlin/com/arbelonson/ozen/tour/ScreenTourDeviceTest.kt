@@ -40,6 +40,8 @@ import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.DisplayPreferences
+import com.arbelonson.ozen.core.EnginePreparationProgress
+import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SavedSegment
@@ -169,6 +171,18 @@ class ScreenTourDeviceTest {
                 CaptionState.show(PipelinePhase.Listening, engine = TranscriptionEngineKind.WhisperKit, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), listeningStartedAt = now())
             }
             shot("captions-listening")
+        }
+        for ((name, phase) in listOf(
+            "model-download" to PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.42)),
+            "model-loading" to PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel, isFirstTime = true)),
+            "model-failed" to PipelinePhase.Failed(PipelineFailure(PipelineFailure.Kind.TranscriptionStopped, "tour")),
+        )) {
+            step(name) {
+                compose.runOnUiThread {
+                    CaptionState.show(phase, engine = TranscriptionEngineKind.WhisperKit, interruptedBySystem = false, scheduledRetry = null, segments = emptyList())
+                }
+                shot(name)
+            }
         }
         step("captions-lines") {
             showLines()

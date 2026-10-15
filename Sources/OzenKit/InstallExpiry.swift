@@ -36,6 +36,14 @@ public enum InstallExpiry {
         return left > 0 && left <= warnAheadSeconds
     }
 
+    /// Whether a reminder already delivered still tells the truth: only
+    /// while the expiry is inside the warning window. After a reinstall or
+    /// once the date has passed it should leave Notification Center.
+    public static func shouldKeepDeliveredReminder(expiresAt: Date?, now: Date) -> Bool {
+        guard let expiresAt else { return false }
+        return shouldWarn(expiresAt: expiresAt, now: now)
+    }
+
     /// When to post the reminder: the latest daytime moment at least a day
     /// before expiry, or nil when that moment has already passed (the
     /// caption screen is warning by then anyway).

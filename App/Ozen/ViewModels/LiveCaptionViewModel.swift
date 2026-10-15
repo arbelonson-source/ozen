@@ -1334,6 +1334,12 @@ public final class LiveCaptionViewModel {
     /// setting is, are skipped for good, so turning either on later
     /// doesn't read out the backlog.
     public func captionAnnouncement(voiceOverRunning: Bool) -> String? {
+        captionAnnouncementPieces(voiceOverRunning: voiceOverRunning)?.map(\.text).joined()
+    }
+
+    /// The same announcement in pieces, so the caption words can be spoken
+    /// in their own language and the rest in the phone's.
+    public func captionAnnouncementPieces(voiceOverRunning: Bool) -> [CaptionAnnouncer.Piece]? {
         let segments = pipeline.segments
         guard voiceOverRunning, settings.display.announceNewLines else {
             announcer.skipLinesSoFar(segments)
@@ -1344,7 +1350,7 @@ public final class LiveCaptionViewModel {
         let scoring = transcribingSettings
         let engine = scoring.engine
         let model = scoring.whisperModelVariant
-        return announcer.announcement(
+        return announcer.announcementPieces(
             for: segments,
             speakerName: { [pipeline] segment in
                 namesShown && segment.speakerClusterID != nil ? pipeline.displayName(for: segment) : nil
@@ -1781,13 +1787,14 @@ public final class LiveCaptionViewModel {
         let oldName = segment.speakerClusterID.flatMap { id in
             pipeline.speakerClusters.first(where: { $0.id == id })?.name
         }
+        let isRespelling = pipeline.isRespelling(name, ofLine: segment)
         guard let centroid = pipeline.nameSpeaker(of: segment, name: name) else { return }
         // A name another saved person already has is not a misspelling:
         // the phone took this voice for the wrong person. Renaming would
         // hand all of that person's prints to this name, and they would
         // vanish from the saved speakers; this voice gets a print instead.
         let isAnotherSavedPerson = name != oldName && settings.speakerProfiles.contains(where: { $0.name == name })
-        if let oldName, !isAnotherSavedPerson, settings.speakerProfiles.contains(where: { $0.name == oldName }) {
+        if let oldName, isRespelling, !isAnotherSavedPerson, settings.speakerProfiles.contains(where: { $0.name == oldName }) {
             // Fixed here, a spelling stayed wrong in the names list and in
             // every earlier saved conversation, which the same fix made in
             // Settings reaches.

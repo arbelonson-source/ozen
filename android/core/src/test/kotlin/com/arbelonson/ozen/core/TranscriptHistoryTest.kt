@@ -259,6 +259,30 @@ class TranscriptHistoryTest {
     }
 
     @Test
+    fun `search splits the as-said lines only for the conversations that match`() {
+        withHistoryDirectory("ozen-history") { dir ->
+            val store = TranscriptHistoryStore(dir)
+            val needles = mutableListOf<UUID>()
+            for (n in 0 until 2000) {
+                val lines = (0 until 50).map { segment(text = "ordinary words number $n line $it") }.toMutableList()
+                if (n % 700 == 0) lines[7] = segment(text = "the zebracrossing was busy")
+                val saved = record(startedAt = n.toDouble(), segments = lines)
+                if (n % 700 == 0) needles += saved.id
+                store.save(saved)
+            }
+            assertEquals(2000, store.search("ordinary").size)
+            TranscriptHistoryStore.saidSplitCount.set(0)
+
+            val found = store.search("zebracrossing")
+
+            assertEquals(needles.toSet(), found.map { it.id }.toSet())
+            assertEquals(3, found.size)
+            assertEquals(3, TranscriptHistoryStore.saidSplitCount.get())
+            assertTrue(found.all { it.preview.contains("zebracrossing") })
+        }
+    }
+
+    @Test
     fun `search is case-insensitive over segment text`() {
         withHistoryDirectory("ozen-history") { dir ->
             val store = TranscriptHistoryStore(dir)

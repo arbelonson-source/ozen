@@ -188,7 +188,7 @@ class CaptionSessionDeviceTest {
         }
         val buzzed = CopyOnWriteArrayList<AlertVibration>()
         val before = Buzz.play
-        Buzz.play = { _, vibration -> buzzed += vibration }
+        Buzz.play = { _, vibration, _ -> buzzed += vibration }
         val session = withContext(Dispatchers.Main) {
             CaptionState.clear()
             CaptionSession(context, settings, code, CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(16_000 * 120)), modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))
@@ -1010,7 +1010,7 @@ class CaptionSessionDeviceTest {
         val code = HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()).apply { save("code-for-the-test") }
         val buzzed = CopyOnWriteArrayList<AlertVibration>()
         val before = Buzz.play
-        Buzz.play = { _, vibration -> buzzed += vibration }
+        Buzz.play = { _, vibration, _ -> buzzed += vibration }
         val session = withContext(Dispatchers.Main) {
             CaptionState.clear()
             CaptionSession(context, settings, code, CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), audio, modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))

@@ -1,21 +1,40 @@
 package com.arbelonson.ozen.core
 
 import java.io.File
+import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 object PrivateFileWrites {
-    fun write(file: File, bytes: ByteArray) {
+    fun write(file: File, bytes: ByteArray) = write(file, bytes, {}, { it.fd.sync() }, ::syncDirectory)
+
+    internal fun write(file: File, bytes: ByteArray, beforeMove: (File) -> Unit, sync: (FileOutputStream) -> Unit, syncParent: (File) -> Unit) {
         val target = file.absoluteFile
         val directory = target.parentFile
         directory.mkdirs()
         val temporary = Files.createTempFile(directory.toPath(), "private-", ".tmp").toFile()
         try {
-            temporary.writeBytes(bytes)
+            FileOutputStream(temporary).use { stream ->
+                stream.write(bytes)
+                stream.flush()
+                try {
+                    sync(stream)
+                } catch (_: Exception) {
+                }
+            }
+            beforeMove(temporary)
             Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+            try {
+                syncParent(directory)
+            } catch (_: Exception) {
+            }
         } finally {
             temporary.delete()
         }
+    }
+
+    internal fun syncDirectory(directory: File) {
+        java.nio.channels.FileChannel.open(directory.toPath(), java.nio.file.StandardOpenOption.READ).use { it.force(true) }
     }
 
     fun leftovers(directory: File): List<File> =
