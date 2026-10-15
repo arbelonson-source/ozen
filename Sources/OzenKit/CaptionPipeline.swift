@@ -181,6 +181,7 @@ public final class CaptionPipeline {
     private var pendingReplayDedupe: [String] = []
     private var replayDedupe: [String] = []
     private var replayUtterance: UUID?
+    private var utteranceFirstHeard: [UUID: Int] = [:]
     private var replayTask: Task<Void, Never>?
     static let replayMarginSeconds = 2.0
     static let replayMaxSeconds = 20.0
@@ -414,6 +415,7 @@ public final class CaptionPipeline {
         runID = run
         sessionAudioStart = recentAudio.totalAppended
         lastFinalHeard = nil
+        utteranceFirstHeard = [:]
         let replay = pendingReplay
         replayDedupe = pendingReplayDedupe
         replayUtterance = nil
@@ -1599,8 +1601,13 @@ public final class CaptionPipeline {
         var cleaned = HebrewText.removingDirectionMarks(incoming.text)
         guard let trimmed = trimmingReplayedWords(incoming, cleaned: cleaned) else { return }
         cleaned = trimmed
-        if incoming.isFinal, !cleaned.isEmpty, replayDedupe.isEmpty {
-            lastFinalHeard = (recentAudio.totalAppended, cleaned)
+        if replayDedupe.isEmpty {
+            if utteranceFirstHeard.count > 64 { utteranceFirstHeard = [:] }
+            let heardAt = utteranceFirstHeard[incoming.utteranceID] ?? recentAudio.totalAppended
+            utteranceFirstHeard[incoming.utteranceID] = incoming.isFinal ? nil : heardAt
+            if incoming.isFinal, !cleaned.isEmpty {
+                lastFinalHeard = (heardAt, cleaned)
+            }
         }
         incomingText[incoming.utteranceID] = incoming.isFinal ? nil : cleaned
         // A sentence cleared from the screen mid-way keeps arriving with all
@@ -2016,12 +2023,18 @@ public final class CaptionPipeline {
         pendingReplay = tail
     }
 
+    static func replayBufferLimit(replaySamples: Int) -> Int {
+        let step = Int(sampleRate / 5)
+        return (replaySamples + step - 1) / step + AudioFanOut.defaultBufferLimit
+    }
+
     private func replaying(_ replay: [Float], then live: AsyncStream<[Float]>) -> AsyncStream<[Float]> {
-        let (stream, continuation) = AsyncStream<[Float]>.makeStream(bufferingPolicy: .unbounded)
+        let step = Int(Self.sampleRate / 5)
+        let (stream, continuation) = AsyncStream<[Float]>.makeStream(
+            bufferingPolicy: .bufferingNewest(Self.replayBufferLimit(replaySamples: replay.count)))
         replayTask?.cancel()
         let task = Task {
             var index = 0
-            let step = Int(Self.sampleRate / 5)
             while index < replay.count, !Task.isCancelled {
                 let end = min(index + step, replay.count)
                 continuation.yield(Array(replay[index..<end]))
@@ -2063,8 +2076,8 @@ public final class CaptionPipeline {
             break
         }
         let wholeLine = overlap == words.count
-        let lone = wholeLine && overlap == 1 && known.count > 1
-        if overlap == 0 || (lone && token.isFinal && !ongoing) {
+        let weak = overlap == 1 && known.count > 1
+        if overlap == 0 || (weak && !(wholeLine && !token.isFinal) && !ongoing) {
             replayDedupe = []
             replayUtterance = nil
             return cleaned

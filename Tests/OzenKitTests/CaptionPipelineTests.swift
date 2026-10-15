@@ -4226,6 +4226,48 @@ struct CaptionPipelineHomeLossTests {
         #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "see you"])
     }
 
+    @Test("a final that comes long after its speech does not move the replay start forward")
+    func slowFinalKeepsReplayStart() async {
+        let (pipeline, audio, home, phone) = rig()
+        await pipeline.start(settings: homeSettings)
+        audio.push([Float](repeating: 0, count: 1_600))
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 0.05 })
+        let id = UUID()
+        home.emit(TranscriptToken(utteranceID: id, text: "hello", isFinal: false, timestamp: 1_000))
+        #expect(await eventually { pipeline.stats.tokensReceived >= 1 })
+        for chunk in speech(seconds: 8) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 8.05 })
+        home.emit(TranscriptToken(utteranceID: id, text: "hello there", isFinal: true, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 1 })
+        await lose(home, pipeline)
+        audio.push([Float](repeating: 0.5, count: 1_600))
+        #expect(await eventually { phone.samplesSeen.contains(0.5) })
+
+        let heard = phone.samplesSeen
+        let live = heard.firstIndex(of: 0.5) ?? 0
+        #expect(heard[..<live].filter { abs($0) == 0.2 }.count == 128_000)
+    }
+
+    @Test("a new line that starts with the last word of the previous line keeps that word")
+    func oneSharedWordIsKept() async {
+        let (pipeline, audio, home, phone) = rig()
+        await listen(pipeline, audio, home, line: "see you at noon tomorrow")
+        for chunk in speech(seconds: 5) { audio.push(chunk) }
+        #expect(await eventually { pipeline.stats.audioSecondsReceived >= 5.05 })
+        await lose(home, pipeline)
+        #expect(await eventually { phone.samplesSeen.count >= 80_000 })
+        phone.emit(TranscriptToken(utteranceID: UUID(), text: "tomorrow we go", isFinal: true, timestamp: 1_001))
+        #expect(await eventually { pipeline.segments.count == 2 })
+
+        #expect(pipeline.segments.map(\.text) == ["see you at noon tomorrow", "tomorrow we go"])
+    }
+
+    @Test("the replay hand-over holds a bounded number of chunks")
+    func replayBufferIsBounded() {
+        #expect(CaptionPipeline.replayBufferLimit(replaySamples: 320_000) == 100 + AudioFanOut.defaultBufferLimit)
+        #expect(CaptionPipeline.replayBufferLimit(replaySamples: 0) == AudioFanOut.defaultBufferLimit)
+    }
+
     @Test("stopping while the phone is taking over replays nothing")
     func stopCancelsReplay() async {
         let (pipeline, audio, home, phone) = rig()
