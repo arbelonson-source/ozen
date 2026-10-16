@@ -465,6 +465,22 @@ final class OzenScreenshotUITests: XCTestCase {
     /// Onboarding at the largest accessibility text size iOS offers: a
     /// real setting for exactly the low-vision reader this app is built
     /// for, and a screen no earlier screenshot pass has ever looked at.
+    func testOnboardingOffersPhoneSettingsAfterNotificationsRefused() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "onboardingEnglish", "-uiTestNotificationsDenied"]
+        app.launch()
+
+        let next = app.descendants(matching: .any)["onboardingNextButton"]
+        XCTAssertTrue(next.waitForExistence(timeout: 10), "onboarding: no Next button")
+        for _ in 0..<4 {
+            next.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        let button = app.descendants(matching: .any)["onboardingOpenNotificationSettings"]
+        XCTAssertTrue(button.waitForExistence(timeout: 10), "onboarding: no 'Open phone settings' button after notifications were refused")
+        capture(app, name: "onboarding-notifications-refused")
+    }
+
     func testOnboardingAccessibilityText() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestScreenshots", "onboarding", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]

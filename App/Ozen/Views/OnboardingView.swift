@@ -23,6 +23,14 @@ struct OnboardingView: View {
 
     private static let pageCount = 7
 
+    private static var forcesNotificationDenial: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-uiTestNotificationsDenied")
+        #else
+        false
+        #endif
+    }
+
     var body: some View {
         TabView(selection: $page) {
             welcomePage.tag(0)
@@ -41,6 +49,14 @@ struct OnboardingView: View {
         // silently overwriting each one's own -- "onboardingNextButton"
         // was never missing, it just read back as "onboardingScreen".
         .accessibilityIdentifier("onboardingScreen")
+        #if DEBUG
+        .task {
+            if Self.forcesNotificationDenial {
+                microphone = .granted
+                notificationsAllowed = false
+            }
+        }
+        #endif
         // A plain VStack sibling let the footer's own height compete with
         // the TabView for room at the largest accessibility text sizes:
         // the page dots (drawn inside the TabView's own bounds, not
@@ -221,6 +237,20 @@ struct OnboardingView: View {
                 if let notificationsAllowed {
                     Label(notificationsAllowed ? tr("ההתראות מאושרות", "Notifications approved") : tr("בלי התראות. אפשר לשנות בהגדרות.", "No notifications. This can be changed in Settings."), systemImage: notificationsAllowed ? "checkmark.circle.fill" : "bell.slash")
                         .foregroundStyle(.readable(notificationsAllowed ? .green : .secondary))
+                    if OnboardingNotificationAdvice.showsSettingsButton(allowed: notificationsAllowed) {
+                        Button {
+                            if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+                                openURL(url)
+                            }
+                        } label: {
+                            Label(tr("פתיחת הגדרות הטלפון", "Open phone settings"), systemImage: "gear")
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .ozenGlassButton()
+                        .controlSize(.large)
+                        .accessibilityIdentifier("onboardingOpenNotificationSettings")
+                    }
                 } else {
                     Button {
                         Task { notificationsAllowed = await AlertNotifier.shared.requestAuthorization() }
@@ -276,9 +306,16 @@ struct OnboardingView: View {
         // than leave this page stuck showing "blocked" after she just
         // fixed it. Asking again is safe once denied -- iOS answers with
         // the current status instead of showing the system prompt again.
-        .task(id: scenePhase) {
-            guard scenePhase == .active, microphone == .denied else { return }
-            microphone = await viewModel.requestMicrophonePermission()
+        .task(id: "\(scenePhase)-\(String(describing: microphone))") {
+            guard scenePhase == .active else { return }
+            if microphone == .denied {
+                microphone = await viewModel.requestMicrophonePermission()
+            }
+            guard microphone == .granted else { return }
+            notificationsAllowed = OnboardingNotificationAdvice.statusOnReturn(
+                current: await AlertNotifier.shared.isAllowed(),
+                fixtureForcesDenial: Self.forcesNotificationDenial
+            )
         }
     }
 
