@@ -152,7 +152,7 @@ internal fun OnboardingScreen(
                         if (settings.engine == TranscriptionEngineKind.HomeServer) {
                             Body(tr("הקול נשלח רק למחשב של המשפחה בבית, ורק בזמן שהכתוביות פועלות.", "The audio goes only to the family’s computer at home, and only while captions are on."))
                         } else if (!settings.audioLeavesPhone) {
-                            Body(tr("הכל קורה בתוך הטלפון. שום דבר לא נשלח לאינטרנט.", "It all happens on the phone. Nothing is sent to the internet."))
+                            Body(tr("כברירת מחדל, הכל קורה בתוך הטלפון.", "By default it all happens on the phone."))
                         }
                     }
                     1 -> Page(Icons.Rounded.Forum, tr("איך זה עובד", "How it works")) {
