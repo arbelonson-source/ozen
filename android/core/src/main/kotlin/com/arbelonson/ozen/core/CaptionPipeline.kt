@@ -2049,7 +2049,7 @@ class CaptionPipeline(
     private fun engineCacheKey(settings: AppSettings): String =
         "${settings.engine.rawValue}|${settings.whisperModelVariant}|${settings.allowServerFallbackForAppleSpeech}|" +
             "${settings.cloudProvider.rawValue}|${settings.chosenCloudModel}|${settings.homeServerAddress}|${settings.homeServerBeam}|" +
-            WhisperModelCatalog.phoneModelFile(settings.spokenLanguage)
+            settings.phoneModel.file
 
     /**
      * A tap that stopped delivering (see `AudioStallWatchdog`) becomes a

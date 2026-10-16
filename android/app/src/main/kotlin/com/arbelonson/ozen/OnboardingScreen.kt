@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.animation.core.snap
@@ -83,6 +84,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.arbelonson.ozen.core.AlertSuggestions
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.FirstRunNote
 import com.arbelonson.ozen.core.HebrewText
 import com.arbelonson.ozen.core.Localization
@@ -104,8 +106,8 @@ import kotlinx.coroutines.launch
  * microphone asked for with a reason (and the
  * notifications that reach her while the phone is put away), her name for
  * the alert that buzzes when she is called, and go. The iPhone's page for
- * choosing the engine and its model download is left out until where the
- * phone downloads its model from is decided; Settings has the choice.
+ * choosing the engine is left out (Settings has that choice); a page for
+ * the phone's own speech model comes after the language.
  *
  * [microphone] and [notifications] are null until asked, then whether the
  * phone said yes. Skip and Start both finish; the caption screen then
@@ -120,6 +122,7 @@ internal fun OnboardingScreen(
     onApproveNotifications: () -> Unit,
     onOpenPhoneSettings: () -> Unit,
     onSpokenLanguage: (UILanguage) -> Unit,
+    phoneModels: PhoneModels,
     onAddName: (String) -> Unit,
     onAddAlert: (String) -> Unit,
     onFinish: () -> Unit,
@@ -164,11 +167,13 @@ internal fun OnboardingScreen(
                         }
                     }
                     2 -> LanguagePage(settings.spokenLanguage, onSpokenLanguage)
-                    3 -> MicrophonePage(settings, microphone, notifications, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
+                    MODEL_PAGE -> ModelPage(settings, phoneModels)
+                    4 -> MicrophonePage(settings, microphone, notifications, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
                     NAME_PAGE -> NamePage(settings, nameDraft, addDraft, onAddAlert)
                     else -> Page(Icons.Rounded.CheckCircle, tr("מוכן", "Ready")) {
                         if (settings.engine.firstRunNote == FirstRunNote.ModelDownload) {
-                            Body(tr("בהפעלה הראשונה אוזן תוריד את מודל השפה. זה לוקח כמה דקות ומוצג על המסך. אחר כך — מיד.", "The first time it runs, Ozen will download the language model. This takes a few minutes and shows on the screen. After that — instantly."))
+                            val model = settings.phoneModel
+                            Body(tr("בהפעלה הראשונה אוזן תוריד את מודל השפה: %1, %2. זה לוקח כמה דקות ומוצג על המסך. אחר כך — מיד.", "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that — instantly.", listOf(model.displayName, ByteSize.text(model.bytes))))
                         }
                         if (settings.engine.firstRunNote == FirstRunNote.HomeComputer) {
                             Body(tr("מחובר בקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home."))
@@ -296,6 +301,17 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { suggestions(Modifier) }
         }
         AlertSuggestions.vibrationNote(settings.keywordAlerts, Localization.language)?.let { Status("✓ $it", good = true) }
+    }
+}
+
+/** The speech model for the phone's own engine: the list, the phone test and a recommended model already chosen. */
+@Composable
+private fun ModelPage(settings: AppSettings, models: PhoneModels) {
+    LaunchedEffect(Unit) { if (settings.phoneSpeed == null) models.runCheck(thenChooseBest = true) }
+    Page(Icons.Rounded.Speed, tr("מודל הדיבור", "The speech model")) {
+        Body(tr("אוזן כותבת את הכתוביות בעזרת מודל שרץ בתוך הטלפון. היא בודקת כמה הטלפון הזה מהיר ובוחרת מודל שמתאים לו. אפשר לבחור אחר.", "Ozen writes the captions with a model that runs inside the phone. It tests how fast this phone is and chooses a model that suits it. You can pick another."))
+        PhoneModelPicker(settings, models, chooseBestAfterTest = true)
+        Body(tr("דילוג משאיר את המודל שנבחר. אפשר לשנות בכל רגע בהגדרות.", "Skipping keeps the chosen model. You can change it anytime in Settings."))
     }
 }
 
@@ -487,5 +503,6 @@ private fun SideBySideOrStacked(gap: Dp, start: @Composable () -> Unit, end: @Co
     }
 }
 
-private const val PAGES = 6
-private const val NAME_PAGE = 4
+private const val PAGES = 7
+private const val MODEL_PAGE = 3
+private const val NAME_PAGE = 5

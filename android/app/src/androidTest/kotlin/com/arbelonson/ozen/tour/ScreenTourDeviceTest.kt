@@ -272,7 +272,7 @@ class ScreenTourDeviceTest {
             compose.waitForIdle()
             val next = tr("הבא", "Next")
             for (page in 1..10) {
-                pages("walkthrough-$page", maxPages = 6)
+                pages("walkthrough-$page", maxPages = 7)
                 if (compose.onAllNodes(hasText(next)).fetchSemanticsNodes(atLeastOneRootRequired = false).isEmpty()) break
                 click(next)
             }

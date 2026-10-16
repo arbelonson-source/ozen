@@ -69,6 +69,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.whisper.ModelFileLoader
+import com.arbelonson.ozen.whisper.PhoneSpeedMeter
 import com.arbelonson.ozen.whisper.SileroVoiceScorer
 import java.io.File
 import java.io.IOException
@@ -391,6 +392,7 @@ class CaptionSession(
             publish()
         }
         pipeline.onPhaseChange = {
+            captionsBusy.value = it.isListening || it.isTransitioning
             conversations.listeningChanged()
             replies.captionsCameOn()
             publish()
@@ -1055,10 +1057,10 @@ class CaptionSession(
                 loader = ModelFileLoader(
                     model,
                     context.applicationInfo.nativeLibraryDir,
-                    download = WhisperModelCatalog.phoneModelSource(settings.spokenLanguage)?.let { PhoneModelDownloader(model, it, modelFetcher) },
+                    download = PhoneModelDownloader(model, settings.phoneModel.source, modelFetcher),
                     network = { networkNow() },
                     freeBytes = { freeSpace() },
-                    variant = WhisperModelCatalog.recommendedVariant(settings.spokenLanguage),
+                    variant = settings.phoneModel.variant,
                 ),
                 voiceScorerFactory = ::voiceScore,
                 heat = { heatNow },
@@ -1083,11 +1085,9 @@ class CaptionSession(
     override fun refreshBackup() {
         val current = settings.current.value
         val language = current.spokenLanguage
-        val source = WhisperModelCatalog.phoneModelSource(language)
+        val source = current.phoneModel.source
         val model = modelFile(current)
-        backupState.value = if (source == null) {
-            BackupModelStatus.NotNeeded
-        } else {
+        backupState.value = run {
             BackupModel.status(
                 engine = current.engine,
                 installed = model.isFile,
@@ -1114,8 +1114,7 @@ class CaptionSession(
         if (!BackupModel.canStart(backupState.value)) return
         val current = settings.current.value
         val language = current.spokenLanguage
-        val source = WhisperModelCatalog.phoneModelSource(language) ?: return
-        val download = PhoneModelDownloader(modelFile(current), source, modelFetcher)
+        val download = PhoneModelDownloader(modelFile(current), current.phoneModel.source, modelFetcher)
         backupFailedLanguage = null
         backupProgress = 0.0
         backupLanguage = language
@@ -1154,8 +1153,25 @@ class CaptionSession(
         }
     }
 
-    /** The phone's own model for the spoken language; see `WhisperModelCatalog.phoneModelFile`. */
-    private fun modelFile(settings: AppSettings) = File(modelFolder, WhisperModelCatalog.phoneModelFile(settings.spokenLanguage))
+    /** The phone's own model: the chosen one, or the spoken language's recommended one; see `PhoneModelCatalog`. */
+    private fun modelFile(settings: AppSettings) = File(modelFolder, settings.phoneModel.file)
+
+    val phoneModels: PhoneModels by lazy {
+        PhoneModelChooser(
+            settings = settings,
+            modelFolder = modelFolder,
+            fetcher = { modelFetcher },
+            network = { networkNow() },
+            freeSpace = { freeSpace() },
+            scope = scope,
+            measure = { progress -> PhoneSpeedMeter(context.applicationInfo.nativeLibraryDir).run(progress) },
+            applied = ::settingsChanged,
+            captionsBusy = captionsBusy,
+            totalMemory = { ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java)?.getMemoryInfo(it) }.totalMem.takeIf { it > 0 } },
+        )
+    }
+
+    private val captionsBusy = MutableStateFlow(false)
 
     private fun voiceScore(): ((FloatArray) -> Float?)? {
         val scorer = voiceScorer ?: return null

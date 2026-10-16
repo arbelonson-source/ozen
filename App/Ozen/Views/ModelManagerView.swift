@@ -28,8 +28,9 @@ struct ModelManagerView: View {
 
     var body: some View {
         List {
+            phoneSection
             Section {
-                ForEach(WhisperModelCatalog.listed(for: viewModel.settings.spokenLanguage)) { option in
+                ForEach(DeviceModelAdvisor.ordered(for: viewModel.settings.spokenLanguage, on: viewModel.settings.deviceModelCheck)) { option in
                     row(for: option)
                 }
             } header: {
@@ -42,6 +43,7 @@ struct ModelManagerView: View {
         .navigationTitle(tr("מודל Whisper", "Whisper model"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: refresh)
+        .task { await viewModel.testThisPhone() }
         .task { await followBackgroundDownloads() }
         .onChange(of: viewModel.phase.step) { _, _ in refresh() }
         .onChange(of: viewModel.backupModelProgress == nil) { _, _ in refresh() }
@@ -81,6 +83,45 @@ struct ModelManagerView: View {
             Button(tr("סגירה", "Close"), role: .cancel) {}
         } message: {
             Text(deleteError ?? "")
+        }
+    }
+
+    private var phoneSection: some View {
+        Section {
+            Button {
+                Task { await viewModel.testThisPhone() }
+            } label: {
+                Label(tr("בדיקת הטלפון הזה", "Test this phone"), systemImage: "speedometer")
+            }
+            .accessibilityIdentifier("modelManagerTestPhone")
+            if let check = viewModel.settings.deviceModelCheck {
+                if let measured = check.measurement, measured.passes >= DeviceModelAdvisor.minimumMeasuredPasses {
+                    Text(tr("נמדד בטלפון הזה: כ-%1 שניות לעדכון עם %2.", "Timed on this phone: about %1 seconds per update with %2.", args: ["\(String(format: "%.1f", measured.averageSeconds))", "\(WhisperModelCatalog.option(for: measured.variant)?.displayName ?? measured.variant)"]))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                if let chosen = WhisperModelCatalog.option(for: viewModel.settings.whisperModelVariant) {
+                    FitLabel(fit: DeviceModelAdvisor.fit(of: chosen, on: check))
+                }
+                let recommended = viewModel.settings.recommendedWhisperVariant
+                if recommended != viewModel.settings.whisperModelVariant,
+                   let chosen = WhisperModelCatalog.option(for: viewModel.settings.whisperModelVariant),
+                   DeviceModelAdvisor.warns(about: DeviceModelAdvisor.fit(of: chosen, on: check)),
+                   let option = WhisperModelCatalog.option(for: recommended) {
+                    Button {
+                        Task {
+                            if await viewModel.modelRowTapped(recommended, isInstalled: installed.contains(recommended)) { pendingSwitch = option }
+                        }
+                    } label: {
+                        Label(tr("המודל הזה מפגר אחרי הדיבור בטלפון הזה. הקישו כדי לעבור ל-%1, %2", "This model falls behind the speech on this phone. Tap to switch to %1, %2", args: ["\(option.displayName)", "\(option.sizeLabel)"]), systemImage: "arrow.triangle.swap")
+                    }
+                    .accessibilityIdentifier("modelManagerSwitchToLighter")
+                }
+            }
+        } header: {
+            Text(tr("בחירת מודל הדיבור", "Choose the speech model"))
+        } footer: {
+            Text(tr("הרשימה מבוססת על המודלים שידוע שרצים על הדגם הזה של הטלפון. אחרי שהכתוביות רצו כדקה, אפשר לבדוק שוב כדי להוסיף מדידת זמנים אמיתית.", "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings."))
         }
     }
 
@@ -134,11 +175,7 @@ struct ModelManagerView: View {
                         Text(option.displayName)
                             .font(.body.weight(isSelected ? .semibold : .regular))
                         if option.variant == viewModel.settings.recommendedWhisperVariant {
-                            Text(viewModel.settings.spokenLanguage == .hebrew ? tr("מומלץ לעברית", "Recommended for Hebrew") : tr("מומלץ", "Recommended"))
-                                .font(.caption2.weight(.semibold))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.accentColor.opacity(0.18), in: Capsule())
+                            RecommendedBadge(forThisPhone: viewModel.settings.deviceModelCheck != nil, language: viewModel.settings.spokenLanguage)
                         }
                     }
                     Spacer()
@@ -147,6 +184,10 @@ struct ModelManagerView: View {
                             .accessibilityHidden(true)
                             .foregroundStyle(.readable(.green))
                     }
+                }
+
+                if let check = viewModel.settings.deviceModelCheck {
+                    FitLabel(fit: DeviceModelAdvisor.fit(of: option, on: check))
                 }
 
                 ratingsLayout {
@@ -235,20 +276,7 @@ struct ModelManagerView: View {
     }
 
     private func localizedNote(for option: WhisperModelOption) -> String {
-        switch option.variant {
-        case "tiny": return tr("הכי מהיר. העברית שלו בעיקר שגויה — רק לבדיקת המיקרופון.", "The fastest. Its Hebrew is mostly wrong — for testing the microphone only.")
-        case "base": return tr("מהיר מאוד, עדיין חלש בעברית.", "Very fast, still weak at Hebrew.")
-        case "small_216MB": return tr("חצי מההורדה של Small עם כמעט אותן תוצאות.", "Half the download of Small with nearly the same results.")
-        case "small": return tr("הורדה קצרה ותגובה מהירה. עברית מובנת, עם טעויות.", "A short download and a quick response. Hebrew is understandable, with mistakes.")
-        case "ozen-turbo-hebrew-a3-8bit": return tr("Turbo Hebrew שאוזן אימנה עוד על דיבור מקצה החדר, ברעש וליד טלוויזיה: בערך עשירית פחות מילים שגויות שם, ואותו דבר מקרוב. מהיר באותה מידה, אותה הורדה.", "Turbo Hebrew trained further by Ozen on speech from across a room, in noise and over a TV: about a tenth fewer wrong words there, the same up close. As quick, the same download.")
-        case "ivrit-large-v3-turbo-8bit": return tr("Turbo שאומן על כ-5,000 שעות של עברית על ידי ivrit.ai: שליש פחות מילים שגויות מ-Turbo בהקלטות בדיקה. מהיר באותה מידה, הורדה גדולה יותר.", "Turbo trained on about 5,000 hours of Hebrew by ivrit.ai: a third fewer wrong words than Turbo on test recordings. As quick, a bigger download.")
-        case "large-v3-v20240930_626MB": return tr("עברית טובה בהרבה מ‑Small באותו גודל הורדה בערך. קצת יותר איטי בכל עדכון.", "Much better Hebrew than Small at roughly the same download size. A bit slower on each update.")
-        case "large-v3-v20240930": return tr("Turbo בדיוק מלא. אותה רמת דיוק, הורדה גדולה יותר.", "Turbo at full precision. Same accuracy, a larger download.")
-        case "medium": return tr("מודל ביניים ישן יותר; Turbo גם מדויק יותר וגם מהיר יותר.", "An older mid-size model; Turbo is both more accurate and faster.")
-        case "large-v3_947MB": return tr("פחות מדויק בעברית מ‑Turbo Hebrew, ואיטי מדי כדי להרגיש \"חי\" בטלפון.", "Less accurate in Hebrew than Turbo Hebrew, and too slow to feel “live” on the phone.")
-        case "large-v3": return tr("3 GB. פחות מדויק בעברית מ‑Turbo Hebrew, והכי איטי; להשוואה בלבד.", "3 GB. Less accurate in Hebrew than Turbo Hebrew, and the slowest; for comparison only.")
-        default: return option.note
-        }
+        option.localizedNote
     }
 
     private func refresh() {

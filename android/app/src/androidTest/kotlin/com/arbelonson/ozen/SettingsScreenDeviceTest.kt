@@ -219,7 +219,7 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
-    fun withThePhonesOwnModelSettingsOffersToDownloadModelsOverCellularDataAndKeepsTheChoice() {
+    fun settingsOffersToDownloadModelsOverCellularDataWithAnyEngineAndKeepsTheChoice() {
         app.settings.change {
             it.engine = TranscriptionEngineKind.WhisperKit
             it.allowCellularModelDownload = false
@@ -234,7 +234,7 @@ class SettingsScreenDeviceTest {
         compose.waitUntil(5_000) { !app.settings.current.value.allowCellularModelDownload }
 
         compose.onNodeWithText("Cloud transcription").performScrollTo().performClick()
-        compose.onNodeWithText("Download models on cellular data too").assertDoesNotExist()
+        compose.onNodeWithText("Download models on cellular data too").performScrollTo().assertExists()
     }
 
     @Test
