@@ -180,7 +180,7 @@ class OnboardingDeviceTest {
     @Test
     fun aFirstLaunchWalksThroughTheIPhonesPagesKeepsHerNameAndStartBeginsTheCaptions() {
         compose.onNodeWithText("Live captions for conversation.").assertExists()
-        compose.onNodeWithText("It all happens on the phone. Nothing is sent to the internet.").assertExists()
+        compose.onNodeWithText("By default it all happens on the phone.").assertExists()
         compose.onNodeWithText("Next").performClick()
         compose.onNodeWithText("How it works").assertExists()
         compose.onNodeWithText("Next").performClick()

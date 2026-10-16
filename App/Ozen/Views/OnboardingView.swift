@@ -107,7 +107,7 @@ struct OnboardingView: View {
             if viewModel.settings.engine == .homeServer {
                 Text(tr("הקול נשלח רק למחשב של המשפחה בבית, ורק בזמן שהכתוביות פועלות.", "The audio goes only to the family’s computer at home, and only while captions are on."))
             } else if !viewModel.settings.audioLeavesPhone {
-                Text(tr("הכל קורה בתוך הטלפון. שום דבר לא נשלח לאינטרנט.", "It all happens on the phone. Nothing is sent to the internet."))
+                Text(tr("כברירת מחדל, הכל קורה בתוך הטלפון.", "By default it all happens on the phone."))
             }
         }
     }
