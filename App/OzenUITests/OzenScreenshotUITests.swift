@@ -794,8 +794,9 @@ final class OzenScreenshotUITests: XCTestCase {
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
         XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore: the type to speak button never appeared")
         let revealControls = app.descendants(matching: .any)["showControlsButton"]
-        for _ in 0..<5 where !typeToSpeakButton.isHittable {
+        for _ in 0..<5 where !typeToSpeakButton.isHittable || typeToSpeakButton.frame.midY > app.windows.firstMatch.frame.maxY - 60 {
             if revealControls.exists { revealControls.tap() }
+            bringOffBottomEdge(app, typeToSpeakButton)
             Thread.sleep(forTimeInterval: 1)
         }
         typeToSpeakButton.tap()
@@ -835,8 +836,9 @@ final class OzenScreenshotUITests: XCTestCase {
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
         XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore room: the type to speak button never appeared")
         let revealControls = app.descendants(matching: .any)["showControlsButton"]
-        for _ in 0..<5 where !typeToSpeakButton.isHittable {
+        for _ in 0..<5 where !typeToSpeakButton.isHittable || typeToSpeakButton.frame.midY > app.windows.firstMatch.frame.maxY - 60 {
             if revealControls.exists { revealControls.tap() }
+            bringOffBottomEdge(app, typeToSpeakButton)
             Thread.sleep(forTimeInterval: 1)
         }
         typeToSpeakButton.tap()
