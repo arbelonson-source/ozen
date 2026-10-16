@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import android.os.ParcelFileDescriptor
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -14,6 +15,7 @@ import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
+import java.io.File
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -126,6 +128,63 @@ class PhoneModelSettingsDeviceTest {
         } finally {
             instrumentation.uiAutomation.setRotation(android.view.Surface.ROTATION_0)
             shell("settings put system font_scale 1.0")
+        }
+    }
+
+    @Test
+    fun aModelOnThePhoneCanBeDeletedAfterConfirmingButTheOneInUseCannot() {
+        val inUse = File(app.filesDir, "ggml-ozen-a3-q5_0.bin").also { it.writeBytes(ByteArray(10)) }
+        val other = File(app.filesDir, "ggml-base-q5_1.bin").also { it.writeBytes(ByteArray(10)) }
+        try {
+            openSection()
+            compose.onNodeWithTag("phone-model-ggml-base-q5_1.bin").performScrollTo().assertExists()
+            assertTrue(compose.onAllNodesWithTag("phone-model-delete-ggml-ozen-a3-q5_0.bin").fetchSemanticsNodes().isEmpty())
+            compose.onNodeWithTag("phone-model-delete-ggml-base-q5_1.bin").performScrollTo().performClick()
+            compose.onNodeWithText("It can be downloaded again anytime.").assertExists()
+            compose.onNodeWithTag("phone-model-delete-confirm").performClick()
+            compose.waitUntil(5_000) { !other.exists() }
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("phone-model-delete-ggml-base-q5_1.bin").fetchSemanticsNodes().isEmpty() }
+            assertTrue(inUse.exists())
+        } finally {
+            inUse.delete()
+            other.delete()
+        }
+    }
+
+    @Test
+    fun aHebrewOnlyModelOnThePhoneStaysListedInEnglishWithDeleteButCannotBeChosen() {
+        app.settings.change { it.languageCode = "en" }
+        val hebrewOnly = PhoneModelCatalog.all.first { it.isHebrewOnly }.file
+        val file = File(app.filesDir, hebrewOnly).also { it.writeBytes(ByteArray(10)) }
+        try {
+            openSection()
+            compose.onNodeWithTag("phone-model-" + hebrewOnly).performScrollTo().assertExists()
+            compose.onNodeWithTag("phone-model-hebrew-only-note-" + hebrewOnly, useUnmergedTree = true).assertExists()
+            compose.onNodeWithTag("phone-model-" + hebrewOnly).performClick()
+            compose.waitForIdle()
+            assertTrue(app.settings.current.value.phoneModelFile != hebrewOnly)
+            compose.onNodeWithTag("phone-model-delete-" + hebrewOnly).performScrollTo().performClick()
+            compose.onNodeWithTag("phone-model-delete-confirm").performClick()
+            compose.waitUntil(5_000) { !file.exists() }
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("phone-model-" + hebrewOnly).fetchSemanticsNodes().isEmpty() }
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun aLeftoverPartialDownloadIsListedWithItsSizeAndCanBeDeleted() {
+        val part = File(app.filesDir, "ggml-base-q5_1.bin.part").also { it.writeBytes(ByteArray(2048)) }
+        try {
+            openSection()
+            compose.onNodeWithTag("phone-model-ggml-base-q5_1.bin").performScrollTo().assertExists()
+            compose.onNodeWithText("Unfinished download", substring = true).performScrollTo().assertExists()
+            compose.onNodeWithTag("phone-model-delete-ggml-base-q5_1.bin").performScrollTo().performClick()
+            compose.onNodeWithTag("phone-model-delete-confirm").performClick()
+            compose.waitUntil(5_000) { !part.exists() }
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("phone-model-delete-ggml-base-q5_1.bin").fetchSemanticsNodes().isEmpty() }
+        } finally {
+            part.delete()
         }
     }
 }

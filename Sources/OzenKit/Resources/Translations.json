@@ -899,7 +899,9 @@
   "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings.": "ዝርዝሩ በዚህ የስልክ ሞዴል ላይ እንደሚሠሩ በሚታወቁ ሞዴሎች ላይ የተመሠረተ ነው። ንዑስ ርዕሶች ለአንድ ደቂቃ ያህል ከሠሩ በኋላ፣ እውነተኛ የጊዜ ልኬቶችን ለመጨመር እንደገና ይሞክሩ።",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.": "ለመጀመሪያ ጊዜ ሲሠራ፣ Ozen የንግግር ሞዴሉን (%1) ያወርዳል። ይህ ጥቂት ደቂቃዎችን ይወስዳል እና በስክሪኑ ላይ ይታያል። ከዚያ በኋላ — ወዲያውኑ።",
   "Accurate (recommended)": "ትክክለኛ (የሚመከር)",
-  "Accurate Hebrew (recommended)": "ትክክለኛ ዕብራይስጥ (የሚመከር)"
+  "Accurate Hebrew (recommended)": "ትክክለኛ ዕብራይስጥ (የሚመከር)",
+  "Unfinished download, %1 on the phone": "ያልተጠናቀቀ ማውረድ፣ %1 ስልኩ ላይ አለ",
+  "For Hebrew only, so it can't be chosen in this language.": "ለዕብራይስጥ ብቻ ነው፣ ስለዚህ በዚህ ቋንቋ መምረጥ አይቻልም።"
  },
  "arabic": {
   " Conversations with a starred line or a name are always kept.": " المحادثات التي فيها سطر مميز بنجمة أو اسم تبقى محفوظة دائمًا.",
@@ -1801,7 +1803,9 @@
   "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings.": "تستند القائمة إلى النماذج المعروف أنها تعمل على هذا الطراز من الهواتف. بعد أن تعمل الترجمة النصية نحو دقيقة، أعد الاختبار لإضافة قياسات زمنية حقيقية.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.": "عند أول تشغيل، سيُنزّل Ozen نموذج الكلام (%1). يأخذ ذلك بضع دقائق ويظهر على الشاشة. بعدها — فورًا.",
   "Accurate (recommended)": "دقيق (موصى به)",
-  "Accurate Hebrew (recommended)": "عبرية دقيقة (موصى به)"
+  "Accurate Hebrew (recommended)": "عبرية دقيقة (موصى به)",
+  "Unfinished download, %1 on the phone": "تنزيل غير مكتمل، %1 على الهاتف",
+  "For Hebrew only, so it can't be chosen in this language.": "للعبرية فقط، لذا لا يمكن اختياره بهذه اللغة."
  },
  "chineseSimplified": {
   " Conversations with a starred line or a name are always kept.": " 有星标或姓名的对话会一直保留。",
@@ -2703,7 +2707,9 @@
   "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings.": "此列表依据已知能在这款手机型号上运行的模型。字幕运行约一分钟后，再测试一次，即可加入真实的耗时测量。",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.": "第一次运行时，Ozen 会下载语音模型（%1）。这需要几分钟，屏幕上会显示进度。之后——立即可用。",
   "Accurate (recommended)": "准确（推荐）",
-  "Accurate Hebrew (recommended)": "准确的希伯来语（推荐）"
+  "Accurate Hebrew (recommended)": "准确的希伯来语（推荐）",
+  "Unfinished download, %1 on the phone": "未完成的下载，手机上占用 %1",
+  "For Hebrew only, so it can't be chosen in this language.": "仅适用于希伯来语，因此无法在此语言下选择。"
  },
  "french": {
   " Conversations with a starred line or a name are always kept.": " Les conversations avec une ligne marquée d’une étoile ou un nom sont toujours conservées.",
@@ -3605,7 +3611,9 @@
   "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings.": "La liste repose sur les modèles connus pour fonctionner sur ce modèle de téléphone. Après environ une minute de sous-titres, testez à nouveau pour ajouter de vraies mesures de temps.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.": "La première fois, Ozen téléchargera le modèle vocal (%1). Cela prend quelques minutes et s’affiche à l’écran. Ensuite — instantanément.",
   "Accurate (recommended)": "Précis (recommandé)",
-  "Accurate Hebrew (recommended)": "Hébreu précis (recommandé)"
+  "Accurate Hebrew (recommended)": "Hébreu précis (recommandé)",
+  "Unfinished download, %1 on the phone": "Téléchargement inachevé, %1 sur le téléphone",
+  "For Hebrew only, so it can't be chosen in this language.": "Réservé à l'hébreu, il ne peut donc pas être choisi dans cette langue."
  },
  "german": {
   " Conversations with a starred line or a name are always kept.": " Gespräche mit einer markierten Zeile oder einem Namen bleiben immer erhalten.",
@@ -4507,7 +4515,9 @@
   "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings.": "Die Liste beruht darauf, welche Modelle bekanntermaßen auf diesem Telefonmodell laufen. Nachdem die Untertitel etwa eine Minute gelaufen sind, testen Sie erneut, um echte Zeitmessungen hinzuzufügen.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.": "Beim ersten Ausführen lädt Ozen das Sprachmodell (%1) herunter. Das dauert ein paar Minuten und wird auf dem Bildschirm angezeigt. Danach — sofort.",
   "Accurate (recommended)": "Genau (empfohlen)",
-  "Accurate Hebrew (recommended)": "Genaues Hebräisch (empfohlen)"
+  "Accurate Hebrew (recommended)": "Genaues Hebräisch (empfohlen)",
+  "Unfinished download, %1 on the phone": "Unvollständiger Download, %1 auf dem Telefon",
+  "For Hebrew only, so it can't be chosen in this language.": "Nur für Hebräisch, daher in dieser Sprache nicht wählbar."
  },
  "hindi": {
   " Conversations with a starred line or a name are always kept.": " जिस बातचीत में तारांकित लाइन या नाम हो, वह हमेशा रखी जाती है।",
@@ -5409,7 +5419,9 @@
   "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings.": "यह सूची उन मॉडलों पर आधारित है जिनके इस फ़ोन मॉडल पर चलने की जानकारी है। कैप्शन करीब एक मिनट चल लेने के बाद, असली समय की माप जोड़ने के लिए दोबारा जाँचें।",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.": "पहली बार चलने पर, Ozen बोली पहचान मॉडल (%1) डाउनलोड करेगा। इसमें कुछ मिनट लगते हैं और यह स्क्रीन पर दिखता है। उसके बाद — तुरंत।",
   "Accurate (recommended)": "सटीक (सुझाया गया)",
-  "Accurate Hebrew (recommended)": "सटीक हिब्रू (सुझाया गया)"
+  "Accurate Hebrew (recommended)": "सटीक हिब्रू (सुझाया गया)",
+  "Unfinished download, %1 on the phone": "अधूरा डाउनलोड, फ़ोन में %1",
+  "For Hebrew only, so it can't be chosen in this language.": "यह सिर्फ़ हिब्रू के लिए है, इसलिए इस भाषा में इसे चुना नहीं जा सकता।"
  },
  "portuguese": {
   " Conversations with a starred line or a name are always kept.": " As conversas com uma linha assinalada ou um nome são sempre mantidas.",
@@ -6311,7 +6323,9 @@
   "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings.": "A lista baseia-se nos modelos que se sabe funcionarem neste modelo de telemóvel. Depois de as legendas funcionarem cerca de um minuto, teste novamente para acrescentar medições de tempo reais.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.": "Na primeira vez que corre, o Ozen vai transferir o modelo de voz (%1). Isto demora alguns minutos e aparece no ecrã. Depois disso — instantâneo.",
   "Accurate (recommended)": "Preciso (recomendado)",
-  "Accurate Hebrew (recommended)": "Hebraico preciso (recomendado)"
+  "Accurate Hebrew (recommended)": "Hebraico preciso (recomendado)",
+  "Unfinished download, %1 on the phone": "Transferência incompleta, %1 no telemóvel",
+  "For Hebrew only, so it can't be chosen in this language.": "Apenas para hebraico, por isso não pode ser escolhido neste idioma."
  },
  "russian": {
   " Conversations with a starred line or a name are always kept.": " Разговоры с отмеченной строкой или именем всегда сохраняются.",
@@ -7213,7 +7227,9 @@
   "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings.": "Список основан на моделях, которые, как известно, работают на этой модели телефона. После того как субтитры проработают около минуты, проверьте ещё раз, чтобы добавить реальные замеры времени.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.": "При первом запуске Ozen загрузит речевую модель (%1). Это займёт несколько минут и отобразится на экране. После этого — мгновенно.",
   "Accurate (recommended)": "Точная (рекомендуется)",
-  "Accurate Hebrew (recommended)": "Точный иврит (рекомендуется)"
+  "Accurate Hebrew (recommended)": "Точный иврит (рекомендуется)",
+  "Unfinished download, %1 on the phone": "Незавершённая загрузка, %1 на телефоне",
+  "For Hebrew only, so it can't be chosen in this language.": "Только для иврита, поэтому в этом языке его нельзя выбрать."
  },
  "spanish": {
   " Conversations with a starred line or a name are always kept.": " Las conversaciones con una línea marcada o un nombre siempre se conservan.",
@@ -8115,7 +8131,9 @@
   "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings.": "La lista se basa en los modelos que se sabe que funcionan en este modelo de teléfono. Después de que los subtítulos hayan funcionado un minuto aproximadamente, prueba de nuevo para añadir tiempos reales.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.": "La primera vez, Ozen descargará el modelo de voz (%1). Esto tarda unos minutos y se muestra en pantalla. Después — al instante.",
   "Accurate (recommended)": "Preciso (recomendado)",
-  "Accurate Hebrew (recommended)": "Hebreo preciso (recomendado)"
+  "Accurate Hebrew (recommended)": "Hebreo preciso (recomendado)",
+  "Unfinished download, %1 on the phone": "Descarga sin terminar, %1 en el teléfono",
+  "For Hebrew only, so it can't be chosen in this language.": "Solo para hebreo, así que no se puede elegir en este idioma."
  },
  "ukrainian": {
   " Conversations with a starred line or a name are always kept.": " Розмови з позначеним рядком або іменем завжди зберігаються.",
@@ -9012,6 +9030,8 @@
   "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings.": "Список ґрунтується на моделях, які, як відомо, працюють на цій моделі телефона. Коли субтитри попрацюють приблизно хвилину, перевірте ще раз, щоб додати справжні виміри часу.",
   "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.": "Під час першого запуску Ozen завантажить мовну модель (%1). Це триватиме кілька хвилин і відображатиметься на екрані. Після цього — миттєво.",
   "Accurate (recommended)": "Точна (рекомендовано)",
-  "Accurate Hebrew (recommended)": "Точний іврит (рекомендовано)"
+  "Accurate Hebrew (recommended)": "Точний іврит (рекомендовано)",
+  "Unfinished download, %1 on the phone": "Незавершене завантаження, %1 на телефоні",
+  "For Hebrew only, so it can't be chosen in this language.": "Лише для івриту, тож у цій мові його не можна вибрати."
  }
 }
