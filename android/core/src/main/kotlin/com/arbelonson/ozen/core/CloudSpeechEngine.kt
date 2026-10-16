@@ -77,6 +77,11 @@ class CloudSpeechEngine(
 
     override suspend fun prepare(languageCode: String, progress: (EnginePreparationProgress) -> Unit): EngineAvailability {
         progress(EnginePreparationProgress(EnginePreparationProgress.Stage.CheckingSupport))
+        if (!provider.covers(languageCode)) {
+            return EngineAvailability.Unavailable(
+                EngineUnavailability(EngineUnavailability.Kind.CloudLanguageNotCovered, "the cloud service does not know this language"),
+            )
+        }
         val key = currentKey() ?: return EngineAvailability.Unavailable(CloudSpeechError.KeyMissing.unavailability)
         if (isApproved(key)) return EngineAvailability.Available
         val response = try {
@@ -100,7 +105,7 @@ class CloudSpeechEngine(
     }
 
     override fun stream(languageCode: String, audio: Flow<FloatArray>): Flow<TranscriptToken> =
-        tokenFlow { tokens -> run(languageCode, audio, tokens) }
+        tokenFlow { tokens -> run(plainCode(languageCode), audio, tokens) }
 
     private fun currentKey(): String? {
         val key = apiKey()?.let { trimmingWhitespaceAndNewlines(it) }

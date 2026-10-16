@@ -7,6 +7,7 @@ object CloudCover {
         return when (kind) {
             EngineUnavailability.Kind.CloudKeyNeeded,
             EngineUnavailability.Kind.CloudOutOfCredit,
+            EngineUnavailability.Kind.CloudLanguageNotCovered,
             EngineUnavailability.Kind.NoInternet,
             EngineUnavailability.Kind.HomeServerUnreachable,
             EngineUnavailability.Kind.HomeServerRejected,

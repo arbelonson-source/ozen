@@ -168,7 +168,9 @@ class StoppedCaptionsNoticeTest {
         // Opening the app doesn't wake the computer; captions come back by
         // themselves once it answers.
         assertTrue(computer.contains("אין תשובה מהמחשב"))
-        assertEquals(9, setOf(callEnded, permission, storage, noMic, other, cloudKey, cloudCredit, offline, computer).size)
+        val language = StoppedCaptionsNotice.content(failed(engineFailure(EngineUnavailability.Kind.CloudLanguageNotCovered))).body
+        assertEquals("השירות הזה לא מתמלל את השפה הזו. פתחו את אוזן ובחרו שירות אחר.", language)
+        assertEquals(10, setOf(callEnded, permission, storage, noMic, other, cloudKey, cloudCredit, offline, computer, language).size)
     }
 
     @Test

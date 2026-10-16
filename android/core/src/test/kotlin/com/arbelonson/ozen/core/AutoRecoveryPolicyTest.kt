@@ -25,6 +25,7 @@ class AutoRecoveryPolicyTest {
         assertEquals(S.LoadFailure, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.ModelLoadFailed)))
         assertEquals(S.Never, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.CloudKeyNeeded)))
         assertEquals(S.Never, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.CloudOutOfCredit)))
+        assertEquals(S.Never, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.CloudLanguageNotCovered)))
         assertEquals(S.Glitch, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.NoInternet)))
     }
 

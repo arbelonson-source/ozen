@@ -62,6 +62,7 @@ data class PipelineFailure(
                 EngineUnavailability.Kind.WaitingForWiFi,
                 EngineUnavailability.Kind.CloudKeyNeeded,
                 EngineUnavailability.Kind.CloudOutOfCredit,
+                EngineUnavailability.Kind.CloudLanguageNotCovered,
                 EngineUnavailability.Kind.HomeServerRejected,
                 EngineUnavailability.Kind.TemporarilyUnavailable,
                 EngineUnavailability.Kind.Other,
