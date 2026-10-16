@@ -4,7 +4,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -40,6 +43,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -175,6 +179,7 @@ fun HistoryScreen(
     emphasizeNumbers: Boolean,
     onClose: () -> Unit,
     languageCode: String = "he",
+    onTranscribe: ((Uri) -> Unit)? = null,
 ) {
     var openID by rememberSaveable { mutableStateOf<String?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -194,6 +199,7 @@ fun HistoryScreen(
         return
     }
     BackHandler(onBack = onClose)
+    val pickRecording = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked -> picked?.let { onTranscribe?.invoke(it) } }
     var reloads by remember { mutableIntStateOf(0) }
     val searching = query.isNotBlank()
     // Every search reads every saved conversation, so it waits for a pause
@@ -266,6 +272,19 @@ fun HistoryScreen(
             ) {
                 item(key = "search") {
                     SearchField(query, onChange = { query = it })
+                }
+                if (onTranscribe != null && !searching) item(key = "transcribe") {
+                    SettingsGroup(dividerInset = 56.dp, modifier = Modifier.padding(horizontal = 16.dp)) {
+                        item {
+                            SettingRow(
+                                tr("המרת הקלטה לטקסט", "Transcribe a recording"),
+                                icon = Icons.Rounded.UploadFile,
+                                subtitle = tr("הודעה קולית, הרצאה או סרטון. ההקלטה נשארת בטלפון.", "A voice note, lecture or video. The recording stays on this phone."),
+                                onClick = { pickRecording.launch(arrayOf("audio/*", "video/*")) },
+                                modifier = Modifier.testTag("history-transcribe"),
+                            )
+                        }
+                    }
                 }
                 // A chosen name keeps filtering while she searches, so its
                 // chip stays too: hidden, it would drop every other

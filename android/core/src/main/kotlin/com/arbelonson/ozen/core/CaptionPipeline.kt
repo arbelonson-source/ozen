@@ -912,6 +912,11 @@ class CaptionPipeline(
         dropEngines()
     }
 
+    /** Gives the loaded speech model back while captions are not running, so a recording can be transcribed with its own copy. */
+    fun releaseModels() {
+        if (!phase.isListening && !phase.isTransitioning) dropEngines()
+    }
+
     /**
      * The system is short of memory and ends the biggest apps first; a loaded
      * speech model makes this one of the biggest. The warning goes in the

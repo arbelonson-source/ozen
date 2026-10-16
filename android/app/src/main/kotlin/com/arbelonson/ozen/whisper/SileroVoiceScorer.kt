@@ -14,6 +14,9 @@ class SileroVoiceScorer private constructor(private var handle: Long) : AutoClos
     }
 
     @Synchronized
+    fun frames(input: FloatArray): FloatArray? = if (handle == 0L) null else WhisperCpp.vadFrames(handle, input)
+
+    @Synchronized
     fun reset() {
         if (handle != 0L) WhisperCpp.vadReset(handle)
     }
