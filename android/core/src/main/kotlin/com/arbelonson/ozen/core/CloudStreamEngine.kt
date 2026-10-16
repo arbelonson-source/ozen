@@ -147,7 +147,7 @@ class CloudStreamEngine(
     }
 
     override fun stream(languageCode: String, audio: Flow<FloatArray>): Flow<TranscriptToken> =
-        tokenFlow { tokens -> run(languageCode, audio, tokens) }
+        tokenFlow { tokens -> run(plainCode(languageCode), audio, tokens) }
 
     private fun currentKey(): String? {
         val key = apiKey()?.let { trimmingWhitespaceAndNewlines(it) }

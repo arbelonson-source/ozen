@@ -46,14 +46,14 @@ enum class CloudProvider(val rawValue: String) {
     val keychainService: String
         get() = if (this == OpenRouter) "com.arbelonson.ozen.openrouter" else "com.arbelonson.ozen.cloud.$rawValue"
 
-    fun covers(languageCode: String): Boolean = when (this) {
-        Soniox -> languageCode in SonioxSpeech.languages
-        Deepgram -> languageCode in DeepgramSpeech.languages
-        Gemini -> GeminiSpeech.languageTags[languageCode] != null
-        Speechmatics -> SpeechmaticsSpeech.languages[languageCode] != null
-        AssemblyAI -> languageCode in AssemblyAISpeech.languages
+    fun covers(languageCode: String): Boolean = plainCode(languageCode).let { code -> when (this) {
+        Soniox -> code in SonioxSpeech.languages
+        Deepgram -> code in DeepgramSpeech.languages
+        Gemini -> GeminiSpeech.languageTags[code] != null
+        Speechmatics -> SpeechmaticsSpeech.languages[code] != null
+        AssemblyAI -> code in AssemblyAISpeech.languages
         OpenAI, Groq, ElevenLabs, OpenRouter -> true
-    }
+    } }
 
     val streams: Boolean
         get() = this == Soniox || this == Speechmatics || this == AssemblyAI
@@ -124,3 +124,5 @@ enum class CloudProvider(val rawValue: String) {
     fun hasCreditLeft(keyCheck: CloudHTTPResponse): Boolean =
         if (this == OpenRouter) CloudSpeech.hasCreditLeft(keyCheck) else true
 }
+
+internal fun plainCode(languageCode: String): String = UILanguage.match(languageCode)?.languageCode ?: languageCode
