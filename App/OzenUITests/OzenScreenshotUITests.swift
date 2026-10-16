@@ -793,13 +793,7 @@ final class OzenScreenshotUITests: XCTestCase {
 
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
         XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore: the type to speak button never appeared")
-        let revealControls = app.descendants(matching: .any)["showControlsButton"]
-        for _ in 0..<5 where !typeToSpeakButton.isHittable || typeToSpeakButton.frame.midY > app.windows.firstMatch.frame.maxY - 60 {
-            if revealControls.exists { revealControls.tap() }
-            bringOffBottomEdge(app, typeToSpeakButton)
-            Thread.sleep(forTimeInterval: 1)
-        }
-        typeToSpeakButton.tap()
+        tapTypeToSpeakWhenReachable(app, typeToSpeakButton, "restore")
         let field = app.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 10), "restore: the field never appeared")
         field.tap()
@@ -835,13 +829,7 @@ final class OzenScreenshotUITests: XCTestCase {
 
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
         XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore room: the type to speak button never appeared")
-        let revealControls = app.descendants(matching: .any)["showControlsButton"]
-        for _ in 0..<5 where !typeToSpeakButton.isHittable || typeToSpeakButton.frame.midY > app.windows.firstMatch.frame.maxY - 60 {
-            if revealControls.exists { revealControls.tap() }
-            bringOffBottomEdge(app, typeToSpeakButton)
-            Thread.sleep(forTimeInterval: 1)
-        }
-        typeToSpeakButton.tap()
+        tapTypeToSpeakWhenReachable(app, typeToSpeakButton, "restore room")
         let composerScreen = app.descendants(matching: .any)["typeToSpeakScreen"]
         XCTAssertTrue(composerScreen.waitForExistence(timeout: 10), "restore room: the type to speak screen never appeared")
         capture(app, name: "big-text-restore-room-composer")
@@ -1168,6 +1156,26 @@ final class OzenScreenshotUITests: XCTestCase {
         let from = app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.8))
         let to = app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.2))
         from.press(forDuration: 0, thenDragTo: to, withVelocity: .fast, thenHoldForDuration: 0)
+    }
+
+    private func tapTypeToSpeakWhenReachable(_ app: XCUIApplication, _ button: XCUIElement, _ prefix: String) {
+        let revealControls = app.descendants(matching: .any)["showControlsButton"]
+        let windowBottom = app.windows.firstMatch.frame.maxY
+        var reachable = false
+        for _ in 0..<20 {
+            if button.exists, button.isHittable, button.frame.midY <= windowBottom - 60 {
+                reachable = true
+                break
+            }
+            if revealControls.exists, revealControls.isHittable { revealControls.tap() }
+            if button.exists { bringOffBottomEdge(app, button) }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        guard reachable else {
+            XCTFail("\(prefix): the type to speak button never became hittable on screen")
+            return
+        }
+        button.tap()
     }
 
     private func bringOffBottomEdge(_ app: XCUIApplication, _ element: XCUIElement) {
