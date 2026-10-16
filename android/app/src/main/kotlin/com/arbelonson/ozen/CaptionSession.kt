@@ -57,6 +57,7 @@ import com.arbelonson.ozen.core.StorageSpaceGate
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
+import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngine
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
@@ -444,6 +445,25 @@ class CaptionSession(
     }
 
     fun dismissRecentConversation() = CaptionState.recentConversation(null)
+
+    internal val modelDirectory: File get() = modelFolder
+
+    internal fun captionsActive(): Boolean = pipeline.phase.isListening || pipeline.phase.isTransitioning
+
+    internal fun stopCaptionsForRecording() {
+        replies.userTookControl()
+        pipeline.stopFromNotification()
+        pipeline.releaseModels()
+    }
+
+    internal fun releaseModelForRecording() = pipeline.releaseModels()
+
+    /** A transcribed recording goes into History like a conversation, unless the reader has turned saving off. */
+    internal fun saveRecording(record: TranscriptSessionRecord): Boolean {
+        if (!settings.current.value.saveHistory) return false
+        conversations.saveRecording(record)
+        return conversations.lastSaveFailure == null
+    }
 
     fun listen() {
         replies.userTookControl()

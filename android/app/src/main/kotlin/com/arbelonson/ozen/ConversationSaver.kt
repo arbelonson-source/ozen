@@ -161,6 +161,8 @@ class ConversationSaver(
 
     val lastSaveFailure: String? get() = writer.lastFailure
 
+    fun saveRecording(record: TranscriptSessionRecord) = writer.saveNow(record)
+
     /** Deletes what the retention setting says has expired, now, after any save in flight. */
     suspend fun deleteExpired(now: Double = this.now()): Int {
         lastRetentionCheck = now
