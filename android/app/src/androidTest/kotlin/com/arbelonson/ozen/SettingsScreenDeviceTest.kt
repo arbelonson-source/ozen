@@ -927,6 +927,9 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText(title).assertExists()
         compose.activityRule.scenario.recreate()
         compose.onNodeWithText(title).assertExists()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(title).fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText(title).assertDoesNotExist()
     }
 
     @Test
@@ -967,7 +970,6 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Settings").performClick()
         compose.onNodeWithText("Show the initial walkthrough again").performScrollTo().performClick()
         assertQuestionSurvivesTurning("Show the initial walkthrough again?")
-        compose.onNodeWithText("Cancel").performClick()
         compose.onNodeWithText("Clear captions from the screen").performScrollTo().performClick()
         assertQuestionSurvivesTurning("Delete all captions from the screen?")
     }

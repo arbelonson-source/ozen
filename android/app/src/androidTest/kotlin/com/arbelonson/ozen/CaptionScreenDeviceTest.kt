@@ -526,6 +526,8 @@ class CaptionScreenDeviceTest {
         compose.waitForIdle()
         compose.onNodeWithText("Problem marked").assertExists()
         compose.onNodeWithText("OK").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Problem marked").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("Problem marked").assertDoesNotExist()
     }
 
     @Test
