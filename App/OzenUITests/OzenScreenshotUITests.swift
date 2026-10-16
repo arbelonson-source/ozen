@@ -793,6 +793,11 @@ final class OzenScreenshotUITests: XCTestCase {
 
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
         XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore: the type to speak button never appeared")
+        let revealControls = app.descendants(matching: .any)["showControlsButton"]
+        for _ in 0..<5 where !typeToSpeakButton.isHittable {
+            if revealControls.exists { revealControls.tap() }
+            Thread.sleep(forTimeInterval: 1)
+        }
         typeToSpeakButton.tap()
         let field = app.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 10), "restore: the field never appeared")
@@ -829,6 +834,11 @@ final class OzenScreenshotUITests: XCTestCase {
 
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
         XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore room: the type to speak button never appeared")
+        let revealControls = app.descendants(matching: .any)["showControlsButton"]
+        for _ in 0..<5 where !typeToSpeakButton.isHittable {
+            if revealControls.exists { revealControls.tap() }
+            Thread.sleep(forTimeInterval: 1)
+        }
         typeToSpeakButton.tap()
         let composerScreen = app.descendants(matching: .any)["typeToSpeakScreen"]
         XCTAssertTrue(composerScreen.waitForExistence(timeout: 10), "restore room: the type to speak screen never appeared")
