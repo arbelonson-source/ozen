@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelDeletion
 import com.arbelonson.ozen.core.ReleaseFileFetching
@@ -28,24 +29,30 @@ class PhoneModelChooserDeleteTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val entered = CountDownLatch(1)
     private val release = CountDownLatch(1)
+    private val fetching = CountDownLatch(1)
+    private val holdFetch = CountDownLatch(1)
     private val target = "ggml-small-q5_1.bin"
     private val keep = "ggml-base-q5_1.bin"
 
     private val fetcher = object : ReleaseFileFetching {
-        override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) = Unit
+        override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
+            fetching.countDown()
+            holdFetch.await(10, TimeUnit.SECONDS)
+            throw java.io.IOException("test download stopped")
+        }
 
         override fun sha256(file: File): String = ""
     }
 
-    private fun chooser(): PhoneModelChooser {
-        File(models, target).writeBytes(ByteArray(4))
+    private fun chooser(targetWhole: Boolean = true): PhoneModelChooser {
+        if (targetWhole) File(models, target).writeBytes(ByteArray(4))
         File(models, keep).writeBytes(ByteArray(4))
         settings.change { it.phoneModelFile = keep }
         return PhoneModelChooser(
             settings = settings,
             modelFolder = models,
             fetcher = { fetcher },
-            network = { null },
+            network = { NetworkConditions.wifi },
             freeSpace = { 100_000_000_000 },
             scope = scope,
             measure = { null },
@@ -61,6 +68,7 @@ class PhoneModelChooserDeleteTest {
     @AfterTest
     fun cleanUp() {
         release.countDown()
+        holdFetch.countDown()
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         folder.deleteRecursively()
     }
@@ -96,5 +104,26 @@ class PhoneModelChooserDeleteTest {
         while (target in chooser.installed.value && System.nanoTime() < deadline) Thread.sleep(5)
         assertFalse(File(models, target).exists())
         assertEquals(setOf(keep), chooser.installed.value)
+    }
+
+    @Test
+    fun `a leftover part file is listed with its size and deleting it removes it`() = runBlocking {
+        File(models, "$target.part").writeBytes(ByteArray(6))
+        val chooser = chooser(targetWhole = false)
+        assertEquals(mapOf(target to 6L), chooser.partial.value)
+        release.countDown()
+        assertEquals(PhoneModelDeletion.Result.Freed(6), chooser.delete(target))
+        assertFalse(File(models, "$target.part").exists())
+        assertTrue(chooser.partial.value.isEmpty())
+    }
+
+    @Test
+    fun `a leftover cannot be deleted while that model is downloading`() = runBlocking {
+        File(models, "$target.part").writeBytes(ByteArray(6))
+        val chooser = chooser(targetWhole = false)
+        chooser.choose(target)
+        assertTrue(fetching.await(10, TimeUnit.SECONDS))
+        assertEquals(PhoneModelDeletion.Result.Refused, chooser.delete(target))
+        assertTrue(File(models, "$target.part").exists())
     }
 }

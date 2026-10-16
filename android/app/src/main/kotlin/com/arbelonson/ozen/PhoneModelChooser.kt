@@ -9,6 +9,8 @@ import com.arbelonson.ozen.core.PhoneModelChoice
 import com.arbelonson.ozen.core.PhoneModelDeletion
 import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PhoneModelEstimate
+import com.arbelonson.ozen.core.PhoneModelShelf
+import com.arbelonson.ozen.core.PhoneModelStorage
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.ReleaseFileFetching
@@ -30,6 +32,7 @@ interface PhoneModels {
     val switching: StateFlow<PhoneModelSwitch>
     val check: StateFlow<PhoneCheckState>
     val installed: StateFlow<Set<String>>
+    val partial: StateFlow<Map<String, Long>>
     val captionsBusy: StateFlow<Boolean>
     val totalMemoryBytes: Long?
 
@@ -67,6 +70,9 @@ class PhoneModelChooser(
     private val installedState = MutableStateFlow(onDisk())
     override val installed: StateFlow<Set<String>> = installedState
 
+    private val partialState = MutableStateFlow(leftovers())
+    override val partial: StateFlow<Map<String, Long>> = partialState
+
     override val totalMemoryBytes: Long? get() = totalMemory()
 
     private var picks = 0
@@ -75,8 +81,11 @@ class PhoneModelChooser(
 
     private fun onDisk(): Set<String> = PhoneModelCatalog.all.filter { File(modelFolder, it.file).isFile }.map { it.file }.toSet()
 
+    private fun leftovers(): Map<String, Long> = PhoneModelShelf.partials(PhoneModelStorage(modelFolder, "").list())
+
     override fun refreshInstalled() {
         installedState.value = onDisk()
+        partialState.value = leftovers()
     }
 
     override fun choose(file: String) {
@@ -97,7 +106,10 @@ class PhoneModelChooser(
     override suspend fun delete(file: String): PhoneModelDeletion.Result {
         return withContext(NonCancellable) {
             val result = withContext(io) {
-                synchronized(lock) { PhoneModelDeletion(modelFolder, settings.current.value.phoneModel.file, remove).delete(file) }
+                synchronized(lock) {
+                    if ((switchState.value as? PhoneModelSwitch.Downloading)?.file == file) PhoneModelDeletion.Result.Refused
+                    else PhoneModelDeletion(modelFolder, settings.current.value.phoneModel.file, remove).delete(file)
+                }
             }
             refreshInstalled()
             if (result is PhoneModelDeletion.Result.Freed && switchState.value is PhoneModelSwitch.NotEnoughRoom) switchState.value = PhoneModelSwitch.Idle

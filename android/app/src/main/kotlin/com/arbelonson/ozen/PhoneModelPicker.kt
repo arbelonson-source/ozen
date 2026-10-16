@@ -44,6 +44,7 @@ import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelDeletion
 import com.arbelonson.ozen.core.PhoneModelEstimate
 import com.arbelonson.ozen.core.PhoneModelFit
+import com.arbelonson.ozen.core.PhoneModelShelf
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
@@ -55,6 +56,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, chooseBestAfterTest: Boolean) {
     val installed by models.installed.collectAsStateWithLifecycle()
+    val partial by models.partial.collectAsStateWithLifecycle()
     val switching by models.switching.collectAsStateWithLifecycle()
     val check by models.check.collectAsStateWithLifecycle()
     val busy by models.captionsBusy.collectAsStateWithLifecycle()
@@ -66,9 +68,12 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         PhoneTest(check, tested = speed != null, captionsBusy = busy) { models.runCheck(chooseBestAfterTest) }
         SettingsGroup(modifier = Modifier.selectableGroup().testTag("phone-model-list")) {
-            for (model in PhoneModelCatalog.offered(language)) {
+            val hidden = PhoneModelShelf.notOffered(language, installed, partial)
+            val downloading = (switching as? PhoneModelSwitch.Downloading)?.file
+            for (model in PhoneModelCatalog.offered(language) + hidden) {
                 item {
-                    ModelRow(model, language, speed, memory, best, model.file == chosen, model.file in installed, model.file == settings.phoneModel.file, switching, onDelete = { models.delete(model.file) }) { models.choose(model.file) }
+                    val deletable = PhoneModelShelf.canDelete(model.file, installed, partial, model.file == settings.phoneModel.file, downloading)
+                    ModelRow(model, language, speed, memory, best, model.file == chosen, model.file in installed, partial[model.file], model !in hidden, deletable, switching, onDelete = { models.delete(model.file) }) { models.choose(model.file) }
                 }
             }
         }
@@ -128,7 +133,9 @@ private fun ModelRow(
     best: PhoneModel?,
     selected: Boolean,
     onPhone: Boolean,
-    inUse: Boolean,
+    leftoverBytes: Long?,
+    choosable: Boolean,
+    deletable: Boolean,
     switching: PhoneModelSwitch,
     onDelete: suspend () -> PhoneModelDeletion.Result,
     onSelect: () -> Unit,
@@ -147,7 +154,7 @@ private fun ModelRow(
         modifier = Modifier
             .weight(1f)
             .heightIn(min = 56.dp)
-            .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton)
+            .selectable(selected = selected, enabled = choosable, onClick = onSelect, role = Role.RadioButton)
             .testTag("phone-model-" + model.file)
             .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -159,17 +166,21 @@ private fun ModelRow(
             val place = when {
                 progress != null -> tr("מוריד… %1%", "Downloading… %1%", listOf("${(progress.fraction * 100).toInt()}"))
                 onPhone -> tr("כבר בטלפון", "Already on the phone")
+                leftoverBytes != null -> tr("הורדה שלא הושלמה, %1 בטלפון", "Unfinished download, %1 on the phone", listOf(ByteSize.text(leftoverBytes)))
                 else -> tr("הורדה של %1", "Download of %1", listOf(ByteSize.text(model.bytes)))
             }
-            val hebrewOnly = if (model.isHebrewOnly) " · " + tr("עברית בלבד", "Hebrew only") else ""
+            val hebrewOnly = if (model.isHebrewOnly && choosable) " · " + tr("עברית בלבד", "Hebrew only") else ""
             Text(place + hebrewOnly, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!choosable) {
+                Text(tr("מתאים לעברית בלבד, ולכן אי אפשר לבחור בו בשפה הזו.", "For Hebrew only, so it can't be chosen in this language."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("phone-model-hebrew-only-note-" + model.file))
+            }
             Text(model.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Rating(if (language == UILanguage.Hebrew) tr("עברית", "Hebrew") else tr("דיוק", "Accuracy"), model.quality(language))
-            speed?.let { FitLabel(PhoneModelEstimate.fit(model, it, memory)) }
+            if (choosable) Rating(if (language == UILanguage.Hebrew) tr("עברית", "Hebrew") else tr("דיוק", "Accuracy"), model.quality(language))
+            if (choosable) speed?.let { FitLabel(PhoneModelEstimate.fit(model, it, memory)) }
         }
-        RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(12.dp))
+        RadioButton(selected = selected, onClick = null, enabled = choosable, modifier = Modifier.padding(12.dp))
     }
-    if (onPhone && !inUse && progress == null) {
+    if (deletable) {
         val action = tr("מחיקה של %1", "Delete %1", listOf(model.displayName))
         TextButton(
             onClick = { asking = true },
