@@ -94,8 +94,9 @@ class WhisperCppReuseEncodingDeviceTest {
         pass(first, 0f, false)
         assertEquals(expected, pass(other, 0f, true).first)
         val longer = clip(4.0)
+        val expectedLonger = pass(longer, 0f, false).first
         pass(first, 0f, false)
-        assertEquals(pass(longer, 0f, false).first, pass(longer, 0f, true).first)
+        assertEquals(expectedLonger, pass(longer, 0f, true).first)
     }
 
     @Test
