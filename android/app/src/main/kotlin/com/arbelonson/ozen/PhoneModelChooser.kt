@@ -6,6 +6,7 @@ import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelChoice
+import com.arbelonson.ozen.core.PhoneModelDeletion
 import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PhoneModelEstimate
 import com.arbelonson.ozen.core.PhoneModelSwitch
@@ -34,6 +35,8 @@ interface PhoneModels {
     fun refreshInstalled()
 
     fun choose(file: String)
+
+    suspend fun delete(file: String): PhoneModelDeletion.Result
 
     fun runCheck(thenChooseBest: Boolean)
 }
@@ -83,6 +86,14 @@ class PhoneModelChooser(
             PhoneModelChoice.Plan.UseNow -> use(model)
             PhoneModelChoice.Plan.DownloadFirst -> download(model)
         }
+    }
+
+    override suspend fun delete(file: String): PhoneModelDeletion.Result {
+        val active = settings.current.value.phoneModel.file
+        val result = withContext(io) { PhoneModelDeletion(modelFolder, active).delete(file) }
+        refreshInstalled()
+        if (result is PhoneModelDeletion.Result.Freed && switchState.value is PhoneModelSwitch.NotEnoughRoom) switchState.value = PhoneModelSwitch.Idle
+        return result
     }
 
     private fun use(model: PhoneModel) {

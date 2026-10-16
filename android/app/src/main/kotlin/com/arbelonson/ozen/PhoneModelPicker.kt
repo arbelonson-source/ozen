@@ -6,16 +6,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -34,6 +41,7 @@ import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelCatalog
+import com.arbelonson.ozen.core.PhoneModelDeletion
 import com.arbelonson.ozen.core.PhoneModelEstimate
 import com.arbelonson.ozen.core.PhoneModelFit
 import com.arbelonson.ozen.core.PhoneModelSwitch
@@ -42,6 +50,7 @@ import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.OzenSpacing
 import com.arbelonson.ozen.ui.SettingsGroup
 import com.arbelonson.ozen.ui.TonalButton
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, chooseBestAfterTest: Boolean) {
@@ -59,7 +68,7 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
         SettingsGroup(modifier = Modifier.selectableGroup().testTag("phone-model-list")) {
             for (model in PhoneModelCatalog.offered(language)) {
                 item {
-                    ModelRow(model, language, speed, memory, best, model.file == chosen, model.file in installed, switching) { models.choose(model.file) }
+                    ModelRow(model, language, speed, memory, best, model.file == chosen, model.file in installed, model.file == settings.phoneModel.file, switching, onDelete = { models.delete(model.file) }) { models.choose(model.file) }
                 }
             }
         }
@@ -119,7 +128,9 @@ private fun ModelRow(
     best: PhoneModel?,
     selected: Boolean,
     onPhone: Boolean,
+    inUse: Boolean,
     switching: PhoneModelSwitch,
+    onDelete: suspend () -> PhoneModelDeletion.Result,
     onSelect: () -> Unit,
 ) {
     val tag = when {
@@ -128,9 +139,13 @@ private fun ModelRow(
         else -> null
     }
     val progress = (switching as? PhoneModelSwitch.Downloading)?.takeIf { it.file == model.file }
+    var asking by rememberSaveable { mutableStateOf(false) }
+    var failed by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
     Row(
         modifier = Modifier
-            .fillMaxWidth()
+            .weight(1f)
             .heightIn(min = 56.dp)
             .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton)
             .testTag("phone-model-" + model.file)
@@ -153,6 +168,38 @@ private fun ModelRow(
             speed?.let { FitLabel(PhoneModelEstimate.fit(model, it, memory)) }
         }
         RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(12.dp))
+    }
+    if (onPhone && !inUse && progress == null) {
+        val action = tr("מחיקה של %1", "Delete %1", listOf(model.displayName))
+        TextButton(
+            onClick = { asking = true },
+            modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).testTag("phone-model-delete-" + model.file).semantics { contentDescription = action },
+        ) { Text(tr("מחיקה", "Delete")) }
+    }
+    }
+    if (asking) {
+        AlertDialog(
+            onDismissRequest = { asking = false },
+            title = { Text(tr("למחוק את %1 מהטלפון?", "Delete %1 from the phone?", listOf(model.displayName))) },
+            text = { Text(tr("אפשר להוריד אותו שוב בכל עת.", "It can be downloaded again anytime.")) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        asking = false
+                        scope.launch { if (onDelete() == PhoneModelDeletion.Result.Failed) failed = true }
+                    },
+                    modifier = Modifier.testTag("phone-model-delete-confirm"),
+                ) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { asking = false }) { Text(tr("ביטול", "Cancel")) } },
+        )
+    }
+    if (failed) {
+        AlertDialog(
+            onDismissRequest = { failed = false },
+            title = { Text(tr("המחיקה נכשלה", "Delete failed")) },
+            confirmButton = { TextButton(onClick = { failed = false }) { Text(tr("אישור", "OK")) } },
+        )
     }
 }
 
