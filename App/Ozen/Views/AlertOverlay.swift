@@ -28,7 +28,7 @@ private struct AlertOverlay: ViewModifier {
                         }
                         if let shownHit {
                             KeywordHitPill(hit: shownHit, speakerName: viewModel.speakerName(for: shownHit)) {
-                                withAnimation { self.shownHit = nil }
+                                withAnimation(reduceMotion ? nil : .default) { self.shownHit = nil }
                             }
                                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
                         }
@@ -46,7 +46,7 @@ private struct AlertOverlay: ViewModifier {
             }
             .onChange(of: viewModel.attentionKeywordHit?.id) { _, _ in
                 guard let hit = viewModel.attentionKeywordHit else { return }
-                withAnimation { shownHit = hit }
+                withAnimation(reduceMotion ? nil : .default) { shownHit = hit }
             }
             .task(id: shown?.id) {
                 guard let current = shown else { return }

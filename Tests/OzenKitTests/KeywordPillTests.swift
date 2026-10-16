@@ -36,4 +36,18 @@ struct KeywordPillTests {
     func hebrewDash() {
         #expect(KeywordPill.text(said: match("רופא"), speaker: "דנה", in: .hebrew) == "דנה — נאמר: רופא")
     }
+
+    @Test("time left counts down from the first showing and never exceeds the total")
+    func timeLeft() {
+        #expect(KeywordPill.secondsLeft(total: 5, elapsed: 0) == 5)
+        #expect(KeywordPill.secondsLeft(total: 5, elapsed: 3) == 2)
+        #expect(KeywordPill.secondsLeft(total: 5, elapsed: 9) == 0)
+        #expect(KeywordPill.secondsLeft(total: 5, elapsed: -4) == 5)
+    }
+
+    @Test("a longer total after a text size change only adds the extra time")
+    func timeLeftAfterGrowth() {
+        #expect(KeywordPill.secondsLeft(total: 12, elapsed: 4) == 8)
+        #expect(KeywordPill.secondsLeft(total: 12, elapsed: 4) > KeywordPill.secondsLeft(total: 5, elapsed: 4))
+    }
 }

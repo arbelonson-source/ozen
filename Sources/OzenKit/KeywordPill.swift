@@ -11,6 +11,10 @@ public enum KeywordPill {
         return min(baseSeconds + extra, maxSeconds)
     }
 
+    public static func secondsLeft(total: Double, elapsed: Double) -> Double {
+        min(total, max(0, total - elapsed))
+    }
+
     public static func text(said match: KeywordMatch, speaker: String?, in language: UILanguage) -> String {
         let said = AlertSuggestions.said(match, in: language)
         guard let speaker else {
