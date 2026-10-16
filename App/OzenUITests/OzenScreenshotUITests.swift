@@ -819,6 +819,44 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertFalse(restore.waitForExistence(timeout: 1), "restore: the button should go once the text is back")
     }
 
+    /// After Clear the Restore button joins the controls; at the largest
+    /// text size the editor must still have room to type in and Restore
+    /// must be reachable with the keyboard up.
+    func testBigTextRestoreKeepsEditorRoomAtLargestText() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+
+        let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
+        XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore room: the type to speak button never appeared")
+        typeToSpeakButton.tap()
+        let field = app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "restore room: the field never appeared")
+        field.tap()
+        field.typeText("hello there")
+
+        let bigTextButton = app.descendants(matching: .any)["bigTextButton"]
+        XCTAssertTrue(bigTextButton.waitForExistence(timeout: 10), "restore room: the big letters button never appeared")
+        bigTextButton.tap()
+
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 10), "restore room: the editor never appeared")
+        let heightBefore = editor.frame.height
+        capture(app, name: "big-text-restore-room-before-clear")
+
+        let clear = app.descendants(matching: .any)["bigTextClear"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 5), "restore room: Clear never appeared")
+        clear.tap()
+
+        let restore = app.descendants(matching: .any)["bigTextRestore"]
+        XCTAssertTrue(restore.waitForExistence(timeout: 5), "restore room: Restore never appeared after Clear")
+        capture(app, name: "big-text-restore-room-after-clear")
+        XCTAssertTrue(restore.isHittable, "restore room: Restore is not reachable at the largest text size")
+        let heightAfter = app.textViews.firstMatch.frame.height
+        XCTAssertGreaterThanOrEqual(heightAfter, 100, "restore room: the editor is \(heightAfter) pt tall after Clear (\(heightBefore) pt before), too little to type in")
+        XCTAssertGreaterThanOrEqual(heightAfter, heightBefore - 20, "restore room: Restore took \(heightBefore - heightAfter) pt from the editor (\(heightBefore) pt before Clear, \(heightAfter) pt after)")
+    }
+
     /// The home computer setup guide, reached from Settings, at the
     /// largest text size: four steps of long Hebrew text and a share
     /// button, never screenshotted before.
