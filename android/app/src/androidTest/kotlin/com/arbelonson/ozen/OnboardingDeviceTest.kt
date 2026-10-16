@@ -12,6 +12,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -24,6 +25,9 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AppLanguage
+import com.arbelonson.ozen.core.ByteSize
+import com.arbelonson.ozen.core.PhoneModelCatalog
+import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
@@ -47,6 +51,7 @@ class OnboardingDeviceTest {
     private val app = instrumentation.targetContext.applicationContext as OzenApplication
     private val before = app.settings.current.value.copy()
     private val notificationsAllowed = AlertNotifier.allowed
+    private val modelFiles = ModelFilesAside(app.filesDir)
 
     private fun alerts() = app.settings.current.value.keywordAlerts.map { it.phrase }
 
@@ -61,6 +66,7 @@ class OnboardingDeviceTest {
 
     @Before
     fun firstLaunch() {
+        modelFiles.hold()
         instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.POST_NOTIFICATIONS)
@@ -74,12 +80,15 @@ class OnboardingDeviceTest {
                 it.engine = TranscriptionEngineKind.WhisperKit
                 it.languageCode = "he"
                 it.hasCompletedOnboarding = false
+                it.phoneModelFile = null
+                it.phoneSpeed = PhoneSpeed(1000.0, 4, 1.0)
             }
         }
     }
 
     @After
     fun putBack() {
+        modelFiles.putBack()
         AlertNotifier.allowed = notificationsAllowed
         compose.runOnUiThread {
             if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop()
@@ -91,6 +100,8 @@ class OnboardingDeviceTest {
             it.engine = before.engine
             it.languageCode = before.languageCode
             it.hasCompletedOnboarding = true
+            it.phoneModelFile = before.phoneModelFile
+            it.phoneSpeed = before.phoneSpeed
         }
     }
 
@@ -107,7 +118,7 @@ class OnboardingDeviceTest {
             shell("settings put system font_scale 2.0")
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f && shown("Weiter") }
-            repeat(4) {
+            repeat(5) {
                 compose.onNodeWithText("Weiter").performClick()
                 compose.waitForIdle()
             }
@@ -138,7 +149,7 @@ class OnboardingDeviceTest {
             shell("settings put system font_scale 2.0")
             compose.activityRule.scenario.recreate()
             compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f && shown("Weiter") }
-            repeat(4) {
+            repeat(5) {
                 compose.onNodeWithText("Weiter").performClick()
                 compose.waitForIdle()
             }
@@ -161,16 +172,16 @@ class OnboardingDeviceTest {
     @Test
     fun backInTheWalkthroughGoesToThePageBeforeAndTheScreenReaderHearsWhichPageItIs() {
         val back = { InstrumentationRegistry.getInstrumentation().runOnMainSync { compose.activity.onBackPressedDispatcher.onBackPressed() } }
-        compose.onNode(hasContentDescription("1 of 6")).assertExists()
+        compose.onNode(hasContentDescription("1 of 7")).assertExists()
         compose.onNodeWithText("Next").performClick()
         compose.onNodeWithText("Next").performClick()
         compose.onNodeWithText("Which language do people around you speak?").assertExists()
-        compose.onNode(hasContentDescription("3 of 6")).assertExists()
+        compose.onNode(hasContentDescription("3 of 7")).assertExists()
 
         back()
         compose.waitForIdle()
         compose.onNodeWithText("How it works").assertExists()
-        compose.onNode(hasContentDescription("2 of 6")).assertExists()
+        compose.onNode(hasContentDescription("2 of 7")).assertExists()
         back()
         compose.waitForIdle()
         compose.onNodeWithText("Live captions for conversation.").assertExists()
@@ -187,6 +198,9 @@ class OnboardingDeviceTest {
 
         compose.onNodeWithText("Which language do people around you speak?").assertExists()
         compose.onNodeWithText(UILanguage.Hebrew.spokenName).assertIsSelected()
+        compose.onNodeWithText("Next").performClick()
+
+        compose.onNodeWithText("The speech model").assertExists()
         compose.onNodeWithText("Next").performClick()
 
         compose.onNodeWithText("✓ Microphone approved").assertExists()
@@ -206,7 +220,7 @@ class OnboardingDeviceTest {
         assertFalse("סבתא" in app.settings.current.value.vocabulary)
 
         compose.onNodeWithText("The button below starts the captions. Good luck, Grandma.").assertExists()
-        compose.onNodeWithText(DOWNLOAD_NOTE).assertExists()
+        compose.onNodeWithText(downloadNote("Ozen Turbo Hebrew")).assertExists()
         compose.onNodeWithText("Skip").assertDoesNotExist()
         compose.onNodeWithText("Start").performClick()
         compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
@@ -288,12 +302,56 @@ class OnboardingDeviceTest {
         compose.onNodeWithText("Next").performClick()
         compose.onNodeWithText("English").performScrollTo().performClick()
         compose.waitUntil(5_000) { app.settings.current.value.languageCode == "en" }
-        repeat(3) { compose.onNodeWithText("Next").performClick() }
+        repeat(4) { compose.onNodeWithText("Next").performClick() }
         compose.onNodeWithText("The button below starts the captions. Good luck, Grandma.").assertExists()
-        compose.onNodeWithText(DOWNLOAD_NOTE).assertExists()
+        compose.onNodeWithText(downloadNote("Turbo")).assertExists()
+    }
+
+    private fun toTheModelPage() {
+        repeat(3) { compose.onNodeWithText("Next").performClick() }
+        compose.onNodeWithText("The speech model").assertExists()
+    }
+
+    @Test
+    fun theModelPageListsTheModelsOfTheSpokenLanguageAndAChoiceIsKept() {
+        toTheModelPage()
+        compose.onNodeWithText("Test this phone again").assertExists()
+        for (model in PhoneModelCatalog.offered(UILanguage.Hebrew)) {
+            compose.onNodeWithTag("phone-model-" + model.file).performScrollTo().assertExists()
+        }
+        compose.onNodeWithTag("phone-model-ggml-ozen-a3-q5_0.bin").assertIsSelected()
+        compose.onNodeWithTag("phone-model-ggml-small-q5_1.bin").performScrollTo().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.phoneModelFile == "ggml-small-q5_1.bin" }
+        compose.onNodeWithTag("phone-model-ggml-small-q5_1.bin").assertIsSelected()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText(downloadNote("Small", 190_085_487)).assertExists()
+        assertEquals("small", app.settings.current.value.whisperModelVariant)
+    }
+
+    @Test
+    fun skippingFromTheModelPageKeepsTheRecommendedModel() {
+        toTheModelPage()
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
+        assertEquals(null, app.settings.current.value.phoneModelFile)
+        assertEquals("ggml-ozen-a3-q5_0.bin", app.settings.current.value.phoneModel.file)
+    }
+
+    @Test
+    fun withoutAMeasurementThePageTestsThePhoneByItselfAndDoesNotLeaveTurboOnASlowOne() {
+        compose.runOnUiThread { app.settings.change { it.phoneSpeed = null } }
+        toTheModelPage()
+        compose.waitUntil(40_000) { app.settings.current.value.phoneSpeed != null }
+        val speed = app.settings.current.value.phoneSpeed!!.gflops
+        val expected = com.arbelonson.ozen.core.PhoneModelEstimate.recommend(UILanguage.Hebrew, speed)
+        compose.waitUntil(10_000) { app.settings.current.value.phoneModel.file == expected.file }
+        compose.onNodeWithText("Test this phone again").assertExists()
+        compose.onNodeWithTag("phone-model-" + expected.file).performScrollTo().assertIsSelected()
     }
 
     private companion object {
-        const val DOWNLOAD_NOTE = "The first time it runs, Ozen will download the language model. This takes a few minutes and shows on the screen. After that — instantly."
+        fun downloadNote(model: String, bytes: Long = 574_041_195) = "The first time it runs, Ozen will download the language model: $model, ${ByteSize.text(bytes)}. This takes a few minutes and shows on the screen. After that — instantly."
     }
 }

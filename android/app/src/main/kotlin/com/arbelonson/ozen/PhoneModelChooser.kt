@@ -1,0 +1,147 @@
+package com.arbelonson.ozen
+
+import com.arbelonson.ozen.core.ModelDownloadGate
+import com.arbelonson.ozen.core.NetworkConditions
+import com.arbelonson.ozen.core.PhoneCheckState
+import com.arbelonson.ozen.core.PhoneModel
+import com.arbelonson.ozen.core.PhoneModelCatalog
+import com.arbelonson.ozen.core.PhoneModelChoice
+import com.arbelonson.ozen.core.PhoneModelDownloader
+import com.arbelonson.ozen.core.PhoneModelEstimate
+import com.arbelonson.ozen.core.PhoneModelSwitch
+import com.arbelonson.ozen.core.PhoneSpeed
+import com.arbelonson.ozen.core.ReleaseFileFetching
+import com.arbelonson.ozen.core.StorageSpaceGate
+import java.io.File
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+interface PhoneModels {
+    val switching: StateFlow<PhoneModelSwitch>
+    val check: StateFlow<PhoneCheckState>
+    val installed: StateFlow<Set<String>>
+
+    fun refreshInstalled()
+
+    fun choose(file: String)
+
+    fun runCheck(thenChooseBest: Boolean)
+}
+
+class PhoneModelChooser(
+    private val settings: SettingsHolder,
+    private val modelFolder: File,
+    private val fetcher: () -> ReleaseFileFetching,
+    private val network: () -> NetworkConditions?,
+    private val freeSpace: () -> Long?,
+    private val scope: CoroutineScope,
+    private val measure: suspend ((Float) -> Unit) -> PhoneSpeed?,
+    private val applied: () -> Unit,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+) : PhoneModels {
+    private val switchState = MutableStateFlow<PhoneModelSwitch>(PhoneModelSwitch.Idle)
+    override val switching: StateFlow<PhoneModelSwitch> = switchState
+
+    private val checkState = MutableStateFlow<PhoneCheckState>(PhoneCheckState.Idle)
+    override val check: StateFlow<PhoneCheckState> = checkState
+
+    private val installedState = MutableStateFlow(onDisk())
+    override val installed: StateFlow<Set<String>> = installedState
+
+    private var stopDownload: AtomicBoolean? = null
+
+    private fun onDisk(): Set<String> = PhoneModelCatalog.all.filter { File(modelFolder, it.file).isFile }.map { it.file }.toSet()
+
+    override fun refreshInstalled() {
+        installedState.value = onDisk()
+    }
+
+    override fun choose(file: String) {
+        val current = settings.current.value
+        val model = PhoneModelCatalog.offered(current.spokenLanguage).firstOrNull { it.file == file } ?: return
+        refreshInstalled()
+        stopDownload?.set(true)
+        switchState.value = PhoneModelSwitch.Idle
+        when (PhoneModelChoice.plan(model, current.phoneModel, installedState.value)) {
+            PhoneModelChoice.Plan.UseNow -> use(model)
+            PhoneModelChoice.Plan.DownloadFirst -> download(model)
+        }
+    }
+
+    private fun use(model: PhoneModel) {
+        val before = settings.current.value.phoneModel
+        settings.change {
+            it.phoneModelFile = PhoneModelChoice.storedFile(it.spokenLanguage, model)
+            it.whisperModelVariant = model.variant
+        }
+        if (before.file != model.file) applied()
+    }
+
+    private fun download(model: PhoneModel) {
+        val downloader = PhoneModelDownloader(File(modelFolder, model.file), model.source, fetcher())
+        val room = StorageSpaceGate.shortfallMegabytes(downloader.pendingMegabytes() ?: 0, freeSpace())
+        if (room != null) {
+            switchState.value = PhoneModelSwitch.NotEnoughRoom(model.file, room)
+            return
+        }
+        val allowCellular = settings.current.value.allowCellularModelDownload
+        when (ModelDownloadGate.decide(network(), allowCellular)) {
+            ModelDownloadGate.Decision.Offline -> return run { switchState.value = PhoneModelSwitch.Offline(model.file) }
+            ModelDownloadGate.Decision.WaitForWiFi -> return run { switchState.value = PhoneModelSwitch.WaitingForWiFi(model.file) }
+            ModelDownloadGate.Decision.Proceed -> Unit
+        }
+        val stopped = AtomicBoolean(false)
+        stopDownload = stopped
+        switchState.value = PhoneModelSwitch.Downloading(model.file, 0.0)
+        scope.launch {
+            var lostWiFi = false
+            val done = withContext(io) {
+                runCatching {
+                    downloader.download { fraction ->
+                        if (stopped.get()) throw IOException("stopped: another model was chosen")
+                        if (ModelDownloadGate.decide(network(), settings.current.value.allowCellularModelDownload) == ModelDownloadGate.Decision.WaitForWiFi) {
+                            lostWiFi = true
+                            throw IOException("Wi-Fi went, and downloads on cellular data are off")
+                        }
+                        val shown = (fraction * 100).toInt() / 100.0
+                        if (!stopped.get() && (switchState.value as? PhoneModelSwitch.Downloading)?.fraction != shown) {
+                            switchState.value = PhoneModelSwitch.Downloading(model.file, shown)
+                        }
+                    }
+                }.isSuccess
+            }
+            if (stopped.get()) return@launch
+            stopDownload = null
+            refreshInstalled()
+            if (done) {
+                switchState.value = PhoneModelSwitch.Idle
+                use(model)
+            } else {
+                switchState.value = if (lostWiFi) PhoneModelSwitch.WaitingForWiFi(model.file) else PhoneModelSwitch.Failed(model.file)
+            }
+        }
+    }
+
+    override fun runCheck(thenChooseBest: Boolean) {
+        if (checkState.value is PhoneCheckState.Running) return
+        checkState.value = PhoneCheckState.Running(0f)
+        val chosenBefore = settings.current.value.phoneModelFile
+        scope.launch {
+            val speed = measure { checkState.value = PhoneCheckState.Running(it) }
+            if (speed == null) {
+                checkState.value = PhoneCheckState.Failed
+                return@launch
+            }
+            settings.change { it.phoneSpeed = speed }
+            checkState.value = PhoneCheckState.Idle
+            if (thenChooseBest && settings.current.value.phoneModelFile == chosenBefore) choose(PhoneModelEstimate.recommend(settings.current.value.spokenLanguage, speed.gflops).file)
+        }
+    }
+}

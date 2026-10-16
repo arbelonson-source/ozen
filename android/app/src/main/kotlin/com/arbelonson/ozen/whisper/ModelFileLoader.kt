@@ -22,7 +22,7 @@ import kotlinx.coroutines.withContext
 class ModelFileLoader(
     private val file: File,
     private val libraryDir: String,
-    private val threads: Int = Runtime.getRuntime().availableProcessors().coerceIn(1, 4),
+    private val threads: Int = PhoneSpeedMeter.engineThreads(),
     private val download: PhoneModelDownloader? = null,
     private val network: () -> NetworkConditions? = { null },
     private val freeBytes: () -> Long? = { null },

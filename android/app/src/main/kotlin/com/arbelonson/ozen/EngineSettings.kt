@@ -7,7 +7,6 @@ import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
-import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.core.tr
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -56,8 +55,9 @@ class EngineSettings(
             // As on the iPhone: on the old language's recommended model, the
             // new one's comes along (its "may be misheard" cutoffs, and the
             // name saved with each conversation); one chosen by hand stays.
-            if (it.whisperModelVariant == it.recommendedWhisperVariant) it.whisperModelVariant = WhisperModelCatalog.recommendedVariant(language)
+            val followsPhoneModel = it.whisperModelVariant == it.phoneModel.variant
             it.spokenLanguage = language
+            if (followsPhoneModel) it.whisperModelVariant = it.phoneModel.variant
         }
         restart()
     }

@@ -82,6 +82,7 @@ internal object WhisperCpp {
     external fun tokenize(handle: Long, text: String): IntArray?
     external fun tokenEot(handle: Long): Int
     external fun systemInfo(): String
+    external fun benchMatMul(threads: Int, millis: Int): Double
     external fun vadLoad(path: String): Long
     external fun vadFrames(handle: Long, samples: FloatArray): FloatArray?
     external fun vadReset(handle: Long)

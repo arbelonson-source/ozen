@@ -364,6 +364,10 @@ class AppSettings(
      */
     var betterModelOfferDeclines: Int = 0,
     var betterModelOfferSnoozedUntil: Double? = null,
+    /** The file of the phone model she chose, or null for the recommended one; see `PhoneModelCatalog`. */
+    var phoneModelFile: String? = null,
+    /** What the phone test last measured, or null before it was run. */
+    var phoneSpeed: PhoneSpeed? = null,
 ) {
     var homeServerBeam: Int = minOf(maxOf(homeServerBeam, homeServerBeamRange.first), homeServerBeamRange.last)
 
@@ -392,6 +396,10 @@ class AppSettings(
         set(language) {
             languageCode = language.languageCode
         }
+
+    /** The model the phone's own engine runs: the saved choice if the spoken language offers it, else the recommended one. */
+    val phoneModel: PhoneModel
+        get() = PhoneModelCatalog.effective(spokenLanguage, phoneModelFile)
 
     /** The Whisper model recommended for the spoken language. */
     val recommendedWhisperVariant: String
@@ -474,6 +482,8 @@ class AppSettings(
             nameAlertOfferDismissed = nameAlertOfferDismissed,
             betterModelOfferDeclines = betterModelOfferDeclines,
             betterModelOfferSnoozedUntil = betterModelOfferSnoozedUntil,
+            phoneModelFile = phoneModelFile,
+            phoneSpeed = phoneSpeed,
         )
         other.homeServerBeam = homeServerBeam
         other.vocabulary = vocabulary
@@ -486,7 +496,7 @@ class AppSettings(
         hapticOnSpeechResume, speakerSimilarityThreshold, keywordAlerts, soundAlerts, saveHistory, quickPhrases,
         speechRate, vocabulary, hasCompletedOnboarding, appLanguage, notifyWhenInBackground,
         allowCellularModelDownload, historyRetention, quietHours, nameAlertOfferDismissed, betterModelOfferDeclines,
-        betterModelOfferSnoozedUntil,
+        betterModelOfferSnoozedUntil, phoneModelFile, phoneSpeed,
     )
 
     override fun equals(other: Any?): Boolean = other is AppSettings && fields() == other.fields()
@@ -532,6 +542,8 @@ class AppSettings(
         put("nameAlertOfferDismissed", nameAlertOfferDismissed)
         put("betterModelOfferDeclines", betterModelOfferDeclines)
         betterModelOfferSnoozedUntil?.let { put("betterModelOfferSnoozedUntil", settingsDouble(it)) }
+        phoneModelFile?.let { put("phoneModelFile", it) }
+        phoneSpeed?.let { put("phoneSpeed", it.toJsonObject()) }
     }.toString()
 
     companion object {
@@ -685,6 +697,8 @@ class AppSettings(
                 nameAlertOfferDismissed = container.lenientBoolean("nameAlertOfferDismissed") ?: defaults.nameAlertOfferDismissed,
                 betterModelOfferDeclines = maxOf(0, container.lenientInt("betterModelOfferDeclines") ?: 0),
                 betterModelOfferSnoozedUntil = container.lenientDouble("betterModelOfferSnoozedUntil"),
+                phoneModelFile = container.lenientString("phoneModelFile"),
+                phoneSpeed = container.lenientObject("phoneSpeed") { PhoneSpeed.fromJsonObject(it as JsonObject) ?: error("not a usable speed") },
             )
             var threshold = container.lenientFloat("speakerSimilarityThreshold") ?: defaults.speakerSimilarityThreshold
             // The Settings slider's range; a file saying otherwise gets the nearest edge.

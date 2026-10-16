@@ -201,6 +201,7 @@ fun SettingsScreen(
     backup: PhoneBackup? = null,
     scrollToBackup: Boolean = false,
     onScrolledToBackup: () -> Unit = {},
+    phoneModels: PhoneModels? = null,
 ) {
     val current by settings.current.collectAsStateWithLifecycle()
     val cloudKeyDraft = rememberSaveable(current.cloudProvider) { mutableStateOf("") }
@@ -273,6 +274,7 @@ fun SettingsScreen(
                     SpokenLanguageSection(current.spokenLanguage, engineSettings::chooseSpokenLanguage)
                     LanguageSection(current.appLanguage, onAppLanguage)
                     EngineSection(engineSettings, current, onCellularDownloads)
+                    if (phoneModels != null) PhoneModelSection(current, phoneModels)
                     AnimatedVisibility(current.engine == TranscriptionEngineKind.Cloud) {
                         Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) { CloudSection(engineSettings, current, cloudKeyDraft) }
                     }
@@ -443,6 +445,19 @@ private fun EngineSection(engineSettings: EngineSettings, current: AppSettings, 
             }
         }
     }
+}
+
+@Composable
+private fun PhoneModelSection(current: AppSettings, models: PhoneModels) {
+    SectionHeader(tr("מודל הדיבור בטלפון", "Speech model on the phone"))
+    LaunchedEffect(Unit) { models.refreshInstalled() }
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) { PhoneModelPicker(current, models, chooseBestAfterTest = false) }
+    GroupFootnote(
+        tr(
+            "המודל הזה כותב את הכתוביות כשהטלפון עובד לבד, וגם משמש גיבוי כשאין חיבור למחשב או לענן. מודל חדש יורד ברקע, והכתוביות ממשיכות עם הקודם עד שהוא מוכן.",
+            "This model writes the captions when the phone works on its own, and is also the backup when the computer or the cloud can’t be reached. A new model downloads in the background, and captions carry on with the old one until it is ready.",
+        ),
+    )
 }
 
 // The iPhone's summary of its own model offers a choice of model size,
@@ -1459,19 +1474,19 @@ private fun BesideOrUnder(start: @Composable () -> Unit, end: @Composable () -> 
 }
 
 @Composable
-private fun Warning(text: String) {
+internal fun Warning(text: String) {
     Text(text, color = MaterialTheme.colorScheme.error)
 }
 
 @Composable
-private fun Caution(text: String) {
+internal fun Caution(text: String) {
     Text(text, color = cautionOrange())
 }
 
 // On a white screen these give way to the iPhone's deeper shades of the
 // same hues, which stay above 5:1 there; the light ones fall to about 2:1.
 @Composable
-private fun savedGreen() = if (onLightScreen()) Color(red = 0f, green = 0.45f, blue = 0.15f) else Color(0xFF81C784)
+internal fun savedGreen() = if (onLightScreen()) Color(red = 0f, green = 0.45f, blue = 0.15f) else Color(0xFF81C784)
 
 @Composable
 internal fun cautionOrange() = if (onLightScreen()) Color(red = 0.7f, green = 0.3f, blue = 0f) else Color(0xFFFFB74D)

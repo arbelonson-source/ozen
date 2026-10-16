@@ -2,11 +2,14 @@
 #include <android/log.h>
 
 #include <atomic>
+#include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <string>
 #include <vector>
 
 #include "ggml-backend.h"
+#include "ggml.h"
 #include "whisper.h"
 
 namespace {
@@ -284,4 +287,50 @@ Java_com_arbelonson_ozen_whisper_WhisperCpp_loadBackends(JNIEnv *env, jobject, j
     ggml_log_set(log_to_logcat, nullptr);
     ggml_backend_load_all_from_path(text(env, folder).c_str());
     return ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU) != nullptr;
+}
+
+// The speed of the work a Whisper pass is made of: Q5_0 weights the size of
+// Turbo's feed-forward layer times a few hundred audio frames, on the same
+// backend and thread count the engine runs with. Repeats for about
+// [millis] and answers billions of operations per second, 0 on failure.
+extern "C" JNIEXPORT jdouble JNICALL
+Java_com_arbelonson_ozen_whisper_WhisperCpp_benchMatMul(JNIEnv *, jobject, jint threads, jint millis) {
+    const int64_t k = 1280, rows = 5120, frames = 300;
+    const size_t bytes = 24u << 20;
+    ggml_init_params init = {bytes, nullptr, false};
+    ggml_context *ctx = ggml_init(init);
+    if (ctx == nullptr) return 0;
+    ggml_tensor *weights = ggml_new_tensor_2d(ctx, GGML_TYPE_Q5_0, k, rows);
+    ggml_tensor *input = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, k, frames);
+    ggml_tensor *product = ggml_mul_mat(ctx, weights, input);
+    ggml_cgraph *graph = ggml_new_graph(ctx);
+    ggml_build_forward_expand(graph, product);
+    std::vector<float> plain(static_cast<size_t>(k) * rows);
+    for (size_t i = 0; i < plain.size(); ++i) plain[i] = static_cast<float>((i * 2654435761u) % 2001) / 1000.0f - 1.0f;
+    ggml_quantize_chunk(GGML_TYPE_Q5_0, plain.data(), weights->data, 0, rows, k, nullptr);
+    float *in = static_cast<float *>(input->data);
+    for (int64_t i = 0; i < k * frames; ++i) in[i] = static_cast<float>((i * 40503u) % 1999) / 1000.0f - 1.0f;
+
+    ggml_backend_t backend = ggml_backend_init_by_type(GGML_BACKEND_DEVICE_TYPE_CPU, nullptr);
+    double result = 0;
+    if (backend != nullptr) {
+        auto *reg = ggml_backend_dev_backend_reg(ggml_backend_get_device(backend));
+        auto setThreads = reinterpret_cast<ggml_backend_set_n_threads_t>(ggml_backend_reg_get_proc_address(reg, "ggml_backend_set_n_threads"));
+        if (setThreads != nullptr) setThreads(backend, threads);
+        if (ggml_backend_graph_compute(backend, graph) == GGML_STATUS_SUCCESS) {
+            using clock = std::chrono::steady_clock;
+            const auto start = clock::now();
+            const auto end = start + std::chrono::milliseconds(millis);
+            int runs = 0;
+            do {
+                if (ggml_backend_graph_compute(backend, graph) != GGML_STATUS_SUCCESS) break;
+                ++runs;
+            } while (clock::now() < end);
+            const double seconds = std::chrono::duration<double>(clock::now() - start).count();
+            if (runs > 0 && seconds > 0) result = 2.0 * k * rows * frames * runs / seconds * 1e-9;
+        }
+        ggml_backend_free(backend);
+    }
+    ggml_free(ctx);
+    return result;
 }

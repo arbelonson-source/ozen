@@ -6,7 +6,7 @@ data class StoredPhoneModel(val name: String, val bytes: Long, val active: Boole
 
 class PhoneModelStorage(private val modelsRoot: File, private val activeFileName: String) {
     private val modelNames: Set<String> =
-        UILanguage.entries.map { WhisperModelCatalog.phoneModelFile(it) }.toSet()
+        PhoneModelCatalog.managedFiles
 
     private fun isManaged(name: String): Boolean =
         name in modelNames || (name.endsWith(PART) && name.removeSuffix(PART) in modelNames)
