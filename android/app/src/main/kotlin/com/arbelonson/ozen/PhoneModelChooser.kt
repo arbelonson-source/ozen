@@ -150,6 +150,10 @@ class PhoneModelChooser(
                 checkState.value = PhoneCheckState.Failed
                 return@launch
             }
+            if (captionsBusy.value) {
+                checkState.value = PhoneCheckState.Idle
+                return@launch
+            }
             settings.change { it.phoneSpeed = speed }
             checkState.value = PhoneCheckState.Idle
             val now = settings.current.value

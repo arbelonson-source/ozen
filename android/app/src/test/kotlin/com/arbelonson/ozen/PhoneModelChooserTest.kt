@@ -253,4 +253,15 @@ class PhoneModelChooserTest {
         scope.runCurrent()
         assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
     }
+
+    @Test
+    fun `a result that arrives just as captions start is thrown away, not saved or acted on`() {
+        measured = PhoneSpeed(12.0, 2, 2.0)
+        duringTest = { busy.value = true }
+        chooser.runCheck(thenChooseBest = true)
+        scope.runCurrent()
+        assertEquals(PhoneCheckState.Idle, chooser.check.value)
+        assertNull(saved().phoneSpeed)
+        assertNull(saved().phoneModelFile)
+    }
 }
