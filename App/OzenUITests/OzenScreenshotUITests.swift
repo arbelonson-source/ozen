@@ -784,6 +784,41 @@ final class OzenScreenshotUITests: XCTestCase {
         }
     }
 
+    /// Clear in the big letters pad can be undone: a mis-tap must not
+    /// lose a long message.
+    func testBigTextClearCanBeRestored() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault"]
+        app.launch()
+
+        let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
+        XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore: the type to speak button never appeared")
+        typeToSpeakButton.tap()
+        let field = app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "restore: the field never appeared")
+        field.tap()
+        field.typeText("hello there")
+
+        let bigTextButton = app.descendants(matching: .any)["bigTextButton"]
+        XCTAssertTrue(bigTextButton.waitForExistence(timeout: 10), "restore: the big letters button never appeared")
+        bigTextButton.tap()
+
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 10), "restore: the editor never appeared")
+        XCTAssertEqual(editor.value as? String, "hello there")
+
+        let clear = app.descendants(matching: .any)["bigTextClear"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 5), "restore: Clear never appeared")
+        clear.tap()
+
+        let restore = app.descendants(matching: .any)["bigTextRestore"]
+        XCTAssertTrue(restore.waitForExistence(timeout: 5), "restore: the Restore button never appeared after Clear")
+        XCTAssertNotEqual(editor.value as? String, "hello there")
+        restore.tap()
+        XCTAssertEqual(app.textViews.firstMatch.value as? String, "hello there")
+        XCTAssertFalse(restore.waitForExistence(timeout: 1), "restore: the button should go once the text is back")
+    }
+
     /// The home computer setup guide, reached from Settings, at the
     /// largest text size: four steps of long Hebrew text and a share
     /// button, never screenshotted before.
