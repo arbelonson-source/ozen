@@ -93,22 +93,9 @@ struct BigTextView: View {
 
     private var controls: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-            Button {
-                if !text.isEmpty { clearedText = text }
-                text = ""
-                isFlipped = false
-                isTyping = true
-                if clearedText != nil {
-                    AccessibilityNotification.Announcement(tr("הטקסט נוקה. אפשר לשחזר אותו", "Text cleared. It can be restored")).post()
-                }
-            } label: {
-                Label(tr("ניקוי", "Clear"), systemImage: "eraser")
-                    .frame(maxWidth: .infinity)
-            }
-            .accessibilityIdentifier("bigTextClear")
-            .accessibilityShowsLargeContentViewer()
-            .disabled(isEmpty)
-
+            // Clear is disabled once the text is gone, so Restore takes its
+            // place: a third button would add a grid row, and with the
+            // keyboard up that row comes out of the editor.
             if let previous = clearedText, text.isEmpty {
                 Button {
                     text = previous
@@ -120,6 +107,22 @@ struct BigTextView: View {
                 }
                 .accessibilityIdentifier("bigTextRestore")
                 .accessibilityShowsLargeContentViewer()
+            } else {
+                Button {
+                    if !text.isEmpty { clearedText = text }
+                    text = ""
+                    isFlipped = false
+                    isTyping = true
+                    if clearedText != nil {
+                        AccessibilityNotification.Announcement(tr("הטקסט נוקה. אפשר לשחזר אותו", "Text cleared. It can be restored")).post()
+                    }
+                } label: {
+                    Label(tr("ניקוי", "Clear"), systemImage: "eraser")
+                        .frame(maxWidth: .infinity)
+                }
+                .accessibilityIdentifier("bigTextClear")
+                .accessibilityShowsLargeContentViewer()
+                .disabled(isEmpty)
             }
 
             Button {
