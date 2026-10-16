@@ -784,6 +784,84 @@ final class OzenScreenshotUITests: XCTestCase {
         }
     }
 
+    /// Clear in the big letters pad can be undone: a mis-tap must not
+    /// lose a long message.
+    func testBigTextClearCanBeRestored() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault"]
+        app.launch()
+
+        let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
+        XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore: the type to speak button never appeared")
+        tapTypeToSpeakWhenReachable(app, typeToSpeakButton, "restore")
+        let field = app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "restore: the field never appeared")
+        field.tap()
+        field.typeText("hello there")
+
+        let bigTextButton = app.descendants(matching: .any)["bigTextButton"]
+        XCTAssertTrue(bigTextButton.waitForExistence(timeout: 10), "restore: the big letters button never appeared")
+        bigTextButton.tap()
+
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 10), "restore: the editor never appeared")
+        XCTAssertEqual(editor.value as? String, "hello there")
+
+        let clear = app.descendants(matching: .any)["bigTextClear"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 5), "restore: Clear never appeared")
+        clear.tap()
+
+        let restore = app.descendants(matching: .any)["bigTextRestore"]
+        XCTAssertTrue(restore.waitForExistence(timeout: 5), "restore: the Restore button never appeared after Clear")
+        XCTAssertNotEqual(editor.value as? String, "hello there")
+        restore.tap()
+        XCTAssertEqual(app.textViews.firstMatch.value as? String, "hello there")
+        XCTAssertFalse(restore.waitForExistence(timeout: 1), "restore: the button should go once the text is back")
+    }
+
+    /// After Clear the Restore button joins the controls; at the largest
+    /// text size the editor must still have room to type in and Restore
+    /// must be reachable with the keyboard up.
+    func testBigTextRestoreKeepsEditorRoomAtLargestText() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+
+        let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
+        XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore room: the type to speak button never appeared")
+        tapTypeToSpeakWhenReachable(app, typeToSpeakButton, "restore room")
+        let composerScreen = app.descendants(matching: .any)["typeToSpeakScreen"]
+        XCTAssertTrue(composerScreen.waitForExistence(timeout: 10), "restore room: the type to speak screen never appeared")
+        capture(app, name: "big-text-restore-room-composer")
+        let typedField = app.textFields.firstMatch
+        let typedView = app.textViews.firstMatch
+        XCTAssertTrue(typedField.waitForExistence(timeout: 10) || typedView.exists, "restore room: the field never appeared: \(app.debugDescription)")
+        let field = typedField.exists ? typedField : typedView
+        field.tap()
+        field.typeText("hello there")
+
+        let bigTextButton = app.descendants(matching: .any)["bigTextButton"]
+        XCTAssertTrue(bigTextButton.waitForExistence(timeout: 10), "restore room: the big letters button never appeared")
+        bigTextButton.tap()
+
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 10), "restore room: the editor never appeared")
+        let heightBefore = editor.frame.height
+        capture(app, name: "big-text-restore-room-before-clear")
+
+        let clear = app.descendants(matching: .any)["bigTextClear"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 5), "restore room: Clear never appeared")
+        clear.tap()
+
+        let restore = app.descendants(matching: .any)["bigTextRestore"]
+        XCTAssertTrue(restore.waitForExistence(timeout: 5), "restore room: Restore never appeared after Clear")
+        capture(app, name: "big-text-restore-room-after-clear")
+        XCTAssertTrue(restore.isHittable, "restore room: Restore is not reachable at the largest text size")
+        let heightAfter = app.textViews.firstMatch.frame.height
+        XCTAssertGreaterThanOrEqual(heightAfter, 100, "restore room: the editor is \(heightAfter) pt tall after Clear (\(heightBefore) pt before), too little to type in")
+        XCTAssertGreaterThanOrEqual(heightAfter, heightBefore - 20, "restore room: Restore took \(heightBefore - heightAfter) pt from the editor (\(heightBefore) pt before Clear, \(heightAfter) pt after)")
+    }
+
     /// The home computer setup guide, reached from Settings, at the
     /// largest text size: four steps of long Hebrew text and a share
     /// button, never screenshotted before.
@@ -1078,6 +1156,26 @@ final class OzenScreenshotUITests: XCTestCase {
         let from = app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.8))
         let to = app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.2))
         from.press(forDuration: 0, thenDragTo: to, withVelocity: .fast, thenHoldForDuration: 0)
+    }
+
+    private func tapTypeToSpeakWhenReachable(_ app: XCUIApplication, _ button: XCUIElement, _ prefix: String) {
+        let revealControls = app.descendants(matching: .any)["showControlsButton"]
+        let windowBottom = app.windows.firstMatch.frame.maxY
+        var reachable = false
+        for _ in 0..<20 {
+            if button.exists, button.isHittable, button.frame.midY <= windowBottom - 60 {
+                reachable = true
+                break
+            }
+            if revealControls.exists, revealControls.isHittable { revealControls.tap() }
+            if button.exists { bringOffBottomEdge(app, button) }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        guard reachable else {
+            XCTFail("\(prefix): the type to speak button never became hittable on screen")
+            return
+        }
+        button.tap()
     }
 
     private func bringOffBottomEdge(_ app: XCUIApplication, _ element: XCUIElement) {
