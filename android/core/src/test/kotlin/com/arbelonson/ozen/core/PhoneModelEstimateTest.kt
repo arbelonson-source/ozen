@@ -124,4 +124,38 @@ class PhoneModelEstimateTest {
             }
         }
     }
+
+    @Test
+    fun `the full-precision file costs about as many times more as it has more bytes, so a speed that suits the compressed file does not suit it`() {
+        val turbo = model("large-v3-turbo-q5_0")
+        val full = model("ivrit")
+        val byteRatio = full.bytes.toDouble() / turbo.bytes
+        assertEquals(byteRatio, full.passGflop / turbo.passGflop, 0.05 * byteRatio)
+        val speed = speedFor(turbo, PhoneModelEstimate.KEEPS_UP_SECONDS)
+        assertEquals(PhoneModelFit.KeepsUp, PhoneModelEstimate.fit(turbo, speed))
+        assertEquals(PhoneModelFit.TooSlow, PhoneModelEstimate.fit(full, speed))
+    }
+
+    @Test
+    fun `a model is too slow when the phone's memory is under three times its file, however fast the phone is`() {
+        val full = model("ivrit")
+        val turbo = model("large-v3-turbo-q5_0")
+        val fast = 50_000.0
+        assertEquals(full.bytes * 3, full.comfortableRamBytes)
+        assertEquals(PhoneModelFit.KeepsUp, PhoneModelEstimate.fit(full, fast, full.comfortableRamBytes))
+        assertEquals(PhoneModelFit.TooSlow, PhoneModelEstimate.fit(full, fast, full.comfortableRamBytes - 1))
+        assertEquals(PhoneModelFit.TooSlow, PhoneModelEstimate.fit(full, fast, 2_500_000_000))
+        assertEquals(PhoneModelFit.KeepsUp, PhoneModelEstimate.fit(turbo, fast, 2_500_000_000))
+        assertEquals(PhoneModelFit.KeepsUp, PhoneModelEstimate.fit(full, fast, null))
+    }
+
+    @Test
+    fun `a model the phone's memory cannot hold is never recommended`() {
+        val full = model("ivrit")
+        val roomy = PhoneModelEstimate.recommend(UILanguage.Hebrew, 50_000.0, full.comfortableRamBytes)
+        assertTrue(roomy.file in PhoneModelCatalog.offered(UILanguage.Hebrew).map { it.file })
+        val tight = PhoneModelEstimate.recommend(UILanguage.Hebrew, 50_000.0, 2_500_000_000)
+        assertTrue(tight.file != full.file)
+        assertEquals(PhoneModelFit.KeepsUp, PhoneModelEstimate.fit(tight, 50_000.0, 2_500_000_000))
+    }
 }

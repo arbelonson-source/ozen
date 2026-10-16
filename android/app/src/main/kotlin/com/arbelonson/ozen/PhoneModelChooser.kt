@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -27,6 +28,8 @@ interface PhoneModels {
     val switching: StateFlow<PhoneModelSwitch>
     val check: StateFlow<PhoneCheckState>
     val installed: StateFlow<Set<String>>
+    val captionsBusy: StateFlow<Boolean>
+    val totalMemoryBytes: Long?
 
     fun refreshInstalled()
 
@@ -44,6 +47,8 @@ class PhoneModelChooser(
     private val scope: CoroutineScope,
     private val measure: suspend ((Float) -> Unit) -> PhoneSpeed?,
     private val applied: () -> Unit,
+    override val captionsBusy: StateFlow<Boolean> = MutableStateFlow(false),
+    private val totalMemory: () -> Long? = { null },
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : PhoneModels {
     private val switchState = MutableStateFlow<PhoneModelSwitch>(PhoneModelSwitch.Idle)
@@ -55,6 +60,10 @@ class PhoneModelChooser(
     private val installedState = MutableStateFlow(onDisk())
     override val installed: StateFlow<Set<String>> = installedState
 
+    override val totalMemoryBytes: Long? get() = totalMemory()
+
+    private var picks = 0
+
     private var stopDownload: AtomicBoolean? = null
 
     private fun onDisk(): Set<String> = PhoneModelCatalog.all.filter { File(modelFolder, it.file).isFile }.map { it.file }.toSet()
@@ -64,6 +73,7 @@ class PhoneModelChooser(
     }
 
     override fun choose(file: String) {
+        picks += 1
         val current = settings.current.value
         val model = PhoneModelCatalog.offered(current.spokenLanguage).firstOrNull { it.file == file } ?: return
         refreshInstalled()
@@ -130,10 +140,11 @@ class PhoneModelChooser(
     }
 
     override fun runCheck(thenChooseBest: Boolean) {
-        if (checkState.value is PhoneCheckState.Running) return
+        if (checkState.value is PhoneCheckState.Running || captionsBusy.value) return
         checkState.value = PhoneCheckState.Running(0f)
-        val chosenBefore = settings.current.value.phoneModelFile
-        scope.launch {
+        val before = settings.current.value
+        val picksBefore = picks
+        val job = scope.launch {
             val speed = measure { checkState.value = PhoneCheckState.Running(it) }
             if (speed == null) {
                 checkState.value = PhoneCheckState.Failed
@@ -141,7 +152,14 @@ class PhoneModelChooser(
             }
             settings.change { it.phoneSpeed = speed }
             checkState.value = PhoneCheckState.Idle
-            if (thenChooseBest && settings.current.value.phoneModelFile == chosenBefore) choose(PhoneModelEstimate.recommend(settings.current.value.spokenLanguage, speed.gflops).file)
+            val now = settings.current.value
+            val untouched = picks == picksBefore && now.phoneModelFile == before.phoneModelFile && now.spokenLanguage == before.spokenLanguage
+            if (thenChooseBest && untouched) choose(PhoneModelEstimate.recommend(now.spokenLanguage, speed.gflops, totalMemory()).file)
+        }
+        val watcher = scope.launch { captionsBusy.first { it }; job.cancel() }
+        job.invokeOnCompletion {
+            watcher.cancel()
+            if (it != null && checkState.value is PhoneCheckState.Running) checkState.value = PhoneCheckState.Idle
         }
     }
 }

@@ -273,7 +273,7 @@ fun SettingsScreen(
                     SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak, voiceNotice)
                     SpokenLanguageSection(current.spokenLanguage, engineSettings::chooseSpokenLanguage)
                     LanguageSection(current.appLanguage, onAppLanguage)
-                    EngineSection(engineSettings, current, onCellularDownloads)
+                    EngineSection(engineSettings, current, onCellularDownloads, modelsOnPhone = phoneModels != null)
                     if (phoneModels != null) PhoneModelSection(current, phoneModels)
                     AnimatedVisibility(current.engine == TranscriptionEngineKind.Cloud) {
                         Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) { CloudSection(engineSettings, current, cloudKeyDraft) }
@@ -424,7 +424,7 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
 }
 
 @Composable
-private fun EngineSection(engineSettings: EngineSettings, current: AppSettings, onCellularDownloads: (Boolean) -> Unit) {
+private fun EngineSection(engineSettings: EngineSettings, current: AppSettings, onCellularDownloads: (Boolean) -> Unit, modelsOnPhone: Boolean) {
     SectionHeader(tr("מנוע תמלול", "Transcription engine"))
     val chosen = if (current.engine == TranscriptionEngineKind.AppleSpeech) TranscriptionEngineKind.WhisperKit else current.engine
     SettingsGroup(modifier = Modifier.selectableGroup()) {
@@ -433,7 +433,7 @@ private fun EngineSection(engineSettings: EngineSettings, current: AppSettings, 
         }
     }
     GroupFootnote(tr("שינוי המנוע מפעיל מחדש את ההאזנה. הכתוביות שכבר על המסך נשארות.", "Changing the engine restarts listening. Captions already on screen stay."))
-    if (current.engine == TranscriptionEngineKind.WhisperKit || current.engine == TranscriptionEngineKind.AppleSpeech) {
+    if (modelsOnPhone || current.engine == TranscriptionEngineKind.WhisperKit || current.engine == TranscriptionEngineKind.AppleSpeech) {
         SettingsGroup(dividerInset = 56.dp) {
             item {
                 SettingSwitchRow(

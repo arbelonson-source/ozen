@@ -102,6 +102,7 @@ class OnboardingDeviceTest {
             it.hasCompletedOnboarding = true
             it.phoneModelFile = before.phoneModelFile
             it.phoneSpeed = before.phoneSpeed
+            it.whisperModelVariant = before.whisperModelVariant
         }
     }
 

@@ -12,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneSpeed
+import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -51,6 +52,7 @@ class PhoneModelSettingsDeviceTest {
             it.phoneModelFile = before.phoneModelFile
             it.phoneSpeed = before.phoneSpeed
             it.whisperModelVariant = before.whisperModelVariant
+            it.engine = before.engine
         }
         ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("settings put system font_scale 1.0")).close()
     }
@@ -72,6 +74,14 @@ class PhoneModelSettingsDeviceTest {
         compose.onNodeWithTag("phone-model-ggml-base-q5_1.bin").performScrollTo().assertIsSelected()
         compose.onNodeWithTag("phone-model-ggml-ozen-a3-q5_0.bin").performScrollTo().performClick()
         compose.waitUntil(5_000) { app.settings.current.value.phoneModelFile == null }
+    }
+
+    @Test
+    fun withTheCloudAsTheEngineTheCellularDownloadSwitchStaysBesideTheModelDownloads() {
+        app.settings.change { it.engine = TranscriptionEngineKind.Cloud }
+        openSection()
+        compose.onNodeWithTag("phone-model-list").performScrollTo().assertExists()
+        compose.onNodeWithText("Download models on cellular data too").performScrollTo().assertExists()
     }
 
     @Test

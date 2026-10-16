@@ -19,8 +19,11 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -34,6 +37,10 @@ class PhoneModelChooserTest {
     private var free: Long? = 100_000_000_000
     private var measured: PhoneSpeed? = PhoneSpeed(300.0, 4, 1.0)
     private var corrupt = false
+    private var measureCalls = 0
+    private var testTakes = 0L
+    private var duringTest: () -> Unit = {}
+    private val busy = MutableStateFlow(false)
     private val fetched = ArrayList<String>()
 
     private val fetcher = object : ReleaseFileFetching {
@@ -54,8 +61,15 @@ class PhoneModelChooserTest {
         network = { network },
         freeSpace = { free },
         scope = scope,
-        measure = { progress -> progress(0.5f); measured },
+        measure = { progress ->
+            measureCalls += 1
+            progress(0.5f)
+            duringTest()
+            delay(testTakes)
+            measured
+        },
         applied = { applied += 1 },
+        captionsBusy = busy,
         io = StandardTestDispatcher(scope.testScheduler),
     )
 
@@ -184,5 +198,59 @@ class PhoneModelChooserTest {
         assertEquals(PhoneCheckState.Failed, chooser.check.value)
         assertNull(saved().phoneSpeed)
         assertNull(saved().phoneModelFile)
+    }
+
+    @Test
+    fun `the phone test does not start while captions are listening, so it cannot slow them or read a busy phone as slow`() {
+        busy.value = true
+        chooser.runCheck(thenChooseBest = true)
+        scope.runCurrent()
+        assertEquals(0, measureCalls)
+        assertEquals(PhoneCheckState.Idle, chooser.check.value)
+        assertNull(saved().phoneSpeed)
+        assertNull(saved().phoneModelFile)
+    }
+
+    @Test
+    fun `a phone test running when captions start is stopped and saves nothing`() {
+        testTakes = 10_000
+        chooser.runCheck(thenChooseBest = true)
+        scope.runCurrent()
+        assertEquals(1, measureCalls)
+        scope.advanceTimeBy(3_000)
+        busy.value = true
+        scope.advanceTimeBy(20_000)
+        assertEquals(PhoneCheckState.Idle, chooser.check.value)
+        assertNull(saved().phoneSpeed)
+        assertNull(saved().phoneModelFile)
+    }
+
+    @Test
+    fun `changing the spoken language during the phone test keeps the automatic choice from being applied`() {
+        measured = PhoneSpeed(12.0, 2, 2.0)
+        duringTest = { settings.change { it.spokenLanguage = UILanguage.English } }
+        chooser.runCheck(thenChooseBest = true)
+        scope.runCurrent()
+        assertEquals(12.0, saved().phoneSpeed!!.gflops)
+        assertNull(saved().phoneModelFile)
+        assertEquals(0, applied)
+    }
+
+    @Test
+    fun `picking the default model during the phone test keeps the automatic choice from replacing it`() {
+        measured = PhoneSpeed(12.0, 2, 2.0)
+        duringTest = { chooser.choose(PhoneModelCatalog.OZEN_HEBREW_FILE) }
+        chooser.runCheck(thenChooseBest = true)
+        scope.runCurrent()
+        assertNull(saved().phoneModelFile)
+    }
+
+    @Test
+    fun `a model picked during the phone test is kept too`() {
+        measured = PhoneSpeed(12.0, 2, 2.0)
+        duringTest = { chooser.choose("ggml-small-q5_1.bin") }
+        chooser.runCheck(thenChooseBest = true)
+        scope.runCurrent()
+        assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
     }
 }

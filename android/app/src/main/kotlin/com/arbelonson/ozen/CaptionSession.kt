@@ -392,6 +392,7 @@ class CaptionSession(
             publish()
         }
         pipeline.onPhaseChange = {
+            captionsBusy.value = it.isListening || it.isTransitioning
             conversations.listeningChanged()
             replies.captionsCameOn()
             publish()
@@ -1165,8 +1166,12 @@ class CaptionSession(
             scope = scope,
             measure = { progress -> PhoneSpeedMeter(context.applicationInfo.nativeLibraryDir).run(progress) },
             applied = ::settingsChanged,
+            captionsBusy = captionsBusy,
+            totalMemory = { ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java)?.getMemoryInfo(it) }.totalMem.takeIf { it > 0 } },
         )
     }
+
+    private val captionsBusy = MutableStateFlow(false)
 
     private fun voiceScore(): ((FloatArray) -> Float?)? {
         val scorer = voiceScorer ?: return null

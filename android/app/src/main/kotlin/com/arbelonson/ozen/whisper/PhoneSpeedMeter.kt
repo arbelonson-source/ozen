@@ -2,6 +2,7 @@ package com.arbelonson.ozen.whisper
 
 import com.arbelonson.ozen.core.PhoneSpeed
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 class PhoneSpeedMeter(
@@ -18,6 +19,7 @@ class PhoneSpeedMeter(
         val speeds = ArrayList<Double>()
         progress(0f)
         repeat(rounds) { round ->
+            ensureActive()
             speeds += measure(threads, roundMillis)
             progress((round + 1).toFloat() / rounds)
         }

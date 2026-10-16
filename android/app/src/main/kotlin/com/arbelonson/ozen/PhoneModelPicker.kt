@@ -48,21 +48,23 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
     val installed by models.installed.collectAsStateWithLifecycle()
     val switching by models.switching.collectAsStateWithLifecycle()
     val check by models.check.collectAsStateWithLifecycle()
+    val busy by models.captionsBusy.collectAsStateWithLifecycle()
+    val memory = models.totalMemoryBytes
     val language = settings.spokenLanguage
     val speed = settings.phoneSpeed?.gflops
     val chosen = (switching.fileOrNull ?: settings.phoneModel.file)
-    val best = speed?.let { PhoneModelEstimate.recommend(language, it) }
+    val best = speed?.let { PhoneModelEstimate.recommend(language, it, memory) }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        PhoneTest(check, tested = speed != null) { models.runCheck(chooseBestAfterTest) }
+        PhoneTest(check, tested = speed != null, captionsBusy = busy) { models.runCheck(chooseBestAfterTest) }
         SettingsGroup(modifier = Modifier.selectableGroup().testTag("phone-model-list")) {
             for (model in PhoneModelCatalog.offered(language)) {
                 item {
-                    ModelRow(model, language, speed, best, model.file == chosen, model.file in installed, switching) { models.choose(model.file) }
+                    ModelRow(model, language, speed, memory, best, model.file == chosen, model.file in installed, switching) { models.choose(model.file) }
                 }
             }
         }
         val picked = PhoneModelCatalog.effective(language, chosen)
-        if (speed != null && PhoneModelEstimate.fit(picked, speed) != PhoneModelFit.KeepsUp) {
+        if (speed != null && PhoneModelEstimate.fit(picked, speed, memory) != PhoneModelFit.KeepsUp) {
             Caution(tr("בטלפון הזה המודל הזה עלול לפגר אחרי הדיבור. אפשר להשתמש בו בכל זאת.", "On this phone this model may lag behind the speech. You can still use it."))
         }
         SwitchNote(switching)
@@ -80,11 +82,11 @@ private val PhoneModelSwitch.fileOrNull: String?
     }
 
 @Composable
-private fun PhoneTest(check: PhoneCheckState, tested: Boolean, onTest: () -> Unit) {
+private fun PhoneTest(check: PhoneCheckState, tested: Boolean, captionsBusy: Boolean, onTest: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
         val running = check as? PhoneCheckState.Running
         val label = if (tested) tr("בדיקה חוזרת של הטלפון", "Test this phone again") else tr("בדיקת הטלפון הזה", "Test this phone")
-        TonalButton(label, onTest, Modifier.fillMaxWidth().testTag("phone-test"), icon = Icons.Rounded.Speed, enabled = running == null)
+        TonalButton(label, onTest, Modifier.fillMaxWidth().testTag("phone-test"), icon = Icons.Rounded.Speed, enabled = running == null && !captionsBusy)
         if (running != null) {
             val percent = (running.fraction * 100).toInt()
             val text = tr("בודק את הטלפון… %1%", "Testing this phone… %1%", listOf("$percent"))
@@ -92,6 +94,12 @@ private fun PhoneTest(check: PhoneCheckState, tested: Boolean, onTest: () -> Uni
             Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         } else if (check == PhoneCheckState.Failed) {
             Warning(tr("הבדיקה לא הצליחה. אפשר לנסות שוב.", "The test could not run. Try again."))
+        } else if (captionsBusy) {
+            Text(
+                tr("כדי לבדוק את הטלפון הזה, עוצרים את הכתוביות. הבדיקה צריכה את כל כוחו.", "Stop the captions to test this phone. The test needs all of its power."),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         } else {
             Text(
                 tr("הבדיקה לוקחת כעשר שניות ולא מורידה שום דבר.", "The test takes about ten seconds and downloads nothing."),
@@ -107,6 +115,7 @@ private fun ModelRow(
     model: PhoneModel,
     language: UILanguage,
     speed: Double?,
+    memory: Long?,
     best: PhoneModel?,
     selected: Boolean,
     onPhone: Boolean,
@@ -141,7 +150,7 @@ private fun ModelRow(
             Text(place + hebrewOnly, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(model.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Rating(if (language == UILanguage.Hebrew) tr("עברית", "Hebrew") else tr("דיוק", "Accuracy"), model.quality(language))
-            speed?.let { FitLabel(PhoneModelEstimate.fit(model, it)) }
+            speed?.let { FitLabel(PhoneModelEstimate.fit(model, it, memory)) }
         }
         RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(12.dp))
     }
