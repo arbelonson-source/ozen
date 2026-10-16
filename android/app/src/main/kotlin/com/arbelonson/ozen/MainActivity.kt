@@ -701,8 +701,8 @@ private fun CaptionScreen(
     var pinchScale by remember { mutableDoubleStateOf(1.0) }
     val pinchedSize = DisplayPreferences.fontSize(display.fontSize, pinchScale)
     val savedSize by rememberUpdatedState(display.fontSize)
-    var problemMarked by remember { mutableStateOf<Boolean?>(null) }
-    var markedWithCaptions by remember { mutableStateOf(true) }
+    var problemMarked by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    var markedWithCaptions by rememberSaveable { mutableStateOf(true) }
     val context = LocalContext.current
     var shownWord by remember { mutableStateOf<HeardWord?>(null) }
     // Counted from when this screen appeared: talk that resumed while she

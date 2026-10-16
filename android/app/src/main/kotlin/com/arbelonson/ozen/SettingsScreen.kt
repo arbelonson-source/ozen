@@ -467,8 +467,8 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
     val scope = rememberCoroutineScope()
     var draft by keyDraft
     var saveFailed by remember(service) { mutableStateOf(false) }
-    var confirmingDelete by remember { mutableStateOf(false) }
-    var askingConsent by remember { mutableStateOf(false) }
+    var confirmingDelete by rememberSaveable { mutableStateOf(false) }
+    var askingConsent by rememberSaveable { mutableStateOf(false) }
     val saveNow = {
         if (draft.isNotBlank()) {
             val typed = draft
@@ -605,7 +605,7 @@ private fun HomeComputerSection(
     var checking by remember { mutableStateOf(false) }
     var check by remember { mutableStateOf<HomeServerCheck?>(null) }
     var checkGeneration by remember { mutableIntStateOf(0) }
-    var confirmingCodeDelete by remember { mutableStateOf(false) }
+    var confirmingCodeDelete by rememberSaveable { mutableStateOf(false) }
     val forgetCheck = {
         check = null
         checkGeneration += 1
@@ -1305,7 +1305,7 @@ private fun MaintenanceSection(onDiagnostics: () -> Unit, onWalkthrough: () -> U
 
 @Composable
 private fun WalkthroughAgainRow(onShow: () -> Unit) {
-    var asking by remember { mutableStateOf(false) }
+    var asking by rememberSaveable { mutableStateOf(false) }
     SettingRow(tr("להציג שוב את ההסבר הראשוני", "Show the initial walkthrough again"), icon = Icons.Rounded.Replay, onClick = { asking = true })
     if (asking) {
         AlertDialog(
@@ -1327,7 +1327,7 @@ private fun WalkthroughAgainRow(onShow: () -> Unit) {
 
 @Composable
 internal fun ClearCaptionsRow(saving: Boolean, saveFailing: () -> Boolean, onClear: () -> Unit) {
-    var asking by remember { mutableStateOf(false) }
+    var asking by rememberSaveable { mutableStateOf(false) }
     val error = MaterialTheme.colorScheme.error
     Row(
         modifier = Modifier

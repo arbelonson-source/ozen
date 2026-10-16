@@ -515,6 +515,20 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun turningThePhoneKeepsTheProblemMarkedMessageOpen() {
+        showLines(listOf(committed("The bus leaves at noon")))
+        lineText("The bus leaves at noon").performTouchInput { longClick() }
+        compose.onNodeWithText("Captions not good? Mark a problem").performClick()
+        compose.onNodeWithText("Problem marked").assertExists()
+        val first = compose.activity
+        compose.activityRule.scenario.recreate()
+        compose.waitUntil(5_000) { first.isDestroyed }
+        compose.waitForIdle()
+        compose.onNodeWithText("Problem marked").assertExists()
+        compose.onNodeWithText("OK").performClick()
+    }
+
+    @Test
     fun theMicrophoneButtonOpensThePickerWhereChoosingOneSwitchesToItOrSaysThePhoneWouldNot() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val preferredBefore = app.settings.current.value.preferredInputUID

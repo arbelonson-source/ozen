@@ -923,6 +923,55 @@ class SettingsScreenDeviceTest {
         compose.waitUntil(5_000) { phrases().isEmpty() }
     }
 
+    private fun assertQuestionSurvivesTurning(title: String) {
+        compose.onNodeWithText(title).assertExists()
+        compose.activityRule.scenario.recreate()
+        compose.onNodeWithText(title).assertExists()
+    }
+
+    @Test
+    fun turningThePhoneKeepsTheCloudAudioConsentQuestionOpen() {
+        app.settings.change { it.cloudSoundAcknowledged = emptySet() }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Cloud transcription").performScrollTo().performClick()
+        compose.onNodeWithText("Deepgram").performScrollTo().performClick()
+        compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-rotate")
+        compose.onNodeWithText("Paste your Deepgram key here").performImeAction()
+        assertQuestionSurvivesTurning("Send the audio to Deepgram?")
+    }
+
+    @Test
+    fun turningThePhoneKeepsTheDeleteKeyQuestionOpen() {
+        app.settings.change { it.cloudSoundAcknowledged = it.cloudSoundAcknowledged + CloudProvider.Deepgram }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Cloud transcription").performScrollTo().performClick()
+        compose.onNodeWithText("Deepgram").performScrollTo().performClick()
+        compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-rotate")
+        compose.onNodeWithText("Paste your Deepgram key here").performImeAction()
+        compose.waitUntil(5_000) { app.cloudKeys.read(CloudProvider.Deepgram) != null }
+        compose.onNodeWithText("Delete key").performScrollTo().performClick()
+        assertQuestionSurvivesTurning("Delete the cloud key?")
+    }
+
+    @Test
+    fun turningThePhoneKeepsTheDeleteCodeQuestionOpen() {
+        app.homeServerCode.save("example-code-123")
+        compose.onNodeWithText("Settings").performClick()
+        compose.onAllNodesWithText("Home computer").onFirst().performScrollTo().performClick()
+        compose.onNodeWithText("Delete code").performScrollTo().performClick()
+        assertQuestionSurvivesTurning("Delete the computer’s code?")
+    }
+
+    @Test
+    fun turningThePhoneKeepsTheWalkthroughAgainAndClearCaptionsQuestionsOpen() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Show the initial walkthrough again").performScrollTo().performClick()
+        assertQuestionSurvivesTurning("Show the initial walkthrough again?")
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Clear captions from the screen").performScrollTo().performClick()
+        assertQuestionSurvivesTurning("Delete all captions from the screen?")
+    }
+
     @Test
     fun importantWordsAreAddedSwitchedOffAndBackOnAndDeletedAfterAskingInSettings() {
         app.settings.change { it.keywordAlerts = emptyList() }
