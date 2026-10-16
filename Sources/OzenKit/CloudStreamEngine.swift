@@ -91,7 +91,7 @@ public actor CloudStreamEngine<Service: CloudStreamService>: TranscriptionEngine
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    try await self.run(languageCode: languageCode, audio: audio, continuation: continuation)
+                    try await self.run(languageCode: CloudProvider.plainCode(languageCode), audio: audio, continuation: continuation)
                     continuation.finish()
                 } catch is CancellationError {
                     continuation.finish()
