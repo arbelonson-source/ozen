@@ -60,7 +60,7 @@ private struct AlertOverlay: ViewModifier {
                 let seconds = KeywordPill.visibleSeconds(for: current, speaker: viewModel.speakerName(for: current), accessibilitySize: dynamicTypeSize.isAccessibilitySize)
                 try? await Task.sleep(for: .seconds(seconds))
                 if shownHit?.id == current.id {
-                    withAnimation { shownHit = nil }
+                    withAnimation(reduceMotion ? nil : .default) { shownHit = nil }
                 }
             }
     }

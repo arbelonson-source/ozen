@@ -387,6 +387,7 @@ struct LiveCaptionView: View {
             guard let timer = keywordPillTimer else { return }
             let left = KeywordPill.secondsLeft(total: timer.seconds, elapsed: Date().timeIntervalSince(keywordHitShownAt))
             try? await Task.sleep(for: .seconds(left))
+            if Task.isCancelled { return }
             if visibleKeywordHit?.id == timer.id {
                 withAnimation(reduceMotion ? nil : .default) { visibleKeywordHit = nil }
             }
