@@ -830,8 +830,10 @@ final class OzenScreenshotUITests: XCTestCase {
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
         XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore room: the type to speak button never appeared")
         typeToSpeakButton.tap()
-        let field = app.textFields.firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 10), "restore room: the field never appeared")
+        let typedField = app.textFields.firstMatch
+        let typedView = app.textViews.firstMatch
+        XCTAssertTrue(typedField.waitForExistence(timeout: 10) || typedView.exists, "restore room: the field never appeared")
+        let field = typedField.exists ? typedField : typedView
         field.tap()
         field.typeText("hello there")
 
