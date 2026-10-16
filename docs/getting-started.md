@@ -53,10 +53,12 @@ use up the data plan. The page says it then takes a few minutes to set the
 model up for the phone. After that it works without the internet.
 
 - If the phone is short of room, the page says how much to free up.
-- If the phone is old or slow, open **An older or slow phone?** (telefon
-  yashan o iti?). There you can pick Fast instead. The page warns that it
-  gets many more Hebrew words wrong, so use it only when the accurate one
-  is too slow.
+- The next page, **Choose the speech model**, lists the models for the
+  language you picked, the one that suits this phone first and already
+  selected. Each shows its size and whether it **Keeps up**, is **A little
+  behind** or is **Too slow on this phone**. **Test this phone** checks again,
+  and **Keep the recommended model** moves on with the suggestion. The same
+  list is under Settings, Whisper, Model.
 - **No download** (bli horada) uses Apple's own recognition, built into the
   phone. It starts right away, but Hebrew is only available on some
   versions of iOS.

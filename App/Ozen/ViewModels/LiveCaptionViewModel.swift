@@ -1039,7 +1039,7 @@ public final class LiveCaptionViewModel {
         // A phone on the old language's recommended model takes the new
         // one's along; a model she chose herself stays.
         if settings.whisperModelVariant == settings.recommendedWhisperVariant {
-            settings.whisperModelVariant = WhisperModelCatalog.recommendedVariant(for: language)
+            settings.whisperModelVariant = DeviceModelAdvisor.recommendedVariant(for: language, on: settings.deviceModelCheck)
         }
         settings.spokenLanguage = language
         persist()
@@ -1516,6 +1516,18 @@ public final class LiveCaptionViewModel {
     /// come back by themselves after.
     public var captionsHeldForSpeech: Bool {
         speechPause.isHoldingCaptions && pipeline.phase == .paused
+    }
+
+    /// "Test this phone": Argmax's list of what runs on this model of
+    /// phone, plus the time the running captions' own passes have taken,
+    /// once there are enough of them. The pick itself stays hers.
+    public func testThisPhone() async {
+        var measurement = settings.deviceModelCheck?.measurement
+        if let live = await pipeline.engineLivePassMeasurement(), live.passes >= DeviceModelAdvisor.minimumMeasuredPasses {
+            measurement = live
+        }
+        settings.deviceModelCheck = DeviceModelTable.check(measurement: measurement)
+        persist()
     }
 
     /// "Not now" on the caption screen's offer to set up her name alert.

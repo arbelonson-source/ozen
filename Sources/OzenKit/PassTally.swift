@@ -34,6 +34,10 @@ public struct PassTally: Sendable, Equatable {
         segmentsRejected += max(0, seen - accepted)
     }
 
+    public var averageLiveSeconds: Double? {
+        livePasses > 0 ? liveSeconds / Double(livePasses) : nil
+    }
+
     public var summary: String {
         let average = livePasses > 0 ? String(format: "%.2f", liveSeconds / Double(livePasses)) : "-"
         let last = lastLiveSeconds.map { String(format: "%.2f", $0) } ?? "-"
