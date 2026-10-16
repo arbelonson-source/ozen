@@ -23,6 +23,14 @@ struct OnboardingView: View {
 
     private static let pageCount = 7
 
+    private static var forcesNotificationDenial: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-uiTestNotificationsDenied")
+        #else
+        false
+        #endif
+    }
+
     var body: some View {
         TabView(selection: $page) {
             welcomePage.tag(0)
@@ -43,7 +51,7 @@ struct OnboardingView: View {
         .accessibilityIdentifier("onboardingScreen")
         #if DEBUG
         .task {
-            if ProcessInfo.processInfo.arguments.contains("-uiTestNotificationsDenied") {
+            if Self.forcesNotificationDenial {
                 microphone = .granted
                 notificationsAllowed = false
             }
@@ -298,15 +306,16 @@ struct OnboardingView: View {
         // than leave this page stuck showing "blocked" after she just
         // fixed it. Asking again is safe once denied -- iOS answers with
         // the current status instead of showing the system prompt again.
-        .task(id: scenePhase) {
+        .task(id: "\(scenePhase)-\(String(describing: microphone))") {
             guard scenePhase == .active else { return }
             if microphone == .denied {
                 microphone = await viewModel.requestMicrophonePermission()
             }
-            if OnboardingNotificationAdvice.showsSettingsButton(allowed: notificationsAllowed),
-               let current = await AlertNotifier.shared.isAllowed() {
-                notificationsAllowed = current
-            }
+            guard microphone == .granted else { return }
+            notificationsAllowed = OnboardingNotificationAdvice.statusOnReturn(
+                current: await AlertNotifier.shared.isAllowed(),
+                fixtureForcesDenial: Self.forcesNotificationDenial
+            )
         }
     }
 
