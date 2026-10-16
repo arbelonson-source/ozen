@@ -257,12 +257,19 @@ public protocol TranscriptionEngine: Sendable {
     /// take, how much it threw away), for the journal when a problem is
     /// marked. Nil from engines that keep no such count.
     func diagnosticsSummary() async -> String?
+
+    /// How long this engine's live passes have taken on this phone, once
+    /// it has run enough of them to say; nil from engines that do not time
+    /// their own work.
+    func livePassMeasurement() async -> LivePassMeasurement?
 }
 
 public extension TranscriptionEngine {
     func setVocabulary(_ terms: [String]) async {}
 
     func diagnosticsSummary() async -> String? { nil }
+
+    func livePassMeasurement() async -> LivePassMeasurement? { nil }
 
     func pendingDownloadMegabytes() async -> Int? { nil }
 

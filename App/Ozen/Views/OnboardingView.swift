@@ -13,15 +13,21 @@ struct OnboardingView: View {
     @State private var microphone: AudioPermission?
     @State private var notificationsAllowed: Bool?
     @State private var requesting = false
-    /// The accurate model is right for nearly every phone, so its
-    /// alternative stays folded away unless it is already the choice:
-    /// "which model?" is not a question for the first minute of setup.
-    @State private var showsModelChoice = false
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private static let pageCount = 7
+    private enum Step: CaseIterable {
+        case welcome, howItWorks, language, engine, model, microphone, name, ready
+    }
+
+    /// The model page only when the engine on the phone is the one that
+    /// uses a speech model.
+    private var steps: [Step] {
+        Step.allCases.filter { $0 != .model || viewModel.settings.engine == .whisperKit }
+    }
+
+    @State private var pickedModel = false
 
     private static var forcesNotificationDenial: Bool {
         #if DEBUG
@@ -33,13 +39,9 @@ struct OnboardingView: View {
 
     var body: some View {
         TabView(selection: $page) {
-            welcomePage.tag(0)
-            howItWorksPage.tag(1)
-            languagePage.tag(2)
-            enginePage.tag(3)
-            microphonePage.tag(4)
-            namePage.tag(5)
-            readyPage.tag(6)
+            ForEach(Array(steps.enumerated()), id: \.element) { index, step in
+                pageView(for: step).tag(index)
+            }
         }
         .tabViewStyle(.page(indexDisplayMode: .always))
         .indexViewStyle(.page(backgroundDisplayMode: .always))
@@ -93,21 +95,36 @@ struct OnboardingView: View {
         .onChange(of: page) { _, newPage in announce(page: newPage) }
     }
 
-    private static var pageTitles: [String] {
-        [
-            tr("אוזן", "Ozen"),
-            tr("איך זה עובד", "How it works"),
-            tr("באיזו שפה מדברים סביבך?", "Which language do people around you speak?"),
-            tr("הכנה חד-פעמית", "One-time setup"),
-            tr("המיקרופון", "The microphone"),
-            tr("כשקוראים לך", "When you’re called"),
-            tr("מוכן", "Ready"),
-        ]
+    @ViewBuilder
+    private func pageView(for step: Step) -> some View {
+        switch step {
+        case .welcome: welcomePage
+        case .howItWorks: howItWorksPage
+        case .language: languagePage
+        case .engine: enginePage
+        case .model: modelPage
+        case .microphone: microphonePage
+        case .name: namePage
+        case .ready: readyPage
+        }
+    }
+
+    private func title(of step: Step) -> String {
+        switch step {
+        case .welcome: return tr("אוזן", "Ozen")
+        case .howItWorks: return tr("איך זה עובד", "How it works")
+        case .language: return tr("באיזו שפה מדברים סביבך?", "Which language do people around you speak?")
+        case .engine: return tr("הכנה חד-פעמית", "One-time setup")
+        case .model: return tr("בחירת מודל הדיבור", "Choose the speech model")
+        case .microphone: return tr("המיקרופון", "The microphone")
+        case .name: return tr("כשקוראים לך", "When you’re called")
+        case .ready: return tr("מוכן", "Ready")
+        }
     }
 
     private func announce(page newPage: Int) {
         guard UIAccessibility.isVoiceOverRunning else { return }
-        let titles = Self.pageTitles
+        let titles = steps.map(title(of:))
         guard titles.indices.contains(newPage) else { return }
         let text = OnboardingPageAnnouncement.text(page: newPage, total: titles.count, title: titles[newPage])
         let announcement = NSAttributedString(string: text, attributes: [.accessibilitySpeechQueueAnnouncement: true])
@@ -176,30 +193,6 @@ struct OnboardingView: View {
                 Task { await viewModel.setEngine(.whisperKit) }
             }
             if viewModel.settings.engine == .whisperKit {
-                DisclosureGroup(isExpanded: $showsModelChoice) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Picker(tr("מודל", "Model"), selection: Binding(
-                            get: { viewModel.settings.whisperModelVariant },
-                            set: { variant in Task { await viewModel.setWhisperModel(variant) } }
-                        )) {
-                            Text(tr("מדויק", "Accurate")).tag(viewModel.settings.recommendedWhisperVariant)
-                            Text(tr("מהיר", "Fast")).tag("small")
-                        }
-                        .pickerStyle(.segmented)
-                        Text(modelChoiceNote)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.top, 8)
-                } label: {
-                    Text(tr("טלפון ישן או איטי?", "An older or slow phone?"))
-                        .font(.callout)
-                }
-                .onAppear {
-                    if viewModel.settings.whisperModelVariant != viewModel.settings.recommendedWhisperVariant {
-                        showsModelChoice = true
-                    }
-                }
                 if let missing = modelStorageShortfall {
                     Label(tr("אין מספיק מקום בטלפון למודל הזה. צריך לפנות עוד %1.", "Not enough room on the phone for this model. %1 more needs to be freed up.", args: ["\(PhasePresentation.sizeText(megabytes: missing))"]), systemImage: "externaldrive.badge.exclamationmark")
                         .font(.callout)
@@ -219,6 +212,51 @@ struct OnboardingView: View {
             Text(tr("אפשר להחליף בכל רגע בהגדרות.", "You can switch anytime in Settings."))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private var modelPage: some View {
+        OnboardingPage(symbol: "square.stack.3d.up", title: tr("בחירת מודל הדיבור", "Choose the speech model")) {
+            Text(tr("אוזן הופכת דיבור לכתוביות בעזרת מודל דיבור שנשמר בטלפון. מודל גדול מבין יותר מילים, אבל צריך יותר מקום וזמן. המודל המומלץ כבר נבחר, ואפשר לשנות בכל רגע בהגדרות.", "Ozen turns speech into captions with a speech model kept on the phone. A bigger model understands more words but needs more room and time. The recommended one is already chosen, and you can change it anytime in Settings."))
+            ModelChoiceView(viewModel: viewModel) { variant in
+                pickedModel = true
+                Task { await viewModel.setWhisperModel(variant) }
+            }
+            if let missing = modelStorageShortfall {
+                Label(tr("אין מספיק מקום בטלפון למודל הזה. צריך לפנות עוד %1.", "Not enough room on the phone for this model. %1 more needs to be freed up.", args: ["\(PhasePresentation.sizeText(megabytes: missing))"]), systemImage: "externaldrive.badge.exclamationmark")
+                    .font(.callout)
+                    .foregroundStyle(.readable(.red))
+            }
+            Button {
+                Task { await checkPhone() }
+            } label: {
+                Label(tr("בדיקת הטלפון הזה", "Test this phone"), systemImage: "speedometer")
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .ozenGlassButton()
+            .controlSize(.large)
+            .accessibilityIdentifier("onboardingModelTestPhone")
+            Button {
+                pickedModel = false
+                Task { await viewModel.setWhisperModel(viewModel.settings.recommendedWhisperVariant) }
+                withAnimation { page += 1 }
+            } label: {
+                Label(tr("להישאר עם המודל המומלץ", "Keep the recommended model"), systemImage: "checkmark")
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .ozenGlassButton(prominent: true)
+            .controlSize(.large)
+            .accessibilityIdentifier("onboardingModelKeepRecommended")
+        }
+        .task(id: viewModel.settings.spokenLanguage) { await checkPhone() }
+    }
+
+    private func checkPhone() async {
+        await viewModel.testThisPhone()
+        if !pickedModel {
+            await viewModel.setWhisperModel(viewModel.settings.recommendedWhisperVariant)
         }
     }
 
@@ -354,7 +392,7 @@ struct OnboardingView: View {
         OnboardingPage(symbol: "checkmark.seal", title: tr("מוכן", "Ready")) {
             switch viewModel.settings.engine.firstRunNote {
             case .modelDownload:
-                Text(tr("בהפעלה הראשונה אוזן תוריד את מודל השפה. זה לוקח כמה דקות ומוצג על המסך. אחר כך — מיד.", "The first time it runs, Ozen will download the language model. This takes a few minutes and shows on the screen. After that — instantly."))
+                Text(tr("בהפעלה הראשונה אוזן תוריד את מודל הדיבור (%1). זה לוקח כמה דקות ומוצג על המסך. אחר כך — מיד.", "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.", args: ["\(modelSizeText)"]))
             case .speechPermission:
                 Text(tr("בהפעלה הראשונה iOS עשוי לבקש אישור לזיהוי דיבור.", "The first time it runs, iOS may ask for permission to recognize speech."))
             case .homeComputer:
@@ -370,7 +408,7 @@ struct OnboardingView: View {
 
     private var footer: some View {
         HStack {
-            if page < Self.pageCount - 1 {
+            if page < steps.count - 1 {
                 // Side by side while both words fit whole. At the largest
                 // text German's "Weiter" broke inside the word and
                 // "Überspringen" took three lines, so there Next spans the
@@ -455,21 +493,6 @@ struct OnboardingView: View {
         return StorageSpaceGate.shortfallMegabytes(downloadMegabytes: size, availableBytes: DeviceStorage.availableBytes())
     }
 
-    private var modelChoiceNote: String {
-        let hebrew = viewModel.settings.spokenLanguage == .hebrew
-        switch viewModel.settings.whisperModelVariant {
-        case viewModel.settings.recommendedWhisperVariant:
-            return hebrew
-                ? tr("מדויק: עברית טובה בהרבה, מתעדכן קצת יותר לאט. מתאים ל-%1 חדש.", "Accurate: much better Hebrew, updates a bit slower. Good for a newer %1.", args: ["\(DeviceWord.brand)"])
-                : tr("מדויק: כתוביות טובות בהרבה, מתעדכן קצת יותר לאט. מתאים ל-%1 חדש.", "Accurate: much better captions, updates a bit slower. Good for a newer %1.", args: ["\(DeviceWord.brand)"])
-        case "small":
-            return hebrew
-                ? tr("מהיר: מגיב מיד, אבל טועה בהרבה יותר מילים בעברית. רק לטלפון ישן שהמדויק איטי בו.", "Fast: responds instantly, but gets many more Hebrew words wrong. Only for an older phone the accurate one is slow on.")
-                : tr("מהיר: מגיב מיד, אבל טועה בהרבה יותר מילים. רק לטלפון ישן שהמדויק איטי בו.", "Fast: responds instantly, but gets many more words wrong. Only for an older phone the accurate one is slow on.")
-        default:
-            return tr("נבחר מודל אחר בהגדרות.", "A different model is selected in Settings.")
-        }
-    }
 }
 
 private struct OnboardingPage<Content: View>: View {

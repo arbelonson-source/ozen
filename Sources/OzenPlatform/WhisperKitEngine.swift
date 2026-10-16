@@ -269,6 +269,11 @@ public actor WhisperKitEngine: TranscriptionEngine {
         "\(modelVariant): \(tally.summary)"
     }
 
+    public func livePassMeasurement() async -> LivePassMeasurement? {
+        guard let average = tally.averageLiveSeconds else { return nil }
+        return LivePassMeasurement(variant: modelVariant, averageSeconds: average, passes: tally.livePasses)
+    }
+
     private var isStreaming = false
     private var streamWaiters: [CheckedContinuation<Void, Never>] = []
 

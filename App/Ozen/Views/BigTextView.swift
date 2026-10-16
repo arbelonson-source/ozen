@@ -14,6 +14,7 @@ struct BigTextView: View {
     let onSpeak: (String) -> Void
 
     @State private var isFlipped = false
+    @State private var clearedText: String?
     @FocusState private var isTyping: Bool
     @Environment(\.dismiss) private var dismiss
 
@@ -36,6 +37,9 @@ struct BigTextView: View {
         .background(theme.background.ignoresSafeArea())
         .preferredColorScheme(theme.preferredScheme)
         .onAppear { isTyping = !isFlipped }
+        .onChange(of: text) { _, new in
+            if !new.isEmpty { clearedText = nil }
+        }
     }
 
     @ViewBuilder
@@ -89,16 +93,37 @@ struct BigTextView: View {
 
     private var controls: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-            Button {
-                text = ""
-                isFlipped = false
-                isTyping = true
-            } label: {
-                Label(tr("ניקוי", "Clear"), systemImage: "eraser")
-                    .frame(maxWidth: .infinity)
+            // Clear is disabled once the text is gone, so Restore takes its
+            // place: a third button would add a grid row, and with the
+            // keyboard up that row comes out of the editor.
+            if let previous = clearedText, text.isEmpty {
+                Button {
+                    text = previous
+                    clearedText = nil
+                    isTyping = true
+                } label: {
+                    Label(tr("שחזור", "Restore"), systemImage: "arrow.uturn.backward")
+                        .frame(maxWidth: .infinity)
+                }
+                .accessibilityIdentifier("bigTextRestore")
+                .accessibilityShowsLargeContentViewer()
+            } else {
+                Button {
+                    if !text.isEmpty { clearedText = text }
+                    text = ""
+                    isFlipped = false
+                    isTyping = true
+                    if clearedText != nil {
+                        AccessibilityNotification.Announcement(tr("הטקסט נוקה. אפשר לשחזר אותו", "Text cleared. It can be restored")).post()
+                    }
+                } label: {
+                    Label(tr("ניקוי", "Clear"), systemImage: "eraser")
+                        .frame(maxWidth: .infinity)
+                }
+                .accessibilityIdentifier("bigTextClear")
+                .accessibilityShowsLargeContentViewer()
+                .disabled(isEmpty)
             }
-            .accessibilityShowsLargeContentViewer()
-            .disabled(isEmpty)
 
             Button {
                 isFlipped.toggle()

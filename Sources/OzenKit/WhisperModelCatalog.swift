@@ -233,6 +233,15 @@ public enum WhisperModelCatalog {
         language == .hebrew ? recommendedImproves(on: variant) : option(for: variant)?.isHebrewOnly == true
     }
 
+    public static func improves(on variant: String, with recommended: String, for language: UILanguage) -> Bool {
+        guard variant != recommended else { return false }
+        if language == .hebrew {
+            guard let current = option(for: variant), let better = option(for: recommended) else { return false }
+            return better.hebrewQuality > current.hebrewQuality
+        }
+        return option(for: variant)?.isHebrewOnly == true
+    }
+
     public static func option(for variant: String) -> WhisperModelOption? {
         options.first { $0.variant == variant }
     }

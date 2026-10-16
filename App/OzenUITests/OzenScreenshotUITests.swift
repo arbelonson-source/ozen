@@ -472,13 +472,62 @@ final class OzenScreenshotUITests: XCTestCase {
 
         let next = app.descendants(matching: .any)["onboardingNextButton"]
         XCTAssertTrue(next.waitForExistence(timeout: 10), "onboarding: no Next button")
-        for _ in 0..<4 {
+        for _ in 0..<5 {
             next.tap()
             Thread.sleep(forTimeInterval: 0.5)
         }
         let button = app.descendants(matching: .any)["onboardingOpenNotificationSettings"]
         XCTAssertTrue(button.waitForExistence(timeout: 10), "onboarding: no 'Open phone settings' button after notifications were refused")
         capture(app, name: "onboarding-notifications-refused")
+    }
+
+    /// The speech model is chosen on its own page: the models for this
+    /// phone are listed, the recommended one is already selected, another
+    /// can be picked, and "Keep the recommended model" puts it back.
+    func testOnboardingModelChoice() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "onboardingEnglish"]
+        app.launch()
+
+        let next = app.descendants(matching: .any)["onboardingNextButton"]
+        XCTAssertTrue(next.waitForExistence(timeout: 10), "model choice: no Next button")
+        for _ in 0..<4 {
+            next.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        let rows = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'modelChoiceRow-'"))
+        let recommended = rows.matching(NSPredicate(format: "label CONTAINS 'Recommended for this phone'")).firstMatch
+        XCTAssertTrue(recommended.waitForExistence(timeout: 20), "model choice: no model is marked 'Recommended for this phone'")
+        XCTAssertTrue(recommended.isSelected, "model choice: the recommended model is not selected when the page opens")
+        XCTAssertGreaterThan(rows.count, 1, "model choice: the page offers only one model")
+        XCTAssertTrue(app.descendants(matching: .any)["onboardingModelTestPhone"].exists, "model choice: no 'Test this phone' button")
+        capture(app, name: "onboarding-model-choice")
+
+        let other = rows.matching(NSPredicate(format: "NOT (label CONTAINS 'Recommended for this phone')")).firstMatch
+        scrollUntilHittable(other, in: app)
+        other.tap()
+        XCTAssertTrue(other.isSelected, "model choice: tapping another model did not select it")
+        XCTAssertFalse(recommended.isSelected, "model choice: two models look selected")
+        capture(app, name: "onboarding-model-choice-other")
+
+        let keep = app.descendants(matching: .any)["onboardingModelKeepRecommended"]
+        scrollUntilHittable(keep, in: app)
+        keep.tap()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertFalse(rows.firstMatch.isHittable, "model choice: 'Keep the recommended model' did not move on")
+        app.swipeRight()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertTrue(recommended.waitForExistence(timeout: 10), "model choice: the model page did not come back")
+        XCTAssertTrue(recommended.isSelected, "model choice: keeping the recommended model did not select it")
+        XCTAssertFalse(other.isSelected, "model choice: the other model stayed selected after keeping the recommended one")
+    }
+
+    private func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<14 where !element.isHittable {
+            app.swipeUp()
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        XCTAssertTrue(element.isHittable, "model choice: \(element) never scrolled into reach")
     }
 
     func testOnboardingAccessibilityText() throws {
@@ -496,7 +545,7 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(skip.exists && next.exists, "onboarding: no Skip or Next on page 1")
         XCTAssertLessThan(abs(skip.frame.midY - next.frame.midY), next.frame.height / 2, "onboarding: Skip left Next's row though both fit beside it (Skip \(skip.frame), Next \(next.frame))")
 
-        for (index, name) in ["page2-how-it-works", "page3-language", "page4-engine", "page5-microphone", "page6-name", "page7-ready"].enumerated() {
+        for (index, name) in ["page2-how-it-works", "page3-language", "page4-engine", "page5-model", "page6-microphone", "page7-name", "page8-ready"].enumerated() {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "onboarding: no Next button on page \(index + 1)")
             next.tap()
             // The footer's own content (Skip/Next vs. the last page's lone
@@ -506,22 +555,22 @@ final class OzenScreenshotUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.5)
             capture(app, name: "onboarding-accessibility-text-\(name)")
 
-            if name == "page5-microphone" {
+            if name == "page6-microphone" {
                 // The "Approve the microphone" button sits below the fold
                 // at this text size -- scroll to actually see it rather
                 // than assume the same fix that worked in the reply
                 // sheet's "Full screen, big letters" button holds here too.
                 app.swipeUp()
-                capture(app, name: "onboarding-accessibility-text-page5-microphone-button-scrolled")
+                capture(app, name: "onboarding-accessibility-text-page6-microphone-button-scrolled")
             }
 
-            if name == "page6-name" {
+            if name == "page7-name" {
                 // NameAlertForm's TextField and "Add" button sit below the
                 // fold at this text size -- scroll to actually see whether
                 // that fixed-direction HStack holds up at the widest word
                 // shapes get, rather than assuming it does.
                 app.swipeUp()
-                capture(app, name: "onboarding-accessibility-text-page6-name-form-scrolled")
+                capture(app, name: "onboarding-accessibility-text-page7-name-form-scrolled")
             }
         }
     }
@@ -554,14 +603,14 @@ final class OzenScreenshotUITests: XCTestCase {
             XCTAssertTrue(window.contains(skip.frame) && window.contains(next.frame), "onboarding: Skip or Next runs off the screen (Skip \(skip.frame), Next \(next.frame))")
         }
 
-        for (index, name) in ["page2-how-it-works", "page3-language", "page4-engine", "page5-microphone", "page6-name"].enumerated() {
+        for (index, name) in ["page2-how-it-works", "page3-language", "page4-engine", "page5-model", "page6-microphone", "page7-name"].enumerated() {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "onboarding: no Next button on page \(index + 1)")
             next.tap()
             Thread.sleep(forTimeInterval: 0.5)
             capture(app, name: "onboarding-german-accessibility-text-\(name)")
         }
         app.swipeUp()
-        capture(app, name: "onboarding-german-accessibility-text-page6-name-form-scrolled")
+        capture(app, name: "onboarding-german-accessibility-text-page7-name-form-scrolled")
     }
 
     /// This simulator's own language is English and the fixture sets Ozen
@@ -626,7 +675,7 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(walkthrough.descendants(matching: .any)["onboardingScreen"].waitForExistence(timeout: 10), "english: the walkthrough never appeared")
         capture(walkthrough, name: "english-walkthrough-page1")
         let next = walkthrough.descendants(matching: .any)["onboardingNextButton"]
-        for page in 2...7 {
+        for page in 2...8 {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "english: no Next button on page \(page - 1)")
             next.tap()
             Thread.sleep(forTimeInterval: 0.5)
@@ -661,7 +710,7 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(walkthrough.descendants(matching: .any)["onboardingScreen"].waitForExistence(timeout: 10), "hebrew default: the walkthrough never appeared")
         capture(walkthrough, name: "hebrew-walkthrough-page1")
         let next = walkthrough.descendants(matching: .any)["onboardingNextButton"]
-        for page in 2...7 {
+        for page in 2...8 {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "hebrew default: no Next button on page \(page - 1)")
             next.tap()
             Thread.sleep(forTimeInterval: 0.5)
@@ -782,6 +831,84 @@ final class OzenScreenshotUITests: XCTestCase {
             flipButton.tap()
             capture(app, name: "big-text-accessibility-text-flipped")
         }
+    }
+
+    /// Clear in the big letters pad can be undone: a mis-tap must not
+    /// lose a long message.
+    func testBigTextClearCanBeRestored() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault"]
+        app.launch()
+
+        let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
+        XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore: the type to speak button never appeared")
+        tapTypeToSpeakWhenReachable(app, typeToSpeakButton, "restore")
+        let field = app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "restore: the field never appeared")
+        field.tap()
+        field.typeText("hello there")
+
+        let bigTextButton = app.descendants(matching: .any)["bigTextButton"]
+        XCTAssertTrue(bigTextButton.waitForExistence(timeout: 10), "restore: the big letters button never appeared")
+        bigTextButton.tap()
+
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 10), "restore: the editor never appeared")
+        XCTAssertEqual(editor.value as? String, "hello there")
+
+        let clear = app.descendants(matching: .any)["bigTextClear"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 5), "restore: Clear never appeared")
+        clear.tap()
+
+        let restore = app.descendants(matching: .any)["bigTextRestore"]
+        XCTAssertTrue(restore.waitForExistence(timeout: 5), "restore: the Restore button never appeared after Clear")
+        XCTAssertNotEqual(editor.value as? String, "hello there")
+        restore.tap()
+        XCTAssertEqual(app.textViews.firstMatch.value as? String, "hello there")
+        XCTAssertFalse(restore.waitForExistence(timeout: 1), "restore: the button should go once the text is back")
+    }
+
+    /// After Clear the Restore button joins the controls; at the largest
+    /// text size the editor must still have room to type in and Restore
+    /// must be reachable with the keyboard up.
+    func testBigTextRestoreKeepsEditorRoomAtLargestText() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+
+        let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
+        XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore room: the type to speak button never appeared")
+        tapTypeToSpeakWhenReachable(app, typeToSpeakButton, "restore room")
+        let composerScreen = app.descendants(matching: .any)["typeToSpeakScreen"]
+        XCTAssertTrue(composerScreen.waitForExistence(timeout: 10), "restore room: the type to speak screen never appeared")
+        capture(app, name: "big-text-restore-room-composer")
+        let typedField = app.textFields.firstMatch
+        let typedView = app.textViews.firstMatch
+        XCTAssertTrue(typedField.waitForExistence(timeout: 10) || typedView.exists, "restore room: the field never appeared: \(app.debugDescription)")
+        let field = typedField.exists ? typedField : typedView
+        field.tap()
+        field.typeText("hello there")
+
+        let bigTextButton = app.descendants(matching: .any)["bigTextButton"]
+        XCTAssertTrue(bigTextButton.waitForExistence(timeout: 10), "restore room: the big letters button never appeared")
+        bigTextButton.tap()
+
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 10), "restore room: the editor never appeared")
+        let heightBefore = editor.frame.height
+        capture(app, name: "big-text-restore-room-before-clear")
+
+        let clear = app.descendants(matching: .any)["bigTextClear"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 5), "restore room: Clear never appeared")
+        clear.tap()
+
+        let restore = app.descendants(matching: .any)["bigTextRestore"]
+        XCTAssertTrue(restore.waitForExistence(timeout: 5), "restore room: Restore never appeared after Clear")
+        capture(app, name: "big-text-restore-room-after-clear")
+        XCTAssertTrue(restore.isHittable, "restore room: Restore is not reachable at the largest text size")
+        let heightAfter = app.textViews.firstMatch.frame.height
+        XCTAssertGreaterThanOrEqual(heightAfter, 100, "restore room: the editor is \(heightAfter) pt tall after Clear (\(heightBefore) pt before), too little to type in")
+        XCTAssertGreaterThanOrEqual(heightAfter, heightBefore - 20, "restore room: Restore took \(heightBefore - heightAfter) pt from the editor (\(heightBefore) pt before Clear, \(heightAfter) pt after)")
     }
 
     /// The home computer setup guide, reached from Settings, at the
@@ -1078,6 +1205,26 @@ final class OzenScreenshotUITests: XCTestCase {
         let from = app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.8))
         let to = app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.2))
         from.press(forDuration: 0, thenDragTo: to, withVelocity: .fast, thenHoldForDuration: 0)
+    }
+
+    private func tapTypeToSpeakWhenReachable(_ app: XCUIApplication, _ button: XCUIElement, _ prefix: String) {
+        let revealControls = app.descendants(matching: .any)["showControlsButton"]
+        let windowBottom = app.windows.firstMatch.frame.maxY
+        var reachable = false
+        for _ in 0..<20 {
+            if button.exists, button.isHittable, button.frame.midY <= windowBottom - 60 {
+                reachable = true
+                break
+            }
+            if revealControls.exists, revealControls.isHittable { revealControls.tap() }
+            if button.exists { bringOffBottomEdge(app, button) }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        guard reachable else {
+            XCTFail("\(prefix): the type to speak button never became hittable on screen")
+            return
+        }
+        button.tap()
     }
 
     private func bringOffBottomEdge(_ app: XCUIApplication, _ element: XCUIElement) {
