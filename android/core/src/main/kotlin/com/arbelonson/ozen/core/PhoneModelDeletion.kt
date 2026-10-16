@@ -18,7 +18,7 @@ class PhoneModelDeletion(
     fun delete(name: String): Result {
         if (name !in PhoneModelCatalog.managedFiles || name == activeFileName) return Result.Refused
         var freed = 0L
-        for (file in listOf(File(modelsRoot, name), File(modelsRoot, "$name.part"))) {
+        for (file in listOf(File(modelsRoot, "$name.part"), File(modelsRoot, name))) {
             if (!file.isFile) continue
             val size = file.length()
             if (!remove(file)) return Result.Failed

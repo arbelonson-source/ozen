@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -53,7 +54,10 @@ class PhoneModelChooser(
     override val captionsBusy: StateFlow<Boolean> = MutableStateFlow(false),
     private val totalMemory: () -> Long? = { null },
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val remove: (File) -> Boolean = { it.delete() },
 ) : PhoneModels {
+    private val lock = Any()
+
     private val switchState = MutableStateFlow<PhoneModelSwitch>(PhoneModelSwitch.Idle)
     override val switching: StateFlow<PhoneModelSwitch> = switchState
 
@@ -79,28 +83,35 @@ class PhoneModelChooser(
         picks += 1
         val current = settings.current.value
         val model = PhoneModelCatalog.offered(current.spokenLanguage).firstOrNull { it.file == file } ?: return
-        refreshInstalled()
-        stopDownload?.set(true)
-        switchState.value = PhoneModelSwitch.Idle
-        when (PhoneModelChoice.plan(model, current.phoneModel, installedState.value)) {
-            PhoneModelChoice.Plan.UseNow -> use(model)
-            PhoneModelChoice.Plan.DownloadFirst -> download(model)
+        synchronized(lock) {
+            refreshInstalled()
+            stopDownload?.set(true)
+            switchState.value = PhoneModelSwitch.Idle
+            when (PhoneModelChoice.plan(model, current.phoneModel, installedState.value)) {
+                PhoneModelChoice.Plan.UseNow -> use(model)
+                PhoneModelChoice.Plan.DownloadFirst -> download(model)
+            }
         }
     }
 
     override suspend fun delete(file: String): PhoneModelDeletion.Result {
-        val active = settings.current.value.phoneModel.file
-        val result = withContext(io) { PhoneModelDeletion(modelFolder, active).delete(file) }
-        refreshInstalled()
-        if (result is PhoneModelDeletion.Result.Freed && switchState.value is PhoneModelSwitch.NotEnoughRoom) switchState.value = PhoneModelSwitch.Idle
-        return result
+        return withContext(NonCancellable) {
+            val result = withContext(io) {
+                synchronized(lock) { PhoneModelDeletion(modelFolder, settings.current.value.phoneModel.file, remove).delete(file) }
+            }
+            refreshInstalled()
+            if (result is PhoneModelDeletion.Result.Freed && switchState.value is PhoneModelSwitch.NotEnoughRoom) switchState.value = PhoneModelSwitch.Idle
+            result
+        }
     }
 
     private fun use(model: PhoneModel) {
         val before = settings.current.value.phoneModel
-        settings.change {
-            it.phoneModelFile = PhoneModelChoice.storedFile(it.spokenLanguage, model)
-            it.whisperModelVariant = model.variant
+        synchronized(lock) {
+            settings.change {
+                it.phoneModelFile = PhoneModelChoice.storedFile(it.spokenLanguage, model)
+                it.whisperModelVariant = model.variant
+            }
         }
         if (before.file != model.file) applied()
     }

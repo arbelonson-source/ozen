@@ -51,4 +51,25 @@ class PhoneModelDeletionTest {
         val result = PhoneModelDeletion(dir, hebrew, remove = { false }).delete(general)
         assertEquals(PhoneModelDeletion.Result.Failed, result)
     }
+
+    @Test
+    fun `when the part file cannot be removed the model stays listed so the delete can be retried`() {
+        val dir = root()
+        val model = dir.put(general, 20)
+        dir.put("$general.part", 7)
+        val result = PhoneModelDeletion(dir, hebrew, remove = { if (it.name.endsWith(".part")) false else it.delete() }).delete(general)
+        assertEquals(PhoneModelDeletion.Result.Failed, result)
+        assertTrue(model.exists())
+    }
+
+    @Test
+    fun `when the model file cannot be removed it stays on disk and the result is Failed`() {
+        val dir = root()
+        val model = dir.put(general, 20)
+        val part = dir.put("$general.part", 7)
+        val result = PhoneModelDeletion(dir, hebrew, remove = { if (it.name.endsWith(".part")) it.delete() else false }).delete(general)
+        assertEquals(PhoneModelDeletion.Result.Failed, result)
+        assertTrue(model.exists())
+        assertFalse(part.exists())
+    }
 }
