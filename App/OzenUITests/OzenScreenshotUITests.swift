@@ -830,9 +830,12 @@ final class OzenScreenshotUITests: XCTestCase {
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
         XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "restore room: the type to speak button never appeared")
         typeToSpeakButton.tap()
+        let composerScreen = app.descendants(matching: .any)["typeToSpeakScreen"]
+        XCTAssertTrue(composerScreen.waitForExistence(timeout: 10), "restore room: the type to speak screen never appeared")
+        capture(app, name: "big-text-restore-room-composer")
         let typedField = app.textFields.firstMatch
         let typedView = app.textViews.firstMatch
-        XCTAssertTrue(typedField.waitForExistence(timeout: 10) || typedView.exists, "restore room: the field never appeared")
+        XCTAssertTrue(typedField.waitForExistence(timeout: 10) || typedView.exists, "restore room: the field never appeared: \(app.debugDescription)")
         let field = typedField.exists ? typedField : typedView
         field.tap()
         field.typeText("hello there")
