@@ -41,6 +41,7 @@ struct LiveCaptionView: View {
     @State private var awakeClock = Date().timeIntervalSince1970
     @State private var visibleSoundAlert: SoundAlert?
     @State private var visibleKeywordHit: KeywordHit?
+    @State private var keywordHitShownAt = Date()
     @State private var fontSizeTrigger = 0
     @State private var battery = BatteryMonitor()
     private let installExpiry = InstallExpiryStatus.shared
@@ -261,6 +262,17 @@ struct LiveCaptionView: View {
         .preferredColorScheme(theme.preferredScheme)
     }
 
+    private struct KeywordPillTimer: Hashable {
+        let id: UUID
+        let seconds: Double
+    }
+
+    private var keywordPillTimer: KeywordPillTimer? {
+        guard let hit = visibleKeywordHit else { return nil }
+        let seconds = KeywordPill.visibleSeconds(for: hit, speaker: viewModel.speakerName(for: hit), accessibilitySize: dynamicTypeSize.isAccessibilitySize)
+        return KeywordPillTimer(id: hit.id, seconds: seconds)
+    }
+
     /// The banners over the top of the captions: a sound, a word from the
     /// list, and the warnings that stay until tapped.
     private var topBanners: some View {
@@ -276,7 +288,9 @@ struct LiveCaptionView: View {
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
             if let hit = visibleKeywordHit {
-                KeywordHitPill(hit: hit, speakerName: viewModel.speakerName(for: hit))
+                KeywordHitPill(hit: hit, speakerName: viewModel.speakerName(for: hit)) {
+                    withAnimation(reduceMotion ? nil : .default) { visibleKeywordHit = nil }
+                }
                     .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
             if let expiresAt = installExpiryToWarn {
@@ -363,16 +377,19 @@ struct LiveCaptionView: View {
             // and announcement don't repeat for each mention at the table.
             guard let hit = viewModel.claimAttentionForNewKeywordHits() else { return }
             if !isCoveredByAlertScreen {
-                withAnimation { visibleKeywordHit = hit }
+                keywordHitShownAt = Date()
+                withAnimation(reduceMotion ? nil : .default) { visibleKeywordHit = hit }
             }
             vibrate(.keyword)
-            announceAlert(tr("נאמר: %1", "Said: %1", args: ["\(AlertSuggestions.shown(hit.match.phrase, in: Localization.language))"]))
+            announceAlert(KeywordPill.text(for: hit, speaker: viewModel.speakerName(for: hit)))
         }
-        .task(id: visibleKeywordHit?.id) {
-            guard let hit = visibleKeywordHit else { return }
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
-            if visibleKeywordHit?.id == hit.id {
-                withAnimation { visibleKeywordHit = nil }
+        .task(id: keywordPillTimer) {
+            guard let timer = keywordPillTimer else { return }
+            let left = KeywordPill.secondsLeft(total: timer.seconds, elapsed: Date().timeIntervalSince(keywordHitShownAt))
+            try? await Task.sleep(for: .seconds(left))
+            if Task.isCancelled { return }
+            if visibleKeywordHit?.id == timer.id {
+                withAnimation(reduceMotion ? nil : .default) { visibleKeywordHit = nil }
             }
         }
         .onChange(of: viewModel.phase.step) { _, phase in

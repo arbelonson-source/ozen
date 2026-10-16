@@ -404,22 +404,26 @@ struct AlertFlashOverlay: View {
 struct KeywordHitPill: View {
     let hit: KeywordHit
     let speakerName: String?
+    let onDismiss: () -> Void
 
     var body: some View {
-        Label(text, systemImage: "text.badge.star")
-            .font(.headline)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color.yellow.opacity(0.9), in: Capsule())
-            .foregroundStyle(.black)
+        Button(action: onDismiss) {
+            Label(text, systemImage: "text.badge.star")
+                .font(.headline)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.yellow.opacity(0.9), in: Capsule())
+                .foregroundStyle(.black)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(text)
+        .accessibilityHint(tr("הקישו לסגירה", "Tap to close"))
+        .accessibilityIdentifier("keywordHitPill")
     }
 
     // A dash, not "X said" -- Hebrew's "said" is gendered and speakers
     // aren't tracked by gender.
     private var text: String {
-        guard let speakerName else {
-            return tr("נאמר: %1", "Said: %1", args: ["\(AlertSuggestions.said(hit.match, in: Localization.language))"])
-        }
-        return tr("%1 — נאמר: %2", "%1 said: %2", args: ["\(speakerName)", "\(AlertSuggestions.said(hit.match, in: Localization.language))"])
+        KeywordPill.text(for: hit, speaker: speakerName)
     }
 }
