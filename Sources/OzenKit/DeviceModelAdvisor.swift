@@ -35,6 +35,11 @@ public struct DeviceModelCheck: Codable, Equatable, Sendable {
 public enum DeviceModelAdvisor {
     public static let minimumMeasuredPasses = 5
 
+    public static func timingToKeep(from saved: DeviceModelCheck?, onDevice deviceName: String) -> LivePassMeasurement? {
+        guard let saved, saved.deviceName == deviceName else { return nil }
+        return saved.measurement
+    }
+
     static func listName(for option: WhisperModelOption) -> String? {
         switch option.variant {
         case "medium": return nil

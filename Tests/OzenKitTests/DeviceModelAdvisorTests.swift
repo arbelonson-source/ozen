@@ -157,4 +157,13 @@ struct DeviceModelAdvisorTests {
         #expect(DeviceModelAdvisor.warns(about: .aLittleBehind))
         #expect(DeviceModelAdvisor.warns(about: .tooSlow))
     }
+
+    @Test("saved timing is kept only on the phone that took it; a settings file from another phone brings no timing")
+    func savedTimingStaysWithItsPhone() {
+        let timing = LivePassMeasurement(variant: "small", averageSeconds: 9, passes: 12)
+        let saved = DeviceModelCheck(deviceName: "iPhone14,2", supported: Self.a14, measurement: timing, checkedAt: 1)
+        #expect(DeviceModelAdvisor.timingToKeep(from: saved, onDevice: "iPhone14,2") == timing)
+        #expect(DeviceModelAdvisor.timingToKeep(from: saved, onDevice: "iPhone16,2") == nil)
+        #expect(DeviceModelAdvisor.timingToKeep(from: nil, onDevice: "iPhone16,2") == nil)
+    }
 }

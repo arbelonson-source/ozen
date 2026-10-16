@@ -18,7 +18,9 @@ phone, the captions are written on the phone itself, with no internet.
 
 ## The first launch
 
-The first time Ozen opens, it shows seven short pages in large type. Swipe, or
+The first time Ozen opens, it shows short pages in large type: seven when the captions use no
+downloaded speech model, eight when they do (the extra page is **Choose the
+speech model**, described under "The speech model" below). Swipe, or
 tap **Next** (ha-ba) at the bottom. Tap **Skip** (dilug) to leave the
 pages at any time. On the last page the button changes to **Start**
 (lehatchil).
@@ -53,12 +55,13 @@ use up the data plan. The page says it then takes a few minutes to set the
 model up for the phone. After that it works without the internet.
 
 - If the phone is short of room, the page says how much to free up.
-- The next page, **Choose the speech model**, lists the models for the
+- When you keep a downloaded model, the next page, **Choose the speech model**, lists the models for the
   language you picked, the one that suits this phone first and already
   selected. Each shows its size and whether it **Keeps up**, is **A little
   behind** or is **Too slow on this phone**. **Test this phone** checks again,
   and **Keep the recommended model** moves on with the suggestion. The same
-  list is under Settings, Whisper, Model.
+  list is under Settings, Whisper, Model. With **No download** or any
+  other way of writing the captions, this page is left out.
 - **No download** (bli horada) uses Apple's own recognition, built into the
   phone. It starts right away, but Hebrew is only available on some
   versions of iOS.
