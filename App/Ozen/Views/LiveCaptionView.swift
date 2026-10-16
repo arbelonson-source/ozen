@@ -276,7 +276,9 @@ struct LiveCaptionView: View {
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
             if let hit = visibleKeywordHit {
-                KeywordHitPill(hit: hit, speakerName: viewModel.speakerName(for: hit))
+                KeywordHitPill(hit: hit, speakerName: viewModel.speakerName(for: hit)) {
+                    withAnimation { visibleKeywordHit = nil }
+                }
                     .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
             if let expiresAt = installExpiryToWarn {
@@ -366,11 +368,12 @@ struct LiveCaptionView: View {
                 withAnimation { visibleKeywordHit = hit }
             }
             vibrate(.keyword)
-            announceAlert(tr("נאמר: %1", "Said: %1", args: ["\(AlertSuggestions.shown(hit.match.phrase, in: Localization.language))"]))
+            announceAlert(KeywordPill.text(for: hit, speaker: viewModel.speakerName(for: hit)))
         }
         .task(id: visibleKeywordHit?.id) {
             guard let hit = visibleKeywordHit else { return }
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            let seconds = KeywordPill.visibleSeconds(for: hit, speaker: viewModel.speakerName(for: hit), accessibilitySize: dynamicTypeSize.isAccessibilitySize)
+            try? await Task.sleep(for: .seconds(seconds))
             if visibleKeywordHit?.id == hit.id {
                 withAnimation { visibleKeywordHit = nil }
             }

@@ -12,6 +12,7 @@ private struct AlertOverlay: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown: SoundAlert?
     @State private var shownHit: KeywordHit?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     func body(content: Content) -> some View {
         content
@@ -26,7 +27,9 @@ private struct AlertOverlay: ViewModifier {
                             .transition(.banner(from: .top, reduceMotion: reduceMotion))
                         }
                         if let shownHit {
-                            KeywordHitPill(hit: shownHit, speakerName: viewModel.speakerName(for: shownHit))
+                            KeywordHitPill(hit: shownHit, speakerName: viewModel.speakerName(for: shownHit)) {
+                                withAnimation { self.shownHit = nil }
+                            }
                                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
                         }
                     }
@@ -54,7 +57,8 @@ private struct AlertOverlay: ViewModifier {
             }
             .task(id: shownHit?.id) {
                 guard let current = shownHit else { return }
-                try? await Task.sleep(for: .seconds(5))
+                let seconds = KeywordPill.visibleSeconds(for: current, speaker: viewModel.speakerName(for: current), accessibilitySize: dynamicTypeSize.isAccessibilitySize)
+                try? await Task.sleep(for: .seconds(seconds))
                 if shownHit?.id == current.id {
                     withAnimation { shownHit = nil }
                 }
