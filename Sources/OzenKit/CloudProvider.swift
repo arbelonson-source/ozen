@@ -47,7 +47,15 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         self == .openRouter ? "com.arbelonson.ozen.openrouter" : "com.arbelonson.ozen.cloud.\(rawValue)"
     }
 
+    public static func plainCode(_ languageCode: String) -> String {
+        UILanguage.match(languageTag: languageCode)?.languageCode.identifier ?? languageCode
+    }
+
     public func covers(languageCode: String) -> Bool {
+        covers(plain: Self.plainCode(languageCode))
+    }
+
+    private func covers(plain languageCode: String) -> Bool {
         switch self {
         case .soniox: SonioxSpeech.languages.contains(languageCode)
         case .deepgram: DeepgramSpeech.languages.contains(languageCode)
