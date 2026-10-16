@@ -254,6 +254,9 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var betterModelOfferDeclines: Int
     public var betterModelOfferSnoozedUntil: Double?
 
+    /// What "Test this phone" found out; see `DeviceModelAdvisor`.
+    public var deviceModelCheck: DeviceModelCheck?
+
     public static let betterModelOfferSnoozeDays = [3, 14, 60]
 
     /// The language people around her speak, which the captions are written
@@ -266,14 +269,14 @@ public struct AppSettings: Codable, Sendable, Equatable {
 
     /// The Whisper model recommended for the spoken language.
     public var recommendedWhisperVariant: String {
-        WhisperModelCatalog.recommendedVariant(for: spokenLanguage)
+        DeviceModelAdvisor.recommendedVariant(for: spokenLanguage, on: deviceModelCheck)
     }
 
     /// Whether the phone runs a Whisper model clearly worse for the spoken
     /// language than the recommended one. Settings says so for as long as
     /// it is true.
     public var runsWeakerModel: Bool {
-        engine == .whisperKit && WhisperModelCatalog.recommendedImproves(on: whisperModelVariant, for: spokenLanguage)
+        engine == .whisperKit && WhisperModelCatalog.improves(on: whisperModelVariant, with: recommendedWhisperVariant, for: spokenLanguage)
     }
 
     /// Whether the caption screen should offer the recommended Whisper
@@ -321,8 +324,10 @@ public struct AppSettings: Codable, Sendable, Equatable {
         quietHours: QuietHours = .default,
         nameAlertOfferDismissed: Bool = false,
         betterModelOfferDeclines: Int = 0,
-        betterModelOfferSnoozedUntil: Double? = nil
+        betterModelOfferSnoozedUntil: Double? = nil,
+        deviceModelCheck: DeviceModelCheck? = nil
     ) {
+        self.deviceModelCheck = deviceModelCheck
         self.engine = engine
         self.languageCode = languageCode
         self.preferredInputUID = preferredInputUID
@@ -443,7 +448,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         case quickPhrases, speechRate, vocabulary, hasCompletedOnboarding, appLanguage
         case notifyWhenInBackground, allowCellularModelDownload, historyRetention
         case quietHours
-        case nameAlertOfferDismissed, betterModelOfferDeclines, betterModelOfferSnoozedUntil
+        case nameAlertOfferDismissed, betterModelOfferDeclines, betterModelOfferSnoozedUntil, deviceModelCheck
     }
 
     public init(from decoder: any Decoder) throws {
@@ -494,6 +499,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         nameAlertOfferDismissed = container.lenient(Bool.self, forKey: .nameAlertOfferDismissed) ?? defaults.nameAlertOfferDismissed
         betterModelOfferDeclines = max(0, container.lenient(Int.self, forKey: .betterModelOfferDeclines) ?? 0)
         betterModelOfferSnoozedUntil = container.lenient(Double.self, forKey: .betterModelOfferSnoozedUntil)
+        deviceModelCheck = container.lenient(DeviceModelCheck.self, forKey: .deviceModelCheck)
     }
 
     /// The model behind the engine in use, for saved conversations and
