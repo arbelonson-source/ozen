@@ -19,14 +19,16 @@ class WhisperCppPasses(private val model: WhisperModel, private val threads: Int
 
     override fun abortRunningPass() = model.abort()
 
-    override suspend fun once(audio: FloatArray, options: WhisperPassOptions, temperature: Float): List<PassSegment> {
+    override suspend fun once(
+        audio: FloatArray, options: WhisperPassOptions, temperature: Float, sameAudioAsLastAttempt: Boolean,
+    ): List<PassSegment> {
         val pass = currentCoroutineContext()
         return model.withHandle { handle ->
             if (!model.beginPass { pass.isActive }) throw CancellationException("stopped before it began")
             val count = WhisperCpp.pass(
                 handle, audio, options.language, options.promptTokens?.toIntArray(), options.maxTokens ?: 0,
                 temperature, threads, options.suppressBlank, options.withoutTimestamps,
-                WhisperAudioContext.frames(audio.size, options.isFinal),
+                WhisperAudioContext.frames(audio.size, options.isFinal), sameAudioAsLastAttempt,
             )
             check(count >= 0) { "whisper.cpp could not run the pass" }
             (0 until count).map { segment -> segment(handle, segment, temperature) }

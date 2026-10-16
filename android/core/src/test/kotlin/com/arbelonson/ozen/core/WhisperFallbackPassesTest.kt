@@ -10,11 +10,15 @@ class WhisperFallbackPassesTest {
 
     private class ScriptedPass(override val specialTokenBegin: Int, private val answer: (Float) -> List<WhisperSegment>) : WhisperSinglePass {
         val temperatures = mutableListOf<Float>()
+        val reuseRequests = mutableListOf<Boolean>()
 
         override fun tokenize(text: String): List<Int> = emptyList()
 
-        override suspend fun once(audio: FloatArray, options: WhisperPassOptions, temperature: Float): List<WhisperSegment> {
+        override suspend fun once(
+            audio: FloatArray, options: WhisperPassOptions, temperature: Float, sameAudioAsLastAttempt: Boolean,
+        ): List<WhisperSegment> {
             temperatures.add(temperature)
+            reuseRequests.add(sameAudioAsLastAttempt)
             return answer(temperature)
         }
     }
@@ -90,5 +94,27 @@ class WhisperFallbackPassesTest {
     @Test
     fun `nothing heard is no reason to retry`() {
         assertEquals(1, temperatures(final) { emptyList() }.size)
+    }
+
+    private fun reuseRequests(runs: Int, answer: (Float) -> List<WhisperSegment>): List<Boolean> {
+        val pass = ScriptedPass(eot, answer)
+        val passes = WhisperFallbackPasses(pass)
+        repeat(runs) { runBlocking { passes.run(FloatArray(16_000), final) } }
+        return pass.reuseRequests
+    }
+
+    @Test
+    fun `only the retries ask to reuse the encoding, never the first attempt`() {
+        assertEquals(listOf(false, true, true), reuseRequests(1) { words(8, logprob = -3.0) })
+        assertEquals(listOf(false), reuseRequests(1) { words(8, logprob = -0.05) })
+    }
+
+    @Test
+    fun `the first attempt of a new run does not reuse the last run's encoding`() {
+        assertEquals(
+            listOf(false, true, true, false, true, true),
+            reuseRequests(2) { words(8, logprob = -3.0) },
+        )
+        assertEquals(listOf(false, false), reuseRequests(2) { words(8, logprob = -0.05) })
     }
 }
