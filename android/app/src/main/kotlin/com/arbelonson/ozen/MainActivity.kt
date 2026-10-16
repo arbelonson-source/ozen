@@ -89,6 +89,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.core.content.IntentCompat
 import com.arbelonson.ozen.core.FileTranscription
+import com.arbelonson.ozen.core.SharedRecordingLink
 import com.arbelonson.ozen.ui.IconBadge
 import com.arbelonson.ozen.ui.OzenColors
 import com.arbelonson.ozen.ui.OzenSpacing
@@ -262,6 +263,7 @@ class MainActivity : ComponentActivity() {
         val type = intent.type ?: return
         if (!type.startsWith("audio/") && !type.startsWith("video/")) return
         val recording = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) ?: return
+        if (!SharedRecordingLink.isAcceptable(recording.toString(), packageName)) return
         (application as OzenApplication).transcriber.open(recording)
     }
 

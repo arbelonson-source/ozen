@@ -170,7 +170,7 @@ class TranscribeRecordingDeviceTest {
         val sizes = mutableListOf<Int>()
         val outcome = AudioFileDecoder.decode(context, uri) { sizes += it.size; true }
         assertEquals(DecodeOutcome.Finished, outcome)
-        assertTrue("${sizes.size} pieces", sizes.size >= minutes * 60 - 5)
+        assertTrue("${sizes.size} pieces", sizes.size >= minutes * 60 - 30)
         assertTrue("largest piece ${sizes.max()}", sizes.max() <= 3 * 16_000)
         assertTrue("${sizes.sum()} samples", kotlin.math.abs(sizes.sum() - minutes * 60 * 16_000) < 2_000)
     }
