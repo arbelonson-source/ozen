@@ -6,16 +6,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -34,18 +41,22 @@ import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelCatalog
+import com.arbelonson.ozen.core.PhoneModelDeletion
 import com.arbelonson.ozen.core.PhoneModelEstimate
 import com.arbelonson.ozen.core.PhoneModelFit
+import com.arbelonson.ozen.core.PhoneModelShelf
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.OzenSpacing
 import com.arbelonson.ozen.ui.SettingsGroup
 import com.arbelonson.ozen.ui.TonalButton
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, chooseBestAfterTest: Boolean) {
     val installed by models.installed.collectAsStateWithLifecycle()
+    val partial by models.partial.collectAsStateWithLifecycle()
     val switching by models.switching.collectAsStateWithLifecycle()
     val check by models.check.collectAsStateWithLifecycle()
     val busy by models.captionsBusy.collectAsStateWithLifecycle()
@@ -57,9 +68,12 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         PhoneTest(check, tested = speed != null, captionsBusy = busy) { models.runCheck(chooseBestAfterTest) }
         SettingsGroup(modifier = Modifier.selectableGroup().testTag("phone-model-list")) {
-            for (model in PhoneModelCatalog.offered(language)) {
+            val hidden = PhoneModelShelf.notOffered(language, installed, partial)
+            val downloading = (switching as? PhoneModelSwitch.Downloading)?.file
+            for (model in PhoneModelCatalog.offered(language) + hidden) {
                 item {
-                    ModelRow(model, language, speed, memory, best, model.file == chosen, model.file in installed, switching) { models.choose(model.file) }
+                    val deletable = PhoneModelShelf.canDelete(model.file, installed, partial, model.file == settings.phoneModel.file, downloading)
+                    ModelRow(model, language, speed, memory, best, model.file == chosen, model.file in installed, partial[model.file], model !in hidden, deletable, switching, onDelete = { models.delete(model.file) }) { models.choose(model.file) }
                 }
             }
         }
@@ -119,7 +133,11 @@ private fun ModelRow(
     best: PhoneModel?,
     selected: Boolean,
     onPhone: Boolean,
+    leftoverBytes: Long?,
+    choosable: Boolean,
+    deletable: Boolean,
     switching: PhoneModelSwitch,
+    onDelete: suspend () -> PhoneModelDeletion.Result,
     onSelect: () -> Unit,
 ) {
     val tag = when {
@@ -128,11 +146,15 @@ private fun ModelRow(
         else -> null
     }
     val progress = (switching as? PhoneModelSwitch.Downloading)?.takeIf { it.file == model.file }
+    var asking by rememberSaveable { mutableStateOf(false) }
+    var failed by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
     Row(
         modifier = Modifier
-            .fillMaxWidth()
+            .weight(1f)
             .heightIn(min = 56.dp)
-            .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton)
+            .selectable(selected = selected, enabled = choosable, onClick = onSelect, role = Role.RadioButton)
             .testTag("phone-model-" + model.file)
             .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -144,15 +166,51 @@ private fun ModelRow(
             val place = when {
                 progress != null -> tr("מוריד… %1%", "Downloading… %1%", listOf("${(progress.fraction * 100).toInt()}"))
                 onPhone -> tr("כבר בטלפון", "Already on the phone")
+                leftoverBytes != null -> tr("הורדה שלא הושלמה, %1 בטלפון", "Unfinished download, %1 on the phone", listOf(ByteSize.text(leftoverBytes)))
                 else -> tr("הורדה של %1", "Download of %1", listOf(ByteSize.text(model.bytes)))
             }
-            val hebrewOnly = if (model.isHebrewOnly) " · " + tr("עברית בלבד", "Hebrew only") else ""
+            val hebrewOnly = if (model.isHebrewOnly && choosable) " · " + tr("עברית בלבד", "Hebrew only") else ""
             Text(place + hebrewOnly, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!choosable) {
+                Text(tr("מתאים לעברית בלבד, ולכן אי אפשר לבחור בו בשפה הזו.", "For Hebrew only, so it can't be chosen in this language."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("phone-model-hebrew-only-note-" + model.file))
+            }
             Text(model.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Rating(if (language == UILanguage.Hebrew) tr("עברית", "Hebrew") else tr("דיוק", "Accuracy"), model.quality(language))
-            speed?.let { FitLabel(PhoneModelEstimate.fit(model, it, memory)) }
+            if (choosable) Rating(if (language == UILanguage.Hebrew) tr("עברית", "Hebrew") else tr("דיוק", "Accuracy"), model.quality(language))
+            if (choosable) speed?.let { FitLabel(PhoneModelEstimate.fit(model, it, memory)) }
         }
-        RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(12.dp))
+        RadioButton(selected = selected, onClick = null, enabled = choosable, modifier = Modifier.padding(12.dp))
+    }
+    if (deletable) {
+        val action = tr("מחיקה של %1", "Delete %1", listOf(model.displayName))
+        TextButton(
+            onClick = { asking = true },
+            modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).testTag("phone-model-delete-" + model.file).semantics { contentDescription = action },
+        ) { Text(tr("מחיקה", "Delete")) }
+    }
+    }
+    if (asking) {
+        AlertDialog(
+            onDismissRequest = { asking = false },
+            title = { Text(tr("למחוק את %1 מהטלפון?", "Delete %1 from the phone?", listOf(model.displayName))) },
+            text = { Text(tr("אפשר להוריד אותו שוב בכל עת.", "It can be downloaded again anytime.")) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        asking = false
+                        scope.launch { if (onDelete() == PhoneModelDeletion.Result.Failed) failed = true }
+                    },
+                    modifier = Modifier.testTag("phone-model-delete-confirm"),
+                ) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { asking = false }) { Text(tr("ביטול", "Cancel")) } },
+        )
+    }
+    if (failed) {
+        AlertDialog(
+            onDismissRequest = { failed = false },
+            title = { Text(tr("המחיקה נכשלה", "Delete failed")) },
+            confirmButton = { TextButton(onClick = { failed = false }) { Text(tr("אישור", "OK")) } },
+        )
     }
 }
 
