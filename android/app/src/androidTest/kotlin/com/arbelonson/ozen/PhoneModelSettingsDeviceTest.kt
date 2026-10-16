@@ -92,8 +92,8 @@ class PhoneModelSettingsDeviceTest {
         val speed: PhoneSpeed = app.settings.current.value.phoneSpeed!!
         assertTrue(speed.gflops > 0.5)
         compose.onNodeWithText("Test this phone again").performScrollTo().assertExists()
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Best for this phone").fetchSemanticsNodes().size == 1 }
-        val rated = listOf("Keeps up on this phone", "A little behind the speech", "Too slow on this phone")
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Recommended for this phone").fetchSemanticsNodes().size == 1 }
+        val rated = listOf("Keeps up", "A little behind", "Too slow on this phone")
             .sumOf { compose.onAllNodesWithText(it).fetchSemanticsNodes().size }
         assertEquals(PhoneModelCatalog.offered(UILanguage.Hebrew).size, rated)
         assertNull(app.settings.current.value.phoneModelFile)

@@ -83,7 +83,7 @@ private val PhoneModelSwitch.fileOrNull: String?
 private fun PhoneTest(check: PhoneCheckState, tested: Boolean, onTest: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
         val running = check as? PhoneCheckState.Running
-        val label = if (tested) tr("בדיקה חוזרת של הטלפון", "Test this phone again") else tr("בדיקת הטלפון", "Test this phone")
+        val label = if (tested) tr("בדיקה חוזרת של הטלפון", "Test this phone again") else tr("בדיקת הטלפון הזה", "Test this phone")
         TonalButton(label, onTest, Modifier.fillMaxWidth().testTag("phone-test"), icon = Icons.Rounded.Speed, enabled = running == null)
         if (running != null) {
             val percent = (running.fraction * 100).toInt()
@@ -114,7 +114,7 @@ private fun ModelRow(
     onSelect: () -> Unit,
 ) {
     val tag = when {
-        best?.file == model.file -> tr("הכי מתאים לטלפון הזה", "Best for this phone")
+        best?.file == model.file -> tr("מומלץ לטלפון הזה", "Recommended for this phone")
         best == null && model.file == PhoneModelCatalog.recommended(language).file -> tr("מומלץ", "Recommended")
         else -> null
     }
@@ -159,8 +159,8 @@ private fun Rating(label: String, value: Int) {
 @Composable
 private fun FitLabel(fit: PhoneModelFit) {
     when (fit) {
-        PhoneModelFit.KeepsUp -> Text(tr("עוקב אחרי הדיבור בטלפון הזה", "Keeps up on this phone"), style = MaterialTheme.typography.labelLarge, color = savedGreen())
-        PhoneModelFit.ALittleBehind -> Text(tr("מפגר קצת אחרי הדיבור", "A little behind the speech"), style = MaterialTheme.typography.labelLarge, color = cautionOrange())
+        PhoneModelFit.KeepsUp -> Text(tr("עומד בקצב", "Keeps up"), style = MaterialTheme.typography.labelLarge, color = savedGreen())
+        PhoneModelFit.ALittleBehind -> Text(tr("מפגר קצת", "A little behind"), style = MaterialTheme.typography.labelLarge, color = cautionOrange())
         PhoneModelFit.TooSlow -> Text(tr("איטי מדי בטלפון הזה", "Too slow on this phone"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
     }
 }
