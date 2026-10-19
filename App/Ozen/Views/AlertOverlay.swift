@@ -12,6 +12,19 @@ private struct AlertOverlay: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown: SoundAlert?
     @State private var shownHit: KeywordHit?
+    @State private var shownHitAt = Date()
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private struct PillTimer: Hashable {
+        let id: UUID
+        let seconds: Double
+    }
+
+    private var pillTimer: PillTimer? {
+        guard let hit = shownHit else { return nil }
+        let seconds = KeywordPill.visibleSeconds(for: hit, speaker: viewModel.speakerName(for: hit), accessibilitySize: dynamicTypeSize.isAccessibilitySize)
+        return PillTimer(id: hit.id, seconds: seconds)
+    }
 
     func body(content: Content) -> some View {
         content
@@ -26,7 +39,9 @@ private struct AlertOverlay: ViewModifier {
                             .transition(.banner(from: .top, reduceMotion: reduceMotion))
                         }
                         if let shownHit {
-                            KeywordHitPill(hit: shownHit, speakerName: viewModel.speakerName(for: shownHit))
+                            KeywordHitPill(hit: shownHit, speakerName: viewModel.speakerName(for: shownHit)) {
+                                withAnimation(reduceMotion ? nil : .default) { self.shownHit = nil }
+                            }
                                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
                         }
                     }
@@ -43,7 +58,8 @@ private struct AlertOverlay: ViewModifier {
             }
             .onChange(of: viewModel.attentionKeywordHit?.id) { _, _ in
                 guard let hit = viewModel.attentionKeywordHit else { return }
-                withAnimation { shownHit = hit }
+                shownHitAt = Date()
+                withAnimation(reduceMotion ? nil : .default) { shownHit = hit }
             }
             .task(id: shown?.id) {
                 guard let current = shown else { return }
@@ -52,11 +68,13 @@ private struct AlertOverlay: ViewModifier {
                     withAnimation { shown = nil }
                 }
             }
-            .task(id: shownHit?.id) {
-                guard let current = shownHit else { return }
-                try? await Task.sleep(for: .seconds(5))
-                if shownHit?.id == current.id {
-                    withAnimation { shownHit = nil }
+            .task(id: pillTimer) {
+                guard let timer = pillTimer else { return }
+                let left = KeywordPill.secondsLeft(total: timer.seconds, elapsed: Date().timeIntervalSince(shownHitAt))
+                try? await Task.sleep(for: .seconds(left))
+                if Task.isCancelled { return }
+                if shownHit?.id == timer.id {
+                    withAnimation(reduceMotion ? nil : .default) { shownHit = nil }
                 }
             }
     }
