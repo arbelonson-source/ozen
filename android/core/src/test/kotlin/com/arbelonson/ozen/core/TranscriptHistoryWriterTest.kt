@@ -298,8 +298,9 @@ class TranscriptHistoryWriterTest {
 
         // The folder becomes usable again (room was freed): the next save
         // works and the problem is no longer reported.
+        assertFalse(failing.saveNow(record(UUID.randomUUID(), 1, false)))
         blocked.delete()
-        failing.saveNow(record(UUID.randomUUID(), 1, false))
+        assertTrue(failing.saveNow(record(UUID.randomUUID(), 1, false)))
         assertNull(failing.lastFailure)
     }
 

@@ -6,7 +6,6 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.TranscribedLine
 import com.arbelonson.ozen.core.TranscriptFormats
-import java.io.File
 
 enum class SubtitleFormat(val extension: String, val mime: String) {
     Srt("srt", "application/x-subrip"),
@@ -19,10 +18,7 @@ internal fun transcriptShareSheet(context: Context, name: String, lines: List<Tr
     textShareSheet(context, name, TranscriptFormats.text(lines))
 
 internal fun subtitleShareSheet(context: Context, name: String, lines: List<TranscribedLine>, format: SubtitleFormat): Intent {
-    val folder = File(context.cacheDir, CaptionSession.SHARED_FOLDER)
-    folder.deleteRecursively()
-    folder.mkdirs()
-    val file = File(folder, safeFileName(name) + "." + format.extension)
+    val file = SharedFile.create(context.cacheDir, safeFileName(name) + "." + format.extension)
     file.writeText(format.render(lines))
     val uri = FileProvider.getUriForFile(context, context.packageName + ".share", file)
     val send = Intent(Intent.ACTION_SEND).setType(format.mime).putExtra(Intent.EXTRA_SUBJECT, name)

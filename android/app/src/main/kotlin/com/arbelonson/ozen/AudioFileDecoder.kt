@@ -9,7 +9,7 @@ import android.net.Uri
 import com.arbelonson.ozen.core.SampleRateConverter
 import java.nio.ByteOrder
 
-enum class DecodeOutcome { Finished, Stopped, NoAudio, Unreadable }
+enum class DecodeOutcome { Finished, Stopped, NoAudio, Unreadable, Stalled }
 
 object AudioFileDecoder {
     private const val WAIT_MICROSECONDS = 10_000L
@@ -139,6 +139,10 @@ object AudioFileDecoder {
             }
         }
         if (!pass(final = true)) return DecodeOutcome.Stopped
-        return if (gotAny) DecodeOutcome.Finished else DecodeOutcome.Unreadable
+        return when {
+            !gotAny -> DecodeOutcome.Unreadable
+            !ended -> DecodeOutcome.Stalled
+            else -> DecodeOutcome.Finished
+        }
     }
 }

@@ -116,12 +116,15 @@ class FileTranscriber(
     }
 
     fun start() {
+        if (job?.isActive == true) return
         val ready = shown.value as? FileTranscription.Ready ?: return
         if (captions.captionsActive()) {
             shown.value = ready.copy(captionsRunning = true)
             return
         }
         val uri = source ?: return
+        val first = ready.model ?: ready.toDownload
+        shown.value = working(first, if (File(captions.modelDirectory, first.file).isFile) Stage.Loading else Stage.Downloading)
         job = scope.launch(Dispatchers.Default) {
             try {
                 run(uri, ready)
@@ -155,7 +158,7 @@ class FileTranscriber(
     }
 
     private fun working(model: PhoneModel, stage: Stage, fraction: Float? = null, left: Double? = null, lines: List<TranscribedLine> = emptyList()) =
-        FileTranscription.Working(name, model, stage, fraction, left, lines)
+        FileTranscription.Working(name, language, model, stage, fraction, left, lines)
 
     private suspend fun run(uri: Uri, ready: FileTranscription.Ready) {
         val model = ready.model ?: ready.toDownload
@@ -182,17 +185,18 @@ class FileTranscriber(
         } catch (failure: EngineUnavailability) {
             throw Problem(FileTranscriptionProblem.of(failure))
         }
-        val scorer = SileroVoiceScorer.fromAssets(context)
+        var scorer: SileroVoiceScorer? = null
         val passes = Executors.newSingleThreadExecutor { Thread(it, "ozen-recording-pass") }
         try {
-            if (scorer == null) throw Problem(FileTranscriptionProblem.ModelFailed)
+            scorer = SileroVoiceScorer.fromAssets(context) ?: throw Problem(FileTranscriptionProblem.ModelFailed)
             val terms = VocabularyHints.combining(current.vocabulary, current.keywordAlerts)
             val linePass = FileLinePass(loaded.passes, ready.language.languageCode, terms, passes.asCoroutineDispatcher())
             val startedAt = System.currentTimeMillis() / 1_000.0
-            val lines = transcribe(uri, model, scorer, linePass)
+            val transcript = transcribe(uri, model, scorer, linePass)
+            val lines = transcript.lines
             val record = FileTranscriptRecord.make(name, lines, startedAt, endedAt = System.currentTimeMillis() / 1_000.0, modelVariant = model.variant)
             val saved = withContext(Dispatchers.IO) { captions.saveRecording(record) }
-            shown.value = FileTranscription.Done(name, model, lines, record.id.takeIf { saved })
+            shown.value = FileTranscription.Done(name, language, model, lines, record.id.takeIf { saved }, transcript.endMissing)
         } finally {
             scorer?.close()
             loaded.release()
@@ -207,7 +211,10 @@ class FileTranscriber(
 
     private class Problem(val kind: FileTranscriptionProblem) : Exception()
 
-    private suspend fun transcribe(uri: Uri, model: PhoneModel, scorer: SileroVoiceScorer, linePass: FileLinePass): List<TranscribedLine> {
+    private class Transcript(val lines: List<TranscribedLine>, val endMissing: Boolean)
+
+    private suspend fun transcribe(uri: Uri, model: PhoneModel, scorer: SileroVoiceScorer, linePass: FileLinePass): Transcript {
+        var endMissing = false
         val clock = TimeSource.Monotonic.markNow()
         val planner = SpeechStretchPlanner(maxStretchSeconds = linePass.longestStretchSeconds)
         val lines = ArrayList<TranscribedLine>()
@@ -237,6 +244,7 @@ class FileTranscriber(
                 when (outcome) {
                     DecodeOutcome.Unreadable -> pieces.close(Problem(FileTranscriptionProblem.CouldNotRead))
                     DecodeOutcome.NoAudio -> pieces.close(Problem(FileTranscriptionProblem.NoAudio))
+                    DecodeOutcome.Stalled -> { endMissing = true; pieces.close() }
                     else -> pieces.close()
                 }
             }
@@ -259,7 +267,7 @@ class FileTranscriber(
         if (pending.isNotEmpty()) handle(score(pending.copyOf(CHUNK_SAMPLES)))
         handle(planner.finish())
         if (lines.isEmpty()) throw Problem(FileTranscriptionProblem.NoSpeech)
-        return lines
+        return Transcript(lines, endMissing)
     }
 
     private companion object {

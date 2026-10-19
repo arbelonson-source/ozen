@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Share
@@ -33,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDirection
@@ -58,7 +63,7 @@ const val TRANSCRIBE_SUBTITLES = "transcribe-subtitles"
 private val PRIVACY_LINE get() = tr("ההקלטה נשארת בטלפון. שום דבר לא נשלח לשום מקום.", "The recording stays on this phone. Nothing is sent anywhere.")
 
 @Composable
-internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscription, onClose: () -> Unit, languageCode: String) {
+internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscription, onClose: () -> Unit) {
     var confirmingStop by rememberSaveable { mutableStateOf(false) }
     val working = state is FileTranscription.Working
     BackHandler { if (working) confirmingStop = true else onClose() }
@@ -66,8 +71,8 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
     when (state) {
         FileTranscription.Idle -> Unit
         is FileTranscription.Ready -> ReadyPage(transcriber, state, close)
-        is FileTranscription.Working -> WorkingPage(transcriber, state, languageCode)
-        is FileTranscription.Done -> DonePage(state, close, languageCode)
+        is FileTranscription.Working -> WorkingPage(transcriber, state)
+        is FileTranscription.Done -> DonePage(state, close)
         is FileTranscription.Failed -> OzenScreen(tr("המרת הקלטה לטקסט", "Transcribe a recording"), onClose = close, closeLabel = tr("סגירה", "Close")) {
             Text(state.name, style = MaterialTheme.typography.titleMedium)
             Text(state.problem.message, modifier = Modifier.testTag("transcribe-problem"))
@@ -169,10 +174,10 @@ private fun PickDialog(title: String, choices: List<Pair<String, Boolean>>, onPi
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column {
+            Column(Modifier.selectableGroup()) {
                 choices.forEachIndexed { index, (label, chosen) ->
-                    Row(Modifier.fillMaxWidth().clickable { onPick(index) }, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = chosen, onClick = { onPick(index) })
+                    Row(Modifier.fillMaxWidth().selectable(selected = chosen, role = Role.RadioButton, onClick = { onPick(index) }), verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = chosen, onClick = null)
                         Text(label)
                     }
                 }
@@ -183,7 +188,7 @@ private fun PickDialog(title: String, choices: List<Pair<String, Boolean>>, onPi
 }
 
 @Composable
-private fun WorkingPage(transcriber: FileTranscriber, working: FileTranscription.Working, languageCode: String) {
+private fun WorkingPage(transcriber: FileTranscriber, working: FileTranscription.Working) {
     val percent = working.fraction?.let(TranscriptionProgress::percent)
     val title = when (working.stage) {
         FileTranscription.Working.Stage.Downloading -> tr("מורידים את המודל", "Downloading the model")
@@ -203,16 +208,17 @@ private fun WorkingPage(transcriber: FileTranscriber, working: FileTranscription
             TonalButton(tr("ביטול", "Cancel"), onClick = transcriber::cancel, modifier = Modifier.testTag(TRANSCRIBE_CANCEL))
         }
         Text(PRIVACY_LINE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        LinesList(working.lines, languageCode, follow = true)
+        LinesList(working.lines, working.language.languageCode, follow = true)
     }
 }
 
 @Composable
-private fun DonePage(done: FileTranscription.Done, close: () -> Unit, languageCode: String) {
+@OptIn(ExperimentalLayoutApi::class)
+private fun DonePage(done: FileTranscription.Done, close: () -> Unit) {
     val context = LocalContext.current
     OzenScreen(tr("ההקלטה הומרה לטקסט", "Recording turned into text"), onClose = close, closeLabel = tr("סיום", "Done"), scrolls = false) {
         Text(done.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() }.testTag("transcribe-name"))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AssistChip(
                 onClick = { context.startActivity(transcriptShareSheet(context, done.name, done.lines)) },
                 label = { Text(tr("שיתוף כטקסט", "Share as text")) },
@@ -236,9 +242,16 @@ private fun DonePage(done: FileTranscription.Done, close: () -> Unit, languageCo
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.testTag("transcribe-saved"),
         )
+        if (done.endMissing) {
+            Text(
+                tr("סוף ההקלטה לא נקרא, ולכן הטקסט נעצר מוקדם.", "The end of this recording couldn’t be read, so the text stops early."),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.testTag("transcribe-end-missing"),
+            )
+        }
         Text(tr("מודל: %1", "Model: %1", listOf(done.model.displayName)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(PRIVACY_LINE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        LinesList(done.lines, languageCode, follow = false)
+        LinesList(done.lines, done.language.languageCode, follow = false)
     }
 }
 

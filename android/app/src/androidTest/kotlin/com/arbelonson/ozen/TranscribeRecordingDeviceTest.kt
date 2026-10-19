@@ -1,16 +1,17 @@
 package com.arbelonson.ozen
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.SystemClock
+import android.provider.MediaStore
 import android.util.Log
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performClick
-import androidx.core.content.FileProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -40,9 +41,11 @@ class TranscribeRecordingDeviceTest {
     private val app = context.applicationContext as OzenApplication
     private val transcriber get() = app.transcriber
     private val folder = File(context.cacheDir, "recording-test").apply { mkdirs() }
-    private val sharedFolder = File(context.cacheDir, CaptionSession.SHARED_FOLDER).apply { mkdirs() }
+    private val inserted = mutableListOf<Uri>()
     private val saved = mutableListOf<UUID>()
     private val savingBefore = app.settings.current.value.saveHistory
+    private val languageBefore = app.settings.current.value.languageCode
+    private val conversationsBefore = app.captions.savedConversations.list().map { it.id }.toSet()
 
     @Before
     fun hebrewModelIsThere() {
@@ -56,9 +59,10 @@ class TranscribeRecordingDeviceTest {
         waitUntilIdle()
         transcriber.close()
         for (conversation in app.captions.savedConversations.list()) {
-            if (conversation.id in saved || conversation.title in sharedNames) app.captions.savedConversations.delete(conversation.id)
+            if (conversation.id !in conversationsBefore && (conversation.id in saved || conversation.title in sharedNames)) app.captions.savedConversations.delete(conversation.id)
         }
-        app.settings.change { it.saveHistory = savingBefore }
+        app.settings.change { it.saveHistory = savingBefore; it.languageCode = languageBefore }
+        for (uri in inserted) runCatching { context.contentResolver.delete(uri, null, null) }
         folder.deleteRecursively()
     }
 
@@ -69,14 +73,22 @@ class TranscribeRecordingDeviceTest {
         assumeTrue("put clip.wav in ${clip.parent}", clip.isFile)
         val whole = DeviceClips.readWav(clip)
         val samples = FloatArray(seconds * 16_000) { whole[it % whole.size] }
-        return shareable(name) { DeviceClips.writeWav(it, samples) }
+        return shareable(name, "audio/wav") { DeviceClips.writeWav(it, samples) }
     }
 
-    private fun shareable(name: String, write: (File) -> Unit): Uri {
-        val file = File(sharedFolder, name)
+    private fun shareable(name: String, type: String, write: (File) -> Unit): Uri {
+        val file = File(folder, name)
         write(file)
         sharedNames += name.substringBeforeLast('.')
-        return FileProvider.getUriForFile(context, context.packageName + ".share", file)
+        val values = ContentValues().apply {
+            put(MediaStore.Audio.Media.DISPLAY_NAME, name)
+            put(MediaStore.Audio.Media.MIME_TYPE, type)
+            put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/ozen-test")
+        }
+        val uri = checkNotNull(context.contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)) { "the media store refused $name" }
+        inserted += uri
+        context.contentResolver.openOutputStream(uri)!!.use { out -> file.inputStream().use { it.copyTo(out) } }
+        return uri
     }
 
     private fun share(uri: Uri, type: String) = ActivityScenario.launch<MainActivity>(
@@ -143,7 +155,7 @@ class TranscribeRecordingDeviceTest {
 
     @Test
     fun aFileThatIsNotAudioGetsAPlainMessageInsteadOfACrash() {
-        val uri = shareable("Notes.m4a") { it.writeText("this is not a recording") }
+        val uri = shareable("Notes.m4a", "audio/mp4") { it.writeText("this is not a recording") }
         share(uri, "audio/mp4").use {
             waitFor(30_000, "the message") { transcriber.state.value is FileTranscription.Failed }
             assertEquals(FileTranscriptionProblem.CouldNotRead, (transcriber.state.value as FileTranscription.Failed).problem)
@@ -154,7 +166,7 @@ class TranscribeRecordingDeviceTest {
     @Test
     fun anOggOpusVoiceNoteLikeWhatsAppSendsIsDecodedToSixteenKilohertzMono() {
         val bytes = instrumentation.context.assets.open("voice-note.ogg").use { it.readBytes() }
-        val uri = shareable("PTT-20261016-WA0001.opus") { it.writeBytes(bytes) }
+        val uri = shareable("PTT-20261016-WA0001.opus", "audio/ogg") { it.writeBytes(bytes) }
         val pieces = mutableListOf<FloatArray>()
         val outcome = AudioFileDecoder.decode(context, uri) { pieces += it; true }
         assertEquals(DecodeOutcome.Finished, outcome)
@@ -166,13 +178,44 @@ class TranscribeRecordingDeviceTest {
     @Test
     fun aLongRecordingIsReadAboutASecondAtATimeNeverWhole() {
         val minutes = 8
-        val uri = shareable("Long lecture.wav") { DeviceClips.writeWav(it, FloatArray(minutes * 60 * 16_000) { index -> 0.1f * kotlin.math.sin(index * 0.05f) }) }
+        val uri = shareable("Long lecture.wav", "audio/wav") { DeviceClips.writeWav(it, FloatArray(minutes * 60 * 16_000) { index -> 0.1f * kotlin.math.sin(index * 0.05f) }) }
         val sizes = mutableListOf<Int>()
         val outcome = AudioFileDecoder.decode(context, uri) { sizes += it.size; true }
         assertEquals(DecodeOutcome.Finished, outcome)
-        assertTrue("${sizes.size} pieces", sizes.size >= minutes * 60 - 30)
+        assertTrue("${sizes.size} pieces", sizes.size in (minutes * 60 - 30)..(minutes * 60 + 1))
         assertTrue("largest piece ${sizes.max()}", sizes.max() <= 3 * 16_000)
         assertTrue("${sizes.sum()} samples", kotlin.math.abs(sizes.sum() - minutes * 60 * 16_000) < 2_000)
+    }
+
+    @Test
+    fun startingPutsTheWorkingScreenUpAtOnceSoASecondTapCannotStartASecondJob() {
+        val uri = lecture(240, "Tap twice.wav")
+        share(uri, "audio/wav").use {
+            compose.waitUntil(30_000) { compose.onAllNodesWithTag(TRANSCRIBE_START).fetchSemanticsNodes().isNotEmpty() }
+            var right = false
+            instrumentation.runOnMainSync {
+                transcriber.start()
+                right = transcriber.state.value is FileTranscription.Working
+                transcriber.start()
+            }
+            assertTrue("no working state right after start", right)
+            waitFor(300_000, "work to begin") { (transcriber.state.value as? FileTranscription.Working)?.stage == FileTranscription.Working.Stage.Transcribing }
+            compose.onNodeWithTag(TRANSCRIBE_CANCEL).performClick()
+            waitFor(15_000, "the stop") { transcriber.state.value is FileTranscription.Ready }
+            Thread.sleep(2_000)
+            assertTrue("a second job kept writing", transcriber.state.value is FileTranscription.Ready)
+        }
+    }
+
+    @Test
+    fun aSharedRecordingOnAColdLaunchDoesNotStartLiveCaptions() {
+        app.captions.launchHandled = false
+        val uri = lecture(5, "Cold share.wav")
+        share(uri, "audio/wav").use {
+            compose.waitUntil(30_000) { compose.onAllNodesWithTag(TRANSCRIBE_START).fetchSemanticsNodes().isNotEmpty() }
+            Thread.sleep(3_000)
+            assertTrue("captions started under the recording page", !app.captions.captionsActive())
+        }
     }
 
     @Test

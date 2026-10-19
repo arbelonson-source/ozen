@@ -9,7 +9,7 @@ object TranscriptionProgress {
         return (doneSeconds / totalSeconds).coerceIn(0.0, 1.0).toFloat()
     }
 
-    fun percent(fraction: Float): Int = Math.floor(fraction * 100.0 + 1e-4).toInt().coerceIn(0, 100)
+    fun percent(fraction: Float): Int = Math.floor(fraction * 100.0 + 1e-5).toInt().coerceIn(0, 100)
 
     fun secondsLeft(elapsedSeconds: Double, doneSeconds: Double, totalSeconds: Double?): Double? {
         if (totalSeconds == null || !(totalSeconds > 0)) return null

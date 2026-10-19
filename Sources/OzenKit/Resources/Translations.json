@@ -938,7 +938,8 @@
   "Transcribe": "ወደ ጽሑፍ ቀይር",
   "Transcribe a recording": "ቅጂን ወደ ጽሑፍ ቀይር",
   "Turning the recording into text": "ቅጂውን ወደ ጽሑፍ በመቀየር ላይ",
-  "What was already turned into text won’t be saved.": "ቀድሞ ወደ ጽሑፍ የተቀየረው አይቀመጥም።"
+  "What was already turned into text won’t be saved.": "ቀድሞ ወደ ጽሑፍ የተቀየረው አይቀመጥም።",
+  "The end of this recording couldn’t be read, so the text stops early.": "የቅጂው መጨረሻ ሊነበብ አልቻለም፣ ስለዚህ ጽሑፉ ቀድሞ ይቆማል።"
  },
  "arabic": {
   " Conversations with a starred line or a name are always kept.": " المحادثات التي فيها سطر مميز بنجمة أو اسم تبقى محفوظة دائمًا.",
@@ -1879,7 +1880,8 @@
   "Transcribe": "تحويل إلى نص",
   "Transcribe a recording": "تحويل تسجيل إلى نص",
   "Turning the recording into text": "جارٍ تحويل التسجيل إلى نص",
-  "What was already turned into text won’t be saved.": "ما تم تحويله إلى نص حتى الآن لن يُحفظ."
+  "What was already turned into text won’t be saved.": "ما تم تحويله إلى نص حتى الآن لن يُحفظ.",
+  "The end of this recording couldn’t be read, so the text stops early.": "تعذّرت قراءة نهاية هذا التسجيل، لذلك يتوقف النص مبكرًا."
  },
  "chineseSimplified": {
   " Conversations with a starred line or a name are always kept.": " 有星标或姓名的对话会一直保留。",
@@ -2820,7 +2822,8 @@
   "Transcribe": "转写",
   "Transcribe a recording": "转写录音",
   "Turning the recording into text": "正在把录音转为文字",
-  "What was already turned into text won’t be saved.": "已转为文字的内容不会被保存。"
+  "What was already turned into text won’t be saved.": "已转为文字的内容不会被保存。",
+  "The end of this recording couldn’t be read, so the text stops early.": "无法读取这段录音的结尾，因此文字提前结束。"
  },
  "french": {
   " Conversations with a starred line or a name are always kept.": " Les conversations avec une ligne marquée d’une étoile ou un nom sont toujours conservées.",
@@ -3761,7 +3764,8 @@
   "Transcribe": "Transcrire",
   "Transcribe a recording": "Transcrire un enregistrement",
   "Turning the recording into text": "Transcription de l’enregistrement",
-  "What was already turned into text won’t be saved.": "Ce qui a déjà été transcrit ne sera pas enregistré."
+  "What was already turned into text won’t be saved.": "Ce qui a déjà été transcrit ne sera pas enregistré.",
+  "The end of this recording couldn’t be read, so the text stops early.": "La fin de cet enregistrement n’a pas pu être lue ; le texte s’arrête donc plus tôt."
  },
  "german": {
   " Conversations with a starred line or a name are always kept.": " Gespräche mit einer markierten Zeile oder einem Namen bleiben immer erhalten.",
@@ -4702,7 +4706,8 @@
   "Transcribe": "Transkribieren",
   "Transcribe a recording": "Aufnahme transkribieren",
   "Turning the recording into text": "Aufnahme wird in Text umgewandelt",
-  "What was already turned into text won’t be saved.": "Was bereits in Text umgewandelt wurde, wird nicht gespeichert."
+  "What was already turned into text won’t be saved.": "Was bereits in Text umgewandelt wurde, wird nicht gespeichert.",
+  "The end of this recording couldn’t be read, so the text stops early.": "Das Ende dieser Aufnahme konnte nicht gelesen werden, daher endet der Text früher."
  },
  "hindi": {
   " Conversations with a starred line or a name are always kept.": " जिस बातचीत में तारांकित लाइन या नाम हो, वह हमेशा रखी जाती है।",
@@ -5643,7 +5648,8 @@
   "Transcribe": "लिखित रूप में बदलें",
   "Transcribe a recording": "रिकॉर्डिंग को लिखित रूप में बदलें",
   "Turning the recording into text": "रिकॉर्डिंग को लिखित रूप में बदला जा रहा है",
-  "What was already turned into text won’t be saved.": "जो पहले ही लिखित रूप में बदल चुका है, वह सहेजा नहीं जाएगा।"
+  "What was already turned into text won’t be saved.": "जो पहले ही लिखित रूप में बदल चुका है, वह सहेजा नहीं जाएगा।",
+  "The end of this recording couldn’t be read, so the text stops early.": "इस रिकॉर्डिंग का अंत पढ़ा नहीं जा सका, इसलिए टेक्स्ट जल्दी समाप्त हो जाता है।"
  },
  "portuguese": {
   " Conversations with a starred line or a name are always kept.": " As conversas com uma linha assinalada ou um nome são sempre mantidas.",
@@ -6584,7 +6590,8 @@
   "Transcribe": "Transcrever",
   "Transcribe a recording": "Transcrever uma gravação",
   "Turning the recording into text": "A converter a gravação em texto",
-  "What was already turned into text won’t be saved.": "O que já foi convertido em texto não será guardado."
+  "What was already turned into text won’t be saved.": "O que já foi convertido em texto não será guardado.",
+  "The end of this recording couldn’t be read, so the text stops early.": "Não foi possível ler o fim desta gravação, por isso o texto termina mais cedo."
  },
  "russian": {
   " Conversations with a starred line or a name are always kept.": " Разговоры с отмеченной строкой или именем всегда сохраняются.",
@@ -7525,7 +7532,8 @@
   "Transcribe": "Расшифровать",
   "Transcribe a recording": "Расшифровать запись",
   "Turning the recording into text": "Запись преобразуется в текст",
-  "What was already turned into text won’t be saved.": "То, что уже преобразовано в текст, не будет сохранено."
+  "What was already turned into text won’t be saved.": "То, что уже преобразовано в текст, не будет сохранено.",
+  "The end of this recording couldn’t be read, so the text stops early.": "Не удалось прочитать конец этой записи, поэтому текст обрывается раньше."
  },
  "spanish": {
   " Conversations with a starred line or a name are always kept.": " Las conversaciones con una línea marcada o un nombre siempre se conservan.",
@@ -8466,7 +8474,8 @@
   "Transcribe": "Transcribir",
   "Transcribe a recording": "Transcribir una grabación",
   "Turning the recording into text": "Convirtiendo la grabación en texto",
-  "What was already turned into text won’t be saved.": "Lo que ya se convirtió en texto no se guardará."
+  "What was already turned into text won’t be saved.": "Lo que ya se convirtió en texto no se guardará.",
+  "The end of this recording couldn’t be read, so the text stops early.": "No se pudo leer el final de esta grabación, así que el texto termina antes."
  },
  "ukrainian": {
   " Conversations with a starred line or a name are always kept.": " Розмови з позначеним рядком або іменем завжди зберігаються.",
@@ -9402,6 +9411,7 @@
   "Transcribe": "Розшифрувати",
   "Transcribe a recording": "Розшифрувати запис",
   "Turning the recording into text": "Запис перетворюється на текст",
-  "What was already turned into text won’t be saved.": "Те, що вже перетворено на текст, не буде збережено."
+  "What was already turned into text won’t be saved.": "Те, що вже перетворено на текст, не буде збережено.",
+  "The end of this recording couldn’t be read, so the text stops early.": "Не вдалося прочитати кінець цього запису, тому текст обривається раніше."
  }
 }

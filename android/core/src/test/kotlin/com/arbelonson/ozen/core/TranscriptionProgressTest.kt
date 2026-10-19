@@ -28,6 +28,8 @@ class TranscriptionProgressTest {
     fun percentRoundsDownSoItNeverSaysDoneEarly() {
         assertEquals(0, TranscriptionProgress.percent(0.004f))
         assertEquals(99, TranscriptionProgress.percent(0.9999f))
+        assertEquals(99, TranscriptionProgress.percent(0.99999905f))
+        assertEquals(29, TranscriptionProgress.percent(0.29f))
         assertEquals(100, TranscriptionProgress.percent(1f))
         assertEquals(42, TranscriptionProgress.percent(0.42f))
     }

@@ -1,5 +1,6 @@
 package com.arbelonson.ozen.core
 
+import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -70,5 +71,18 @@ class TranscriptFormatsTest {
         assertEquals("", TranscriptFormats.text(emptyList()))
         assertEquals("", TranscriptFormats.srt(emptyList()))
         assertEquals("WEBVTT\n", TranscriptFormats.vtt(emptyList()))
+    }
+
+    @Test
+    fun subtitleTimestampsStayAsciiOnAPhoneWhoseNumbersUseOtherDigits() {
+        val saved = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("ar-EG-u-nu-arab"))
+            val one = listOf(TranscribedLine(3_723.456, 3_725.0, "Late line"))
+            assertEquals("1\n01:02:03,456 --> 01:02:05,000\nLate line\n", TranscriptFormats.srt(one))
+            assertEquals("WEBVTT\n\n01:02:03.456 --> 01:02:05.000\nLate line\n", TranscriptFormats.vtt(one))
+        } finally {
+            Locale.setDefault(saved)
+        }
     }
 }

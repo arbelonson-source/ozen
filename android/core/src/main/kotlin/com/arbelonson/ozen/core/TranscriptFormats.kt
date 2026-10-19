@@ -1,5 +1,7 @@
 package com.arbelonson.ozen.core
 
+import java.util.Locale
+
 data class TranscribedLine(val startSeconds: Double, val endSeconds: Double, val text: String)
 
 object TranscriptFormats {
@@ -28,6 +30,6 @@ object TranscriptFormats {
 
     private fun stamp(seconds: Double, separator: Char): String {
         val millis = maxOf(0L, Math.floor(seconds * 1_000).toLong())
-        return "%02d:%02d:%02d%c%03d".format(millis / 3_600_000, millis / 60_000 % 60, millis / 1_000 % 60, separator, millis % 1_000)
+        return "%02d:%02d:%02d%c%03d".format(Locale.ROOT, millis / 3_600_000, millis / 60_000 % 60, millis / 1_000 % 60, separator, millis % 1_000)
     }
 }

@@ -1062,10 +1062,7 @@ internal fun textShareSheet(context: Context, subject: String, text: String): In
     if (text.length <= LONGEST_SHARED_TEXT) {
         send.putExtra(Intent.EXTRA_TEXT, text)
     } else {
-        val folder = File(context.cacheDir, CaptionSession.SHARED_FOLDER)
-        folder.deleteRecursively()
-        folder.mkdirs()
-        val file = File(folder, "$subject.txt")
+        val file = SharedFile.create(context.cacheDir, safeFileName(subject) + ".txt")
         file.writeText(text)
         val uri = FileProvider.getUriForFile(context, context.packageName + ".share", file)
         send.putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

@@ -456,13 +456,12 @@ class CaptionSession(
         pipeline.releaseModels()
     }
 
-    internal fun releaseModelForRecording() = pipeline.releaseModels()
+    internal suspend fun releaseModelForRecording() = withContext(Dispatchers.Main.immediate) { pipeline.releaseModels() }
 
     /** A transcribed recording goes into History like a conversation, unless the reader has turned saving off. */
     internal fun saveRecording(record: TranscriptSessionRecord): Boolean {
         if (!settings.current.value.saveHistory) return false
-        conversations.saveRecording(record)
-        return conversations.lastSaveFailure == null
+        return conversations.saveRecording(record)
     }
 
     fun listen() {

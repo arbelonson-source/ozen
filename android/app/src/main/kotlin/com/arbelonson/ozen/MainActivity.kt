@@ -224,7 +224,7 @@ class MainActivity : ComponentActivity() {
         // offered to replace the address and code set since.
         if (savedInstanceState == null && intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY == 0) {
             openLink(intent)
-            takeSharedRecording(intent)
+            if (takeSharedRecording(intent)) app.captions.takeFirstAppearance()
         }
     }
 
@@ -258,13 +258,13 @@ class MainActivity : ComponentActivity() {
     }
 
     /** A voice note, recording or video shared to Ozen from another app is offered for transcribing. */
-    private fun takeSharedRecording(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_SEND) return
-        val type = intent.type ?: return
-        if (!type.startsWith("audio/") && !type.startsWith("video/")) return
-        val recording = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) ?: return
-        if (!SharedRecordingLink.isAcceptable(recording.toString(), packageName)) return
-        (application as OzenApplication).transcriber.open(recording)
+    private fun takeSharedRecording(intent: Intent?): Boolean {
+        if (intent?.action != Intent.ACTION_SEND) return false
+        val type = intent.type ?: return false
+        if (!type.startsWith("audio/") && !type.startsWith("video/")) return false
+        val recording = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) ?: return false
+        if (!SharedRecordingLink.isAcceptable(recording.toString(), packageName)) return false
+        return (application as OzenApplication).transcriber.open(recording)
     }
 
     private fun systemBarsFor(lightScreen: Boolean) {
@@ -484,7 +484,7 @@ private fun OzenApp(
                             showingSettings.value = false
                             settingsAtBackup.value = false
                         }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value, onScrolledToBackup = { settingsAtBackup.value = false }, phoneModels = app.captions.phoneModels)
-                        Front.Transcribe -> TranscribeScreen(app.transcriber, recording, onClose = app.transcriber::close, languageCode = current.languageCode)
+                        Front.Transcribe -> TranscribeScreen(app.transcriber, recording, onClose = app.transcriber::close)
                         Front.Conversation -> ConversationScreen(
                             app.captions.savedConversations,
                             opened!!.first,

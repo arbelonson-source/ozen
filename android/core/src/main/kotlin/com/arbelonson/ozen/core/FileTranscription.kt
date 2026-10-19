@@ -44,6 +44,7 @@ sealed interface FileTranscription {
 
     data class Working(
         val name: String,
+        val language: UILanguage,
         val model: PhoneModel,
         val stage: Stage,
         val fraction: Float?,
@@ -55,9 +56,11 @@ sealed interface FileTranscription {
 
     data class Done(
         val name: String,
+        val language: UILanguage,
         val model: PhoneModel,
         val lines: List<TranscribedLine>,
         val recordId: UUID?,
+        val endMissing: Boolean = false,
     ) : FileTranscription
 
     data class Failed(val name: String, val problem: FileTranscriptionProblem) : FileTranscription

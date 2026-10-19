@@ -16,7 +16,7 @@ object AudioFileSamples {
             count += kept
             count < limit
         }
-        if (outcome != DecodeOutcome.Finished && outcome != DecodeOutcome.Stopped) return null
+        if (outcome != DecodeOutcome.Finished && outcome != DecodeOutcome.Stopped && outcome != DecodeOutcome.Stalled) return null
         if (count == 0) return null
         val all = FloatArray(count)
         var at = 0
