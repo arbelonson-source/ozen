@@ -79,7 +79,7 @@ class WhisperCppPassesDeviceTest {
     @Test
     fun aLivePassStopsAtItsTokenCap() {
         val audio = clip()
-        val segments = runBlocking { passes.once(audio, WhisperPassOptions.live("he").copy(maxTokens = 3), 0f) }
+        val segments = runBlocking { passes.once(audio, WhisperPassOptions.live("he").copy(maxTokens = 3), 0f, false) }
         val wordTokens = segments.flatMap { it.tokens }.count { !it.isSpecial }
         assertTrue("$wordTokens word tokens: ${words(segments)}", wordTokens in 1..4)
     }
@@ -88,7 +88,7 @@ class WhisperCppPassesDeviceTest {
     fun aNamesPromptIsTakenWithoutBreakingThePass() {
         val audio = clip()
         val prompt = passes.tokenize(" דוד, רותי, אבי")
-        val segments = runBlocking { passes.once(audio, WhisperPassOptions.final("he").copy(promptTokens = prompt), 0f) }
+        val segments = runBlocking { passes.once(audio, WhisperPassOptions.final("he").copy(promptTokens = prompt), 0f, false) }
         assertTrue("nothing heard with a prompt", words(segments).isNotBlank())
     }
 
@@ -100,14 +100,14 @@ class WhisperCppPassesDeviceTest {
             passes.abortRunningPass()
         }
         val started = SystemClock.elapsedRealtime()
-        val stopped = runCatching { runBlocking { passes.once(audio, WhisperPassOptions.final("he"), 0f) } }
+        val stopped = runCatching { runBlocking { passes.once(audio, WhisperPassOptions.final("he"), 0f, false) } }
         val seconds = (SystemClock.elapsedRealtime() - started) / 1000.0
         stopping.join()
         Log.i("OzenWhisper", "a pass asked to stop after 0.5 s returned after %.1f s: %s".format(seconds, stopped))
         assertTrue("the pass was not stopped: $stopped", stopped.isFailure)
         assertTrue("the stopped pass ran on for %.1f s".format(seconds), seconds < 3.0)
         passes.abortRunningPass()
-        val next = runBlocking { passes.once(audio, WhisperPassOptions.live("he").copy(maxTokens = 3), 0f) }
+        val next = runBlocking { passes.once(audio, WhisperPassOptions.live("he").copy(maxTokens = 3), 0f, false) }
         assertTrue("the next pass heard nothing", words(next).isNotBlank())
     }
 
@@ -132,7 +132,7 @@ class WhisperCppPassesDeviceTest {
         val seconds = (SystemClock.elapsedRealtime() - started) / 1000.0
         Log.i("OzenWhisper", "a pass stopped as it began returned after %.1f s: %s".format(seconds, outcome))
         assertTrue("the pass stopped as it began ran on for %.1f s".format(seconds), seconds < 3.0)
-        val next = runBlocking { passes.once(audio, WhisperPassOptions.live("he").copy(maxTokens = 3), 0f) }
+        val next = runBlocking { passes.once(audio, WhisperPassOptions.live("he").copy(maxTokens = 3), 0f, false) }
         assertTrue("the next pass heard nothing", words(next).isNotBlank())
     }
 

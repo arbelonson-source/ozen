@@ -796,6 +796,12 @@ The same addresses and codes are in the Android app under Settings, About,
 Support Ozen. The iPhone app has no donation page, as the App Store doesn't
 allow one outside its own payments.
 
+## In the press
+
+- [Breaking the Sound Barrier: How This Developer Made Accessible Conversations](https://xesktop.com/blog/breaking-the-sound-barrier-how-this-developer-made-accessible-conversations/),
+  Xesktop blog, 16 October 2026: why Ozen exists, and how its Hebrew speech
+  model was trained on Xesktop's GPU servers.
+
 ## Supporters
 
 These companies gave or offered Ozen free plans or credits. Thank you.

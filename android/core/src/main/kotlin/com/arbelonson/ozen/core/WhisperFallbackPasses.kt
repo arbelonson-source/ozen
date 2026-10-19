@@ -5,7 +5,9 @@ interface WhisperSinglePass {
 
     fun tokenize(text: String): List<Int>
 
-    suspend fun once(audio: FloatArray, options: WhisperPassOptions, temperature: Float): List<WhisperSegment>
+    suspend fun once(
+        audio: FloatArray, options: WhisperPassOptions, temperature: Float, sameAudioAsLastAttempt: Boolean,
+    ): List<WhisperSegment>
 
     fun abortRunningPass() {}
 }
@@ -20,7 +22,7 @@ class WhisperFallbackPasses(private val single: WhisperSinglePass) : WhisperPass
     override suspend fun run(audio: FloatArray, options: WhisperPassOptions): List<WhisperSegment> {
         var segments = emptyList<WhisperSegment>()
         for (attempt in 0..options.temperatureFallbackCount) {
-            segments = single.once(audio, options, options.temperature + attempt * TEMPERATURE_STEP)
+            segments = single.once(audio, options, options.temperature + attempt * TEMPERATURE_STEP, attempt > 0)
             if (!needsFallback(segments, options)) break
         }
         return segments

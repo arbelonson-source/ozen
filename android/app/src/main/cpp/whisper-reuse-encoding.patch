@@ -1,0 +1,93 @@
+--- a/src/whisper.cpp
++++ b/src/whisper.cpp
+@@ -939,6 +939,12 @@
+     // [EXPERIMENTAL] speed-up techniques
+     int32_t exp_n_audio_ctx = 0; // 0 - use default
+ 
++    // set only by whisper_full after a finished encode; cleared by any other mel or encode
++    bool     enc_valid = false;
++    uint64_t enc_signature = 0;
++    int32_t  enc_seek = 0;
++    int32_t  enc_audio_ctx = 0;
++
+     whisper_vad_context * vad_context = nullptr;
+ 
+     struct vad_segment_info {
+@@ -2415,6 +2421,8 @@
+                    void * abort_callback_data) {
+     const int64_t t_start_us = ggml_time_us();
+ 
++    wstate.enc_valid = false;
++
+     // conv
+     {
+         auto & sched = wstate.sched_conv.sched;
+@@ -4015,6 +4023,7 @@
+ }
+ 
+ int whisper_pcm_to_mel_with_state(struct whisper_context * ctx, struct whisper_state * state, const float * samples, int n_samples, int n_threads) {
++    state->enc_valid = false;
+     if (!log_mel_spectrogram(*state, samples, n_samples, WHISPER_SAMPLE_RATE, WHISPER_N_FFT, WHISPER_HOP_LENGTH, ctx->model.filters.n_mel, n_threads, ctx->model.filters, false, state->mel)) {
+         WHISPER_LOG_ERROR("%s: failed to compute mel spectrogram\n", __func__);
+         return -1;
+@@ -6179,6 +6188,8 @@
+         /*.vad_model_path              =*/ nullptr,
+ 
+         /* vad_params =*/ whisper_vad_default_params(),
++
++        /*.reuse_encoding =*/ false,
+     };
+ 
+     switch (strategy) {
+@@ -6988,7 +6999,17 @@
+ 
+     result_all.clear();
+ 
+-    if (n_samples > 0) {
++    uint64_t signature = 1469598103934665603ULL ^ (uint64_t) n_samples;
++    for (int i = 0; i < n_samples; ++i) {
++        uint32_t bits;
++        memcpy(&bits, samples + i, sizeof(bits));
++        signature = (signature ^ bits) * 1099511628211ULL;
++    }
++    const bool reuse_possible = params.reuse_encoding && n_samples > 0 && state->enc_valid &&
++        state->enc_signature == signature && state->enc_audio_ctx == params.audio_ctx &&
++        state->enc_seek == params.offset_ms/10;
++
++    if (n_samples > 0 && !reuse_possible) {
+         // compute log mel spectrogram
+         if (whisper_pcm_to_mel_with_state(ctx, state, samples, n_samples, params.n_threads) != 0) {
+             WHISPER_LOG_ERROR("%s: failed to compute log mel spectrogram\n", __func__);
+@@ -7219,9 +7240,17 @@
+         }
+ 
+         // encode audio features starting at offset seek
+-        if (!whisper_encode_internal(*ctx, *state, seek, params.n_threads, params.abort_callback, params.abort_callback_user_data)) {
+-            WHISPER_LOG_ERROR("%s: failed to encode\n", __func__);
+-            return -6;
++        const bool reuse_now = reuse_possible && state->enc_valid && state->enc_signature == signature &&
++            state->enc_audio_ctx == params.audio_ctx && state->enc_seek == seek;
++        if (!reuse_now) {
++            if (!whisper_encode_internal(*ctx, *state, seek, params.n_threads, params.abort_callback, params.abort_callback_user_data)) {
++                WHISPER_LOG_ERROR("%s: failed to encode\n", __func__);
++                return -6;
++            }
++            state->enc_valid = true;
++            state->enc_signature = signature;
++            state->enc_audio_ctx = params.audio_ctx;
++            state->enc_seek = seek;
+         }
+ 
+         // if there is a very short audio segment left to process, we remove any past prompt since it tends
+--- a/include/whisper.h
++++ b/include/whisper.h
+@@ -588,6 +588,9 @@
+         const char * vad_model_path;              // Path to VAD model
+ 
+         whisper_vad_params vad_params;
++
++        // skip the encoder when the previous call encoded the same audio (same samples, audio_ctx and offset) to completion
++        bool reuse_encoding;
+     };
+ 
+     // NOTE: this function allocates memory, and it is the responsibility of the caller to free the pointer - see whisper_free_context_params & whisper_free_params()

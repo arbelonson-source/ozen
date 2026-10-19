@@ -154,7 +154,7 @@ class OnDeviceWhisperEngineAbortTest {
 
             override fun tokenize(text: String): List<Int> = emptyList()
 
-            override suspend fun once(audio: FloatArray, options: WhisperPassOptions, temperature: Float): List<WhisperSegment> {
+            override suspend fun once(audio: FloatArray, options: WhisperPassOptions, temperature: Float, sameAudioAsLastAttempt: Boolean): List<WhisperSegment> {
                 temperatures.add(temperature)
                 check(!aborted) { "the pass was stopped" }
                 return emptyList()
