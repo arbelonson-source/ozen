@@ -22,6 +22,7 @@ import com.arbelonson.ozen.core.DeviceHeat
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HTTPFileFetcher
 import com.arbelonson.ozen.core.HistoryRetention
+import com.arbelonson.ozen.core.HistorySave
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.AlertVibration
@@ -459,10 +460,7 @@ class CaptionSession(
     internal suspend fun releaseModelForRecording() = withContext(Dispatchers.Main.immediate) { pipeline.releaseModels() }
 
     /** A transcribed recording goes into History like a conversation, unless the reader has turned saving off. */
-    internal fun saveRecording(record: TranscriptSessionRecord): Boolean {
-        if (!settings.current.value.saveHistory) return false
-        return conversations.saveRecording(record)
-    }
+    internal fun saveRecording(record: TranscriptSessionRecord): HistorySave = conversations.saveRecording(record)
 
     fun listen() {
         replies.userTookControl()

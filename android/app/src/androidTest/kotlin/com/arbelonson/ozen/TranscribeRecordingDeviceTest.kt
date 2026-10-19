@@ -208,6 +208,22 @@ class TranscribeRecordingDeviceTest {
     }
 
     @Test
+    fun stoppingRightAfterStartingStillBringsTheReadyPageBack() {
+        val uri = lecture(5, "Stop at once.wav")
+        share(uri, "audio/wav").use {
+            compose.waitUntil(30_000) { compose.onAllNodesWithTag(TRANSCRIBE_START).fetchSemanticsNodes().isNotEmpty() }
+            instrumentation.runOnMainSync {
+                transcriber.start()
+                transcriber.cancel()
+            }
+            waitFor(15_000, "the Ready page after a stop before the work began") { transcriber.state.value is FileTranscription.Ready }
+            Thread.sleep(2_000)
+            assertTrue("the screen did not stay on the Ready page", transcriber.state.value is FileTranscription.Ready)
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag(TRANSCRIBE_START).fetchSemanticsNodes().isNotEmpty() }
+        }
+    }
+
+    @Test
     fun aSharedRecordingOnAColdLaunchDoesNotStartLiveCaptions() {
         app.captions.launchHandled = false
         val uri = lecture(5, "Cold share.wav")

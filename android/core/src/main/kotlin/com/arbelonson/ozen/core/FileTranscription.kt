@@ -59,9 +59,29 @@ sealed interface FileTranscription {
         val language: UILanguage,
         val model: PhoneModel,
         val lines: List<TranscribedLine>,
-        val recordId: UUID?,
+        val history: HistorySave,
         val endMissing: Boolean = false,
-    ) : FileTranscription
+    ) : FileTranscription {
+        val recordId: UUID? get() = (history as? HistorySave.Saved)?.id
+    }
 
     data class Failed(val name: String, val problem: FileTranscriptionProblem) : FileTranscription
+}
+
+sealed interface HistorySave {
+    data class Saved(val id: UUID) : HistorySave
+
+    data object Off : HistorySave
+
+    data object Failed : HistorySave
+
+    val message: String
+        get() = when (this) {
+            is Saved -> tr("נשמר בהיסטוריה, ואפשר לחפש אותו שם.", "Saved to History, where you can search it.")
+            Off -> tr("שמירת ההיסטוריה כבויה, ולכן ההקלטה לא נשמרה בהיסטוריה.", "History saving is off, so this wasn’t saved to History.")
+            Failed -> tr(
+                "השמירה בהיסטוריה נכשלה. ייתכן שהטלפון מלא. כדאי לשתף את הטקסט לפני סגירת המסך.",
+                "Couldn’t save to History. The phone may be full. Share the text before you close this screen.",
+            )
+        }
 }

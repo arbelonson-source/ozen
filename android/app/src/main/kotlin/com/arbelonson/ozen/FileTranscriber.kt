@@ -11,6 +11,7 @@ import com.arbelonson.ozen.core.FileModelChoice
 import com.arbelonson.ozen.core.FileTranscriptRecord
 import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.FileTranscription.Working.Stage
+import com.arbelonson.ozen.core.FileTranscriptionJob
 import com.arbelonson.ozen.core.FileTranscriptionProblem
 import com.arbelonson.ozen.core.ModelDownloadGate
 import com.arbelonson.ozen.core.PhoneModel
@@ -33,7 +34,6 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.coroutineScope
@@ -65,7 +65,7 @@ class FileTranscriber(
     private var duration: Double? = null
     private var language = UILanguage.Hebrew
     private var chosenModel: String? = null
-    private var job: Job? = null
+    private val work = FileTranscriptionJob(shown, scope, Dispatchers.Default)
 
     val busy: Boolean get() = shown.value is FileTranscription.Working
 
@@ -112,11 +112,11 @@ class FileTranscriber(
     }
 
     fun cancel() {
-        job?.cancel()
+        work.cancel()
     }
 
     fun start() {
-        if (job?.isActive == true) return
+        if (work.running) return
         val ready = shown.value as? FileTranscription.Ready ?: return
         if (captions.captionsActive()) {
             shown.value = ready.copy(captionsRunning = true)
@@ -124,12 +124,11 @@ class FileTranscriber(
         }
         val uri = source ?: return
         val first = ready.model ?: ready.toDownload
-        shown.value = working(first, if (File(captions.modelDirectory, first.file).isFile) Stage.Loading else Stage.Downloading)
-        job = scope.launch(Dispatchers.Default) {
+        val opening = working(first, if (File(captions.modelDirectory, first.file).isFile) Stage.Loading else Stage.Downloading)
+        work.start(opening, backTo = ::readyPage) {
             try {
                 run(uri, ready)
             } catch (stopped: CancellationException) {
-                showReady()
                 throw stopped
             } catch (problem: Problem) {
                 shown.value = FileTranscription.Failed(name, problem.kind)
@@ -140,11 +139,15 @@ class FileTranscriber(
     }
 
     private fun showReady() {
-        if (source == null) return
+        readyPage()?.let { shown.value = it }
+    }
+
+    private fun readyPage(): FileTranscription.Ready? {
+        if (source == null) return null
         val installed = PhoneModelCatalog.managedFiles.filter { File(captions.modelDirectory, it).isFile }.toSet()
         val downloaded = FileModelChoice.downloaded(language, installed)
         val model = downloaded.firstOrNull { it.file == chosenModel } ?: FileModelChoice.pick(language, installed, totalMemory())
-        shown.value = FileTranscription.Ready(name, language, model, downloaded, FileModelChoice.toDownload(language), duration, captions.captionsActive())
+        return FileTranscription.Ready(name, language, model, downloaded, FileModelChoice.toDownload(language), duration, captions.captionsActive())
     }
 
     private fun totalMemory(): Long? =
@@ -195,8 +198,8 @@ class FileTranscriber(
             val transcript = transcribe(uri, model, scorer, linePass)
             val lines = transcript.lines
             val record = FileTranscriptRecord.make(name, lines, startedAt, endedAt = System.currentTimeMillis() / 1_000.0, modelVariant = model.variant)
-            val saved = withContext(Dispatchers.IO) { captions.saveRecording(record) }
-            shown.value = FileTranscription.Done(name, language, model, lines, record.id.takeIf { saved }, transcript.endMissing)
+            val history = withContext(Dispatchers.IO) { captions.saveRecording(record) }
+            shown.value = FileTranscription.Done(name, language, model, lines, history, transcript.endMissing)
         } finally {
             scorer?.close()
             loaded.release()

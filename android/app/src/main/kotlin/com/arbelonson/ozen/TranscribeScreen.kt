@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.FileTranscription
+import com.arbelonson.ozen.core.HistorySave
 import com.arbelonson.ozen.core.TranscribedLine
 import com.arbelonson.ozen.core.TranscriptFormats
 import com.arbelonson.ozen.core.TranscriptionProgress
@@ -232,14 +233,11 @@ private fun DonePage(done: FileTranscription.Done, close: () -> Unit) {
                 modifier = Modifier.testTag(TRANSCRIBE_SUBTITLES),
             )
         }
+        val notSaved = done.history == HistorySave.Failed
         Text(
-            if (done.recordId != null) {
-                tr("נשמר בהיסטוריה, ואפשר לחפש אותו שם.", "Saved to History, where you can search it.")
-            } else {
-                tr("שמירת ההיסטוריה כבויה, ולכן ההקלטה לא נשמרה בהיסטוריה.", "History saving is off, so this wasn’t saved to History.")
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            done.history.message,
+            style = if (notSaved) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+            color = if (notSaved) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.testTag("transcribe-saved"),
         )
         if (done.endMissing) {

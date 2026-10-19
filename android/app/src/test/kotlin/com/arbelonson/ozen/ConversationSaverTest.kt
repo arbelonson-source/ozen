@@ -1,9 +1,12 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.FileTranscriptRecord
 import com.arbelonson.ozen.core.HistoryRetention
+import com.arbelonson.ozen.core.HistorySave
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.SavedSegment
+import com.arbelonson.ozen.core.TranscribedLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -575,6 +578,32 @@ class ConversationSaverTest {
         val left = saved()
         assertFalse(left.any { it.id == old })
         assertEquals(listOf("Today"), left.map { it.preview })
+    }
+
+    private fun recording() = FileTranscriptRecord.make("Lecture.wav", listOf(TranscribedLine(0.0, 2.0, "Good morning")), clock - 60, clock, "ozen-turbo")
+
+    @Test
+    fun `a transcribed recording goes into History under its own id while saving is on`() {
+        val record = recording()
+        assertEquals(HistorySave.Saved(record.id), saver.saveRecording(record))
+        assertEquals(listOf(record.id), saved().map { it.id })
+        assertEquals(listOf("Good morning"), store.load(record.id)!!.segments.map { it.text })
+    }
+
+    @Test
+    fun `a transcribed recording is not saved while saving is off, and that is not called a failure`() {
+        settings.saveHistory = false
+        assertEquals(HistorySave.Off, saver.saveRecording(recording()))
+        assertTrue(saved().isEmpty())
+        assertNull(saver.lastSaveFailure)
+    }
+
+    @Test
+    fun `a transcribed recording the phone refuses to write is a failed save, not saving being off`() {
+        folder.deleteRecursively()
+        folder.writeText("not a folder")
+        assertEquals(HistorySave.Failed, saver.saveRecording(recording()))
+        assertNotNull(saver.lastSaveFailure)
     }
 
     private fun oldConversation(at: Double): UUID {
