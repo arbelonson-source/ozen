@@ -12,7 +12,19 @@ private struct AlertOverlay: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown: SoundAlert?
     @State private var shownHit: KeywordHit?
+    @State private var shownHitAt = Date()
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private struct PillTimer: Hashable {
+        let id: UUID
+        let seconds: Double
+    }
+
+    private var pillTimer: PillTimer? {
+        guard let hit = shownHit else { return nil }
+        let seconds = KeywordPill.visibleSeconds(for: hit, speaker: viewModel.speakerName(for: hit), accessibilitySize: dynamicTypeSize.isAccessibilitySize)
+        return PillTimer(id: hit.id, seconds: seconds)
+    }
 
     func body(content: Content) -> some View {
         content
@@ -46,6 +58,7 @@ private struct AlertOverlay: ViewModifier {
             }
             .onChange(of: viewModel.attentionKeywordHit?.id) { _, _ in
                 guard let hit = viewModel.attentionKeywordHit else { return }
+                shownHitAt = Date()
                 withAnimation(reduceMotion ? nil : .default) { shownHit = hit }
             }
             .task(id: shown?.id) {
@@ -55,11 +68,12 @@ private struct AlertOverlay: ViewModifier {
                     withAnimation { shown = nil }
                 }
             }
-            .task(id: shownHit?.id) {
-                guard let current = shownHit else { return }
-                let seconds = KeywordPill.visibleSeconds(for: current, speaker: viewModel.speakerName(for: current), accessibilitySize: dynamicTypeSize.isAccessibilitySize)
-                try? await Task.sleep(for: .seconds(seconds))
-                if shownHit?.id == current.id {
+            .task(id: pillTimer) {
+                guard let timer = pillTimer else { return }
+                let left = KeywordPill.secondsLeft(total: timer.seconds, elapsed: Date().timeIntervalSince(shownHitAt))
+                try? await Task.sleep(for: .seconds(left))
+                if Task.isCancelled { return }
+                if shownHit?.id == timer.id {
                     withAnimation(reduceMotion ? nil : .default) { shownHit = nil }
                 }
             }
