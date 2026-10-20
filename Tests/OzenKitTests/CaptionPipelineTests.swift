@@ -28,6 +28,9 @@ final class FakeAudioCapturer: AudioCapturing {
     /// Kept out of `calls` on purpose: tests read `calls.last` to see that
     /// capture was stopped, and handing the session back comes after that.
     private(set) var endSessionCalls = 0
+    /// The real system refuses to end a session while capture still runs,
+    /// and the session would then stay active: such calls are counted.
+    private(set) var endSessionWhileCapturing = 0
     private var continuation: AsyncStream<[Float]>.Continuation?
 
     func requestPermission() async -> AudioPermission {
@@ -75,6 +78,7 @@ final class FakeAudioCapturer: AudioCapturing {
 
     func endSession() {
         endSessionCalls += 1
+        if continuation != nil { endSessionWhileCapturing += 1 }
         isPrepared = false
     }
 
@@ -1926,6 +1930,33 @@ struct CaptionPipelineAudioSessionTests {
         await abandoned.value
         #expect(pipeline.phase == .listening)
         #expect(audio.endSessionCalls == 1)
+    }
+
+    @Test("stopping while the session is still being set up, when the set-up then fails, still hands it back", .timeLimit(.minutes(1)))
+    func stopDuringSetupThatFails() async {
+        let (pipeline, audio, _) = makePipeline()
+        audio.holdPrepare = true
+        audio.prepareError = NSError(domain: "FakeAudio", code: 3)
+        let starting = Task { await pipeline.start(settings: .default) }
+        #expect(await eventually { audio.isHoldingPrepare })
+
+        pipeline.stop()
+        #expect(audio.endSessionCalls == 1)
+        audio.releasePrepare()
+        await starting.value
+        #expect(pipeline.phase == .idle)
+        #expect(audio.endSessionCalls == 2)
+    }
+
+    @Test("the session is only handed back once capture has stopped, as the system refuses otherwise")
+    func handedBackAfterCaptureStopped() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        pipeline.pause(releasingAudio: true)
+        await pipeline.resume()
+        pipeline.stop()
+        #expect(audio.endSessionCalls == 2)
+        #expect(audio.endSessionWhileCapturing == 0)
     }
 }
 
