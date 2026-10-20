@@ -302,10 +302,24 @@ public struct WhisperResultFilter: Sendable, Equatable {
     /// `maxRepeats` times is cut down to that many: people do say "lo, lo, lo"
     /// ("no, no, no"), but nobody says it six times. The kept copies are the
     /// first ones and the last, so the sentence keeps its closing punctuation.
+    ///
+    /// Digits and counting words may repeat up to `maxNumberRepeats` times,
+    /// because phone numbers, codes and amounts are read out one digit at a
+    /// time ("zero five zero five five five five five"), and a number shown
+    /// shorter than it was said is wrong with no sign that it is. Every
+    /// other word is still cut to `maxRepeats`, and a caller asking for a
+    /// single copy gets a single copy of a number as well.
+    ///
     /// Text with nothing to collapse comes back exactly as it was.
-    public static func collapsingRepeats(_ text: String, maxRepeats: Int = 3, maxPhraseWords: Int = 4) -> String {
+    public static func collapsingRepeats(
+        _ text: String,
+        maxRepeats: Int = 3,
+        maxPhraseWords: Int = 4,
+        maxNumberRepeats: Int = 10
+    ) -> String {
         var words = text.split(whereSeparator: { $0.isWhitespace }).map(String.init)
         guard maxRepeats >= 1, words.count > maxRepeats else { return text }
+        let numberLimit = maxRepeats > 1 ? max(maxRepeats, maxNumberRepeats) : maxRepeats
         var changed = false
         for phraseLength in 1...maxPhraseWords {
             let keys = words.map(normalize)
@@ -324,8 +338,9 @@ public struct WhisperResultFilter: Sendable, Equatable {
                       keys[(index + repeats * phraseLength)..<(index + (repeats + 1) * phraseLength)].elementsEqual(phrase) {
                     repeats += 1
                 }
-                if repeats > maxRepeats {
-                    result.append(contentsOf: words[index..<(index + (maxRepeats - 1) * phraseLength)])
+                let limit = repeats > maxRepeats && phrase.allSatisfy(isSpokenNumber) ? numberLimit : maxRepeats
+                if repeats > limit {
+                    result.append(contentsOf: words[index..<(index + (limit - 1) * phraseLength)])
                     let lastStart = index + (repeats - 1) * phraseLength
                     result.append(contentsOf: words[lastStart..<(lastStart + phraseLength)])
                     index += repeats * phraseLength
@@ -338,6 +353,14 @@ public struct WhisperResultFilter: Sendable, Equatable {
             words = result
         }
         return changed ? words.joined(separator: " ") : text
+    }
+
+    /// Whether a word, already through `normalize`, is a number: written in
+    /// digits (in any script; `normalize` turns the hyphen in "5-5" into a
+    /// space, so spaces are allowed) or one of the Hebrew counting words.
+    private static func isSpokenNumber(_ key: String) -> Bool {
+        guard !key.isEmpty else { return false }
+        return key.allSatisfy { $0.isNumber || $0 == " " } || NumberEmphasis.numberWords.contains(key)
     }
 
     /// Someone saying a sentence again with no pause, as people do for a

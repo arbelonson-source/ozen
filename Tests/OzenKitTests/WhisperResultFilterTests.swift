@@ -366,6 +366,114 @@ struct WhisperRepeatCollapseTests {
             #expect(!filter.accepts(loop), "\(copies) copies")
         }
     }
+
+    // A phone number, a code or an amount read out one digit at a time has
+    // the same digit several times in a row. That is what was said, not a
+    // decoding loop, and a reader who sees fewer digits than were spoken
+    // has no way to know.
+    private func repeated(_ word: String, _ count: Int) -> String {
+        Array(repeating: word, count: count).joined(separator: " ")
+    }
+
+    private func wordCount(_ text: String) -> Int {
+        text.split(whereSeparator: { $0.isWhitespace }).count
+    }
+
+    @Test("a phone number said digit by digit keeps every digit, however the engine wrote it")
+    func digitByDigitNumbersKept() {
+        let kept = [
+            "המספר שלי הוא אפס חמש אפס " + repeated("חמש", 6),
+            "050 5 5 5 5 5 5",
+            "0 0 0 0 0",
+            repeated("אחת", 5),
+            "5, 5, 5, 5, 5, 5.",
+            "0 5 0 5 0 5 0 5 0 5",
+            repeated("٥", 6),
+            "5-5 5-5 5-5 5-5",
+        ]
+        for said in kept {
+            #expect(WhisperResultFilter.collapsingRepeats(said) == said, "\(said)")
+        }
+    }
+
+    @Test("a run of one digit is kept up to ten copies and not one more")
+    func digitRunBound() {
+        let shown = (1...40).map { wordCount(WhisperResultFilter.collapsingRepeats(repeated("5", $0))) }
+        #expect(shown == (1...40).map { min($0, 10) })
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("5", 14)) == repeated("5", 10))
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("חצי", 12)) == repeated("חצי", 10))
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("אחד", 25)) == repeated("אחד", 10))
+    }
+
+    @Test("other words, and a number mixed with a word, are still cut to three")
+    func nonNumbersStillCut() {
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("לבוא", 12)) == repeated("לבוא", 3))
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("5kg", 5)) == repeated("5kg", 3))
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("5 לבוא", 5)) == repeated("5 לבוא", 3))
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("5 לבוא", 3)) == repeated("5 לבוא", 3))
+    }
+
+    @Test("a run is only a number when every word in it is one: a bare dash among the digits makes it an ordinary repeat")
+    func bareDashAmongDigitsIsOrdinaryRepeat() {
+        #expect(WhisperResultFilter.collapsingRepeats("5 - 5 - 5 - 5 - 5 -") == "5 - 5 - 5 -")
+    }
+
+    @Test("the number allowance can be changed, and never drops below the one for other words")
+    func numberAllowanceIsAdjustable() {
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("5", 12), maxNumberRepeats: 6) == repeated("5", 6))
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("5", 12), maxNumberRepeats: 2) == repeated("5", 3))
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("לבוא", 12), maxNumberRepeats: 20) == repeated("לבוא", 3))
+    }
+
+    @Test("asked for a single copy, a number gets a single copy too")
+    func singleCopyAppliesToNumbers() {
+        #expect(WhisperResultFilter.collapsingRepeats("5 5 5 5 5", maxRepeats: 1) == "5")
+        #expect(WhisperResultFilter.collapsingRepeats("0 0 0 0 0", maxRepeats: 1) == "0")
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("אחת", 5), maxRepeats: 1) == "אחת")
+    }
+
+    @Test("a number said digit by digit reaches the screen whole, from the phone and from the cloud")
+    func digitByDigitNumberShown() {
+        let filter = WhisperResultFilter()
+        let said = "המספר שלי הוא אפס חמש אפס " + repeated("חמש", 6)
+        let segment = WhisperSegmentSummary(text: said, noSpeechProb: 0.01, avgLogprob: -0.2, compressionRatio: 1.5)
+        #expect(filter.acceptedText(from: [segment]) == said)
+        #expect(CloudSpeech.turns(in: "A: 050 5 5 5 5 5 5") == ["050 5 5 5 5 5 5"])
+        // The model's line break can fall in the middle of the number.
+        let merged = CloudSpeech.turns(in: "A: 050 5 5 5\nA: 5 5 5")
+        #expect(merged == ["050 5 5 5 5 5 5"])
+        #expect(merged.map(wordCount) == [7])
+    }
+
+    @Test("a phone number with a repeated digit stays one the reader can tap to dial")
+    func repeatedDigitNumberStaysDialable() {
+        let filter = WhisperResultFilter()
+        let said = "052 1 1 1 1 2 3 4"
+        let segment = WhisperSegmentSummary(text: said, noSpeechProb: 0.01, avgLogprob: -0.2, compressionRatio: 1.5)
+        let shown = filter.acceptedText(from: [segment])
+        #expect(shown == said)
+        #expect(PhoneNumbers.matches(in: shown).map(\.dialable) == ["0521111234"])
+    }
+
+    @Test("a line with a number and a stuck word keeps the number whole and cuts the word")
+    func numberAndStuckWordInOneLine() {
+        let said = "5 5 5 5 5 5 " + repeated("לבוא", 5)
+        #expect(WhisperResultFilter.collapsingRepeats(said) == "5 5 5 5 5 5 " + repeated("לבוא", 3))
+    }
+
+    // The phone's engine scores a run of one word past the loop line (see
+    // calledOutWordKept), and the run is then shown cut like any repeat.
+    @Test("a run of one digit the phone scores past the loop line is shown to ten")
+    func scoredDigitRunBound() {
+        let run = WhisperSegmentSummary(text: repeated("5", 20), noSpeechProb: 0.0, avgLogprob: -0.1, compressionRatio: 3.0)
+        #expect(wordCount(WhisperResultFilter().acceptedText(from: [run])) == 10)
+    }
+
+    @Test("a run of one word the phone scores past the loop line is still shown cut to three")
+    func scoredWordRunCut() {
+        let run = WhisperSegmentSummary(text: repeated("די", 20), noSpeechProb: 0.0, avgLogprob: -0.1, compressionRatio: 3.0)
+        #expect(wordCount(WhisperResultFilter().acceptedText(from: [run])) == 3)
+    }
 }
 
 @Suite("A sentence said twice in one line")
