@@ -406,6 +406,39 @@ class PhoneModelChooserTest {
     }
 
     @Test
+    fun `a connection that returns during the phone test does not stop it from choosing its model`() {
+        waitingOnCellular("ggml-small-q5_1.bin")
+        measured = PhoneSpeed(12.0, 2, 2.0)
+        duringTest = {
+            network = NetworkConditions.wifi
+            chooser.resumeWaiting()
+        }
+        chooser.runCheck(thenChooseBest = true)
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+    }
+
+    @Test
+    fun `a download that loses every connection waits for one and carries on from the part already there`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        cutAt = 1_000_000
+        whenReceived = {
+            network = NetworkConditions.offline
+            throw IOException("the connection dropped")
+        }
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertEquals(PhoneModelSwitch.Offline("ggml-base-q5_1.bin"), chooser.switching.value)
+        letTheDownloadFinish()
+        network = NetworkConditions.wifi
+        chooser.resumeWaiting()
+        scope.runCurrent()
+        assertEquals(listOf(0L, 1_000_000L), starts)
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        assertEquals(PhoneModelSwitch.Idle, chooser.switching.value)
+    }
+
+    @Test
     fun `a model the spoken language no longer offers is not downloaded when Wi-Fi comes back`() {
         have("ggml-ozen-a3-q5_0.bin")
         network = NetworkConditions.cellular

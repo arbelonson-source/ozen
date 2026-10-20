@@ -93,6 +93,10 @@ class PhoneModelChooser(
 
     override fun choose(file: String) {
         picks += 1
+        start(file)
+    }
+
+    private fun start(file: String) {
         val current = settings.current.value
         val model = PhoneModelCatalog.offered(current.spokenLanguage).firstOrNull { it.file == file } ?: return
         synchronized(lock) {
@@ -109,7 +113,7 @@ class PhoneModelChooser(
     override fun resumeWaiting() {
         synchronized(lock) {
             val file = switchState.value.waitingFile ?: return
-            if (ModelDownloadGate.decide(network(), settings.current.value.allowCellularModelDownload) == ModelDownloadGate.Decision.Proceed) choose(file)
+            if (ModelDownloadGate.decide(network(), settings.current.value.allowCellularModelDownload) == ModelDownloadGate.Decision.Proceed) start(file)
         }
     }
 
@@ -185,6 +189,8 @@ class PhoneModelChooser(
             } else if (lostWiFi) {
                 switchState.value = PhoneModelSwitch.WaitingForWiFi(model.file)
                 resumeWaiting()
+            } else if (ModelDownloadGate.decide(network(), settings.current.value.allowCellularModelDownload) == ModelDownloadGate.Decision.Offline) {
+                switchState.value = PhoneModelSwitch.Offline(model.file)
             } else {
                 switchState.value = PhoneModelSwitch.Failed(model.file)
             }
