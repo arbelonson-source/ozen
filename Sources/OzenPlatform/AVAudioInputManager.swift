@@ -242,12 +242,22 @@ public final class AVAudioInputManager: AudioCapturing {
     public func reclaimSessionAfterInterruption() async -> Bool {
         guard sessionPrepared else { return true }
         do {
-            try await Self.activateSessionOffMain()
+            try await activateSession()
         } catch {
             return false
         }
+        if released { return true }
         resumeCaptureAfterInterruption()
         return true
+    }
+
+    /// Activates the session off the main thread. A hand-back that came
+    /// while the activation was under way ran its deactivation first, and
+    /// the late activation would take the session back after the Stop: it
+    /// is handed back again.
+    private func activateSession() async throws {
+        try await Self.activateSessionOffMain()
+        if released { endSession() }
     }
 
     /// Right after a call is exactly when a headset or hearing aid is
@@ -439,8 +449,8 @@ public final class AVAudioInputManager: AudioCapturing {
                     // A session handed back stays that way: taking it again
                     // here would silence the music that just carried on.
                     if !self.released, options.contains(.shouldResume) || self.activeTap != nil {
-                        try? await Self.activateSessionOffMain()
-                        self.resumeCaptureAfterInterruption()
+                        try? await self.activateSession()
+                        if !self.released { self.resumeCaptureAfterInterruption() }
                     }
                     self.onInterruption?(false)
                 default:
