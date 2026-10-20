@@ -357,10 +357,10 @@ public struct WhisperResultFilter: Sendable, Equatable {
 
     /// Whether a word, already through `normalize`, is a number: written in
     /// digits (in any script; `normalize` turns the hyphen in "5-5" into a
-    /// space, so spaces are allowed) or one of the Hebrew counting words.
+    /// space, so spaces are allowed) or a Hebrew counting word, with or without prefixes attached.
     private static func isSpokenNumber(_ key: String) -> Bool {
         guard !key.isEmpty else { return false }
-        return key.allSatisfy { $0.isNumber || $0 == " " } || NumberEmphasis.numberWords.contains(key)
+        return key.allSatisfy { $0.isNumber || $0 == " " } || NumberEmphasis.numberReading(of: key) != nil
     }
 
     /// Someone saying a sentence again with no pause, as people do for a

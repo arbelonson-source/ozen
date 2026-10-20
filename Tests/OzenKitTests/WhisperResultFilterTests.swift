@@ -425,6 +425,13 @@ struct WhisperRepeatCollapseTests {
         #expect(WhisperResultFilter.collapsingRepeats(repeated("לבוא", 12), maxNumberRepeats: 20) == repeated("לבוא", 3))
     }
 
+    @Test("a counting word with a prefix attached is still a number in a run")
+    func prefixedCountingWordRunKeepsNumberAllowance() {
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("בשלושה", 8)) == repeated("בשלושה", 8))
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("ובשלושה", 12)) == repeated("ובשלושה", 10))
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("בלבוא", 8)) == repeated("בלבוא", 3))
+    }
+
     @Test("asked for a single copy, a number gets a single copy too")
     func singleCopyAppliesToNumbers() {
         #expect(WhisperResultFilter.collapsingRepeats("5 5 5 5 5", maxRepeats: 1) == "5")

@@ -247,7 +247,7 @@ public enum NumberEmphasis {
     /// The number word inside `word` and the prefixes attached in front
     /// of it (at most two: vav + bet + "shesh" — "and" + "at" + "six"), or nil
     /// when it isn't one.
-    private static func numberReading(of word: String) -> (number: String, prefixes: String)? {
+    static func numberReading(of word: String) -> (number: String, prefixes: String)? {
         if numberWords.contains(word) { return (word, "") }
         var rest = Substring(word)
         for _ in 0..<2 {
