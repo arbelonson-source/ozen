@@ -64,7 +64,7 @@ class PhoneSpeedDeviceTest {
             try {
                 val times = (1..4).map {
                     val started = SystemClock.elapsedRealtime()
-                    WhisperCpp.pass(handle, audio, "he", null, 24, 0f, threads, true, true, frames)
+                    WhisperCpp.pass(handle, audio, "he", null, 24, 0f, threads, true, true, frames, false)
                     (SystemClock.elapsedRealtime() - started) / 1000.0
                 }
                 val steady = times.drop(1).sorted()[1]

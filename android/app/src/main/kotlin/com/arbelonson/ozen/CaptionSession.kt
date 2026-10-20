@@ -681,6 +681,7 @@ class CaptionSession(
     /** The Settings switch: models may download over cellular data, and one waiting for Wi-Fi starts now. */
     fun allowCellularModelDownload(allowed: Boolean) {
         settings.change { it.allowCellularModelDownload = allowed }
+        if (allowed) phoneModels.resumeWaiting()
         scope.launch { pipeline.setAllowCellularModelDownload(allowed) }
     }
 
@@ -1156,6 +1157,7 @@ class CaptionSession(
     /** The phone's own model: the chosen one, or the spoken language's recommended one; see `PhoneModelCatalog`. */
     private fun modelFile(settings: AppSettings) = File(modelFolder, settings.phoneModel.file)
 
+    /** The speech model list's chooser; a model it was waiting to fetch for Wi-Fi or a connection starts when the network allows it. */
     val phoneModels: PhoneModels by lazy {
         PhoneModelChooser(
             settings = settings,
@@ -1168,7 +1170,7 @@ class CaptionSession(
             applied = ::settingsChanged,
             captionsBusy = captionsBusy,
             totalMemory = { ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java)?.getMemoryInfo(it) }.totalMem.takeIf { it > 0 } },
-        )
+        ).also { chooser -> network.alsoOnChange = { chooser.resumeWaiting() } }
     }
 
     private val captionsBusy = MutableStateFlow(false)

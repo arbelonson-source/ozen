@@ -40,6 +40,9 @@ interface PhoneModels {
 
     fun choose(file: String)
 
+    /** The connection or the cellular switch changed: a model waiting for Wi-Fi or a connection starts now if it can. */
+    fun resumeWaiting()
+
     suspend fun delete(file: String): PhoneModelDeletion.Result
 
     fun runCheck(thenChooseBest: Boolean)
@@ -103,6 +106,13 @@ class PhoneModelChooser(
         }
     }
 
+    override fun resumeWaiting() {
+        synchronized(lock) {
+            val file = switchState.value.waitingFile ?: return
+            if (ModelDownloadGate.decide(network(), settings.current.value.allowCellularModelDownload) == ModelDownloadGate.Decision.Proceed) choose(file)
+        }
+    }
+
     override suspend fun delete(file: String): PhoneModelDeletion.Result {
         return withContext(NonCancellable) {
             val result = withContext(io) {
@@ -112,7 +122,8 @@ class PhoneModelChooser(
                 }
             }
             refreshInstalled()
-            if (result is PhoneModelDeletion.Result.Freed && switchState.value is PhoneModelSwitch.NotEnoughRoom) switchState.value = PhoneModelSwitch.Idle
+            val state = switchState.value
+            if (result is PhoneModelDeletion.Result.Freed && (state is PhoneModelSwitch.NotEnoughRoom || state.waitingFile == file)) switchState.value = PhoneModelSwitch.Idle
             result
         }
     }
@@ -167,8 +178,11 @@ class PhoneModelChooser(
             if (done) {
                 switchState.value = PhoneModelSwitch.Idle
                 use(model)
+            } else if (lostWiFi) {
+                switchState.value = PhoneModelSwitch.WaitingForWiFi(model.file)
+                resumeWaiting()
             } else {
-                switchState.value = if (lostWiFi) PhoneModelSwitch.WaitingForWiFi(model.file) else PhoneModelSwitch.Failed(model.file)
+                switchState.value = PhoneModelSwitch.Failed(model.file)
             }
         }
     }
@@ -201,3 +215,10 @@ class PhoneModelChooser(
         }
     }
 }
+
+private val PhoneModelSwitch.waitingFile: String?
+    get() = when (this) {
+        is PhoneModelSwitch.WaitingForWiFi -> file
+        is PhoneModelSwitch.Offline -> file
+        else -> null
+    }
