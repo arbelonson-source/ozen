@@ -160,10 +160,15 @@ public struct WhisperModelStore: Sendable {
     /// download still running when captions start again is joined, not
     /// raced, and the second caller hears its progress too.
     ///
-    /// Without `allowCellular`, a model from the app's own releases fetches
-    /// every file with cellular data and Low Data Mode refused, so Wi-Fi
-    /// dropping part-way stops the download instead of moving it onto the
-    /// phone plan. (WhisperKit's hub downloads keep their own session.)
+    /// Without `allowCellular`, Wi-Fi dropping part-way stops the download
+    /// instead of moving it onto the phone plan. A model from the app's own
+    /// releases fetches every file with cellular data and Low Data Mode
+    /// refused. WhisperKit's hub downloads keep their own session, so a
+    /// watch on the connection cancels them instead (`GuardedDownload`):
+    /// this throws `CellularDownloadStopped` and what arrived is kept for
+    /// the next try. Not caught: iOS Wi-Fi Assist, which keeps reporting
+    /// Wi-Fi, and the short moment between the phone switching to cellular
+    /// data and the system saying so.
     public func download(
         variant: String,
         allowCellular: Bool = true,
@@ -190,16 +195,21 @@ public struct WhisperModelStore: Sendable {
             // minutes" for a five-minute download, then "less than a
             // minute" with three to go. The bytes on disk are shown instead.
             let meter = HubDownloadMeter(modelsRoot: modelsRoot, variant: variant)
-            folder = try await WhisperKit.download(
-                variant: variant,
-                downloadBase: downloadBase,
-                useBackgroundSession: false,
-                from: Self.repository,
-                progressCallback: { downloadProgress in
-                    let reported = downloadProgress.fractionCompleted
-                    progress(meter?.fraction(reported: reported) ?? reported)
-                }
-            )
+            folder = try await GuardedDownload.run(
+                allowCellular: allowCellular,
+                network: { PathConditionStream.make() }
+            ) {
+                try await WhisperKit.download(
+                    variant: variant,
+                    downloadBase: downloadBase,
+                    useBackgroundSession: false,
+                    from: Self.repository,
+                    progressCallback: { downloadProgress in
+                        let reported = downloadProgress.fractionCompleted
+                        progress(meter?.fraction(reported: reported) ?? reported)
+                    }
+                )
+            }
         case .ozenRelease(let tag):
             folder = self.folder(for: variant)
             // Compiling at the end takes a moment of its own, so the
@@ -212,8 +222,10 @@ public struct WhisperModelStore: Sendable {
             progress(1)
         }
         // Only reached when every file arrived: this is the one moment the
-        // folder is known to be whole.
-        try? ModelFolderInspector.markComplete(folder)
+        // folder is known to be whole. Not if the person cancelled, though:
+        // WhisperKit 1.1.0 handed back the half-fetched folder when it was
+        // cancelled, and the marker would have vouched for it.
+        try DownloadFinish.finish(folder)
         return folder
     }
 

@@ -32,8 +32,9 @@ var targets: [Target] = [
 dependencies.append(
     // WhisperKit graduated into the Argmax open-source SDK at 1.0. 1.1 fixes
     // empty transcriptions whenever promptTokens are set, which is every
-    // pass once the names list has an entry.
-    .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", from: "1.1.0")
+    // pass once the names list has an entry. 1.1.1 makes a cancelled hub
+    // download throw instead of returning the half-fetched folder.
+    .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", from: "1.1.1")
 )
 products.append(.library(name: "OzenPlatform", targets: ["OzenPlatform"]))
 targets.append(contentsOf: [
