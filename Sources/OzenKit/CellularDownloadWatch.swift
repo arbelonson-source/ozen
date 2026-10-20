@@ -21,10 +21,11 @@ public struct CellularDownloadWatch: Sendable {
     }
 }
 
-private final class DownloadRunState: @unchecked Sendable {
+final class DownloadRunState: @unchecked Sendable {
     private enum Phase {
         case running
         case stopped
+        case cancelled
         case finished
     }
 
@@ -39,9 +40,15 @@ private final class DownloadRunState: @unchecked Sendable {
         }
     }
 
-    func finish() {
+    func cancelIfRunning() {
         lock.withLock {
-            if phase == .running { phase = .finished }
+            if phase == .running { phase = .cancelled }
+        }
+    }
+
+    func finish(cancellationSeen: Bool) {
+        lock.withLock {
+            if phase == .running || (phase == .stopped && !cancellationSeen) { phase = .finished }
         }
     }
 
@@ -60,8 +67,14 @@ public enum GuardedDownload {
         let state = DownloadRunState()
         let reports = network()
         let download = Task { () async throws -> T in
-            defer { state.finish() }
-            return try await operation()
+            do {
+                let value = try await operation()
+                state.finish(cancellationSeen: Task.isCancelled)
+                return value
+            } catch {
+                state.finish(cancellationSeen: true)
+                throw error
+            }
         }
         let watcher = Task {
             var watch = CellularDownloadWatch(allowCellular: allowCellular)
@@ -74,6 +87,7 @@ public enum GuardedDownload {
         let result = await withTaskCancellationHandler {
             await download.result
         } onCancel: {
+            state.cancelIfRunning()
             download.cancel()
         }
         watcher.cancel()

@@ -159,4 +159,28 @@ struct GuardedDownloadTests {
         let result = await task.value
         #expect(result == .cancelled)
     }
+
+    @Test("a stop that arrives after a person's cancel does not replace the cancellation")
+    func stopAfterCancel() {
+        let state = DownloadRunState()
+        state.cancelIfRunning()
+        #expect(!state.stopIfRunning())
+        #expect(!state.wasStopped)
+    }
+
+    @Test("a download that returned without seeing any cancel stays a success when a stop lands just after")
+    func stopAfterCompletion() {
+        let state = DownloadRunState()
+        #expect(state.stopIfRunning())
+        state.finish(cancellationSeen: false)
+        #expect(!state.wasStopped)
+    }
+
+    @Test("a stop that was delivered as a cancel still counts as a stop")
+    func stopDelivered() {
+        let state = DownloadRunState()
+        #expect(state.stopIfRunning())
+        state.finish(cancellationSeen: true)
+        #expect(state.wasStopped)
+    }
 }
