@@ -25,7 +25,7 @@ struct OzenApp: App {
 
     init() {
         DeviceWord.brand = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
-        Task.detached(priority: .utility) { RecordingFiles.sweepCopies() }
+        RecordingFiles.sweepCopies()
         #if DEBUG
         if let variant = Self.screenshotVariant {
             _viewModel = State(initialValue: ScreenshotFixtures.viewModel(variant: variant))

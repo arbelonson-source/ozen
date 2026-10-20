@@ -19,7 +19,7 @@ protocol RecordingTranscribeHost: AnyObject {
 @MainActor
 final class LiveRecordingHost: RecordingTranscribeHost {
     private let viewModel: LiveCaptionViewModel
-    private let network = PathNetworkMonitor()
+    private static let network = PathNetworkMonitor()
 
     init(viewModel: LiveCaptionViewModel) {
         self.viewModel = viewModel
@@ -36,7 +36,7 @@ final class LiveRecordingHost: RecordingTranscribeHost {
     }
 
     func networkConditions() -> NetworkConditions? {
-        network.current
+        Self.network.current
     }
 
     func toggleCaptionsPause() async {

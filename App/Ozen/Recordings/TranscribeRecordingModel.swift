@@ -152,7 +152,7 @@ final class TranscribeRecordingModel {
         let network = await settledNetwork()
         let request = FileTranscriber.Request(
             variant: model.variant,
-            languageCode: ready.language.languageCode.identifier,
+            languageCode: ready.language.engineLanguageCode,
             names: VocabularyHints.normalized(host.vocabularyNames),
             allowCellularDownload: host.allowsCellularDownload,
             network: { network }
@@ -201,7 +201,7 @@ final class TranscribeRecordingModel {
             history = .off
         }
         if case .saved = history { onSaved() }
-        let code = ready.language.languageCode.identifier
+        let code = ready.language.engineLanguageCode
         let baseName = (ready.name as NSString).deletingPathExtension
         shareText = TranscriptFormats.text(lines, languageCode: code)
         subtitlesURL = RecordingFiles.writeShare(TranscriptFormats.srt(lines, languageCode: code), name: baseName, fileExtension: "srt")

@@ -25,7 +25,7 @@ struct SharedFileNameTests {
     @Test("nothing usable falls back to a plain word")
     func empty() {
         for name in ["", "   ", ".", "..", "...", " . . "] {
-            #expect(SharedFileName.make(from: name) == "recording", "\(name)")
+            #expect(SharedFileName.make(from: name) == "recording", "for \"\(name)\"")
         }
     }
 

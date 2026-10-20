@@ -206,7 +206,7 @@ struct TranscribeRecordingView: View {
     }
 
     private func linesRows(_ lines: [TranscribedLine], language: UILanguage) -> some View {
-        let code = language.languageCode.identifier
+        let code = language.engineLanguageCode
         return ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
             VStack(alignment: .leading, spacing: 2) {
                 Text(TranscriptFormats.clock(line.startSeconds))
