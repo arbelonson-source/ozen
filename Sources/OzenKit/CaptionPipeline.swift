@@ -723,6 +723,7 @@ public final class CaptionPipeline {
         microphoneDrop.dismiss()
         tearDownSession()
         phase = .idle
+        releaseAudioSession()
     }
 
     /// iOS is short of memory and ends the biggest apps first; a loaded
@@ -746,11 +747,19 @@ public final class CaptionPipeline {
         }
     }
 
-    public func pause() {
+    /// `releasingAudio` is for a pause the person asked for: nothing listens
+    /// for a while, so the audio session goes back to the system and the
+    /// music or podcast that captions interrupted plays again. The default
+    /// keeps it, for the pause that lasts a phrase: the phone talking over
+    /// captions pauses them and resumes right after, and giving the session
+    /// up around every phrase would let whatever else is playing in between
+    /// take the speaker.
+    public func pause(releasingAudio: Bool = false) {
         guard phase.isListening else { return }
         listeningSince = nil
         tearDownSession()
         phase = .paused
+        if releasingAudio { releaseAudioSession() }
     }
 
     /// `settings` defaults to the snapshot from the last `start(settings:)`,
@@ -2601,6 +2610,20 @@ public final class CaptionPipeline {
         fanOut = nil
         audio.stopCapture()
         finishOpenLines()
+    }
+
+    /// Gives the audio session back once capture has stopped, so music, a
+    /// podcast or a video in another app carries on instead of staying
+    /// silenced until Ozen is closed. Only after `tearDownSession()`, which
+    /// stops capture first: the system refuses to end a session that still
+    /// has audio running. Not inside `tearDownSession()` itself, which
+    /// `fail()`, `restart()` and `retry()` use too: a failure hands the live
+    /// session on to `listenForSoundsMeanwhile`, and a restart takes it
+    /// straight back. A voice sample being recorded holds the session until
+    /// it is done.
+    private func releaseAudioSession() {
+        guard !isRecordingVoice else { return }
+        audio.endSession()
     }
 
     /// The words of a line cut off mid-sentence (paused, stopped, the

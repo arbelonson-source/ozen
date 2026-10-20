@@ -37,9 +37,14 @@ public protocol AudioCapturing: AnyObject {
     /// `prepareSession` first.
     func startCapture() throws -> AsyncStream<[Float]>
     func stopCapture()
+    func endSession()
     func selectInput(uid: String) throws
     /// Asks the system for the current inputs again, even when no session
     /// has been prepared (captions never started, or failed before the
     /// microphone was set up). Must not start recording.
     func refreshInputs()
+}
+
+extension AudioCapturing {
+    public func endSession() {}
 }

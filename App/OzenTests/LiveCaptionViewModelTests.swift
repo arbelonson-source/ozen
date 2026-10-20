@@ -1001,14 +1001,41 @@ struct LiveCaptionViewModelSpeechTests {
 
     @Test("a phrase tapped while captions are still starting holds them once they come on, until it ends")
     func phraseDuringStartup() async {
-        let (viewModel, synthesizer) = makeViewModel()
+        let audio = FakeAudioCapturer()
+        let (viewModel, synthesizer) = makeViewModel(audio: audio)
         let starting = Task { await viewModel.start() }
         viewModel.speak("רגע")
         synthesizer.startNext()
         await starting.value
         #expect(await eventually { viewModel.phase == .paused })
+        #expect(audio.endSessionCalls == 0)
         synthesizer.finishCurrent()
         #expect(await eventually { viewModel.phase.isListening })
+        #expect(audio.endSessionCalls == 0)
+    }
+
+    @Test("the phone talking over captions never hands the audio session back, but pausing by hand does and resuming takes it again")
+    func onlyAPauseByHandHandsTheSessionBack() async {
+        let audio = FakeAudioCapturer()
+        audio.requiresPreparedSession = true
+        let (viewModel, synthesizer) = makeViewModel(audio: audio)
+        await viewModel.start()
+        #expect(viewModel.phase.isListening)
+
+        viewModel.speak("Yes")
+        #expect(viewModel.phase == .paused)
+        synthesizer.startNext()
+        synthesizer.finishCurrent()
+        #expect(await eventually { viewModel.phase.isListening })
+        #expect(audio.endSessionCalls == 0)
+
+        await viewModel.togglePause()
+        #expect(viewModel.phase == .paused)
+        #expect(audio.endSessionCalls == 1)
+
+        await viewModel.togglePause()
+        #expect(viewModel.phase.isListening)
+        #expect(audio.endSessionCalls == 1)
     }
 
     @Test("stopping the phone mid-phrase from the status line brings captions back by themselves")

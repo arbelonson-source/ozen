@@ -914,7 +914,7 @@ public final class LiveCaptionViewModel {
         if pipeline.phase == .paused {
             await pipeline.resume(settings: settings)
         } else if pipeline.phase.isListening {
-            pipeline.pause()
+            pipeline.pause(releasingAudio: true)
         } else if pipeline.phase == .idle {
             await pipeline.start(settings: settings)
         }
