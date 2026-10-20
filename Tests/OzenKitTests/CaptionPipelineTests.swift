@@ -1868,7 +1868,7 @@ struct CaptionPipelineAudioSessionTests {
         #expect(audio.endSessionCalls == 0)
     }
 
-    @Test("stopping while a voice sample is recording leaves the session to the recording", .timeLimit(.minutes(1)))
+    @Test("stopping while a voice sample is recording hands the session back once the recording is over", .timeLimit(.minutes(1)))
     func stopDuringVoiceSample() async {
         let (pipeline, audio, _) = makePipeline()
         await pipeline.start(settings: .default)
@@ -1878,6 +1878,54 @@ struct CaptionPipelineAudioSessionTests {
         pipeline.stop()
         #expect(audio.endSessionCalls == 0)
         _ = await recording.value
+        #expect(pipeline.phase == .idle)
+        #expect(audio.endSessionCalls == 1)
+    }
+
+    @Test("captions started again after a stop during a voice sample keep the session", .timeLimit(.minutes(1)))
+    func restartAfterStopDuringVoiceSample() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        let recording = Task { await pipeline.captureEnrollmentSamples(seconds: 0.5) }
+        #expect(await eventually { pipeline.isRecordingVoice })
+
+        pipeline.stop()
+        await pipeline.restart(settings: .default)
+        _ = await recording.value
+        #expect(pipeline.phase == .listening)
+        #expect(audio.endSessionCalls == 0)
+    }
+
+    @Test("stopping while the session is still being set up hands it back once the setup is over", .timeLimit(.minutes(1)))
+    func stopDuringSetup() async {
+        let (pipeline, audio, _) = makePipeline()
+        audio.holdPrepare = true
+        let starting = Task { await pipeline.start(settings: .default) }
+        #expect(await eventually { audio.isHoldingPrepare })
+
+        pipeline.stop()
+        #expect(audio.endSessionCalls == 1)
+        audio.releasePrepare()
+        await starting.value
+        #expect(pipeline.phase == .idle)
+        #expect(audio.endSessionCalls == 2)
+    }
+
+    @Test("a stopped setup that finishes after captions were started again leaves the new session alone", .timeLimit(.minutes(1)))
+    func finishedSetupAfterStartingAgain() async {
+        let (pipeline, audio, _) = makePipeline()
+        audio.holdPrepare = true
+        let abandoned = Task { await pipeline.start(settings: .default) }
+        #expect(await eventually { audio.isHoldingPrepare })
+
+        pipeline.stop()
+        audio.holdPrepare = false
+        await pipeline.start(settings: .default)
+        #expect(pipeline.phase == .listening)
+        audio.releasePrepare()
+        await abandoned.value
+        #expect(pipeline.phase == .listening)
+        #expect(audio.endSessionCalls == 1)
     }
 }
 

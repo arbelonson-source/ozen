@@ -324,6 +324,9 @@ public final class CaptionPipeline {
     private struct HeldRetry { let settings: AppSettings? }
     private var retryAfterRecording: HeldRetry?
     private var restartAfterRecording: AppSettings?
+    /// The audio session was to be handed back while a voice sample was
+    /// recording; it is, when the recording ends, unless captions came back.
+    private var releaseAfterRecording = false
     private let network: (any NetworkMonitoring)?
     /// The person said this session's model may download over cellular.
     private var cellularDownloadApproved = false
@@ -468,11 +471,17 @@ public final class CaptionPipeline {
         do {
             try await audio.prepareSession(preferredInputUID: settings.preferredInputUID)
         } catch {
-            guard runID == run else { return }
+            guard runID == run else {
+                releaseSessionOfStoppedStart()
+                return
+            }
             fail(.audioSessionFailed, detail: String(describing: error))
             return
         }
-        guard runID == run else { return }
+        guard runID == run else {
+            releaseSessionOfStoppedStart()
+            return
+        }
         audio.onCaptureLost = { [weak self] in self?.captureLost(run: run) }
         syncInputs()
         guard !availableInputs.isEmpty else {
@@ -1390,6 +1399,12 @@ public final class CaptionPipeline {
             await retry(settings: held.settings)
         } else if case .failed(let failure) = phase, retryToken != nil || homeServerRecheck != nil || comesBackWithoutTimer(failure) {
             listenForSoundsMeanwhile(after: failure)
+        }
+        // A Stop that came during the recording could not hand the session
+        // back then. Done now, unless captions came back meanwhile.
+        if releaseAfterRecording {
+            releaseAfterRecording = false
+            if phase == .idle { releaseAudioSession() }
         }
         return collected
     }
@@ -2620,10 +2635,23 @@ public final class CaptionPipeline {
     /// `fail()`, `restart()` and `retry()` use too: a failure hands the live
     /// session on to `listenForSoundsMeanwhile`, and a restart takes it
     /// straight back. A voice sample being recorded holds the session until
-    /// it is done.
+    /// it is done: the release waits for the end of the recording.
     private func releaseAudioSession() {
-        guard !isRecordingVoice else { return }
+        guard !isRecordingVoice else {
+            releaseAfterRecording = true
+            return
+        }
         audio.endSession()
+    }
+
+    /// A start stopped while its audio session was being set up. The setup
+    /// finished anyway, after `stop()` had handed the session back, and
+    /// would leave it active. Not when something else wants it now: a
+    /// restart or a retry makes the phase something other than idle. A
+    /// voice sample being recorded still holds the session, so the release
+    /// waits for its end.
+    private func releaseSessionOfStoppedStart() {
+        if phase == .idle { releaseAudioSession() }
     }
 
     /// The words of a line cut off mid-sentence (paused, stopped, the
