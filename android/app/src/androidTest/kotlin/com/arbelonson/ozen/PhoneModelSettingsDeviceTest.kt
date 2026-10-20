@@ -1,7 +1,10 @@
 package com.arbelonson.ozen
 
 import android.os.ParcelFileDescriptor
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -11,11 +14,16 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneSpeed
+import com.arbelonson.ozen.core.ReleaseFileFetching
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import java.io.File
+import java.io.RandomAccessFile
+import java.net.URI
+import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -185,6 +193,42 @@ class PhoneModelSettingsDeviceTest {
             compose.waitUntil(5_000) { compose.onAllNodesWithTag("phone-model-delete-ggml-base-q5_1.bin").fetchSemanticsNodes().isEmpty() }
         } finally {
             part.delete()
+        }
+    }
+
+    @Test
+    fun aModelWaitingForWiFiStartsDownloadingWhenCellularDownloadsAreAllowed() {
+        val inUse = File(app.filesDir, "ggml-ozen-a3-q5_0.bin").also { it.writeBytes(ByteArray(10)) }
+        val networkBefore = app.captions.networkNow
+        val fetcherBefore = app.captions.modelFetcher
+        val allowedBefore = app.settings.current.value.allowCellularModelDownload
+        val fetched = CopyOnWriteArrayList<String>()
+        try {
+            app.settings.change { it.allowCellularModelDownload = false }
+            app.captions.networkNow = { NetworkConditions.cellular }
+            app.captions.modelFetcher = object : ReleaseFileFetching {
+                override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
+                    val model = PhoneModelCatalog.all.first { it.source.url == url }
+                    fetched += model.file
+                    RandomAccessFile(appendingTo, "rw").use { it.setLength(model.bytes) }
+                    received(model.bytes - from)
+                }
+
+                override fun sha256(file: File): String = PhoneModelCatalog.all.first { it.bytes == file.length() }.source.sha256
+            }
+            openSection()
+            compose.onNodeWithTag("phone-model-ggml-base-q5_1.bin").performScrollTo().performClick()
+            compose.onNodeWithText("Waiting for Wi", substring = true).performScrollTo().assertExists()
+            assertTrue(fetched.isEmpty())
+            compose.onNode(hasText("Download models on cellular data too") and isToggleable()).performScrollTo().assertIsOff().performClick()
+            compose.waitUntil(10_000) { app.settings.current.value.phoneModelFile == "ggml-base-q5_1.bin" }
+            assertEquals(listOf("ggml-base-q5_1.bin"), fetched.toList())
+        } finally {
+            app.captions.networkNow = networkBefore
+            app.captions.modelFetcher = fetcherBefore
+            app.settings.change { it.allowCellularModelDownload = allowedBefore }
+            File(app.filesDir, "ggml-base-q5_1.bin").delete()
+            inUse.delete()
         }
     }
 }
