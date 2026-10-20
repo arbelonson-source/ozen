@@ -449,7 +449,7 @@ class CaptionSession(
 
     internal val modelDirectory: File get() = modelFolder
 
-    internal fun captionsActive(): Boolean = pipeline.phase.isListening || pipeline.phase.isTransitioning
+    internal fun captionsActive(): Boolean = pipeline.mayLoadModels
 
     internal fun stopCaptionsForRecording() {
         replies.userTookControl()

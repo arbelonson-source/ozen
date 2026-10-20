@@ -912,6 +912,9 @@ class CaptionPipeline(
         dropEngines()
     }
 
+    /** Running, starting, or a failure whose retry is lined up: any of these may load a speech model again on its own. */
+    val mayLoadModels: Boolean get() = phase.isListening || phase.isTransitioning || isRecoveringByItself
+
     /** Gives the loaded speech model back while captions are not running, so a recording can be transcribed with its own copy. */
     fun releaseModels() {
         if (!phase.isListening && !phase.isTransitioning) dropEngines()

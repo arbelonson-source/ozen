@@ -224,6 +224,25 @@ class TranscribeRecordingDeviceTest {
     }
 
     @Test
+    fun aLateProbeOfAClosedFileDoesNotBringTheScreenBack() {
+        val uri = lecture(5, "Closed early.wav")
+        val broken = Uri.parse("content://media/external/audio/media/0")
+        instrumentation.runOnMainSync {
+            transcriber.open(broken)
+            transcriber.close()
+        }
+        Thread.sleep(3_000)
+        assertEquals(FileTranscription.Idle, transcriber.state.value)
+        instrumentation.runOnMainSync {
+            transcriber.open(broken)
+            transcriber.open(uri)
+        }
+        waitFor(30_000, "the second file's Ready page") { transcriber.state.value is FileTranscription.Ready }
+        Thread.sleep(3_000)
+        assertTrue("the first file's late result replaced the second's", transcriber.state.value is FileTranscription.Ready)
+    }
+
+    @Test
     fun aSharedRecordingOnAColdLaunchDoesNotStartLiveCaptions() {
         app.captions.launchHandled = false
         val uri = lecture(5, "Cold share.wav")

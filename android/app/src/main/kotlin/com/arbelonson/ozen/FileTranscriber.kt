@@ -35,6 +35,7 @@ import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -77,7 +78,9 @@ class FileTranscriber(
         chosenModel = null
         duration = null
         scope.launch {
-            when (val probe = withContext(Dispatchers.IO) { AudioFileDecoder.probe(context, uri) }) {
+            val probe = withContext(Dispatchers.IO) { AudioFileDecoder.probe(context, uri) }
+            if (source != uri) return@launch
+            when (probe) {
                 is AudioFileDecoder.Probe.Playable -> {
                     duration = probe.durationSeconds
                     showReady()
@@ -198,7 +201,7 @@ class FileTranscriber(
             val transcript = transcribe(uri, model, scorer, linePass)
             val lines = transcript.lines
             val record = FileTranscriptRecord.make(name, lines, startedAt, endedAt = System.currentTimeMillis() / 1_000.0, modelVariant = model.variant)
-            val history = withContext(Dispatchers.IO) { captions.saveRecording(record) }
+            val history = withContext(NonCancellable + Dispatchers.IO) { captions.saveRecording(record) }
             shown.value = FileTranscription.Done(name, language, model, lines, history, transcript.endMissing)
         } finally {
             scorer?.close()
