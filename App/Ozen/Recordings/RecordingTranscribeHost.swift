@@ -18,38 +18,23 @@ protocol RecordingTranscribeHost: AnyObject {
 
 @MainActor
 final class LiveRecordingHost: RecordingTranscribeHost {
-    private let viewModel: LiveCaptionViewModel
-    private let network = PathNetworkMonitor()
+    init(viewModel: LiveCaptionViewModel) {}
 
-    init(viewModel: LiveCaptionViewModel) {
-        self.viewModel = viewModel
-    }
+    var spokenLanguage: UILanguage { .english }
+    var vocabularyNames: [String] { ["unlinked"] }
+    var allowsCellularDownload: Bool { true }
+    var savesHistory: Bool { false }
+    var captionsPhase: PipelinePhase { .listening }
 
-    var spokenLanguage: UILanguage { viewModel.settings.spokenLanguage }
-    var vocabularyNames: [String] { viewModel.vocabulary }
-    var allowsCellularDownload: Bool { viewModel.allowCellularModelDownload }
-    var savesHistory: Bool { viewModel.saveHistory }
-    var captionsPhase: PipelinePhase { viewModel.phase }
+    func installedModelVariants() -> Set<String> { [] }
 
-    func installedModelVariants() -> Set<String> {
-        Set(WhisperModelStore().installedVariants())
-    }
+    func networkConditions() -> NetworkConditions? { nil }
 
-    func networkConditions() -> NetworkConditions? {
-        network.current
-    }
+    func toggleCaptionsPause() async {}
 
-    func toggleCaptionsPause() async {
-        await viewModel.togglePause()
-    }
+    func releaseKeptModel() {}
 
-    func releaseKeptModel() {
-        viewModel.handleMemoryWarning(footprintBytes: DeviceMemory.footprintBytes())
-    }
-
-    func saveRecord(_ record: TranscriptSessionRecord) throws -> Bool {
-        try viewModel.historyStore.save(record)
-    }
+    func saveRecord(_ record: TranscriptSessionRecord) throws -> Bool { false }
 }
 
 @MainActor
@@ -64,22 +49,13 @@ protocol RecordingTranscribing {
 
 @MainActor
 struct DeviceRecordingTranscriber: RecordingTranscribing {
-    func duration(of url: URL) async throws -> Double? {
-        try await RecordingAudioReader.open(url).durationSeconds
-    }
+    func duration(of url: URL) async throws -> Double? { nil }
 
     func transcribe(
         _ request: FileTranscriber.Request,
         url: URL,
         report: @escaping FileTranscriptionDriver.Report
     ) async -> FileTranscriptionDriver.Outcome.Result {
-        do {
-            let reader = try await RecordingAudioReader.open(url)
-            return await FileTranscriber().run(request, reader: reader, report: report)
-        } catch RecordingReadProblem.noAudio {
-            return .failed(.noAudio)
-        } catch {
-            return .failed(.couldNotRead)
-        }
+        .failed(.unexpected)
     }
 }

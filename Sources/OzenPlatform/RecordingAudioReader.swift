@@ -1,198 +1,28 @@
 import AVFoundation
 import Foundation
 import OzenKit
-import UniformTypeIdentifiers
 
-protocol RecordingPieceSource: AnyObject, Sendable {
-    func nextPiece() throws -> [Float]?
+enum AudioFileSource {
+    typealias Read = @Sendable (AVAudioFile, AVAudioPCMBuffer, AVAudioFrameCount) throws -> Void
 }
 
-/// Reads a recording, an audio file or the sound of a video, as 16 kHz mono
-/// samples in pieces of at most `chunkSeconds`. Nothing is read until the
-/// next piece is asked for, so an hour of lecture is never in memory at once.
-///
-/// A file that cannot be opened throws `RecordingReadProblem.unreadable`, one
-/// with no sound `.noAudio`. A file that goes bad part of the way through
-/// delivers what was read and then throws `.stalled`.
 public final class RecordingAudioReader: @unchecked Sendable {
     public static let sampleRate = 16_000.0
     public static let chunkSeconds = 30.0
 
-    public let durationSeconds: Double?
-    private let source: any RecordingPieceSource
-    private let chunkSamples: Int
-    private let lock = NSLock()
-    private var pending: [Float] = []
-    private var delivered = 0
-    private var finished = false
-    private var failure: (any Error)?
-
-    init(source: any RecordingPieceSource, durationSeconds: Double?, chunkSeconds: Double) {
-        self.source = source
-        self.durationSeconds = durationSeconds
-        chunkSamples = max(1, Int(chunkSeconds * Self.sampleRate))
-    }
+    public let durationSeconds: Double? = nil
 
     public static func open(_ url: URL, chunkSeconds: Double = RecordingAudioReader.chunkSeconds) async throws -> RecordingAudioReader {
-        try await RecordingAudioReader.open(url, chunkSeconds: chunkSeconds) { file, buffer, count in
-            try file.read(into: buffer, frameCount: count)
-        }
+        throw RecordingReadProblem.unreadable
     }
 
     static func open(_ url: URL, chunkSeconds: Double, read: @escaping AudioFileSource.Read) async throws -> RecordingAudioReader {
-        if !isMovie(url), let file = try? AVAudioFile(forReading: url) {
-            guard file.length > 0 else { throw RecordingReadProblem.noAudio }
-            guard let source = AudioFileSource(file: file, read: read) else { throw RecordingReadProblem.unreadable }
-            let seconds = Double(file.length) / file.processingFormat.sampleRate
-            return RecordingAudioReader(source: source, durationSeconds: seconds > 0 ? seconds : nil, chunkSeconds: chunkSeconds)
-        }
-        return try await openMovie(url, chunkSeconds: chunkSeconds)
+        throw RecordingReadProblem.unreadable
     }
 
-    public func nextChunk() throws -> [Float]? {
-        lock.lock()
-        defer { lock.unlock() }
-        while pending.count < chunkSamples, !finished {
-            do {
-                if let piece = try source.nextPiece() {
-                    pending.append(contentsOf: piece)
-                } else {
-                    finished = true
-                }
-            } catch {
-                finished = true
-                failure = error
-            }
-        }
-        if pending.isEmpty {
-            guard let problem = failure else { return nil }
-            failure = nil
-            if let known = problem as? RecordingReadProblem, known != .stalled { throw known }
-            throw delivered == 0 ? RecordingReadProblem.unreadable : RecordingReadProblem.stalled
-        }
-        let count = min(pending.count, chunkSamples)
-        let chunk = Array(pending.prefix(count))
-        pending.removeFirst(count)
-        delivered += count
-        return chunk
-    }
+    public func nextChunk() throws -> [Float]? { nil }
 
     public var chunks: AsyncThrowingStream<[Float], any Error> {
-        AsyncThrowingStream(unfolding: { try self.nextChunk() })
-    }
-
-    private static func isMovie(_ url: URL) -> Bool {
-        UTType(filenameExtension: url.pathExtension)?.conforms(to: .movie) ?? false
-    }
-
-    private static func openMovie(_ url: URL, chunkSeconds: Double) async throws -> RecordingAudioReader {
-        let asset = AVURLAsset(url: url)
-        let readable: Bool
-        let tracks: [AVAssetTrack]
-        let duration: CMTime
-        do {
-            readable = try await asset.load(.isReadable)
-            tracks = try await asset.load(.tracks)
-            duration = try await asset.load(.duration)
-        } catch {
-            throw RecordingReadProblem.unreadable
-        }
-        guard readable, !tracks.isEmpty else { throw RecordingReadProblem.unreadable }
-        let audio = tracks.filter { $0.mediaType == .audio }
-        guard !audio.isEmpty else { throw RecordingReadProblem.noAudio }
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatLinearPCM,
-            AVSampleRateKey: sampleRate,
-            AVNumberOfChannelsKey: 1,
-            AVLinearPCMBitDepthKey: 32,
-            AVLinearPCMIsFloatKey: true,
-            AVLinearPCMIsBigEndianKey: false,
-            AVLinearPCMIsNonInterleaved: false,
-        ]
-        let output = AVAssetReaderAudioMixOutput(audioTracks: audio, audioSettings: settings)
-        guard let reader = try? AVAssetReader(asset: asset), reader.canAdd(output) else { throw RecordingReadProblem.unreadable }
-        reader.add(output)
-        let seconds = duration.seconds
-        return RecordingAudioReader(
-            source: AssetPieceSource(reader: reader, output: output),
-            durationSeconds: seconds.isFinite && seconds > 0 ? seconds : nil,
-            chunkSeconds: chunkSeconds
-        )
-    }
-}
-
-final class AudioFileSource: RecordingPieceSource, @unchecked Sendable {
-    typealias Read = @Sendable (AVAudioFile, AVAudioPCMBuffer, AVAudioFrameCount) throws -> Void
-
-    private let file: AVAudioFile
-    private let buffer: AVAudioPCMBuffer
-    private let resampler: PCMResampler
-    private let read: Read
-    private var position: AVAudioFramePosition = 0
-    private var flushed = false
-
-    init?(file: AVAudioFile, read: @escaping Read) {
-        let blockFrames = AVAudioFrameCount(max(1, file.processingFormat.sampleRate))
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: blockFrames),
-              let resampler = PCMResampler(from: file.processingFormat, sampleRate: RecordingAudioReader.sampleRate, maxInputFrames: blockFrames)
-        else { return nil }
-        self.file = file
-        self.buffer = buffer
-        self.resampler = resampler
-        self.read = read
-    }
-
-    func nextPiece() throws -> [Float]? {
-        var samples: [Float] = []
-        if position < file.length {
-            let count = AVAudioFrameCount(min(AVAudioFramePosition(buffer.frameCapacity), file.length - position))
-            buffer.frameLength = 0
-            try read(file, buffer, count)
-            if buffer.frameLength > 0 {
-                position += AVAudioFramePosition(buffer.frameLength)
-                guard resampler.convert(buffer, into: &samples) else { throw RecordingReadProblem.stalled }
-                return samples
-            }
-            position = file.length
-        }
-        guard !flushed else { return nil }
-        flushed = true
-        guard resampler.convert(nil, into: &samples) else { throw RecordingReadProblem.stalled }
-        return samples
-    }
-}
-
-final class AssetPieceSource: RecordingPieceSource, @unchecked Sendable {
-    private let reader: AVAssetReader
-    private let output: AVAssetReaderAudioMixOutput
-    private var started = false
-
-    init(reader: AVAssetReader, output: AVAssetReaderAudioMixOutput) {
-        self.reader = reader
-        self.output = output
-    }
-
-    deinit {
-        if reader.status == .reading { reader.cancelReading() }
-    }
-
-    func nextPiece() throws -> [Float]? {
-        if !started {
-            started = true
-            guard reader.startReading() else { throw RecordingReadProblem.unreadable }
-        }
-        guard let sample = output.copyNextSampleBuffer() else {
-            if reader.status == .failed { throw RecordingReadProblem.stalled }
-            return nil
-        }
-        guard let block = CMSampleBufferGetDataBuffer(sample) else { return [] }
-        let count = CMBlockBufferGetDataLength(block) / MemoryLayout<Float>.size
-        guard count > 0 else { return [] }
-        var samples = [Float](repeating: 0, count: count)
-        let status = samples.withUnsafeMutableBytes { raw in
-            CMBlockBufferCopyDataBytes(block, atOffset: 0, dataLength: raw.count, destination: raw.baseAddress!)
-        }
-        guard status == kCMBlockBufferNoErr else { throw RecordingReadProblem.stalled }
-        return samples
+        AsyncThrowingStream { $0.finish() }
     }
 }

@@ -12,29 +12,10 @@ public enum FileTranscriptionProblem: Sendable, Equatable, CaseIterable {
     case unexpected
 
     public init(_ failure: EngineUnavailability) {
-        switch failure.kind {
-        case .notEnoughStorage: self = .notEnoughStorage
-        case .waitingForWiFi: self = .needsWiFi
-        case .modelLoadFailed: self = .modelFailed
-        case .modelDownloadFailed: self = .modelDownloadFailed
-        case .noInternet: self = .offline
-        default: self = .unexpected
-        }
+        self = .unexpected
     }
 
-    public var message: String {
-        switch self {
-        case .couldNotRead: return tr("לא הצלחנו לפתוח את הקובץ. ייתכן שהוא פגום או שהסוג שלו לא נתמך.", "This file couldn’t be opened. It may be damaged, or its type isn’t supported.")
-        case .noAudio: return tr("בקובץ הזה אין קול להמרה לטקסט.", "This file has no sound to turn into text.")
-        case .noSpeech: return tr("לא נמצא דיבור בהקלטה הזאת.", "No speech was found in this recording.")
-        case .needsWiFi: return tr("ההורדה של המודל מחכה ל-Wi-Fi. אפשר להתחבר ל-Wi-Fi, או לאשר הורדה בחבילת הגלישה בהגדרות.", "The model download is waiting for Wi‑Fi. Connect to Wi‑Fi, or allow downloads over cellular data in Settings.")
-        case .offline: return tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד את המודל.", "There is no internet connection, so the model can’t be downloaded.")
-        case .notEnoughStorage: return tr("אין מספיק מקום פנוי בטלפון להורדת המודל.", "There isn’t enough free space on the phone to download the model.")
-        case .modelFailed: return tr("המודל לא נטען. אפשר לנסות שוב או לבחור מודל אחר.", "The model didn’t load. Try again, or choose another model.")
-        case .modelDownloadFailed: return tr("ההורדה של המודל נכשלה. כדאי לבדוק את החיבור ולנסות שוב.", "The model download failed. Check the connection and try again.")
-        case .unexpected: return tr("משהו השתבש בהמרה לטקסט. אפשר לנסות שוב.", "Something went wrong while turning the recording into text. Try again.")
-        }
-    }
+    public var message: String { "" }
 }
 
 public enum HistorySave: Sendable, Equatable {
@@ -42,13 +23,7 @@ public enum HistorySave: Sendable, Equatable {
     case off
     case failed
 
-    public var message: String {
-        switch self {
-        case .saved: return tr("נשמר בהיסטוריה, ואפשר לחפש אותו שם.", "Saved to History, where you can search it.")
-        case .off: return tr("שמירת ההיסטוריה כבויה, ולכן ההקלטה לא נשמרה בהיסטוריה.", "History saving is off, so this wasn’t saved to History.")
-        case .failed: return tr("השמירה בהיסטוריה נכשלה. ייתכן שהטלפון מלא. כדאי לשתף את הטקסט לפני סגירת המסך.", "Couldn’t save to History. The phone may be full. Share the text before you close this screen.")
-        }
-    }
+    public var message: String { "" }
 }
 
 public enum FileTranscription: Sendable, Equatable {

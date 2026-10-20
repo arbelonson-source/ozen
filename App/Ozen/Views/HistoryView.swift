@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import OzenKit
 
 /// Past conversations: searchable list, full read-back, share as text,
@@ -25,38 +24,6 @@ struct HistoryView: View {
     /// can't be found by the free-text search, so filtering by who was
     /// there is a separate, composable way in.
     @State private var speakerFilter: String?
-    @State private var choosingRecording = false
-    @State private var transcribing: TranscribeRecordingModel?
-    @State private var recordingProblem: String?
-
-    private var transcribeSection: some View {
-        Section {
-            Button {
-                choosingRecording = true
-            } label: {
-                Label {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(tr("המרת הקלטה לטקסט", "Transcribe a recording"))
-                        Text(tr("הודעה קולית, הרצאה או סרטון. ההקלטה נשארת בטלפון.", "A voice note, lecture or video. The recording stays on this phone."))
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                } icon: {
-                    Image(systemName: "waveform")
-                }
-            }
-            .accessibilityIdentifier("transcribeRecordingRow")
-        }
-    }
-
-    private func openRecording(_ url: URL) async {
-        do {
-            let file = try await RecordingFiles.open(url)
-            transcribing = TranscribeRecordingModel(file: file, host: LiveRecordingHost(viewModel: viewModel), onSaved: { reload() })
-        } catch {
-            recordingProblem = FileTranscriptionProblem.couldNotRead.message
-        }
-    }
 
     private var savingSection: some View {
         Section {
@@ -250,7 +217,6 @@ struct HistoryView: View {
     var body: some View {
         List {
             if query.isEmpty {
-                transcribeSection
                 savingSection
             }
             if query.isEmpty, sessions.contains(where: { $0.starredCount > 0 }) {
@@ -268,18 +234,6 @@ struct HistoryView: View {
             conversationsSection
         }
         .accessibilityIdentifier("historyScreen")
-        .fileImporter(isPresented: $choosingRecording, allowedContentTypes: [.audio, .movie]) { picked in
-            guard case .success(let url) = picked else { return }
-            Task { await openRecording(url) }
-        }
-        .navigationDestination(isPresented: Binding(get: { transcribing != nil }, set: { if !$0 { transcribing = nil } })) {
-            if let transcribing {
-                TranscribeRecordingView(model: transcribing)
-            }
-        }
-        .alert(recordingProblem ?? "", isPresented: Binding(get: { recordingProblem != nil }, set: { if !$0 { recordingProblem = nil } })) {
-            Button(tr("סגירה", "Close"), role: .cancel) {}
-        }
         .searchable(text: $query, prompt: tr("חיפוש במה שנאמר", "Search what was said"))
         .task(id: query) {
             // Every search reads every saved conversation from disk. Wait

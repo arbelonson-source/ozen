@@ -5,15 +5,7 @@ public struct CaptionsHandover: Sendable, Equatable {
 
     public init() {}
 
-    public mutating func begin(phase: PipelinePhase) -> Bool {
-        guard !pausedHere, phase.isListening else { return false }
-        pausedHere = true
-        return true
-    }
+    public mutating func begin(phase: PipelinePhase) -> Bool { false }
 
-    public mutating func end(phase: PipelinePhase) -> Bool {
-        guard pausedHere else { return false }
-        pausedHere = false
-        return phase == .paused
-    }
+    public mutating func end(phase: PipelinePhase) -> Bool { false }
 }
