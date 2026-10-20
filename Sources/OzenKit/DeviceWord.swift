@@ -11,12 +11,12 @@ public enum DeviceWord {
     private static let store = WordStore()
 }
 
-private final class WordStore: @unchecked Sendable {
+final class WordStore: @unchecked Sendable {
     private let lock = NSLock()
     private var stored = "iPhone"
 
     var value: String {
         get { lock.withLock { stored } }
-        set { lock.withLock { stored } }
+        set { lock.withLock { stored = newValue } }
     }
 }

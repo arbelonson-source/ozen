@@ -509,16 +509,16 @@ class PhasePresentation private constructor(
                     }
                     PhasePresentation(
                         title = tr("אין מספיק מקום פנוי בטלפון", "Not enough free space on the phone"),
-                        detail = listOfNotNull(missing, tr("הקישו לנסות שוב", "Tap to try again")).joinToString(" · "),
+                        detail = listOfNotNull(missing, tr("או הקישו לבחור מודל קטן יותר", "Or tap to choose a smaller model")).joinToString(" · "),
                         systemImage = "externaldrive.badge.exclamationmark",
                         tint = PhaseTint.Problem,
-                        action = Action.Retry,
+                        action = Action.OpenEngineSettings,
                     )
                 }
 
                 EngineUnavailability.Kind.ModelLoadFailed -> PhasePresentation(
                     title = tr("טעינת המודל נכשלה", "Loading the model failed"),
-                    detail = tr("הקישו לנסות שוב", "Tap to try again"),
+                    detail = tr("הקישו לנסות שוב, או בחרו מודל קטן יותר בהגדרות", "Tap to try again, or choose a smaller model in Settings"),
                     systemImage = "cpu",
                     tint = PhaseTint.Problem,
                     action = Action.Retry,

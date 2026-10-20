@@ -10,6 +10,7 @@ import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ScheduledRetry
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.TranslationTable
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -105,43 +106,83 @@ class PhasePresentationTest {
     }
 
     @Test
-    fun `a full phone says how much room to free, and a tap tries again rather than opening a model choice that does not exist`() {
+    fun `a full phone says how much room to free, and a tap opens the model choice`() {
         val presentation = present(
             failure(unavailable(EngineUnavailability.Kind.NotEnoughStorage, downloadMegabytes = 626, missingMegabytes = 1_300)),
             TranscriptionEngineKind.WhisperKit,
         )
-        assertEquals(Action.Retry, presentation.action)
-        assertTrue(presentation.detail?.contains("1.3 GB") == true)
+        assertEquals(Action.OpenEngineSettings, presentation.action)
+        assertTrue(presentation.detail?.contains(PhasePresentation.sizeText(1_300)) == true)
         assertEquals(PhaseTint.Problem, presentation.tint)
     }
 
     @Test
-    fun `neither the full phone nor the failed load sends her to pick a smaller model, which Android has no way to do`() {
-        val states = listOf(
-            unavailable(EngineUnavailability.Kind.NotEnoughStorage, downloadMegabytes = 626, missingMegabytes = 1_300),
-            unavailable(EngineUnavailability.Kind.ModelLoadFailed),
+    fun `a full phone says how much to free and then offers a smaller model, word for word`() {
+        val state = unavailable(EngineUnavailability.Kind.NotEnoughStorage, downloadMegabytes = 626, missingMegabytes = 1_300)
+        val size = PhasePresentation.sizeText(1_300)
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals(
+                "Need to free up $size more · Or tap to choose a smaller model",
+                present(failure(state), TranscriptionEngineKind.WhisperKit).detail,
+            )
+        }
+        Localization.withLanguage(UILanguage.Hebrew) {
+            assertEquals(
+                "צריך לפנות עוד $size · או הקישו לבחור מודל קטן יותר",
+                present(failure(state), TranscriptionEngineKind.WhisperKit).detail,
+            )
+        }
+    }
+
+    @Test
+    fun `a model that will not load offers a retry and a smaller model in Settings, word for word`() {
+        val state = unavailable(EngineUnavailability.Kind.ModelLoadFailed)
+        val presentation = present(failure(state), TranscriptionEngineKind.WhisperKit)
+        assertEquals(Action.Retry, presentation.action)
+        assertEquals(PhaseTint.Problem, presentation.tint)
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals(
+                "Tap to try again, or choose a smaller model in Settings",
+                present(failure(state), TranscriptionEngineKind.WhisperKit).detail,
+            )
+        }
+        Localization.withLanguage(UILanguage.Hebrew) {
+            assertEquals(
+                "הקישו לנסות שוב, או בחרו מודל קטן יותר בהגדרות",
+                present(failure(state), TranscriptionEngineKind.WhisperKit).detail,
+            )
+        }
+    }
+
+    @Test
+    fun `every other language shows its table wording for both smaller model lines`() {
+        val lines = listOf(
+            unavailable(EngineUnavailability.Kind.NotEnoughStorage, downloadMegabytes = 626) to "Or tap to choose a smaller model",
+            unavailable(EngineUnavailability.Kind.ModelLoadFailed) to "Tap to try again, or choose a smaller model in Settings",
         )
-        for (language in listOf(UILanguage.English, UILanguage.Hebrew)) {
+        for (language in UILanguage.entries - listOf(UILanguage.English, UILanguage.Hebrew)) {
             Localization.withLanguage(language) {
-                for (state in states) {
-                    val presentation = present(failure(state), TranscriptionEngineKind.WhisperKit)
-                    val text = presentation.title + " " + presentation.detail.orEmpty()
-                    assertFalse(text.contains("smaller", ignoreCase = true) || text.contains("קטן"), "$language ${state.kind}: $text")
-                    assertFalse(text.contains("Settings") || text.contains("בהגדרות"), "$language ${state.kind}: $text")
-                    assertNotEquals(Action.OpenEngineSettings, presentation.action, "$language ${state.kind}")
+                for ((state, english) in lines) {
+                    assertEquals(
+                        TranslationTable.lookup(english, language),
+                        present(failure(state), TranscriptionEngineKind.WhisperKit).detail,
+                        "$language ${state.kind}",
+                    )
                 }
             }
         }
     }
 
     @Test
-    fun `a full phone says how much to free and that a tap checks again once she has`() {
-        val state = unavailable(EngineUnavailability.Kind.NotEnoughStorage, downloadMegabytes = 626, missingMegabytes = 1_300)
-        Localization.withLanguage(UILanguage.English) {
-            assertTrue(present(failure(state), TranscriptionEngineKind.WhisperKit).detail.orEmpty().let { it.contains("free up") && it.contains("tap to try again", ignoreCase = true) })
-        }
-        Localization.withLanguage(UILanguage.Hebrew) {
-            assertTrue(present(failure(state), TranscriptionEngineKind.WhisperKit).detail.orEmpty().let { it.contains("לפנות") && it.contains("הקישו לנסות שוב") })
+    fun `a full phone that cannot say how much to free offers only the smaller model, with no stray separator`() {
+        for (missing in listOf(null, 0)) {
+            val state = unavailable(EngineUnavailability.Kind.NotEnoughStorage, downloadMegabytes = 626, missingMegabytes = missing)
+            Localization.withLanguage(UILanguage.English) {
+                assertEquals("Or tap to choose a smaller model", present(failure(state), TranscriptionEngineKind.WhisperKit).detail, "english, missing $missing")
+            }
+            Localization.withLanguage(UILanguage.Hebrew) {
+                assertEquals("או הקישו לבחור מודל קטן יותר", present(failure(state), TranscriptionEngineKind.WhisperKit).detail, "hebrew, missing $missing")
+            }
         }
     }
 
