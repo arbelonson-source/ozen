@@ -20,6 +20,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -437,6 +438,42 @@ class PhoneModelChooserTest {
         scope.runCurrent()
         assertEquals(listOf("ggml-base-q5_1.bin"), fetched)
         assertNull(saved().phoneModelFile)
+    }
+
+    @Test
+    fun `Wi-Fi back just as the unfinished download of the waiting model is deleted does not fetch it again`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        stopTheDownloadHalfWayWhenWiFiGoes()
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertEquals(PhoneModelSwitch.WaitingForWiFi("ggml-base-q5_1.bin"), chooser.switching.value)
+        letTheDownloadFinish()
+        val connection = scope.launch(Dispatchers.Unconfined) {
+            chooser.partial.collect { left ->
+                if (left.isEmpty()) {
+                    network = NetworkConditions.wifi
+                    chooser.resumeWaiting()
+                }
+            }
+        }
+        scope.launch { chooser.delete("ggml-base-q5_1.bin") }
+        scope.runCurrent()
+        connection.cancel()
+        assertEquals(PhoneModelSwitch.Idle, chooser.switching.value)
+        assertEquals(listOf("ggml-base-q5_1.bin"), fetched)
+        assertNull(saved().phoneModelFile)
+    }
+
+    @Test
+    fun `deleting a model clears the no room note`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        free = 100_000_000
+        chooser.choose("ggml-base-q5_1.bin")
+        assertTrue(chooser.switching.value is PhoneModelSwitch.NotEnoughRoom)
+        scope.launch { chooser.delete("ggml-small-q5_1.bin") }
+        scope.runCurrent()
+        assertEquals(PhoneModelSwitch.Idle, chooser.switching.value)
     }
 
     @Test

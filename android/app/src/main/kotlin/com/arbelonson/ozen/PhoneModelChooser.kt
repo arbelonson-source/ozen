@@ -117,13 +117,17 @@ class PhoneModelChooser(
         return withContext(NonCancellable) {
             val result = withContext(io) {
                 synchronized(lock) {
-                    if ((switchState.value as? PhoneModelSwitch.Downloading)?.file == file) PhoneModelDeletion.Result.Refused
-                    else PhoneModelDeletion(modelFolder, settings.current.value.phoneModel.file, remove).delete(file)
+                    if ((switchState.value as? PhoneModelSwitch.Downloading)?.file == file) {
+                        PhoneModelDeletion.Result.Refused
+                    } else {
+                        PhoneModelDeletion(modelFolder, settings.current.value.phoneModel.file, remove).delete(file).also { freed ->
+                            val state = switchState.value
+                            if (freed is PhoneModelDeletion.Result.Freed && (state is PhoneModelSwitch.NotEnoughRoom || state.waitingFile == file)) switchState.value = PhoneModelSwitch.Idle
+                        }
+                    }
                 }
             }
             refreshInstalled()
-            val state = switchState.value
-            if (result is PhoneModelDeletion.Result.Freed && (state is PhoneModelSwitch.NotEnoughRoom || state.waitingFile == file)) switchState.value = PhoneModelSwitch.Idle
             result
         }
     }
