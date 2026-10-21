@@ -15,6 +15,7 @@ struct OnboardingView: View {
     @State private var requesting = false
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Step: CaseIterable {
         case welcome, howItWorks, language, engine, model, microphone, name, ready
@@ -257,7 +258,7 @@ struct OnboardingView: View {
             Button {
                 pickedModel = false
                 Task { await viewModel.setWhisperModel(viewModel.settings.recommendedWhisperVariant) }
-                withAnimation { page += 1 }
+                withAnimation(reduceMotion ? nil : .default) { page += 1 }
             } label: {
                 Label(tr("להישאר עם המודל המומלץ", "Keep the recommended model"), systemImage: "checkmark")
                     .multilineTextAlignment(.center)
@@ -436,7 +437,7 @@ struct OnboardingView: View {
             if let pendingPermission {
                 ask(pendingPermission)
             } else {
-                withAnimation { page += 1 }
+                withAnimation(reduceMotion ? nil : .default) { page += 1 }
             }
         } label: {
             Text(tr("הבא", "Next"))
@@ -492,7 +493,7 @@ struct OnboardingView: View {
     }
 
     private func finish() {
-        withAnimation { viewModel.completeOnboarding() }
+        withAnimation(reduceMotion ? nil : .default) { viewModel.completeOnboarding() }
     }
 
     private static var pairedNote: String {

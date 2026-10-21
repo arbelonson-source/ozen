@@ -23,7 +23,8 @@ The first time Ozen opens, it shows short pages in large type: seven when the ca
 downloaded speech model, eight when they do (the extra page is **Choose the
 speech model**, described under "The speech model" below). Swipe, or
 tap **Next** (ha-ba) at the bottom. Tap **Skip** (dilug) to leave the
-pages at any time. On the last page the button changes to **Start**
+pages; on the microphone page it shows only once iOS's questions there have
+been answered. On the last page the button changes to **Start**
 (lehatchil).
 
 1. **Welcome.** Says what the app is. On a phone that keeps everything
