@@ -61,7 +61,13 @@ public final class AVAudioInputManager: AudioCapturing {
         // A session handed back a moment ago is still being deactivated off
         // the main thread. Activating before that is done would let the late
         // deactivation switch the microphone off again right after this start.
-        await deactivation?.value
+        // An interruption's activation that finishes during the wait hands
+        // the session back once more, queueing a newer deactivation: wait
+        // until none is left to come.
+        while let pending = deactivation {
+            await pending.value
+            if deactivation == pending { break }
+        }
         released = false
         // Off the main thread: activating the session waits on the audio
         // server, which can take seconds while AirPods reconnect or another
