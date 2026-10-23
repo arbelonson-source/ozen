@@ -181,7 +181,6 @@ final class TranscribeRecordingModel {
             allowCellularDownload: host.allowsCellularDownload,
             network: { network }
         )
-        let startedAt = now().timeIntervalSince1970
         let result = await transcriber.transcribe(request, url: file.url) { [weak self] progress in
             Task { @MainActor in self?.apply(progress) }
         }
@@ -189,7 +188,7 @@ final class TranscribeRecordingModel {
         awake.release()
         switch result {
         case .finished(let lines, let endMissing):
-            finish(ready, model: model, lines: lines, endMissing: endMissing, startedAt: startedAt)
+            finish(ready, model: model, lines: lines, endMissing: endMissing)
         case .failed(let problem):
             state = .failed(name: ready.name, problem: problem)
         case .cancelled:
@@ -206,14 +205,14 @@ final class TranscribeRecordingModel {
         state = .working(working)
     }
 
-    private func finish(_ ready: FileTranscription.Ready, model: WhisperModelOption, lines: [TranscribedLine], endMissing: Bool, startedAt: TimeInterval) {
+    private func finish(_ ready: FileTranscription.Ready, model: WhisperModelOption, lines: [TranscribedLine], endMissing: Bool) {
         let history: HistorySave
         if host.savesHistory {
             let record = FileTranscriptRecord.make(
                 fileName: ready.name,
                 lines: lines,
-                startedAt: startedAt,
-                endedAt: now().timeIntervalSince1970,
+                finishedAt: now().timeIntervalSince1970,
+                recordingSeconds: ready.durationSeconds,
                 modelVariant: model.variant
             )
             do {

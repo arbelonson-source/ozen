@@ -19,7 +19,7 @@ struct LiveRecordingHostTests {
         #expect(host.vocabularyNames == viewModel.vocabulary)
         #expect(host.allowsCellularDownload == viewModel.allowCellularModelDownload)
         let line = TranscribedLine(startSeconds: 2, endSeconds: 5, text: "שלום")
-        let record = FileTranscriptRecord.make(fileName: "Voice.m4a", lines: [line], startedAt: 1_000, endedAt: 1_010, modelVariant: "model")
+        let record = FileTranscriptRecord.make(fileName: "Voice.m4a", lines: [line], finishedAt: 1_010, recordingSeconds: 10, modelVariant: "model")
         #expect(try host.saveRecord(record))
         let saved = try #require(store.load(id: record.id))
         #expect(saved.title == "Voice")

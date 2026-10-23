@@ -580,7 +580,7 @@ class ConversationSaverTest {
         assertEquals(listOf("Today"), left.map { it.preview })
     }
 
-    private fun recording() = FileTranscriptRecord.make("Lecture.wav", listOf(TranscribedLine(0.0, 2.0, "Good morning")), clock - 60, clock, "ozen-turbo")
+    private fun recording() = FileTranscriptRecord.make("Lecture.wav", listOf(TranscribedLine(0.0, 2.0, "Good morning")), clock, 60.0, "ozen-turbo")
 
     @Test
     fun `a transcribed recording goes into History under its own id while saving is on`() {

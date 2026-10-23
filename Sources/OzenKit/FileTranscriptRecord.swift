@@ -4,11 +4,12 @@ public enum FileTranscriptRecord {
     public static func make(
         fileName: String?,
         lines: [TranscribedLine],
-        startedAt: TimeInterval,
-        endedAt: TimeInterval?,
+        finishedAt: TimeInterval,
+        recordingSeconds: Double?,
         modelVariant: String?,
         id: UUID = UUID()
     ) -> TranscriptSessionRecord {
+        let startedAt = finishedAt - max(recordingSeconds ?? 0, lines.map(\.endSeconds).max() ?? 0)
         let segments = lines.compactMap { line -> SavedSegment? in
             let text = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
@@ -24,7 +25,7 @@ public enum FileTranscriptRecord {
         return TranscriptSessionRecord(
             id: id,
             startedAt: startedAt,
-            endedAt: endedAt,
+            endedAt: finishedAt,
             engine: .whisperKit,
             modelVariant: modelVariant,
             inputName: nil,

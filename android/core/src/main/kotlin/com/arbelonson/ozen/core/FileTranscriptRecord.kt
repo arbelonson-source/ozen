@@ -6,22 +6,25 @@ object FileTranscriptRecord {
     fun make(
         fileName: String?,
         lines: List<TranscribedLine>,
-        startedAt: Double,
-        endedAt: Double?,
+        finishedAt: Double,
+        recordingSeconds: Double?,
         modelVariant: String?,
         id: UUID = UUID.randomUUID(),
-    ): TranscriptSessionRecord = TranscriptSessionRecord(
-        id = id,
-        startedAt = startedAt,
-        endedAt = endedAt,
-        engine = TranscriptionEngineKind.WhisperKit,
-        modelVariant = modelVariant,
-        inputName = null,
-        segments = lines.filter { it.text.isNotBlank() }.map {
-            SavedSegment(UUID.randomUUID(), it.text.trim(), null, null, startedAt + it.startSeconds, isCommitted = true)
-        },
-        title = title(fileName),
-    )
+    ): TranscriptSessionRecord {
+        val startedAt = finishedAt - maxOf(recordingSeconds ?: 0.0, lines.maxOfOrNull { it.endSeconds } ?: 0.0)
+        return TranscriptSessionRecord(
+            id = id,
+            startedAt = startedAt,
+            endedAt = finishedAt,
+            engine = TranscriptionEngineKind.WhisperKit,
+            modelVariant = modelVariant,
+            inputName = null,
+            segments = lines.filter { it.text.isNotBlank() }.map {
+                SavedSegment(UUID.randomUUID(), it.text.trim(), null, null, startedAt + it.startSeconds, isCommitted = true)
+            },
+            title = title(fileName),
+        )
+    }
 
     fun lines(record: TranscriptSessionRecord): List<TranscribedLine> =
         record.segments.map { TranscribedLine(it.startTimestamp - record.startedAt, it.startTimestamp - record.startedAt, it.text) }
