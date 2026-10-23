@@ -130,6 +130,7 @@ final class AudioFileSource: RecordingPieceSource, @unchecked Sendable {
     private let read: Read
     private var position: AVAudioFramePosition = 0
     private var flushed = false
+    private var failure: (any Error)?
 
     init?(file: AVAudioFile, read: @escaping Read) {
         let blockFrames = AVAudioFrameCount(max(1, file.processingFormat.sampleRate))
@@ -143,11 +144,25 @@ final class AudioFileSource: RecordingPieceSource, @unchecked Sendable {
     }
 
     func nextPiece() throws -> [Float]? {
+        if let failure {
+            self.failure = nil
+            throw failure
+        }
         var samples: [Float] = []
         if position < file.length {
             let count = AVAudioFrameCount(min(AVAudioFramePosition(buffer.frameCapacity), file.length - position))
             buffer.frameLength = 0
-            try read(file, buffer, count)
+            do {
+                try read(file, buffer, count)
+            } catch {
+                // The converter keeps a second or two of what it was given.
+                // That audio was read fine: hand it over, then the failure.
+                failure = error
+                position = file.length
+                flushed = true
+                _ = resampler.convert(nil, into: &samples)
+                return samples
+            }
             if buffer.frameLength > 0 {
                 position += AVAudioFramePosition(buffer.frameLength)
                 guard resampler.convert(buffer, into: &samples) else { throw RecordingReadProblem.stalled }

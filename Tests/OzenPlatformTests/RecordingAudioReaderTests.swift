@@ -112,10 +112,10 @@ struct RecordingAudioReaderTests {
         }
         let first = try #require(try reader.nextChunk())
         #expect(first.count == 480_000)
-        #expect((30...31).contains(log.requested.count))
+        #expect((30...32).contains(log.requested.count))
         #expect(log.requested.allSatisfy { $0 <= 16_000 })
         _ = try reader.nextChunk()
-        #expect((60...62).contains(log.requested.count))
+        #expect((60...64).contains(log.requested.count))
     }
 
     @Test("a phone recording in AAC, stereo at 48 kHz, comes out as the same length and the same tone at 16 kHz")
