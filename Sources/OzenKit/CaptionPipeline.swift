@@ -227,11 +227,17 @@ public final class CaptionPipeline {
     /// Captions stopped while their model was still loading go on loading
     /// it to the end. A recording waits that out before loading its own, so
     /// the two are never in memory at once; a download holds no model, so
-    /// it is stopped rather than waited for.
+    /// it is stopped rather than waited for. A first load can take minutes,
+    /// so a recording stopped meanwhile stops waiting at once.
     public func waitOutAbandonedLoad() async {
         if let preparing { await preparing.engine.cancelDownload() }
-        while isPreparingEngine {
-            await withCheckedContinuation { preparationWaiters.append($0) }
+        while isPreparingEngine, !Task.isCancelled {
+            let id = UUID()
+            await withTaskCancellationHandler {
+                await withCheckedContinuation { preparationWaiters[id] = $0 }
+            } onCancel: {
+                Task { @MainActor [weak self] in self?.preparationWaiters.removeValue(forKey: id)?.resume() }
+            }
         }
     }
     /// How long the model download has left at its current pace, while
@@ -336,7 +342,7 @@ public final class CaptionPipeline {
     private var isPreparingEngine = false
     /// The model the phone is preparing, and its engine, while it does.
     private var preparing: (variant: String, engine: any TranscriptionEngine)?
-    private var preparationWaiters: [CheckedContinuation<Void, Never>] = []
+    private var preparationWaiters: [UUID: CheckedContinuation<Void, Never>] = [:]
     /// The newest start waiting on an abandoned load. Two model switches in
     /// a row both waited, and the older one, a model she had already
     /// switched away from, went ahead while her last choice was dropped.
@@ -449,7 +455,7 @@ public final class CaptionPipeline {
                 Task { await abandoned.cancelDownload() }
             }
             while isPreparingEngine {
-                await withCheckedContinuation { preparationWaiters.append($0) }
+                await withCheckedContinuation { preparationWaiters[UUID()] = $0 }
             }
             slowWait.cancel()
             let shown = waitingShown ?? waiting
@@ -623,8 +629,8 @@ public final class CaptionPipeline {
         if loadsModelOnPhone {
             isPreparingEngine = false
             preparing = nil
-            let waiting = preparationWaiters
-            preparationWaiters = []
+            let waiting = preparationWaiters.values
+            preparationWaiters = [:]
             waiting.forEach { $0.resume() }
         }
         guard runID == run else { return }

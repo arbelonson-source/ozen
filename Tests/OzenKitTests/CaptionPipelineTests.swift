@@ -1578,6 +1578,31 @@ struct CaptionPipelineLifecycleTests {
         pipeline.endRecordingTranscription()
     }
 
+    @Test("a recording stopped while it waits out the captions' load stops waiting at once", .timeLimit(.minutes(1)))
+    func waitOutAbandonedLoadStopsWhenCancelled() async {
+        let slow = FakeEngine()
+        let gate = PrepareGate()
+        slow.prepareGate = gate
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: slow])
+        let captions = Task { await pipeline.start(settings: .default) }
+        while slow.heldPrepares == 0 { await Task.yield() }
+        pipeline.stop()
+        let done = TestSwitch(false)
+        let waited = Task {
+            await pipeline.waitOutAbandonedLoad()
+            done.isOn = true
+        }
+        for _ in 0..<20 { await Task.yield() }
+        #expect(!done.isOn)
+        waited.cancel()
+        for _ in 0..<200 where !done.isOn { await Task.yield() }
+        #expect(done.isOn, "a stopped recording kept waiting for the captions' model")
+        #expect(slow.heldPrepares == 1)
+
+        await gate.open()
+        await captions.value
+    }
+
     @Test("switching to the home computer while the phone's model still loads starts at once, and a later phone start still waits for that load", .timeLimit(.minutes(1)))
     func homeServerDoesNotWaitForAPhoneModel() async {
         let slow = FakeEngine()

@@ -19,6 +19,7 @@ final class RecordingHostFake: RecordingTranscribeHost {
     private(set) var saved: [TranscriptSessionRecord] = []
     private(set) var toggles = 0
     private(set) var log: [String] = []
+    var duringWaitOut: (@MainActor () -> Void)?
 
     var captionsMayLoadModels: Bool { captionsPhase.isListening || captionsPhase.isTransitioning || retryLinedUp }
 
@@ -43,7 +44,10 @@ final class RecordingHostFake: RecordingTranscribeHost {
 
     func beginRecordingTranscription() { log.append("hold") }
 
-    func waitOutCaptionsLoad() async { log.append("wait out load") }
+    func waitOutCaptionsLoad() async {
+        log.append("wait out load")
+        duringWaitOut?()
+    }
 
     func endRecordingTranscription() { log.append("let go") }
 

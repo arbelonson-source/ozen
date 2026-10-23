@@ -187,8 +187,15 @@ final class TranscribeRecordingModel {
             allowCellularDownload: host.allowsCellularDownload,
             network: { network }
         )
-        let result = await transcriber.transcribe(request, url: file.url) { [weak self] progress in
-            Task { @MainActor in self?.apply(progress) }
+        let result: FileTranscriptionDriver.Outcome.Result
+        if Task.isCancelled {
+            // Stopped while captions' model was still loading: its own is
+            // not loaded at all.
+            result = .cancelled
+        } else {
+            result = await transcriber.transcribe(request, url: file.url) { [weak self] progress in
+                Task { @MainActor in self?.apply(progress) }
+            }
         }
         running = nil
         awake.release()

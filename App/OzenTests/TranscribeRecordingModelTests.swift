@@ -333,6 +333,24 @@ struct TranscribeRecordingModelTests {
         #expect(host.log.filter { $0 == "let go" }.count == 1)
     }
 
+    @Test("a recording stopped while captions' model was still loading never loads its own")
+    func stoppedWhileWaitingOut() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        let transcriber = RecordingTranscriberFake()
+        let screen = model(host: host, transcriber: transcriber)
+        host.duringWaitOut = { screen.stop() }
+        await screen.load()
+        screen.start()
+        await screen.runFinished()
+        #expect(transcriber.requests.isEmpty)
+        #expect(host.log == ["hold", "wait out load", "let go"])
+        guard case .ready = screen.state else {
+            Issue.record("\(screen.state)")
+            return
+        }
+    }
+
     @Test("captions the person paused themselves are left paused")
     func pausedByThePerson() async throws {
         let host = RecordingHostFake()
