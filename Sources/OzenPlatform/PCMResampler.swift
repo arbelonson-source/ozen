@@ -12,28 +12,31 @@ struct PCMResampler {
                 frameCapacity: AVAudioFrameCount(Double(maxInputFrames) * sampleRate / format.sampleRate) + 1024
               )
         else { return nil }
+        converter.downmix = true
         self.converter = converter
         self.output = output
     }
 
     func convert(_ block: AVAudioPCMBuffer?, into samples: inout [Float]) -> Bool {
         var handedOver = false
-        var error: NSError?
-        let status = converter.convert(to: output, error: &error) { _, inputStatus in
-            guard let block else {
-                inputStatus.pointee = .endOfStream
-                return nil
+        while true {
+            var error: NSError?
+            let status = converter.convert(to: output, error: &error) { _, inputStatus in
+                guard let block else {
+                    inputStatus.pointee = .endOfStream
+                    return nil
+                }
+                if handedOver {
+                    inputStatus.pointee = .noDataNow
+                    return nil
+                }
+                handedOver = true
+                inputStatus.pointee = .haveData
+                return block
             }
-            if handedOver {
-                inputStatus.pointee = .noDataNow
-                return nil
-            }
-            handedOver = true
-            inputStatus.pointee = .haveData
-            return block
+            guard status != .error, error == nil, let channel = output.floatChannelData else { return false }
+            samples.append(contentsOf: UnsafeBufferPointer(start: channel[0], count: Int(output.frameLength)))
+            if status != .haveData { return true }
         }
-        guard status != .error, error == nil, let channel = output.floatChannelData else { return false }
-        samples.append(contentsOf: UnsafeBufferPointer(start: channel[0], count: Int(output.frameLength)))
-        return true
     }
 }
