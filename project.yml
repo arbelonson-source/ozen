@@ -50,6 +50,21 @@ targets:
             CFBundleTypeRole: Viewer
             LSHandlerRank: Alternate
             LSItemContentTypes: [public.movie]
+        # WhatsApp voice notes are Ogg Opus, which iOS may not know as
+        # audio: declared here so the share sheet offers Ozen for them.
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: org.xiph.opus
+            UTTypeDescription: Opus audio
+            UTTypeConformsTo: [public.audio]
+            UTTypeTagSpecification:
+              public.filename-extension: [opus]
+              public.mime-type: [audio/opus]
+          - UTTypeIdentifier: org.xiph.ogg-audio
+            UTTypeDescription: Ogg audio
+            UTTypeConformsTo: [public.audio]
+            UTTypeTagSpecification:
+              public.filename-extension: [ogg, oga]
+              public.mime-type: [audio/ogg]
         # Not read where it lies: iOS puts a copy in Ozen's Inbox, which
         # Ozen deletes when it is done with it.
         LSSupportsOpeningDocumentsInPlace: false

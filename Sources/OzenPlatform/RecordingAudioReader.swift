@@ -40,6 +40,10 @@ public final class RecordingAudioReader: @unchecked Sendable {
     }
 
     static func open(_ url: URL, chunkSeconds: Double, read: @escaping AudioFileSource.Read) async throws -> RecordingAudioReader {
+        if OggOpusSource.isOgg(url) {
+            let source = try OggOpusSource(url: url)
+            return RecordingAudioReader(source: source, durationSeconds: source.durationSeconds, chunkSeconds: chunkSeconds)
+        }
         if !isMovie(url), let file = try? AVAudioFile(forReading: url) {
             guard file.length > 0 else { throw RecordingReadProblem.noAudio }
             guard let source = AudioFileSource(file: file, read: read) else { throw RecordingReadProblem.unreadable }
@@ -174,6 +178,144 @@ final class AudioFileSource: RecordingPieceSource, @unchecked Sendable {
         flushed = true
         guard resampler.convert(nil, into: &samples) else { throw RecordingReadProblem.stalled }
         return samples
+    }
+}
+
+/// A WhatsApp voice note: Ogg Opus, which neither AVAudioFile nor
+/// AVAssetReader opens. OzenKit takes the Opus packets out of the Ogg pages;
+/// Apple's Opus decoder turns about a second of them at a time into sound,
+/// and the same resampler as for other files makes it 16 kHz mono. The
+/// encoder's lead-in (pre-skip) and the padding after the last page's
+/// granule position are cut off.
+final class OggOpusSource: RecordingPieceSource, @unchecked Sendable {
+    private static let packetsPerPiece = 50
+    private static let largestPacket = 7_680
+    private static let outputRatio = OggOpusPackets.sampleRate / Int(RecordingAudioReader.sampleRate)
+
+    let durationSeconds: Double?
+    private let handle: FileHandle
+    private let packets: OggOpusPackets
+    private let decoder: AVAudioConverter
+    private let input: AVAudioCompressedBuffer
+    private let decoded: AVAudioPCMBuffer
+    private let resampler: PCMResampler
+    private var toSkip: Int
+    private var remaining: Int?
+    private var finished = false
+
+    static func isOgg(_ url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        return (try? handle.read(upToCount: 4)) == Data("OggS".utf8)
+    }
+
+    init(url: URL) throws {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { throw RecordingReadProblem.unreadable }
+        self.handle = handle
+        let size = (try? handle.seekToEnd()) ?? 0
+        try? handle.seek(toOffset: size > 65_536 ? size - 65_536 : 0)
+        let lastGranule = (try? handle.readToEnd()).flatMap { OggOpusPackets.lastGranulePosition(in: $0) }
+        try? handle.seek(toOffset: 0)
+        do {
+            packets = try OggOpusPackets { count in try handle.read(upToCount: count) ?? Data() }
+        } catch {
+            try? handle.close()
+            throw RecordingReadProblem.unreadable
+        }
+        let head = packets.head
+        let rate = Double(OggOpusPackets.sampleRate)
+        var description = AudioStreamBasicDescription(
+            mSampleRate: rate, mFormatID: kAudioFormatOpus, mFormatFlags: 0, mBytesPerPacket: 0, mFramesPerPacket: 960,
+            mBytesPerFrame: 0, mChannelsPerFrame: UInt32(head.channels), mBitsPerChannel: 0, mReserved: 0
+        )
+        guard (1...2).contains(head.channels),
+              let opus = AVAudioFormat(streamDescription: &description),
+              let pcm = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: AVAudioChannelCount(head.channels), interleaved: false),
+              let decoder = AVAudioConverter(from: opus, to: pcm),
+              let decoded = AVAudioPCMBuffer(pcmFormat: pcm, frameCapacity: AVAudioFrameCount(Self.packetsPerPiece * 5_760)),
+              let resampler = PCMResampler(from: pcm, sampleRate: RecordingAudioReader.sampleRate, maxInputFrames: decoded.frameCapacity)
+        else {
+            try? handle.close()
+            throw RecordingReadProblem.unreadable
+        }
+        self.decoder = decoder
+        self.decoded = decoded
+        self.resampler = resampler
+        input = AVAudioCompressedBuffer(format: opus, packetCapacity: AVAudioPacketCount(Self.packetsPerPiece), maximumPacketSize: Self.largestPacket)
+        toSkip = head.preSkip / Self.outputRatio
+        if let lastGranule, lastGranule > Int64(head.preSkip) {
+            let samples = Int(lastGranule) - head.preSkip
+            remaining = samples / Self.outputRatio
+            durationSeconds = Double(samples) / rate
+        } else {
+            durationSeconds = nil
+        }
+    }
+
+    deinit {
+        try? handle.close()
+    }
+
+    func nextPiece() throws -> [Float]? {
+        guard !finished else { return nil }
+        let more = try fillInput()
+        var samples: [Float] = []
+        var handedOver = false
+        while true {
+            var error: NSError?
+            decoded.frameLength = 0
+            let status = decoder.convert(to: decoded, error: &error) { [input] _, inputStatus in
+                if handedOver || input.packetCount == 0 {
+                    inputStatus.pointee = more ? .noDataNow : .endOfStream
+                    return nil
+                }
+                handedOver = true
+                inputStatus.pointee = .haveData
+                return input
+            }
+            guard status != .error, error == nil else { throw RecordingReadProblem.stalled }
+            if decoded.frameLength > 0 {
+                guard resampler.convert(decoded, into: &samples) else { throw RecordingReadProblem.stalled }
+            }
+            if status != .haveData { break }
+        }
+        if !more {
+            guard resampler.convert(nil, into: &samples) else { throw RecordingReadProblem.stalled }
+            finished = true
+        }
+        return trimmed(samples)
+    }
+
+    private func fillInput() throws -> Bool {
+        input.packetCount = 0
+        input.byteLength = 0
+        guard let descriptions = input.packetDescriptions else { throw RecordingReadProblem.unreadable }
+        var offset = 0
+        while input.packetCount < input.packetCapacity, let packet = try packets.nextPacket() {
+            guard !packet.isEmpty, packet.count <= Self.largestPacket else { continue }
+            packet.withUnsafeBytes { bytes in
+                input.data.advanced(by: offset).copyMemory(from: bytes.baseAddress!, byteCount: packet.count)
+            }
+            descriptions[Int(input.packetCount)] = AudioStreamPacketDescription(
+                mStartOffset: Int64(offset), mVariableFramesInPacket: 0, mDataByteSize: UInt32(packet.count)
+            )
+            offset += packet.count
+            input.packetCount += 1
+        }
+        input.byteLength = UInt32(offset)
+        return input.packetCount > 0
+    }
+
+    private func trimmed(_ samples: [Float]) -> [Float] {
+        var kept = samples[...]
+        let skipped = min(toSkip, kept.count)
+        kept = kept.dropFirst(skipped)
+        toSkip -= skipped
+        if let left = remaining {
+            kept = kept.prefix(left)
+            remaining = left - kept.count
+        }
+        return Array(kept)
     }
 }
 
