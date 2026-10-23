@@ -46,6 +46,7 @@ final class TranscribeRecordingModel {
     @ObservationIgnored private var handover = CaptionsHandover()
     @ObservationIgnored private var running: Task<Void, Never>?
     @ObservationIgnored private var holdsCaptions = false
+    @ObservationIgnored private var closed = false
     @ObservationIgnored private var language: UILanguage
     @ObservationIgnored private var chosenVariant: String?
     @ObservationIgnored private var duration: Double?
@@ -139,6 +140,7 @@ final class TranscribeRecordingModel {
     }
 
     func close() async {
+        closed = true
         running?.cancel()
         running = nil
         awake.release()
@@ -223,6 +225,9 @@ final class TranscribeRecordingModel {
             history = .off
         }
         if case .saved = history { onSaved() }
+        // A run that finished as the screen closed keeps its History entry,
+        // but writes no share file after the screen's files were removed.
+        guard !closed else { return }
         let code = ready.language.engineLanguageCode
         let baseName = (ready.name as NSString).deletingPathExtension
         shareText = TranscriptFormats.text(lines, languageCode: code)

@@ -92,6 +92,10 @@ struct OzenApp: App {
             // a recording another app shares with Ozen, which is a file.
             .onOpenURL { url in
                 if url.isFileURL {
+                    // A recording that opened the app is what she came
+                    // for: the caption screen's first appearance must not
+                    // start captions and take the model it needs.
+                    _ = viewModel.takeFirstAppearance()
                     receiveRecording(url)
                 } else {
                     viewModel.openURL(url)
