@@ -131,6 +131,7 @@ class FileTranscriber(
         work.start(opening, backTo = ::readyPage) {
             try {
                 captions.holdCaptionsForRecording()
+                captions.waitOutCaptionsLoad()
                 run(uri, ready)
             } catch (stopped: CancellationException) {
                 throw stopped

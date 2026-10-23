@@ -173,6 +173,7 @@ final class TranscribeRecordingModel {
 
     private func run(_ ready: FileTranscription.Ready, model: WhisperModelOption) async {
         defer { letCaptionsGo() }
+        await host.waitOutCaptionsLoad()
         let network = await settledNetwork()
         let request = FileTranscriber.Request(
             variant: model.variant,

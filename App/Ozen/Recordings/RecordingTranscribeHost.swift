@@ -15,6 +15,7 @@ protocol RecordingTranscribeHost: AnyObject {
     func toggleCaptionsPause() async
     func stopCaptions() async
     func beginRecordingTranscription()
+    func waitOutCaptionsLoad() async
     func endRecordingTranscription()
     func saveRecord(_ record: TranscriptSessionRecord) throws -> Bool
 }
@@ -53,6 +54,10 @@ final class LiveRecordingHost: RecordingTranscribeHost {
 
     func beginRecordingTranscription() {
         viewModel.pipeline.beginRecordingTranscription()
+    }
+
+    func waitOutCaptionsLoad() async {
+        await viewModel.pipeline.waitOutAbandonedLoad()
     }
 
     func endRecordingTranscription() {

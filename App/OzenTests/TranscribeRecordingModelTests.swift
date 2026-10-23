@@ -167,7 +167,7 @@ struct TranscribeRecordingModelTests {
         #expect(request.names == ["Dana", "Omer"])
         #expect(request.allowCellularDownload)
         #expect(request.network() == .cellular)
-        #expect(host.log == ["hold", "transcribe", "let go"])
+        #expect(host.log == ["hold", "wait out load", "transcribe", "let go"])
         await screen.close()
     }
 

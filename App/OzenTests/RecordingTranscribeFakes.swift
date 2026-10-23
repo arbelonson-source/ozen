@@ -43,6 +43,8 @@ final class RecordingHostFake: RecordingTranscribeHost {
 
     func beginRecordingTranscription() { log.append("hold") }
 
+    func waitOutCaptionsLoad() async { log.append("wait out load") }
+
     func endRecordingTranscription() { log.append("let go") }
 
     func saveRecord(_ record: TranscriptSessionRecord) throws -> Bool {

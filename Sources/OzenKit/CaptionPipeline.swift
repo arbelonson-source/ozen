@@ -223,6 +223,17 @@ public final class CaptionPipeline {
         retryAfterTranscription = nil
         Task { await retry(settings: held.settings) }
     }
+
+    /// Captions stopped while their model was still loading go on loading
+    /// it to the end. A recording waits that out before loading its own, so
+    /// the two are never in memory at once; a download holds no model, so
+    /// it is stopped rather than waited for.
+    public func waitOutAbandonedLoad() async {
+        if let preparing { await preparing.engine.cancelDownload() }
+        while isPreparingEngine {
+            await withCheckedContinuation { preparationWaiters.append($0) }
+        }
+    }
     /// How long the model download has left at its current pace, while
     /// one runs and there's enough to go on (see `DownloadEstimator`).
     public private(set) var downloadSecondsRemaining: Double?
