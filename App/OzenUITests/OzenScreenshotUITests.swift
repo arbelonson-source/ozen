@@ -844,6 +844,12 @@ final class OzenScreenshotUITests: XCTestCase {
 
         let settingsButton = app.descendants(matching: .any)["settingsButton"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "pairing: the settings button never appeared")
+        // The control bar hides itself after a while; bring it back first.
+        let reveal = app.descendants(matching: .any)["showControlsButton"]
+        for _ in 0..<20 where !settingsButton.isHittable {
+            if reveal.exists, reveal.isHittable { reveal.tap() }
+            Thread.sleep(forTimeInterval: 0.3)
+        }
         settingsButton.tap()
         XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "pairing: settings never appeared")
 
