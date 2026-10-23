@@ -28,7 +28,7 @@ public final class OggOpusPackets {
         guard let first = try? reader.nextPacket(), let head = Self.parseHead(first) else {
             throw OggOpusProblem.notOggOpus
         }
-        guard let tags = try reader.nextPacket(), tags.starts(with: Array("OpusTags".utf8)) else {
+        guard let tags = try reader.nextPacket(limit: OggPageReader.largestHeader), tags.starts(with: Array("OpusTags".utf8)) else {
             throw OggOpusProblem.damaged
         }
         self.head = head
@@ -60,14 +60,22 @@ public final class OggOpusPackets {
 
     /// The granule position of the last page in `tail`, the end of a file:
     /// samples at 48 kHz up to the end of the recording, pre-skip included.
+    /// Only a page that ends exactly where the file does counts, so "OggS"
+    /// inside a packet is not taken for a page.
     public static func lastGranulePosition(in tail: Data) -> Int64? {
         let bytes = [UInt8](tail)
         guard bytes.count >= 27 else { return nil }
         var index = bytes.count - 27
         while index >= 0 {
             if bytes[index] == 0x4F, bytes[index + 1] == 0x67, bytes[index + 2] == 0x67, bytes[index + 3] == 0x53, bytes[index + 4] == 0 {
-                let granule = OggPageReader.int64(bytes, at: index + 6)
-                if granule >= 0 { return granule }
+                let segments = Int(bytes[index + 26])
+                if index + 27 + segments <= bytes.count {
+                    let body = bytes[(index + 27)..<(index + 27 + segments)].reduce(0) { $0 + Int($1) }
+                    if index + 27 + segments + body == bytes.count {
+                        let granule = OggPageReader.int64(bytes, at: index + 6)
+                        return granule >= 0 ? granule : nil
+                    }
+                }
             }
             index -= 1
         }
@@ -85,6 +93,11 @@ public final class OggOpusPackets {
 }
 
 final class OggPageReader {
+    /// A sound packet is at most 48 frames of 1,275 bytes (RFC 6716).
+    static let largestPacket = 65_536
+    /// The comment header can carry cover art, so it may be far larger.
+    static let largestHeader = 16 << 20
+
     private let read: (Int) throws -> Data
     private var buffer: [UInt8] = []
     private var start = 0
@@ -97,9 +110,9 @@ final class OggPageReader {
         self.read = read
     }
 
-    func nextPacket() throws -> [UInt8]? {
+    func nextPacket(limit: Int = largestPacket) throws -> [UInt8]? {
         while ready.isEmpty {
-            guard try readPage() else { return nil }
+            guard try readPage(limit: limit) else { return nil }
         }
         return ready.removeFirst()
     }
@@ -110,9 +123,10 @@ final class OggPageReader {
         return Int64(bitPattern: value)
     }
 
-    private func readPage() throws -> Bool {
+    private func readPage(limit: Int) throws -> Bool {
         guard try fill(27) else {
-            if available == 0 { return false }
+            // A packet still waiting for its end means the file was cut off.
+            if available == 0, partial.isEmpty { return false }
             throw OggOpusProblem.damaged
         }
         guard buffer[start] == 0x4F, buffer[start + 1] == 0x67, buffer[start + 2] == 0x67, buffer[start + 3] == 0x53 else {
@@ -135,7 +149,10 @@ final class OggPageReader {
         if headerType & 0x01 == 0 { partial = [] }
         for value in lacing {
             let size = Int(value)
-            if !dropping { partial.append(contentsOf: buffer[offset..<(offset + size)]) }
+            if !dropping {
+                partial.append(contentsOf: buffer[offset..<(offset + size)])
+                guard partial.count <= limit else { throw OggOpusProblem.damaged }
+            }
             offset += size
             if value < 255 {
                 if !dropping { ready.append(partial) }

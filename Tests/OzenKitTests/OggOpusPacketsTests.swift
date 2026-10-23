@@ -25,6 +25,22 @@ private enum OggFixture {
         return bytes
     }
 
+    static func pages(for packet: [UInt8], granule: Int64) -> [UInt8] {
+        var lacing = [UInt8](repeating: 255, count: packet.count / 255) + [UInt8(packet.count % 255)]
+        var bytes: [UInt8] = []
+        var offset = 0
+        var continued = false
+        while !lacing.isEmpty {
+            let these = Array(lacing.prefix(255))
+            lacing.removeFirst(these.count)
+            let size = these.reduce(0) { $0 + Int($1) }
+            bytes += page(continued: continued, granule: lacing.isEmpty ? granule : -1, lacing: these, body: Array(packet[offset..<(offset + size)]))
+            offset += size
+            continued = true
+        }
+        return bytes
+    }
+
     static var head: [UInt8] { Array("OpusHead".utf8) + [1, 1, 0x38, 0x01, 0x80, 0x3E, 0, 0, 0, 0, 0] }
     static var tags: [UInt8] { Array("OpusTags".utf8) + [0, 0, 0, 0, 0, 0, 0, 0] }
 }
@@ -82,6 +98,39 @@ struct OggOpusPacketsTests {
         file += OggFixture.page(granule: 960, lacing: [100], body: [UInt8](repeating: 8, count: 100)).prefix(60)
         let packets = try OggOpusPackets(read: OggFixture.reader(Data(file)))
         #expect(throws: OggOpusProblem.damaged) { try packets.nextPacket() }
+    }
+
+    @Test("a recording cut off in the middle of a packet is damaged, not a clean end")
+    func cutInsidePacket() throws {
+        var file = OggFixture.page(granule: 0, lacing: [19], body: OggFixture.head)
+        file += OggFixture.page(granule: 0, lacing: [16], body: OggFixture.tags)
+        file += OggFixture.page(granule: 960, lacing: [2], body: [0x08, 0x01])
+        file += OggFixture.page(granule: -1, lacing: [255], body: [UInt8](repeating: 8, count: 255))
+        let packets = try OggOpusPackets(read: OggFixture.reader(Data(file)))
+        #expect(try packets.nextPacket() == [0x08, 0x01])
+        #expect(throws: OggOpusProblem.damaged) { try packets.nextPacket() }
+    }
+
+    @Test("a long comment header such as cover art is read past; a sound packet that size is damaged")
+    func packetSizeLimits() throws {
+        let tags = OggFixture.tags + [UInt8](repeating: 0, count: 150_000)
+        var file = OggFixture.page(granule: 0, lacing: [19], body: OggFixture.head)
+        file += OggFixture.pages(for: tags, granule: 0)
+        file += OggFixture.page(granule: 960, lacing: [2], body: [0x08, 0x01])
+        file += OggFixture.pages(for: [UInt8](repeating: 8, count: 70_000), granule: 1_920)
+        let packets = try OggOpusPackets(read: OggFixture.reader(Data(file), step: 4_000))
+        #expect(try packets.nextPacket() == [0x08, 0x01])
+        #expect(throws: OggOpusProblem.damaged) { try packets.nextPacket() }
+    }
+
+    @Test("\"OggS\" inside a packet near the end is not taken for the last page")
+    func lastGranuleIgnoresLookalike() {
+        let lookalike = Array("OggS".utf8) + [0, 0] + (0..<8).map { UInt8(truncatingIfNeeded: 999_999 >> (8 * $0)) }
+        let body = [0x08] + lookalike + [UInt8](repeating: 0, count: 20)
+        var file = OggFixture.page(granule: 960, lacing: [2], body: [0x08, 0x01])
+        file += OggFixture.page(granule: 1_920, lacing: [UInt8(body.count)], body: body)
+        #expect(OggOpusPackets.lastGranulePosition(in: Data(file)) == 1_920)
+        #expect(OggOpusPackets.lastGranulePosition(in: Data(file.dropLast())) == nil)
     }
 
     @Test("the sample count is read from the packet's first byte", arguments: [
