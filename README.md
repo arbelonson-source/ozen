@@ -394,6 +394,19 @@ Open a section for the details.
   are always kept, and a change that would delete something asks first.
   If the phone fills up and saving starts failing, the caption screen says
   so, instead of conversations quietly going unsaved.
+- **Turn a recording into text.** A voice note (WhatsApp's too), a
+  recorded lecture or the sound of a video: share it to Ozen from another
+  app, or tap "Transcribe a recording" in History. Ozen reads it a little
+  at a time, so an hour-long lecture fits, cuts it at the pauses, and
+  writes each stretch with the most accurate model already on the phone
+  for the recording's language, even one too slow for live captions (or
+  offers the download if there is none). The screen shows how far it has
+  got, and it can be stopped. The text comes out as timed lines, saved to
+  History under the file's name, and can be shared as text or as
+  subtitles (.srt). Live captions and a recording can't use the model at
+  the same time: Ozen asks to stop the captions first, and they don't
+  start again by themselves until the recording is done. The recording
+  never leaves the phone.
 - **Star what matters.** Hold a caption line to mark it as important
   (what the doctor said about the pills), copy it, or say who is talking.
   Stars are saved with the conversation, counted in the history list,
