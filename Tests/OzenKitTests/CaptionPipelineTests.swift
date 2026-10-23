@@ -25,6 +25,12 @@ final class FakeAudioCapturer: AudioCapturing {
     var requiresPreparedSession = false
     private var isPrepared = false
     var calls: [String] = []
+    /// Kept out of `calls` on purpose: tests read `calls.last` to see that
+    /// capture was stopped, and handing the session back comes after that.
+    private(set) var endSessionCalls = 0
+    /// The real system refuses to end a session while capture still runs,
+    /// and the session would then stay active: such calls are counted.
+    private(set) var endSessionWhileCapturing = 0
     private var continuation: AsyncStream<[Float]>.Continuation?
 
     func requestPermission() async -> AudioPermission {
@@ -68,6 +74,12 @@ final class FakeAudioCapturer: AudioCapturing {
         calls.append("stopCapture")
         continuation?.finish()
         continuation = nil
+    }
+
+    func endSession() {
+        endSessionCalls += 1
+        if continuation != nil { endSessionWhileCapturing += 1 }
+        isPrepared = false
     }
 
     /// Inputs the system would report if asked again right now.
@@ -1797,6 +1809,154 @@ struct CaptionPipelineLifecycleTests {
         await fast.start(settings: .default)
         try? await Task.sleep(for: .milliseconds(150))
         #expect(fast.phase == .listening)
+    }
+}
+
+@Suite("CaptionPipeline hands the audio session back")
+@MainActor
+struct CaptionPipelineAudioSessionTests {
+    @Test("stopping captions hands the audio session back, so music and podcasts carry on")
+    func stopHandsItBack() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        #expect(audio.endSessionCalls == 0)
+
+        pipeline.stop()
+        #expect(pipeline.phase == .idle)
+        #expect(audio.endSessionCalls == 1)
+    }
+
+    @Test("pausing by hand hands the session back, and resuming takes it again")
+    func pauseByHandHandsItBack() async {
+        let (pipeline, audio, _) = makePipeline()
+        audio.requiresPreparedSession = true
+        await pipeline.start(settings: .default)
+        #expect(pipeline.phase == .listening)
+        let prepared = audio.calls.filter { $0 == "prepareSession" }.count
+
+        pipeline.pause(releasingAudio: true)
+        #expect(pipeline.phase == .paused)
+        #expect(audio.endSessionCalls == 1)
+
+        await pipeline.resume()
+        #expect(pipeline.phase == .listening)
+        #expect(audio.calls.filter { $0 == "prepareSession" }.count == prepared + 1)
+        #expect(audio.endSessionCalls == 1)
+    }
+
+    @Test("a plain pause keeps the session, as the phone talking over captions needs")
+    func plainPauseKeepsIt() async {
+        let (pipeline, audio, _) = makePipeline()
+        audio.requiresPreparedSession = true
+        await pipeline.start(settings: .default)
+
+        pipeline.pause()
+        #expect(pipeline.phase == .paused)
+        await pipeline.resume()
+        #expect(pipeline.phase == .listening)
+        #expect(audio.endSessionCalls == 0)
+    }
+
+    @Test("captions waiting to try again keep the session for sound alerts", .timeLimit(.minutes(1)))
+    func failureKeepsTheSessionForSounds() async {
+        let engine = FakeEngine(availability: .unavailable(.temporarilyUnavailable, "busy"))
+        let (pipeline, audio, _) = makePipeline(
+            engines: [.whisperKit: engine],
+            soundDetector: FakeSoundDetector(),
+            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [], microphoneTailDelays: [])
+        )
+        audio.requiresPreparedSession = true
+        await pipeline.start(settings: .default)
+
+        #expect(await eventually { pipeline.scheduledRetry != nil && pipeline.stats.soundDetectionRunning })
+        #expect(audio.endSessionCalls == 0)
+    }
+
+    @Test("stopping while a voice sample is recording hands the session back once the recording is over", .timeLimit(.minutes(1)))
+    func stopDuringVoiceSample() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        let recording = Task { await pipeline.captureEnrollmentSamples(seconds: 0.5) }
+        #expect(await eventually { pipeline.isRecordingVoice })
+
+        pipeline.stop()
+        #expect(audio.endSessionCalls == 0)
+        _ = await recording.value
+        #expect(pipeline.phase == .idle)
+        #expect(audio.endSessionCalls == 1)
+    }
+
+    @Test("captions started again after a stop during a voice sample keep the session", .timeLimit(.minutes(1)))
+    func restartAfterStopDuringVoiceSample() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        let recording = Task { await pipeline.captureEnrollmentSamples(seconds: 0.5) }
+        #expect(await eventually { pipeline.isRecordingVoice })
+
+        pipeline.stop()
+        await pipeline.restart(settings: .default)
+        _ = await recording.value
+        #expect(pipeline.phase == .listening)
+        #expect(audio.endSessionCalls == 0)
+    }
+
+    @Test("stopping while the session is still being set up hands it back once the setup is over", .timeLimit(.minutes(1)))
+    func stopDuringSetup() async {
+        let (pipeline, audio, _) = makePipeline()
+        audio.holdPrepare = true
+        let starting = Task { await pipeline.start(settings: .default) }
+        #expect(await eventually { audio.isHoldingPrepare })
+
+        pipeline.stop()
+        #expect(audio.endSessionCalls == 1)
+        audio.releasePrepare()
+        await starting.value
+        #expect(pipeline.phase == .idle)
+        #expect(audio.endSessionCalls == 2)
+    }
+
+    @Test("a stopped setup that finishes after captions were started again leaves the new session alone", .timeLimit(.minutes(1)))
+    func finishedSetupAfterStartingAgain() async {
+        let (pipeline, audio, _) = makePipeline()
+        audio.holdPrepare = true
+        let abandoned = Task { await pipeline.start(settings: .default) }
+        #expect(await eventually { audio.isHoldingPrepare })
+
+        pipeline.stop()
+        audio.holdPrepare = false
+        await pipeline.start(settings: .default)
+        #expect(pipeline.phase == .listening)
+        audio.releasePrepare()
+        await abandoned.value
+        #expect(pipeline.phase == .listening)
+        #expect(audio.endSessionCalls == 1)
+    }
+
+    @Test("stopping while the session is still being set up, when the set-up then fails, still hands it back", .timeLimit(.minutes(1)))
+    func stopDuringSetupThatFails() async {
+        let (pipeline, audio, _) = makePipeline()
+        audio.holdPrepare = true
+        audio.prepareError = NSError(domain: "FakeAudio", code: 3)
+        let starting = Task { await pipeline.start(settings: .default) }
+        #expect(await eventually { audio.isHoldingPrepare })
+
+        pipeline.stop()
+        #expect(audio.endSessionCalls == 1)
+        audio.releasePrepare()
+        await starting.value
+        #expect(pipeline.phase == .idle)
+        #expect(audio.endSessionCalls == 2)
+    }
+
+    @Test("the session is only handed back once capture has stopped, as the system refuses otherwise")
+    func handedBackAfterCaptureStopped() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        pipeline.pause(releasingAudio: true)
+        await pipeline.resume()
+        pipeline.stop()
+        #expect(audio.endSessionCalls == 2)
+        #expect(audio.endSessionWhileCapturing == 0)
     }
 }
 

@@ -22,6 +22,7 @@ import com.arbelonson.ozen.core.DeviceHeat
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HTTPFileFetcher
 import com.arbelonson.ozen.core.HistoryRetention
+import com.arbelonson.ozen.core.HistorySave
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.AlertVibration
@@ -57,6 +58,7 @@ import com.arbelonson.ozen.core.StorageSpaceGate
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
+import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngine
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
@@ -80,6 +82,7 @@ import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -444,6 +447,24 @@ class CaptionSession(
     }
 
     fun dismissRecentConversation() = CaptionState.recentConversation(null)
+
+    internal val modelDirectory: File get() = modelFolder
+
+    internal fun captionsActive(): Boolean = pipeline.mayLoadModels
+
+    internal fun stopCaptionsForRecording() {
+        replies.userTookControl()
+        pipeline.stopFromNotification()
+        pipeline.releaseModels()
+    }
+
+    internal suspend fun holdCaptionsForRecording() = withContext(Dispatchers.Main.immediate) { pipeline.beginRecordingTranscription() }
+
+    internal suspend fun recordingTranscriptionDone() =
+        withContext(NonCancellable + Dispatchers.Main.immediate) { pipeline.endRecordingTranscription() }
+
+    /** A transcribed recording goes into History like a conversation, unless the reader has turned saving off. */
+    internal fun saveRecording(record: TranscriptSessionRecord): HistorySave = conversations.saveRecording(record)
 
     fun listen() {
         replies.userTookControl()

@@ -350,6 +350,9 @@ public final class CaptionPipeline {
     public private(set) var isTranscribingRecording = false
     private var retryAfterTranscription: HeldRetry?
     private var restartAfterRecording: AppSettings?
+    /// The audio session was to be handed back while a voice sample was
+    /// recording; it is, when the recording ends, unless captions came back.
+    private var releaseAfterRecording = false
     private let network: (any NetworkMonitoring)?
     /// The person said this session's model may download over cellular.
     private var cellularDownloadApproved = false
@@ -494,11 +497,17 @@ public final class CaptionPipeline {
         do {
             try await audio.prepareSession(preferredInputUID: settings.preferredInputUID)
         } catch {
-            guard runID == run else { return }
+            guard runID == run else {
+                releaseSessionOfStoppedStart()
+                return
+            }
             fail(.audioSessionFailed, detail: String(describing: error))
             return
         }
-        guard runID == run else { return }
+        guard runID == run else {
+            releaseSessionOfStoppedStart()
+            return
+        }
         audio.onCaptureLost = { [weak self] in self?.captureLost(run: run) }
         syncInputs()
         guard !availableInputs.isEmpty else {
@@ -750,6 +759,7 @@ public final class CaptionPipeline {
         microphoneDrop.dismiss()
         tearDownSession()
         phase = .idle
+        releaseAudioSession()
     }
 
     /// iOS is short of memory and ends the biggest apps first; a loaded
@@ -773,11 +783,19 @@ public final class CaptionPipeline {
         }
     }
 
-    public func pause() {
+    /// `releasingAudio` is for a pause the person asked for: nothing listens
+    /// for a while, so the audio session goes back to the system and the
+    /// music or podcast that captions interrupted plays again. The default
+    /// keeps it, for the pause that lasts a phrase: the phone talking over
+    /// captions pauses them and resumes right after, and giving the session
+    /// up around every phrase would let whatever else is playing in between
+    /// take the speaker.
+    public func pause(releasingAudio: Bool = false) {
         guard phase.isListening else { return }
         listeningSince = nil
         tearDownSession()
         phase = .paused
+        if releasingAudio { releaseAudioSession() }
     }
 
     /// `settings` defaults to the snapshot from the last `start(settings:)`,
@@ -1412,6 +1430,12 @@ public final class CaptionPipeline {
             await retry(settings: held.settings)
         } else if case .failed(let failure) = phase, retryToken != nil || homeServerRecheck != nil || comesBackWithoutTimer(failure) {
             listenForSoundsMeanwhile(after: failure)
+        }
+        // A Stop that came during the recording could not hand the session
+        // back then. Done now, unless captions came back meanwhile.
+        if releaseAfterRecording {
+            releaseAfterRecording = false
+            if phase == .idle { releaseAudioSession() }
         }
         return collected
     }
@@ -2632,6 +2656,33 @@ public final class CaptionPipeline {
         fanOut = nil
         audio.stopCapture()
         finishOpenLines()
+    }
+
+    /// Gives the audio session back once capture has stopped, so music, a
+    /// podcast or a video in another app carries on instead of staying
+    /// silenced until Ozen is closed. Only after `tearDownSession()`, which
+    /// stops capture first: the system refuses to end a session that still
+    /// has audio running. Not inside `tearDownSession()` itself, which
+    /// `fail()`, `restart()` and `retry()` use too: a failure hands the live
+    /// session on to `listenForSoundsMeanwhile`, and a restart takes it
+    /// straight back. A voice sample being recorded holds the session until
+    /// it is done: the release waits for the end of the recording.
+    private func releaseAudioSession() {
+        guard !isRecordingVoice else {
+            releaseAfterRecording = true
+            return
+        }
+        audio.endSession()
+    }
+
+    /// A start stopped while its audio session was being set up. The setup
+    /// finished anyway, after `stop()` had handed the session back, and
+    /// would leave it active. Not when something else wants it now: a
+    /// restart or a retry makes the phase something other than idle. A
+    /// voice sample being recorded still holds the session, so the release
+    /// waits for its end.
+    private func releaseSessionOfStoppedStart() {
+        if phase == .idle { releaseAudioSession() }
     }
 
     /// The words of a line cut off mid-sentence (paused, stopped, the

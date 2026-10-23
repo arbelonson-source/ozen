@@ -16,6 +16,7 @@ class OzenApplication : Application() {
     }
     private val session = lazy { CaptionSession(this, settings, homeServerCode, cloudKeys) }
     val captions by session
+    val transcriber by lazy { FileTranscriber(this, settings, captions) }
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)

@@ -53,9 +53,16 @@ object SampleRateConverter {
 
         fun finish(): FloatArray {
             filter?.let { while (produced < it.outputCount(received)) put(it.sample(produced++, pending, first, received)) }
+            return drain()
+        }
+
+        /** What has been converted so far and not handed over yet, so a long recording can be passed on piece by piece. */
+        fun drain(): FloatArray {
             val all = FloatArray(blocks.size * BLOCK + inBlock)
             blocks.forEachIndexed { index, full -> full.copyInto(all, index * BLOCK) }
             block.copyInto(all, blocks.size * BLOCK, 0, inBlock)
+            blocks.clear()
+            inBlock = 0
             return all
         }
 

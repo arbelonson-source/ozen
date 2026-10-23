@@ -122,13 +122,15 @@ class TranscriptHistoryWriter(
      * the one write that must not be lost, not for the whole
      * conversation's search index too.
      */
-    fun saveNow(record: TranscriptSessionRecord) {
+    fun saveNow(record: TranscriptSessionRecord): Boolean {
+        var saved = false
         queue.sync {
-            val saved = failure.capture { store.save(record, updateSearchCaches = false) }
+            saved = failure.capture { store.save(record, updateSearchCaches = false) }
             lastWritten.record = if (saved) record else null
             if (saved) pendingSaves.records.remove(record.id) else pendingSaves.records[record.id] = record
             catchUp(record.id)
         }
+        return saved
     }
 
     /**

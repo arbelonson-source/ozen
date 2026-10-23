@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.ConversationBreak
 import com.arbelonson.ozen.core.HistoryRetention
+import com.arbelonson.ozen.core.HistorySave
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -160,6 +161,13 @@ class ConversationSaver(
     }
 
     val lastSaveFailure: String? get() = writer.lastFailure
+
+    /** Off is the reader's choice. Failed is the phone refusing the write: it stays queued for another try, but it is not on disk yet. */
+    fun saveRecording(record: TranscriptSessionRecord): HistorySave = when {
+        !settings().saveHistory -> HistorySave.Off
+        writer.saveNow(record) -> HistorySave.Saved(record.id)
+        else -> HistorySave.Failed
+    }
 
     /** Deletes what the retention setting says has expired, now, after any save in flight. */
     suspend fun deleteExpired(now: Double = this.now()): Int {

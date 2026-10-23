@@ -34,6 +34,15 @@ public final class AVAudioInputManager: AudioCapturing {
     private var preferredInputUID: String?
     private let observers = NotificationObserverBag()
     private var sessionPrepared = false
+    /// Set when the session is handed back to the system (`endSession`) and
+    /// cleared by the next `prepareSession`. While it is set nothing here
+    /// takes the session back by itself, and the hand-back's own route
+    /// report is not treated as the person changing microphones.
+    private var released = false
+    /// The deactivation that `endSession` started off the main thread. The
+    /// next activation waits for it, so a Resume tapped right after a Pause
+    /// is never switched off again by a deactivation that ran late.
+    private var deactivation: Task<Void, Never>?
     private var activeTap: TapState?
 
     public init() {}
@@ -49,6 +58,17 @@ public final class AVAudioInputManager: AudioCapturing {
         // chosen hearing aid still connecting refuses to be picked), the
         // aid arriving later is what tells captions to try again.
         observeNotificationsIfNeeded()
+        // A session handed back a moment ago is still being deactivated off
+        // the main thread. Activating before that is done would let the late
+        // deactivation switch the microphone off again right after this start.
+        // An interruption's activation that finishes during the wait hands
+        // the session back once more, queueing a newer deactivation: wait
+        // until none is left to come.
+        while let pending = deactivation {
+            await pending.value
+            if deactivation == pending { break }
+        }
+        released = false
         // Off the main thread: activating the session waits on the audio
         // server, which can take seconds while AirPods reconnect or another
         // app lets go of the microphone, and captions start right at launch,
@@ -121,6 +141,22 @@ public final class AVAudioInputManager: AudioCapturing {
         inputLevel = 0
     }
 
+    /// Gives the audio session back to the system, so the music, podcast or
+    /// video another app was playing before captions started carries on.
+    /// Called once capture has stopped. The deactivation runs off the main
+    /// thread, as activating does, and is refused while anything still
+    /// plays, such as the phone saying a phrase. The next Pause or Stop asks
+    /// again, which is why this does not check for a prepared session.
+    public func endSession() {
+        sessionPrepared = false
+        released = true
+        let earlier = deactivation
+        deactivation = Task.detached(priority: .userInitiated) {
+            await earlier?.value
+            _ = try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
+    }
+
     /// Selects a specific input by UID (from the mic picker UI), re-running
     /// the same resolution policy so an invalid/stale UID can't leave the
     /// session in a broken state.
@@ -137,7 +173,9 @@ public final class AVAudioInputManager: AudioCapturing {
         guard sessionPrepared else { return }
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(2))
-            guard let self else { return }
+            // Not if the session was handed back meanwhile: nothing is
+            // recording to look at.
+            guard let self, self.sessionPrepared else { return }
             let shown = self.selectedInputUID
             self.showInputInUse()
             if self.selectedInputUID != shown {
@@ -210,12 +248,22 @@ public final class AVAudioInputManager: AudioCapturing {
     public func reclaimSessionAfterInterruption() async -> Bool {
         guard sessionPrepared else { return true }
         do {
-            try await Self.activateSessionOffMain()
+            try await activateSession()
         } catch {
             return false
         }
+        if released { return true }
         resumeCaptureAfterInterruption()
         return true
+    }
+
+    /// Activates the session off the main thread. A hand-back that came
+    /// while the activation was under way ran its deactivation first, and
+    /// the late activation would take the session back after the Stop: it
+    /// is handed back again.
+    private func activateSession() async throws {
+        try await Self.activateSessionOffMain()
+        if released { endSession() }
     }
 
     /// Right after a call is exactly when a headset or hearing aid is
@@ -253,7 +301,7 @@ public final class AVAudioInputManager: AudioCapturing {
         guard sessionPrepared, attempt < Self.selectionRetryLimit, let wanted = preferredInputUID else { return }
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(1.5))
-            guard let self, self.preferredInputUID == wanted, self.inputInUse != wanted,
+            guard let self, self.sessionPrepared, self.preferredInputUID == wanted, self.inputInUse != wanted,
                   self.availableInputs.contains(where: { $0.uid == wanted })
             else { return }
             let shown = self.selectedInputUID
@@ -375,10 +423,18 @@ public final class AVAudioInputManager: AudioCapturing {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.refreshAvailableInputs()
-                if (try? self.applySelection()) == nil {
-                    self.reapplySelectionSoon()
+                // Once the session is handed back, nothing is recording and
+                // the route it reports (the deactivation's own report
+                // included) says nothing about the microphone the person
+                // chose: acting on it could flip a wired, USB or remote
+                // microphone to the phone's own and raise the
+                // "microphone disconnected" notice.
+                if !self.released {
+                    if (try? self.applySelection()) == nil {
+                        self.reapplySelectionSoon()
+                    }
+                    self.showInputInUse()
                 }
-                self.showInputInUse()
                 self.onInputsChanged?()
             }
         })
@@ -396,9 +452,11 @@ public final class AVAudioInputManager: AudioCapturing {
                     self.onInterruption?(true)
                 case .ended:
                     let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-                    if options.contains(.shouldResume) || self.activeTap != nil {
-                        try? await Self.activateSessionOffMain()
-                        self.resumeCaptureAfterInterruption()
+                    // A session handed back stays that way: taking it again
+                    // here would silence the music that just carried on.
+                    if !self.released, options.contains(.shouldResume) || self.activeTap != nil {
+                        try? await self.activateSession()
+                        if !self.released { self.resumeCaptureAfterInterruption() }
                     }
                     self.onInterruption?(false)
                 default:

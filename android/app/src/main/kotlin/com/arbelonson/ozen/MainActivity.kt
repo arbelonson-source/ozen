@@ -87,6 +87,9 @@ import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
+import androidx.core.content.IntentCompat
+import com.arbelonson.ozen.core.FileTranscription
+import com.arbelonson.ozen.core.SharedRecordingLink
 import com.arbelonson.ozen.ui.IconBadge
 import com.arbelonson.ozen.ui.OzenColors
 import com.arbelonson.ozen.ui.OzenSpacing
@@ -219,7 +222,10 @@ class MainActivity : ComponentActivity() {
         // back after Android ended it) and an opening from recent apps carry
         // the link the app was first opened with, and asking about it again
         // offered to replace the address and code set since.
-        if (savedInstanceState == null && intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY == 0) openLink(intent)
+        if (savedInstanceState == null && intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY == 0) {
+            openLink(intent)
+            if (takeSharedRecording(intent)) app.captions.takeFirstAppearance()
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -248,6 +254,17 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         openLink(intent)
+        takeSharedRecording(intent)
+    }
+
+    /** A voice note, recording or video shared to Ozen from another app is offered for transcribing. */
+    private fun takeSharedRecording(intent: Intent?): Boolean {
+        if (intent?.action != Intent.ACTION_SEND) return false
+        val type = intent.type ?: return false
+        if (!type.startsWith("audio/") && !type.startsWith("video/")) return false
+        val recording = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) ?: return false
+        if (!SharedRecordingLink.isAcceptable(recording.toString(), packageName)) return false
+        return (application as OzenApplication).transcriber.open(recording)
     }
 
     private fun systemBarsFor(lightScreen: Boolean) {
@@ -382,6 +399,7 @@ private fun OzenApp(
     val state by CaptionState.screen.collectAsStateWithLifecycle()
     val current by app.settings.current.collectAsStateWithLifecycle()
     val voices by app.captions.voice.installed.collectAsStateWithLifecycle()
+    val recording by app.transcriber.state.collectAsStateWithLifecycle()
     var showingHistory by rememberSaveable { mutableStateOf(false) }
     var reading by rememberSaveable { mutableStateOf<Pair<UUID, UUID?>?>(null) }
     var saying by rememberSaveable { mutableStateOf(false) }
@@ -409,6 +427,7 @@ private fun OzenApp(
         !current.hasCompletedOnboarding ||
             backup is BackupModelStatus.Downloading ||
             recordingVoice != null ||
+            recording is FileTranscription.Working ||
             state.keepsScreenOn(current.display.keepScreenAwake, awakeClock),
     )
     val moreContrast = phoneAsksForMoreContrast()
@@ -419,6 +438,7 @@ private fun OzenApp(
             val front = when {
                 !current.hasCompletedOnboarding -> FrontScreen(Front.Walkthrough)
                 showingSettings.value -> FrontScreen(Front.Settings)
+                recording !is FileTranscription.Idle -> FrontScreen(Front.Transcribe)
                 reading != null -> FrontScreen(Front.Conversation, reading)
                 namingAlert -> FrontScreen(Front.NameAlert)
                 choosingMicrophone -> FrontScreen(Front.Microphones)
@@ -464,6 +484,7 @@ private fun OzenApp(
                             showingSettings.value = false
                             settingsAtBackup.value = false
                         }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value, onScrolledToBackup = { settingsAtBackup.value = false }, phoneModels = app.captions.phoneModels)
+                        Front.Transcribe -> TranscribeScreen(app.transcriber, recording, onClose = app.transcriber::close)
                         Front.Conversation -> ConversationScreen(
                             app.captions.savedConversations,
                             opened!!.first,
@@ -514,6 +535,7 @@ private fun OzenApp(
                             emphasizeNumbers = current.display.emphasizeNumbers,
                             onClose = { showingHistory = false },
                             languageCode = current.languageCode,
+                            onTranscribe = { app.transcriber.open(it) },
                         )
                         Front.Captions -> {
                             LaunchedEffect(Unit) { if (app.captions.takeFirstAppearance()) onLaunch() }
@@ -580,7 +602,7 @@ private fun OzenApp(
 }
 
 /** The screens in front of each other, by how far in from the captions each is. */
-private enum class Front(val depth: Int) { Walkthrough(0), Captions(0), History(1), Say(1), Microphones(1), NameAlert(1), Settings(1), Conversation(2) }
+private enum class Front(val depth: Int) { Walkthrough(0), Captions(0), History(1), Say(1), Microphones(1), NameAlert(1), Settings(1), Transcribe(2), Conversation(2) }
 
 /** The screen in front, with the conversation open on it, so one sliding away still shows what it showed. */
 private data class FrontScreen(val kind: Front, val reading: Pair<UUID, UUID?>? = null)
