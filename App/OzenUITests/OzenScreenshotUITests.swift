@@ -481,6 +481,59 @@ final class OzenScreenshotUITests: XCTestCase {
         capture(app, name: "onboarding-notifications-refused")
     }
 
+    /// App Review rejected 0.2.0 under guideline 5.1.1(iv) (2026-10-21):
+    /// the microphone page's own button read "Approve the microphone", and
+    /// Next moved on without asking. Now, after the explanation, the only
+    /// way forward is iOS's own question: Skip waits, a swipe asks instead
+    /// of skipping, Next then asks for notifications, and only after both
+    /// answers does it move on. Screenshot runs answer yes for iOS.
+    func testMicrophonePageAlwaysAsksBeforeMovingOn() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "onboardingEnglish"]
+        app.launch()
+
+        let next = app.descendants(matching: .any)["onboardingNextButton"]
+        let skip = app.descendants(matching: .any)["onboardingSkipButton"]
+        XCTAssertTrue(next.waitForExistence(timeout: 10), "permissions: no Next button")
+        for _ in 0..<5 {
+            next.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        let explanation = app.staticTexts["To caption the conversation, Ozen needs to listen through the microphone."]
+        XCTAssertTrue(explanation.waitForExistence(timeout: 10), "permissions: five Nexts did not reach the microphone page")
+        XCTAssertFalse(skip.exists, "permissions: Skip offered a way past the microphone question")
+        XCTAssertFalse(app.buttons["Approve the microphone"].exists, "permissions: the microphone page still has its own Approve button")
+        capture(app, name: "onboarding-microphone-before-asking")
+
+        app.swipeLeft()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertTrue(app.descendants(matching: .any)["onboardingMicrophoneApproved"].waitForExistence(timeout: 10), "permissions: a swipe past the microphone page did not ask for the microphone")
+        XCTAssertTrue(explanation.isHittable, "permissions: a swipe left the microphone page before notifications were asked")
+        XCTAssertFalse(skip.exists, "permissions: Skip offered a way past the notifications question")
+
+        next.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["onboardingNotificationsAnswered"].waitForExistence(timeout: 10), "permissions: Next did not ask for notifications")
+        XCTAssertTrue(skip.waitForExistence(timeout: 5), "permissions: Skip did not come back once both questions were answered")
+        capture(app, name: "onboarding-microphone-answered")
+
+        next.tap()
+        let nameTitle = app.staticTexts["When you’re called"].firstMatch
+        for _ in 0..<20 where !(nameTitle.exists && nameTitle.isHittable) {
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        XCTAssertTrue(nameTitle.exists && nameTitle.isHittable, "permissions: Next did not move on after both answers")
+        XCTAssertFalse(explanation.isHittable, "permissions: the microphone page is still showing after both answers")
+    }
+
+    /// Next on the microphone page asks for the microphone, then for
+    /// notifications, and only then moves on; screenshot runs answer both.
+    private func answerPermissionQuestions(_ app: XCUIApplication, next: XCUIElement) {
+        next.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["onboardingMicrophoneApproved"].waitForExistence(timeout: 10), "onboarding: Next on the microphone page did not ask for the microphone")
+        next.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["onboardingNotificationsAnswered"].waitForExistence(timeout: 10), "onboarding: Next after the microphone did not ask for notifications")
+    }
+
     /// The speech model is chosen on its own page: the models for this
     /// phone are listed, the recommended one is already selected, another
     /// can be picked, and "Keep the recommended model" puts it back.
@@ -547,6 +600,10 @@ final class OzenScreenshotUITests: XCTestCase {
 
         for (index, name) in ["page2-how-it-works", "page3-language", "page4-engine", "page5-model", "page6-microphone", "page7-name", "page8-ready"].enumerated() {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "onboarding: no Next button on page \(index + 1)")
+            if name == "page7-name" {
+                answerPermissionQuestions(app, next: next)
+                capture(app, name: "onboarding-accessibility-text-page6-microphone-answered")
+            }
             next.tap()
             // The footer's own content (Skip/Next vs. the last page's lone
             // Start button) animates along with the page change; without
@@ -556,10 +613,8 @@ final class OzenScreenshotUITests: XCTestCase {
             capture(app, name: "onboarding-accessibility-text-\(name)")
 
             if name == "page6-microphone" {
-                // The "Approve the microphone" button sits below the fold
-                // at this text size -- scroll to actually see it rather
-                // than assume the same fix that worked in the reply
-                // sheet's "Full screen, big letters" button holds here too.
+                // The explanation runs below the fold at this text size;
+                // scroll to see all of it before Next asks the question.
                 app.swipeUp()
                 capture(app, name: "onboarding-accessibility-text-page6-microphone-button-scrolled")
             }
@@ -605,6 +660,9 @@ final class OzenScreenshotUITests: XCTestCase {
 
         for (index, name) in ["page2-how-it-works", "page3-language", "page4-engine", "page5-model", "page6-microphone", "page7-name"].enumerated() {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "onboarding: no Next button on page \(index + 1)")
+            if name == "page7-name" {
+                answerPermissionQuestions(app, next: next)
+            }
             next.tap()
             Thread.sleep(forTimeInterval: 0.5)
             capture(app, name: "onboarding-german-accessibility-text-\(name)")
@@ -677,6 +735,9 @@ final class OzenScreenshotUITests: XCTestCase {
         let next = walkthrough.descendants(matching: .any)["onboardingNextButton"]
         for page in 2...8 {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "english: no Next button on page \(page - 1)")
+            if page == 7 {
+                answerPermissionQuestions(walkthrough, next: next)
+            }
             next.tap()
             Thread.sleep(forTimeInterval: 0.5)
             capture(walkthrough, name: "english-walkthrough-page\(page)")
@@ -712,6 +773,9 @@ final class OzenScreenshotUITests: XCTestCase {
         let next = walkthrough.descendants(matching: .any)["onboardingNextButton"]
         for page in 2...8 {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "hebrew default: no Next button on page \(page - 1)")
+            if page == 7 {
+                answerPermissionQuestions(walkthrough, next: next)
+            }
             next.tap()
             Thread.sleep(forTimeInterval: 0.5)
             capture(walkthrough, name: "hebrew-walkthrough-page\(page)")
