@@ -199,6 +199,30 @@ public final class CaptionPipeline {
     /// Captions stopped, but a retry or the phone's own model is on its
     /// way: no reason to tell her they stopped.
     public var isRecoveringByItself: Bool { scheduledRetry != nil || pendingCover != nil }
+
+    /// Running, starting, or a failure whose retry is lined up: any of
+    /// these may load a speech model again on its own.
+    public var mayLoadModels: Bool { phase.isListening || phase.isTransitioning || isRecoveringByItself }
+
+    /// Gives the kept speech model back for a recording being turned into
+    /// text with its own copy, and holds automatic retries until
+    /// `endRecordingTranscription()`: Wi-Fi returning for a waiting
+    /// download, the home computer answering or the backup becoming ready
+    /// would otherwise load a second model beside it, as a voice sample
+    /// holds them for the microphone.
+    public func beginRecordingTranscription() {
+        isTranscribingRecording = true
+        if !phase.isListening, !phase.isTransitioning { engineCache.removeAll() }
+    }
+
+    /// The recording is done or was cancelled: a retry that came due
+    /// meanwhile runs now.
+    public func endRecordingTranscription() {
+        isTranscribingRecording = false
+        guard let held = retryAfterTranscription else { return }
+        retryAfterTranscription = nil
+        Task { await retry(settings: held.settings) }
+    }
     /// How long the model download has left at its current pace, while
     /// one runs and there's enough to go on (see `DownloadEstimator`).
     public private(set) var downloadSecondsRemaining: Double?
@@ -323,6 +347,8 @@ public final class CaptionPipeline {
     /// settings it was asked with; it runs when the recording ends.
     private struct HeldRetry { let settings: AppSettings? }
     private var retryAfterRecording: HeldRetry?
+    public private(set) var isTranscribingRecording = false
+    private var retryAfterTranscription: HeldRetry?
     private var restartAfterRecording: AppSettings?
     private let network: (any NetworkMonitoring)?
     /// The person said this session's model may download over cellular.
@@ -718,6 +744,7 @@ public final class CaptionPipeline {
         // captions again.
         retryAfterRecording = nil
         restartAfterRecording = nil
+        retryAfterTranscription = nil
         recovery.reset()
         listeningSince = nil
         microphoneDrop.dismiss()
@@ -834,6 +861,10 @@ public final class CaptionPipeline {
         // stopped with no retry left to bring them back.
         guard !isRecordingVoice else {
             retryAfterRecording = HeldRetry(settings: settings)
+            return
+        }
+        guard !isTranscribingRecording else {
+            retryAfterTranscription = HeldRetry(settings: settings)
             return
         }
         cancelScheduledRetry()
@@ -2564,7 +2595,7 @@ public final class CaptionPipeline {
         guard let chosen = activeSettings, chosen.engine == .homeServer,
               let onPhone = CloudCover.phoneSettings(replacing: chosen, after: failure),
               await probeEngine(for: onPhone).pendingDownloadMegabytes() == nil,
-              !Task.isCancelled, !systemInterrupted, !isRecordingVoice,
+              !Task.isCancelled, !systemInterrupted, !isRecordingVoice, !isTranscribingRecording,
               case .failed(let still) = phase, still == failure
         else { return false }
         logEvent(.note("the phone's backup is ready, starting captions on it"))

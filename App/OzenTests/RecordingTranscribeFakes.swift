@@ -12,12 +12,15 @@ final class RecordingHostFake: RecordingTranscribeHost {
     var allowsCellularDownload = false
     var savesHistory = true
     var captionsPhase: PipelinePhase = .idle
+    var retryLinedUp = false
     var installed: Set<String> = []
     var network: NetworkConditions? = .wifi
     var saveFails = false
     private(set) var saved: [TranscriptSessionRecord] = []
     private(set) var toggles = 0
     private(set) var log: [String] = []
+
+    var captionsMayLoadModels: Bool { captionsPhase.isListening || captionsPhase.isTransitioning || retryLinedUp }
 
     func installedModelVariants() -> Set<String> { installed }
 
@@ -32,7 +35,15 @@ final class RecordingHostFake: RecordingTranscribeHost {
         }
     }
 
-    func releaseKeptModel() { log.append("release") }
+    func stopCaptions() async {
+        log.append("stop")
+        captionsPhase = .idle
+        retryLinedUp = false
+    }
+
+    func beginRecordingTranscription() { log.append("hold") }
+
+    func endRecordingTranscription() { log.append("let go") }
 
     func saveRecord(_ record: TranscriptSessionRecord) throws -> Bool {
         if saveFails { throw RecordingTestFailure() }

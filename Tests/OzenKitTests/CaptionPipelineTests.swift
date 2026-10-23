@@ -3553,6 +3553,57 @@ struct CaptionPipelineDownloadNetworkTests {
         return settings
     }
 
+    @Test("captions failed with a retry lined up still count as holding the speech model; stopped, they do not", .timeLimit(.minutes(1)))
+    func retryLinedUpMayLoad() async {
+        let engine = FakeEngine(availability: .unavailable(.temporarilyUnavailable, "busy"))
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { _ in engine },
+            embedder: FakeEmbedder(),
+            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [], microphoneTailDelays: [])
+        )
+        #expect(!pipeline.mayLoadModels)
+        await pipeline.start(settings: .default)
+        #expect(await eventually { pipeline.scheduledRetry != nil })
+        #expect(pipeline.mayLoadModels)
+        pipeline.stop()
+        #expect(!pipeline.mayLoadModels)
+    }
+
+    @Test("Wi-Fi that comes back while a recording is transcribed loads the waiting model only once the recording is done", .timeLimit(.minutes(1)))
+    func wifiDuringRecordingWaits() async {
+        let network = FakeNetworkMonitor(.cellular)
+        let (pipeline, engine) = makePipeline(network: network)
+        await pipeline.start(settings: settings())
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == .waitingForWiFi)
+        #expect(!pipeline.mayLoadModels)
+
+        pipeline.beginRecordingTranscription()
+        network.change(to: .wifi)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(engine.prepareCount == 0, "a second speech model loaded beside the recording's")
+
+        pipeline.endRecordingTranscription()
+        #expect(await eventually { pipeline.phase == .listening })
+        #expect(engine.prepareCount == 1)
+    }
+
+    @Test("captions stopped by hand while a recording is transcribed stay stopped when it is done", .timeLimit(.minutes(1)))
+    func stoppedDuringRecordingStaysStopped() async {
+        let network = FakeNetworkMonitor(.cellular)
+        let (pipeline, engine) = makePipeline(network: network)
+        await pipeline.start(settings: settings())
+        pipeline.beginRecordingTranscription()
+        network.change(to: .wifi)
+        try? await Task.sleep(for: .milliseconds(100))
+
+        pipeline.stop()
+        pipeline.endRecordingTranscription()
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(engine.prepareCount == 0)
+        #expect(pipeline.phase == .idle)
+    }
+
     @Test("on cellular, a model that still has to download waits for Wi-Fi and says how big it is")
     func cellularWaits() async {
         let (pipeline, engine) = makePipeline(network: FakeNetworkMonitor(.cellular), recovery: AutoRecoveryPolicy())

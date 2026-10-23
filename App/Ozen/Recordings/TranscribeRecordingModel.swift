@@ -45,6 +45,7 @@ final class TranscribeRecordingModel {
     private let onSaved: @MainActor () -> Void
     @ObservationIgnored private var handover = CaptionsHandover()
     @ObservationIgnored private var running: Task<Void, Never>?
+    @ObservationIgnored private var holdsCaptions = false
     @ObservationIgnored private var language: UILanguage
     @ObservationIgnored private var chosenVariant: String?
     @ObservationIgnored private var duration: Double?
@@ -102,13 +103,27 @@ final class TranscribeRecordingModel {
     }
 
     func stopCaptions() async {
-        guard case .ready = state, handover.begin(phase: host.captionsPhase) else { return }
-        await host.toggleCaptionsPause()
+        guard case .ready = state else { return }
+        if handover.begin(phase: host.captionsPhase) {
+            await host.toggleCaptionsPause()
+        } else if host.captionsMayLoadModels {
+            // Starting, or failed with a retry lined up: nothing to pause,
+            // and either would load a model beside the recording's.
+            await host.stopCaptions()
+        }
         state = .ready(makeReady())
     }
 
     func start() {
-        guard case .ready(let ready) = state, !ready.captionsRunning, running == nil else { return }
+        guard case .ready(let ready) = state, running == nil else { return }
+        // Asked again now: captions may have started loading or lined up a
+        // retry since the page was drawn.
+        guard !host.captionsMayLoadModels else {
+            state = .ready(makeReady())
+            return
+        }
+        holdsCaptions = true
+        host.beginRecordingTranscription()
         let model = ready.model ?? ready.toDownload
         state = .working(.init(name: ready.name, language: ready.language, model: model, stage: ready.model == nil ? .downloading : .loading))
         awake.hold()
@@ -127,6 +142,7 @@ final class TranscribeRecordingModel {
         running?.cancel()
         running = nil
         awake.release()
+        letCaptionsGo()
         if handover.end(phase: host.captionsPhase) {
             await host.toggleCaptionsPause()
         }
@@ -143,12 +159,18 @@ final class TranscribeRecordingModel {
             installed: installed,
             toDownload: FileModelChoice.toDownload(for: language),
             durationSeconds: duration,
-            captionsRunning: host.captionsPhase.isListening
+            captionsRunning: host.captionsMayLoadModels
         )
     }
 
+    private func letCaptionsGo() {
+        guard holdsCaptions else { return }
+        holdsCaptions = false
+        host.endRecordingTranscription()
+    }
+
     private func run(_ ready: FileTranscription.Ready, model: WhisperModelOption) async {
-        host.releaseKeptModel()
+        defer { letCaptionsGo() }
         let network = await settledNetwork()
         let request = FileTranscriber.Request(
             variant: model.variant,

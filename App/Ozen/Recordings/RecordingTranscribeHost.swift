@@ -9,10 +9,13 @@ protocol RecordingTranscribeHost: AnyObject {
     var allowsCellularDownload: Bool { get }
     var savesHistory: Bool { get }
     var captionsPhase: PipelinePhase { get }
+    var captionsMayLoadModels: Bool { get }
     func installedModelVariants() -> Set<String>
     func networkConditions() -> NetworkConditions?
     func toggleCaptionsPause() async
-    func releaseKeptModel()
+    func stopCaptions() async
+    func beginRecordingTranscription()
+    func endRecordingTranscription()
     func saveRecord(_ record: TranscriptSessionRecord) throws -> Bool
 }
 
@@ -30,6 +33,7 @@ final class LiveRecordingHost: RecordingTranscribeHost {
     var allowsCellularDownload: Bool { viewModel.allowCellularModelDownload }
     var savesHistory: Bool { viewModel.saveHistory }
     var captionsPhase: PipelinePhase { viewModel.phase }
+    var captionsMayLoadModels: Bool { viewModel.pipeline.mayLoadModels }
 
     func installedModelVariants() -> Set<String> {
         Set(WhisperModelStore().installedVariants())
@@ -43,8 +47,16 @@ final class LiveRecordingHost: RecordingTranscribeHost {
         await viewModel.togglePause()
     }
 
-    func releaseKeptModel() {
-        viewModel.handleMemoryWarning(footprintBytes: DeviceMemory.footprintBytes())
+    func stopCaptions() async {
+        await viewModel.perform(.stopCaptions)
+    }
+
+    func beginRecordingTranscription() {
+        viewModel.pipeline.beginRecordingTranscription()
+    }
+
+    func endRecordingTranscription() {
+        viewModel.pipeline.endRecordingTranscription()
     }
 
     func saveRecord(_ record: TranscriptSessionRecord) throws -> Bool {

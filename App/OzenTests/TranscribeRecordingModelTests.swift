@@ -146,7 +146,7 @@ struct TranscribeRecordingModelTests {
         await screen.close()
     }
 
-    @Test("what the person chose reaches the engine: language, names tidied, cellular data, the connection, and the kept model is let go first")
+    @Test("what the person chose reaches the engine: language, names tidied, cellular data, the connection, and captions are held for the whole run")
     func requestCarriesTheChoices() async throws {
         let host = RecordingHostFake()
         host.installed = [recommended]
@@ -167,7 +167,7 @@ struct TranscribeRecordingModelTests {
         #expect(request.names == ["Dana", "Omer"])
         #expect(request.allowCellularDownload)
         #expect(request.network() == .cellular)
-        #expect(host.log == ["release", "transcribe"])
+        #expect(host.log == ["hold", "transcribe", "let go"])
         await screen.close()
     }
 
@@ -253,6 +253,63 @@ struct TranscribeRecordingModelTests {
         await screen.close()
         #expect(host.toggles == 2)
         #expect(host.captionsPhase == .listening)
+    }
+
+    @Test("captions failed with a retry lined up count as running, and Stop ends them instead of pausing")
+    func retryLinedUpIsStopped() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.retryLinedUp = true
+        let transcriber = RecordingTranscriberFake()
+        let screen = model(host: host, transcriber: transcriber)
+        await screen.load()
+        #expect(ready(screen)?.captionsRunning == true)
+        screen.start()
+        #expect(transcriber.requests.isEmpty)
+        await screen.stopCaptions()
+        #expect(host.log == ["stop"])
+        #expect(host.toggles == 0)
+        #expect(ready(screen)?.captionsRunning == false)
+        screen.start()
+        await screen.runFinished()
+        #expect(transcriber.requests.count == 1)
+        await screen.close()
+    }
+
+    @Test("a retry lined up after the page was drawn is caught when Start is tapped")
+    func lateRetryCaughtAtStart() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        let transcriber = RecordingTranscriberFake()
+        let screen = model(host: host, transcriber: transcriber)
+        await screen.load()
+        #expect(ready(screen)?.captionsRunning == false)
+        host.retryLinedUp = true
+        screen.start()
+        #expect(transcriber.requests.isEmpty)
+        #expect(ready(screen)?.captionsRunning == true)
+        #expect(!host.log.contains("hold"))
+        await screen.close()
+    }
+
+    @Test("a cancelled run lets captions go, once")
+    func cancelledRunLetsGo() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        let gate = RecordingTestGate()
+        let transcriber = RecordingTranscriberFake { _, _ in
+            await gate.wait()
+            return .cancelled
+        }
+        let screen = model(host: host, transcriber: transcriber)
+        await screen.load()
+        screen.start()
+        #expect(await recordingWaitUntil { transcriber.requests.count == 1 })
+        screen.stop()
+        await gate.open()
+        await screen.runFinished()
+        await screen.close()
+        #expect(host.log.filter { $0 == "let go" }.count == 1)
     }
 
     @Test("captions the person paused themselves are left paused")
