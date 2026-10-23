@@ -141,6 +141,18 @@ struct RecordingAudioReaderTests {
         #expect((0.1...0.65).contains(ReaderFiles.peak(Array(middle))))
     }
 
+    @Test("a WhatsApp voice note, Ogg Opus, is read like any recording")
+    func oggOpusVoiceNote() async throws {
+        let url = try SpeakerFixtureLoading.url(named: "voice-note.opus")
+        let reader = try await RecordingAudioReader.open(url)
+        #expect(abs((reader.durationSeconds ?? 0) - 5) < 0.1)
+        let samples = try ReaderFiles.all(reader).flatMap { $0 }
+        #expect(abs(samples.count - 80_000) <= 1_600, "\(samples.count) samples")
+        let middle = samples[32_000..<48_000]
+        #expect(abs(ReaderFiles.crossings(middle) - 880) <= 12, "\(ReaderFiles.crossings(middle)) crossings")
+        #expect((0.2...0.4).contains(ReaderFiles.peak(Array(middle))))
+    }
+
     @Test("the sound of a movie file is read the same way")
     func movie() async throws {
         let audio = try ReaderFiles.aac(seconds: 20)
