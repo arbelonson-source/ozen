@@ -77,6 +77,25 @@ class CaptionPipelineRecoveryTest {
     }
 
     @Test
+    fun `a failure with a retry lined up still counts as captions holding the speech model`() = runTest {
+        val engine = FakeEngine()
+        val pipeline = makeRecoveringPipeline(
+            engine = engine,
+            policy = AutoRecoveryPolicy(glitchDelays = listOf(30.0), downloadDelays = emptyList()),
+            clock = TestClock(),
+        )
+        assertFalse(pipeline.mayLoadModels)
+        pipeline.start(AppSettings.default)
+        assertTrue(pipeline.mayLoadModels)
+        engine.endStream(throwing = TestError())
+        assertTrue(eventually { pipeline.scheduledRetry != null })
+        assertFalse(pipeline.phase.isListening || pipeline.phase.isTransitioning)
+        assertTrue(pipeline.mayLoadModels)
+        pipeline.stopFromNotification()
+        assertFalse(pipeline.mayLoadModels)
+    }
+
+    @Test
     fun `a step of getting ready is logged with how long the step before took, not a clock reading`() = runTest {
         val engine = FakeEngine(
             progressUpdates = listOf(
