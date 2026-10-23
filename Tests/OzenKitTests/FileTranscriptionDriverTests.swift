@@ -132,6 +132,22 @@ struct FileTranscriptionDriverTests {
         #expect(engine.streamsOpened == 2)
     }
 
+    @Test("stopping while the last stretch, speech to the very end, is turned into text reports it was cancelled, not finished")
+    func cancelDuringLastStretch() async {
+        let samples = FileRunAudio.timeline([(false, 1), (true, 2)])
+        let box = FileRunTaskBox()
+        let engine = FileRunEngine { _, _ in
+            box.cancel()
+            return [FileRunEngine.final("cut off")]
+        }
+        let run = driver(engine)
+        let task = Task { await run.run(source: fileRunSource(samples), report: { _ in }) }
+        box.set(task)
+        let outcome = await task.value
+        #expect(outcome.result == .cancelled)
+        #expect(engine.streamsOpened == 1)
+    }
+
     @Test("the audio kept in memory stays near one stretch however long the recording is")
     func memory() async {
         let cap = WhisperKitDecodeRoom.longestLineSeconds(promptTokens: 0, upTo: 28)

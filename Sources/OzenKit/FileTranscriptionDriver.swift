@@ -237,7 +237,10 @@ public struct FileTranscriptionDriver: Sendable {
         for attempt in 0..<2 {
             streams += 1
             do {
-                return .text(try await read(window))
+                let text = try await read(window)
+                // A stream ends quietly when its task is cancelled, handing
+                // back only the start of the line.
+                return Task.isCancelled ? .cancelled : .text(text)
             } catch {
                 if Task.isCancelled || error is CancellationError { return .cancelled }
                 failure = error
