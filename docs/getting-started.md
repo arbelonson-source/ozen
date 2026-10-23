@@ -5,7 +5,8 @@ For the person who will use Ozen, and anyone helping to set up the phone.
 This guide follows the iPhone and iPad. The Android app (see
 [Installing on Android](../README.md#installing-on-android)) asks the same
 things in nearly the same words, without the setup page: it always starts
-with the phone's own speech model.
+with the phone's own speech model. Its microphone page has its own buttons
+to approve the microphone and notifications.
 
 ## What Ozen does
 
@@ -22,7 +23,8 @@ The first time Ozen opens, it shows short pages in large type: seven when the ca
 downloaded speech model, eight when they do (the extra page is **Choose the
 speech model**, described under "The speech model" below). Swipe, or
 tap **Next** (ha-ba) at the bottom. Tap **Skip** (dilug) to leave the
-pages at any time. On the last page the button changes to **Start**
+pages; on the microphone page it shows only once iOS's questions there have
+been answered. On the last page the button changes to **Start**
 (lehatchil).
 
 1. **Welcome.** Says what the app is. On a phone that keeps everything
@@ -78,10 +80,12 @@ for Wi-Fi.
 
 ### The microphone
 
-Ozen needs the microphone to hear the conversation. Tap **Approve the
-microphone** (le'asher et ha-mikrofon) and answer the question iOS shows.
-When the audio stays on the phone, the page says that the sound doesn't
-leave the phone and isn't kept unless you mark a problem.
+Ozen needs the microphone to hear the conversation. The page explains why,
+then **Next** (ha-ba) brings up the question iOS asks; answer it there. The
+walkthrough doesn't go on until it has been answered, and **Skip** isn't
+offered on this page until then. When the audio stays on the phone, the page
+says that the sound doesn't leave the phone and isn't kept unless you mark a
+problem.
 
 If the answer is no, the page says the microphone is blocked and that
 without it there are no captions. Tap **Open phone settings** (ptichat
@@ -92,11 +96,12 @@ access" (ein gisha la-mikrofon). Tap it and it opens iOS Settings.
 
 ### Notifications
 
-Once the microphone is approved, the same page offers **Approve
-notifications** (le'asher hatra'ot). They let Ozen tell you about a
+Once the microphone is approved, the same page explains notifications, and
+**Next** brings up iOS's question about them. They let Ozen tell you about a
 doorbell, an alarm or your name when the phone is in a pocket or locked. If
 you say no, the page shows that there are no notifications and that this
-can be changed in Settings. The captions still work.
+can be changed in Settings. The captions still work. After this answer,
+**Next** goes on to the next page.
 
 ### Speech recognition
 

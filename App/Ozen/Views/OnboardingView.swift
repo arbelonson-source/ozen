@@ -15,7 +15,7 @@ struct OnboardingView: View {
     @State private var requesting = false
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Step: CaseIterable {
         case welcome, howItWorks, language, engine, model, microphone, name, ready
@@ -28,6 +28,16 @@ struct OnboardingView: View {
     }
 
     @State private var pickedModel = false
+
+    /// UI test walkthroughs can't answer iOS's own prompts; there, Next on
+    /// the microphone page answers yes for them.
+    private static var answersPermissionsForScreenshots: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-uiTestScreenshots")
+        #else
+        false
+        #endif
+    }
 
     private static var forcesNotificationDenial: Bool {
         #if DEBUG
@@ -92,7 +102,15 @@ struct OnboardingView: View {
         // awake for as long as it's on screen at all.
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
-        .onChange(of: page) { _, newPage in announce(page: newPage) }
+        .onChange(of: page) { oldPage, newPage in
+            if newPage > oldPage, steps.indices.contains(oldPage), steps[oldPage] == .microphone,
+               let unasked = pendingPermission(on: oldPage) {
+                page = oldPage
+                ask(unasked)
+                return
+            }
+            announce(page: newPage)
+        }
     }
 
     @ViewBuilder
@@ -204,7 +222,7 @@ struct OnboardingView: View {
                 subtitle: viewModel.settings.spokenLanguage == .hebrew
                     ? tr("הזיהוי של אפל, שמובנה בטלפון. מתחיל מיד, אבל עברית זמינה רק בחלק מגרסאות iOS.", "Apple’s recognition, built into the phone. Starts right away, but Hebrew is only available on some iOS versions.")
                     : tr("הזיהוי של אפל, שמובנה בטלפון. מתחיל מיד, אבל לא כל השפות זמינות.", "Apple’s recognition, built into the phone. Starts right away, but not every language is available."),
-                symbol: "apple.logo",
+                symbol: "bolt.fill",
                 selected: viewModel.settings.engine == .appleSpeech
             ) {
                 Task { await viewModel.setEngine(.appleSpeech) }
@@ -240,7 +258,7 @@ struct OnboardingView: View {
             Button {
                 pickedModel = false
                 Task { await viewModel.setWhisperModel(viewModel.settings.recommendedWhisperVariant) }
-                withAnimation { page += 1 }
+                withAnimation(reduceMotion ? nil : .default) { page += 1 }
             } label: {
                 Label(tr("להישאר עם המודל המומלץ", "Keep the recommended model"), systemImage: "checkmark")
                     .multilineTextAlignment(.center)
@@ -271,10 +289,12 @@ struct OnboardingView: View {
                 Label(tr("המיקרופון מאושר", "Microphone approved"), systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.readable(.green))
                     .font(.title3.weight(.semibold))
+                    .accessibilityIdentifier("onboardingMicrophoneApproved")
                 Text(tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע על צלצול בדלת, אזעקה או השם שלך.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."))
                 if let notificationsAllowed {
                     Label(notificationsAllowed ? tr("ההתראות מאושרות", "Notifications approved") : tr("בלי התראות. אפשר לשנות בהגדרות.", "No notifications. This can be changed in Settings."), systemImage: notificationsAllowed ? "checkmark.circle.fill" : "bell.slash")
                         .foregroundStyle(.readable(notificationsAllowed ? .green : .secondary))
+                        .accessibilityIdentifier("onboardingNotificationsAnswered")
                     if OnboardingNotificationAdvice.showsSettingsButton(allowed: notificationsAllowed) {
                         Button {
                             if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
@@ -289,17 +309,6 @@ struct OnboardingView: View {
                         .controlSize(.large)
                         .accessibilityIdentifier("onboardingOpenNotificationSettings")
                     }
-                } else {
-                    Button {
-                        Task { notificationsAllowed = await AlertNotifier.shared.requestAuthorization() }
-                    } label: {
-                        Label(tr("לאשר התראות", "Approve notifications"), systemImage: "bell.badge")
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .ozenGlassButton()
-                    .controlSize(.large)
                 }
             case .denied:
                 VStack(alignment: .leading, spacing: 12) {
@@ -320,24 +329,7 @@ struct OnboardingView: View {
                     .controlSize(.large)
                 }
             case nil:
-                Button {
-                    requesting = true
-                    Task {
-                        microphone = await viewModel.requestMicrophonePermission()
-                        requesting = false
-                    }
-                } label: {
-                    approveMicrophoneLabel
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity)
-                }
-                .ozenGlassButton(prominent: true)
-                // Three lines tall at the largest sizes, a capsule is a
-                // circle, and it cut the corners off the words in it.
-                .buttonBorderShape(dynamicTypeSize.isAccessibilitySize ? .roundedRectangle(radius: 24) : .automatic)
-                .controlSize(.large)
-                .disabled(requesting)
+                EmptyView()
             }
         }
         // Coming back from "Open phone settings" below: re-check rather
@@ -350,27 +342,14 @@ struct OnboardingView: View {
                 microphone = await viewModel.requestMicrophonePermission()
             }
             guard microphone == .granted else { return }
+            // A check still waiting when Next got her answer reads "never
+            // asked" and would erase it, bringing the question back.
+            let current = await AlertNotifier.shared.isAllowed()
             notificationsAllowed = OnboardingNotificationAdvice.statusOnReturn(
-                current: await AlertNotifier.shared.isAllowed(),
+                current: current,
+                known: notificationsAllowed,
                 fixtureForcesDenial: Self.forcesNotificationDenial
             )
-        }
-    }
-
-    /// At the largest sizes on a 375-point phone, the microphone icon beside
-    /// the words left the last word too little room and it broke before its
-    /// last letter; there the icon goes above them.
-    @ViewBuilder
-    private var approveMicrophoneLabel: some View {
-        let title = tr("לאשר את המיקרופון", "Approve the microphone")
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(spacing: 6) {
-                Image(systemName: "mic.fill")
-                    .accessibilityHidden(true)
-                Text(title)
-            }
-        } else {
-            Label(title, systemImage: "mic.fill")
         }
     }
 
@@ -413,16 +392,20 @@ struct OnboardingView: View {
                 // text German's "Weiter" broke inside the word and
                 // "Überspringen" took three lines, so there Next spans the
                 // screen with Skip under it, as on Android.
-                ViewThatFits(in: .horizontal) {
-                    HStack {
-                        skipButton
-                        Spacer()
-                        nextButton(spanning: false)
+                if pendingPermission == nil {
+                    ViewThatFits(in: .horizontal) {
+                        HStack {
+                            skipButton
+                            Spacer()
+                            nextButton(spanning: false)
+                        }
+                        VStack(spacing: 8) {
+                            nextButton(spanning: true)
+                            skipButton
+                        }
                     }
-                    VStack(spacing: 8) {
-                        nextButton(spanning: true)
-                        skipButton
-                    }
+                } else {
+                    nextButton(spanning: true)
                 }
             } else {
                 Button {
@@ -455,7 +438,11 @@ struct OnboardingView: View {
 
     private func nextButton(spanning: Bool) -> some View {
         Button {
-            withAnimation { page += 1 }
+            if let pendingPermission {
+                ask(pendingPermission)
+            } else {
+                withAnimation(reduceMotion ? nil : .default) { page += 1 }
+            }
         } label: {
             Text(tr("הבא", "Next"))
                 .multilineTextAlignment(.center)
@@ -470,10 +457,47 @@ struct OnboardingView: View {
         .accessibilityIdentifier("onboardingNextButton")
         .ozenGlassButton(prominent: true)
         .controlSize(.large)
+        .disabled(requesting)
+    }
+
+    private enum Permission { case microphone, notifications }
+
+    /// App Review (guideline 5.1.1(iv), 2026-10-21): after the page that
+    /// explains a permission, the person must always go on to iOS's own
+    /// question, and the button to it must not read "Approve". So the
+    /// microphone page has no button of its own: Next asks for the
+    /// microphone, then (once it is allowed) for notifications, and moves
+    /// on only after both were answered; Skip waits until then.
+    private var pendingPermission: Permission? { pendingPermission(on: page) }
+
+    private func pendingPermission(on index: Int) -> Permission? {
+        guard steps.indices.contains(index), steps[index] == .microphone else { return nil }
+        if microphone == nil { return .microphone }
+        if microphone == .granted && notificationsAllowed == nil { return .notifications }
+        return nil
+    }
+
+    private func ask(_ permission: Permission) {
+        guard !requesting else { return }
+        if Self.answersPermissionsForScreenshots {
+            switch permission {
+            case .microphone: microphone = .granted
+            case .notifications: notificationsAllowed = true
+            }
+            return
+        }
+        requesting = true
+        Task {
+            switch permission {
+            case .microphone: microphone = await viewModel.requestMicrophonePermission()
+            case .notifications: notificationsAllowed = await AlertNotifier.shared.requestAuthorization()
+            }
+            requesting = false
+        }
     }
 
     private func finish() {
-        withAnimation { viewModel.completeOnboarding() }
+        withAnimation(reduceMotion ? nil : .default) { viewModel.completeOnboarding() }
     }
 
     private static var pairedNote: String {
