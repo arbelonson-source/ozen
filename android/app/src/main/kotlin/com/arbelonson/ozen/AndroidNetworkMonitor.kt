@@ -17,6 +17,8 @@ class AndroidNetworkMonitor(context: Context) : NetworkMonitoring {
 
     override var onChange: ((NetworkConditions) -> Unit)? = null
 
+    var alsoOnChange: ((NetworkConditions) -> Unit)? = null
+
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = report(conditions(capabilities))
 
@@ -33,6 +35,7 @@ class AndroidNetworkMonitor(context: Context) : NetworkMonitoring {
         if (conditions == current) return
         current = conditions
         onChange?.invoke(conditions)
+        alsoOnChange?.invoke(conditions)
     }
 
     private fun conditions(capabilities: NetworkCapabilities): NetworkConditions {

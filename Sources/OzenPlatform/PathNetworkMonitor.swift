@@ -15,11 +15,7 @@ public final class PathNetworkMonitor: NetworkMonitoring {
         // to belong to the main actor (which Swift 6 checks at run time for
         // framework callbacks). It hops to the main actor itself.
         monitor.pathUpdateHandler = { @Sendable [weak self] path in
-            let conditions = NetworkConditions(
-                isConnected: path.status == .satisfied,
-                isExpensive: path.isExpensive,
-                isConstrained: path.isConstrained
-            )
+            let conditions = NetworkConditions(path: path)
             Task { @MainActor [weak self] in
                 self?.update(conditions)
             }

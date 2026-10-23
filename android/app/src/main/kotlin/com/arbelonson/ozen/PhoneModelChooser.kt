@@ -40,6 +40,9 @@ interface PhoneModels {
 
     fun choose(file: String)
 
+    /** The connection or the cellular switch changed: a model waiting for Wi-Fi or a connection starts now if it can. */
+    fun resumeWaiting()
+
     suspend fun delete(file: String): PhoneModelDeletion.Result
 
     fun runCheck(thenChooseBest: Boolean)
@@ -90,6 +93,10 @@ class PhoneModelChooser(
 
     override fun choose(file: String) {
         picks += 1
+        start(file)
+    }
+
+    private fun start(file: String) {
         val current = settings.current.value
         val model = PhoneModelCatalog.offered(current.spokenLanguage).firstOrNull { it.file == file } ?: return
         synchronized(lock) {
@@ -103,16 +110,28 @@ class PhoneModelChooser(
         }
     }
 
+    override fun resumeWaiting() {
+        synchronized(lock) {
+            val file = switchState.value.waitingFile ?: return
+            if (ModelDownloadGate.decide(network(), settings.current.value.allowCellularModelDownload) == ModelDownloadGate.Decision.Proceed) start(file)
+        }
+    }
+
     override suspend fun delete(file: String): PhoneModelDeletion.Result {
         return withContext(NonCancellable) {
             val result = withContext(io) {
                 synchronized(lock) {
-                    if ((switchState.value as? PhoneModelSwitch.Downloading)?.file == file) PhoneModelDeletion.Result.Refused
-                    else PhoneModelDeletion(modelFolder, settings.current.value.phoneModel.file, remove).delete(file)
+                    if ((switchState.value as? PhoneModelSwitch.Downloading)?.file == file) {
+                        PhoneModelDeletion.Result.Refused
+                    } else {
+                        PhoneModelDeletion(modelFolder, settings.current.value.phoneModel.file, remove).delete(file).also { freed ->
+                            val state = switchState.value
+                            if (freed is PhoneModelDeletion.Result.Freed && (state is PhoneModelSwitch.NotEnoughRoom || state.waitingFile == file)) switchState.value = PhoneModelSwitch.Idle
+                        }
+                    }
                 }
             }
             refreshInstalled()
-            if (result is PhoneModelDeletion.Result.Freed && switchState.value is PhoneModelSwitch.NotEnoughRoom) switchState.value = PhoneModelSwitch.Idle
             result
         }
     }
@@ -167,8 +186,13 @@ class PhoneModelChooser(
             if (done) {
                 switchState.value = PhoneModelSwitch.Idle
                 use(model)
+            } else if (lostWiFi) {
+                switchState.value = PhoneModelSwitch.WaitingForWiFi(model.file)
+                resumeWaiting()
+            } else if (ModelDownloadGate.decide(network(), settings.current.value.allowCellularModelDownload) == ModelDownloadGate.Decision.Offline) {
+                switchState.value = PhoneModelSwitch.Offline(model.file)
             } else {
-                switchState.value = if (lostWiFi) PhoneModelSwitch.WaitingForWiFi(model.file) else PhoneModelSwitch.Failed(model.file)
+                switchState.value = PhoneModelSwitch.Failed(model.file)
             }
         }
     }
@@ -201,3 +225,10 @@ class PhoneModelChooser(
         }
     }
 }
+
+private val PhoneModelSwitch.waitingFile: String?
+    get() = when (this) {
+        is PhoneModelSwitch.WaitingForWiFi -> file
+        is PhoneModelSwitch.Offline -> file
+        else -> null
+    }

@@ -28,6 +28,7 @@ class AndroidNetworkMonitorDeviceTest {
     @Test
     fun theConnectionGoingAndComingBackReachesThePipelineOnTheMainThread() {
         val reported = CopyOnWriteArrayList<NetworkConditions>()
+        val reportedToo = CopyOnWriteArrayList<NetworkConditions>()
         val offMain = CopyOnWriteArrayList<String>()
         lateinit var monitor: AndroidNetworkMonitor
         instrumentation.runOnMainSync {
@@ -36,6 +37,7 @@ class AndroidNetworkMonitorDeviceTest {
                 reported += conditions
                 if (Looper.myLooper() != Looper.getMainLooper()) offMain += Thread.currentThread().name
             }
+            monitor.alsoOnChange = { conditions -> reportedToo += conditions }
         }
         try {
             assertTrue("never online at the start", within(10_000) { monitor.current?.isConnected == true })
@@ -48,6 +50,7 @@ class AndroidNetworkMonitorDeviceTest {
             airplaneMode(false)
             assertTrue("coming back never reported", within(60_000) { reported.lastOrNull()?.isConnected == true })
             assertTrue("the pipeline never heard it came back", within(20_000) { app.captions.pipeline.networkConditions?.isConnected == true })
+            assertTrue("the second listener missed some changes", within(5_000) { reportedToo.toList() == reported.toList() })
             assertEquals(emptyList<String>(), offMain)
         } finally {
             instrumentation.runOnMainSync { monitor.close() }

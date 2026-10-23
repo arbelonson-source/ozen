@@ -54,6 +54,7 @@ import androidx.compose.ui.test.onParent
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
@@ -1207,10 +1208,13 @@ class CaptionScreenDeviceTest {
 
             compose.onNodeWithText("Clear").performClick()
             compose.onNodeWithText("Type here…").assertIsDisplayed()
-            compose.onNodeWithText("Clear").assertIsNotEnabled()
+            compose.onNodeWithText("Clear").assertDoesNotExist()
+            compose.onNodeWithText("Restore").assertIsEnabled()
             compose.onNodeWithText("Flip").assertIsNotEnabled()
             compose.onNodeWithText("Speak").assertIsNotEnabled()
             compose.onNode(hasSetTextAction()).performTextInput(underline)
+            compose.onNodeWithText("Restore").assertDoesNotExist()
+            compose.onNodeWithText("Clear").assertIsEnabled()
             compose.onNodeWithText("Flip").performClick()
             compose.onNode(hasSetTextAction()).assertDoesNotExist()
             // In some full runs, and never alone, the ink came out mid-picture
@@ -1242,6 +1246,53 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Say something").assertExists()
         } finally {
             app.settings.change { it.display = before }
+        }
+    }
+
+    // As on the iPhone, Clear can be taken back with Restore until something
+    // new is typed, and a screen reader is told so each time it clears.
+    @Test
+    fun theBigLettersClearTurnsIntoRestoreWhichSurvivesTurningThePhoneIsDroppedByTypingAndIsSaidToAScreenReader() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val readerBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        val announced = CopyOnWriteArrayList<String>()
+        val note = "Text cleared. It can be restored"
+        try {
+            ScreenReader.isOn = { true }
+            ScreenReader.announce = { _, text -> announced += text }
+            assertTrue("no voice on the phone", within(15_000) { app.captions.canAskToRepeat() })
+            compose.onNodeWithContentDescription("Say something out loud").performClick()
+            compose.waitUntil(5_000) { sayFieldFocused() }
+            compose.onNode(hasSetTextAction()).performTextInput("Pharmacy")
+            compose.onNodeWithText("Full screen, big letters").performScrollTo().performClick()
+            compose.onNodeWithText("Say something").assertDoesNotExist()
+            compose.onNodeWithText("Restore").assertDoesNotExist()
+
+            compose.onNodeWithText("Clear").performClick()
+            compose.onNodeWithText("Clear").assertDoesNotExist()
+            compose.onNodeWithText("Restore").assertIsEnabled()
+            assertEquals("said $announced", 1, announced.count { it == note })
+
+            turnThePhone()
+            compose.onNodeWithText("Restore").assertIsEnabled()
+            compose.onNodeWithText("Restore").performClick()
+            compose.onNode(hasSetTextAction()).assert(hasText("Pharmacy"))
+            compose.onNodeWithText("Restore").assertDoesNotExist()
+
+            compose.onNodeWithText("Clear").performClick()
+            compose.onNodeWithText("Restore").assertIsEnabled()
+            assertEquals("said $announced", 2, announced.count { it == note })
+            compose.onNode(hasSetTextAction()).performTextInput("x")
+            compose.onNodeWithText("Restore").assertDoesNotExist()
+            compose.onNode(hasSetTextAction()).performTextClearance()
+            compose.onNodeWithText("Restore").assertDoesNotExist()
+            compose.onNodeWithText("Clear").assertIsNotEnabled()
+            assertEquals("said $announced", 2, announced.count { it == note })
+            compose.onNodeWithText("Close").performClick()
+        } finally {
+            ScreenReader.isOn = readerBefore
+            ScreenReader.announce = announceBefore
         }
     }
 

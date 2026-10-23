@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
@@ -44,6 +45,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,6 +63,7 @@ import com.arbelonson.ozen.core.tr
  * she reads it here; and what she typed can be turned upside down to her,
  * so the person facing her reads it instead of hearing it. It edits the
  * Say screen's own field, so nothing typed on either is lost on the other.
+ * Clear can be taken back with Restore until something new is typed.
  */
 @Composable
 internal fun BigTextScreen(
@@ -74,6 +77,8 @@ internal fun BigTextScreen(
 ) {
     BackHandler(onBack = onClose)
     var flipped by rememberSaveable { mutableStateOf(false) }
+    var cleared by rememberSaveable { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
     val empty = text.isBlank()
     // Never smaller than her own captions, which can be set larger.
     val words = TextStyle(color = look.text, fontSize = maxOf(FONT_SIZE, captionSize).sp, fontWeight = FontWeight.Bold)
@@ -100,7 +105,7 @@ internal fun BigTextScreen(
         } else {
             BasicTextField(
                 value = text,
-                onValueChange = onText,
+                onValueChange = { cleared = BigTextClear.typed(it, cleared); onText(it) },
                 textStyle = words,
                 cursorBrush = SolidColor(look.text),
                 modifier = Modifier
@@ -119,8 +124,23 @@ internal fun BigTextScreen(
         }
         // As on the iPhone, a screen reader hears what flipping is for.
         val flipHint = tr("להפוך את הטקסט כדי שמי שיושב מולך יוכל לקרוא", "Flip the text so the person sitting across from you can read it")
+        val clear = {
+            cleared = BigTextClear.cleared(text, cleared)
+            onText("")
+            flipped = false
+            if (cleared != null && ScreenReader.isOn(context)) {
+                ScreenReader.announce(context, tr("הטקסט נוקה. אפשר לשחזר אותו", "Text cleared. It can be restored"))
+            }
+        }
+        val previous = cleared
         val buttons = buildList<BigAction> {
-            add(BigAction(Icons.Rounded.Delete, tr("ניקוי", "Clear"), null, { onText(""); flipped = false }.takeUnless { empty }))
+            // Clear is disabled once the text is gone, so Restore takes its
+            // place, as on the iPhone: one more button would squeeze the rest.
+            if (previous != null && BigTextClear.restorable(text, previous)) {
+                add(BigAction(Icons.AutoMirrored.Rounded.Undo, tr("שחזור", "Restore"), null, { onText(previous); cleared = null }))
+            } else {
+                add(BigAction(Icons.Rounded.Delete, tr("ניקוי", "Clear"), null, clear.takeUnless { empty }))
+            }
             add(
                 BigAction(
                     if (flipped) Icons.AutoMirrored.Rounded.ArrowBack else Icons.Rounded.Flip,
