@@ -7,11 +7,20 @@ import OzenKit
 private final class ReaderReadLog: @unchecked Sendable {
     private let lock = NSLock()
     private var counts: [AVAudioFrameCount] = []
+    private var frames = 0
     private let failAt: Int?
 
     init(failingAt: Int? = nil) { failAt = failingAt }
 
     var requested: [AVAudioFrameCount] { lock.withLock { counts } }
+
+    var delivered: Int { lock.withLock { frames } }
+
+    func read(_ file: AVAudioFile, into buffer: AVAudioPCMBuffer, count: AVAudioFrameCount) throws {
+        try record(count)
+        try file.read(into: buffer, frameCount: count)
+        lock.withLock { frames += Int(buffer.frameLength) }
+    }
 
     func record(_ count: AVAudioFrameCount) throws {
         let number = lock.withLock { () -> Int in
@@ -107,15 +116,14 @@ struct RecordingAudioReaderTests {
         try ReaderFiles.write(to: url, seconds: 180, rate: 16_000, channels: 1)
         let log = ReaderReadLog()
         let reader = try await RecordingAudioReader.open(url, chunkSeconds: 30) { file, buffer, count in
-            try log.record(count)
-            try file.read(into: buffer, frameCount: count)
+            try log.read(file, into: buffer, count: count)
         }
         let first = try #require(try reader.nextChunk())
         #expect(first.count == 480_000)
-        #expect((30...32).contains(log.requested.count))
         #expect(log.requested.allSatisfy { $0 <= 16_000 })
+        #expect((480_000...496_000).contains(log.delivered))
         _ = try reader.nextChunk()
-        #expect((60...64).contains(log.requested.count))
+        #expect((960_000...976_000).contains(log.delivered))
     }
 
     @Test("a phone recording in AAC, stereo at 48 kHz, comes out as the same length and the same tone at 16 kHz")
@@ -208,13 +216,13 @@ struct RecordingAudioReaderTests {
         try ReaderFiles.write(to: url, seconds: 180, rate: 16_000, channels: 1)
         let log = ReaderReadLog(failingAt: 40)
         let reader = try await RecordingAudioReader.open(url, chunkSeconds: 30) { file, buffer, count in
-            try log.record(count)
-            try file.read(into: buffer, frameCount: count)
+            try log.read(file, into: buffer, count: count)
         }
         let first = try #require(try reader.nextChunk())
         let second = try #require(try reader.nextChunk())
         #expect(first.count == 480_000)
-        #expect(abs(second.count - 9 * 16_000) <= 200, "\(second.count) samples, \(log.requested.count) reads")
+        #expect(log.delivered > 480_000)
+        #expect(abs(first.count + second.count - log.delivered) <= 200, "\(second.count) samples after \(log.delivered) frames read")
         #expect(throws: RecordingReadProblem.stalled) { _ = try reader.nextChunk() }
         #expect(try reader.nextChunk() == nil)
     }
