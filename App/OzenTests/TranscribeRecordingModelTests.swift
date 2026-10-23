@@ -312,6 +312,27 @@ struct TranscribeRecordingModelTests {
         #expect(host.log.filter { $0 == "let go" }.count == 1)
     }
 
+    @Test("closing the screen mid-run lets captions go only once the run has really ended")
+    func closeWaitsForTheRun() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        let gate = RecordingTestGate()
+        let transcriber = RecordingTranscriberFake { _, _ in
+            await gate.wait()
+            return .cancelled
+        }
+        let screen = model(host: host, transcriber: transcriber)
+        await screen.load()
+        screen.start()
+        #expect(await recordingWaitUntil { transcriber.requests.count == 1 })
+        let closing = Task { await screen.close() }
+        for _ in 0..<50 { await Task.yield() }
+        #expect(!host.log.contains("let go"), "captions were let go while the run still held its model")
+        await gate.open()
+        await closing.value
+        #expect(host.log.filter { $0 == "let go" }.count == 1)
+    }
+
     @Test("captions the person paused themselves are left paused")
     func pausedByThePerson() async throws {
         let host = RecordingHostFake()

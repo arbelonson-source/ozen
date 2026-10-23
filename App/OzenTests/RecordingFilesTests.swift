@@ -91,4 +91,17 @@ struct RecordingFilesTests {
         #expect(!FileManager.default.fileExists(atPath: left.path))
         #expect(!FileManager.default.fileExists(atPath: folders.outside.path))
     }
+
+    @Test("a shared file left in the Inbox goes once it has been there over an hour; a newly arrived one stays")
+    func inboxSweep() throws {
+        let folders = try Folders()
+        defer { folders.remove() }
+        let left = try folders.file("Container/Documents/Inbox/Lecture.mp4")
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSinceNow: -30 * 86_400)], ofItemAtPath: left.path)
+        RecordingFiles.sweepInboxes([folders.inbox])
+        #expect(FileManager.default.fileExists(atPath: left.path), "a file shared just now was taken for an old one by its own date")
+        RecordingFiles.sweepInboxes([folders.inbox], now: Date(timeIntervalSinceNow: 2 * 3_600))
+        #expect(!FileManager.default.fileExists(atPath: left.path))
+        #expect(FileManager.default.fileExists(atPath: folders.inbox.path))
+    }
 }

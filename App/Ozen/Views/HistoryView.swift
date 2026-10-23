@@ -26,6 +26,7 @@ struct HistoryView: View {
     /// there is a separate, composable way in.
     @State private var speakerFilter: String?
     @State private var choosingRecording = false
+    @State private var openingRecording = false
     @State private var transcribing: TranscribeRecordingModel?
     @State private var recordingProblem: String?
 
@@ -42,14 +43,25 @@ struct HistoryView: View {
                             .foregroundStyle(.secondary)
                     }
                 } icon: {
-                    Image(systemName: "waveform")
+                    if openingRecording {
+                        ProgressView()
+                    } else {
+                        Image(systemName: "waveform")
+                    }
                 }
             }
+            .disabled(openingRecording)
+            .accessibilityValue(openingRecording ? tr("ההקלטה נפתחת", "Opening the recording") : "")
             .accessibilityIdentifier("transcribeRecordingRow")
         }
     }
 
+    /// Opening copies the file, which for a long video or one still in
+    /// iCloud takes a while; a second tap meanwhile would copy it twice.
     private func openRecording(_ url: URL) async {
+        guard !openingRecording else { return }
+        openingRecording = true
+        defer { openingRecording = false }
         do {
             let file = try await RecordingFiles.open(url)
             transcribing = TranscribeRecordingModel(file: file, host: LiveRecordingHost(viewModel: viewModel), onSaved: { reload() })

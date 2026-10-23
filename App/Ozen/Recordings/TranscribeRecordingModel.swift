@@ -141,7 +141,12 @@ final class TranscribeRecordingModel {
 
     func close() async {
         closed = true
-        running?.cancel()
+        let run = running
+        run?.cancel()
+        // Stopping is not instant: until the run has ended it may still hold
+        // its speech model and read the file, so captions and the file are
+        // let go only after.
+        await run?.value
         running = nil
         awake.release()
         letCaptionsGo()

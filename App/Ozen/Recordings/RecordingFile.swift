@@ -30,18 +30,40 @@ nonisolated enum RecordingFiles {
         FileManager.default.temporaryDirectory.appendingPathComponent("ozen-recording-copies", isDirectory: true)
     }
 
-    static func guardian() -> SharedRecordingGuard {
+    /// Where iOS puts the copy of a file shared to Ozen, or sent by AirDrop.
+    static var inboxes: [URL] {
         let manager = FileManager.default
         let documents = manager.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let airdrop = manager.temporaryDirectory.appendingPathComponent("\(Bundle.main.bundleIdentifier ?? "")-Inbox", isDirectory: true)
-        return SharedRecordingGuard(
+        return [documents.appendingPathComponent("Inbox", isDirectory: true), airdrop]
+    }
+
+    static func guardian() -> SharedRecordingGuard {
+        SharedRecordingGuard(
             containerRoots: [URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)],
-            allowed: [documents.appendingPathComponent("Inbox", isDirectory: true), copiesFolder, airdrop]
+            allowed: inboxes + [copiesFolder]
         )
     }
 
     static func sweepCopies(in folder: URL = RecordingFiles.copiesFolder) {
         try? FileManager.default.removeItem(at: folder)
+    }
+
+    /// A shared file is deleted when its screen is done, but not when the
+    /// app ended first, and the Inbox is in the phone's backup. One that
+    /// arrived in the last hour may be the file this launch opens, so it
+    /// stays. The age is from its arrival: the copy keeps the original's
+    /// dates, and a month-old voice note shared now is not old.
+    static func sweepInboxes(_ folders: [URL] = RecordingFiles.inboxes, olderThan age: TimeInterval = 3_600, now: Date = Date()) {
+        let manager = FileManager.default
+        for folder in folders {
+            let files = (try? manager.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.addedToDirectoryDateKey])) ?? []
+            for file in files {
+                guard let arrived = (try? file.resourceValues(forKeys: [.addedToDirectoryDateKey]))?.addedToDirectoryDate,
+                      now.timeIntervalSince(arrived) > age else { continue }
+                try? manager.removeItem(at: file)
+            }
+        }
     }
 
     static func open(_ picked: URL, guardian: SharedRecordingGuard = RecordingFiles.guardian()) async throws -> RecordingFile {
