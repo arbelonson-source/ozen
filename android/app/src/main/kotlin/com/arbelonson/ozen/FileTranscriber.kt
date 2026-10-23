@@ -129,8 +129,8 @@ class FileTranscriber(
         val first = ready.model ?: ready.toDownload
         val opening = working(first, if (File(captions.modelDirectory, first.file).isFile) Stage.Loading else Stage.Downloading)
         work.start(opening, backTo = ::readyPage) {
-            captions.holdCaptionsForRecording()
             try {
+                captions.holdCaptionsForRecording()
                 run(uri, ready)
             } catch (stopped: CancellationException) {
                 throw stopped
