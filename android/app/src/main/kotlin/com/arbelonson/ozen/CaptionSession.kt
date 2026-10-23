@@ -82,6 +82,7 @@ import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -457,7 +458,10 @@ class CaptionSession(
         pipeline.releaseModels()
     }
 
-    internal suspend fun releaseModelForRecording() = withContext(Dispatchers.Main.immediate) { pipeline.releaseModels() }
+    internal suspend fun holdCaptionsForRecording() = withContext(Dispatchers.Main.immediate) { pipeline.beginRecordingTranscription() }
+
+    internal suspend fun recordingTranscriptionDone() =
+        withContext(NonCancellable + Dispatchers.Main.immediate) { pipeline.endRecordingTranscription() }
 
     /** A transcribed recording goes into History like a conversation, unless the reader has turned saving off. */
     internal fun saveRecording(record: TranscriptSessionRecord): HistorySave = conversations.saveRecording(record)

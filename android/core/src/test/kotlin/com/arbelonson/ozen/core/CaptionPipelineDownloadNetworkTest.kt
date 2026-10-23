@@ -340,6 +340,40 @@ class CaptionPipelineDownloadNetworkTest {
     }
 
     @Test
+    fun `Wi-Fi that comes back while a recording is transcribed loads the waiting model only once the recording is done`() = runTest {
+        val network = FakeNetworkMonitor(NetworkConditions.cellular)
+        val (pipeline, engine) = makeNetworkPipeline(network = network)
+        pipeline.start(cellularSettings())
+        assertEquals(EngineUnavailability.Kind.WaitingForWiFi, pipeline.phase.failure?.engineUnavailability?.kind)
+        assertFalse(pipeline.mayLoadModels)
+
+        pipeline.beginRecordingTranscription()
+        network.change(NetworkConditions.wifi)
+        delay(100.milliseconds)
+        assertEquals(0, engine.prepareCount, "a second speech model loaded beside the recording's")
+
+        pipeline.endRecordingTranscription()
+        assertTrue(eventually { pipeline.phase.isListening })
+        assertEquals(1, engine.prepareCount)
+    }
+
+    @Test
+    fun `captions stopped by hand while a recording is transcribed stay stopped when it is done`() = runTest {
+        val network = FakeNetworkMonitor(NetworkConditions.cellular)
+        val (pipeline, engine) = makeNetworkPipeline(network = network)
+        pipeline.start(cellularSettings())
+        pipeline.beginRecordingTranscription()
+        network.change(NetworkConditions.wifi)
+        delay(100.milliseconds)
+
+        pipeline.stopFromNotification()
+        pipeline.endRecordingTranscription()
+        delay(100.milliseconds)
+        assertEquals(0, engine.prepareCount)
+        assertEquals(PipelinePhase.Idle, pipeline.phase)
+    }
+
+    @Test
     fun `captions whose quick retries ran out get a fresh set when the connection comes back, so a first try that fails isn't the last`() = runTest {
         val network = FakeNetworkMonitor(NetworkConditions.offline)
         val engine = FakeEngine(availability = EngineAvailability.unavailable(EngineUnavailability.Kind.NoInternet, "offline"))

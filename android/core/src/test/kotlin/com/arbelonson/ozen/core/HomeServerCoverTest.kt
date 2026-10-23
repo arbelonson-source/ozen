@@ -438,6 +438,28 @@ class HomeServerCoverTest {
     }
 
     @Test
+    fun `a backup that becomes ready while a recording is transcribed takes over only once the recording is done`() = runTest {
+        val server = unreachableServer()
+        val phone = FakeEngine(kind = phoneKind)
+        phone.pendingDownload = 819
+        val captions = serverPipeline(server, phone, recovery = oneQuickRetry())
+        captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
+        captions.start(serverSettings())
+        assertTrue(eventually { server.prepareCount >= 2 && captions.scheduledRetry == null })
+        delay(100.milliseconds)
+        assertFalse(captions.mayLoadModels)
+
+        captions.beginRecordingTranscription()
+        phone.pendingDownload = null
+        delay(300.milliseconds)
+        assertEquals(0, phone.prepareCount, "the backup model loaded beside the recording's")
+
+        captions.endRecordingTranscription()
+        assertTrue(eventually { captions.phase == PipelinePhase.Listening && captions.activeEngineKind == phoneKind })
+    }
+
+    @Test
     fun `a computer that answers while a voice sample records starts captions after the recording, without cutting it short`() = runTest {
         val server = unreachableServer()
         val phone = FakeEngine(kind = phoneKind)

@@ -524,6 +524,17 @@ class CaptionPipeline(
     private class HeldRetry(val settings: AppSettings?)
 
     private var retryAfterRecording: HeldRetry? = null
+
+    /**
+     * A recording is being turned into text with its own copy of a speech
+     * model. Captions that come back by themselves meanwhile (Wi-Fi for a
+     * waiting download, the home computer or a microphone returning) would
+     * load a second model beside it: that retry waits for the recording to
+     * be done, as one waits for a voice sample.
+     */
+    var isTranscribingRecording = false
+        private set
+    private var retryAfterTranscription: HeldRetry? = null
     private var restartAfterRecording: AppSettings? = null
 
     /** The person said this session's model may download over cellular. */
@@ -894,6 +905,7 @@ class CaptionPipeline(
         // captions again.
         retryAfterRecording = null
         restartAfterRecording = null
+        retryAfterTranscription = null
         recovery.reset()
         listeningSince = null
         dismissMicrophoneDrop()
@@ -918,6 +930,20 @@ class CaptionPipeline(
     /** Gives the loaded speech model back while captions are not running, so a recording can be transcribed with its own copy. */
     fun releaseModels() {
         if (!phase.isListening && !phase.isTransitioning) dropEngines()
+    }
+
+    /** Gives the loaded speech model back for a recording, and holds automatic retries until [endRecordingTranscription]. */
+    fun beginRecordingTranscription() {
+        isTranscribingRecording = true
+        releaseModels()
+    }
+
+    /** The recording is done or was cancelled: a retry that came due meanwhile runs now. */
+    fun endRecordingTranscription() {
+        isTranscribingRecording = false
+        val held = retryAfterTranscription ?: return
+        retryAfterTranscription = null
+        scope.launch { retry(held.settings) }
     }
 
     /**
@@ -1054,6 +1080,10 @@ class CaptionPipeline(
         // stopped with no retry left to bring them back.
         if (isRecordingVoice) {
             retryAfterRecording = HeldRetry(settings?.copy())
+            return
+        }
+        if (isTranscribingRecording) {
+            retryAfterTranscription = HeldRetry(settings?.copy())
             return
         }
         cancelScheduledRetry()
@@ -2641,7 +2671,7 @@ class CaptionPipeline(
         val onPhone = CloudCover.phoneSettings(chosen, failure) ?: return false
         if (!probeEngine(onPhone).hasModelOnPhone()) return false
         val still = phase
-        if (!currentCoroutineContext().isActive || systemInterrupted || isRecordingVoice ||
+        if (!currentCoroutineContext().isActive || systemInterrupted || isRecordingVoice || isTranscribingRecording ||
             still !is PipelinePhase.Failed || still.reason != failure
         ) {
             return false

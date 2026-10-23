@@ -129,6 +129,7 @@ class FileTranscriber(
         val first = ready.model ?: ready.toDownload
         val opening = working(first, if (File(captions.modelDirectory, first.file).isFile) Stage.Loading else Stage.Downloading)
         work.start(opening, backTo = ::readyPage) {
+            captions.holdCaptionsForRecording()
             try {
                 run(uri, ready)
             } catch (stopped: CancellationException) {
@@ -137,6 +138,8 @@ class FileTranscriber(
                 shown.value = FileTranscription.Failed(name, problem.kind)
             } catch (failure: Exception) {
                 shown.value = FileTranscription.Failed(name, FileTranscriptionProblem.Unexpected)
+            } finally {
+                captions.recordingTranscriptionDone()
             }
         }
     }
@@ -169,7 +172,6 @@ class FileTranscriber(
     private suspend fun run(uri: Uri, ready: FileTranscription.Ready) {
         val model = ready.model ?: ready.toDownload
         val file = File(captions.modelDirectory, model.file)
-        captions.releaseModelForRecording()
         val current = settings.current.value
         val downloader = PhoneModelDownloader(file, model.source, captions.modelFetcher)
         downloader.pendingMegabytes()?.let { pending ->
