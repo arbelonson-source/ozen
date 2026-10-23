@@ -20,10 +20,13 @@ extension View {
 @main
 struct OzenApp: App {
     @State private var viewModel: LiveCaptionViewModel
+    @State private var waitingRecording: URL?
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
         DeviceWord.brand = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        RecordingFiles.sweepCopies()
+        RecordingFiles.sweepInboxes()
         #if DEBUG
         if let variant = Self.screenshotVariant {
             _viewModel = State(initialValue: ScreenshotFixtures.viewModel(variant: variant))
@@ -41,6 +44,16 @@ struct OzenApp: App {
             viewModel.applyAppLanguage()
         }
         _viewModel = State(initialValue: viewModel)
+    }
+
+    /// A recording handed over before the first-run setup is done waits for
+    /// it, so the setup is not covered by a screen it cannot answer.
+    private func receiveRecording(_ url: URL) {
+        guard viewModel.hasCompletedOnboarding else {
+            waitingRecording = url
+            return
+        }
+        Task { await RecordingScreenPresenter.open(url, viewModel: viewModel) }
     }
 
     private static var isRunningTests: Bool {
@@ -76,8 +89,24 @@ struct OzenApp: App {
                 }
             }
             .animation(.default, value: viewModel.hasCompletedOnboarding)
-            // A home computer's pairing QR code, scanned with the Camera.
-            .onOpenURL { viewModel.openURL($0) }
+            // A home computer's pairing QR code, scanned with the Camera; or
+            // a recording another app shares with Ozen, which is a file.
+            .onOpenURL { url in
+                if url.isFileURL {
+                    // A recording that opened the app is what she came
+                    // for: the caption screen's first appearance must not
+                    // start captions and take the model it needs.
+                    _ = viewModel.takeFirstAppearance()
+                    receiveRecording(url)
+                } else {
+                    viewModel.openURL(url)
+                }
+            }
+            .onChange(of: viewModel.hasCompletedOnboarding) { _, completed in
+                guard completed, let url = waitingRecording else { return }
+                waitingRecording = nil
+                receiveRecording(url)
+            }
             .alert(
                 tr("להתחבר למחשב בבית?", "Connect to the home computer?"),
                 isPresented: Binding(

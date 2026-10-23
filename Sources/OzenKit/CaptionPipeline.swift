@@ -199,6 +199,47 @@ public final class CaptionPipeline {
     /// Captions stopped, but a retry or the phone's own model is on its
     /// way: no reason to tell her they stopped.
     public var isRecoveringByItself: Bool { scheduledRetry != nil || pendingCover != nil }
+
+    /// Running, starting, or a failure whose retry is lined up: any of
+    /// these may load a speech model again on its own.
+    public var mayLoadModels: Bool { phase.isListening || phase.isTransitioning || isRecoveringByItself }
+
+    /// Gives the kept speech model back for a recording being turned into
+    /// text with its own copy, and holds automatic retries until
+    /// `endRecordingTranscription()`: Wi-Fi returning for a waiting
+    /// download, the home computer answering or the backup becoming ready
+    /// would otherwise load a second model beside it, as a voice sample
+    /// holds them for the microphone.
+    public func beginRecordingTranscription() {
+        isTranscribingRecording = true
+        if !phase.isListening, !phase.isTransitioning { engineCache.removeAll() }
+    }
+
+    /// The recording is done or was cancelled: a retry that came due
+    /// meanwhile runs now.
+    public func endRecordingTranscription() {
+        isTranscribingRecording = false
+        guard let held = retryAfterTranscription else { return }
+        retryAfterTranscription = nil
+        Task { await retry(settings: held.settings) }
+    }
+
+    /// Captions stopped while their model was still loading go on loading
+    /// it to the end. A recording waits that out before loading its own, so
+    /// the two are never in memory at once; a download holds no model, so
+    /// it is stopped rather than waited for. A first load can take minutes,
+    /// so a recording stopped meanwhile stops waiting at once.
+    public func waitOutAbandonedLoad() async {
+        if let preparing { await preparing.engine.cancelDownload() }
+        while isPreparingEngine, !Task.isCancelled {
+            let id = UUID()
+            await withTaskCancellationHandler {
+                await withCheckedContinuation { preparationWaiters[id] = $0 }
+            } onCancel: {
+                Task { @MainActor [weak self] in self?.preparationWaiters.removeValue(forKey: id)?.resume() }
+            }
+        }
+    }
     /// How long the model download has left at its current pace, while
     /// one runs and there's enough to go on (see `DownloadEstimator`).
     public private(set) var downloadSecondsRemaining: Double?
@@ -301,7 +342,7 @@ public final class CaptionPipeline {
     private var isPreparingEngine = false
     /// The model the phone is preparing, and its engine, while it does.
     private var preparing: (variant: String, engine: any TranscriptionEngine)?
-    private var preparationWaiters: [CheckedContinuation<Void, Never>] = []
+    private var preparationWaiters: [UUID: CheckedContinuation<Void, Never>] = [:]
     /// The newest start waiting on an abandoned load. Two model switches in
     /// a row both waited, and the older one, a model she had already
     /// switched away from, went ahead while her last choice was dropped.
@@ -323,6 +364,8 @@ public final class CaptionPipeline {
     /// settings it was asked with; it runs when the recording ends.
     private struct HeldRetry { let settings: AppSettings? }
     private var retryAfterRecording: HeldRetry?
+    public private(set) var isTranscribingRecording = false
+    private var retryAfterTranscription: HeldRetry?
     private var restartAfterRecording: AppSettings?
     /// The audio session was to be handed back while a voice sample was
     /// recording; it is, when the recording ends, unless captions came back.
@@ -412,7 +455,7 @@ public final class CaptionPipeline {
                 Task { await abandoned.cancelDownload() }
             }
             while isPreparingEngine {
-                await withCheckedContinuation { preparationWaiters.append($0) }
+                await withCheckedContinuation { preparationWaiters[UUID()] = $0 }
             }
             slowWait.cancel()
             let shown = waitingShown ?? waiting
@@ -586,8 +629,8 @@ public final class CaptionPipeline {
         if loadsModelOnPhone {
             isPreparingEngine = false
             preparing = nil
-            let waiting = preparationWaiters
-            preparationWaiters = []
+            let waiting = preparationWaiters.values
+            preparationWaiters = [:]
             waiting.forEach { $0.resume() }
         }
         guard runID == run else { return }
@@ -727,6 +770,7 @@ public final class CaptionPipeline {
         // captions again.
         retryAfterRecording = nil
         restartAfterRecording = nil
+        retryAfterTranscription = nil
         recovery.reset()
         listeningSince = nil
         microphoneDrop.dismiss()
@@ -852,6 +896,10 @@ public final class CaptionPipeline {
         // stopped with no retry left to bring them back.
         guard !isRecordingVoice else {
             retryAfterRecording = HeldRetry(settings: settings)
+            return
+        }
+        guard !isTranscribingRecording else {
+            retryAfterTranscription = HeldRetry(settings: settings)
             return
         }
         cancelScheduledRetry()
@@ -2588,7 +2636,7 @@ public final class CaptionPipeline {
         guard let chosen = activeSettings, chosen.engine == .homeServer,
               let onPhone = CloudCover.phoneSettings(replacing: chosen, after: failure),
               await probeEngine(for: onPhone).pendingDownloadMegabytes() == nil,
-              !Task.isCancelled, !systemInterrupted, !isRecordingVoice,
+              !Task.isCancelled, !systemInterrupted, !isRecordingVoice, !isTranscribingRecording,
               case .failed(let still) = phase, still == failure
         else { return false }
         logEvent(.note("the phone's backup is ready, starting captions on it"))

@@ -131,6 +131,7 @@ class FileTranscriber(
         work.start(opening, backTo = ::readyPage) {
             try {
                 captions.holdCaptionsForRecording()
+                captions.waitOutCaptionsLoad()
                 run(uri, ready)
             } catch (stopped: CancellationException) {
                 throw stopped
@@ -199,10 +200,9 @@ class FileTranscriber(
             scorer = SileroVoiceScorer.fromAssets(context) ?: throw Problem(FileTranscriptionProblem.ModelFailed)
             val terms = VocabularyHints.combining(current.vocabulary, current.keywordAlerts)
             val linePass = FileLinePass(loaded.passes, ready.language.languageCode, terms, passes.asCoroutineDispatcher())
-            val startedAt = System.currentTimeMillis() / 1_000.0
             val transcript = transcribe(uri, model, scorer, linePass)
             val lines = transcript.lines
-            val record = FileTranscriptRecord.make(name, lines, startedAt, endedAt = System.currentTimeMillis() / 1_000.0, modelVariant = model.variant)
+            val record = FileTranscriptRecord.make(name, lines, finishedAt = System.currentTimeMillis() / 1_000.0, recordingSeconds = ready.durationSeconds, modelVariant = model.variant)
             val history = withContext(NonCancellable + Dispatchers.IO) { captions.saveRecording(record) }
             shown.value = FileTranscription.Done(name, language, model, lines, history, transcript.endMissing)
         } finally {

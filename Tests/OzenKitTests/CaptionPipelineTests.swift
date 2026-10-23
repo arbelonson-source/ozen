@@ -1547,6 +1547,62 @@ struct CaptionPipelineLifecycleTests {
         #expect(pipeline.phase == .listening)
     }
 
+    @Test("captions stopped while their model loads: a recording waits that load out, and stops a download rather than wait for it", .timeLimit(.minutes(1)))
+    func recordingWaitsOutAbandonedLoad() async {
+        let slow = FakeEngine()
+        let gate = PrepareGate()
+        slow.prepareGate = gate
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: slow])
+        await pipeline.waitOutAbandonedLoad()
+        #expect(slow.downloadCancels == 0)
+
+        let captions = Task { await pipeline.start(settings: .default) }
+        while slow.heldPrepares == 0 { await Task.yield() }
+        pipeline.stop()
+        #expect(!pipeline.mayLoadModels)
+        pipeline.beginRecordingTranscription()
+        let done = TestSwitch(false)
+        let waited = Task {
+            await pipeline.waitOutAbandonedLoad()
+            done.isOn = true
+        }
+        for _ in 0..<50 { await Task.yield() }
+        #expect(slow.downloadCancels == 1)
+        #expect(!done.isOn, "the recording went ahead while the captions' model was still loading")
+
+        await gate.open()
+        await waited.value
+        #expect(done.isOn)
+        await captions.value
+        #expect(pipeline.phase == .idle)
+        pipeline.endRecordingTranscription()
+    }
+
+    @Test("a recording stopped while it waits out the captions' load stops waiting at once", .timeLimit(.minutes(1)))
+    func waitOutAbandonedLoadStopsWhenCancelled() async {
+        let slow = FakeEngine()
+        let gate = PrepareGate()
+        slow.prepareGate = gate
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: slow])
+        let captions = Task { await pipeline.start(settings: .default) }
+        while slow.heldPrepares == 0 { await Task.yield() }
+        pipeline.stop()
+        let done = TestSwitch(false)
+        let waited = Task {
+            await pipeline.waitOutAbandonedLoad()
+            done.isOn = true
+        }
+        for _ in 0..<20 { await Task.yield() }
+        #expect(!done.isOn)
+        waited.cancel()
+        for _ in 0..<200 where !done.isOn { await Task.yield() }
+        #expect(done.isOn, "a stopped recording kept waiting for the captions' model")
+        #expect(slow.heldPrepares == 1)
+
+        await gate.open()
+        await captions.value
+    }
+
     @Test("switching to the home computer while the phone's model still loads starts at once, and a later phone start still waits for that load", .timeLimit(.minutes(1)))
     func homeServerDoesNotWaitForAPhoneModel() async {
         let slow = FakeEngine()
@@ -3711,6 +3767,57 @@ struct CaptionPipelineDownloadNetworkTests {
         var settings = AppSettings.default
         settings.allowCellularModelDownload = allowCellular
         return settings
+    }
+
+    @Test("captions failed with a retry lined up still count as holding the speech model; stopped, they do not", .timeLimit(.minutes(1)))
+    func retryLinedUpMayLoad() async {
+        let engine = FakeEngine(availability: .unavailable(.temporarilyUnavailable, "busy"))
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { _ in engine },
+            embedder: FakeEmbedder(),
+            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [], microphoneTailDelays: [])
+        )
+        #expect(!pipeline.mayLoadModels)
+        await pipeline.start(settings: .default)
+        #expect(await eventually { pipeline.scheduledRetry != nil })
+        #expect(pipeline.mayLoadModels)
+        pipeline.stop()
+        #expect(!pipeline.mayLoadModels)
+    }
+
+    @Test("Wi-Fi that comes back while a recording is transcribed loads the waiting model only once the recording is done", .timeLimit(.minutes(1)))
+    func wifiDuringRecordingWaits() async {
+        let network = FakeNetworkMonitor(.cellular)
+        let (pipeline, engine) = makePipeline(network: network)
+        await pipeline.start(settings: settings())
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == .waitingForWiFi)
+        #expect(!pipeline.mayLoadModels)
+
+        pipeline.beginRecordingTranscription()
+        network.change(to: .wifi)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(engine.prepareCount == 0, "a second speech model loaded beside the recording's")
+
+        pipeline.endRecordingTranscription()
+        #expect(await eventually { pipeline.phase == .listening })
+        #expect(engine.prepareCount == 1)
+    }
+
+    @Test("captions stopped by hand while a recording is transcribed stay stopped when it is done", .timeLimit(.minutes(1)))
+    func stoppedDuringRecordingStaysStopped() async {
+        let network = FakeNetworkMonitor(.cellular)
+        let (pipeline, engine) = makePipeline(network: network)
+        await pipeline.start(settings: settings())
+        pipeline.beginRecordingTranscription()
+        network.change(to: .wifi)
+        try? await Task.sleep(for: .milliseconds(100))
+
+        pipeline.stop()
+        pipeline.endRecordingTranscription()
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(engine.prepareCount == 0)
+        #expect(pipeline.phase == .idle)
     }
 
     @Test("on cellular, a model that still has to download waits for Wi-Fi and says how big it is")

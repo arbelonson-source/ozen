@@ -460,6 +460,8 @@ class CaptionSession(
 
     internal suspend fun holdCaptionsForRecording() = withContext(Dispatchers.Main.immediate) { pipeline.beginRecordingTranscription() }
 
+    internal suspend fun waitOutCaptionsLoad() = withContext(Dispatchers.Main.immediate) { pipeline.waitOutAbandonedLoad() }
+
     internal suspend fun recordingTranscriptionDone() =
         withContext(NonCancellable + Dispatchers.Main.immediate) { pipeline.endRecordingTranscription() }
 

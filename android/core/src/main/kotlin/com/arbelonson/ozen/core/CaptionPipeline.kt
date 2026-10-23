@@ -947,6 +947,21 @@ class CaptionPipeline(
     }
 
     /**
+     * Captions stopped while their model was still loading go on loading it
+     * to the end. A recording waits that out before loading its own, so the
+     * two are never in memory at once; a download holds no model, so it is
+     * stopped rather than waited for.
+     */
+    suspend fun waitOutAbandonedLoad() {
+        preparing?.engine?.cancelDownload()
+        while (isPreparingEngine) {
+            val waiter = CompletableDeferred<Unit>()
+            preparationWaiters.add(waiter)
+            waiter.await()
+        }
+    }
+
+    /**
      * The system is short of memory and ends the biggest apps first; a loaded
      * speech model makes this one of the biggest. The warning goes in the
      * diagnostics timeline, since an app the system ended leaves no other trace.

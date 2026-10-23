@@ -1105,6 +1105,33 @@ struct HomeServerCoverTests {
         #expect(await eventually { captions.soundAlerts.count == 1 })
     }
 
+    @Test("a backup that becomes ready while a recording is transcribed takes over only once the recording is done", .timeLimit(.minutes(1)))
+    func backupWaitsForRecording() async {
+        let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, "asleep"))
+        let phone = FakeEngine(kind: .whisperKit)
+        phone.pendingDownload = 819
+        let captions = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { $0.engine == .homeServer ? server : phone },
+            embedder: FakeEmbedder(),
+            recovery: AutoRecoveryPolicy(glitchDelays: [0.01], downloadDelays: [], microphoneTailDelays: [])
+        )
+        captions.homeServerRecheckSeconds = 0.05
+        captions.homeServerWaitSeconds = 0.05
+        await captions.start(settings: serverSettings)
+        #expect(await eventually { server.prepareCount >= 2 && captions.scheduledRetry == nil })
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(!captions.mayLoadModels)
+
+        captions.beginRecordingTranscription()
+        phone.pendingDownload = nil
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(phone.prepareCount == 0, "the backup model loaded beside the recording's")
+
+        captions.endRecordingTranscription()
+        #expect(await eventually { captions.phase == .listening && captions.activeEngineKind == .whisperKit })
+    }
+
     @Test("a backup that finishes downloading while captions wait for the computer takes over, as its Settings row promises", .timeLimit(.minutes(1)))
     func backupReadyDuringTheWait() async {
         let server = FakeEngine(kind: .homeServer, availability: .unavailable(.homeServerUnreachable, "asleep"))

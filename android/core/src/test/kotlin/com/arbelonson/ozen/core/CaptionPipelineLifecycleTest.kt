@@ -496,6 +496,37 @@ class CaptionPipelineLifecycleTest {
     }
 
     @Test
+    fun `captions stopped while their model loads - a recording waits that load out, and stops a download rather than wait for it`() = runTest {
+        val slow = FakeEngine()
+        val gate = PrepareGate()
+        slow.prepareGate = gate
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to slow))
+        pipeline.waitOutAbandonedLoad()
+        assertEquals(0, slow.downloadCancels)
+
+        val captions = launch { pipeline.start(AppSettings.default) }
+        while (slow.heldPrepares == 0) yield()
+        pipeline.stop()
+        assertFalse(pipeline.mayLoadModels)
+        pipeline.beginRecordingTranscription()
+        var done = false
+        val waited = launch {
+            pipeline.waitOutAbandonedLoad()
+            done = true
+        }
+        repeat(50) { yield() }
+        assertEquals(1, slow.downloadCancels)
+        assertFalse(done, "the recording went ahead while the captions' model was still loading")
+
+        gate.open()
+        waited.join()
+        assertTrue(done)
+        captions.join()
+        assertEquals(PipelinePhase.Idle, pipeline.phase)
+        pipeline.endRecordingTranscription()
+    }
+
+    @Test
     fun `switching to the home computer while the phone's model still loads starts at once, and a later phone start still waits for that load`() = runTest {
         val slow = FakeEngine()
         val gate = PrepareGate()

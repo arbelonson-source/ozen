@@ -38,6 +38,36 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: com.arbelonson.ozen.pair
             CFBundleURLSchemes: [ozen]
+        # Audio and video from other apps: the share sheet offers Ozen for a
+        # voice note or a video, and Ozen turns it into text. Alternate, so
+        # Ozen is never the app such a file opens in by itself.
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Audio recording
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.audio]
+          - CFBundleTypeName: Video recording
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.movie]
+        # WhatsApp voice notes are Ogg Opus, which iOS may not know as
+        # audio: declared here so the share sheet offers Ozen for them.
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: org.xiph.opus
+            UTTypeDescription: Opus audio
+            UTTypeConformsTo: [public.audio]
+            UTTypeTagSpecification:
+              public.filename-extension: [opus]
+              public.mime-type: [audio/opus]
+          - UTTypeIdentifier: org.xiph.ogg-audio
+            UTTypeDescription: Ogg audio
+            UTTypeConformsTo: [public.audio]
+            UTTypeTagSpecification:
+              public.filename-extension: [ogg, oga]
+              public.mime-type: [audio/ogg]
+        # Not read where it lies: iOS puts a copy in Ozen's Inbox, which
+        # Ozen deletes when it is done with it.
+        LSSupportsOpeningDocumentsInPlace: false
         CFBundleDevelopmentRegion: he
         CFBundleDisplayName: "Ozen"
         # The home screen shows the English name; Siri still answers to the
