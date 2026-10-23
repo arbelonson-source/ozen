@@ -3,7 +3,7 @@ public enum OnboardingNotificationAdvice {
         allowed == false
     }
 
-    public static func statusOnReturn(current: Bool?, fixtureForcesDenial: Bool) -> Bool? {
-        fixtureForcesDenial ? false : current
+    public static func statusOnReturn(current: Bool?, known: Bool?, fixtureForcesDenial: Bool) -> Bool? {
+        fixtureForcesDenial ? false : current ?? known
     }
 }

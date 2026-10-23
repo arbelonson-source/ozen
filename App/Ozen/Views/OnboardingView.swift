@@ -342,8 +342,12 @@ struct OnboardingView: View {
                 microphone = await viewModel.requestMicrophonePermission()
             }
             guard microphone == .granted else { return }
+            // A check still waiting when Next got her answer reads "never
+            // asked" and would erase it, bringing the question back.
+            let current = await AlertNotifier.shared.isAllowed()
             notificationsAllowed = OnboardingNotificationAdvice.statusOnReturn(
-                current: await AlertNotifier.shared.isAllowed(),
+                current: current,
+                known: notificationsAllowed,
                 fixtureForcesDenial: Self.forcesNotificationDenial
             )
         }
