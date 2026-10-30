@@ -547,7 +547,9 @@ struct LiveCaptionView: View {
                 .pageSized()
         }
         .sheet(item: $fixingWordFromSegment) { segment in
-            FixVocabularyWordSheet(segment: segment, viewModel: viewModel)
+            FixWordSheet(text: segment.text) { fix, always in
+                viewModel.applyWordFix(fix, always: always, toLine: segment)
+            }
                 .alertOverlay(for: viewModel)
                 .pageSized()
         }
@@ -709,7 +711,7 @@ struct LiveCaptionView: View {
             Button {
                 fixingWordFromSegment = segment
             } label: {
-                Label(tr("תיקון מילה למילון", "Fix a word for next time"), systemImage: "text.badge.checkmark")
+                Label(tr("תיקון מילה", "Fix a word"), systemImage: "text.badge.checkmark")
             }
             Button {
                 UIPasteboard.general.string = CaptionLayout.copiedText(segment.text)
@@ -743,7 +745,7 @@ struct LiveCaptionView: View {
             Button(tr("מי מדבר?", "Who is speaking?")) {
                 namingSegment = segment
             }
-            Button(tr("תיקון מילה למילון", "Fix a word for next time")) {
+            Button(tr("תיקון מילה", "Fix a word")) {
                 fixingWordFromSegment = segment
             }
             Button(tr("העתקה", "Copy")) {

@@ -185,8 +185,9 @@ Press and hold a line to open its menu:
   everything that voice says shows with that name. If no voice has been
   identified for the line yet, try again after the person has talked a bit
   more.
-- **Fix a word for next time** (tikun mila la-milon) teaches Ozen the right
-  spelling of a word or name.
+- **Fix a word** (tikun mila) corrects a word in the line and teaches Ozen
+  the right spelling. Turn on **Fix it every time** to always write it that
+  way from now on.
 - **Copy** (ha'atakah) copies the line.
 - **Captions not good? Mark a problem** (ha-ktuviyot lo tovot? lesamen
   be'aya) saves the details on the phone, so that whoever helps you can see

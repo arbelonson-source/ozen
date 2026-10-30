@@ -184,6 +184,7 @@ final class TranscribeRecordingModel {
             variant: model.variant,
             languageCode: ready.language.engineLanguageCode,
             names: VocabularyHints.normalized(host.vocabularyNames),
+            wordFixes: host.wordFixes,
             allowCellularDownload: host.allowsCellularDownload,
             network: { network }
         )

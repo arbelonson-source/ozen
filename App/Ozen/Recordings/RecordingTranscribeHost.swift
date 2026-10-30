@@ -6,6 +6,7 @@ import OzenPlatform
 protocol RecordingTranscribeHost: AnyObject {
     var spokenLanguage: UILanguage { get }
     var vocabularyNames: [String] { get }
+    var wordFixes: [WordFix] { get }
     var allowsCellularDownload: Bool { get }
     var savesHistory: Bool { get }
     var captionsPhase: PipelinePhase { get }
@@ -31,6 +32,7 @@ final class LiveRecordingHost: RecordingTranscribeHost {
 
     var spokenLanguage: UILanguage { viewModel.settings.spokenLanguage }
     var vocabularyNames: [String] { viewModel.vocabulary }
+    var wordFixes: [WordFix] { viewModel.wordFixes }
     var allowsCellularDownload: Bool { viewModel.allowCellularModelDownload }
     var savesHistory: Bool { viewModel.saveHistory }
     var captionsPhase: PipelinePhase { viewModel.phase }

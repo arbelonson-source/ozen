@@ -9,6 +9,7 @@ public struct FileTranscriber: Sendable {
         public var variant: String
         public var languageCode: String
         public var names: [String]
+        public var wordFixes: [WordFix]
         public var allowCellularDownload: Bool
         public var network: @Sendable () -> NetworkConditions?
 
@@ -16,12 +17,14 @@ public struct FileTranscriber: Sendable {
             variant: String,
             languageCode: String,
             names: [String],
+            wordFixes: [WordFix] = [],
             allowCellularDownload: Bool,
             network: @escaping @Sendable () -> NetworkConditions?
         ) {
             self.variant = variant
             self.languageCode = languageCode
             self.names = names
+            self.wordFixes = wordFixes
             self.allowCellularDownload = allowCellularDownload
             self.network = network
         }
@@ -53,6 +56,7 @@ public struct FileTranscriber: Sendable {
             engine: makeEngine(request.variant),
             languageCode: request.languageCode,
             names: request.names,
+            wordFixes: request.wordFixes,
             durationSeconds: reader.durationSeconds,
             allowCellularDownload: request.allowCellularDownload,
             score: score,

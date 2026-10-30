@@ -77,6 +77,8 @@ struct VocabularyView: View {
             } footer: {
                 Text(tr("השינויים נכנסים לתוקף מהמשפט הבא, בלי להפעיל מחדש.", "Changes take effect from the next sentence, without restarting."))
             }
+
+            WordFixesSection(viewModel: viewModel)
         }
         .environment(\.editMode, $editMode)
         .accessibilityIdentifier("vocabularyScreen")

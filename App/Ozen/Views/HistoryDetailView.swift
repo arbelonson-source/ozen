@@ -27,6 +27,7 @@ struct HistoryDetailView: View {
     @State private var confirmingDelete = false
     @State private var deleteError: String?
     @State private var renaming = false
+    @State private var fixingLine: SavedSegment?
     @State private var newTitle = ""
     @Environment(\.dismiss) private var dismiss
     /// The jumps to a line land without a long animated scroll, as on the
@@ -104,10 +105,12 @@ struct HistoryDetailView: View {
                         .id(segment.id)
                         .contextMenu {
                             starButton(segment)
+                            fixButton(segment)
                             copyButton(segment.text)
                         }
                         .accessibilityActions {
                             starButton(segment)
+                            fixButton(segment)
                             copyButton(segment.text)
                         }
                     }
@@ -132,6 +135,14 @@ struct HistoryDetailView: View {
                 guard matches.indices.contains(currentMatch) else { return }
                 withAnimation(reduceMotion ? nil : .default) { proxy.scrollTo(matches[currentMatch], anchor: .center) }
             }
+        }
+    }
+
+    private func fixButton(_ segment: SavedSegment) -> some View {
+        Button {
+            fixingLine = segment
+        } label: {
+            Label(tr("תיקון מילה", "Fix a word"), systemImage: "character.cursor.ibeam")
         }
     }
 
@@ -232,6 +243,13 @@ struct HistoryDetailView: View {
         .onAppear { viewModel.historyOpened(sessionID) }
         .onDisappear { viewModel.historyClosed(sessionID) }
         .toolbar { toolbarContent }
+        .sheet(item: $fixingLine) { line in
+            FixWordSheet(text: line.text) { fix, always in
+                viewModel.applyWordFix(fix, always: always, lineID: line.id, text: line.text, sessionID: sessionID)
+                onHistoryChanged()
+                Task { await refresh() }
+            }
+        }
         .alert(tr("שם לשיחה", "Conversation name"), isPresented: $renaming) {
             TextField(tr("למשל: ביקור אצל הרופא", "For example: doctor’s visit"), text: $newTitle)
             Button(tr("שמירה", "Save")) {

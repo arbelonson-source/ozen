@@ -215,6 +215,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// Family names, places, medicines — words every engine is told to
     /// expect so they come out spelled right. See `VocabularyHints`.
     public var vocabulary: [String]
+    public var wordFixes: [WordFix]
     /// The first-launch walkthrough (what the app does, engine choice,
     /// microphone permission) has been seen once.
     public var hasCompletedOnboarding: Bool
@@ -316,6 +317,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         quickPhrases: [String] = AppSettings.defaultQuickPhrases,
         speechRate: Float = 0.45,
         vocabulary: [String] = [],
+        wordFixes: [WordFix] = [],
         hasCompletedOnboarding: Bool = false,
         appLanguage: AppLanguage = .system,
         notifyWhenInBackground: Bool = true,
@@ -348,6 +350,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         self.quickPhrases = quickPhrases
         self.speechRate = speechRate
         self.vocabulary = VocabularyHints.normalized(vocabulary)
+        self.wordFixes = WordFixes.normalized(wordFixes)
         self.hasCompletedOnboarding = hasCompletedOnboarding
         self.appLanguage = appLanguage
         self.notifyWhenInBackground = notifyWhenInBackground
@@ -445,7 +448,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         case whisperModelVariant, allowServerFallbackForAppleSpeech, cloudModel, cloudProvider, homeServerAddress, homeServerBeam, display
         case hapticOnSpeechResume, speakerSimilarityThreshold, speakerThresholdScale
         case keywordAlerts, soundAlerts, saveHistory
-        case quickPhrases, speechRate, vocabulary, hasCompletedOnboarding, appLanguage
+        case quickPhrases, speechRate, vocabulary, wordFixes, hasCompletedOnboarding, appLanguage
         case notifyWhenInBackground, allowCellularModelDownload, historyRetention
         case quietHours
         case nameAlertOfferDismissed, betterModelOfferDeclines, betterModelOfferSnoozedUntil, deviceModelCheck
@@ -490,6 +493,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         speechRate = container.lenient(Float.self, forKey: .speechRate) ?? defaults.speechRate
         speechRate = min(max(speechRate, 0.2), 0.7)
         vocabulary = VocabularyHints.normalized(container.lenient([String].self, forKey: .vocabulary) ?? [])
+        wordFixes = WordFixes.normalized(container.lenient([WordFix].self, forKey: .wordFixes) ?? [])
         hasCompletedOnboarding = container.lenient(Bool.self, forKey: .hasCompletedOnboarding) ?? false
         appLanguage = container.lenient(AppLanguage.self, forKey: .appLanguage) ?? defaults.appLanguage
         notifyWhenInBackground = container.lenient(Bool.self, forKey: .notifyWhenInBackground) ?? defaults.notifyWhenInBackground
