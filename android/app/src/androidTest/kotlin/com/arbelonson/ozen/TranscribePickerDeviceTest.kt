@@ -1,7 +1,10 @@
 package com.arbelonson.ozen
 
 import androidx.activity.compose.setContent
+import android.net.Uri
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -15,9 +18,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.arbelonson.ozen.core.FileModelChoice
 import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.UILanguage
+import java.io.File
+import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -30,18 +34,30 @@ class TranscribePickerDeviceTest {
 
     private val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
 
+    private val context = InstrumentationRegistry.getInstrumentation().targetContext
+    private val clip = File(context.cacheDir, "picker-test.wav")
+
     private fun openPicker(fontScale: Float) {
-        val model = FileModelChoice.toDownload(UILanguage.English)
-        val ready = FileTranscription.Ready("Lecture.wav", UILanguage.English, model, listOf(model), model, 60.0, false)
+        DeviceClips.writeWav(clip, FloatArray(16_000 * 2))
+        app.transcriber.close()
+        assertTrue(app.transcriber.open(Uri.fromFile(clip)))
+        compose.waitUntil(30_000) { app.transcriber.state.value is FileTranscription.Ready }
         compose.runOnUiThread {
             compose.activity.setContent {
                 val density = LocalDensity.current
+                val observed by app.transcriber.state.collectAsState()
                 CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
-                    TranscribeScreen(app.transcriber, ready, onClose = {})
+                    (observed as? FileTranscription.Ready)?.let { TranscribeScreen(app.transcriber, it, onClose = {}) }
                 }
             }
         }
         compose.onNodeWithTag("transcribe-language").performClick()
+    }
+
+    @After
+    fun tidy() {
+        app.transcriber.close()
+        clip.delete()
     }
 
     @Test
@@ -49,7 +65,7 @@ class TranscribePickerDeviceTest {
         openPicker(2f)
         val last = compose.onAllNodes(isSelectable())[UILanguage.entries.size - 1]
         last.performScrollTo().assertIsDisplayed().performClick()
-        compose.waitUntil(5_000) { compose.onAllNodes(isSelectable()).fetchSemanticsNodes().isEmpty() }
+        compose.waitUntil(10_000) { (app.transcriber.state.value as? FileTranscription.Ready)?.language == UILanguage.entries.last() }
     }
 
     @Test
