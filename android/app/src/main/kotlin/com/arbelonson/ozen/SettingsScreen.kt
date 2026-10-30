@@ -158,6 +158,7 @@ import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.CloudProvider
+import com.arbelonson.ozen.core.WordFix
 import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.HomeServer
@@ -182,6 +183,7 @@ fun SettingsScreen(
     settings: SettingsHolder,
     onClose: () -> Unit,
     onWords: (List<String>) -> Unit,
+    onWordFixes: (List<WordFix>) -> Unit,
     onImportantWords: (List<KeywordAlert>) -> Unit,
     canSay: (String) -> Boolean,
     onSpeak: (String) -> Unit,
@@ -248,7 +250,7 @@ fun SettingsScreen(
         label = "settings page",
     ) { shown ->
         when (shown) {
-            SettingsPage.Words -> WordsScreen(current.vocabulary, current.speakerProfiles.map { it.name }, onWords, onClose = { showingWords = false })
+            SettingsPage.Words -> WordsScreen(current.vocabulary, current.speakerProfiles.map { it.name }, onWords, current.wordFixes, onWordFixes, onClose = { showingWords = false })
             SettingsPage.Diagnostics -> DiagnosticsScreen(diagnostics, onClose = { showingDiagnostics = false })
             SettingsPage.Guide -> HomeServerGuideScreen(current.spokenLanguage, onClose = { showingGuide = false })
             SettingsPage.Support -> SupportScreen(onClose = { showingSupport = false })

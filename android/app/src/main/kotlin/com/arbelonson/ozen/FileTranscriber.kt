@@ -8,6 +8,7 @@ import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.FileLinePass
 import com.arbelonson.ozen.core.FileModelChoice
+import com.arbelonson.ozen.core.WordFixes
 import com.arbelonson.ozen.core.FileTranscriptRecord
 import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.FileTranscription.Working.Stage
@@ -201,7 +202,7 @@ class FileTranscriber(
             val terms = VocabularyHints.combining(current.vocabulary, current.keywordAlerts)
             val linePass = FileLinePass(loaded.passes, ready.language.languageCode, terms, passes.asCoroutineDispatcher())
             val transcript = transcribe(uri, model, scorer, linePass)
-            val lines = transcript.lines
+            val lines = transcript.lines.map { it.copy(text = WordFixes.apply(current.wordFixes, it.text)) }
             val record = FileTranscriptRecord.make(name, lines, finishedAt = System.currentTimeMillis() / 1_000.0, recordingSeconds = ready.durationSeconds, modelVariant = model.variant)
             val history = withContext(NonCancellable + Dispatchers.IO) { captions.saveRecording(record) }
             shown.value = FileTranscription.Done(name, language, model, lines, history, transcript.endMissing)

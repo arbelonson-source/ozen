@@ -63,6 +63,8 @@ import com.arbelonson.ozen.core.TranscriptionEngine
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.VocabularyHints
+import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixes
 import com.arbelonson.ozen.core.WebSocketConnector
 import com.arbelonson.ozen.core.PrivatePath
 import com.arbelonson.ozen.core.PrivateRoute
@@ -362,6 +364,13 @@ class CaptionSession(
         override fun toggleStar(sessionID: UUID, segmentID: UUID) = conversations.toggleStar(sessionID, segmentID).also { starring ->
             starring?.let { CaptionState.markStarred(segmentID, it) }
             refreshSavingTrouble()
+        }
+
+        override fun saveWordFix(heard: String, written: String, everyTime: Boolean) = this@CaptionSession.saveWordFix(heard, written, everyTime)
+
+        override fun fixLine(sessionID: UUID, segmentID: UUID, text: String): Boolean {
+            CaptionState.markFixed(segmentID, text)
+            return conversations.fixLine(sessionID, segmentID, text)
         }
 
         override fun switchSaving(on: Boolean) {
@@ -980,6 +989,12 @@ class CaptionSession(
         scope.launch { pipeline.setVocabulary(terms) }
     }
 
+    fun setWordFixes(fixes: List<WordFix>) {
+        settings.change { it.wordFixes = WordFixes.normalized(fixes) }
+        val kept = settings.current.value.wordFixes
+        pipeline.setWordFixes(kept)
+    }
+
     /**
      * Important words just heard. As on the iPhone, they buzz and TalkBack
      * says them whichever screen is open, not only the captions; with the
@@ -1044,6 +1059,21 @@ class CaptionSession(
     fun buzz(vibration: AlertVibration, importance: SoundEvent.Importance? = null) {
         pipeline.ignoreSounds(vibration)
         Buzz.play(context, vibration, importance)
+    }
+
+    fun saveWordFix(heard: String, written: String, everyTime: Boolean) {
+        val fix = WordFix(heard, written)
+        val known = settings.current.value.vocabulary.any { it.equals(fix.written.trim(), ignoreCase = true) }
+        if (fix.written.isNotBlank() && !known) addWord(fix.written.trim())
+        if (everyTime) setWordFixes(listOf(fix) + settings.current.value.wordFixes)
+    }
+
+    fun correctedText(text: String, heard: String, written: String): String =
+        WordFixes.apply(listOf(WordFix(heard, written)), text)
+
+    fun fixLine(line: UUID, text: String) {
+        CaptionState.markFixed(line, text)
+        conversations.fixLiveLine(line, text)
     }
 
     /** Stars a caption line or takes its star away, in its conversation and on screen. */

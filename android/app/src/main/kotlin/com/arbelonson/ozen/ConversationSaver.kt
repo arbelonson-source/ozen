@@ -244,6 +244,22 @@ class ConversationSaver(
         return starring
     }
 
+    fun fixLiveLine(segmentID: UUID, text: String) {
+        if (currentLines.any { it.id == segmentID }) {
+            save(ended = false)
+            return
+        }
+        for (conversation in closed.keys.reversed()) if (writer.fixTextNow(conversation, segmentID, text)) return
+    }
+
+    fun fixLine(sessionID: UUID, segmentID: UUID, text: String): Boolean {
+        if (sessionID == id && currentLines.any { it.id == segmentID }) {
+            save(ended = false)
+            return true
+        }
+        return writer.fixTextNow(sessionID, segmentID, text)
+    }
+
     /**
      * Stars a line on the caption screen, or takes its star away, in the
      * conversation it belongs to: the one being captioned, or one closed by

@@ -319,6 +319,7 @@ class AppSettings(
     /** 0...1 as the speech synthesizer understands it; 0.45 is a calm pace. */
     var speechRate: Float = 0.45f,
     vocabulary: List<String> = emptyList(),
+    wordFixes: List<WordFix> = emptyList(),
     /**
      * The first-launch walkthrough (what the app does, engine choice,
      * microphone permission) has been seen once.
@@ -372,6 +373,8 @@ class AppSettings(
     var homeServerBeam: Int = minOf(maxOf(homeServerBeam, homeServerBeamRange.first), homeServerBeamRange.last)
 
     var vocabulary: List<String> = VocabularyHints.normalized(vocabulary)
+
+    var wordFixes: List<WordFix> = WordFixes.normalized(wordFixes)
 
     /**
      * Whether the caption screen should offer to set up the alert for her
@@ -487,6 +490,7 @@ class AppSettings(
         )
         other.homeServerBeam = homeServerBeam
         other.vocabulary = vocabulary
+        other.wordFixes = wordFixes
         return other
     }
 
@@ -494,7 +498,7 @@ class AppSettings(
         engine, languageCode, preferredInputUID, speakerProfiles, creditLine, whisperModelVariant,
         allowServerFallbackForAppleSpeech, cloudModel, cloudProvider, cloudSoundAcknowledged, homeServerAddress, homeServerBeam, display,
         hapticOnSpeechResume, speakerSimilarityThreshold, keywordAlerts, soundAlerts, saveHistory, quickPhrases,
-        speechRate, vocabulary, hasCompletedOnboarding, appLanguage, notifyWhenInBackground,
+        speechRate, vocabulary, wordFixes, hasCompletedOnboarding, appLanguage, notifyWhenInBackground,
         allowCellularModelDownload, historyRetention, quietHours, nameAlertOfferDismissed, betterModelOfferDeclines,
         betterModelOfferSnoozedUntil, phoneModelFile, phoneSpeed,
     )
@@ -533,6 +537,10 @@ class AppSettings(
         put("quickPhrases", JsonArray(quickPhrases.map { JsonPrimitive(it) }))
         put("speechRate", settingsFloat(speechRate))
         put("vocabulary", JsonArray(vocabulary.map { JsonPrimitive(it) }))
+        put(
+            "wordFixes",
+            JsonArray(wordFixes.map { JsonObject(mapOf("heard" to JsonPrimitive(it.heard), "written" to JsonPrimitive(it.written))) }),
+        )
         put("hasCompletedOnboarding", hasCompletedOnboarding)
         put("appLanguage", appLanguage.rawValue)
         put("notifyWhenInBackground", notifyWhenInBackground)
@@ -686,6 +694,12 @@ class AppSettings(
                 saveHistory = container.lenientBoolean("saveHistory") ?: defaults.saveHistory,
                 quickPhrases = container.lenientStrings("quickPhrases") ?: defaults.quickPhrases,
                 vocabulary = container.lenientStrings("vocabulary") ?: emptyList(),
+                wordFixes = container.lenientArray("wordFixes") { element ->
+                    val entry = element as? JsonObject ?: return@lenientArray null
+                    val heard = entry["heard"].settingsString() ?: return@lenientArray null
+                    val written = entry["written"].settingsString() ?: return@lenientArray null
+                    WordFix(heard, written)
+                } ?: emptyList(),
                 hasCompletedOnboarding = container.lenientBoolean("hasCompletedOnboarding") ?: false,
                 appLanguage = container.lenientString("appLanguage")?.let { AppLanguage.fromRawValue(it) } ?: defaults.appLanguage,
                 notifyWhenInBackground = container.lenientBoolean("notifyWhenInBackground") ?: defaults.notifyWhenInBackground,

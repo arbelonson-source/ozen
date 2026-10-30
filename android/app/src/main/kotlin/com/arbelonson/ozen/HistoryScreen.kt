@@ -97,6 +97,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.ByteSize
+import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixes
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
@@ -154,6 +156,10 @@ interface SavedConversations {
 
     /** Stars a saved line or takes its star away: its new state, or null when it is gone. */
     fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean?
+
+    fun fixLine(sessionID: UUID, segmentID: UUID, text: String): Boolean
+
+    fun saveWordFix(heard: String, written: String, everyTime: Boolean)
 
     fun switchSaving(on: Boolean)
 
@@ -665,6 +671,20 @@ internal fun ConversationScreen(
     var deleteError by rememberSaveable { mutableStateOf<String?>(null) }
     var naming by rememberSaveable { mutableStateOf<String?>(null) }
     val record = loaded?.record
+    var fixingLine by remember { mutableStateOf<SavedLine?>(null) }
+    fixingLine?.let { line ->
+        FixWordDialog(line.text, onSave = { heard, written, everyTime ->
+            fixingLine = null
+            val fixed = WordFixes.apply(listOf(WordFix(heard, written)), line.text)
+            marking.launch {
+                withContext(Dispatchers.IO) {
+                    conversations.fixLine(id, line.id, fixed)
+                    conversations.saveWordFix(heard, written, everyTime)
+                    loaded = opened(conversations.load(id), query, marksUncertain, languageCode)
+                }
+            }
+        }, onDismiss = { fixingLine = null })
+    }
     Screen(title = tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {
         val shown = loaded
         when {
@@ -732,7 +752,7 @@ internal fun ConversationScreen(
                         SectionHeader(conversationHeading(shown.record.startedAt, now = System.currentTimeMillis() / 1_000.0))
                     }
                     items(shown.lines, key = { it.id.toString() }) { line ->
-                        SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers) {
+                        SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, onFix = { fixingLine = line }) {
                             scope.launch {
                                 conversations.toggleStar(id, line.id)
                                 show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
@@ -945,10 +965,11 @@ private fun NumbersSection(numbers: NumbersMentioned, isUncertain: (SavedSegment
 }
 
 @Composable
-private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: Boolean, arrived: Boolean = false, onStar: () -> Unit) {
+private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: Boolean, arrived: Boolean = false, onFix: () -> Unit = {}, onStar: () -> Unit) {
     val found = tr("מכילה את מה שחיפשת", "Contains what you searched for")
     val star = if (line.starred) tr("הסרת הסימון", "Remove the star") else tr("סימון כחשובה", "Mark as important")
     val copy = tr("העתקה", "Copy")
+    val fix = tr("תיקון מילה", "Fix a word")
     val context = LocalContext.current
     // A phone number or an address said, to paste somewhere else.
     val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, line.copied)) }
@@ -969,6 +990,7 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
                 customActions = listOf(
                     CustomAccessibilityAction(star) { onStar(); true },
                     CustomAccessibilityAction(copy) { copyLine(); true },
+                    CustomAccessibilityAction(fix) { onFix(); true },
                 ) + calls
             }
             .onHold { menu = true },
@@ -976,6 +998,7 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { Text(star) }, onClick = { menu = false; onStar() })
             DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
+            DropdownMenuItem(text = { Text(fix) }, onClick = { menu = false; onFix() })
         }
         LineDirection(line.rightToLeft) {
             Column(modifier = Modifier.fillMaxWidth()) {

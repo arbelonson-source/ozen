@@ -619,4 +619,12 @@ class OtherSettingsDecodingTest {
             }
         }
     }
+
+    @Test
+    fun `word fixes survive a save and load and junk is cleaned`() {
+        val settings = decode("{}")
+        settings.wordFixes = listOf(WordFix(" aval ", "Avi"), WordFix("aval", "Other"), WordFix("same", "same"))
+        assertEquals(listOf(WordFix("aval", "Avi")), roundTripped(settings).wordFixes)
+        assertTrue(decode("{}").wordFixes.isEmpty())
+    }
 }
