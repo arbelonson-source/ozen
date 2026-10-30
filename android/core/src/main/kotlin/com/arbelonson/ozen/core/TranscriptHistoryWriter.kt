@@ -238,6 +238,21 @@ class TranscriptHistoryWriter(
      * waiting one was written over it. The tap follows the file, which is
      * what History shows; a line only the waiting version has follows that.
      */
+    fun fixTextNow(sessionID: UUID, segmentID: UUID, text: String): Boolean = queue.sync {
+        lastWritten.record = null
+        var done = false
+        failure.capture { done = store.fixText(segmentID, sessionID, text) }
+        val waiting = pendingSaves.records[sessionID]
+        val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
+        if (waiting != null && index >= 0) {
+            val segments = waiting.segments.toMutableList()
+            segments[index] = segments[index].copy(text = text)
+            pendingSaves.records[sessionID] = waiting.copy(segments = segments)
+            done = true
+        }
+        done
+    }
+
     fun toggleStarNow(sessionID: UUID, segmentID: UUID): Boolean? = queue.sync {
         lastWritten.record = null
         var result: Boolean? = null

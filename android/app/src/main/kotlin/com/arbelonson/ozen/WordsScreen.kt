@@ -39,6 +39,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.VocabularyHints
+import com.arbelonson.ozen.core.WordFix
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.EmptyState
 import com.arbelonson.ozen.ui.OzenScreen
@@ -50,7 +51,7 @@ import com.arbelonson.ozen.ui.GroupFootnote
 import com.arbelonson.ozen.ui.SectionHeader as GroupHeader
 
 @Composable
-internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChange: (List<String>) -> Unit, onClose: () -> Unit) {
+internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChange: (List<String>) -> Unit, wordFixes: List<WordFix>, onWordFixes: (List<WordFix>) -> Unit, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     var draft by rememberSaveable { mutableStateOf("") }
     val listed = VocabularyHints.listedEntry(draft, words)
@@ -116,6 +117,7 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
                 }
             }
         }
+        WordFixesSection(wordFixes, onWordFixes)
         GroupFootnote(
             tr("השינויים נכנסים לתוקף מהמשפט הבא, בלי להפעיל מחדש.", "Changes take effect from the next sentence, without restarting."),
             modifier = Modifier.padding(bottom = OzenSpacing.Unit),

@@ -479,7 +479,7 @@ private fun OzenApp(
                                 onFinish = onboarding.finish,
                             )
                         }
-                        Front.Settings -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false; settingsAtBackup.value = false }, onWords = { app.captions.setWords(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, heardBy = { state.recentlyHeardBy[it.id]?.takeIf { current.display.showSpeakerNames } }, onAppLanguage = onAppLanguage, onShowWalkthrough = {
+                        Front.Settings -> SettingsScreen(app.engineSettings, app.settings, onClose = { showingSettings.value = false; settingsAtBackup.value = false }, onWords = { app.captions.setWords(it) }, onWordFixes = { app.captions.setWordFixes(it) }, onImportantWords = { app.captions.setImportantWords(it) }, canSay = app.captions::canSay, onSpeak = { app.captions.speak(it) }, diagnostics = app.captions, heard = state.recentlyHeard, heardBy = { state.recentlyHeardBy[it.id]?.takeIf { current.display.showSpeakerNames } }, onAppLanguage = onAppLanguage, onShowWalkthrough = {
                             app.captions.showWalkthroughAgain()
                             showingSettings.value = false
                             settingsAtBackup.value = false
@@ -554,7 +554,10 @@ private fun OzenApp(
                                     app.captions.saveBeforeReading()
                                     reading = conversation to line
                                 },
-                                onAddWord = { app.captions.addWord(it) },
+                                onFixWord = { line, text, heard, written, everyTime ->
+                                    app.captions.fixLine(line, app.captions.correctedText(text, heard, written))
+                                    app.captions.saveWordFix(heard, written, everyTime)
+                                },
                                 onNameSpeaker = app.captions::nameSpeaker,
                                 savedSpeakerNames = { app.captions.savedSpeakerNames },
                                 onAskToRepeat = { app.captions.askToRepeat() }.takeIf { app.captions.canAskToRepeat() },
@@ -694,7 +697,7 @@ private fun CaptionScreen(
     onHistory: () -> Unit,
     onStar: (UUID) -> Unit,
     onOpen: (conversation: UUID, line: UUID) -> Unit,
-    onAddWord: (String) -> Unit,
+    onFixWord: (UUID, String, String, String, Boolean) -> Unit,
     onNameSpeaker: (line: UUID, name: String) -> Unit,
     savedSpeakerNames: () -> List<String>,
     onAskToRepeat: (() -> Unit)?,
@@ -758,8 +761,16 @@ private fun CaptionScreen(
     // turning the phone leaves the dialog open, and so does the line
     // leaving the newest 200 the screen holds while she types.
     var fixing by rememberSaveable { mutableStateOf<String?>(null) }
+    var fixingLine by rememberSaveable { mutableStateOf<UUID?>(null) }
     fixing?.let { text ->
-        FixWordDialog(text, onAdd = { onAddWord(it); fixing = null }, onDismiss = { fixing = null })
+        FixWordDialog(
+            text,
+            onSave = { heard, written, everyTime ->
+                fixingLine?.let { onFixWord(it, text, heard, written, everyTime) }
+                fixing = null
+            },
+            onDismiss = { fixing = null },
+        )
     }
     var naming by rememberSaveable { mutableStateOf<UUID?>(null) }
     var namingText by rememberSaveable { mutableStateOf("") }
@@ -958,7 +969,7 @@ private fun CaptionScreen(
                             }
                         }
                     } else {
-                        CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it.text }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
+                        CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
                         if (!following) {
                             JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                                 following = true

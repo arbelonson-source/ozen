@@ -1793,7 +1793,8 @@ class CaptionPipeline(
         statsData.tokensReceived += 1
         // ivrit.ai's model starts some lines with an invisible direction
         // mark; kept, it would travel into saved conversations and search.
-        var cleaned = HebrewText.removingDirectionMarks(incoming.text)
+        val fixes = settingsInUse?.wordFixes.orEmpty()
+        var cleaned = WordFixes.apply(fixes, HebrewText.removingDirectionMarks(incoming.text))
         if (incoming.isFinal) incomingText.remove(incoming.utteranceID) else incomingText[incoming.utteranceID] = cleaned
         // A sentence cleared from the screen mid-way keeps arriving with all
         // of its words so far. Dropping it whole lost everything said after
@@ -1839,7 +1840,7 @@ class CaptionPipeline(
                 speakerClusterID = incoming.speakerClusterID,
                 confidence = incoming.confidence,
                 startsNewSpeakerTurn = incoming.startsNewSpeakerTurn,
-                uncertainWords = incoming.uncertainWords.map { HebrewText.removingDirectionMarks(it) },
+                uncertainWords = incoming.uncertainWords.map { WordFixes.apply(fixes, HebrewText.removingDirectionMarks(it)) },
             )
         }
         statsData.lastTokenAt = now()
@@ -2020,6 +2021,12 @@ class CaptionPipeline(
         val engine = currentEngine
         if (engine == null || !(phase.isListening || phase == PipelinePhase.Paused)) return
         engine.setVocabulary(primedVocabulary(cleaned))
+    }
+
+    fun setWordFixes(fixes: List<WordFix>) {
+        val cleaned = WordFixes.normalized(fixes)
+        settingsInUse?.wordFixes = cleaned
+        coveredSettings?.wordFixes = cleaned
     }
 
     /**

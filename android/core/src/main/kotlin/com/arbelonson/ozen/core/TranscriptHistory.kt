@@ -833,6 +833,21 @@ class TranscriptHistoryStore(private val directory: File) {
         return toggled.isStarred
     }
 
+    fun fixText(segmentID: UUID, inSession: UUID, text: String): Boolean {
+        val record = load(inSession) ?: return false
+        val index = record.segments.indexOfFirst { it.id == segmentID }
+        if (index < 0) return false
+        val segments = record.segments.toMutableList()
+        segments[index] = segments[index].copy(text = text)
+        val updated = record.copy(segments = segments)
+        val file = fileFor(inSession)
+        PrivateFileWrites.write(file, updated.toJson().toByteArray(Charsets.UTF_8))
+        val written = modificationDate(file)
+        writeSummary(TranscriptSessionSummary.summarizing(updated), file, written)
+        writeSearchText(searchableText(updated), file, written)
+        return true
+    }
+
     fun sweepStrayTemporaries(olderThanMillis: Long = 60_000) {
         val cutoff = System.currentTimeMillis() - olderThanMillis
         for (folder in listOf(directory, summariesDirectory)) {
