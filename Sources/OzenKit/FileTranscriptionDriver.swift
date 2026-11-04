@@ -64,6 +64,7 @@ public struct FileTranscriptionDriver: Sendable {
     private let engine: any TranscriptionEngine
     private let languageCode: String
     private let names: [String]
+    private let wordFixes: [WordFix]
     private let durationSeconds: Double?
     private let allowCellularDownload: Bool
     private let score: Score
@@ -74,6 +75,7 @@ public struct FileTranscriptionDriver: Sendable {
         engine: any TranscriptionEngine,
         languageCode: String,
         names: [String],
+        wordFixes: [WordFix] = [],
         durationSeconds: Double?,
         allowCellularDownload: Bool,
         score: @escaping Score,
@@ -83,6 +85,7 @@ public struct FileTranscriptionDriver: Sendable {
         self.engine = engine
         self.languageCode = languageCode
         self.names = names
+        self.wordFixes = WordFixes.normalized(wordFixes)
         self.durationSeconds = durationSeconds
         self.allowCellularDownload = allowCellularDownload
         self.score = score
@@ -219,7 +222,8 @@ public struct FileTranscriptionDriver: Sendable {
         case .text(let text):
             if !text.isEmpty {
                 let end = min(stretch.endSeconds, seconds(state.received))
-                state.lines.append(TranscribedLine(startSeconds: stretch.startSeconds, endSeconds: end, text: text))
+                let fixed = WordFixes.apply(wordFixes, to: text)
+                state.lines.append(TranscribedLine(startSeconds: stretch.startSeconds, endSeconds: end, text: fixed))
             }
             report(progress(state))
             return nil

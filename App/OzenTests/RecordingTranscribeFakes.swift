@@ -9,6 +9,7 @@ struct RecordingTestFailure: Error {}
 final class RecordingHostFake: RecordingTranscribeHost {
     var spokenLanguage: UILanguage = .hebrew
     var vocabularyNames: [String] = []
+    var wordFixes: [WordFix] = []
     var allowsCellularDownload = false
     var savesHistory = true
     var captionsPhase: PipelinePhase = .idle

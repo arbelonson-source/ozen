@@ -1630,6 +1630,57 @@ public final class LiveCaptionViewModel {
         vocabularyChanged()
     }
 
+    // MARK: - Word fixes (a heard word always written another way)
+
+    public var wordFixes: [WordFix] { settings.wordFixes }
+
+    public func addWordFix(_ fix: WordFix) {
+        let cleaned = WordFixes.normalized([fix] + settings.wordFixes)
+        guard cleaned != settings.wordFixes else { return }
+        settings.wordFixes = cleaned
+        wordFixesChanged()
+    }
+
+    public func removeWordFixes(at offsets: IndexSet) {
+        settings.wordFixes.remove(atOffsets: offsets)
+        wordFixesChanged()
+    }
+
+    private func wordFixesChanged() {
+        persist()
+        pipeline.setWordFixes(settings.wordFixes)
+    }
+
+    /// One tap of "Fix a word": the line changes now, the written form
+    /// joins the names list, and with `always` the fix is kept for later.
+    public func applyWordFix(_ fix: WordFix, always: Bool, toLine segment: TranscriptSegment) {
+        applyWordFix(fix, always: always, lineID: segment.id, text: segment.text, sessionID: nil)
+    }
+
+    public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, text current: String, sessionID: UUID?) {
+        guard let fixed = WordFixes.normalized([fix]).first else { return }
+        addVocabularyTerm(fixed.written)
+        if always { addWordFix(fixed) }
+        let text = WordFixes.apply([fixed], to: current)
+        guard text != current else { return }
+        if pipeline.segments.contains(where: { $0.id == lineID }) {
+            pipeline.replaceText(ofSegment: lineID, with: text)
+            correctedLine(lineID)
+        } else if let sessionID {
+            historyWriter.replaceTextNow(sessionID: sessionID, segmentID: lineID, text: text)
+        }
+    }
+
+    private func correctedLine(_ id: UUID) {
+        if let index = pipeline.segments.firstIndex(where: { $0.id == id }),
+           index < historySegmentOffset,
+           let closed = closedHistorySessions.last(where: { $0.lines.contains(index) }) {
+            if settings.saveHistory { saveClosed(closed) }
+        } else {
+            persistHistory(ended: false, inBackground: true)
+        }
+    }
+
     private func vocabularyChanged() {
         persist()
         let terms = settings.vocabulary

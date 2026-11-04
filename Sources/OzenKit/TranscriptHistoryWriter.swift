@@ -91,6 +91,19 @@ public final class TranscriptHistoryWriter: Sendable {
         }
     }
 
+    public func replaceTextNow(sessionID: UUID, segmentID: UUID, text: String) {
+        queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
+            lastWritten.record = nil
+            failure.capture { try store.replaceText(segmentID: segmentID, inSession: sessionID, with: text) }
+            if var waiting = pendingSaves.records[sessionID],
+               let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
+                waiting.segments[index].text = text
+                pendingSaves.records[sessionID] = waiting
+            }
+            Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure)
+        }
+    }
+
     /// Renames a voice across every saved conversation, queued behind the
     /// saves already waiting so none of them lands the old name back.
     public func renameSpeakerInBackground(from oldName: String, to newName: String, finished: (@Sendable () -> Void)? = nil) {

@@ -962,6 +962,20 @@ public struct TranscriptHistoryStore: Sendable {
         return state
     }
 
+    /// Replaces the text of one saved line (a word fixed by hand).
+    public func replaceText(segmentID: UUID, inSession id: UUID, with text: String) throws {
+        _ = try patchRecordFile(at: fileURL(for: id)) { object in
+            guard var entries = object["segments"] as? [Any],
+                  let index = entries.firstIndex(where: { (($0 as? [String: Any])?["id"] as? String).flatMap(UUID.init(uuidString:)) == segmentID }),
+                  var line = entries[index] as? [String: Any]
+            else { return false }
+            line["text"] = text
+            entries[index] = line
+            object["segments"] = entries
+            return true
+        }
+    }
+
     public func delete(id: UUID) throws {
         let url = fileURL(for: id)
         try? FileManager.default.removeItem(at: summaryURL(forRecordFile: url))

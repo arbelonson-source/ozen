@@ -1785,6 +1785,8 @@ public final class CaptionPipeline {
             }
             cleaned = rest
         }
+        let fixes = activeSettings?.wordFixes ?? []
+        cleaned = WordFixes.apply(fixes, to: cleaned)
         let token = cleaned == incoming.text ? incoming : TranscriptToken(
             utteranceID: incoming.utteranceID,
             text: cleaned,
@@ -1793,7 +1795,7 @@ public final class CaptionPipeline {
             speakerClusterID: incoming.speakerClusterID,
             confidence: incoming.confidence,
             startsNewSpeakerTurn: incoming.startsNewSpeakerTurn,
-            uncertainWords: incoming.uncertainWords.map(HebrewText.removingDirectionMarks)
+            uncertainWords: incoming.uncertainWords.map { WordFixes.apply(fixes, to: HebrewText.removingDirectionMarks($0)) }
         )
         stats.lastTokenAt = now()
         // A brand-new utterance with nothing to show yet isn't worth an
@@ -1948,6 +1950,18 @@ public final class CaptionPipeline {
     }
 
     // MARK: - Plumbing
+
+    public func replaceText(ofSegment id: UUID, with text: String) {
+        guard let index = segments.lastIndex(where: { $0.id == id }) else { return }
+        segments[index].text = text
+        onCaptionsChanged?()
+    }
+
+    public func setWordFixes(_ fixes: [WordFix]) {
+        let cleaned = WordFixes.normalized(fixes)
+        activeSettings?.wordFixes = cleaned
+        coveredSettings?.wordFixes = cleaned
+    }
 
     /// Applies a new hint list to the running engine (and remembers it for
     /// the next start) without restarting — a name added mid-conversation
