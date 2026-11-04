@@ -370,7 +370,10 @@ class AppSettings(
     var phoneSpeed: PhoneSpeed? = null,
     /** How the running model's live passes went in use; see `ModelFitWatch`. */
     var phoneLiveMeasurement: LiveMeasurement? = null,
-    /** Lighter models she said "Not now" to, or chose against, each as model and phone together; see `ModelFitWatch.dismissalKey`. */
+    /**
+     * Model-and-phone keys (see `ModelFitWatch.dismissalKey`) of two kinds: a lighter model she said "Not now" to,
+     * and a model she chose by hand against the warning, which is then never offered a swap.
+     */
     var modelFitDismissed: List<String> = emptyList(),
 ) {
     var homeServerBeam: Int = minOf(maxOf(homeServerBeam, homeServerBeamRange.first), homeServerBeamRange.last)

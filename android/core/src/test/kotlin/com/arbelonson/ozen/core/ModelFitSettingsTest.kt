@@ -83,4 +83,11 @@ class ModelFitSettingsTest {
         settings.dismissModelFit(offered.variant, phone)
         assertEquals(1, settings.modelFitDismissed.size)
     }
+
+    @Test
+    fun `a heavy model dismissed on this phone, as choosing it by hand does, is not offered a swap`() {
+        val settings = behind()
+        settings.dismissModelFit(settings.phoneModel.variant, phone)
+        assertNull(settings.modelFitOffer(plenty, phone))
+    }
 }

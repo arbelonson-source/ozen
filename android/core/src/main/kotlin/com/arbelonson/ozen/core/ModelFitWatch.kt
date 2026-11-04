@@ -28,6 +28,7 @@ object ModelFitWatch {
         device: String,
     ): PhoneModel? {
         if (measurement == null || measurement.file != current.file) return null
+        if (dismissalKey(current.variant, device) in dismissed) return null
         if (PhoneModelEstimate.fit(current, measurement.gflops, totalMemoryBytes) == PhoneModelFit.KeepsUp) return null
         val lighter = PhoneModelEstimate.recommend(language, measurement.gflops, totalMemoryBytes)
         if (lighter.file == current.file || lighter.passGflop >= current.passGflop) return null

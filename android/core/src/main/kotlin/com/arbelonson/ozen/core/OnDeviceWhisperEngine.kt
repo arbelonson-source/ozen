@@ -426,6 +426,7 @@ class OnDeviceWhisperEngine(
             // changed nothing up close (see `SpeechGain`).
             val heard = SpeechGain.normalized(window)
             val passStarted = timeSource.markNow()
+            val coolAtStart = ModelFitWatch.counts(1.0, heat(), lowPowerMode(), kind)
             val results: List<WhisperSegment> = try {
                 runPass(pipe, heard, options)
             } catch (error: CancellationException) {
@@ -445,8 +446,8 @@ class OnDeviceWhisperEngine(
                 lastLivePassSeconds = seconds
                 val report = synchronized(lock) {
                     tally.recordLivePass(seconds)
-                    if (ModelFitWatch.counts(seconds, heat(), lowPowerMode(), kind)) tally.recordCountedPass(seconds)
-                    if (tally.reportedPasses == 0 && ModelFitWatch.shouldSave(tally.countedPasses)) {
+                    if (coolAtStart && ModelFitWatch.counts(seconds, heat(), lowPowerMode(), kind)) tally.recordCountedPass(seconds)
+                    if (tally.countedPasses - tally.reportedPasses >= ModelFitWatch.PASSES_TO_SAVE) {
                         tally.markReported()
                         tally.countedPasses to tally.countedSeconds
                     } else {

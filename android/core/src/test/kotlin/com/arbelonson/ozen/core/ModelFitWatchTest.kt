@@ -124,6 +124,13 @@ class ModelFitWatchTest {
     }
 
     @Test
+    fun `a model chosen by hand against the warning is not offered a swap, on this phone only`() {
+        val chosen = listOf(ModelFitWatch.dismissalKey(turbo.variant, phone))
+        assertNull(offer(measured(turbo, 2.0), turbo, UILanguage.English, dismissed = chosen))
+        assertEquals(small.file, offer(measured(turbo, 2.0), turbo, UILanguage.English, dismissed = chosen, device = "Galaxy S10")?.file)
+    }
+
+    @Test
     fun `another phone's dismissal does not hide the offer here`() {
         val gone = listOf(ModelFitWatch.dismissalKey(small.variant, "Galaxy S10"))
         assertEquals(small.file, offer(measured(turbo, 2.0), turbo, UILanguage.English, dismissed = gone)?.file)

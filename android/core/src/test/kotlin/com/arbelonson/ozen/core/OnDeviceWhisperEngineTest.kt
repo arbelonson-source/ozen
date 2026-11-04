@@ -32,6 +32,7 @@ private class FakeWhisperPasses(private val now: () -> Long) : WhisperPasses {
     val calls = ArrayList<Call>()
     var passMillis: (WhisperPassOptions) -> Long = { 0L }
     var reply: (Call) -> List<WhisperSegment> = { hello }
+    var afterPass: () -> Unit = {}
     var active = 0
     var mostActive = 0
 
@@ -44,6 +45,7 @@ private class FakeWhisperPasses(private val now: () -> Long) : WhisperPasses {
         mostActive = maxOf(mostActive, active)
         try {
             delay(passMillis(options))
+            afterPass()
             return reply(call)
         } finally {
             active -= 1
@@ -272,9 +274,42 @@ class OnDeviceWhisperEngineTest {
         rig.passes.passMillis = { 400L }
         rig.stream(speech(30.0)).toList()
         assertTrue(rig.passes.live().size > 20, "only ${rig.passes.live().size} live passes ran")
-        assertEquals(1, reports.size)
-        assertEquals(20, reports.single().first)
-        assertEquals(8.0, reports.single().second, 0.05)
+        assertEquals(20, reports.first().first)
+        assertEquals(8.0, reports.first().second, 0.05)
+    }
+
+    @Test
+    fun a_stream_that_keeps_running_reports_again_every_twenty_more_passes() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        val rig = rig(onFit = { count, seconds -> reports.add(count to seconds) })
+        rig.passes.passMillis = { 400L }
+        rig.stream(speech(60.0)).toList()
+        val ran = rig.passes.live().size
+        assertTrue(ran >= 40, "only $ran live passes ran")
+        assertEquals((1..ran / 20).map { it * 20 }, reports.map { it.first })
+    }
+
+    @Test
+    fun a_pass_whose_heat_changed_while_it_ran_is_not_counted() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        var hot = true
+        val passes = FakeWhisperPasses { testScheduler.currentTime }
+        val engine = OnDeviceWhisperEngine(
+            modelName = "fake-model",
+            loader = FakeLoader(passes),
+            heat = { if (hot) DeviceHeat.Serious else DeviceHeat.Nominal },
+            onFitMeasurement = { count, seconds -> reports.add(count to seconds) },
+            timeSource = testScheduler.timeSource,
+            wallClockSeconds = { testScheduler.currentTime / 1000.0 },
+            passDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        engine.prepare("he") {}
+        passes.passMillis = { 400L }
+        passes.afterPass = { hot = !hot }
+        engine.stream("he", audioOf(speech(120.0))).toList()
+        engine.release()
+        assertTrue(passes.live().size > 20)
+        assertTrue(reports.isEmpty(), "$reports")
     }
 
     @Test
