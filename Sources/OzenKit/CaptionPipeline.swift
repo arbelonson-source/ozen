@@ -1951,10 +1951,12 @@ public final class CaptionPipeline {
 
     // MARK: - Plumbing
 
-    public func replaceText(ofSegment id: UUID, with text: String) {
-        guard let index = segments.lastIndex(where: { $0.id == id }) else { return }
+    @discardableResult
+    public func replaceText(ofSegment id: UUID, with text: String) -> Bool {
+        guard let index = segments.lastIndex(where: { $0.id == id }), segments[index].isCommitted else { return false }
         segments[index].text = text
         onCaptionsChanged?()
+        return true
     }
 
     public func setWordFixes(_ fixes: [WordFix]) {

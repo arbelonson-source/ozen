@@ -25,11 +25,17 @@ public enum WordFixes {
             let heard = clip(collapsed(raw.heard))
             let written = clip(raw.written.trimmingCharacters(in: .whitespacesAndNewlines))
             let key = key(heard)
-            guard !heard.isEmpty, !written.isEmpty, key != Self.key(written), seen.insert(key).inserted else { continue }
+            guard !heard.isEmpty, !written.isEmpty, key != Self.key(written) else { continue }
+            guard heard.split(separator: " ").count <= maximumPhraseWords, seen.insert(key).inserted else { continue }
             result.append(WordFix(heard: heard, written: written))
             if result.count == maximumFixes { break }
         }
         return result
+    }
+
+    public static func canJoin(_ left: String, _ right: String) -> Bool {
+        guard let end = left.unicodeScalars.last, let start = right.unicodeScalars.first else { return false }
+        return Token.isCore(end) && Token.isCore(start)
     }
 
     public static func apply(_ fixes: [WordFix], to text: String) -> String {

@@ -708,10 +708,12 @@ struct LiveCaptionView: View {
             } label: {
                 Label(tr("מי מדבר?", "Who is speaking?"), systemImage: "person.crop.circle.badge.questionmark")
             }
-            Button {
-                fixingWordFromSegment = segment
-            } label: {
-                Label(tr("תיקון מילה", "Fix a word"), systemImage: "text.badge.checkmark")
+            if segment.isCommitted {
+                Button {
+                    fixingWordFromSegment = segment
+                } label: {
+                    Label(tr("תיקון מילה", "Fix a word"), systemImage: "text.badge.checkmark")
+                }
             }
             Button {
                 UIPasteboard.general.string = CaptionLayout.copiedText(segment.text)
@@ -745,8 +747,10 @@ struct LiveCaptionView: View {
             Button(tr("מי מדבר?", "Who is speaking?")) {
                 namingSegment = segment
             }
-            Button(tr("תיקון מילה", "Fix a word")) {
-                fixingWordFromSegment = segment
+            if segment.isCommitted {
+                Button(tr("תיקון מילה", "Fix a word")) {
+                    fixingWordFromSegment = segment
+                }
             }
             Button(tr("העתקה", "Copy")) {
                 UIPasteboard.general.string = CaptionLayout.copiedText(segment.text)

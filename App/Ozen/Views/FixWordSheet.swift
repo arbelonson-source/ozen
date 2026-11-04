@@ -70,8 +70,8 @@ struct FixWordSheet: View {
 
     private func tap(_ index: Int) {
         if let range = picked, range.count < 4 {
-            if index == range.upperBound + 1 { picked = range.lowerBound...index }
-            else if index == range.lowerBound - 1 { picked = index...range.upperBound }
+            if index == range.upperBound + 1, WordFixes.canJoin(words[range.upperBound], words[index]) { picked = range.lowerBound...index }
+            else if index == range.lowerBound - 1, WordFixes.canJoin(words[index], words[range.lowerBound]) { picked = index...range.upperBound }
             else { picked = index...index }
         } else {
             picked = index...index

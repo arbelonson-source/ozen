@@ -1663,10 +1663,10 @@ public final class LiveCaptionViewModel {
         if always { addWordFix(fixed) }
         let text = WordFixes.apply([fixed], to: current)
         guard text != current else { return }
-        if pipeline.segments.contains(where: { $0.id == lineID }) {
-            pipeline.replaceText(ofSegment: lineID, with: text)
+        if pipeline.replaceText(ofSegment: lineID, with: text) {
             correctedLine(lineID)
-        } else if let sessionID {
+        }
+        if let sessionID {
             historyWriter.replaceTextNow(sessionID: sessionID, segmentID: lineID, text: text)
         }
     }

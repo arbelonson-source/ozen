@@ -82,4 +82,17 @@ struct WordFixesTests {
         #expect(WordFixes.apply([], to: "  hello,  world ") == "  hello,  world ")
         #expect(WordFixes.apply(avi, to: "") == "")
     }
+
+    @Test("a phrase longer than four words is refused, so no saved fix is silently ignored")
+    func longPhrasesRefused() {
+        #expect(WordFixes.normalized([fix("a b c d e", "X")]).isEmpty)
+        #expect(WordFixes.normalized([fix("a b c d", "X")]) == [fix("a b c d", "X")])
+    }
+
+    @Test("a choice of words never reaches across punctuation")
+    func joinAcrossPunctuation() {
+        #expect(WordFixes.canJoin("bat", "sheva"))
+        #expect(!WordFixes.canJoin("bat,", "sheva"))
+        #expect(!WordFixes.canJoin("bat", "(sheva"))
+    }
 }
