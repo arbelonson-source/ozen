@@ -87,13 +87,13 @@ struct FileTranscriberTests {
         defer { try? FileManager.default.removeItem(at: url) }
         let reader = try await RecordingAudioReader.open(url)
         var withFix = request()
-        withFix.wordFixes = [WordFix(heard: "said", written: "Said")]
+        withFix.wordFixes = [WordFix(heard: "said", written: "told")]
         let result = await FileTranscriber(makeEngine: { _ in TranscriberFixtureEngine() }).run(withFix, reader: reader, report: { _ in })
         guard case .finished(let lines, _) = result else {
             Issue.record("\(result)")
             return
         }
-        #expect(lines.map(\.text) == ["Said it"])
+        #expect(lines.map(\.text) == ["told it"])
     }
 
     @Test("a recording with no speech in it says so and never wakes the engine")

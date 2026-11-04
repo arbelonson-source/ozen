@@ -57,7 +57,7 @@ struct WordFixesReviewTests {
     @Test("a hand correction reads the line as it is now, survives the engine's later text, and moves the keyword highlight")
     func handCorrection() async {
         let engine = FakeEngine()
-        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder(), recovery: .disabled)
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder(), recovery: .disabled, now: { 1_001 })
         var settings = AppSettings.default
         settings.keywordAlerts = [KeywordAlert(phrase: "Avi")]
         await pipeline.start(settings: settings)
