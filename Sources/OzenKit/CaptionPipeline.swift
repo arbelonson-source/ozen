@@ -61,6 +61,7 @@ public final class CaptionPipeline {
     public private(set) var keywordHits: [KeywordHit] = []
     /// Segments that contain at least one keyword hit, for highlighting.
     public private(set) var keywordHitSegmentIDs: Set<UUID> = []
+    private var handFixes: [UUID: [WordFix]] = [:]
     /// A voice sample for a speaker profile is being recorded.
     public private(set) var isRecordingVoice = false
     /// An external microphone went away mid-conversation and the phone's
@@ -950,6 +951,7 @@ public final class CaptionPipeline {
         startNewConversation()
         keywordHits = []
         keywordHitSegmentIDs = []
+        handFixes = [:]
         keywordDeduplicator.forgetAll()
     }
 
@@ -1786,6 +1788,7 @@ public final class CaptionPipeline {
             cleaned = rest
         }
         let fixes = activeSettings?.wordFixes ?? []
+        let heardText = cleaned
         cleaned = WordFixes.apply(fixes, to: cleaned)
         let token = cleaned == incoming.text ? incoming : TranscriptToken(
             utteranceID: incoming.utteranceID,
@@ -1811,7 +1814,9 @@ public final class CaptionPipeline {
         // still must not swallow a true final: the words already shown
         // are good, so commit them now instead of leaving the line
         // "still settling" until the stale-commit safety net catches up.
-        guard silencePhraseGuard.admits(token, at: now()) else {
+        var heardToken = token
+        heardToken.text = heardText
+        guard silencePhraseGuard.admits(heardToken, at: now()) else {
             if token.isFinal { commitWithoutNewWords(token.utteranceID) }
             return
         }
@@ -1830,7 +1835,7 @@ public final class CaptionPipeline {
         noteFinished(segment, previously: previously)
         upsert(segment)
         stats.hasOpenLine = stabilizer.hasOpenLine
-        scanForKeywords(in: segment)
+        scanForKeywords(in: withHandFixes(segment))
     }
 
     private func consumeEmbeddings(_ audioStream: AsyncStream<[Float]>, run: UUID) async {
@@ -1934,7 +1939,15 @@ public final class CaptionPipeline {
         }
     }
 
-    private func upsert(_ segment: TranscriptSegment) {
+    private func withHandFixes(_ segment: TranscriptSegment) -> TranscriptSegment {
+        guard let fixes = handFixes[segment.id] else { return segment }
+        var fixed = segment
+        fixed.text = WordFixes.apply(fixes, to: segment.text)
+        return fixed
+    }
+
+    private func upsert(_ shown: TranscriptSegment) {
+        let segment = withHandFixes(shown)
         if let index = segments.lastIndex(where: { $0.id == segment.id }) {
             // The voice analysis names the speaker on the shown line only;
             // the stabilizer's copy, committed after a pause, doesn't carry it.
@@ -1957,6 +1970,27 @@ public final class CaptionPipeline {
         segments[index].text = text
         onCaptionsChanged?()
         return true
+    }
+
+    /// Fixes one word of a finished line by hand. The line is read as it is
+    /// now, the fix is kept for it when the engine rewrites the line later,
+    /// and the keyword highlight follows the new text. Nil when the line is
+    /// gone or still being heard.
+    @discardableResult
+    public func correctWord(inSegment id: UUID, with fix: WordFix) -> String? {
+        guard let index = segments.lastIndex(where: { $0.id == id }), segments[index].isCommitted else { return nil }
+        let current = segments[index].text
+        let text = WordFixes.apply([fix], to: current)
+        guard text != current else { return current }
+        handFixes[id, default: []].append(fix)
+        segments[index].text = text
+        if keywordMatcher.matches(in: text).isEmpty {
+            keywordHitSegmentIDs.remove(id)
+        } else {
+            keywordHitSegmentIDs.insert(id)
+        }
+        onCaptionsChanged?()
+        return text
     }
 
     public func setWordFixes(_ fixes: [WordFix]) {

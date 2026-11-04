@@ -105,12 +105,12 @@ struct HistoryDetailView: View {
                         .id(segment.id)
                         .contextMenu {
                             starButton(segment)
-                            fixButton(segment)
+                            if segment.isCommitted { fixButton(segment) }
                             copyButton(segment.text)
                         }
                         .accessibilityActions {
                             starButton(segment)
-                            fixButton(segment)
+                            if segment.isCommitted { fixButton(segment) }
                             copyButton(segment.text)
                         }
                     }
@@ -244,11 +244,12 @@ struct HistoryDetailView: View {
         .onDisappear { viewModel.historyClosed(sessionID) }
         .toolbar { toolbarContent }
         .sheet(item: $fixingLine) { line in
-            FixWordSheet(text: line.text) { fix, always in
+            FixWordSheet(text: line.text, languageCode: viewModel.settings.languageCode) { fix, always in
                 viewModel.applyWordFix(fix, always: always, lineID: line.id, text: line.text, sessionID: sessionID)
                 onHistoryChanged()
                 Task { await refresh() }
             }
+            .alertOverlay(for: viewModel)
         }
         .alert(tr("שם לשיחה", "Conversation name"), isPresented: $renaming) {
             TextField(tr("למשל: ביקור אצל הרופא", "For example: doctor’s visit"), text: $newTitle)

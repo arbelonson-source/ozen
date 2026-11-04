@@ -1635,7 +1635,7 @@ public final class LiveCaptionViewModel {
     public var wordFixes: [WordFix] { settings.wordFixes }
 
     public func addWordFix(_ fix: WordFix) {
-        let cleaned = WordFixes.normalized([fix] + settings.wordFixes)
+        let cleaned = WordFixes.adding(fix, to: settings.wordFixes)
         guard cleaned != settings.wordFixes else { return }
         settings.wordFixes = cleaned
         wordFixesChanged()
@@ -1661,21 +1661,25 @@ public final class LiveCaptionViewModel {
         guard let fixed = WordFixes.normalized([fix]).first else { return }
         addVocabularyTerm(fixed.written)
         if always { addWordFix(fixed) }
-        let text = WordFixes.apply([fixed], to: current)
-        guard text != current else { return }
-        if pipeline.replaceText(ofSegment: lineID, with: text) {
-            correctedLine(lineID)
-        }
-        if let sessionID {
+        let before = pipeline.segments.last { $0.id == lineID }?.text
+        let live = pipeline.correctWord(inSegment: lineID, with: fixed)
+        let text = live ?? WordFixes.apply([fixed], to: current)
+        if let live, live != before { correctedLine(lineID, text: live) }
+        if let sessionID, text != current {
             historyWriter.replaceTextNow(sessionID: sessionID, segmentID: lineID, text: text)
         }
+        refreshSavingTrouble()
     }
 
-    private func correctedLine(_ id: UUID) {
+    private func correctedLine(_ id: UUID, text: String) {
         if let index = pipeline.segments.firstIndex(where: { $0.id == id }),
            index < historySegmentOffset,
            let closed = closedHistorySessions.last(where: { $0.lines.contains(index) }) {
-            if settings.saveHistory { saveClosed(closed) }
+            if settings.saveHistory {
+                saveClosed(closed)
+            } else {
+                historyWriter.replaceTextNow(sessionID: closed.id, segmentID: id, text: text)
+            }
         } else {
             persistHistory(ended: false, inBackground: true)
         }

@@ -32,7 +32,7 @@ public enum TranscriptionEngineKind: String, Codable, Sendable, CaseIterable {
 /// is what turns this stream into stable, displayable segments.
 public struct TranscriptToken: Sendable, Equatable {
     public let utteranceID: UUID
-    public let text: String
+    public var text: String
     public let isFinal: Bool
     public let timestamp: TimeInterval
     public var speakerClusterID: Int?

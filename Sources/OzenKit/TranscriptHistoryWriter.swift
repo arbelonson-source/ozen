@@ -94,11 +94,14 @@ public final class TranscriptHistoryWriter: Sendable {
     public func replaceTextNow(sessionID: UUID, segmentID: UUID, text: String) {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
-            failure.capture { try store.replaceText(segmentID: segmentID, inSession: sessionID, with: text) }
+            let patched = failure.capture { try store.replaceText(segmentID: segmentID, inSession: sessionID, with: text) }
             if var waiting = pendingSaves.records[sessionID],
                let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
                 waiting.segments[index].text = text
                 pendingSaves.records[sessionID] = waiting
+            } else if !patched {
+                pendingRenames.texts.removeAll { $0.sessionID == sessionID && $0.segmentID == segmentID }
+                pendingRenames.texts.append((sessionID, segmentID, text))
             }
             Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure)
         }
@@ -125,11 +128,20 @@ public final class TranscriptHistoryWriter: Sendable {
     /// after every save until it goes through, and until then its error
     /// is the one reported.
     private static func retry(_ pending: PendingRenames, store: TranscriptHistoryStore, failure: FailureBox) {
-        guard !pending.list.isEmpty else { return }
-        do {
-            try runRenames(pending, store: store)
-        } catch {
-            failure.record(String(describing: error))
+        if !pending.list.isEmpty {
+            do {
+                try runRenames(pending, store: store)
+            } catch {
+                failure.record(String(describing: error))
+            }
+        }
+        for next in pending.texts {
+            do {
+                try store.replaceText(segmentID: next.segmentID, inSession: next.sessionID, with: next.text)
+                pending.texts.removeAll { $0.sessionID == next.sessionID && $0.segmentID == next.segmentID }
+            } catch {
+                failure.record(String(describing: error))
+            }
         }
     }
 
@@ -157,7 +169,7 @@ public final class TranscriptHistoryWriter: Sendable {
     private static func catchUp(_ saves: PendingSaves, other current: UUID?, _ renames: PendingRenames, store: TranscriptHistoryStore, failure: FailureBox) -> Bool {
         retry(saves, other: current, store: store, failure: failure)
         retry(renames, store: store, failure: failure)
-        return saves.records.isEmpty && renames.list.isEmpty
+        return saves.records.isEmpty && renames.list.isEmpty && renames.texts.isEmpty
     }
 
     /// The waiting renames, oldest first; one refused stops the rest.
@@ -199,11 +211,12 @@ public final class TranscriptHistoryWriter: Sendable {
         try queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
             pendingSaves.records[id] = nil
+            pendingRenames.texts.removeAll { $0.sessionID == id }
             try store.delete(id: id)
             // Deleting the one conversation that could not be written left
             // the warning up until the next save, while captions were stopped
             // for good.
-            if pendingSaves.records.isEmpty, pendingRenames.list.isEmpty {
+            if pendingSaves.records.isEmpty, pendingRenames.list.isEmpty, pendingRenames.texts.isEmpty {
                 failure.clear()
             }
         }
@@ -216,6 +229,7 @@ public final class TranscriptHistoryWriter: Sendable {
             pendingSaves.records.removeAll()
             try store.deleteAll()
             pendingRenames.list.removeAll()
+            pendingRenames.texts.removeAll()
             failure.clear()
         }
     }
@@ -278,10 +292,12 @@ private final class FailureBox: @unchecked Sendable {
     }
 }
 
-/// Voice renames not yet written to every saved conversation. Only
+/// Voice renames and line-text fixes not yet written to every saved
+/// conversation. Only
 /// touched on the writer's queue.
 private final class PendingRenames: @unchecked Sendable {
     var list: [(from: String, to: String)] = []
+    var texts: [(sessionID: UUID, segmentID: UUID, text: String)] = []
 }
 
 /// Conversations the disk refused, waiting to be written. Only touched on

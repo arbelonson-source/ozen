@@ -26,11 +26,28 @@ public enum WordFixes {
             let written = clip(raw.written.trimmingCharacters(in: .whitespacesAndNewlines))
             let key = key(heard)
             guard !heard.isEmpty, !written.isEmpty, key != Self.key(written) else { continue }
-            guard heard.split(separator: " ").count <= maximumPhraseWords, seen.insert(key).inserted else { continue }
+            guard heard.split(separator: " ").count <= maximumPhraseWords, hasCleanJoints(heard), seen.insert(key).inserted else { continue }
             result.append(WordFix(heard: heard, written: written))
             if result.count == maximumFixes { break }
         }
         return result
+    }
+
+    public static func adding(_ fix: WordFix, to list: [WordFix]) -> [WordFix] {
+        let moved = key(fix.heard)
+        let carried = list.map { old in
+            key(old.written) == moved ? WordFix(heard: old.heard, written: fix.written) : old
+        }
+        return normalized([fix] + carried)
+    }
+
+    private static func hasCleanJoints(_ heard: String) -> Bool {
+        let words = heard.split(separator: " ").map { Token.split(Array($0.unicodeScalars)) }.compactMap(\.first)
+        for (index, word) in words.enumerated() {
+            if index > 0, word.coreStart != 0 { return false }
+            if index < words.count - 1, word.coreEnd != word.scalars.count { return false }
+        }
+        return true
     }
 
     public static func canJoin(_ left: String, _ right: String) -> Bool {
@@ -45,6 +62,9 @@ public enum WordFixes {
             guard (1...maximumPhraseWords).contains(words.count) else { return nil }
             return Prepared(words: words, written: fix.written)
         }.sorted { $0.words.count > $1.words.count }
+        let han = prepared.filter { $0.words.count == 1 && isHan($0.words[0]) }
+            .map { (heard: Array($0.words[0].unicodeScalars), written: $0.written) }
+            .sorted { $0.heard.count > $1.heard.count }
         guard !prepared.isEmpty else { return text }
         let tokens = Token.split(Array(text.unicodeScalars))
         var out = String.UnicodeScalarView()
@@ -61,6 +81,12 @@ public enum WordFixes {
                 out.append(contentsOf: last.scalars[last.coreEnd...])
                 out.append(contentsOf: last.gap)
                 index += hit.count
+                cursor = index
+            } else if let inside = replacingHan(han, in: tokens[index]) {
+                out.append(contentsOf: slice(tokens, cursor, index))
+                out.append(contentsOf: inside)
+                out.append(contentsOf: tokens[index].gap)
+                index += 1
                 cursor = index
             } else {
                 index += 1
@@ -79,6 +105,33 @@ public enum WordFixes {
         let count: Int
         let prefixEnd: Int
         let written: String
+    }
+
+    private static func isHan(_ word: String) -> Bool {
+        !word.isEmpty && word.unicodeScalars.allSatisfy { isHan($0) }
+    }
+
+    private static func isHan(_ scalar: Unicode.Scalar) -> Bool {
+        scalar.properties.isIdeographic && !(0x3000...0x303F).contains(scalar.value)
+    }
+
+    private static func replacingHan(_ fixes: [(heard: [Unicode.Scalar], written: String)], in token: Token) -> [Unicode.Scalar]? {
+        guard !fixes.isEmpty, token.scalars.contains(where: isHan) else { return nil }
+        var result: [Unicode.Scalar] = []
+        var changed = false
+        var position = 0
+        let all = token.scalars
+        while position < all.count {
+            if let fix = fixes.first(where: { position + $0.heard.count <= all.count && Array(all[position..<position + $0.heard.count]) == $0.heard }) {
+                result.append(contentsOf: fix.written.unicodeScalars)
+                position += fix.heard.count
+                changed = true
+            } else {
+                result.append(all[position])
+                position += 1
+            }
+        }
+        return changed ? result : nil
     }
 
     private static func slice(_ tokens: [Token], _ from: Int, _ to: Int) -> [Unicode.Scalar] {

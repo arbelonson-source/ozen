@@ -547,7 +547,7 @@ struct LiveCaptionView: View {
                 .pageSized()
         }
         .sheet(item: $fixingWordFromSegment) { segment in
-            FixWordSheet(text: segment.text) { fix, always in
+            FixWordSheet(text: segment.text, languageCode: viewModel.settings.languageCode) { fix, always in
                 viewModel.applyWordFix(fix, always: always, toLine: segment)
             }
                 .alertOverlay(for: viewModel)

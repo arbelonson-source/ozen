@@ -3,6 +3,7 @@ import OzenKit
 
 struct FixWordSheet: View {
     let text: String
+    let languageCode: String
     let onSave: (WordFix, Bool) -> Void
     @State private var picked: ClosedRange<Int>?
     @State private var heard = ""
@@ -14,7 +15,12 @@ struct FixWordSheet: View {
         CaptionLayout.displayText(text).split(whereSeparator: \.isWhitespace).map(String.init)
     }
     private var fix: WordFix { WordFix(heard: heard, written: written) }
-    private var canSave: Bool { !WordFixes.normalized([fix]).isEmpty }
+    private var canSave: Bool {
+        let limit = WordFixes.maximumLength
+        return heard.trimmingCharacters(in: .whitespacesAndNewlines).count <= limit
+            && written.trimmingCharacters(in: .whitespacesAndNewlines).count <= limit
+            && !WordFixes.normalized([fix]).isEmpty
+    }
 
     var body: some View {
         NavigationStack {
@@ -25,6 +31,7 @@ struct FixWordSheet: View {
                             wordButton(index, word)
                         }
                     }
+                    .environment(\.layoutDirection, CaptionLayout.readsRightToLeft(text, languageCode: languageCode) ? .rightToLeft : .leftToRight)
                 } header: {
                     Text(tr("נגעו במילים שנשמעו לא נכון", "Tap the words that came out wrong"))
                 }
@@ -91,7 +98,8 @@ private struct FixWordFlow: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let laid = arrange(bounds.width, subviews)
         for (subview, point) in zip(subviews, laid.points) {
-            subview.place(at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y), proposal: .unspecified)
+            let size = subview.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
+            subview.place(at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y), proposal: ProposedViewSize(width: min(size.width, bounds.width), height: size.height))
         }
     }
 
@@ -99,7 +107,8 @@ private struct FixWordFlow: Layout {
         var points: [CGPoint] = []
         var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, widest: CGFloat = 0
         for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
+            var size = subview.sizeThatFits(ProposedViewSize(width: width, height: nil))
+            size.width = min(size.width, width)
             if x > 0, x + size.width > width {
                 x = 0
                 y += rowHeight + 6

@@ -146,6 +146,21 @@ struct TranscribeRecordingModelTests {
         await screen.close()
     }
 
+    @Test("the word fixes the person saved travel with the recording request")
+    func requestCarriesWordFixes() async throws {
+        let host = RecordingHostFake()
+        host.installed = [recommended]
+        host.wordFixes = [WordFix(heard: "aval", written: "Avi")]
+        let transcriber = RecordingTranscriberFake { _, _ in .finished(lines: [], endMissing: false) }
+        let screen = model(host: host, transcriber: transcriber)
+        await screen.load()
+        screen.start()
+        await screen.runFinished()
+        let request = try #require(transcriber.requests.first)
+        #expect(request.wordFixes == [WordFix(heard: "aval", written: "Avi")])
+        await screen.close()
+    }
+
     @Test("what the person chose reaches the engine: language, names tidied, cellular data, the connection, and captions are held for the whole run")
     func requestCarriesTheChoices() async throws {
         let host = RecordingHostFake()

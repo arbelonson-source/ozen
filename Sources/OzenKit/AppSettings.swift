@@ -493,7 +493,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         speechRate = container.lenient(Float.self, forKey: .speechRate) ?? defaults.speechRate
         speechRate = min(max(speechRate, 0.2), 0.7)
         vocabulary = VocabularyHints.normalized(container.lenient([String].self, forKey: .vocabulary) ?? [])
-        wordFixes = WordFixes.normalized(container.lenient([WordFix].self, forKey: .wordFixes) ?? [])
+        wordFixes = WordFixes.normalized(container.lenientArray(of: WordFix.self, forKey: .wordFixes) ?? [])
         hasCompletedOnboarding = container.lenient(Bool.self, forKey: .hasCompletedOnboarding) ?? false
         appLanguage = container.lenient(AppLanguage.self, forKey: .appLanguage) ?? defaults.appLanguage
         notifyWhenInBackground = container.lenient(Bool.self, forKey: .notifyWhenInBackground) ?? defaults.notifyWhenInBackground
