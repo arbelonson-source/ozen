@@ -29,6 +29,19 @@ private class BeamLog {
 
 class CaptionPipelineLifecycleTest {
     @Test
+    fun `stopping and pausing ask the engine to save its counted timing first`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine))
+        pipeline.start(AppSettings.default)
+        assertEquals(0, engine.fitSaveCount)
+        pipeline.pause()
+        assertEquals(1, engine.fitSaveCount)
+        pipeline.resume()
+        pipeline.stop()
+        assertEquals(2, engine.fitSaveCount)
+    }
+
+    @Test
     fun `the engine stream ending on its own while listening is surfaced as a retryable failure`() = runTest {
         val engine = FakeEngine()
         val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))

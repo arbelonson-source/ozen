@@ -9,6 +9,7 @@ import com.arbelonson.ozen.core.PhoneModelChoice
 import com.arbelonson.ozen.core.PhoneModelDeletion
 import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PhoneModelEstimate
+import com.arbelonson.ozen.core.PhoneModelFit
 import com.arbelonson.ozen.core.PhoneModelShelf
 import com.arbelonson.ozen.core.PhoneModelStorage
 import com.arbelonson.ozen.core.PhoneModelSwitch
@@ -38,7 +39,7 @@ interface PhoneModels {
 
     fun refreshInstalled()
 
-    fun choose(file: String)
+    fun choose(file: String, byHand: Boolean = false)
 
     /** The connection or the cellular switch changed: a model waiting for Wi-Fi or a connection starts now if it can. */
     fun resumeWaiting()
@@ -61,6 +62,7 @@ class PhoneModelChooser(
     private val totalMemory: () -> Long? = { null },
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val remove: (File) -> Boolean = { it.delete() },
+    private val device: String = "",
 ) : PhoneModels {
     private val lock = Any()
 
@@ -91,9 +93,17 @@ class PhoneModelChooser(
         partialState.value = leftovers()
     }
 
-    override fun choose(file: String) {
+    override fun choose(file: String, byHand: Boolean) {
+        if (byHand) rememberChoiceAgainstWarning(file)
         picks += 1
         start(file)
+    }
+
+    private fun rememberChoiceAgainstWarning(file: String) {
+        val current = settings.current.value
+        val model = PhoneModelCatalog.offered(current.spokenLanguage).firstOrNull { it.file == file } ?: return
+        val speed = current.gflopsOn(device) ?: return
+        if (PhoneModelEstimate.fit(model, speed, totalMemory()) != PhoneModelFit.KeepsUp) settings.change { it.dismissModelFit(model.variant, device) }
     }
 
     private fun start(file: String) {
@@ -212,7 +222,7 @@ class PhoneModelChooser(
                 checkState.value = PhoneCheckState.Idle
                 return@launch
             }
-            settings.change { it.phoneSpeed = speed }
+            settings.change { it.phoneSpeed = speed.copy(device = device) }
             checkState.value = PhoneCheckState.Idle
             val now = settings.current.value
             val untouched = picks == picksBefore && now.phoneModelFile == before.phoneModelFile && now.spokenLanguage == before.spokenLanguage

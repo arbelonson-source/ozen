@@ -50,6 +50,7 @@ class OnDeviceWhisperEngine(
     private val voiceScorerFactory: () -> ((FloatArray) -> Float?)? = { null },
     private val heat: () -> DeviceHeat = { DeviceHeat.Nominal },
     private val lowPowerMode: () -> Boolean = { false },
+    private val onFitMeasurement: (countedPasses: Int, totalSeconds: Double) -> Unit = { _, _ -> },
     private val timeSource: TimeSource = TimeSource.Monotonic,
     private val wallClockSeconds: () -> Double = { System.currentTimeMillis() / 1000.0 },
     private val passDispatcher: CoroutineDispatcher = Dispatchers.Default,
@@ -225,7 +226,20 @@ class OnDeviceWhisperEngine(
         return EngineAvailability.Available
     }
 
+    override fun saveFitMeasurement() {
+        val report = synchronized(lock) {
+            if (tally.countedPasses > tally.reportedPasses && ModelFitWatch.shouldSave(tally.countedPasses)) {
+                tally.markReported()
+                tally.countedPasses to tally.countedSeconds
+            } else {
+                null
+            }
+        }
+        report?.let { onFitMeasurement(it.first, it.second) }
+    }
+
     override fun release() {
+        saveFitMeasurement()
         val held = synchronized(lock) {
             lettings += 1
             val current = model
@@ -416,6 +430,8 @@ class OnDeviceWhisperEngine(
             // changed nothing up close (see `SpeechGain`).
             val heard = SpeechGain.normalized(window)
             val passStarted = timeSource.markNow()
+            val coolAtStart = ModelFitWatch.counts(1.0, heat(), lowPowerMode(), kind)
+            var retried = false
             val results: List<WhisperSegment> = try {
                 runPass(pipe, heard, options)
             } catch (error: CancellationException) {
@@ -425,6 +441,7 @@ class OnDeviceWhisperEngine(
                 // moment) used to end the stream: the pipeline restarted the
                 // engine and the sentence being spoken was lost with the
                 // buffer. The same window gets one more try first.
+                retried = true
                 delay(250)
                 runPass(pipe, heard, options)
             }
@@ -433,7 +450,17 @@ class OnDeviceWhisperEngine(
                 // temperatures and would overstate how slow the phone is.
                 val seconds = passStarted.elapsedNow().toDouble(DurationUnit.SECONDS)
                 lastLivePassSeconds = seconds
-                synchronized(lock) { tally.recordLivePass(seconds) }
+                val report = synchronized(lock) {
+                    tally.recordLivePass(seconds)
+                    if (coolAtStart && !retried && ModelFitWatch.counts(seconds, heat(), lowPowerMode(), kind)) tally.recordCountedPass(seconds)
+                    if (tally.countedPasses - tally.reportedPasses >= ModelFitWatch.PASSES_TO_SAVE) {
+                        tally.markReported()
+                        tally.countedPasses to tally.countedSeconds
+                    } else {
+                        null
+                    }
+                }
+                report?.let { onFitMeasurement(it.first, it.second) }
             }
             val summaries = results.map {
                 WhisperSegmentSummary(

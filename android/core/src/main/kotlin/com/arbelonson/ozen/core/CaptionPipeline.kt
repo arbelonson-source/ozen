@@ -910,6 +910,7 @@ class CaptionPipeline(
         recovery.reset()
         listeningSince = null
         dismissMicrophoneDrop()
+        saveFitMeasurements()
         tearDownSession()
         phase = PipelinePhase.Idle
     }
@@ -1000,8 +1001,14 @@ class CaptionPipeline(
     fun pause() {
         if (!phase.isListening) return
         listeningSince = null
+        saveFitMeasurements()
         tearDownSession()
         phase = PipelinePhase.Paused
+    }
+
+    /** The engines stay loaded through a stop or a pause, so the timing of the counted passes is handed over now. */
+    private fun saveFitMeasurements() {
+        engineCache.values.toList().forEach { it.saveFitMeasurement() }
     }
 
     /**

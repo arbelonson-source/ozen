@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.ModelFitWatch
 import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModelCatalog
@@ -87,6 +88,7 @@ class PhoneModelChooserTest {
         applied = { applied += 1 },
         captionsBusy = busy,
         io = StandardTestDispatcher(scope.testScheduler),
+        device = "Pixel 7",
     )
 
     @AfterTest
@@ -197,13 +199,36 @@ class PhoneModelChooserTest {
         assertEquals(PhoneCheckState.Running(0f), chooser.check.value)
         scope.runCurrent()
         assertEquals(PhoneCheckState.Idle, chooser.check.value)
-        assertEquals(PhoneSpeed(300.0, 4, 1.0), saved().phoneSpeed)
+        assertEquals(PhoneSpeed(300.0, 4, 1.0, device = "Pixel 7"), saved().phoneSpeed)
         assertNull(saved().phoneModelFile)
         measured = PhoneSpeed(12.0, 2, 2.0)
         chooser.runCheck(thenChooseBest = true)
         scope.runCurrent()
         assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
         assertEquals(12.0, saved().phoneSpeed!!.gflops)
+    }
+
+    @Test
+    fun `choosing by hand a model the phone is behind on remembers it, so it is never offered back`() {
+        settings.change { it.phoneSpeed = PhoneSpeed(60.0, 4, 1.0) }
+        chooser.choose("ggml-large-v3-turbo-q5_0.bin", byHand = true)
+        assertEquals(listOf(ModelFitWatch.dismissalKey("large-v3-v20240930_626MB", "Pixel 7")), saved().modelFitDismissed)
+    }
+
+    @Test
+    fun `choosing by hand against a check made on another phone remembers nothing`() {
+        settings.change { it.phoneSpeed = PhoneSpeed(60.0, 4, 1.0, device = "Galaxy S10") }
+        chooser.choose("ggml-large-v3-turbo-q5_0.bin", byHand = true)
+        assertEquals(emptyList(), saved().modelFitDismissed)
+    }
+
+    @Test
+    fun `choosing by hand a model that keeps up, or choosing without a hand, remembers nothing`() {
+        settings.change { it.phoneSpeed = PhoneSpeed(900.0, 4, 1.0) }
+        chooser.choose("ggml-large-v3-turbo-q5_0.bin", byHand = true)
+        settings.change { it.phoneSpeed = PhoneSpeed(60.0, 4, 2.0) }
+        chooser.choose("ggml-ozen-a3-q5_0.bin")
+        assertEquals(emptyList(), saved().modelFitDismissed)
     }
 
     @Test

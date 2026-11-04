@@ -369,6 +369,13 @@ class AppSettings(
     var phoneModelFile: String? = null,
     /** What the phone test last measured, or null before it was run. */
     var phoneSpeed: PhoneSpeed? = null,
+    /** How the running model's live passes went in use; see `ModelFitWatch`. */
+    var phoneLiveMeasurement: LiveMeasurement? = null,
+    /**
+     * Model-and-phone keys (see `ModelFitWatch.dismissalKey`) of two kinds: a lighter model she said "Not now" to,
+     * and a model she chose by hand against the warning, which is then never offered a swap.
+     */
+    var modelFitDismissed: List<String> = emptyList(),
 ) {
     var homeServerBeam: Int = minOf(maxOf(homeServerBeam, homeServerBeamRange.first), homeServerBeamRange.last)
 
@@ -384,6 +391,52 @@ class AppSettings(
      */
     val offersNameAlert: Boolean
         get() = hasCompletedOnboarding && keywordAlerts.isEmpty() && !nameAlertOfferDismissed
+
+    /** The phone's speed as Settings judges models by it: the later of the phone test and the live measurement. */
+    val effectiveGflops: Double?
+        get() {
+            val test = phoneSpeed
+            val live = phoneLiveMeasurement
+            return when {
+                test == null -> live?.gflops
+                live == null -> test.gflops
+                live.measuredAt >= test.measuredAt -> live.gflops
+                else -> test.gflops
+            }
+        }
+
+    /** The speed of the phone test or live timing taken on [device] (or before the phone was recorded), the later of the two. */
+    fun gflopsOn(device: String): Double? {
+        val test = phoneSpeed?.takeIf { it.device == null || it.device == device }
+        val live = phoneLiveMeasurement?.takeIf { it.device == null || it.device == device }
+        return when {
+            test == null -> live?.gflops
+            live == null -> test.gflops
+            live.measuredAt >= test.measuredAt -> live.gflops
+            else -> test.gflops
+        }
+    }
+
+    /**
+     * The lighter model to offer on the caption screen because the running one fell behind in use, or null.
+     * [available]: the model is on the phone or there is room to download it.
+     */
+    fun modelFitOffer(totalMemoryBytes: Long?, device: String, available: (PhoneModel) -> Boolean): PhoneModel? {
+        if (!hasCompletedOnboarding || (engine != TranscriptionEngineKind.WhisperKit && engine != TranscriptionEngineKind.AppleSpeech)) return null
+        val measurement = phoneLiveMeasurement ?: return null
+        if (measurement.device != device) return null
+        return ModelFitWatch.offer(measurement, phoneModel, spokenLanguage, totalMemoryBytes, modelFitDismissed, device)?.takeIf(available)
+    }
+
+    fun dismissModelFit(variant: String, device: String) {
+        val key = ModelFitWatch.dismissalKey(variant, device)
+        if (key !in modelFitDismissed) modelFitDismissed = modelFitDismissed + key
+    }
+
+    /** "Not now" on the offer: remembered only when the timing it rests on was taken on this phone. */
+    fun dismissModelFitOffer(variant: String, device: String) {
+        if (phoneLiveMeasurement?.device == device) dismissModelFit(variant, device)
+    }
 
     /**
      * Whether the phone runs a Whisper model clearly worse in Hebrew than
@@ -487,6 +540,8 @@ class AppSettings(
             betterModelOfferSnoozedUntil = betterModelOfferSnoozedUntil,
             phoneModelFile = phoneModelFile,
             phoneSpeed = phoneSpeed,
+            phoneLiveMeasurement = phoneLiveMeasurement,
+            modelFitDismissed = modelFitDismissed,
         )
         other.homeServerBeam = homeServerBeam
         other.vocabulary = vocabulary
@@ -500,7 +555,7 @@ class AppSettings(
         hapticOnSpeechResume, speakerSimilarityThreshold, keywordAlerts, soundAlerts, saveHistory, quickPhrases,
         speechRate, vocabulary, wordFixes, hasCompletedOnboarding, appLanguage, notifyWhenInBackground,
         allowCellularModelDownload, historyRetention, quietHours, nameAlertOfferDismissed, betterModelOfferDeclines,
-        betterModelOfferSnoozedUntil, phoneModelFile, phoneSpeed,
+        betterModelOfferSnoozedUntil, phoneModelFile, phoneSpeed, phoneLiveMeasurement, modelFitDismissed,
     )
 
     override fun equals(other: Any?): Boolean = other is AppSettings && fields() == other.fields()
@@ -552,6 +607,8 @@ class AppSettings(
         betterModelOfferSnoozedUntil?.let { put("betterModelOfferSnoozedUntil", settingsDouble(it)) }
         phoneModelFile?.let { put("phoneModelFile", it) }
         phoneSpeed?.let { put("phoneSpeed", it.toJsonObject()) }
+        phoneLiveMeasurement?.let { put("phoneLiveMeasurement", it.toJsonObject()) }
+        put("modelFitDismissed", JsonArray(modelFitDismissed.map { JsonPrimitive(it) }))
     }.toString()
 
     companion object {
@@ -713,6 +770,8 @@ class AppSettings(
                 betterModelOfferSnoozedUntil = container.lenientDouble("betterModelOfferSnoozedUntil"),
                 phoneModelFile = container.lenientString("phoneModelFile"),
                 phoneSpeed = container.lenientObject("phoneSpeed") { PhoneSpeed.fromJsonObject(it as JsonObject) ?: error("not a usable speed") },
+                phoneLiveMeasurement = container.lenientObject("phoneLiveMeasurement") { LiveMeasurement.fromJsonObject(it as JsonObject) ?: error("not a usable measurement") },
+                modelFitDismissed = container.lenientStrings("modelFitDismissed") ?: emptyList(),
             )
             var threshold = container.lenientFloat("speakerSimilarityThreshold") ?: defaults.speakerSimilarityThreshold
             // The Settings slider's range; a file saying otherwise gets the nearest edge.

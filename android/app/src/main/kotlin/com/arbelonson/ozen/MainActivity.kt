@@ -66,6 +66,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.LocalContentColor
@@ -88,7 +89,10 @@ import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.core.content.IntentCompat
+import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.FileTranscription
+import com.arbelonson.ozen.core.PhoneModel
+import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.SharedRecordingLink
 import com.arbelonson.ozen.ui.IconBadge
 import com.arbelonson.ozen.ui.OzenColors
@@ -405,6 +409,7 @@ private fun OzenApp(
     var saying by rememberSaveable { mutableStateOf(false) }
     var choosingMicrophone by rememberSaveable { mutableStateOf(false) }
     var namingAlert by rememberSaveable { mutableStateOf(false) }
+    val modelSwitch by app.captions.phoneModels.switching.collectAsStateWithLifecycle()
     var sayDraft by rememberSaveable { mutableStateOf("") }
     var awakeClock by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1_000.0) }
     LaunchedEffect(state.phase.isListening) {
@@ -571,6 +576,9 @@ private fun OzenApp(
                                 offersNameAlert = current.offersNameAlert,
                                 onNameAlert = { namingAlert = true },
                                 onDismissNameAlert = app.captions::dismissNameAlertOffer,
+                                modelOffer = remember(current) { app.captions.modelFitOffer() }?.takeIf { it.file != modelSwitch.inProgressFile },
+                                onSwitchModel = { app.captions.phoneModels.choose(it.file) },
+                                onDismissModelOffer = app.captions::dismissModelFitOffer,
                                 // Not while it slides away under another screen: talk
                                 // that resumes then is heard there, not buzzed here.
                                 buzzWhenTalkResumes = current.hapticOnSpeechResume && transition.targetState == EnterExitState.Visible,
@@ -712,6 +720,9 @@ private fun CaptionScreen(
     offersNameAlert: Boolean,
     onNameAlert: () -> Unit,
     onDismissNameAlert: () -> Unit,
+    modelOffer: PhoneModel?,
+    onSwitchModel: (PhoneModel) -> Unit,
+    onDismissModelOffer: (PhoneModel) -> Unit,
     buzzWhenTalkResumes: Boolean,
     onBuzz: (AlertVibration) -> Unit,
     soundSecondsLeft: (SoundAlert) -> Double,
@@ -843,6 +854,7 @@ private fun CaptionScreen(
         now = clock,
     )
     val (flashColour, flashStrength) = alertFlash(state.heardSound)
+    val offer = modelOffer?.takeIf { state.allowsModelOffer }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -965,14 +977,16 @@ private fun CaptionScreen(
                                 modifier = Modifier.widthIn(max = 360.dp),
                             )
                             val recent = state.recentConversation
+                            if (offer != null) LighterModelOffer(offer, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             if (recent != null) {
                                 RecentConversationCard(recent, look, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent)
-                            } else if (offersNameAlert) {
+                            } else if (offer == null && offersNameAlert) {
                                 NameAlertOffer(look, onNameAlert, onDismissNameAlert)
                             }
                         }
                     } else {
-                        CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
+                        val trailing: (@Composable () -> Unit)? = offer?.let { { LighterModelOffer(it, { onSwitchModel(it) }, { onDismissModelOffer(it) }) } }
+                        CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
                         if (!following) {
                             JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                                 following = true
@@ -1131,6 +1145,7 @@ private fun CaptionLines(
     list: LazyListState,
     following: Boolean,
     modifier: Modifier,
+    trailing: (@Composable () -> Unit)?,
     onStar: (UUID) -> Unit,
     onOpen: (conversation: UUID, line: UUID) -> Unit,
     onFix: (CaptionLine) -> Unit,
@@ -1138,8 +1153,9 @@ private fun CaptionLines(
     onAskToRepeat: (() -> Unit)?,
     onMarkProblem: () -> Unit,
 ) {
-    LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize) {
-        if (following) list.scrollToEnd(lines.lastIndex)
+    val lastIndex = if (trailing != null) lines.size else lines.lastIndex
+    LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize, trailing != null) {
+        if (following) list.scrollToEnd(lastIndex)
     }
     // The buttons coming back, or a turn of the phone, change the room the
     // lines have; the list keeps its top, so the newest line was left under
@@ -1183,6 +1199,7 @@ private fun CaptionLines(
                 }
             }
         }
+        if (trailing != null) item(key = "model-fit-offer") { trailing() }
     }
 }
 
@@ -1594,6 +1611,37 @@ private fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: ()
     }
 }
 
+/** The running model kept falling behind the speech and a lighter one fits this phone; see `ModelFitWatch`. */
+@Composable
+private fun LighterModelOffer(model: PhoneModel, onSwitch: () -> Unit, onDismiss: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh).testTag("model-fit-offer"),
+    ) {
+        Column(Modifier.weight(1f).padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Unit)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                Icon(Icons.Rounded.Speed, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        tr("%1 (%2) קל יותר ומצליח לעמוד בקצב טוב יותר כאן.", "%1 (%2) is lighter and keeps up better here.", listOf(model.displayName, ByteSize.text(model.bytes))),
+                        color = colors.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+            Text(
+                tr("החלפה", "Switch"),
+                color = colors.primary,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.align(Alignment.End).clickable(onClick = onSwitch).testTag("model-fit-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+            )
+        }
+        BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, onDismiss)
+    }
+}
+
 /** The conversation the app closed in the middle of, a tap away, as on the iPhone. */
 @Composable
 private fun RecentConversationCard(recent: TranscriptSessionSummary, look: CaptionTheme, onOpen: () -> Unit, onDismiss: () -> Unit) {
@@ -1797,3 +1845,10 @@ private fun OnTabletWidth(capped: Boolean, content: @Composable () -> Unit) {
         content()
     }
 }
+
+private val PhoneModelSwitch.inProgressFile: String?
+    get() = when (this) {
+        is PhoneModelSwitch.Downloading -> file
+        is PhoneModelSwitch.WaitingForWiFi -> file
+        else -> null
+    }

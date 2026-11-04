@@ -62,7 +62,7 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
     val busy by models.captionsBusy.collectAsStateWithLifecycle()
     val memory = models.totalMemoryBytes
     val language = settings.spokenLanguage
-    val speed = settings.phoneSpeed?.gflops
+    val speed = settings.effectiveGflops
     val chosen = (switching.fileOrNull ?: settings.phoneModel.file)
     val best = speed?.let { PhoneModelEstimate.recommend(language, it, memory) }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -73,7 +73,7 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
             for (model in PhoneModelCatalog.offered(language) + hidden) {
                 item {
                     val deletable = PhoneModelShelf.canDelete(model.file, installed, partial, model.file == settings.phoneModel.file, downloading)
-                    ModelRow(model, language, speed, memory, best, model.file == chosen, model.file in installed, partial[model.file], model !in hidden, deletable, switching, onDelete = { models.delete(model.file) }) { models.choose(model.file) }
+                    ModelRow(model, language, speed, memory, best, model.file == chosen, model.file in installed, partial[model.file], model !in hidden, deletable, switching, onDelete = { models.delete(model.file) }) { models.choose(model.file, byHand = true) }
                 }
             }
         }

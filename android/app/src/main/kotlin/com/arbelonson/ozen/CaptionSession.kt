@@ -42,7 +42,9 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.OnDeviceWhisperEngine
 import com.arbelonson.ozen.core.ModelDownloadGate
+import com.arbelonson.ozen.core.ModelFitWatch
 import com.arbelonson.ozen.core.NetworkConditions
+import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
@@ -850,6 +852,17 @@ class CaptionSession(
 
     fun dismissNameAlertOffer() = settings.change { it.nameAlertOfferDismissed = true }
 
+    /** The lighter model to offer because the running one fell behind in use; see `ModelFitWatch`. */
+    fun modelFitOffer(): PhoneModel? = settings.current.value.modelFitOffer(totalMemory(), Build.MODEL.orEmpty(), ::modelFitOfferFits)
+
+    private fun modelFitOfferFits(model: PhoneModel): Boolean {
+        val file = File(modelFolder, model.file)
+        val shortfall = StorageSpaceGate.shortfallMegabytes(PhoneModelDownloader(file, model.source, modelFetcher).pendingMegabytes() ?: 0, freeSpace())
+        return ModelFitWatch.fitsOnPhone(installed = file.isFile, shortfallMegabytes = shortfall)
+    }
+
+    fun dismissModelFitOffer(model: PhoneModel) = settings.change { it.dismissModelFitOffer(model.variant, Build.MODEL.orEmpty()) }
+
     /** A word the captions got wrong goes first in the word list. */
     fun addWord(word: String) = setWords(listOf(word) + settings.current.value.vocabulary)
 
@@ -1104,6 +1117,7 @@ class CaptionSession(
             )
         }
         TranscriptionEngineKind.WhisperKit, TranscriptionEngineKind.AppleSpeech -> modelFile(settings).let { model ->
+            val ran = settings.phoneModel
             OnDeviceWhisperEngine(
                 modelName = model.name,
                 loader = ModelFileLoader(
@@ -1117,6 +1131,10 @@ class CaptionSession(
                 voiceScorerFactory = ::voiceScore,
                 heat = { heatNow },
                 lowPowerMode = { savingPower },
+                onFitMeasurement = { passes, seconds ->
+                    ModelFitWatch.measurement(ran, passes, seconds, now = System.currentTimeMillis() / 1000.0, device = Build.MODEL.orEmpty())
+                        ?.let { measured -> this.settings.change { it.phoneLiveMeasurement = measured } }
+                },
             )
         }
     }
@@ -1220,11 +1238,14 @@ class CaptionSession(
             measure = { progress -> PhoneSpeedMeter(context.applicationInfo.nativeLibraryDir).run(progress) },
             applied = ::settingsChanged,
             captionsBusy = captionsBusy,
-            totalMemory = { ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java)?.getMemoryInfo(it) }.totalMem.takeIf { it > 0 } },
+            device = Build.MODEL.orEmpty(),
+            totalMemory = ::totalMemory,
         ).also { chooser -> network.alsoOnChange = { chooser.resumeWaiting() } }
     }
 
     private val captionsBusy = MutableStateFlow(false)
+
+    private fun totalMemory(): Long? = ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java)?.getMemoryInfo(it) }.totalMem.takeIf { it > 0 }
 
     private fun voiceScore(): ((FloatArray) -> Float?)? {
         val scorer = voiceScorer ?: return null

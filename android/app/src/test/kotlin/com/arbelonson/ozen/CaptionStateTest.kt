@@ -24,6 +24,15 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CaptionStateTest {
+    @Test
+    fun `the lighter-model card shows only when captions are stopped and no call holds the audio`() {
+        assertTrue(CaptionScreenState(phase = PipelinePhase.Idle).allowsModelOffer)
+        assertTrue(CaptionScreenState(phase = PipelinePhase.Paused).allowsModelOffer)
+        assertFalse(CaptionScreenState(phase = PipelinePhase.Listening).allowsModelOffer)
+        assertFalse(CaptionScreenState(phase = PipelinePhase.Listening, interruptedBySystem = true).allowsModelOffer)
+        assertFalse(CaptionScreenState(phase = PipelinePhase.Paused, interruptedBySystem = true).allowsModelOffer)
+    }
+
     private fun line(text: String, committed: Boolean) =
         TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = committed, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
 

@@ -32,6 +32,7 @@ private class FakeWhisperPasses(private val now: () -> Long) : WhisperPasses {
     val calls = ArrayList<Call>()
     var passMillis: (WhisperPassOptions) -> Long = { 0L }
     var reply: (Call) -> List<WhisperSegment> = { hello }
+    var afterPass: () -> Unit = {}
     var active = 0
     var mostActive = 0
 
@@ -44,6 +45,7 @@ private class FakeWhisperPasses(private val now: () -> Long) : WhisperPasses {
         mostActive = maxOf(mostActive, active)
         try {
             delay(passMillis(options))
+            afterPass()
             return reply(call)
         } finally {
             active -= 1
@@ -91,6 +93,7 @@ private suspend fun TestScope.rig(
     scorer: ((FloatArray) -> Float?)? = null,
     heat: DeviceHeat = DeviceHeat.Nominal,
     lowPower: Boolean = false,
+    onFit: (Int, Double) -> Unit = { _, _ -> },
 ): Rig {
     val passes = FakeWhisperPasses { testScheduler.currentTime }
     val dispatcher: CoroutineDispatcher = StandardTestDispatcher(testScheduler)
@@ -100,6 +103,7 @@ private suspend fun TestScope.rig(
         voiceScorerFactory = { scorer },
         heat = { heat },
         lowPowerMode = { lowPower },
+        onFitMeasurement = onFit,
         timeSource = testScheduler.timeSource,
         wallClockSeconds = { testScheduler.currentTime / 1000.0 },
         passDispatcher = dispatcher,
@@ -261,6 +265,124 @@ class OnDeviceWhisperEngineTest {
         val gaps = rig.passes.live().map { it.startedAtMs }.zipWithNext().map { (a, b) -> b - a }
         assertTrue(gaps.isNotEmpty())
         assertTrue(gaps.all { it >= 1_200 }, "gaps $gaps")
+    }
+
+    @Test
+    fun twenty_live_passes_on_a_cool_phone_report_how_long_they_took() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        val rig = rig(onFit = { count, seconds -> reports.add(count to seconds) })
+        rig.passes.passMillis = { 400L }
+        rig.stream(speech(30.0)).toList()
+        assertTrue(rig.passes.live().size > 20, "only ${rig.passes.live().size} live passes ran")
+        assertEquals(20, reports.first().first)
+        assertEquals(8.0, reports.first().second, 0.05)
+    }
+
+    @Test
+    fun a_stream_that_keeps_running_reports_again_every_twenty_more_passes() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        val rig = rig(onFit = { count, seconds -> reports.add(count to seconds) })
+        rig.passes.passMillis = { 400L }
+        rig.stream(speech(60.0)).toList()
+        val ran = rig.passes.live().size
+        assertTrue(ran >= 40, "only $ran live passes ran")
+        assertEquals((1..ran / 20).map { it * 20 }, reports.map { it.first })
+    }
+
+    @Test
+    fun a_pass_whose_heat_changed_while_it_ran_is_not_counted() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        var hot = true
+        val passes = FakeWhisperPasses { testScheduler.currentTime }
+        val engine = OnDeviceWhisperEngine(
+            modelName = "fake-model",
+            loader = FakeLoader(passes),
+            heat = { if (hot) DeviceHeat.Serious else DeviceHeat.Nominal },
+            onFitMeasurement = { count, seconds -> reports.add(count to seconds) },
+            timeSource = testScheduler.timeSource,
+            wallClockSeconds = { testScheduler.currentTime / 1000.0 },
+            passDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        engine.prepare("he") {}
+        passes.passMillis = { 400L }
+        passes.afterPass = { hot = !hot }
+        engine.stream("he", audioOf(speech(120.0))).toList()
+        engine.release()
+        assertTrue(passes.live().size > 20)
+        assertTrue(reports.isEmpty(), "$reports")
+    }
+
+    @Test
+    fun nineteen_live_passes_report_nothing_until_the_engine_is_let_go() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        val rig = rig(onFit = { count, seconds -> reports.add(count to seconds) })
+        rig.passes.passMillis = { 400L }
+        rig.stream(speech(8.0)).toList()
+        assertTrue(rig.passes.live().size in 5..19)
+        assertTrue(reports.isEmpty())
+    }
+
+    @Test
+    fun passes_taken_hot_or_in_battery_saver_are_never_reported() = runTest {
+        for ((heat, lowPower) in listOf(DeviceHeat.Serious to false, DeviceHeat.Critical to false, DeviceHeat.Nominal to true)) {
+            val reports = ArrayList<Pair<Int, Double>>()
+            val rig = rig(heat = heat, lowPower = lowPower, onFit = { count, seconds -> reports.add(count to seconds) })
+            rig.passes.passMillis = { 400L }
+            rig.stream(speech(120.0)).toList()
+            rig.engine.release()
+            assertTrue(rig.passes.live().size > 20)
+            assertTrue(reports.isEmpty(), "$heat $lowPower reported $reports")
+        }
+    }
+
+    @Test
+    fun letting_the_engine_go_reports_the_passes_since_the_twentieth() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        val rig = rig(onFit = { count, seconds -> reports.add(count to seconds) })
+        rig.passes.passMillis = { 400L }
+        rig.stream(speech(30.0)).toList()
+        val liveRan = rig.passes.live().size
+        rig.engine.release()
+        assertEquals(2, reports.size)
+        assertEquals(liveRan, reports.last().first)
+        assertEquals(liveRan * 0.4, reports.last().second, 0.05)
+        rig.engine.release()
+        assertEquals(2, reports.size)
+    }
+
+    @Test
+    fun a_pass_that_needed_a_retry_is_not_counted() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        val rig = rig(onFit = { count, seconds -> reports.add(count to seconds) })
+        rig.passes.passMillis = { 400L }
+        var failed = false
+        rig.passes.reply = { call ->
+            if (!call.isFinal && call.index == 3 && !failed) {
+                failed = true
+                throw IllegalStateException("busy")
+            }
+            hello
+        }
+        rig.stream(speech(30.0)).toList()
+        val recorded = rig.passes.live().size - 1
+        rig.engine.release()
+        assertTrue(recorded > 20, "only $recorded live passes ran")
+        assertEquals(recorded - 1, reports.last().first)
+    }
+
+    @Test
+    fun saving_the_fit_timing_reports_the_counted_passes_once_without_letting_the_engine_go() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        val rig = rig(onFit = { count, seconds -> reports.add(count to seconds) })
+        rig.passes.passMillis = { 400L }
+        rig.stream(speech(30.0)).toList()
+        val liveRan = rig.passes.live().size
+        assertEquals(1, reports.size)
+        rig.engine.saveFitMeasurement()
+        assertEquals(2, reports.size)
+        assertEquals(liveRan, reports.last().first)
+        rig.engine.saveFitMeasurement()
+        assertEquals(2, reports.size)
     }
 
     @Test
