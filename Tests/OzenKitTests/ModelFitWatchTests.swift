@@ -110,9 +110,22 @@ struct ModelFitWatchTests {
     @Test("Not now on another phone does not hide it here, nor does Not now for another model")
     func otherDismissals() {
         let otherPhone = [ModelFitDismissal(variant: Self.turbo, deviceName: "iPhone-other")]
-        let otherModel = [ModelFitDismissal(variant: "small", deviceName: "iPhone-test")]
+        let otherModel = [ModelFitDismissal(variant: "base", deviceName: "iPhone-test")]
         #expect(Self.offer(Self.check(seconds: 2), dismissed: otherPhone) == "small")
-        #expect(Self.offer(Self.check(seconds: 2), dismissed: otherModel) == "small")
+        #expect(Self.offer(Self.check(seconds: 2), dismissed: otherModel + [ModelFitDismissal(variant: "tiny", deviceName: "iPhone-test")]) == "small")
+    }
+
+    @Test("a model picked by hand against the warning, on this phone, never gets the card")
+    func handPickedRunningModel() {
+        let picked = [ModelFitDismissal(variant: Self.turbo, deviceName: "iPhone-test")]
+        #expect(Self.offer(Self.check(seconds: 0.9), dismissed: picked) == nil)
+        #expect(Self.offer(Self.check(seconds: 2.5), dismissed: picked) == nil)
+    }
+
+    @Test("a lighter model the person already put away on this phone is not offered again")
+    func offeredModelPutAway() {
+        let putAway = [ModelFitDismissal(variant: "small", deviceName: "iPhone-test")]
+        #expect(Self.offer(Self.check(seconds: 2), dismissed: putAway) == nil)
     }
 
     @Test("after switching, falling behind again offers the next one down")

@@ -942,8 +942,8 @@
   "What was already turned into text won’t be saved.": "ቀድሞ ወደ ጽሑፍ የተቀየረው አይቀመጥም።",
   "The end of this recording couldn’t be read, so the text stops early.": "የቅጂው መጨረሻ ሊነበብ አልቻለም፣ ስለዚህ ጽሑፉ ቀድሞ ይቆማል።",
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "በታሪክ ውስጥ ማስቀመጥ አልተቻለም። ስልኩ ሞልቶ ሊሆን ይችላል። ይህን ስክሪን ከመዝጋትዎ በፊት ጽሑፉን ያጋሩ።",
-  "Captions ran late on this phone": "በዚህ ስልክ ላይ ጽሑፎቹ ዘገዩ",
-  "%1 (%2) is lighter and keeps up better here.": "%1 (%2) ቀላል ነው፤ እዚህ በተሻለ ሁኔታ ከንግግሩ ጋር ይሄዳል።",
+  "Captions ran late on this phone": "በዚህ ስልክ ላይ የጽሑፍ ትርጉሙ ዘገየ",
+  "%1 (%2) is lighter and keeps up better here.": "%1 (%2) ቀለል ያለ ነው፣ እዚህ ከንግግሩ ጋር በተሻለ ይሄዳል።",
   "Switch": "ቀይር"
  },
  "arabic": {
@@ -1890,7 +1890,7 @@
   "The end of this recording couldn’t be read, so the text stops early.": "تعذّرت قراءة نهاية هذا التسجيل، لذلك يتوقف النص مبكرًا.",
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "تعذّر الحفظ في السجل. قد يكون الهاتف ممتلئًا. شاركوا النص قبل إغلاق هذه الشاشة.",
   "Captions ran late on this phone": "تأخرت الترجمة النصية على هذا الهاتف",
-  "%1 (%2) is lighter and keeps up better here.": "%1 (%2) أخف ويواكب الكلام بشكل أفضل هنا.",
+  "%1 (%2) is lighter and keeps up better here.": "%1 (%2) أخفّ ويواكب الكلام بشكل أفضل هنا.",
   "Switch": "تبديل"
  },
  "chineseSimplified": {
@@ -2836,8 +2836,8 @@
   "What was already turned into text won’t be saved.": "已转为文字的内容不会被保存。",
   "The end of this recording couldn’t be read, so the text stops early.": "无法读取这段录音的结尾，因此文字提前结束。",
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "无法保存到历史记录。手机可能已满。请在关闭此屏幕之前分享文字。",
-  "Captions ran late on this phone": "在这部手机上，字幕出现得太晚",
-  "%1 (%2) is lighter and keeps up better here.": "%1（%2）更轻巧，在这里能更好地跟上说话的速度。",
+  "Captions ran late on this phone": "字幕在这部手机上出现了延迟",
+  "%1 (%2) is lighter and keeps up better here.": "%1（%2）更轻，在这里能更好地跟上说话速度。",
   "Switch": "切换"
  },
  "french": {
@@ -4731,7 +4731,7 @@
   "The end of this recording couldn’t be read, so the text stops early.": "Das Ende dieser Aufnahme konnte nicht gelesen werden, daher endet der Text früher.",
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "Das Speichern im Verlauf ist fehlgeschlagen. Das Telefon ist möglicherweise voll. Teilen Sie den Text, bevor Sie diesen Bildschirm schließen.",
   "Captions ran late on this phone": "Die Untertitel kamen auf diesem Telefon zu spät",
-  "%1 (%2) is lighter and keeps up better here.": "%1 (%2) ist leichter und kommt hier besser mit.",
+  "%1 (%2) is lighter and keeps up better here.": "%1 (%2) ist leichter und hält hier besser mit.",
   "Switch": "Wechseln"
  },
  "hindi": {
@@ -5678,7 +5678,7 @@
   "The end of this recording couldn’t be read, so the text stops early.": "इस रिकॉर्डिंग का अंत पढ़ा नहीं जा सका, इसलिए टेक्स्ट जल्दी समाप्त हो जाता है।",
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "इतिहास में सहेजा नहीं जा सका। हो सकता है फ़ोन भर गया हो। इस स्क्रीन को बंद करने से पहले टेक्स्ट साझा करें।",
   "Captions ran late on this phone": "इस फ़ोन पर कैप्शन देर से आए",
-  "%1 (%2) is lighter and keeps up better here.": "%1 (%2) हल्का है और यहाँ बोली के साथ बेहतर चलता है।",
+  "%1 (%2) is lighter and keeps up better here.": "%1 (%2) हल्का है और यहाँ बोलने की रफ़्तार के साथ बेहतर चलता है।",
   "Switch": "बदलें"
  },
  "portuguese": {
@@ -6624,8 +6624,8 @@
   "What was already turned into text won’t be saved.": "O que já foi convertido em texto não será guardado.",
   "The end of this recording couldn’t be read, so the text stops early.": "Não foi possível ler o fim desta gravação, por isso o texto termina mais cedo.",
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "Não foi possível guardar no histórico. O telemóvel pode estar cheio. Partilhe o texto antes de fechar este ecrã.",
-  "Captions ran late on this phone": "As legendas atrasaram neste telemóvel",
-  "%1 (%2) is lighter and keeps up better here.": "%1 (%2) é mais leve e acompanha melhor aqui.",
+  "Captions ran late on this phone": "As legendas atrasaram-se neste telemóvel",
+  "%1 (%2) is lighter and keeps up better here.": "%1 (%2) é mais leve e acompanha melhor a fala aqui.",
   "Switch": "Mudar"
  },
  "russian": {
@@ -7571,9 +7571,9 @@
   "What was already turned into text won’t be saved.": "То, что уже преобразовано в текст, не будет сохранено.",
   "The end of this recording couldn’t be read, so the text stops early.": "Не удалось прочитать конец этой записи, поэтому текст обрывается раньше.",
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "Не удалось сохранить в историю. Возможно, телефон заполнен. Поделитесь текстом, прежде чем закрыть этот экран.",
-  "Captions ran late on this phone": "На этом телефоне субтитры запаздывали",
-  "%1 (%2) is lighter and keeps up better here.": "%1 (%2) легче и лучше успевает за речью здесь.",
-  "Switch": "Переключить"
+  "Captions ran late on this phone": "Субтитры на этом телефоне опаздывали",
+  "%1 (%2) is lighter and keeps up better here.": "%1 (%2) легче и лучше успевает за речью на этом телефоне.",
+  "Switch": "Сменить"
  },
  "spanish": {
   " Conversations with a starred line or a name are always kept.": " Las conversaciones con una línea marcada o un nombre siempre se conservan.",
@@ -9460,8 +9460,8 @@
   "What was already turned into text won’t be saved.": "Те, що вже перетворено на текст, не буде збережено.",
   "The end of this recording couldn’t be read, so the text stops early.": "Не вдалося прочитати кінець цього запису, тому текст обривається раніше.",
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "Не вдалося зберегти в історію. Можливо, телефон заповнений. Поділіться текстом, перш ніж закрити цей екран.",
-  "Captions ran late on this phone": "На цьому телефоні субтитри запізнювалися",
+  "Captions ran late on this phone": "Субтитри на цьому телефоні запізнювалися",
   "%1 (%2) is lighter and keeps up better here.": "%1 (%2) легший і краще встигає за мовленням тут.",
-  "Switch": "Перемкнути"
+  "Switch": "Змінити"
  }
 }

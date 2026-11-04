@@ -36,7 +36,8 @@ public enum ModelFitWatch {
         let recommended = DeviceModelAdvisor.recommendedVariant(for: language, on: check)
         guard recommended != current, let lighter = WhisperModelCatalog.option(for: recommended),
               lighter.speed > running.speed,
-              DeviceModelAdvisor.fit(of: lighter, on: check) != .tooSlow
+              DeviceModelAdvisor.fit(of: lighter, on: check) != .tooSlow,
+              !dismissed.contains(ModelFitDismissal(variant: recommended, deviceName: device))
         else { return nil }
         return recommended
     }
