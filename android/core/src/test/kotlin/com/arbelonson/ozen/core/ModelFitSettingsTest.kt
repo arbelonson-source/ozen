@@ -15,7 +15,7 @@ class ModelFitSettingsTest {
         settings.spokenLanguage = UILanguage.English
         settings.engine = TranscriptionEngineKind.WhisperKit
         val turbo = settings.phoneModel
-        settings.phoneLiveMeasurement = ModelFitWatch.measurement(turbo, 20, 20 * 2.4, now = 500.0)
+        settings.phoneLiveMeasurement = ModelFitWatch.measurement(turbo, 20, 20 * 2.4, now = 500.0, device = phone)
         return settings
     }
 
@@ -61,25 +61,26 @@ class ModelFitSettingsTest {
 
     @Test
     fun `a model that falls behind in use is offered a lighter one on the caption screen`() {
-        val offered = behind().modelFitOffer(plenty, phone)
+        val offered = behind().modelFitOffer(plenty, phone) { true }
         assertTrue(offered != null && offered.passGflop < behind().phoneModel.passGflop)
     }
 
     @Test
     fun `no offer during the walkthrough or when the phone is not the engine in use`() {
         val early = behind().also { it.hasCompletedOnboarding = false }
-        assertNull(early.modelFitOffer(plenty, phone))
+        assertNull(early.modelFitOffer(plenty, phone) { true })
         val cloud = behind().also { it.engine = TranscriptionEngineKind.Cloud }
-        assertNull(cloud.modelFitOffer(plenty, phone))
+        assertNull(cloud.modelFitOffer(plenty, phone) { true })
     }
 
     @Test
     fun `not now hides that model on this phone for good`() {
         val settings = behind()
-        val offered = settings.modelFitOffer(plenty, phone)!!
+        val offered = settings.modelFitOffer(plenty, phone) { true }!!
         settings.dismissModelFit(offered.variant, phone)
-        assertNull(settings.modelFitOffer(plenty, phone))
-        assertTrue(settings.modelFitOffer(plenty, "Galaxy S10") != null)
+        assertNull(settings.modelFitOffer(plenty, phone) { true })
+        settings.phoneLiveMeasurement = settings.phoneLiveMeasurement!!.copy(device = "Galaxy S10")
+        assertTrue(settings.modelFitOffer(plenty, "Galaxy S10") { true } != null)
         settings.dismissModelFit(offered.variant, phone)
         assertEquals(1, settings.modelFitDismissed.size)
     }
@@ -88,6 +89,54 @@ class ModelFitSettingsTest {
     fun `a heavy model dismissed on this phone, as choosing it by hand does, is not offered a swap`() {
         val settings = behind()
         settings.dismissModelFit(settings.phoneModel.variant, phone)
-        assertNull(settings.modelFitOffer(plenty, phone))
+        assertNull(settings.modelFitOffer(plenty, phone) { true })
+    }
+
+    @Test
+    fun `an old settings file with a measurement but no eligible flag loads and offers nothing`() {
+        val old = AppSettings.fromJson("""{"engine":"whisperKit","hasCompletedOnboarding":true,"spokenLanguage":"english","phoneLiveMeasurement":{"file":"ggml-large-v3-turbo-q5_0.bin","averageSeconds":2.4,"passes":300,"gflops":40.0,"measuredAt":1.0}}""")
+        val loaded = old.phoneLiveMeasurement!!
+        assertEquals(false, loaded.fitEligible)
+        assertEquals(null, loaded.device)
+        assertNull(old.modelFitOffer(plenty, phone) { true })
+    }
+
+    @Test
+    fun `the eligible flag and the phone survive saving and loading`() {
+        val loaded = AppSettings.fromJson(behind().toJson()).phoneLiveMeasurement!!
+        assertEquals(true, loaded.fitEligible)
+        assertEquals(phone, loaded.device)
+    }
+
+    @Test
+    fun `a measurement from another phone offers nothing here and not now records nothing`() {
+        val settings = behind()
+        assertNull(settings.modelFitOffer(plenty, "Galaxy S10") { true })
+        settings.dismissModelFitOffer("small", "Galaxy S10")
+        assertEquals(emptyList(), settings.modelFitDismissed)
+        settings.dismissModelFitOffer("small", phone)
+        assertEquals(listOf(ModelFitWatch.dismissalKey("small", phone)), settings.modelFitDismissed)
+    }
+
+    @Test
+    fun `the saved Apple engine value runs the phone's own model, so it is offered too`() {
+        val settings = behind().also { it.engine = TranscriptionEngineKind.AppleSpeech }
+        assertTrue(settings.modelFitOffer(plenty, phone) { true } != null)
+    }
+
+    @Test
+    fun `a model the phone cannot hold is not offered`() {
+        assertNull(behind().modelFitOffer(plenty, phone) { false })
+    }
+
+    @Test
+    fun `the speed for a hand-pick warning ignores a check made on another phone`() {
+        val settings = behind()
+        settings.phoneSpeed = PhoneSpeed(900.0, 4, 600.0, device = "Galaxy S10")
+        assertEquals(settings.phoneLiveMeasurement!!.gflops, settings.gflopsOn(phone))
+        settings.phoneSpeed = PhoneSpeed(900.0, 4, 600.0, device = phone)
+        assertEquals(900.0, settings.gflopsOn(phone))
+        settings.phoneLiveMeasurement = null
+        assertNull(settings.gflopsOn("Galaxy S10"))
     }
 }

@@ -351,6 +351,41 @@ class OnDeviceWhisperEngineTest {
     }
 
     @Test
+    fun a_pass_that_needed_a_retry_is_not_counted() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        val rig = rig(onFit = { count, seconds -> reports.add(count to seconds) })
+        rig.passes.passMillis = { 400L }
+        var failed = false
+        rig.passes.reply = { call ->
+            if (!call.isFinal && call.index == 3 && !failed) {
+                failed = true
+                throw IllegalStateException("busy")
+            }
+            hello
+        }
+        rig.stream(speech(30.0)).toList()
+        val recorded = rig.passes.live().size - 1
+        rig.engine.release()
+        assertTrue(recorded > 20, "only $recorded live passes ran")
+        assertEquals(recorded - 1, reports.last().first)
+    }
+
+    @Test
+    fun saving_the_fit_timing_reports_the_counted_passes_once_without_letting_the_engine_go() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        val rig = rig(onFit = { count, seconds -> reports.add(count to seconds) })
+        rig.passes.passMillis = { 400L }
+        rig.stream(speech(30.0)).toList()
+        val liveRan = rig.passes.live().size
+        assertEquals(1, reports.size)
+        rig.engine.saveFitMeasurement()
+        assertEquals(2, reports.size)
+        assertEquals(liveRan, reports.last().first)
+        rig.engine.saveFitMeasurement()
+        assertEquals(2, reports.size)
+    }
+
+    @Test
     fun a_live_pass_that_used_all_its_token_room_is_dropped() = runTest {
         val rig = rig()
         val loop = segment("ba ba ba", (0 until 200).map { WhisperToken(100 + it, " ba$it", 0.9f) })

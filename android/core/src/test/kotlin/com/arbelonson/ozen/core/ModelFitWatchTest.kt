@@ -160,4 +160,33 @@ class ModelFitWatchTest {
         assertEquals(base.file, PhoneModelEstimate.recommend(UILanguage.English, slow.gflops, plenty).file)
         assertNull(offer(slow, base, UILanguage.English))
     }
+
+    private fun counted(passes: Int, eligible: Boolean, model: PhoneModel = turbo, seconds: Double = 2.0): LiveMeasurement {
+        val gflops = ModelFitWatch.measurement(model, 20, seconds * 20, now = 1.0)!!.gflops
+        return LiveMeasurement(model.file, seconds, passes, gflops, 1.0, fitEligible = eligible, device = phone)
+    }
+
+    @Test
+    fun `nineteen counted passes offer nothing and twenty offer the lighter model`() {
+        assertNull(offer(counted(19, true), turbo, UILanguage.English))
+        assertEquals(small.file, offer(counted(20, true), turbo, UILanguage.English)?.file)
+    }
+
+    @Test
+    fun `a timing taken from every pass offers nothing however many passes it has`() {
+        assertNull(offer(counted(300, false), turbo, UILanguage.English))
+    }
+
+    @Test
+    fun `the timing the counted passes save is marked as eligible`() {
+        assertTrue(ModelFitWatch.measurement(turbo, 20, 40.0, now = 1.0)!!.fitEligible)
+        assertEquals(small.file, offer(ModelFitWatch.measurement(turbo, 20, 40.0, now = 1.0), turbo, UILanguage.English)?.file)
+    }
+
+    @Test
+    fun `a model that is not on the phone and has no room to download is not offered`() {
+        assertTrue(ModelFitWatch.fitsOnPhone(installed = true, shortfallMegabytes = 900))
+        assertTrue(ModelFitWatch.fitsOnPhone(installed = false, shortfallMegabytes = null))
+        assertFalse(ModelFitWatch.fitsOnPhone(installed = false, shortfallMegabytes = 12))
+    }
 }

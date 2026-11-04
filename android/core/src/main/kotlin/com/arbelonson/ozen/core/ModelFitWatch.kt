@@ -11,11 +11,13 @@ object ModelFitWatch {
 
     fun shouldSave(countedPasses: Int): Boolean = countedPasses >= PASSES_TO_SAVE
 
-    fun measurement(model: PhoneModel, countedPasses: Int, totalSeconds: Double, now: Double): LiveMeasurement? {
+    fun measurement(model: PhoneModel, countedPasses: Int, totalSeconds: Double, now: Double, device: String? = null): LiveMeasurement? {
         if (!shouldSave(countedPasses) || !totalSeconds.isFinite() || totalSeconds <= 0) return null
         val average = totalSeconds / countedPasses
-        return LiveMeasurement(model.file, average, countedPasses, model.passGflop / (average * PhoneModelEstimate.REAL_PASS_SHARE), now)
+        return LiveMeasurement(model.file, average, countedPasses, model.passGflop / (average * PhoneModelEstimate.REAL_PASS_SHARE), now, fitEligible = true, device = device)
     }
+
+    fun fitsOnPhone(installed: Boolean, shortfallMegabytes: Int?): Boolean = installed || shortfallMegabytes == null
 
     fun dismissalKey(variant: String, device: String): String = "$variant|$device"
 
@@ -28,6 +30,7 @@ object ModelFitWatch {
         device: String,
     ): PhoneModel? {
         if (measurement == null || measurement.file != current.file) return null
+        if (!measurement.fitEligible || !shouldSave(measurement.passes)) return null
         if (dismissalKey(current.variant, device) in dismissed) return null
         if (PhoneModelEstimate.fit(current, measurement.gflops, totalMemoryBytes) == PhoneModelFit.KeepsUp) return null
         val lighter = PhoneModelEstimate.recommend(language, measurement.gflops, totalMemoryBytes)

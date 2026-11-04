@@ -843,9 +843,15 @@ class CaptionSession(
     fun dismissNameAlertOffer() = settings.change { it.nameAlertOfferDismissed = true }
 
     /** The lighter model to offer because the running one fell behind in use; see `ModelFitWatch`. */
-    fun modelFitOffer(): PhoneModel? = settings.current.value.modelFitOffer(totalMemory(), Build.MODEL.orEmpty())
+    fun modelFitOffer(): PhoneModel? = settings.current.value.modelFitOffer(totalMemory(), Build.MODEL.orEmpty(), ::modelFitOfferFits)
 
-    fun dismissModelFitOffer(model: PhoneModel) = settings.change { it.dismissModelFit(model.variant, Build.MODEL.orEmpty()) }
+    private fun modelFitOfferFits(model: PhoneModel): Boolean {
+        val file = File(modelFolder, model.file)
+        val shortfall = StorageSpaceGate.shortfallMegabytes(PhoneModelDownloader(file, model.source, modelFetcher).pendingMegabytes() ?: 0, freeSpace())
+        return ModelFitWatch.fitsOnPhone(installed = file.isFile, shortfallMegabytes = shortfall)
+    }
+
+    fun dismissModelFitOffer(model: PhoneModel) = settings.change { it.dismissModelFitOffer(model.variant, Build.MODEL.orEmpty()) }
 
     /** A word the captions got wrong goes first in the word list. */
     fun addWord(word: String) = setWords(listOf(word) + settings.current.value.vocabulary)
@@ -1098,7 +1104,7 @@ class CaptionSession(
                 heat = { heatNow },
                 lowPowerMode = { savingPower },
                 onFitMeasurement = { passes, seconds ->
-                    ModelFitWatch.measurement(ran, passes, seconds, now = System.currentTimeMillis() / 1000.0)
+                    ModelFitWatch.measurement(ran, passes, seconds, now = System.currentTimeMillis() / 1000.0, device = Build.MODEL.orEmpty())
                         ?.let { measured -> this.settings.change { it.phoneLiveMeasurement = measured } }
                 },
             )

@@ -126,6 +126,10 @@ data class CaptionScreenState(
     val captionsRunning: Boolean
         get() = phase.isListening && !interruptedBySystem
 
+    /** The lighter-model card waits for captions to be stopped, and for any call to end. */
+    val allowsModelOffer: Boolean
+        get() = !captionsRunning && !interruptedBySystem
+
     fun keepsScreenOn(keepAwakeWhileListening: Boolean, now: Double): Boolean = ScreenAwakePolicy.shouldKeepAwake(
         phase = phase,
         keepAwakeWhileListening = keepAwakeWhileListening,

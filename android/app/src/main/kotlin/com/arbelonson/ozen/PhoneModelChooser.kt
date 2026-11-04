@@ -102,7 +102,7 @@ class PhoneModelChooser(
     private fun rememberChoiceAgainstWarning(file: String) {
         val current = settings.current.value
         val model = PhoneModelCatalog.offered(current.spokenLanguage).firstOrNull { it.file == file } ?: return
-        val speed = current.effectiveGflops ?: return
+        val speed = current.gflopsOn(device) ?: return
         if (PhoneModelEstimate.fit(model, speed, totalMemory()) != PhoneModelFit.KeepsUp) settings.change { it.dismissModelFit(model.variant, device) }
     }
 
@@ -222,7 +222,7 @@ class PhoneModelChooser(
                 checkState.value = PhoneCheckState.Idle
                 return@launch
             }
-            settings.change { it.phoneSpeed = speed }
+            settings.change { it.phoneSpeed = speed.copy(device = device) }
             checkState.value = PhoneCheckState.Idle
             val now = settings.current.value
             val untouched = picks == picksBefore && now.phoneModelFile == before.phoneModelFile && now.spokenLanguage == before.spokenLanguage

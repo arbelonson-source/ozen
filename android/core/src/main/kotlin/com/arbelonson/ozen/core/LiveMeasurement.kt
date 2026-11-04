@@ -5,13 +5,23 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-data class LiveMeasurement(val file: String, val averageSeconds: Double, val passes: Int, val gflops: Double, val measuredAt: Double) {
+data class LiveMeasurement(
+    val file: String,
+    val averageSeconds: Double,
+    val passes: Int,
+    val gflops: Double,
+    val measuredAt: Double,
+    val fitEligible: Boolean = false,
+    val device: String? = null,
+) {
     fun toJsonObject(): JsonObject = buildJsonObject {
         put("file", file)
         put("averageSeconds", averageSeconds)
         put("passes", passes)
         put("gflops", gflops)
         put("measuredAt", measuredAt)
+        put("fitEligible", fitEligible)
+        device?.let { put("device", it) }
     }
 
     companion object {
@@ -21,7 +31,9 @@ data class LiveMeasurement(val file: String, val averageSeconds: Double, val pas
             val passes = number(element["passes"])?.toInt() ?: return null
             val gflops = number(element["gflops"]) ?: return null
             val measuredAt = number(element["measuredAt"]) ?: return null
-            return if (averageSeconds > 0 && passes > 0 && gflops > 0) LiveMeasurement(file, averageSeconds, passes, gflops, measuredAt) else null
+            val eligible = (element["fitEligible"] as? JsonPrimitive)?.takeIf { !it.isString }?.content == "true"
+            val device = (element["device"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+            return if (averageSeconds > 0 && passes > 0 && gflops > 0) LiveMeasurement(file, averageSeconds, passes, gflops, measuredAt, eligible, device) else null
         }
 
         private fun number(element: Any?): Double? =

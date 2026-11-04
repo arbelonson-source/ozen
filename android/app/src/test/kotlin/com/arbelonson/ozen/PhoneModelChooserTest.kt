@@ -199,7 +199,7 @@ class PhoneModelChooserTest {
         assertEquals(PhoneCheckState.Running(0f), chooser.check.value)
         scope.runCurrent()
         assertEquals(PhoneCheckState.Idle, chooser.check.value)
-        assertEquals(PhoneSpeed(300.0, 4, 1.0), saved().phoneSpeed)
+        assertEquals(PhoneSpeed(300.0, 4, 1.0, device = "Pixel 7"), saved().phoneSpeed)
         assertNull(saved().phoneModelFile)
         measured = PhoneSpeed(12.0, 2, 2.0)
         chooser.runCheck(thenChooseBest = true)
@@ -213,6 +213,13 @@ class PhoneModelChooserTest {
         settings.change { it.phoneSpeed = PhoneSpeed(60.0, 4, 1.0) }
         chooser.choose("ggml-large-v3-turbo-q5_0.bin", byHand = true)
         assertEquals(listOf(ModelFitWatch.dismissalKey("large-v3-v20240930_626MB", "Pixel 7")), saved().modelFitDismissed)
+    }
+
+    @Test
+    fun `choosing by hand against a check made on another phone remembers nothing`() {
+        settings.change { it.phoneSpeed = PhoneSpeed(60.0, 4, 1.0, device = "Galaxy S10") }
+        chooser.choose("ggml-large-v3-turbo-q5_0.bin", byHand = true)
+        assertEquals(emptyList(), saved().modelFitDismissed)
     }
 
     @Test

@@ -323,6 +323,14 @@ class FakeEngine(
         releaseCount++
     }
 
+    /** How often the pipeline asked this engine to save its counted timing. */
+    var fitSaveCount = 0
+        private set
+
+    override fun saveFitMeasurement() {
+        fitSaveCount++
+    }
+
     fun emit(token: TranscriptToken) {
         tokenChannel?.trySend(token)
     }

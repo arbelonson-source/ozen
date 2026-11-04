@@ -402,15 +402,37 @@ class AppSettings(
             }
         }
 
-    /** The lighter model to offer on the caption screen because the running one fell behind in use, or null. */
-    fun modelFitOffer(totalMemoryBytes: Long?, device: String): PhoneModel? {
-        if (!hasCompletedOnboarding || engine != TranscriptionEngineKind.WhisperKit) return null
-        return ModelFitWatch.offer(phoneLiveMeasurement, phoneModel, spokenLanguage, totalMemoryBytes, modelFitDismissed, device)
+    /** The speed of the phone test or live timing taken on [device] (or before the phone was recorded), the later of the two. */
+    fun gflopsOn(device: String): Double? {
+        val test = phoneSpeed?.takeIf { it.device == null || it.device == device }
+        val live = phoneLiveMeasurement?.takeIf { it.device == null || it.device == device }
+        return when {
+            test == null -> live?.gflops
+            live == null -> test.gflops
+            live.measuredAt >= test.measuredAt -> live.gflops
+            else -> test.gflops
+        }
+    }
+
+    /**
+     * The lighter model to offer on the caption screen because the running one fell behind in use, or null.
+     * [available]: the model is on the phone or there is room to download it.
+     */
+    fun modelFitOffer(totalMemoryBytes: Long?, device: String, available: (PhoneModel) -> Boolean): PhoneModel? {
+        if (!hasCompletedOnboarding || (engine != TranscriptionEngineKind.WhisperKit && engine != TranscriptionEngineKind.AppleSpeech)) return null
+        val measurement = phoneLiveMeasurement ?: return null
+        if (measurement.device != device) return null
+        return ModelFitWatch.offer(measurement, phoneModel, spokenLanguage, totalMemoryBytes, modelFitDismissed, device)?.takeIf(available)
     }
 
     fun dismissModelFit(variant: String, device: String) {
         val key = ModelFitWatch.dismissalKey(variant, device)
         if (key !in modelFitDismissed) modelFitDismissed = modelFitDismissed + key
+    }
+
+    /** "Not now" on the offer: remembered only when the timing it rests on was taken on this phone. */
+    fun dismissModelFitOffer(variant: String, device: String) {
+        if (phoneLiveMeasurement?.device == device) dismissModelFit(variant, device)
     }
 
     /**
