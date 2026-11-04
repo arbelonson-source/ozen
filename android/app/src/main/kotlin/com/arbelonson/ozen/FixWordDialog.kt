@@ -71,7 +71,7 @@ internal fun FixWordDialog(shown: String, onSave: (heard: String, written: Strin
                                 .background(if (on) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                                 .clickable(role = Role.Checkbox) {
                                     typed = ""
-                                    val now = WordFixes.tapped(if (first >= 0) first..last else null, index)
+                                    val now = WordFixes.tapped(if (first >= 0) first..last else null, index) { WordFixes.joinedBySpace(shown, it) }
                                     first = now?.first ?: -1
                                     last = now?.last ?: -1
                                 }

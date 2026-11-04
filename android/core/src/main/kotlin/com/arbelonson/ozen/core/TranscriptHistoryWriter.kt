@@ -250,6 +250,7 @@ class TranscriptHistoryWriter(
             pendingSaves.records[sessionID] = waiting.copy(segments = segments)
             done = true
         }
+        catchUp(null)
         done
     }
 

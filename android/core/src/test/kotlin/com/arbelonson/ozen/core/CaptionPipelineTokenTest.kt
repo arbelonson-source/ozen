@@ -41,12 +41,24 @@ class CaptionPipelineTokenTest {
         assertTrue(eventually { pipeline.segments.firstOrNull()?.isCommitted == true })
         var redraws = 0
         pipeline.onCaptionsChanged = { redraws += 1 }
-        pipeline.replaceText(id, "I saw Avi today")
+        assertTrue(pipeline.replaceText(id, "I saw Avi today"))
         assertEquals("I saw Avi today", pipeline.segments.single().text)
         assertEquals(1, redraws)
         pipeline.replaceText(UUID.randomUUID(), "other")
         assertEquals("I saw Avi today", pipeline.segments.single().text)
         assertEquals(1, redraws)
+    }
+
+    @Test
+    fun `a line still being heard is not rewritten by hand, the engine would write its old words back`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine))
+        pipeline.start(AppSettings.default)
+        val id = UUID.randomUUID()
+        engine.emit(token(id, "I saw aval", final = false))
+        assertTrue(eventually { pipeline.segments.isNotEmpty() })
+        assertFalse(pipeline.replaceText(id, "I saw Avi"))
+        assertEquals("I saw aval", pipeline.segments.single().text)
     }
 
     @Test

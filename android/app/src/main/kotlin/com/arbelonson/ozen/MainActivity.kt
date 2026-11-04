@@ -1334,7 +1334,7 @@ private fun CaptionLineRow(
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val star = if (line.starred) tr("ביטול הסימון", "Remove mark") else tr("סימון כחשוב", "Mark as important")
     val copy = tr("העתקה", "Copy")
-    val fix = tr("תיקון מילה למילון", "Fix a word for next time")
+    val fix = tr("תיקון מילה", "Fix a word")
     val ask = tr("לבקש שיחזרו על זה", "Ask them to repeat that")
     val who = tr("מי מדבר?", "Who is speaking?")
     val open =tr("פתיחת השיחה כולה, לשיתוף או לחיפוש", "Open the whole conversation, to share or search")
@@ -1359,7 +1359,9 @@ private fun CaptionLineRow(
                 CustomAccessibilityAction(ask) { say(); true }
             } + listOf(
                 CustomAccessibilityAction(who) { onName(); true },
-                CustomAccessibilityAction(fix) { onFix(); true },
+            ) + listOf(fix).filter { line.isFinal }.map {
+                CustomAccessibilityAction(it) { onFix(); true }
+            } + listOf(
                 CustomAccessibilityAction(copy) { copyLine(); true },
             ) + listOfNotNull(line.conversation).map { conversation ->
                 CustomAccessibilityAction(open) { onOpen(conversation); true }
@@ -1373,7 +1375,7 @@ private fun CaptionLineRow(
             DropdownMenuItem(text = { Text(star) }, onClick = { menu = false; onStar() })
             onAskToRepeat?.let { say -> DropdownMenuItem(text = { Text(ask) }, onClick = { menu = false; say() }) }
             DropdownMenuItem(text = { Text(who) }, onClick = { menu = false; onName() })
-            DropdownMenuItem(text = { Text(fix) }, onClick = { menu = false; onFix() })
+            if (line.isFinal) DropdownMenuItem(text = { Text(fix) }, onClick = { menu = false; onFix() })
             DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
             line.conversation?.let { conversation ->
                 DropdownMenuItem(text = { Text(open) }, onClick = { menu = false; onOpen(conversation) })

@@ -107,4 +107,19 @@ class WordFixesTest {
         assertEquals(null, WordFixes.tapped(2..2, 2))
         assertEquals(listOf("Hello", "wor'ld"), WordFixes.wordsOf("Hello, wor'ld!"))
     }
+
+    @Test fun normalizedDropsBlankWrittenAndPhrasesApplyCannotUse() {
+        assertEquals(emptyList(), WordFixes.normalized(listOf(fix("aval", "   "))))
+        assertEquals(emptyList(), WordFixes.normalized(listOf(fix("a b c d e", "X"))))
+        assertEquals(listOf(fix("a b c d", "X")), WordFixes.normalized(listOf(fix("a b c d", "X"))))
+        assertEquals("a b", run("a b", fix("a", "")))
+    }
+
+    @Test fun selectionNeverReachesAcrossPunctuation() {
+        val connected = { first: Int -> WordFixes.joinedBySpace("bat, sheva ok", first) }
+        assertEquals(false, connected(0))
+        assertEquals(true, connected(1))
+        assertEquals(1..1, WordFixes.tapped(0..0, 1, connected))
+        assertEquals(1..2, WordFixes.tapped(1..1, 2, connected))
+    }
 }

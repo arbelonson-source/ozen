@@ -46,11 +46,17 @@ object WordFixes {
 
     fun wordsOf(text: String): List<String> = words(text).map { text.substring(it.start, it.end) }
 
-    fun tapped(selection: IntRange?, index: Int): IntRange? = when {
+    /** Whether word [first] and the next one in [text] are one plain space apart, so a phrase can cover both. */
+    fun joinedBySpace(text: String, first: Int): Boolean {
+        val all = words(text)
+        return first + 1 < all.size && text.substring(all[first].end, all[first + 1].start) == " "
+    }
+
+    fun tapped(selection: IntRange?, index: Int, joined: (Int) -> Boolean = { true }): IntRange? = when {
         selection == null -> index..index
         index in selection -> if (selection.first == selection.last) null else if (index == selection.first) (index + 1)..selection.last else selection.first..(index - 1)
-        index == selection.first - 1 && selection.count() < MAXIMUM_WORDS -> index..selection.last
-        index == selection.last + 1 && selection.count() < MAXIMUM_WORDS -> selection.first..index
+        index == selection.first - 1 && selection.count() < MAXIMUM_WORDS && joined(index) -> index..selection.last
+        index == selection.last + 1 && selection.count() < MAXIMUM_WORDS && joined(selection.last) -> selection.first..index
         else -> index..index
     }
 
@@ -60,7 +66,8 @@ object WordFixes {
         for (fix in fixes) {
             val heard = fix.heard.trim().replace(Regex("\\s+"), " ").take(MAXIMUM_LENGTH).trim()
             val written = fix.written.trim().take(MAXIMUM_LENGTH).trim()
-            if (heard.isEmpty() || keyOf(heard) == keyOf(written)) continue
+            if (heard.isEmpty() || written.isEmpty() || keyOf(heard) == keyOf(written)) continue
+            if (heard.split(' ').size > MAXIMUM_WORDS) continue
             if (!seen.add(keyOf(heard))) continue
             out.add(WordFix(heard, written))
             if (out.size == MAXIMUM_FIXES) break
@@ -70,7 +77,7 @@ object WordFixes {
 
     fun apply(fixes: List<WordFix>, text: String): String {
         if (fixes.isEmpty() || text.isEmpty()) return text
-        val compiled = fixes.mapNotNull { fix ->
+        val compiled = normalized(fixes).mapNotNull { fix ->
             val parts = words(fix.heard).map { it.key }
             if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) null else Compiled(parts, fix.written)
         }

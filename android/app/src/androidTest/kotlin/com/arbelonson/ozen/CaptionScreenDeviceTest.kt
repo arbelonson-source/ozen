@@ -1478,7 +1478,7 @@ class CaptionScreenDeviceTest {
         app.settings.change { it.vocabulary = listOf("Dr. Levi") }
         try {
             showLines(listOf(committed("I spoke with Shera yesterday")))
-            val fix = "Fix a word for next time"
+            val fix = "Fix a word"
             lineText("Shera").performTouchInput { longClick() }
             compose.onNodeWithText(fix).performClick()
             compose.onNodeWithText("What the captions showed").assertExists()
@@ -2272,7 +2272,7 @@ class CaptionScreenDeviceTest {
             CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(voiced), speakerName = { "Speaker 1" })
         }
         lineText("Good evening").performTouchInput { longClick() }
-        compose.onNodeWithText("Fix a word for next time").performClick()
+        compose.onNodeWithText("Fix a word").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Shira")
         turnThePhone()
         compose.onNodeWithText("What the captions showed").assertExists()
@@ -2377,7 +2377,7 @@ class CaptionScreenDeviceTest {
         }
         show(listOf(voiced))
         lineText("Good evening").performTouchInput { longClick() }
-        compose.onNodeWithText("Fix a word for next time").performClick()
+        compose.onNodeWithText("Fix a word").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Shira")
         show(listOf(voiced) + later)
         compose.waitForIdle()

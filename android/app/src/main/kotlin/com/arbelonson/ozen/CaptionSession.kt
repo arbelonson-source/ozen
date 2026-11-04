@@ -993,7 +993,7 @@ class CaptionSession(
     fun setWordFixes(fixes: List<WordFix>) {
         settings.change { it.wordFixes = WordFixes.normalized(fixes) }
         val kept = settings.current.value.wordFixes
-        pipeline.setWordFixes(kept)
+        scope.launch { pipeline.setWordFixes(kept) }
     }
 
     /**

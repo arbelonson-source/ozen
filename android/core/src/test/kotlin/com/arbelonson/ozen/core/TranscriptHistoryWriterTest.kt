@@ -397,6 +397,23 @@ class TranscriptHistoryWriterTest {
     }
 
     @Test
+    fun `a word fixed in History also retries the other conversation that failed to save`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.fix-retries"))
+        val saved = record(UUID.randomUUID(), 1, true)
+        writer.saveNow(saved)
+        val refused = record(UUID.randomUUID(), 1, true)
+        permissions(dir, "r-x------")
+        writer.saveNow(refused)
+        permissions(dir, "rwx------")
+        assertNull(store.load(refused.id))
+
+        assertTrue(writer.fixTextNow(saved.id, saved.segments[0].id, "fixed"))
+
+        assertNotNull(store.load(refused.id))
+    }
+
+    @Test
     fun `a star tapped in History follows the conversation as History shows it, the file on disk, and the waiting version takes the same state`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)
         val writer = TranscriptHistoryWriter(store, SerialQueue("test.refused-unstar"))

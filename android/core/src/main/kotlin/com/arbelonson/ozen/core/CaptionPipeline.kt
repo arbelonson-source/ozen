@@ -2023,12 +2023,13 @@ class CaptionPipeline(
         engine.setVocabulary(primedVocabulary(cleaned))
     }
 
-    /** A word fixed by hand: the shown line changes, so saves and redraws carry the new words. */
-    fun replaceText(id: UUID, text: String) {
+    /** A word fixed by hand on a finished line (an open one would be written back by the engine): the shown line changes, so saves and redraws carry the new words. */
+    fun replaceText(id: UUID, text: String): Boolean {
         val index = segments.indexOfLast { it.id == id }
-        if (index < 0) return
+        if (index < 0 || !segments[index].isCommitted) return false
         setSegment(index, segments[index].copy(text = text))
         onCaptionsChanged?.invoke()
+        return true
     }
 
     fun setWordFixes(fixes: List<WordFix>) {
