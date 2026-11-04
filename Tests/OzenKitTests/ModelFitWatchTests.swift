@@ -11,9 +11,10 @@ struct ModelFitWatchTests {
         measuring variant: String? = turbo,
         seconds: Double = 1.5,
         passes: Int = 25,
+        eligible: Bool? = true,
         supported: [String] = DeviceModelAdvisorTests.a15
     ) -> DeviceModelCheck {
-        let measurement = variant.map { LivePassMeasurement(variant: $0, averageSeconds: seconds, passes: passes) }
+        let measurement = variant.map { LivePassMeasurement(variant: $0, averageSeconds: seconds, passes: passes, fitEligible: eligible) }
         return DeviceModelCheck(deviceName: device, supported: supported, measurement: measurement, checkedAt: 1)
     }
 
@@ -89,6 +90,18 @@ struct ModelFitWatchTests {
     @Test("a timing too short to trust offers nothing")
     func fewPasses() {
         #expect(Self.offer(Self.check(passes: 3)) == nil)
+    }
+
+    @Test("a timing under the number of counted passes that gets saved offers nothing")
+    func belowSaveThreshold() {
+        #expect(Self.offer(Self.check(passes: ModelFitWatch.passesToSave - 1)) == nil)
+        #expect(Self.offer(Self.check(passes: ModelFitWatch.passesToSave)) == "small")
+    }
+
+    @Test("a timing from every pass, hot or in Low Power Mode included, offers nothing however many passes")
+    func unfilteredTimingOffersNothing() {
+        #expect(Self.offer(Self.check(passes: 300, eligible: nil)) == nil)
+        #expect(Self.offer(Self.check(passes: 300, eligible: false)) == nil)
     }
 
     @Test("a timing of some other model than the running one offers nothing")

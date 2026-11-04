@@ -780,6 +780,7 @@ public final class LiveCaptionViewModel {
     public func showOnboardingAgain() {
         if pipeline.phase != .idle {
             speechPause.userTookControl()
+            await saveFitMeasurementIfReady()
             pipeline.stop()
             historySessionDidChangePhase()
         }
@@ -914,6 +915,7 @@ public final class LiveCaptionViewModel {
         if pipeline.phase == .paused {
             await pipeline.resume(settings: settings)
         } else if pipeline.phase.isListening {
+            await saveFitMeasurementIfReady()
             pipeline.pause(releasingAudio: true)
         } else if pipeline.phase == .idle {
             await pipeline.start(settings: settings)
@@ -1048,7 +1050,8 @@ public final class LiveCaptionViewModel {
 
     public func setWhisperModel(_ variant: String) async {
         guard settings.whisperModelVariant != variant else { return }
-        if let check = settings.deviceModelCheck, let chosen = WhisperModelCatalog.option(for: variant),
+        if let check = settings.deviceModelCheck, check.deviceName == DeviceModelTable.currentDeviceName,
+           let chosen = WhisperModelCatalog.option(for: variant),
            DeviceModelAdvisor.warns(about: DeviceModelAdvisor.fit(of: chosen, on: check)) {
             rememberModelFitDismissal(of: variant)
         }
@@ -1527,7 +1530,9 @@ public final class LiveCaptionViewModel {
     /// once there are enough of them. The pick itself stays hers.
     public func testThisPhone() async {
         var measurement = DeviceModelAdvisor.timingToKeep(from: settings.deviceModelCheck, onDevice: DeviceModelTable.currentDeviceName)
-        if let live = await pipeline.engineLivePassMeasurement(), live.passes >= DeviceModelAdvisor.minimumMeasuredPasses {
+        if let counted = await pipeline.engineFitPassMeasurement(), ModelFitWatch.shouldSave(passes: counted.passes) {
+            measurement = counted
+        } else if let live = await pipeline.engineLivePassMeasurement(), live.passes >= DeviceModelAdvisor.minimumMeasuredPasses {
             measurement = live
         }
         settings.deviceModelCheck = DeviceModelTable.check(measurement: measurement)
@@ -1551,7 +1556,7 @@ public final class LiveCaptionViewModel {
     /// The lighter model to offer on the caption screen because the running
     /// one kept falling behind, when there is one.
     public var modelFitOfferVariant: String? {
-        guard settings.hasCompletedOnboarding, settings.engine == .whisperKit, !captionsAreRunning else { return nil }
+        guard settings.hasCompletedOnboarding, settings.engine == .whisperKit, !captionsAreRunning, !isInterruptedBySystem else { return nil }
         return ModelFitWatch.offer(
             check: settings.deviceModelCheck,
             current: settings.whisperModelVariant,

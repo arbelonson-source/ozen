@@ -28,7 +28,7 @@ public enum ModelFitWatch {
     ) -> String? {
         guard let check, check.deviceName == device,
               let measurement = check.measurement, measurement.variant == current,
-              measurement.passes >= DeviceModelAdvisor.minimumMeasuredPasses,
+              measurement.fitEligible == true, shouldSave(passes: measurement.passes),
               DeviceModelAdvisor.measuredFit(averageSeconds: measurement.averageSeconds) != .keepsUp,
               !dismissed.contains(ModelFitDismissal(variant: current, deviceName: device)),
               let running = WhisperModelCatalog.option(for: current)

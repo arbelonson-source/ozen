@@ -620,6 +620,9 @@ struct LiveCaptionView: View {
                     ForEach(onScreenLines, id: \.segment.id) { index, segment in
                         transcriptRow(index: index, segment: segment, awayMark: mark, slots: slots)
                     }
+                    if !viewModel.segments.isEmpty, let fitOffer = modelFitOption {
+                        modelFitOfferCard(fitOffer)
+                    }
                     // A sentinel at the very end: while it's on screen the
                     // reader is at the bottom and auto-scroll stays on;
                     // once they scroll up to re-read, it leaves and we
@@ -913,6 +916,15 @@ struct LiveCaptionView: View {
         }
     }
 
+    /// The lighter model to offer, when the phone has room for it (or has
+    /// it already).
+    private var modelFitOption: WhisperModelOption? {
+        guard let option = viewModel.modelFitOfferVariant.flatMap({ WhisperModelCatalog.option(for: $0) }) else { return nil }
+        let fits = WhisperModelStore().isInstalled(option.variant)
+            || StorageSpaceGate.shortfallMegabytes(downloadMegabytes: option.installMegabytes, availableBytes: DeviceStorage.availableBytes()) == nil
+        return fits ? option : nil
+    }
+
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Not while a call holds the microphone: the phase stays on
@@ -928,7 +940,7 @@ struct LiveCaptionView: View {
                 .fixedSize(horizontal: false, vertical: true)
             // Ahead of the recent conversation: a phone that always has one
             // would otherwise never be told its model is the weak one.
-            let fitOffer = viewModel.modelFitOfferVariant.flatMap { WhisperModelCatalog.option(for: $0) }
+            let fitOffer = modelFitOption
             let better = fitOffer == nil && viewModel.settings.offersBetterModel() ? betterModelOption : nil
             if let fitOffer {
                 modelFitOfferCard(fitOffer)
@@ -1023,7 +1035,7 @@ struct LiveCaptionView: View {
                 }
                 .accessibilityIdentifier("modelFitOfferSwitch")
                 Button {
-                    withAnimation { viewModel.dismissModelFitOffer() }
+                    withAnimation(reduceMotion ? nil : .default) { viewModel.dismissModelFitOffer() }
                 } label: {
                     Text(tr("לא עכשיו", "Not now"))
                         .font(.body)

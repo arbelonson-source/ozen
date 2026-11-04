@@ -277,7 +277,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
 
     public func fitPassMeasurement() async -> LivePassMeasurement? {
         guard let average = fitTally.averageLiveSeconds else { return nil }
-        return LivePassMeasurement(variant: modelVariant, averageSeconds: average, passes: fitTally.livePasses)
+        return LivePassMeasurement(variant: modelVariant, averageSeconds: average, passes: fitTally.livePasses, fitEligible: true)
     }
 
     private var isStreaming = false
@@ -440,6 +440,8 @@ public actor WhisperKitEngine: TranscriptionEngine {
             // changed nothing up close (see `SpeechGain`).
             let heard = SpeechGain.normalized(window)
             let passStarted = ContinuousClock.now
+            let fitEligibleAtStart = ModelFitWatch.counts(heat: Self.currentHeat(), lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled, onPhoneModel: true)
+            var retried = false
             let results: [TranscriptionResult]
             do {
                 results = try await pipe.transcribe(audioArray: heard, decodeOptions: options)
@@ -450,6 +452,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 // a moment) used to end the stream: the pipeline restarted
                 // the engine and the sentence being spoken was lost with the
                 // buffer. The same window gets one more try first.
+                retried = true
                 try await Task.sleep(for: .milliseconds(250))
                 results = try await pipe.transcribe(audioArray: heard, decodeOptions: options)
             }
@@ -460,7 +463,8 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
                 lastLivePassSeconds = seconds
                 tally.recordLivePass(seconds: seconds)
-                if ModelFitWatch.counts(heat: Self.currentHeat(), lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled, onPhoneModel: true) {
+                if fitEligibleAtStart, !retried,
+                   ModelFitWatch.counts(heat: Self.currentHeat(), lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled, onPhoneModel: true) {
                     fitTally.recordLivePass(seconds: seconds)
                 }
             }
