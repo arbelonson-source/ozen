@@ -928,15 +928,19 @@ struct LiveCaptionView: View {
                 .fixedSize(horizontal: false, vertical: true)
             // Ahead of the recent conversation: a phone that always has one
             // would otherwise never be told its model is the weak one.
-            let better = viewModel.settings.offersBetterModel() ? betterModelOption : nil
-            if let better {
+            let fitOffer = viewModel.modelFitOfferVariant.flatMap { WhisperModelCatalog.option(for: $0) }
+            let better = fitOffer == nil && viewModel.settings.offersBetterModel() ? betterModelOption : nil
+            if let fitOffer {
+                modelFitOfferCard(fitOffer)
+                    .padding(.top, 8)
+            } else if let better {
                 betterModelOfferCard(better)
                     .padding(.top, 8)
             }
             if let recent = viewModel.recentConversation {
                 recentConversationCard(recent)
                     .padding(.top, 8)
-            } else if better == nil, viewModel.settings.offersNameAlert {
+            } else if better == nil, fitOffer == nil, viewModel.settings.offersNameAlert {
                 nameAlertOfferCard
                     .padding(.top, 8)
             }
@@ -990,6 +994,48 @@ struct LiveCaptionView: View {
         }
         .foregroundStyle(theme.chrome)
         .padding(14)
+        .background(theme.chrome.opacity(theme.cardFill), in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// After the model kept falling behind the speech on this phone: a
+    /// lighter one that keeps up better, one tap away.
+    private func modelFitOfferCard(_ option: WhisperModelOption) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "tortoise")
+                    .font(.title2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone"))
+                        .font(.headline)
+                    Text(tr("%1 (%2) קל יותר ומצליח לעמוד בקצב טוב יותר כאן.", "%1 (%2) is lighter and keeps up better here.", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
+                        .font(.subheadline)
+                }
+                .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 12) {
+                Button {
+                    Task { await viewModel.acceptModelFitOffer() }
+                } label: {
+                    Text(tr("החלפה", "Switch"))
+                        .font(.body.weight(.semibold))
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityIdentifier("modelFitOfferSwitch")
+                Button {
+                    withAnimation { viewModel.dismissModelFitOffer() }
+                } label: {
+                    Text(tr("לא עכשיו", "Not now"))
+                        .font(.body)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityIdentifier("modelFitOfferNotNow")
+            }
+            .buttonStyle(.plain)
+        }
+        .foregroundStyle(theme.chrome)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(theme.chrome.opacity(theme.cardFill), in: RoundedRectangle(cornerRadius: 14))
     }
 

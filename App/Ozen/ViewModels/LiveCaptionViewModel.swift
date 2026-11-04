@@ -1048,6 +1048,10 @@ public final class LiveCaptionViewModel {
 
     public func setWhisperModel(_ variant: String) async {
         guard settings.whisperModelVariant != variant else { return }
+        if let check = settings.deviceModelCheck, let chosen = WhisperModelCatalog.option(for: variant),
+           DeviceModelAdvisor.warns(about: DeviceModelAdvisor.fit(of: chosen, on: check)) {
+            rememberModelFitDismissal(of: variant)
+        }
         settings.whisperModelVariant = variant
         persist()
         if settings.engine == .whisperKit {
@@ -1528,6 +1532,48 @@ public final class LiveCaptionViewModel {
         }
         settings.deviceModelCheck = DeviceModelTable.check(measurement: measurement)
         persist()
+    }
+
+    /// Keeps the timing of the running model's counted passes in the phone's
+    /// check once there are enough of them, so Settings and the lighter-model
+    /// offer follow real use and not only "Test this phone".
+    public func saveFitMeasurementIfReady() async {
+        guard let live = await pipeline.engineFitPassMeasurement(),
+              ModelFitWatch.shouldSave(passes: live.passes),
+              live.variant == settings.whisperModelVariant
+        else { return }
+        let device = DeviceModelTable.currentDeviceName
+        if let saved = DeviceModelAdvisor.timingToKeep(from: settings.deviceModelCheck, onDevice: device), saved == live { return }
+        settings.deviceModelCheck = DeviceModelTable.check(measurement: live)
+        persist()
+    }
+
+    /// The lighter model to offer on the caption screen because the running
+    /// one kept falling behind, when there is one.
+    public var modelFitOfferVariant: String? {
+        guard settings.hasCompletedOnboarding, settings.engine == .whisperKit, !captionsAreRunning else { return nil }
+        return ModelFitWatch.offer(
+            check: settings.deviceModelCheck,
+            current: settings.whisperModelVariant,
+            language: settings.spokenLanguage,
+            dismissed: settings.modelFitOfferDismissed,
+            device: DeviceModelTable.currentDeviceName
+        )
+    }
+
+    public func acceptModelFitOffer() async {
+        guard let variant = modelFitOfferVariant else { return }
+        await setWhisperModel(variant)
+    }
+
+    public func dismissModelFitOffer() {
+        rememberModelFitDismissal(of: settings.whisperModelVariant)
+        persist()
+    }
+
+    private func rememberModelFitDismissal(of variant: String) {
+        let pair = ModelFitDismissal(variant: variant, deviceName: DeviceModelTable.currentDeviceName)
+        if !settings.modelFitOfferDismissed.contains(pair) { settings.modelFitOfferDismissed.append(pair) }
     }
 
     /// "Not now" on the caption screen's offer to set up her name alert.
@@ -2186,6 +2232,7 @@ public final class LiveCaptionViewModel {
                         if !self.checkForConversationBreak() {
                             self.persistHistory(ended: false, inBackground: true)
                         }
+                        await self.saveFitMeasurementIfReady()
                     }
                 }
             }

@@ -257,6 +257,10 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// What "Test this phone" found out; see `DeviceModelAdvisor`.
     public var deviceModelCheck: DeviceModelCheck?
 
+    /// Models whose "Captions ran late" offer was put away on a phone; see
+    /// `ModelFitWatch`.
+    public var modelFitOfferDismissed: [ModelFitDismissal]
+
     public static let betterModelOfferSnoozeDays = [3, 14, 60]
 
     /// The language people around her speak, which the captions are written
@@ -325,9 +329,11 @@ public struct AppSettings: Codable, Sendable, Equatable {
         nameAlertOfferDismissed: Bool = false,
         betterModelOfferDeclines: Int = 0,
         betterModelOfferSnoozedUntil: Double? = nil,
-        deviceModelCheck: DeviceModelCheck? = nil
+        deviceModelCheck: DeviceModelCheck? = nil,
+        modelFitOfferDismissed: [ModelFitDismissal] = []
     ) {
         self.deviceModelCheck = deviceModelCheck
+        self.modelFitOfferDismissed = modelFitOfferDismissed
         self.engine = engine
         self.languageCode = languageCode
         self.preferredInputUID = preferredInputUID
@@ -448,7 +454,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         case quickPhrases, speechRate, vocabulary, hasCompletedOnboarding, appLanguage
         case notifyWhenInBackground, allowCellularModelDownload, historyRetention
         case quietHours
-        case nameAlertOfferDismissed, betterModelOfferDeclines, betterModelOfferSnoozedUntil, deviceModelCheck
+        case nameAlertOfferDismissed, betterModelOfferDeclines, betterModelOfferSnoozedUntil, deviceModelCheck, modelFitOfferDismissed
     }
 
     public init(from decoder: any Decoder) throws {
@@ -500,6 +506,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         betterModelOfferDeclines = max(0, container.lenient(Int.self, forKey: .betterModelOfferDeclines) ?? 0)
         betterModelOfferSnoozedUntil = container.lenient(Double.self, forKey: .betterModelOfferSnoozedUntil)
         deviceModelCheck = container.lenient(DeviceModelCheck.self, forKey: .deviceModelCheck)
+        modelFitOfferDismissed = container.lenient([ModelFitDismissal].self, forKey: .modelFitOfferDismissed) ?? []
     }
 
     /// The model behind the engine in use, for saved conversations and

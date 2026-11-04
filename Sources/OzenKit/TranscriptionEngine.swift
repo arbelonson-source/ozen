@@ -262,6 +262,11 @@ public protocol TranscriptionEngine: Sendable {
     /// it has run enough of them to say; nil from engines that do not time
     /// their own work.
     func livePassMeasurement() async -> LivePassMeasurement?
+
+    /// The same, from the passes that count towards whether this model
+    /// suits the phone (`ModelFitWatch.counts`): none taken hot or in Low
+    /// Power Mode.
+    func fitPassMeasurement() async -> LivePassMeasurement?
 }
 
 public extension TranscriptionEngine {
@@ -270,6 +275,8 @@ public extension TranscriptionEngine {
     func diagnosticsSummary() async -> String? { nil }
 
     func livePassMeasurement() async -> LivePassMeasurement? { nil }
+
+    func fitPassMeasurement() async -> LivePassMeasurement? { nil }
 
     func pendingDownloadMegabytes() async -> Int? { nil }
 

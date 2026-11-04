@@ -264,6 +264,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
     /// that call is suspended. The next stream now waits, at most one pass.
     /// How the passes have gone since the engine was made, for the journal.
     private var tally = PassTally()
+    private var fitTally = PassTally()
 
     public func diagnosticsSummary() async -> String? {
         "\(modelVariant): \(tally.summary)"
@@ -272,6 +273,11 @@ public actor WhisperKitEngine: TranscriptionEngine {
     public func livePassMeasurement() async -> LivePassMeasurement? {
         guard let average = tally.averageLiveSeconds else { return nil }
         return LivePassMeasurement(variant: modelVariant, averageSeconds: average, passes: tally.livePasses)
+    }
+
+    public func fitPassMeasurement() async -> LivePassMeasurement? {
+        guard let average = fitTally.averageLiveSeconds else { return nil }
+        return LivePassMeasurement(variant: modelVariant, averageSeconds: average, passes: fitTally.livePasses)
     }
 
     private var isStreaming = false
@@ -454,6 +460,9 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
                 lastLivePassSeconds = seconds
                 tally.recordLivePass(seconds: seconds)
+                if ModelFitWatch.counts(heat: Self.currentHeat(), lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled, onPhoneModel: true) {
+                    fitTally.recordLivePass(seconds: seconds)
+                }
             }
             // Only on the pass that stays: a line still being written
             // changes its mind about words as well as about itself.
