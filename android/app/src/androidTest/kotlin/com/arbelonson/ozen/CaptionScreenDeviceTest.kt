@@ -1481,21 +1481,22 @@ class CaptionScreenDeviceTest {
             val fix = "Fix a word"
             lineText("Shera").performTouchInput { longClick() }
             compose.onNodeWithText(fix).performClick()
-            compose.onNodeWithText("What the captions showed").assertExists()
-            assertEquals(2, compose.onAllNodesWithText("I spoke with Shera yesterday").fetchSemanticsNodes().size)
-            compose.onNodeWithText("Add").assertIsNotEnabled()
-            compose.onNode(hasSetTextAction()).performTextInput("   ")
-            compose.onNodeWithText("Add").assertIsNotEnabled()
-            compose.onNode(hasSetTextAction()).performTextInput("Shira")
-            compose.onNodeWithText("Add").performClick()
+            compose.onNodeWithText("Tap the words that came out wrong").assertExists()
+            compose.onNodeWithContentDescription("Shera").assertExists()
+            compose.onNodeWithText("Save").assertIsNotEnabled()
+            compose.onNodeWithContentDescription("Shera").performClick()
+            compose.onAllNodes(hasSetTextAction())[1].performTextInput("   ")
+            compose.onNodeWithText("Save").assertIsNotEnabled()
+            compose.onAllNodes(hasSetTextAction())[1].performTextInput("Shira")
+            compose.onNodeWithText("Save").performClick()
             compose.waitUntil(5_000) { app.settings.current.value.vocabulary == listOf("Shira", "Dr. Levi") }
-            compose.waitUntil(5_000) { compose.onAllNodesWithText("What the captions showed").fetchSemanticsNodes().isEmpty() }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Tap the words that came out wrong").fetchSemanticsNodes().isEmpty() }
 
             val action = lineText("Shera").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == fix }
             compose.runOnUiThread { action.action() }
-            compose.onNode(hasSetTextAction()).performTextInput("Shai")
+            compose.onAllNodes(hasSetTextAction())[1].performTextInput("Shai")
             compose.onNodeWithText("Cancel").performClick()
-            compose.waitUntil(5_000) { compose.onAllNodesWithText("What the captions showed").fetchSemanticsNodes().isEmpty() }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Tap the words that came out wrong").fetchSemanticsNodes().isEmpty() }
             assertEquals(listOf("Shira", "Dr. Levi"), app.settings.current.value.vocabulary)
         } finally {
             app.settings.change { it.vocabulary = before }
@@ -2273,12 +2274,12 @@ class CaptionScreenDeviceTest {
         }
         lineText("Good evening").performTouchInput { longClick() }
         compose.onNodeWithText("Fix a word").performClick()
-        compose.onNode(hasSetTextAction()).performTextInput("Shira")
+        compose.onAllNodes(hasSetTextAction())[0].performTextInput("Shira")
         turnThePhone()
-        compose.onNodeWithText("What the captions showed").assertExists()
-        compose.onNode(hasSetTextAction()).assert(hasText("Shira"))
+        compose.onNodeWithText("Tap the words that came out wrong").assertExists()
+        compose.onAllNodes(hasSetTextAction())[0].assert(hasText("Shira"))
         compose.onNodeWithText("Cancel").performClick()
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("What the captions showed").fetchSemanticsNodes().isEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Tap the words that came out wrong").fetchSemanticsNodes().isEmpty() }
 
         lineText("Good evening").performTouchInput { longClick() }
         compose.onNodeWithText("Who is speaking?").performClick()
@@ -2378,13 +2379,13 @@ class CaptionScreenDeviceTest {
         show(listOf(voiced))
         lineText("Good evening").performTouchInput { longClick() }
         compose.onNodeWithText("Fix a word").performClick()
-        compose.onNode(hasSetTextAction()).performTextInput("Shira")
+        compose.onAllNodes(hasSetTextAction())[0].performTextInput("Shira")
         show(listOf(voiced) + later)
         compose.waitForIdle()
-        compose.onNodeWithText("What the captions showed").assertExists()
-        compose.onNode(hasSetTextAction()).assert(hasText("Shira"))
+        compose.onNodeWithText("Tap the words that came out wrong").assertExists()
+        compose.onAllNodes(hasSetTextAction())[0].assert(hasText("Shira"))
         compose.onNodeWithText("Cancel").performClick()
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("What the captions showed").fetchSemanticsNodes().isEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Tap the words that came out wrong").fetchSemanticsNodes().isEmpty() }
 
         show(listOf(voiced))
         lineText("Good evening").performTouchInput { longClick() }
