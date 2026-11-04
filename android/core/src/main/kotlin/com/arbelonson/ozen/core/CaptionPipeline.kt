@@ -450,6 +450,7 @@ class CaptionPipeline(
      */
     private var lastSpeechAt: Double? = null
     private var silencePhraseGuard = SilencePhraseGuard()
+    private val handFixes = HashMap<UUID, List<WordFix>>()
 
     private class RecentSpeechCluster(val id: Int, val at: Double)
 
@@ -1153,6 +1154,7 @@ class CaptionPipeline(
             startNewConversation()
             keywordHits = emptyList()
             keywordHitSegmentIDs = emptySet()
+            handFixes.clear()
             keywordDeduplicator.forgetAll()
         } finally {
             onCaptionsChanged?.invoke()
@@ -1794,7 +1796,7 @@ class CaptionPipeline(
         // ivrit.ai's model starts some lines with an invisible direction
         // mark; kept, it would travel into saved conversations and search.
         val fixes = settingsInUse?.wordFixes.orEmpty()
-        var cleaned = WordFixes.apply(fixes, HebrewText.removingDirectionMarks(incoming.text))
+        var cleaned = HebrewText.removingDirectionMarks(incoming.text)
         if (incoming.isFinal) incomingText.remove(incoming.utteranceID) else incomingText[incoming.utteranceID] = cleaned
         // A sentence cleared from the screen mid-way keeps arriving with all
         // of its words so far. Dropping it whole lost everything said after
@@ -1829,6 +1831,8 @@ class CaptionPipeline(
             }
             cleaned = rest
         }
+        val heardText = cleaned
+        cleaned = WordFixes.apply(fixes, cleaned)
         val token = if (cleaned == incoming.text) {
             incoming
         } else {
@@ -1857,7 +1861,7 @@ class CaptionPipeline(
         // still must not swallow a true final: the words already shown
         // are good, so commit them now instead of leaving the line
         // "still settling" until the stale-commit safety net catches up.
-        if (!silencePhraseGuard.admits(token, now())) {
+        if (!silencePhraseGuard.admits(token.copy(text = heardText), now())) {
             if (token.isFinal) commitWithoutNewWords(token.utteranceID)
             return
         }
@@ -1880,7 +1884,7 @@ class CaptionPipeline(
         noteFinished(segment, previously)
         upsert(segment)
         statsData.hasOpenLine = stabilizer.hasOpenLine
-        scanForKeywords(segment)
+        scanForKeywords(withHandFixes(segment))
     }
 
     private class StopLoop : RuntimeException(null, null, false, false)
@@ -1989,7 +1993,13 @@ class CaptionPipeline(
         segments = updated
     }
 
-    private fun upsert(segment: TranscriptSegment) {
+    private fun withHandFixes(segment: TranscriptSegment): TranscriptSegment {
+        val fixes = handFixes[segment.id] ?: return segment
+        return segment.copy(text = WordFixes.apply(fixes, segment.text))
+    }
+
+    private fun upsert(shown: TranscriptSegment) {
+        val segment = withHandFixes(shown)
         val index = segments.indexOfLast { it.id == segment.id }
         if (index >= 0) {
             // The voice analysis names the speaker on the shown line only;
@@ -2030,6 +2040,25 @@ class CaptionPipeline(
         setSegment(index, segments[index].copy(text = text))
         onCaptionsChanged?.invoke()
         return true
+    }
+
+    /**
+     * Fixes one word of a finished line by hand. The line is read as it is
+     * now, the fix is kept for it when the engine rewrites the line later,
+     * and the keyword highlight follows the new text. Null when the line is
+     * gone or still being heard.
+     */
+    fun correctWord(id: UUID, fix: WordFix): String? {
+        val index = segments.indexOfLast { it.id == id }
+        if (index < 0 || !segments[index].isCommitted) return null
+        val current = segments[index].text
+        val text = WordFixes.apply(listOf(fix), current)
+        if (text == current) return current
+        handFixes[id] = handFixes[id].orEmpty() + fix
+        setSegment(index, segments[index].copy(text = text))
+        keywordHitSegmentIDs = if (keywordMatcher.matches(text).isEmpty()) keywordHitSegmentIDs - id else keywordHitSegmentIDs + id
+        onCaptionsChanged?.invoke()
+        return text
     }
 
     fun setWordFixes(fixes: List<WordFix>) {

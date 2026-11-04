@@ -549,13 +549,14 @@ private fun OzenApp(
                                     showingSettings.value = true
                                 },
                                 onHistory = { showingHistory = true },
+                                languageCode = current.languageCode,
                                 onStar = { app.captions.toggleStar(it) },
                                 onOpen = { conversation, line ->
                                     app.captions.saveBeforeReading()
                                     reading = conversation to line
                                 },
-                                onFixWord = { line, text, heard, written, everyTime ->
-                                    app.captions.fixLine(line, app.captions.correctedText(text, heard, written))
+                                onFixWord = { line, heard, written, everyTime ->
+                                    app.captions.fixLine(line, heard, written)
                                     app.captions.saveWordFix(heard, written, everyTime)
                                 },
                                 onNameSpeaker = app.captions::nameSpeaker,
@@ -695,9 +696,10 @@ private fun CaptionScreen(
     onStatusTap: () -> Unit,
     onSettings: () -> Unit,
     onHistory: () -> Unit,
+    languageCode: String,
     onStar: (UUID) -> Unit,
     onOpen: (conversation: UUID, line: UUID) -> Unit,
-    onFixWord: (UUID, String, String, String, Boolean) -> Unit,
+    onFixWord: (UUID, String, String, Boolean) -> Unit,
     onNameSpeaker: (line: UUID, name: String) -> Unit,
     savedSpeakerNames: () -> List<String>,
     onAskToRepeat: (() -> Unit)?,
@@ -765,8 +767,9 @@ private fun CaptionScreen(
     fixing?.let { text ->
         FixWordDialog(
             text,
+            languageCode = languageCode,
             onSave = { heard, written, everyTime ->
-                fixingLine?.let { onFixWord(it, text, heard, written, everyTime) }
+                fixingLine?.let { onFixWord(it, heard, written, everyTime) }
                 fixing = null
             },
             onDismiss = { fixing = null },

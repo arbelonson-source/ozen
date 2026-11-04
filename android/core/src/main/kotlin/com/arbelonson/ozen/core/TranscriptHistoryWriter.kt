@@ -180,11 +180,20 @@ class TranscriptHistoryWriter(
      * is the one reported.
      */
     private fun retryRenames() {
-        if (pendingRenames.list.isEmpty()) return
-        try {
-            runRenames()
-        } catch (error: Exception) {
-            failure.record(error.toString())
+        if (pendingRenames.list.isNotEmpty()) {
+            try {
+                runRenames()
+            } catch (error: Exception) {
+                failure.record(error.toString())
+            }
+        }
+        for (next in pendingRenames.texts.toList()) {
+            try {
+                store.fixText(next.segmentID, next.sessionID, next.text)
+                pendingRenames.texts.remove(next)
+            } catch (error: Exception) {
+                failure.record(error.toString())
+            }
         }
     }
 
@@ -216,7 +225,7 @@ class TranscriptHistoryWriter(
     private fun catchUp(current: UUID?): Boolean {
         retrySaves(current)
         retryRenames()
-        return pendingSaves.records.isEmpty() && pendingRenames.list.isEmpty()
+        return pendingSaves.records.isEmpty() && pendingRenames.list.isEmpty() && pendingRenames.texts.isEmpty()
     }
 
     /** The waiting renames, oldest first; one refused stops the rest. */
@@ -229,6 +238,30 @@ class TranscriptHistoryWriter(
     }
 
     /**
+     * Writes a hand-fixed line of a saved conversation. A write the disk
+     * refused stays waiting, is tried again after every later write, and
+     * until it goes through its error is the one reported.
+     */
+    fun fixTextNow(sessionID: UUID, segmentID: UUID, text: String): Boolean = queue.sync {
+        lastWritten.record = null
+        var done = false
+        val written = failure.capture { done = store.fixText(segmentID, sessionID, text) }
+        val waiting = pendingSaves.records[sessionID]
+        val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
+        if (waiting != null && index >= 0) {
+            val segments = waiting.segments.toMutableList()
+            segments[index] = segments[index].copy(text = text)
+            pendingSaves.records[sessionID] = waiting.copy(segments = segments)
+            done = true
+        } else if (!written) {
+            pendingRenames.texts.removeAll { it.sessionID == sessionID && it.segmentID == segmentID }
+            pendingRenames.texts.add(PendingText(sessionID, segmentID, text))
+        }
+        catchUp(null)
+        done
+    }
+
+    /**
      * Stars or unstars a line of a saved conversation, in order with the
      * saves already queued. Null when the line wasn't found or couldn't be
      * saved.
@@ -238,22 +271,6 @@ class TranscriptHistoryWriter(
      * waiting one was written over it. The tap follows the file, which is
      * what History shows; a line only the waiting version has follows that.
      */
-    fun fixTextNow(sessionID: UUID, segmentID: UUID, text: String): Boolean = queue.sync {
-        lastWritten.record = null
-        var done = false
-        failure.capture { done = store.fixText(segmentID, sessionID, text) }
-        val waiting = pendingSaves.records[sessionID]
-        val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
-        if (waiting != null && index >= 0) {
-            val segments = waiting.segments.toMutableList()
-            segments[index] = segments[index].copy(text = text)
-            pendingSaves.records[sessionID] = waiting.copy(segments = segments)
-            done = true
-        }
-        catchUp(null)
-        done
-    }
-
     fun toggleStarNow(sessionID: UUID, segmentID: UUID): Boolean? = queue.sync {
         lastWritten.record = null
         var result: Boolean? = null
@@ -282,11 +299,12 @@ class TranscriptHistoryWriter(
         queue.sync {
             lastWritten.record = null
             pendingSaves.records.remove(id)
+            pendingRenames.texts.removeAll { it.sessionID == id }
             store.delete(id)
             // Deleting the one conversation that could not be written left
             // the warning up until the next save, while captions were stopped
             // for good.
-            if (pendingSaves.records.isEmpty() && pendingRenames.list.isEmpty()) {
+            if (pendingSaves.records.isEmpty() && pendingRenames.list.isEmpty() && pendingRenames.texts.isEmpty()) {
                 failure.clear()
             }
         }
@@ -299,6 +317,7 @@ class TranscriptHistoryWriter(
             pendingSaves.records.clear()
             store.deleteAll()
             pendingRenames.list.clear()
+            pendingRenames.texts.clear()
             failure.clear()
         }
     }
@@ -349,9 +368,12 @@ class TranscriptHistoryWriter(
 
     private class PendingRename(val from: String, val to: String)
 
-    /** Voice renames not yet written to every saved conversation. Only touched on the writer's queue. */
+    private class PendingText(val sessionID: UUID, val segmentID: UUID, val text: String)
+
+    /** Voice renames and line-text fixes not yet written to every saved conversation. Only touched on the writer's queue. */
     private class PendingRenames {
         val list = ArrayList<PendingRename>()
+        val texts = ArrayList<PendingText>()
     }
 
     /** Conversations the disk refused, waiting to be written. Only touched on the writer's queue. */

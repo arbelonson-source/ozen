@@ -74,6 +74,43 @@ class CaptionPipelineTokenTest {
     }
 
     @Test
+    fun `a saved fix cannot turn a repeated invented thanks into text the quiet-room guard lets through`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine))
+        val settings = AppSettings.default
+        settings.wordFixes = listOf(WordFix("תודה", "Thanks"))
+        pipeline.start(settings)
+        repeat(4) {
+            engine.emit(TranscriptToken(utteranceID = UUID.randomUUID(), text = "תודה.", isFinal = true, timestamp = 1.0))
+        }
+        engine.emit(TranscriptToken(utteranceID = UUID.randomUUID(), text = "מה שלומך היום?", isFinal = true, timestamp = 3.0))
+        assertTrue(eventually { pipeline.segments.map { it.text } == listOf("Thanks.", "מה שלומך היום?") })
+    }
+
+    @Test
+    fun `a hand correction reads the line as it is now, survives the engine's later text, and moves the keyword highlight`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine), now = { 1_001.0 })
+        val settings = AppSettings.default
+        settings.keywordAlerts = listOf(KeywordAlert(phrase = "Avi"))
+        pipeline.start(settings)
+        val id = UUID.randomUUID()
+        val open = UUID.randomUUID()
+        engine.emit(token(id, "I saw aval", at = 1_000.0))
+        engine.emit(token(open, "and aval again", at = 1_001.0))
+        assertTrue(eventually { pipeline.segments.size == 2 })
+        assertNull(pipeline.correctWord(open, WordFix("aval", "Avi")))
+        pipeline.commitStaleSegments(now = 1_000_000.0)
+        assertTrue(pipeline.segments[0].isCommitted)
+        assertFalse(id in pipeline.keywordHitSegmentIDs)
+        assertEquals("I saw Avi", pipeline.correctWord(id, WordFix("aval", "Avi")))
+        assertEquals("I saw Avi", pipeline.segments[0].text)
+        assertTrue(id in pipeline.keywordHitSegmentIDs)
+        engine.emit(token(id, "I saw aval today", final = true, at = 1_002.0))
+        assertTrue(eventually { pipeline.segments[0].text == "I saw Avi today" })
+    }
+
+    @Test
     fun `the last sound heard is kept in memory for a marked problem, and forgotten when captions stop`() = runTest {
         val audio = FakeAudioCapturer()
         val (pipeline, _, _) = makePipeline(audio = audio, engines = mapOf(whisper to FakeEngine()))

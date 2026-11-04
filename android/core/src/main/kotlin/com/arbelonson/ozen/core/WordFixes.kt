@@ -44,6 +44,29 @@ object WordFixes {
         return null
     }
 
+    private fun isHan(word: String) = word.isNotEmpty() && word.all { isHan(it) }
+
+    private fun isHan(c: Char) = Character.isIdeographic(c.code) && c.code !in 0x3000..0x303F
+
+    private fun replacingHan(fixes: List<Compiled>, text: String, word: Word): String? {
+        if (fixes.isEmpty() || (word.start until word.end).none { isHan(text[it]) }) return null
+        val out = StringBuilder()
+        var changed = false
+        var at = word.start
+        while (at < word.end) {
+            val hit = fixes.firstOrNull { text.startsWith(it.words[0], at) && at + it.words[0].length <= word.end }
+            if (hit != null) {
+                out.append(hit.written)
+                at += hit.words[0].length
+                changed = true
+            } else {
+                out.append(text[at])
+                at++
+            }
+        }
+        return if (changed) out.toString() else null
+    }
+
     fun wordsOf(text: String): List<String> = words(text).map { text.substring(it.start, it.end) }
 
     /** Whether word [first] and the next one in [text] are one plain space apart, so a phrase can cover both. */
@@ -67,12 +90,21 @@ object WordFixes {
             val heard = fix.heard.trim().replace(Regex("\\s+"), " ").take(MAXIMUM_LENGTH).trim()
             val written = fix.written.trim().take(MAXIMUM_LENGTH).trim()
             if (heard.isEmpty() || written.isEmpty() || keyOf(heard) == keyOf(written)) continue
-            if (heard.split(' ').size > MAXIMUM_WORDS) continue
+            val parts = words(heard)
+            if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) continue
+            if (parts.zipWithNext().any { (a, b) -> heard.substring(a.end, b.start) != " " }) continue
             if (!seen.add(keyOf(heard))) continue
             out.add(WordFix(heard, written))
             if (out.size == MAXIMUM_FIXES) break
         }
         return out
+    }
+
+    /** Puts [fix] first; a fix whose written form is the word being corrected now writes the new form. */
+    fun adding(fix: WordFix, to: List<WordFix>): List<WordFix> {
+        val moved = keyOf(fix.heard)
+        val carried = to.map { old -> if (keyOf(old.written) == moved) WordFix(old.heard, fix.written) else old }
+        return normalized(listOf(fix) + carried)
     }
 
     fun apply(fixes: List<WordFix>, text: String): String {
@@ -82,6 +114,7 @@ object WordFixes {
             if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) null else Compiled(parts, fix.written)
         }
         if (compiled.isEmpty()) return text
+        val han = compiled.filter { it.words.size == 1 && isHan(it.words[0]) }.sortedByDescending { it.words[0].length }
         val all = words(text)
         val sb = StringBuilder()
         var copied = 0
@@ -101,7 +134,15 @@ object WordFixes {
                 }
                 if (ok) { best = c; keep = first }
             }
-            if (best == null) { index++; continue }
+            if (best == null) {
+                val inside = replacingHan(han, text, all[index])
+                if (inside != null) {
+                    sb.append(text, copied, all[index].start).append(inside)
+                    copied = all[index].end
+                }
+                index++
+                continue
+            }
             val last = all[index + best.words.size - 1]
             sb.append(text, copied, all[index].start).append(text, all[index].start, keep).append(best.written)
             copied = last.end

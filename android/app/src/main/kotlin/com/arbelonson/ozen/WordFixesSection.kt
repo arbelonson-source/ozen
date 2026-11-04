@@ -36,16 +36,17 @@ import com.arbelonson.ozen.ui.SectionHeader as GroupHeader
 internal fun WordFixesSection(fixes: List<WordFix>, onChange: (List<WordFix>) -> Unit) {
     var heard by rememberSaveable { mutableStateOf("") }
     var written by rememberSaveable { mutableStateOf("") }
-    val added = WordFixes.normalized(listOf(WordFix(heard, written)) + fixes)
-    val canAdd = added.size > fixes.size && fixes.size < WordFixes.MAXIMUM_FIXES
+    val added = WordFixes.adding(WordFix(heard, written), fixes)
+    val fits = heard.trim().length <= WordFixes.MAXIMUM_LENGTH && written.trim().length <= WordFixes.MAXIMUM_LENGTH
+    val canAdd = fits && WordFixes.normalized(listOf(WordFix(heard, written))).isNotEmpty() && fixes.size < WordFixes.MAXIMUM_FIXES
     Row(verticalAlignment = Alignment.Bottom) {
         GroupHeader(tr("תיקוני מילים", "Word fixes"), modifier = Modifier.weight(1f))
         Text("${fixes.size} / ${WordFixes.MAXIMUM_FIXES}", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 16.dp))
     }
     GroupFootnote(tr("מילה ששמעו לא נכון תיכתב תמיד כמו שתכתבו כאן.", "A word heard wrongly is always written the way you set here."))
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
-        OutlinedTextField(heard, { heard = it.take(WordFixes.MAXIMUM_LENGTH) }, placeholder = { Text(tr("מה נשמע", "Heard")) }, singleLine = true, modifier = Modifier.weight(1f))
-        OutlinedTextField(written, { written = it.take(WordFixes.MAXIMUM_LENGTH) }, placeholder = { Text(tr("מה לכתוב", "Written")) }, singleLine = true, modifier = Modifier.weight(1f))
+        OutlinedTextField(heard, { heard = it }, placeholder = { Text(tr("מה נשמע", "Heard")) }, singleLine = true, modifier = Modifier.weight(1f))
+        OutlinedTextField(written, { written = it }, placeholder = { Text(tr("מה לכתוב", "Written")) }, singleLine = true, modifier = Modifier.weight(1f))
     }
     TonalButton(tr("הוספת תיקון", "Add fix"), onClick = { onChange(added); heard = ""; written = "" }, enabled = canAdd)
     if (fixes.isNotEmpty()) {

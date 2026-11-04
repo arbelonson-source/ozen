@@ -673,7 +673,7 @@ internal fun ConversationScreen(
     val record = loaded?.record
     var fixingLine by remember { mutableStateOf<SavedLine?>(null) }
     fixingLine?.let { line ->
-        FixWordDialog(line.text, onSave = { heard, written, everyTime ->
+        FixWordDialog(line.text, languageCode = languageCode, onSave = { heard, written, everyTime ->
             fixingLine = null
             val fixed = WordFixes.apply(listOf(WordFix(heard, written)), line.text)
             marking.launch {

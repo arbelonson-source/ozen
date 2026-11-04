@@ -414,6 +414,23 @@ class TranscriptHistoryWriterTest {
     }
 
     @Test
+    fun `a text fix the disk refused on an old conversation is written by the next save, and reported until then`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.text-fix"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw aval", null, null, 100.0, true)))
+        writer.saveNow(old)
+        permissions(dir, "r-x------")
+        writer.fixTextNow(old.id, line, "I saw Avi")
+        assertNotNull(writer.lastFailure)
+
+        permissions(dir, "rwx------")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals("I saw Avi", store.load(old.id)?.segments?.first()?.text)
+        assertNull(writer.lastFailure)
+    }
+
+    @Test
     fun `a star tapped in History follows the conversation as History shows it, the file on disk, and the waiting version takes the same state`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)
         val writer = TranscriptHistoryWriter(store, SerialQueue("test.refused-unstar"))

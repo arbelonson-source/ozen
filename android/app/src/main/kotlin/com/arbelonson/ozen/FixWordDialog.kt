@@ -22,6 +22,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,13 +36,17 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.arbelonson.ozen.core.CaptionLayout
+import com.arbelonson.ozen.core.WordFix
 import com.arbelonson.ozen.core.WordFixes
 import com.arbelonson.ozen.core.tr
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun FixWordDialog(shown: String, onSave: (heard: String, written: String, everyTime: Boolean) -> Unit, onDismiss: () -> Unit) {
+internal fun FixWordDialog(shown: String, languageCode: String, onSave: (heard: String, written: String, everyTime: Boolean) -> Unit, onDismiss: () -> Unit) {
     val words = WordFixes.wordsOf(shown)
     var first by rememberSaveable { mutableStateOf(-1) }
     var last by rememberSaveable { mutableStateOf(-1) }
@@ -50,7 +55,9 @@ internal fun FixWordDialog(shown: String, onSave: (heard: String, written: Strin
     var everyTime by rememberSaveable { mutableStateOf(false) }
     val picked = if (first >= 0) words.subList(first, minOf(last + 1, words.size)).joinToString(" ") else ""
     val heard = if (typed.isNotBlank()) typed.trim() else picked
-    val ready = heard.isNotBlank() && written.isNotBlank()
+    val fits = heard.length <= WordFixes.MAXIMUM_LENGTH && written.trim().length <= WordFixes.MAXIMUM_LENGTH
+    val ready = fits && WordFixes.normalized(listOf(WordFix(heard, written))).isNotEmpty()
+    val direction = if (CaptionLayout.readsRightToLeft(shown, languageCode)) LayoutDirection.Rtl else LayoutDirection.Ltr
     val everyTimeLabel = tr("תיקון בכל פעם", "Fix it every time")
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -59,6 +66,7 @@ internal fun FixWordDialog(shown: String, onSave: (heard: String, written: Strin
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(tr("נגעו במילים שנשמעו לא נכון", "Tap the words that came out wrong"), style = MaterialTheme.typography.labelLarge)
+                CompositionLocalProvider(LocalLayoutDirection provides direction) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     words.forEachIndexed { index, word ->
                         val on = typed.isBlank() && first >= 0 && index in first..last
@@ -80,18 +88,21 @@ internal fun FixWordDialog(shown: String, onSave: (heard: String, written: Strin
                         )
                     }
                 }
+                }
                 OutlinedTextField(
                     value = typed,
-                    onValueChange = { typed = it.take(WordFixes.MAXIMUM_LENGTH) },
+                    onValueChange = { typed = it },
                     label = { Text(tr("או הקלידו מה נשמע", "Or type what was heard")) },
+                    isError = typed.trim().length > WordFixes.MAXIMUM_LENGTH,
                     singleLine = true,
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = written,
-                    onValueChange = { written = it.take(WordFixes.MAXIMUM_LENGTH) },
+                    onValueChange = { written = it },
                     label = { Text(tr("איך זה צריך להיכתב", "How it should be written")) },
+                    isError = written.trim().length > WordFixes.MAXIMUM_LENGTH,
                     singleLine = true,
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth(),

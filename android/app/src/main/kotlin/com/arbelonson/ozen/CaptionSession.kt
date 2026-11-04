@@ -1066,14 +1066,11 @@ class CaptionSession(
         val fix = WordFix(heard, written)
         val known = settings.current.value.vocabulary.any { it.equals(fix.written.trim(), ignoreCase = true) }
         if (fix.written.isNotBlank() && !known) addWord(fix.written.trim())
-        if (everyTime) setWordFixes(listOf(fix) + settings.current.value.wordFixes)
+        if (everyTime) setWordFixes(WordFixes.adding(fix, settings.current.value.wordFixes))
     }
 
-    fun correctedText(text: String, heard: String, written: String): String =
-        WordFixes.apply(listOf(WordFix(heard, written)), text)
-
-    fun fixLine(line: UUID, text: String) {
-        pipeline.replaceText(line, text)
+    fun fixLine(line: UUID, heard: String, written: String) {
+        val text = pipeline.correctWord(line, WordFix(heard, written)) ?: return
         conversations.fixLiveLine(line, text)
     }
 

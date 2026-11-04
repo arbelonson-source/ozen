@@ -627,4 +627,10 @@ class OtherSettingsDecodingTest {
         assertEquals(listOf(WordFix("aval", "Avi")), roundTripped(settings).wordFixes)
         assertTrue(decode("{}").wordFixes.isEmpty())
     }
+
+    @Test
+    fun `one unreadable saved fix does not drop the readable ones`() {
+        val json = """{"wordFixes":[{"heard":"aval"},{"heard":"bat","written":"Batia"},{"heard":"a","written":3}]}"""
+        assertEquals(listOf(WordFix("bat", "Batia")), decode(json).wordFixes)
+    }
 }
