@@ -67,7 +67,7 @@ class ModelFitOfferDeviceTest {
         fallBehindOnTurbo()
         captionsStopped()
         compose.onNodeWithText(title).assertExists()
-        compose.onNodeWithText("Small (190 MB) is lighter and keeps up better here.").assertExists()
+        compose.onNodeWithText("Small (190\u00A0MB) is lighter and keeps up better here.").assertExists()
         compose.onNodeWithTag("model-fit-switch").performClick()
         compose.waitUntil(5_000) { app.settings.current.value.phoneModelFile == "ggml-small-q5_1.bin" }
         compose.onNodeWithText(title).assertDoesNotExist()
