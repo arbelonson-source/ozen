@@ -2,7 +2,8 @@
 
 For the person who will use Ozen, and anyone helping to set up the phone.
 
-This guide follows the iPhone and iPad. The Android app (see
+Ozen for iPhone and iPad is free in the [App Store](https://apps.apple.com/app/id6821325968)
+(iOS 17 or newer). This guide follows the iPhone and iPad. The Android app (see
 [Installing on Android](../README.md#installing-on-android)) asks the same
 things in nearly the same words, without the setup page: it always starts
 with the phone's own speech model. Its microphone page has its own buttons
