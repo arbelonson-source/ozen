@@ -92,6 +92,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 class CaptionSession(
@@ -369,7 +370,7 @@ class CaptionSession(
         override fun saveWordFix(heard: String, written: String, everyTime: Boolean) = this@CaptionSession.saveWordFix(heard, written, everyTime)
 
         override fun fixLine(sessionID: UUID, segmentID: UUID, text: String): Boolean {
-            CaptionState.markFixed(segmentID, text)
+            runBlocking { withContext(Dispatchers.Main.immediate) { pipeline.replaceText(segmentID, text) } }
             return conversations.fixLine(sessionID, segmentID, text)
         }
 
@@ -1072,7 +1073,7 @@ class CaptionSession(
         WordFixes.apply(listOf(WordFix(heard, written)), text)
 
     fun fixLine(line: UUID, text: String) {
-        CaptionState.markFixed(line, text)
+        pipeline.replaceText(line, text)
         conversations.fixLiveLine(line, text)
     }
 

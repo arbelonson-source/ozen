@@ -2023,6 +2023,14 @@ class CaptionPipeline(
         engine.setVocabulary(primedVocabulary(cleaned))
     }
 
+    /** A word fixed by hand: the shown line changes, so saves and redraws carry the new words. */
+    fun replaceText(id: UUID, text: String) {
+        val index = segments.indexOfLast { it.id == id }
+        if (index < 0) return
+        setSegment(index, segments[index].copy(text = text))
+        onCaptionsChanged?.invoke()
+    }
+
     fun setWordFixes(fixes: List<WordFix>) {
         val cleaned = WordFixes.normalized(fixes)
         settingsInUse?.wordFixes = cleaned

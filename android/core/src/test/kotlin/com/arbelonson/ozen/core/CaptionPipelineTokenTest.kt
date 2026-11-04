@@ -32,6 +32,36 @@ class CaptionPipelineTokenTest {
     }
 
     @Test
+    fun `a word fixed by hand changes the shown line itself, so saves and redraws carry it`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine))
+        pipeline.start(AppSettings.default)
+        val id = UUID.randomUUID()
+        engine.emit(token(id, "I saw aval today", final = true))
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.isCommitted == true })
+        var redraws = 0
+        pipeline.onCaptionsChanged = { redraws += 1 }
+        pipeline.replaceText(id, "I saw Avi today")
+        assertEquals("I saw Avi today", pipeline.segments.single().text)
+        assertEquals(1, redraws)
+        pipeline.replaceText(UUID.randomUUID(), "other")
+        assertEquals("I saw Avi today", pipeline.segments.single().text)
+        assertEquals(1, redraws)
+    }
+
+    @Test
+    fun `a fix kept for every time rewrites each caption before it is shown`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine))
+        val settings = AppSettings.default
+        settings.wordFixes = listOf(WordFix("aval", "Avi"))
+        pipeline.start(settings)
+        engine.emit(token(UUID.randomUUID(), "I saw aval today", final = true))
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.isCommitted == true })
+        assertEquals("I saw Avi today", pipeline.segments.single().text)
+    }
+
+    @Test
     fun `the last sound heard is kept in memory for a marked problem, and forgotten when captions stop`() = runTest {
         val audio = FakeAudioCapturer()
         val (pipeline, _, _) = makePipeline(audio = audio, engines = mapOf(whisper to FakeEngine()))

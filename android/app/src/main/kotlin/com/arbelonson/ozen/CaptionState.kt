@@ -313,10 +313,6 @@ object CaptionState {
         state.value = state.value.let { now -> now.copy(lines = now.lines.map { if (it.id == line) it.copy(starred = starred) else it }) }
     }
 
-    fun markFixed(line: UUID, text: String) {
-        state.value = state.value.let { now -> now.copy(lines = now.lines.map { if (it.id == line) it.copy(text = text) else it }) }
-    }
-
     fun clear() {
         speechResume = SpeechResume()
         awayCatchUp = AwayCatchUp()
