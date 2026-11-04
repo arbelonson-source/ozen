@@ -597,6 +597,21 @@ struct CaptionPipelineTokenTests {
         #expect(woken.raised)
     }
 
+    @Test("a finished line can be rewritten by hand, a line still being heard cannot")
+    func replaceTextOnlyOnFinishedLines() async {
+        let engine = FakeEngine()
+        let (pipeline, _, _) = makePipeline(engines: [.whisperKit: engine])
+        await pipeline.start(settings: .default)
+        let open = UUID()
+        let done = UUID()
+        engine.emit(token(done, "I saw aval", final: true))
+        engine.emit(token(open, "and aval again", final: false))
+        #expect(await eventually { pipeline.segments.count == 2 })
+        #expect(pipeline.replaceText(ofSegment: done, with: "I saw Avi"))
+        #expect(!pipeline.replaceText(ofSegment: open, with: "and Avi again"))
+        #expect(pipeline.segments.map(\.text) == ["I saw Avi", "and aval again"])
+    }
+
     @Test("the invisible direction mark the Hebrew model starts some lines with never reaches the saved line")
     func directionMarksAreDropped() async {
         let engine = FakeEngine()

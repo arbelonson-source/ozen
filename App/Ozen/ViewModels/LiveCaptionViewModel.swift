@@ -1630,6 +1630,61 @@ public final class LiveCaptionViewModel {
         vocabularyChanged()
     }
 
+    // MARK: - Word fixes (a heard word always written another way)
+
+    public var wordFixes: [WordFix] { settings.wordFixes }
+
+    public func addWordFix(_ fix: WordFix) {
+        let cleaned = WordFixes.adding(fix, to: settings.wordFixes)
+        guard cleaned != settings.wordFixes else { return }
+        settings.wordFixes = cleaned
+        wordFixesChanged()
+    }
+
+    public func removeWordFixes(at offsets: IndexSet) {
+        settings.wordFixes.remove(atOffsets: offsets)
+        wordFixesChanged()
+    }
+
+    private func wordFixesChanged() {
+        persist()
+        pipeline.setWordFixes(settings.wordFixes)
+    }
+
+    /// One tap of "Fix a word": the line changes now, the written form
+    /// joins the names list, and with `always` the fix is kept for later.
+    public func applyWordFix(_ fix: WordFix, always: Bool, toLine segment: TranscriptSegment) {
+        applyWordFix(fix, always: always, lineID: segment.id, text: segment.text, sessionID: nil)
+    }
+
+    public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, text current: String, sessionID: UUID?) {
+        guard let fixed = WordFixes.normalized([fix]).first else { return }
+        addVocabularyTerm(fixed.written)
+        if always { addWordFix(fixed) }
+        let before = pipeline.segments.last { $0.id == lineID }?.text
+        let live = pipeline.correctWord(inSegment: lineID, with: fixed)
+        let text = live ?? WordFixes.apply([fixed], to: current)
+        if let live, live != before { correctedLine(lineID, text: live) }
+        if let sessionID, text != current {
+            historyWriter.replaceTextNow(sessionID: sessionID, segmentID: lineID, text: text)
+        }
+        refreshSavingTrouble()
+    }
+
+    private func correctedLine(_ id: UUID, text: String) {
+        if let index = pipeline.segments.firstIndex(where: { $0.id == id }),
+           index < historySegmentOffset,
+           let closed = closedHistorySessions.last(where: { $0.lines.contains(index) }) {
+            if settings.saveHistory {
+                saveClosed(closed)
+            } else {
+                historyWriter.replaceTextNow(sessionID: closed.id, segmentID: id, text: text)
+            }
+        } else {
+            persistHistory(ended: false, inBackground: true)
+        }
+    }
+
     private func vocabularyChanged() {
         persist()
         let terms = settings.vocabulary

@@ -79,6 +79,23 @@ struct FileTranscriberTests {
         #expect(line.endSeconds > 3.0 && line.endSeconds < 4.8, "ends at \(line.endSeconds)")
     }
 
+    @Test("a saved word fix is applied to the lines a recording comes back with")
+    func wordFixesReachTheLines() async throws {
+        let clip = try SpeakerFixtureLoading.readSamples(named: "speakerA_clip1.wav")
+        let silence = [Float](repeating: 0, count: 32_000)
+        let url = try recording(silence + clip + silence)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let reader = try await RecordingAudioReader.open(url)
+        var withFix = request()
+        withFix.wordFixes = [WordFix(heard: "said", written: "told")]
+        let result = await FileTranscriber(makeEngine: { _ in TranscriberFixtureEngine() }).run(withFix, reader: reader, report: { _ in })
+        guard case .finished(let lines, _) = result else {
+            Issue.record("\(result)")
+            return
+        }
+        #expect(lines.map(\.text) == ["told it"])
+    }
+
     @Test("a recording with no speech in it says so and never wakes the engine")
     func noSpeech() async throws {
         let url = try recording([Float](repeating: 0, count: 16_000 * 6))
