@@ -780,7 +780,6 @@ public final class LiveCaptionViewModel {
     public func showOnboardingAgain() {
         if pipeline.phase != .idle {
             speechPause.userTookControl()
-            await saveFitMeasurementIfReady()
             pipeline.stop()
             historySessionDidChangePhase()
         }
@@ -870,6 +869,7 @@ public final class LiveCaptionViewModel {
             historySessionDidChangePhase()
         case .stopCaptions:
             speechPause.userTookControl()
+            await saveFitMeasurementIfReady()
             pipeline.stop()
             historySessionDidChangePhase()
         case .speak(let text):
