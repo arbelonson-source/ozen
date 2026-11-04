@@ -44,9 +44,12 @@ either unreliable with external microphones or too shallow to trust.
 
 **Website:** [ozen.live](https://ozen.live), in English and Hebrew.
 
-**Get it:** each [release](https://github.com/arbelonson-source/ozen/releases/latest)
-has `Ozen.apk` for Android phones and `Ozen.ipa` for iPhone and iPad; see
-[Installing on Android](#installing-on-android) and
+**Get it:** iPhone and iPad (iOS 17 or newer): free from the
+[App Store](https://apps.apple.com/app/id6821325968). Android: each
+[release](https://github.com/arbelonson-source/ozen/releases/latest) has
+`Ozen.apk`, because Ozen is not in Google Play; see
+[Installing on Android](#installing-on-android). Releases also carry an
+unsigned `Ozen.ipa` for people who would rather install it themselves; see
 [Installing on a phone without a Mac](#installing-on-a-phone-without-a-mac).
 
 > [!NOTE]
@@ -710,6 +713,9 @@ the other languages use whisper.cpp's general Turbo model from Hugging
 Face.
 
 ## Installing on a phone without a Mac
+
+Most people should get Ozen from the [App Store](https://apps.apple.com/app/id6821325968) instead. This is the
+way to install it yourself.
 
 `.github/workflows/release.yml` builds an unsigned `Ozen.ipa` on GitHub's
 macOS runners and attaches it to a release. Signing and installing it with

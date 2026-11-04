@@ -266,7 +266,8 @@ the same.
 
 ## Reinstalling
 
-Ozen is sideloaded with a free Apple ID, so it stops opening after seven days.
+A copy installed by hand with a free Apple ID (not the App Store version)
+stops opening after seven days.
 Two days before, the caption screen says when ("Ozen will stop opening
 tomorrow at 07:24" (Ozen tafsik lehipatach machar be-sha'a 07:24)), and a
 notification repeats it the day before; Settings → About (odot) and
