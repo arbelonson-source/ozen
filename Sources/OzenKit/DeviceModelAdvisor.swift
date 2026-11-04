@@ -10,11 +10,13 @@ public struct LivePassMeasurement: Codable, Equatable, Sendable {
     public var variant: String
     public var averageSeconds: Double
     public var passes: Int
+    public var fitEligible: Bool?
 
-    public init(variant: String, averageSeconds: Double, passes: Int) {
+    public init(variant: String, averageSeconds: Double, passes: Int, fitEligible: Bool? = nil) {
         self.variant = variant
         self.averageSeconds = averageSeconds
         self.passes = passes
+        self.fitEligible = fitEligible
     }
 }
 

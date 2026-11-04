@@ -622,6 +622,9 @@ struct LiveCaptionView: View {
                     ForEach(onScreenLines, id: \.segment.id) { index, segment in
                         transcriptRow(index: index, segment: segment, awayMark: mark, slots: slots)
                     }
+                    if !viewModel.segments.isEmpty, let fitOffer = modelFitOption {
+                        modelFitOfferCard(fitOffer)
+                    }
                     // A sentinel at the very end: while it's on screen the
                     // reader is at the bottom and auto-scroll stays on;
                     // once they scroll up to re-read, it leaves and we
@@ -919,6 +922,15 @@ struct LiveCaptionView: View {
         }
     }
 
+    /// The lighter model to offer, when the phone has room for it (or has
+    /// it already).
+    private var modelFitOption: WhisperModelOption? {
+        guard let option = viewModel.modelFitOfferVariant.flatMap({ WhisperModelCatalog.option(for: $0) }) else { return nil }
+        let fits = WhisperModelStore().isInstalled(option.variant)
+            || StorageSpaceGate.shortfallMegabytes(downloadMegabytes: option.installMegabytes, availableBytes: DeviceStorage.availableBytes()) == nil
+        return fits ? option : nil
+    }
+
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Not while a call holds the microphone: the phase stays on
@@ -934,15 +946,19 @@ struct LiveCaptionView: View {
                 .fixedSize(horizontal: false, vertical: true)
             // Ahead of the recent conversation: a phone that always has one
             // would otherwise never be told its model is the weak one.
-            let better = viewModel.settings.offersBetterModel() ? betterModelOption : nil
-            if let better {
+            let fitOffer = modelFitOption
+            let better = fitOffer == nil && viewModel.settings.offersBetterModel() ? betterModelOption : nil
+            if let fitOffer {
+                modelFitOfferCard(fitOffer)
+                    .padding(.top, 8)
+            } else if let better {
                 betterModelOfferCard(better)
                     .padding(.top, 8)
             }
             if let recent = viewModel.recentConversation {
                 recentConversationCard(recent)
                     .padding(.top, 8)
-            } else if better == nil, viewModel.settings.offersNameAlert {
+            } else if better == nil, fitOffer == nil, viewModel.settings.offersNameAlert {
                 nameAlertOfferCard
                     .padding(.top, 8)
             }
@@ -996,6 +1012,48 @@ struct LiveCaptionView: View {
         }
         .foregroundStyle(theme.chrome)
         .padding(14)
+        .background(theme.chrome.opacity(theme.cardFill), in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// After the model kept falling behind the speech on this phone: a
+    /// lighter one that keeps up better, one tap away.
+    private func modelFitOfferCard(_ option: WhisperModelOption) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "tortoise")
+                    .font(.title2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone"))
+                        .font(.headline)
+                    Text(tr("%1 (%2) קל יותר ומצליח לעמוד בקצב טוב יותר כאן.", "%1 (%2) is lighter and keeps up better here.", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
+                        .font(.subheadline)
+                }
+                .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 12) {
+                Button {
+                    Task { await viewModel.acceptModelFitOffer() }
+                } label: {
+                    Text(tr("החלפה", "Switch"))
+                        .font(.body.weight(.semibold))
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityIdentifier("modelFitOfferSwitch")
+                Button {
+                    withAnimation(reduceMotion ? nil : .default) { viewModel.dismissModelFitOffer() }
+                } label: {
+                    Text(tr("לא עכשיו", "Not now"))
+                        .font(.body)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityIdentifier("modelFitOfferNotNow")
+            }
+            .buttonStyle(.plain)
+        }
+        .foregroundStyle(theme.chrome)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(theme.chrome.opacity(theme.cardFill), in: RoundedRectangle(cornerRadius: 14))
     }
 
