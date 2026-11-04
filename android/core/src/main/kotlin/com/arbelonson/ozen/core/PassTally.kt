@@ -15,6 +15,12 @@ class PassTally {
         private set
     var lastLiveSeconds: Double? = null
         private set
+    var countedPasses = 0
+        private set
+    var countedSeconds = 0.0
+        private set
+    var reportedPasses = 0
+        private set
     var segmentsSeen = 0
         private set
     var segmentsRejected = 0
@@ -29,6 +35,15 @@ class PassTally {
         liveSeconds += seconds
         slowestLiveSeconds = max(slowestLiveSeconds, seconds)
         lastLiveSeconds = seconds
+    }
+
+    fun recordCountedPass(seconds: Double) {
+        countedPasses += 1
+        countedSeconds += seconds
+    }
+
+    fun markReported() {
+        reportedPasses = countedPasses
     }
 
     fun recordFinalPass(cameBackEmpty: Boolean) {
@@ -61,6 +76,9 @@ class PassTally {
         copy.liveSeconds = liveSeconds
         copy.slowestLiveSeconds = slowestLiveSeconds
         copy.lastLiveSeconds = lastLiveSeconds
+        copy.countedPasses = countedPasses
+        copy.countedSeconds = countedSeconds
+        copy.reportedPasses = reportedPasses
         copy.segmentsSeen = segmentsSeen
         copy.segmentsRejected = segmentsRejected
         copy.emptyFinalPasses = emptyFinalPasses
@@ -71,12 +89,13 @@ class PassTally {
     override fun equals(other: Any?): Boolean =
         other is PassTally && livePasses == other.livePasses && finalPasses == other.finalPasses &&
             liveSeconds == other.liveSeconds && slowestLiveSeconds == other.slowestLiveSeconds &&
-            lastLiveSeconds == other.lastLiveSeconds && segmentsSeen == other.segmentsSeen &&
+            lastLiveSeconds == other.lastLiveSeconds && countedPasses == other.countedPasses &&
+            countedSeconds == other.countedSeconds && reportedPasses == other.reportedPasses && segmentsSeen == other.segmentsSeen &&
             segmentsRejected == other.segmentsRejected && emptyFinalPasses == other.emptyFinalPasses &&
             skippedWithoutVoice == other.skippedWithoutVoice
 
     override fun hashCode(): Int = listOf(
-        livePasses, finalPasses, liveSeconds, slowestLiveSeconds, lastLiveSeconds,
+        livePasses, finalPasses, liveSeconds, slowestLiveSeconds, lastLiveSeconds, countedPasses, countedSeconds, reportedPasses,
         segmentsSeen, segmentsRejected, emptyFinalPasses, skippedWithoutVoice,
     ).hashCode()
 

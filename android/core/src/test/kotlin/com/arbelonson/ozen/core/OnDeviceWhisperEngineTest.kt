@@ -91,6 +91,7 @@ private suspend fun TestScope.rig(
     scorer: ((FloatArray) -> Float?)? = null,
     heat: DeviceHeat = DeviceHeat.Nominal,
     lowPower: Boolean = false,
+    onFit: (Int, Double) -> Unit = { _, _ -> },
 ): Rig {
     val passes = FakeWhisperPasses { testScheduler.currentTime }
     val dispatcher: CoroutineDispatcher = StandardTestDispatcher(testScheduler)
@@ -100,6 +101,7 @@ private suspend fun TestScope.rig(
         voiceScorerFactory = { scorer },
         heat = { heat },
         lowPowerMode = { lowPower },
+        onFitMeasurement = onFit,
         timeSource = testScheduler.timeSource,
         wallClockSeconds = { testScheduler.currentTime / 1000.0 },
         passDispatcher = dispatcher,
@@ -261,6 +263,56 @@ class OnDeviceWhisperEngineTest {
         val gaps = rig.passes.live().map { it.startedAtMs }.zipWithNext().map { (a, b) -> b - a }
         assertTrue(gaps.isNotEmpty())
         assertTrue(gaps.all { it >= 1_200 }, "gaps $gaps")
+    }
+
+    @Test
+    fun twenty_live_passes_on_a_cool_phone_report_how_long_they_took() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        val rig = rig(onFit = { count, seconds -> reports.add(count to seconds) })
+        rig.passes.passMillis = { 400L }
+        rig.stream(speech(30.0)).toList()
+        assertTrue(rig.passes.live().size > 20, "only ${rig.passes.live().size} live passes ran")
+        assertEquals(1, reports.size)
+        assertEquals(20, reports.single().first)
+        assertEquals(8.0, reports.single().second, 0.05)
+    }
+
+    @Test
+    fun nineteen_live_passes_report_nothing_until_the_engine_is_let_go() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        val rig = rig(onFit = { count, seconds -> reports.add(count to seconds) })
+        rig.passes.passMillis = { 400L }
+        rig.stream(speech(8.0)).toList()
+        assertTrue(rig.passes.live().size in 5..19)
+        assertTrue(reports.isEmpty())
+    }
+
+    @Test
+    fun passes_taken_hot_or_in_battery_saver_are_never_reported() = runTest {
+        for ((heat, lowPower) in listOf(DeviceHeat.Serious to false, DeviceHeat.Critical to false, DeviceHeat.Nominal to true)) {
+            val reports = ArrayList<Pair<Int, Double>>()
+            val rig = rig(heat = heat, lowPower = lowPower, onFit = { count, seconds -> reports.add(count to seconds) })
+            rig.passes.passMillis = { 400L }
+            rig.stream(speech(120.0)).toList()
+            rig.engine.release()
+            assertTrue(rig.passes.live().size > 20)
+            assertTrue(reports.isEmpty(), "$heat $lowPower reported $reports")
+        }
+    }
+
+    @Test
+    fun letting_the_engine_go_reports_the_passes_since_the_twentieth() = runTest {
+        val reports = ArrayList<Pair<Int, Double>>()
+        val rig = rig(onFit = { count, seconds -> reports.add(count to seconds) })
+        rig.passes.passMillis = { 400L }
+        rig.stream(speech(30.0)).toList()
+        val liveRan = rig.passes.live().size
+        rig.engine.release()
+        assertEquals(2, reports.size)
+        assertEquals(liveRan, reports.last().first)
+        assertEquals(liveRan * 0.4, reports.last().second, 0.05)
+        rig.engine.release()
+        assertEquals(2, reports.size)
     }
 
     @Test
