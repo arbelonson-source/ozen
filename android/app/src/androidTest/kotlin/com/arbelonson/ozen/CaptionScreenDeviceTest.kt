@@ -673,7 +673,7 @@ class CaptionScreenDeviceTest {
             instrumentation.runOnMainSync { shown = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).singleOrNull() }
             shown
         }
-        val background = { compose.onRoot().captureToImage().toPixelMap().let { it[it.width / 2, it.height / 4] } }
+        val background = { compose.onRoot().captureToImage().toPixelMap().let { it[it.width / 2, it.height / 10] } }
         val nightBefore = shell("cmd uimode night").substringAfter("Night mode: ").trim()
         val displayBefore = app.settings.current.value.display
         try {
