@@ -166,3 +166,39 @@ struct ModelFitWatchTests {
         #expect(try JSONDecoder().decode(AppSettings.self, from: Data("{}".utf8)).modelFitOfferDismissed.isEmpty)
     }
 }
+
+@Suite("Which phone timing is kept")
+struct ModelFitMeasurementToKeepTests {
+    static let turbo = ModelFitWatchTests.turbo
+
+    static func timing(_ variant: String = turbo, passes: Int, eligible: Bool? = true) -> LivePassMeasurement {
+        LivePassMeasurement(variant: variant, averageSeconds: 1.5, passes: passes, fitEligible: eligible)
+    }
+
+    @Test("a saved eligible timing survives a restart's unfiltered pass count")
+    func savedEligibleSurvivesUnfilteredLive() {
+        let saved = Self.timing(passes: 25)
+        let live = Self.timing(passes: 6, eligible: false)
+        #expect(ModelFitWatch.measurementToKeep(saved: saved, counted: Self.timing(passes: 3), live: live) == saved)
+    }
+
+    @Test("twenty new counted passes replace the saved timing")
+    func countedReplaces() {
+        let counted = Self.timing(passes: 20)
+        #expect(ModelFitWatch.measurementToKeep(saved: Self.timing(passes: 30), counted: counted, live: Self.timing(passes: 9, eligible: false)) == counted)
+    }
+
+    @Test("another model's live timing replaces the saved one")
+    func otherModelReplaces() {
+        let live = Self.timing("small_216MB", passes: 6, eligible: false)
+        #expect(ModelFitWatch.measurementToKeep(saved: Self.timing(passes: 25), counted: nil, live: live) == live)
+    }
+
+    @Test("with no eligible timing saved, enough live passes are used; too few keep the saved one")
+    func liveFallback() {
+        let live = Self.timing(passes: 6, eligible: false)
+        #expect(ModelFitWatch.measurementToKeep(saved: nil, counted: nil, live: live) == live)
+        let saved = Self.timing(passes: 8, eligible: false)
+        #expect(ModelFitWatch.measurementToKeep(saved: saved, counted: nil, live: Self.timing(passes: 2, eligible: false)) == saved)
+    }
+}

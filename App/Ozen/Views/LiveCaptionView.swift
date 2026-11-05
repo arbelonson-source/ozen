@@ -927,7 +927,7 @@ struct LiveCaptionView: View {
     private var modelFitOption: WhisperModelOption? {
         guard let option = viewModel.modelFitOfferVariant.flatMap({ WhisperModelCatalog.option(for: $0) }) else { return nil }
         let fits = WhisperModelStore().isInstalled(option.variant)
-            || StorageSpaceGate.shortfallMegabytes(downloadMegabytes: option.installMegabytes, availableBytes: DeviceStorage.availableBytes()) == nil
+            || StorageSpaceGate.shortfallMegabytes(downloadMegabytes: option.remainingInstallMegabytes(onDiskBytes: WhisperModelStore().sizeOnDisk(of: option.variant)), availableBytes: DeviceStorage.availableBytes()) == nil
         return fits ? option : nil
     }
 
