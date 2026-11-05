@@ -1529,12 +1529,11 @@ public final class LiveCaptionViewModel {
     /// phone, plus the time the running captions' own passes have taken,
     /// once there are enough of them. The pick itself stays hers.
     public func testThisPhone() async {
-        var measurement = DeviceModelAdvisor.timingToKeep(from: settings.deviceModelCheck, onDevice: DeviceModelTable.currentDeviceName)
-        if let counted = await pipeline.engineFitPassMeasurement(), ModelFitWatch.shouldSave(passes: counted.passes) {
-            measurement = counted
-        } else if let live = await pipeline.engineLivePassMeasurement(), live.passes >= DeviceModelAdvisor.minimumMeasuredPasses {
-            measurement = live
-        }
+        let measurement = ModelFitWatch.measurementToKeep(
+            saved: DeviceModelAdvisor.timingToKeep(from: settings.deviceModelCheck, onDevice: DeviceModelTable.currentDeviceName),
+            counted: await pipeline.engineFitPassMeasurement(),
+            live: await pipeline.engineLivePassMeasurement()
+        )
         settings.deviceModelCheck = DeviceModelTable.check(measurement: measurement)
         persist()
     }
