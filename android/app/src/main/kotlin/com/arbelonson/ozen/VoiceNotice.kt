@@ -30,7 +30,7 @@ object VoiceNotice {
         }
         if (language == UILanguage.Hebrew || language in installed) return null
         return tr(
-            "אין בטלפון קול ל%1, ולכן אי אפשר להקריא את המשפטים.",
+            "אין בטלפון קול בשפה %1, ולכן אי אפשר להקריא את המשפטים.",
             "No voice for %1 is installed on this phone, so these phrases can’t be read aloud.",
             listOf(language.nativeName),
         )
