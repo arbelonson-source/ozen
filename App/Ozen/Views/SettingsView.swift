@@ -297,8 +297,8 @@ struct SettingsView: View {
                     Task { await viewModel.acceptBetterModelOffer() }
                 } label: {
                     Label(viewModel.settings.spokenLanguage == .hebrew
-                          ? tr("המודל הזה טועה בהרבה מילים בעברית. הקישו כדי לעבור ל־%1, %2", "This model gets many Hebrew words wrong. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"])
-                          : tr("המודל הזה אומן לעברית בלבד. הקישו כדי לעבור ל־%1, %2", "This model was trained for Hebrew only. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"]),
+                          ? tr("המודל הזה טועה בהרבה מילים בעברית. הקישו כדי לעבור למודל \"%1\", %2", "This model gets many Hebrew words wrong. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"])
+                          : tr("המודל הזה אומן לעברית בלבד. הקישו כדי לעבור למודל \"%1\", %2", "This model was trained for Hebrew only. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"]),
                           systemImage: "sparkles")
                 }
                 .accessibilityIdentifier("switchToRecommendedModel")

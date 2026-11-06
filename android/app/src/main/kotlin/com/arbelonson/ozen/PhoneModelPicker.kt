@@ -181,7 +181,7 @@ private fun ModelRow(
         RadioButton(selected = selected, onClick = null, enabled = choosable, modifier = Modifier.padding(12.dp))
     }
     if (deletable) {
-        val action = tr("מחיקה של %1", "Delete %1", listOf(model.displayName))
+        val action = tr("מחיקת המודל \"%1\"", "Delete %1", listOf(model.displayName))
         TextButton(
             onClick = { asking = true },
             modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).testTag("phone-model-delete-" + model.file).semantics { contentDescription = action },
@@ -191,7 +191,7 @@ private fun ModelRow(
     if (asking) {
         AlertDialog(
             onDismissRequest = { asking = false },
-            title = { Text(tr("למחוק את %1 מהטלפון?", "Delete %1 from the phone?", listOf(model.displayName))) },
+            title = { Text(tr("למחוק את המודל \"%1\" מהטלפון?", "Delete %1 from the phone?", listOf(model.displayName))) },
             text = { Text(tr("אפשר להוריד אותו שוב בכל עת.", "It can be downloaded again anytime.")) },
             confirmButton = {
                 TextButton(
