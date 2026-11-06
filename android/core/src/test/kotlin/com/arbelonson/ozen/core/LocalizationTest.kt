@@ -87,11 +87,11 @@ class LocalizationTest {
 
     @Test
     fun `an interpolated string is translated as a template, with the values still substituted in`() {
-        val french = tr("הסוללה ב-%1%", "Battery at %1%", listOf("42"), UILanguage.French)
+        val french = tr("הסוללה ב־%1%", "Battery at %1%", listOf("42"), UILanguage.French)
         assertTrue("42" in french)
         assertNotEquals("Battery at 42%", french)
-        assertEquals("Battery at 42%", tr("הסוללה ב-%1%", "Battery at %1%", listOf("42"), UILanguage.English))
-        assertEquals("הסוללה ב-42%", tr("הסוללה ב-%1%", "Battery at %1%", listOf("42"), UILanguage.Hebrew))
+        assertEquals("Battery at 42%", tr("הסוללה ב־%1%", "Battery at %1%", listOf("42"), UILanguage.English))
+        assertEquals("הסוללה ב־42%", tr("הסוללה ב־%1%", "Battery at %1%", listOf("42"), UILanguage.Hebrew))
     }
 
     @Test

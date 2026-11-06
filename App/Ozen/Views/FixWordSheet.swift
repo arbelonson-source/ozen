@@ -33,7 +33,7 @@ struct FixWordSheet: View {
                     }
                     .environment(\.layoutDirection, CaptionLayout.readsRightToLeft(text, languageCode: languageCode) ? .rightToLeft : .leftToRight)
                 } header: {
-                    Text(tr("נגעו במילים שנשמעו לא נכון", "Tap the words that came out wrong"))
+                    Text(tr("הקישו על המילים שנכתבו לא נכון", "Tap the words that came out wrong"))
                 }
                 Section {
                     TextField(tr("או הקלידו מה נשמע", "Or type what was heard"), text: $heard)

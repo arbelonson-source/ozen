@@ -174,7 +174,7 @@ struct SettingsView: View {
                 }
                 Button(tr("ביטול", "Cancel"), role: .cancel) { renamingProfile = nil }
             } message: {
-                Text(tr("השם החדש יופיע גם על השורות שכבר בכתוביות.", "The new name will also appear on lines already in the captions."))
+                Text(tr("השם החדש יופיע גם בשורות שכבר מוצגות.", "The new name will also appear on lines already in the captions."))
             }
             .confirmationDialog(
                 tr("למחוק את %1 מהדוברים השמורים?", "Delete %1 from saved speakers?", args: ["\(pendingSpeakerRemoval ?? "")"]),
@@ -185,7 +185,7 @@ struct SettingsView: View {
                 Button(tr("מחיקה", "Delete"), role: .destructive) { viewModel.removeSpeaker(named: name) }
                 Button(tr("ביטול", "Cancel"), role: .cancel) {}
             } message: { _ in
-                Text(tr("כדי שיזוהו שוב בשמם צריך להקליט את הקול מחדש.", "To be recognized by name again, their voice needs to be recorded again."))
+                Text(tr("כדי שיזוהו שוב בשמם, צריך להקליט את הקול שלהם מחדש.", "To be recognized by name again, their voice needs to be recorded again."))
             }
             .confirmationDialog(tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?"), isPresented: $confirmingClear, titleVisibility: .visible) {
                 Button(tr("מחיקה", "Delete"), role: .destructive) { viewModel.clearTranscript() }
@@ -213,7 +213,7 @@ struct SettingsView: View {
 
     private var helperSettingsNote: some View {
         Section {
-            Label(tr("ההגדרות מכאן והלאה הן בשביל מי שהתקין את הטלפון", "The settings from here on are for whoever set up the phone"), systemImage: "wrench.and.screwdriver")
+            Label(tr("ההגדרות מכאן והלאה מיועדות למי שהגדיר את הטלפון", "The settings from here on are for whoever set up the phone"), systemImage: "wrench.and.screwdriver")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -262,16 +262,16 @@ struct SettingsView: View {
         switch kind {
         case .whisperKit:
             return hebrew
-                ? tr("מודל קוד פתוח שרץ על הטלפון. עברית טובה, אפשר לבחור גודל מודל.", "An open-source model that runs on the phone. Good Hebrew, and you can choose the model size.")
-                : tr("מודל קוד פתוח שרץ על הטלפון. דיוק טוב, אפשר לבחור גודל מודל.", "An open-source model that runs on the phone. Good accuracy, and you can choose the model size.")
+                ? tr("מודל בקוד פתוח שפועל בטלפון עצמו. עברית טובה, ואפשר לבחור את גודל המודל.", "An open-source model that runs on the phone. Good Hebrew, and you can choose the model size.")
+                : tr("מודל בקוד פתוח שפועל בטלפון עצמו. דיוק טוב, ואפשר לבחור את גודל המודל.", "An open-source model that runs on the phone. Good accuracy, and you can choose the model size.")
         case .appleSpeech:
             return hebrew
-                ? tr("מובנה ב‑iOS. מהיר מאוד, אבל עברית במכשיר לא זמינה בכל גרסה.", "Built into iOS. Very fast, but on-device Hebrew isn’t available in every version.")
-                : tr("מובנה ב‑iOS. מהיר מאוד, אבל תמיכה במכשיר בשפה שלכם לא זמינה בכל גרסה.", "Built into iOS. Very fast, but on-device support for your language isn’t available in every version.")
+                ? tr("מובנה ב־iOS. מהיר מאוד, אבל זיהוי עברית בתוך המכשיר לא זמין בכל הגרסאות.", "Built into iOS. Very fast, but on-device Hebrew isn’t available in every version.")
+                : tr("מובנה ב־iOS. מהיר מאוד, אבל זיהוי של השפה שלכם בתוך המכשיר לא זמין בכל הגרסאות.", "Built into iOS. Very fast, but on-device support for your language isn’t available in every version.")
         case .cloud:
             return hebrew
-                ? tr("מודל באינטרנט, לטלפון שאיטי מדי למודל שבתוכו. בעברית הוא טועה יותר מהמודל שבטלפון. צריך אינטרנט ומפתח של שירות ענן.", "A model online, for a phone too slow for the one inside it. It gets more Hebrew wrong than the phone’s own model. Needs internet and a key for a cloud service.")
-                : tr("מודל באינטרנט, לטלפון שאיטי מדי למודל שבתוכו. הוא טועה יותר מהמודל שבטלפון. צריך אינטרנט ומפתח של שירות ענן.", "A model online, for a phone too slow for the one inside it. It gets more words wrong than the phone’s own model. Needs internet and a key for a cloud service.")
+                ? tr("מודל שפועל באינטרנט, לטלפון שאיטי מדי בשביל המודל הפנימי. בעברית הוא טועה יותר מהמודל שבטלפון. דרושים חיבור לאינטרנט ומפתח של שירות ענן.", "A model online, for a phone too slow for the one inside it. It gets more Hebrew wrong than the phone’s own model. Needs internet and a key for a cloud service.")
+                : tr("מודל שפועל באינטרנט, לטלפון שאיטי מדי בשביל המודל הפנימי. הוא טועה יותר מהמודל שבטלפון. דרושים חיבור לאינטרנט ומפתח של שירות ענן.", "A model online, for a phone too slow for the one inside it. It gets more words wrong than the phone’s own model. Needs internet and a key for a cloud service.")
         case .homeServer:
             return hebrew
                 ? tr("מחשב של המשפחה עם כרטיס מסך כותב את הכתוביות: אותו מודל עברית, מהר בהרבה, והטלפון לא מתחמם. כשאין אליו חיבור, הטלפון ממשיך לבד אם יש בו גיבוי.", "A family computer with a graphics card writes the captions: the same Hebrew model, much faster, and the phone stays cool. When it can’t be reached, the phone carries on by itself if it has the backup.")
@@ -297,8 +297,8 @@ struct SettingsView: View {
                     Task { await viewModel.acceptBetterModelOffer() }
                 } label: {
                     Label(viewModel.settings.spokenLanguage == .hebrew
-                          ? tr("המודל הזה טועה בהרבה מילים בעברית. הקישו כדי לעבור ל-%1, %2", "This model gets many Hebrew words wrong. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"])
-                          : tr("המודל הזה אומן לעברית בלבד. הקישו כדי לעבור ל-%1, %2", "This model was trained for Hebrew only. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"]),
+                          ? tr("המודל הזה טועה בהרבה מילים בעברית. הקישו כדי לעבור ל־%1, %2", "This model gets many Hebrew words wrong. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"])
+                          : tr("המודל הזה אומן לעברית בלבד. הקישו כדי לעבור ל־%1, %2", "This model was trained for Hebrew only. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"]),
                           systemImage: "sparkles")
                 }
                 .accessibilityIdentifier("switchToRecommendedModel")
@@ -308,8 +308,8 @@ struct SettingsView: View {
             Text("Whisper")
         } footer: {
             Text(viewModel.settings.spokenLanguage == .hebrew
-                 ? tr("מודל גדול יותר מבין עברית טוב יותר אבל מגיב לאט יותר. \u{2066}\"%1\"\u{2069} הוא הבחירה המומלצת. מודלים שוקלים מאות MB, ולכן כברירת מחדל הם יורדים רק ב-Wi-Fi.", "A bigger model understands Hebrew better but responds more slowly. “%1” is the recommended choice. Models weigh hundreds of MB, so by default they only download over Wi‑Fi.", args: ["\(recommendedModelName)"])
-                 : tr("מודל גדול יותר מבין דיבור טוב יותר אבל מגיב לאט יותר. \u{2066}\"%1\"\u{2069} הוא הבחירה המומלצת. מודלים שוקלים מאות MB, ולכן כברירת מחדל הם יורדים רק ב-Wi-Fi.", "A bigger model understands speech better but responds more slowly. “%1” is the recommended choice. Models weigh hundreds of MB, so by default they only download over Wi‑Fi.", args: ["\(recommendedModelName)"]))
+                 ? tr("מודל גדול יותר מבין עברית טוב יותר, אבל מגיב לאט יותר. \u{2066}\"%1\"\u{2069} הוא הבחירה המומלצת. מודלים שוקלים מאות MB, ולכן כברירת מחדל הם יורדים רק ב־Wi-Fi.", "A bigger model understands Hebrew better but responds more slowly. “%1” is the recommended choice. Models weigh hundreds of MB, so by default they only download over Wi‑Fi.", args: ["\(recommendedModelName)"])
+                 : tr("מודל גדול יותר מבין דיבור טוב יותר, אבל מגיב לאט יותר. \u{2066}\"%1\"\u{2069} הוא הבחירה המומלצת. מודלים שוקלים מאות MB, ולכן כברירת מחדל הם יורדים רק ב־Wi-Fi.", "A bigger model understands speech better but responds more slowly. “%1” is the recommended choice. Models weigh hundreds of MB, so by default they only download over Wi‑Fi.", args: ["\(recommendedModelName)"]))
         }
     }
 
@@ -339,7 +339,7 @@ struct SettingsView: View {
         } header: {
             Text(tr("זיהוי הדיבור של אפל", "Apple’s speech recognition"))
         } footer: {
-            Text(tr("כבוי: הכול נשאר בטלפון. אם עברית במכשיר לא זמינה, המנוע פשוט לא יעבוד ותוצע חלופה. דולק: כשאין מודל עברית במכשיר, האודיו נשלח לשרתי אפל לזיהוי. זו החלטת פרטיות שלכם — האפליקציה אף פעם לא עושה את זה לבד.", "Off: everything stays on the phone. If on-device Hebrew isn’t available, the engine simply won’t work and an alternative will be suggested. On: when there’s no on-device Hebrew model, the audio is sent to Apple’s servers for recognition. This is your privacy choice — the app never does this on its own."))
+            Text(tr("כבוי: הכול נשאר בטלפון. אם זיהוי עברית בתוך המכשיר לא זמין, המנוע פשוט לא יעבוד ותוצע חלופה. מופעל: כשאין במכשיר מודל עברית, הקול נשלח לזיהוי בשרתים של אפל. זו בחירה שלכם בנושא פרטיות — האפליקציה לעולם לא עושה את זה מעצמה.", "Off: everything stays on the phone. If on-device Hebrew isn’t available, the engine simply won’t work and an alternative will be suggested. On: when there’s no on-device Hebrew model, the audio is sent to Apple’s servers for recognition. This is your privacy choice — the app never does this on its own."))
         }
     }
 
@@ -398,7 +398,7 @@ struct SettingsView: View {
     private func cloudModelName(_ model: String) -> String {
         model == CloudSpeech.fastModel
             ? tr("מהיר (Gemini Flash Lite)", "Fast (Gemini Flash Lite)")
-            : tr("מדויק יותר, קצת איטי (Gemini Flash)", "More accurate, a bit slower (Gemini Flash)")
+            : tr("מדויק יותר, קצת יותר איטי (Gemini Flash)", "More accurate, a bit slower (Gemini Flash)")
     }
 
     private var cloudSection: some View {
@@ -418,7 +418,7 @@ struct SettingsView: View {
                 Label(tr("מפתח שמור בטלפון", "Key saved on the phone"), systemImage: "key.fill")
                     .foregroundStyle(.readable(.green))
             }
-            SecureField(hasCloudKey ? tr("מפתח חדש במקום השמור", "New key instead of the saved one") : tr("הדביקו כאן מפתח %1", "Paste your %1 key here", args: ["\(viewModel.settings.cloudProvider.name)"]), text: $cloudKeyDraft)
+            SecureField(hasCloudKey ? tr("מפתח חדש במקום השמור", "New key instead of the saved one") : tr("הדביקו כאן את המפתח של %1", "Paste your %1 key here", args: ["\(viewModel.settings.cloudProvider.name)"]), text: $cloudKeyDraft)
                 .textContentType(.password)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -428,7 +428,7 @@ struct SettingsView: View {
                     Button(tr("לאשר ולשמור", "Allow and save"), action: saveCloudKey)
                     Button(tr("ביטול", "Cancel"), role: .cancel) {}
                 } message: {
-                    Text(tr("כשהכתוביות מגיעות מ־%1, הקול מהמיקרופון נשלח אליו דרך האינטרנט, יחד עם השמות והמילים המיוחדות והמילים החשובות. על מה שנשלח חלים התנאים ומדיניות הפרטיות של %1. בלי אישור, המפתח לא יישמר ושום דבר לא יישלח.", "While captions come from %1, the audio from the microphone is sent to it over the internet, together with the names and special words and the important words. %1’s own terms and privacy policy apply to what it receives. Without your OK, the key isn’t saved and nothing is sent.", args: ["\(viewModel.settings.cloudProvider.name)"]))
+                    Text(tr("כשהכתוביות מגיעות מ־%1, הקול מהמיקרופון נשלח אליו דרך האינטרנט, יחד עם השמות, המילים המיוחדות והמילים החשובות. על מה שנשלח חלים התנאים ומדיניות הפרטיות של %1. בלי אישור שלכם, המפתח לא יישמר ושום דבר לא יישלח.", "While captions come from %1, the audio from the microphone is sent to it over the internet, together with the names and special words and the important words. %1’s own terms and privacy policy apply to what it receives. Without your OK, the key isn’t saved and nothing is sent.", args: ["\(viewModel.settings.cloudProvider.name)"]))
                 }
             if !cloudKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Button(tr("שמירת המפתח", "Save key"), action: askCloudConsent)
@@ -453,7 +453,7 @@ struct SettingsView: View {
                     }
                     Button(tr("ביטול", "Cancel"), role: .cancel) {}
                 } message: {
-                    Text(tr("בלי המפתח הכתוביות לא יגיעו מהענן, עד שיכניסו אותו שוב.", "Without the key, captions can’t come from the cloud until it’s entered again."))
+                    Text(tr("בלי המפתח, הכתוביות לא יוכלו להגיע מהענן עד שיזינו אותו שוב.", "Without the key, captions can’t come from the cloud until it’s entered again."))
                 }
             }
             if viewModel.settings.cloudProvider == .openRouter {
@@ -473,23 +473,23 @@ struct SettingsView: View {
     private var cloudServiceFooter: String {
         switch viewModel.settings.cloudProvider {
         case .deepgram:
-            tr("הקול נשלח דרך האינטרנט ל‑Deepgram, שכותבת את הכתוביות, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שתכתוב אותן נכון; Deepgram מתבקשת לא להשתמש בו לשיפור המודלים שלה. רק כשמישהו מדבר; כל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 65 סנט מהקרדיט של המפתח, ודיבור רצוף בלי הפסקות, כמו חדשות או הרצאה, עד פי שלושה; חשבון Deepgram חדש מקבל 200 דולר קרדיט חינם. בלי Wi‑Fi זה משתמש בגלישה סלולרית: כמה מאות MB לשעת דיבור, ועד כ‑1 GB. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.", "The audio is sent over the internet to Deepgram, which writes the captions, together with the names and special words and the important words, so it can spell them; Deepgram is asked not to use it to improve its models. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 65 cents from the key’s credit, and unbroken talk like the news or a lecture up to three times that; a new Deepgram account comes with $200 of free credit. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
+            tr("הקול נשלח דרך האינטרנט ל־Deepgram, שכותבת את הכתוביות. יחד איתו נשלחים גם השמות, המילים המיוחדות והמילים החשובות, כדי שייכתבו נכון. Deepgram מתבקשת לא להשתמש בקול לשיפור המודלים שלה. הקול נשלח רק כשמישהו מדבר, וכל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 65 סנט מהקרדיט של המפתח, ודיבור רצוף, כמו חדשות או הרצאה, עד פי שלושה. חשבון Deepgram חדש מקבל 200 דולר של קרדיט חינם. בלי Wi‑Fi נעשה שימוש בחבילת הגלישה: כמה מאות MB לשעת דיבור, ועד כ־1 GB. המפתח נשמר רק בטלפון. כשאין אינטרנט, מודל ה־Whisper שכבר נמצא בטלפון ממשיך לבד.", "The audio is sent over the internet to Deepgram, which writes the captions, together with the names and special words and the important words, so it can spell them; Deepgram is asked not to use it to improve its models. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 65 cents from the key’s credit, and unbroken talk like the news or a lecture up to three times that; a new Deepgram account comes with $200 of free credit. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
         case .soniox:
-            tr("הקול נשלח דרך האינטרנט ל‑Soniox, שכותבת את הכתוביות תוך כדי דיבור, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שתכתוב אותן נכון. החיבור נשאר פתוח כל זמן שהכתוביות פועלות, ו‑Soniox גובה על כל הקול שנשלח, גם על רגעי שקט: בערך 12 סנט לשעת כתוביות מהקרדיט של המפתח. בלי Wi‑Fi זה משתמש בכ‑120 MB גלישה סלולרית לשעה. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.", "The audio is sent over the internet to Soniox, which writes the captions as the words are said, together with the names and special words and the important words, so it can spell them. The connection stays open while captions run, and Soniox charges for all the audio sent, quiet moments included: about 12 cents an hour of captions from the key’s credit. Away from Wi‑Fi it uses about 120 MB of mobile data an hour. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
+            tr("הקול נשלח דרך האינטרנט ל־Soniox, שכותבת את הכתוביות תוך כדי הדיבור. יחד איתו נשלחים גם השמות, המילים המיוחדות והמילים החשובות, כדי שייכתבו נכון. החיבור נשאר פתוח כל זמן שהכתוביות פועלות, ו־Soniox גובה תשלום על כל הקול שנשלח, כולל רגעי שקט: בערך 12 סנט לשעת כתוביות מהקרדיט של המפתח. בלי Wi‑Fi נעשה שימוש בחבילת הגלישה, בערך 120 MB לשעה. המפתח נשמר רק בטלפון. כשאין אינטרנט, מודל ה־Whisper שכבר נמצא בטלפון ממשיך לבד.", "The audio is sent over the internet to Soniox, which writes the captions as the words are said, together with the names and special words and the important words, so it can spell them. The connection stays open while captions run, and Soniox charges for all the audio sent, quiet moments included: about 12 cents an hour of captions from the key’s credit. Away from Wi‑Fi it uses about 120 MB of mobile data an hour. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
         case .openAI:
-            tr("הקול נשלח דרך האינטרנט ל‑OpenAI, שכותבת את הכתוביות, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שתכתוב אותן נכון. רק כשמישהו מדבר; כל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 90 סנט מהקרדיט של המפתח, ודיבור רצוף בלי הפסקות, כמו חדשות או הרצאה, עד פי שלושה. בלי Wi‑Fi זה משתמש בגלישה סלולרית: כמה מאות MB לשעת דיבור, ועד כ‑1 GB. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.", "The audio is sent over the internet to OpenAI, which writes the captions, together with the names and special words and the important words, so it can spell them. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 90 cents from the key’s credit, and unbroken talk like the news or a lecture up to three times that. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
+            tr("הקול נשלח דרך האינטרנט ל־OpenAI, שכותבת את הכתוביות. יחד איתו נשלחים גם השמות, המילים המיוחדות והמילים החשובות, כדי שייכתבו נכון. הקול נשלח רק כשמישהו מדבר, וכל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 90 סנט מהקרדיט של המפתח, ודיבור רצוף, כמו חדשות או הרצאה, עד פי שלושה. בלי Wi‑Fi נעשה שימוש בחבילת הגלישה: כמה מאות MB לשעת דיבור, ועד כ־1 GB. המפתח נשמר רק בטלפון. כשאין אינטרנט, מודל ה־Whisper שכבר נמצא בטלפון ממשיך לבד.", "The audio is sent over the internet to OpenAI, which writes the captions, together with the names and special words and the important words, so it can spell them. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 90 cents from the key’s credit, and unbroken talk like the news or a lecture up to three times that. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
         case .groq:
-            tr("הקול נשלח דרך האינטרנט ל‑Groq, שכותבת את הכתוביות עם מודל ה‑Whisper של OpenAI, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שתכתוב אותן נכון. כל משפט נשלח פעם אחת, כשהוא נגמר, ולכן המילים מופיעות כשהמשפט הסתיים: Groq מחשבת כל בקשה כעשר שניות לפחות. שעת דיבור עולה עד 30 סנט בערך מהקרדיט של המפתח; לתוכנית החינמית של Groq יש מגבלות שימוש, ומעבר להן מודל ה‑Whisper שבטלפון ממשיך לזמן מה. בלי Wi‑Fi זה משתמש בכ‑150 MB גלישה סלולרית לשעת דיבור. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.", "The audio is sent over the internet to Groq, which writes the captions with OpenAI’s Whisper model, together with the names and special words and the important words, so it can spell them. Each sentence is sent once, when it ends, so its words appear when it is finished: Groq counts every request as at least ten seconds. An hour of speech costs up to about 30 cents from the key’s credit; Groq’s free plan has usage limits, and past them the Whisper model on the phone carries on for a while. Away from Wi‑Fi it uses about 150 MB of mobile data an hour of speech. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
+            tr("הקול נשלח דרך האינטרנט ל־Groq, שכותבת את הכתוביות בעזרת מודל ה־Whisper של OpenAI. יחד איתו נשלחים גם השמות, המילים המיוחדות והמילים החשובות, כדי שייכתבו נכון. כל משפט נשלח פעם אחת, בסופו, ולכן המילים מופיעות רק כשהמשפט נגמר. הסיבה: Groq מחייבת על כל בקשה כאילו נמשכה עשר שניות לפחות. שעת דיבור עולה עד כ־30 סנט מהקרדיט של המפתח. בתוכנית החינמית של Groq יש מגבלות שימוש, ואחרי שמגיעים אליהן, מודל ה־Whisper שבטלפון ממשיך לבד לזמן מה. בלי Wi‑Fi נעשה שימוש בחבילת הגלישה, בערך 150 MB לשעת דיבור. המפתח נשמר רק בטלפון. כשאין אינטרנט, מודל ה־Whisper שכבר נמצא בטלפון ממשיך לבד.", "The audio is sent over the internet to Groq, which writes the captions with OpenAI’s Whisper model, together with the names and special words and the important words, so it can spell them. Each sentence is sent once, when it ends, so its words appear when it is finished: Groq counts every request as at least ten seconds. An hour of speech costs up to about 30 cents from the key’s credit; Groq’s free plan has usage limits, and past them the Whisper model on the phone carries on for a while. Away from Wi‑Fi it uses about 150 MB of mobile data an hour of speech. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
         case .elevenLabs:
-            tr("הקול נשלח דרך האינטרנט ל‑ElevenLabs, שכותבת את הכתוביות, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שתכתוב אותן נכון. רק כשמישהו מדבר; כל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 70 סנט מהקרדיט של המפתח, ודיבור רצוף בלי הפסקות, כמו חדשות או הרצאה, עד פי שלושה. בלי Wi‑Fi זה משתמש בגלישה סלולרית: כמה מאות MB לשעת דיבור, ועד כ‑1 GB. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.", "The audio is sent over the internet to ElevenLabs, which writes the captions, together with the names and special words and the important words, so it can spell them. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 70 cents from the key’s credit, and unbroken talk like the news or a lecture up to three times that. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
+            tr("הקול נשלח דרך האינטרנט ל־ElevenLabs, שכותבת את הכתוביות. יחד איתו נשלחים גם השמות, המילים המיוחדות והמילים החשובות, כדי שייכתבו נכון. הקול נשלח רק כשמישהו מדבר, וכל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 70 סנט מהקרדיט של המפתח, ודיבור רצוף, כמו חדשות או הרצאה, עד פי שלושה. בלי Wi‑Fi נעשה שימוש בחבילת הגלישה: כמה מאות MB לשעת דיבור, ועד כ־1 GB. המפתח נשמר רק בטלפון. כשאין אינטרנט, מודל ה־Whisper שכבר נמצא בטלפון ממשיך לבד.", "The audio is sent over the internet to ElevenLabs, which writes the captions, together with the names and special words and the important words, so it can spell them. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 70 cents from the key’s credit, and unbroken talk like the news or a lecture up to three times that. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
         case .gemini:
-            tr("הקול נשלח דרך האינטרנט ל‑Google Gemini, שכותב את הכתוביות, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שיכתוב אותן נכון. בתוכנית החינמית של Google, ‏Google רשאית להשתמש במה שנשלח לשיפור המוצרים שלה, ואנשים ב‑Google עשויים לקרוא אותו; כשמופעל חיוב בתשלום, לא. רק כשמישהו מדבר; כל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 75 סנט מהקרדיט של המפתח, ודיבור רצוף בלי הפסקות, כמו חדשות או הרצאה, עד פי שלושה. בלי Wi‑Fi זה משתמש בגלישה סלולרית: כמה מאות MB לשעת דיבור, ועד כ‑1 GB. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.", "The audio is sent over the internet to Google Gemini, which writes the captions, together with the names and special words and the important words, so it can spell them. On Google’s free plan, Google may use what is sent to improve its products, and people at Google may read it; with billing turned on, it doesn’t. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 75 cents from the key’s credit, and unbroken talk like the news or a lecture up to three times that. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
+            tr("הקול נשלח דרך האינטרנט ל־Google Gemini, שכותב את הכתוביות. יחד איתו נשלחים גם השמות, המילים המיוחדות והמילים החשובות, כדי שייכתבו נכון. בתוכנית החינמית של Google, החברה רשאית להשתמש במה שנשלח כדי לשפר את המוצרים שלה, ועובדים ב־Google עשויים לקרוא אותו. כשמפעילים חיוב בתשלום, זה לא קורה. הקול נשלח רק כשמישהו מדבר, וכל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 75 סנט מהקרדיט של המפתח, ודיבור רצוף, כמו חדשות או הרצאה, עד פי שלושה. בלי Wi‑Fi נעשה שימוש בחבילת הגלישה: כמה מאות MB לשעת דיבור, ועד כ־1 GB. המפתח נשמר רק בטלפון. כשאין אינטרנט, מודל ה־Whisper שכבר נמצא בטלפון ממשיך לבד.", "The audio is sent over the internet to Google Gemini, which writes the captions, together with the names and special words and the important words, so it can spell them. On Google’s free plan, Google may use what is sent to improve its products, and people at Google may read it; with billing turned on, it doesn’t. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 75 cents from the key’s credit, and unbroken talk like the news or a lecture up to three times that. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
         case .speechmatics:
-            tr("הקול נשלח דרך האינטרנט ל‑Speechmatics, שכותבת את הכתוביות תוך כדי דיבור, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שתכתוב אותן נכון. החיבור נשאר פתוח כל זמן שהכתוביות פועלות, ו‑Speechmatics גובה על כל הקול שנשלח, גם על רגעי שקט: בערך 80 סנט לשעת כתוביות מהקרדיט של המפתח; חשבון Speechmatics חדש מקבל 100 דולר קרדיט חינם. בלי Wi‑Fi זה משתמש בכ‑120 MB גלישה סלולרית לשעה. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.", "The audio is sent over the internet to Speechmatics, which writes the captions as the words are said, together with the names and special words and the important words, so it can spell them. The connection stays open while captions run, and Speechmatics charges for all the audio sent, quiet moments included: about 80 cents an hour of captions from the key’s credit; a new Speechmatics account comes with $100 of free credit. Away from Wi‑Fi it uses about 120 MB of mobile data an hour. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
+            tr("הקול נשלח דרך האינטרנט ל־Speechmatics, שכותבת את הכתוביות תוך כדי הדיבור. יחד איתו נשלחים גם השמות, המילים המיוחדות והמילים החשובות, כדי שייכתבו נכון. החיבור נשאר פתוח כל זמן שהכתוביות פועלות, ו־Speechmatics גובה תשלום על כל הקול שנשלח, כולל רגעי שקט: בערך 80 סנט לשעת כתוביות מהקרדיט של המפתח. חשבון Speechmatics חדש מקבל 100 דולר של קרדיט חינם. בלי Wi‑Fi נעשה שימוש בחבילת הגלישה, בערך 120 MB לשעה. המפתח נשמר רק בטלפון. כשאין אינטרנט, מודל ה־Whisper שכבר נמצא בטלפון ממשיך לבד.", "The audio is sent over the internet to Speechmatics, which writes the captions as the words are said, together with the names and special words and the important words, so it can spell them. The connection stays open while captions run, and Speechmatics charges for all the audio sent, quiet moments included: about 80 cents an hour of captions from the key’s credit; a new Speechmatics account comes with $100 of free credit. Away from Wi‑Fi it uses about 120 MB of mobile data an hour. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
         case .assemblyAI:
-            tr("הקול נשלח דרך האינטרנט ל‑AssemblyAI, שכותבת את הכתוביות תוך כדי דיבור, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שתכתוב אותן נכון. החיבור נשאר פתוח כל זמן שהכתוביות פועלות, ו‑AssemblyAI גובה על כל הקול שנשלח, גם על רגעי שקט: בערך 57 סנט לשעת כתוביות מהקרדיט של המפתח; חשבון AssemblyAI חדש מקבל 50 דולר קרדיט חינם. בלי Wi‑Fi זה משתמש בכ‑120 MB גלישה סלולרית לשעה. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.", "The audio is sent over the internet to AssemblyAI, which writes the captions as the words are said, together with the names and special words and the important words, so it can spell them. The connection stays open while captions run, and AssemblyAI charges for all the audio sent, quiet moments included: about 57 cents an hour of captions from the key’s credit; a new AssemblyAI account comes with $50 of free credit. Away from Wi‑Fi it uses about 120 MB of mobile data an hour. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
+            tr("הקול נשלח דרך האינטרנט ל־AssemblyAI, שכותבת את הכתוביות תוך כדי הדיבור. יחד איתו נשלחים גם השמות, המילים המיוחדות והמילים החשובות, כדי שייכתבו נכון. החיבור נשאר פתוח כל זמן שהכתוביות פועלות, ו־AssemblyAI גובה תשלום על כל הקול שנשלח, כולל רגעי שקט: בערך 57 סנט לשעת כתוביות מהקרדיט של המפתח. חשבון AssemblyAI חדש מקבל 50 דולר של קרדיט חינם. בלי Wi‑Fi נעשה שימוש בחבילת הגלישה, בערך 120 MB לשעה. המפתח נשמר רק בטלפון. כשאין אינטרנט, מודל ה־Whisper שכבר נמצא בטלפון ממשיך לבד.", "The audio is sent over the internet to AssemblyAI, which writes the captions as the words are said, together with the names and special words and the important words, so it can spell them. The connection stays open while captions run, and AssemblyAI charges for all the audio sent, quiet moments included: about 57 cents an hour of captions from the key’s credit; a new AssemblyAI account comes with $50 of free credit. Away from Wi‑Fi it uses about 120 MB of mobile data an hour. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
         case .openRouter:
-            tr("הקול נשלח דרך האינטרנט ל‑OpenRouter, ומשם לדגם של Google שכותב את הכתוביות, יחד עם השמות והמילים המיוחדות והמילים החשובות, כדי שיכתוב אותן נכון. רק כשמישהו מדבר; כל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 30 סנט מהקרדיט של המפתח (המהיר: כ‑15 סנט), ודיבור רצוף בלי הפסקות, כמו חדשות או הרצאה, עד פי שלושה. בלי Wi‑Fi זה משתמש בגלישה סלולרית: כמה מאות MB לשעת דיבור, ועד כ‑1 GB. המפתח נשמר רק בטלפון. בלי אינטרנט, מודל ה‑Whisper שכבר בטלפון ממשיך לבד.", "The audio is sent over the internet to OpenRouter, and from there to a Google model that writes the captions, together with the names and special words and the important words, so it can spell them. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 30 cents from the key’s credit (the fast one: about 15 cents), and unbroken talk like the news or a lecture up to three times that. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
+            tr("הקול נשלח דרך האינטרנט ל־OpenRouter, ומשם למודל של Google שכותב את הכתוביות. יחד איתו נשלחים גם השמות, המילים המיוחדות והמילים החשובות, כדי שייכתבו נכון. הקול נשלח רק כשמישהו מדבר, וכל משפט נשלח שוב כל כמה שניות עד שהוא נגמר. שעת דיבור עולה בערך 30 סנט מהקרדיט של המפתח (במודל המהיר: כ־15 סנט), ודיבור רצוף, כמו חדשות או הרצאה, עד פי שלושה. בלי Wi‑Fi נעשה שימוש בחבילת הגלישה: כמה מאות MB לשעת דיבור, ועד כ־1 GB. המפתח נשמר רק בטלפון. כשאין אינטרנט, מודל ה־Whisper שכבר נמצא בטלפון ממשיך לבד.", "The audio is sent over the internet to OpenRouter, and from there to a Google model that writes the captions, together with the names and special words and the important words, so it can spell them. Only while someone is speaking; each sentence is sent again every few seconds until it ends. An hour of speech costs about 30 cents from the key’s credit (the fast one: about 15 cents), and unbroken talk like the news or a lecture up to three times that. Away from Wi‑Fi it uses mobile data: a few hundred MB an hour of speech, up to about 1 GB. The key is saved only on the phone. Without internet, a Whisper model already on the phone carries on by itself.")
         }
     }
 
@@ -517,7 +517,7 @@ struct SettingsView: View {
                 Button(tr("שמירת הכתובת", "Save address"), action: saveHomeServerAddress)
             }
             if HomeServer.needsEncryptedAddress(homeServerAddressDraft) {
-                Label(tr("מחוץ לרשת הביתית, צריך את הכתובת שמתחילה ב-wss://", "Outside the home network, use the address that starts with wss://"), systemImage: "exclamationmark.triangle.fill")
+                Label(tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://"), systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.readable(.orange))
             } else if !homeServerAddressDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, HomeServer.url(from: homeServerAddressDraft) == nil {
                 Label(tr("הכתובת לא נראית תקינה", "That address doesn’t look right"), systemImage: "exclamationmark.triangle.fill")
@@ -573,7 +573,7 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(isCheckingHomeServer)
-                .accessibilityValue(isCheckingHomeServer ? tr("בודק…", "Checking…") : "")
+                .accessibilityValue(isCheckingHomeServer ? tr("בודקים…", "Checking…") : "")
                 if let homeServerCheck {
                     homeServerCheckLabel(homeServerCheck)
                 }
@@ -593,7 +593,7 @@ struct SettingsView: View {
                 Slider(value: $viewModel.homeServerBeam, in: Double(AppSettings.homeServerBeamRange.lowerBound)...Double(AppSettings.homeServerBeamRange.upperBound), step: 1)
                     .accessibilityLabel(tr("מהירות מול דיוק במחשב", "Speed or accuracy on the computer"))
                     .accessibilityValue(Self.homeServerBeamDescription(Int(viewModel.homeServerBeam)))
-                    .accessibilityHint(tr("החליקו למעלה לדיוק רב יותר, למטה למהירות.", "Swipe up for more accurate, down for faster."))
+                    .accessibilityHint(tr("החליקו למעלה לדיוק רב יותר, ולמטה למהירות רבה יותר.", "Swipe up for more accurate, down for faster."))
                     .accessibilityIdentifier("homeServerBeamSlider")
                 sliderLabelLayout {
                     Text(tr("מהיר יותר", "Faster"))
@@ -625,13 +625,13 @@ struct SettingsView: View {
                     }
                     Button(tr("ביטול", "Cancel"), role: .cancel) {}
                 } message: {
-                    Text(tr("עד שיסרקו שוב את קוד ה‑QR של המחשב, הכתוביות יגיעו מהגיבוי שבטלפון אם הוא הורד, ויפסיקו אם לא.", "Until the computer’s QR code is scanned again, captions come from the backup on the phone if it’s downloaded, and stop if it isn’t."))
+                    Text(tr("עד שיסרקו שוב את קוד ה־QR של המחשב, הכתוביות יגיעו מהגיבוי שבטלפון אם הוא הורד. אם הוא לא הורד, הן ייעצרו.", "Until the computer’s QR code is scanned again, captions come from the backup on the phone if it’s downloaded, and stop if it isn’t."))
                 }
             }
         } header: {
             Text(tr("המחשב בבית", "Home computer"))
         } footer: {
-            Text(tr("הדרך הקלה: מצלמת ה-%1 על קוד ה‑QR שהמחשב מציג, והכול מתמלא לבד. הקול נשלח למחשב שלכם, שכותב את הכתוביות ומחזיר אותן, רק בזמן שהכתוביות פועלות. באותה רשת Wi‑Fi כותבים את כתובת המחשב (למשל ‎192.168.1.20‎); מכל מקום אחר, כתובת שמתחילה ב‑wss://. הקוד נשמר רק בטלפון. כשאין חיבור למחשב, מודל ה‑Whisper שבטלפון ממשיך לבד, אחרי שהגיבוי למעלה הורד. \"מהירות מול דיוק\": כשמשפט נגמר, המחשב בודק כמה ניסוחים אפשריים ובוחר את הנכון ביותר. פחות ניסוחים מביאים את המשפט מהר יותר, אבל עם יותר טעויות.", "The easy way: point the %1’s Camera at the QR code the computer shows, and everything fills in by itself. The audio goes to your own computer, which writes the captions and sends them back, only while captions are on. On the same Wi‑Fi, enter the computer’s address (for example 192.168.1.20); from anywhere else, an address starting with wss://. The code is saved only on the phone. When the computer can’t be reached, the Whisper model on the phone carries on by itself, once the backup above has been downloaded. “Speed or accuracy”: when a sentence ends, the computer weighs several possible wordings and picks the best. Fewer wordings bring the sentence sooner, with more mistakes.", args: ["\(DeviceWord.brand)"]))
+            Text(tr("הדרך הקלה: מכוונים את המצלמה של ה־%1 אל קוד ה־QR שמוצג במחשב, וכל השדות מתמלאים לבד. הקול נשלח למחשב שלכם, שכותב את הכתוביות ומחזיר אותן לטלפון, רק בזמן שהכתוביות פועלות. כשהטלפון מחובר לאותה רשת Wi‑Fi כמו המחשב, כותבים את כתובת המחשב (למשל ‎192.168.1.20‎), ומכל מקום אחר, כתובת שמתחילה ב־wss://. הקוד נשמר רק בטלפון. כשאין חיבור למחשב, מודל ה־Whisper שבטלפון ממשיך לבד, בתנאי שהגיבוי שלמעלה כבר הורד. \"מהירות מול דיוק\": כשמשפט נגמר, המחשב שוקל כמה ניסוחים אפשריים ובוחר את הטוב ביותר. פחות ניסוחים מביאים את המשפט מהר יותר, אבל עם יותר טעויות.", "The easy way: point the %1’s Camera at the QR code the computer shows, and everything fills in by itself. The audio goes to your own computer, which writes the captions and sends them back, only while captions are on. On the same Wi‑Fi, enter the computer’s address (for example 192.168.1.20); from anywhere else, an address starting with wss://. The code is saved only on the phone. When the computer can’t be reached, the Whisper model on the phone carries on by itself, once the backup above has been downloaded. “Speed or accuracy”: when a sentence ends, the computer weighs several possible wordings and picks the best. Fewer wordings bring the sentence sooner, with more mistakes.", args: ["\(DeviceWord.brand)"]))
         }
         .onChange(of: viewModel.homeServerBeam) { forgetHomeServerCheck() }
     }
@@ -675,11 +675,11 @@ struct SettingsView: View {
         case .codeRefused:
             tr("המחשב ענה, אבל לא קיבל את הקוד. סרקו שוב את קוד ה‑QR או הקלידו את הקוד מחדש.", "The computer answered but didn’t accept the code. Scan the QR code again or retype the code.")
         case .unreachable:
-            tr("אין תשובה מהמחשב. בדקו שהוא דלוק, ער (לא במצב שינה) ומחובר לאינטרנט.", "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.")
+            tr("אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.", "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.")
         case .notSetUp:
-            tr("חסרים כתובת או קוד", "The address or code is missing")
+            tr("הכתובת או הקוד חסרים", "The address or code is missing")
         case .needsEncryptedAddress:
-            tr("מחוץ לרשת הביתית, צריך את הכתובת שמתחילה ב-wss://", "Outside the home network, use the address that starts with wss://")
+            tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://")
         }
     }
 
@@ -819,7 +819,7 @@ struct SettingsView: View {
                 Text(tr("שפת הדיבור", "Spoken language"))
             }
         } footer: {
-            Text(tr("השפה שמדברים סביבך. הכתוביות נכתבות בה.", "The language people around you speak. The captions are written in it."))
+            Text(tr("השפה שמדברים בה סביבכם. הכתוביות נכתבות בשפה הזו.", "The language people around you speak. The captions are written in it."))
         }
     }
 
@@ -879,20 +879,20 @@ struct SettingsView: View {
             themePicker
 
             Toggle(tr("טקסט מודגש", "Bold text"), isOn: $viewModel.display.boldText)
-            Toggle(tr("להציג שמות דוברים", "Show speaker names"), isOn: $viewModel.display.showSpeakerNames)
-            Toggle(tr("המסך לא נכבה בזמן האזנה", "Screen doesn’t turn off while listening"), isOn: $viewModel.display.keepScreenAwake)
+            Toggle(tr("הצגת שמות הדוברים", "Show speaker names"), isOn: $viewModel.display.showSpeakerNames)
+            Toggle(tr("המסך לא נכבה בזמן ההאזנה", "Screen doesn’t turn off while listening"), isOn: $viewModel.display.keepScreenAwake)
             // The Hebrew says "while listening", as the row above does: in
             // "while captions are running", "while the captions" is one
             // ten-letter Hebrew word, and it broke before its last letter
             // beside the switch at the largest sizes on a 375-point phone.
-            Toggle(tr("להסתיר את הכפתורים בזמן האזנה", "Hide the buttons while captions are running"), isOn: $viewModel.display.autoHideControls)
+            Toggle(tr("הסתרת הכפתורים בזמן ההאזנה", "Hide the buttons while captions are running"), isOn: $viewModel.display.autoHideControls)
             Toggle(tr("סימן שאלה ליד שורות שהמנוע לא בטוח בהן, ונקודות מתחת למילים שבספק", "Question mark next to lines the engine isn’t sure about, and dots under the doubtful words"), isOn: $viewModel.display.markUncertainLines)
             if viewModel.display.markUncertainLines, viewModel.settings.engine == .cloud {
-                Text(tr("התמלול בענן לא מדווח כמה הוא בטוח, ולכן איתו שום דבר לא מסומן.", "Cloud transcription doesn’t report how sure it is, so with it nothing is marked."))
+                Text(tr("התמלול בענן לא מדווח כמה הוא בטוח, ולכן כשמשתמשים בו, שום דבר לא מסומן.", "Cloud transcription doesn’t report how sure it is, so with it nothing is marked."))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            Toggle(tr("מספרים בולטים (שעות, כמויות, טלפונים)", "Bold numbers (times, amounts, phone numbers)"), isOn: $viewModel.display.emphasizeNumbers)
+            Toggle(tr("הדגשת מספרים (שעות, כמויות ומספרי טלפון)", "Bold numbers (times, amounts, phone numbers)"), isOn: $viewModel.display.emphasizeNumbers)
             Toggle(tr("כתוביות גם במסך הנעילה", "Captions on the lock screen too"), isOn: $viewModel.display.lockScreenCaptions)
             if viewModel.display.lockScreenCaptions && lockScreenBlocked {
                 lockScreenBlockedNotice
@@ -901,7 +901,7 @@ struct SettingsView: View {
         } header: {
             Text(tr("תצוגה", "Display"))
         } footer: {
-            Text(tr("סימן שאלה ליד שורה אומר שייתכן שהיא לא נשמעה נכון. מספרים כמו שעה, כמות כדורים או מספר טלפון מודגשים בצבע אחר, כדי שלא יתפספסו. לחיצה ארוכה על השורה מאפשרת לבקש שיחזרו עליה. כש-VoiceOver פועל, כל שורה שהסתיימה מוקראת או נשלחת לצג ברייל מעצמה. אחרי רבע שעה בלי דיבור המסך ננעל כרגיל, והכתוביות וההתראות ממשיכות. כשהכתוביות רצות לבד, הכפתורים למטה יורדים אחרי כמה שניות כדי לא להסתיר את השורה החדשה; נגיעה במסך מחזירה אותם. השורות האחרונות מופיעות גם במסך הנעילה, בלי לפתוח את הטלפון; מי שמסתכל על הטלפון יכול לקרוא אותן.", "A question mark next to a line means it may not have been heard correctly. Numbers like the time, a pill count, or a phone number are highlighted in another color so they aren’t missed. A long press on a line lets you ask for it to be repeated. When VoiceOver is on, every finished line is read aloud or sent to a braille display on its own. After a quarter hour without speech the screen locks as usual, and captions and alerts keep going. While captions are running on their own, the buttons at the bottom drop away after a few seconds so they don’t hide the new line; touching the screen brings them back. The last lines also appear on the lock screen without unlocking the phone; anyone looking at the phone can read them."))
+            Text(tr("סימן שאלה ליד שורה אומר שייתכן שהיא לא נשמעה נכון. מספרים כמו שעה, כמות כדורים או מספר טלפון מודגשים בצבע אחר, כדי שלא יתפספסו. לחיצה ארוכה על שורה מאפשרת לבקש שיחזרו עליה. כש־VoiceOver פועל, כל שורה שהסתיימה מוקראת או נשלחת לצג ברייל מעצמה. אחרי רבע שעה בלי דיבור המסך ננעל כרגיל, והכתוביות וההתראות ממשיכות. כשהכתוביות פועלות, הכפתורים שבתחתית נעלמים אחרי כמה שניות כדי לא להסתיר את השורה החדשה; נגיעה במסך מחזירה אותם. השורות האחרונות מופיעות גם במסך הנעילה, בלי לבטל את הנעילה, ולכן כל מי שמסתכל בטלפון יכול לקרוא אותן.", "A question mark next to a line means it may not have been heard correctly. Numbers like the time, a pill count, or a phone number are highlighted in another color so they aren’t missed. A long press on a line lets you ask for it to be repeated. When VoiceOver is on, every finished line is read aloud or sent to a braille display on its own. After a quarter hour without speech the screen locks as usual, and captions and alerts keep going. While captions are running on their own, the buttons at the bottom drop away after a few seconds so they don’t hide the new line; touching the screen brings them back. The last lines also appear on the lock screen without unlocking the phone; anyone looking at the phone can read them."))
         }
         .task(id: scenePhase) {
             // Again on coming back from the Settings app, as for notifications.
@@ -912,9 +912,9 @@ struct SettingsView: View {
 
     private var lockScreenBlockedNotice: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(tr("פעילויות בזמן אמת כבויות לאוזן בהגדרות הטלפון, אז הכתוביות לא יופיעו במסך הנעילה.", "Live Activities are turned off for Ozen in the phone’s settings, so captions won’t appear on the lock screen."), systemImage: "lock.slash.fill")
+            Label(tr("האפשרות \"פעילויות בזמן אמת\" כבויה עבור אוזן בהגדרות הטלפון, ולכן הכתוביות לא יופיעו במסך הנעילה.", "Live Activities are turned off for Ozen in the phone’s settings, so captions won’t appear on the lock screen."), systemImage: "lock.slash.fill")
                 .foregroundStyle(.readable(.red))
-            Button(tr("לפתוח את הגדרות הטלפון", "Open the phone’s settings")) {
+            Button(tr("פתיחת הגדרות הטלפון", "Open the phone’s settings")) {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     openURL(url)
                 }
@@ -938,9 +938,9 @@ struct SettingsView: View {
             }
         } label: {
             if testNotificationSent {
-                Label(tr("נשלחה. נעלו את הטלפון, ותוך 10 שניות היא תגיע", "Sent. Lock the phone, and it will arrive within 10 seconds"), systemImage: "checkmark")
+                Label(tr("ההתראה נשלחה. נעלו את הטלפון, והיא תגיע תוך 10 שניות", "Sent. Lock the phone, and it will arrive within 10 seconds"), systemImage: "checkmark")
             } else {
-                Label(tr("לבדוק שהתראה מגיעה כשהטלפון נעול", "Test that an alert arrives when the phone is locked"), systemImage: "bell.and.waves.left.and.right")
+                Label(tr("בדיקה שהתראה מגיעה כשהטלפון נעול", "Test that an alert arrives when the phone is locked"), systemImage: "bell.and.waves.left.and.right")
             }
         }
     }
@@ -987,9 +987,9 @@ struct SettingsView: View {
             }
             if viewModel.notifyWhenInBackground && notificationsBlocked {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label(tr("ההודעות של אוזן כבויות בהגדרות הטלפון, אז כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."), systemImage: "bell.slash.fill")
+                    Label(tr("ההתראות של אוזן כבויות בהגדרות הטלפון, ולכן כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."), systemImage: "bell.slash.fill")
                         .foregroundStyle(.readable(.red))
-                    Button(tr("לפתוח את הגדרות הטלפון", "Open the phone’s settings")) {
+                    Button(tr("פתיחת הגדרות הטלפון", "Open the phone’s settings")) {
                         if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
                             openURL(url)
                         }
@@ -1035,7 +1035,7 @@ struct SettingsView: View {
                     // a stepper lands on, so the warning is announced too.
                     Text(viewModel.quietHours.startHour == viewModel.quietHours.endHour
                          ? Self.allDayQuietHoursText
-                         : tr("צלילים דחופים כמו אזעקה עדיין יתריעו.", "Urgent sounds like a siren still alert."))
+                         : tr("על צלילים דחופים, כמו אזעקה, עדיין תתקבל התראה.", "Urgent sounds like a siren still alert."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("quietHoursFootnote")
@@ -1045,7 +1045,7 @@ struct SettingsView: View {
         } header: {
             Text(tr("התראות", "Alerts"))
         } footer: {
-            Text(tr("רטט והדגשה כשנאמרת מילה חשובה; כרזה כשנשמע פעמון דלת, טלפון, אזעקה ועוד. כשהטלפון בכיס או נעול, אותן התראות מגיעות כהודעה בטלפון, וגם הודעה אם הכתוביות נעצרו ולא חזרו לבד. כדי שגם פנס המצלמה יהבהב בכל הודעה: הגדרות הטלפון ← נגישות ← שמע וחזותי ← הבהוב LED להתראות.", "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, and more are heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → LED Flash for Alerts."))
+            Text(tr("רטט והדגשה כשנאמרת מילה חשובה, והודעה בראש המסך כשנשמעים פעמון בדלת, טלפון, אזעקה ועוד. כשהטלפון בכיס או נעול, אותן התראות מגיעות כהתראות רגילות של הטלפון, ויש גם התראה אם הכתוביות נעצרו ולא חזרו לבד. כדי שגם פנס המצלמה יהבהב בכל התראה: הגדרות הטלפון ← נגישות ← שמע וחזותי ← הבהוב LED להתראות.", "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, and more are heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → LED Flash for Alerts."))
         }
         .task(id: scenePhase) {
             // Checked on opening and again on coming back from the
@@ -1073,9 +1073,9 @@ struct SettingsView: View {
                     .accessibilityValue(SliderSpeech.speechRate(Double(viewModel.speechRate), in: Localization.language))
                     .accessibilityHint(SliderSpeech.speechRateHint(in: Localization.language))
                 sliderLabelLayout {
-                    Text(tr("לאט", "Slow"))
+                    Text(tr("איטי", "Slow"))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(tr("מהר", "Fast"))
+                    Text(tr("מהיר", "Fast"))
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -1084,24 +1084,24 @@ struct SettingsView: View {
             Button {
                 viewModel.speak(Self.voiceSample)
             } label: {
-                Label(tr("להשמיע דוגמה", "Play a sample"), systemImage: "speaker.wave.2")
+                Label(tr("השמעת דוגמה", "Play a sample"), systemImage: "speaker.wave.2")
             }
             // Without a voice for the app's language the sample is never
             // said; the line below says what to install.
             .disabled(!viewModel.canSay(Self.voiceSample))
             if !viewModel.hasVoiceForAppLanguage {
-                Text(tr("אין בטלפון קול ל%1, ולכן אי אפשר להקריא את המשפטים. אפשר להוסיף אחד בהגדרות ← נגישות ← תוכן מדובר ← קולות.", "No voice for %1 is installed on this phone, so these phrases can’t be read aloud. Add one in Settings → Accessibility → Spoken Content → Voices.", args: ["\(viewModel.uiLanguage.nativeName)"]))
+                Text(tr("אין בטלפון קול ל%1, ולכן אי אפשר להקריא את המשפטים. אפשר להוסיף קול בהגדרות ← נגישות ← תוכן מדובר ← קולות.", "No voice for %1 is installed on this phone, so these phrases can’t be read aloud. Add one in Settings → Accessibility → Spoken Content → Voices.", args: ["\(viewModel.uiLanguage.nativeName)"]))
                     .font(.footnote)
                     .foregroundStyle(.readable(.orange))
             } else if viewModel.uiLanguage == .hebrew, !viewModel.hasHebrewVoice {
-                Text(tr("אין קול עברי מותקן. הוסיפו אחד בהגדרות המכשיר ← נגישות ← תוכן מדובר ← קולות ← עברית.", "No Hebrew voice is installed. Add one in the device settings → Accessibility → Spoken Content → Voices → Hebrew."))
+                Text(tr("לא מותקן קול בעברית. אפשר להוסיף קול בהגדרות המכשיר ← נגישות ← תוכן מדובר ← קולות ← עברית.", "No Hebrew voice is installed. Add one in the device settings → Accessibility → Spoken Content → Voices → Hebrew."))
                     .font(.footnote)
                     .foregroundStyle(.readable(.orange))
             }
         } header: {
-            Text(tr("להגיד משהו (הקלדה לדיבור)", "Say something (type to speak)"))
+            Text(tr("הקראה בקול של מה שמקלידים", "Say something (type to speak)"))
         } footer: {
-            Text(tr("הכתוביות מושהות בזמן שהטלפון מדבר, ומתחדשות לבד.", "Captions pause while the phone is speaking, and resume on their own."))
+            Text(tr("הכתוביות מושהות בזמן שהטלפון מדבר, וממשיכות לבד אחר כך.", "Captions pause while the phone is speaking, and resume on their own."))
         }
     }
 
@@ -1133,14 +1133,14 @@ struct SettingsView: View {
                 HStack {
                     Label(tr("שמות ומילים מיוחדות", "Names and special words"), systemImage: "character.book.closed")
                     Spacer()
-                    Text(viewModel.vocabulary.isEmpty ? tr("ריק", "Empty") : "\(viewModel.vocabulary.count)")
+                    Text(viewModel.vocabulary.isEmpty ? tr("הרשימה ריקה", "Empty") : "\(viewModel.vocabulary.count)")
                         .foregroundStyle(.secondary)
                 }
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("vocabularyRow")
         } footer: {
-            Text(tr("כל המנועים מקבלים את הרשימה כרמז, כדי ששמות של בני משפחה ייכתבו נכון.", "Every engine gets the list as a hint, so family members’ names are spelled correctly."))
+            Text(tr("הרשימה עוזרת לכל המנועים לכתוב נכון את המילים שבה, למשל את השמות של בני המשפחה.", "Every engine gets the list as a hint, so family members’ names are spelled correctly."))
         }
     }
 
@@ -1159,7 +1159,7 @@ struct SettingsView: View {
                             // Voices saved before the September 2026 voice
                             // model are never matched again, silently.
                             if viewModel.needsNewRecording(speaker) {
-                                Text(tr("נשמר בגרסה ישנה ולא מזוהה. כדי לתקן: \"הוספת דובר\" באותו שם.", "Saved by an older version and not recognized. To fix: “Add speaker” with the same name."))
+                                Text(tr("נשמר בגרסה ישנה ולכן לא מזוהה. כדי לתקן, בחרו \"הוספת דובר\" ותנו אותו שם.", "Saved by an older version and not recognized. To fix: “Add speaker” with the same name."))
                                     .font(.footnote)
                                     .foregroundStyle(.readable(.orange))
                             }
@@ -1203,7 +1203,7 @@ struct SettingsView: View {
         } header: {
             Text(tr("דוברים שמורים", "Saved speakers"))
         } footer: {
-            Text(tr("דובר שמור מזוהה בשמו מהמשפט הראשון. אפשר גם להשאיר אצבע על שורה בכתוביות, לבחור \"מי מדבר?\" ולתת שם אחרי שהאדם כבר דיבר. בהוספה מהקלטות, כל קובץ נשמר בשם שבשם הקובץ: \"סבתא 1\" ו-\"סבתא 2\" הם שתי הקלטות של סבתא. בכל קובץ רק אדם אחד מדבר.", "A saved speaker is recognized by name from the first sentence. You can also press and hold a line in the captions, choose “Who is speaking?”, and give a name after the person has already spoken. When adding from recordings, each file is saved under the name in its file name: “Savta 1” and “Savta 2” are two recordings of Savta. Only one person should speak in each file."))
+            Text(tr("דובר שמור מזוהה בשמו כבר מהמשפט הראשון. אפשר גם ללחוץ לחיצה ארוכה על שורה בכתוביות, לבחור \"מי מדבר?\" ולתת שם אחרי שהאדם כבר דיבר. בהוספה מהקלטות, כל קובץ נשמר תחת השם שמופיע בשם הקובץ: \"סבתא 1\" ו־\"סבתא 2\" הן שתי הקלטות של סבתא. בכל קובץ צריך לדבר רק אדם אחד.", "A saved speaker is recognized by name from the first sentence. You can also press and hold a line in the captions, choose “Who is speaking?”, and give a name after the person has already spoken. When adding from recordings, each file is saved under the name in its file name: “Savta 1” and “Savta 2” are two recordings of Savta. Only one person should speak in each file."))
         }
     }
 
@@ -1227,7 +1227,7 @@ struct SettingsView: View {
                     .accessibilityValue(String(format: "%.2f", viewModel.speakerSimilarityThreshold))
                     // The "more merging / more separating" ends are hidden
                     // from VoiceOver with the rest of the row's labels.
-                    .accessibilityHint(tr("הורדה מאחדת קולות, העלאה מפרידה ביניהם.", "Lower merges voices, higher keeps them apart."))
+                    .accessibilityHint(tr("ערך נמוך מאחד קולות, וערך גבוה מפריד ביניהם.", "Lower merges voices, higher keeps them apart."))
                 sliderLabelLayout {
                     Text(tr("מאחד יותר", "More merging"))
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1329,7 +1329,7 @@ struct SettingsView: View {
                 Label(tr("מדיניות הפרטיות", "Privacy policy"), systemImage: "hand.raised")
             }
             Link(destination: URL(string: "https://github.com/arbelonson-source/ozen")!) {
-                Label(tr("קוד המקור בגיטהאב", "Source code on GitHub"), systemImage: "chevron.left.forwardslash.chevron.right")
+                Label(tr("קוד המקור ב־GitHub", "Source code on GitHub"), systemImage: "chevron.left.forwardslash.chevron.right")
             }
             Link(destination: URL(string: "https://github.com/argmaxinc/argmax-oss-swift")!) {
                 Label(tr("WhisperKit (MIT) — מנוע Whisper", "WhisperKit (MIT) — Whisper engine"), systemImage: "shippingbox")
@@ -1373,7 +1373,7 @@ struct SettingsView: View {
     }
 
     private static var allDayQuietHoursText: String {
-        tr("כשהן מתחילות ומסתיימות באותה שעה, השעות השקטות נמשכות כל היום. צלילים דחופים כמו אזעקה עדיין יתריעו.", "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.")
+        tr("כשהן מתחילות ומסתיימות באותה שעה, השעות השקטות נמשכות כל היום. על צלילים דחופים, כמו אזעקה, עדיין תתקבל התראה.", "Starting and ending at the same hour, quiet hours last all day. Urgent sounds like a siren still alert.")
     }
 
     private static func hourLabel(_ hour: Int) -> String {

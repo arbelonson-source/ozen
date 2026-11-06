@@ -25,7 +25,7 @@ struct SoundEventsTests {
         #expect(SoundEventCatalog.event(for: "speech") == nil)
         #expect(SoundEventCatalog.event(for: "whispering") == nil)
         #expect(SoundEventCatalog.event(for: "civil_defense_siren")?.importance == .critical)
-        #expect(SoundEventCatalog.event(for: "door_bell")?.name == "פעמון דלת")
+        #expect(SoundEventCatalog.event(for: "door_bell")?.name == "צלצול בדלת")
     }
 
     @Test("a classifier window's candidates are kept by catalog membership, not by rank, so a doorbell buried under speech and chatter still gets through")

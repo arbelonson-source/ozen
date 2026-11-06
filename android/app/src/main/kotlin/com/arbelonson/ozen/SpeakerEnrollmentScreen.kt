@@ -118,13 +118,13 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
             val seconds = ((progress ?: 0.0) * RECORDING_SECONDS).toInt()
             ProgressCard(
                 icon = Icons.Rounded.Mic,
-                title = tr("מקליט… %1/%2 שניות", "Recording… %1/%2 seconds", listOf("$seconds", "$RECORDING_SECONDS")),
+                title = tr("מקליטים… %1/%2 שניות", "Recording… %1/%2 seconds", listOf("$seconds", "$RECORDING_SECONDS")),
                 percent = ((progress ?: 0.0) * 100).toInt(),
             ) {
                 LevelMeter(level = { speakers.inputLevel }, active = true)
                 TonalButton(tr("עצירה בלי לשמור", "Stop without saving"), { SpeakerRecordings.stop() }, Modifier.fillMaxWidth(), icon = Icons.Rounded.Stop)
             }
-            GroupFootnote(tr("בקשו מהאדם לדבר בטבעיות, במרחק רגיל מהמיקרופון שנבחר. אם הפס לא זז כשמדברים, המיקרופון לא שומע. הכתוביות מושהות בזמן ההקלטה.", "Ask the person to speak naturally, at a normal distance from the selected microphone. If the bar doesn’t move while speaking, the microphone isn’t hearing anything. Captions are paused during recording."))
+            GroupFootnote(tr("בקשו מהאדם לדבר בטבעיות, במרחק רגיל מהמיקרופון שנבחר. אם הפס לא זז כשמדברים, המיקרופון לא קולט כלום. הכתוביות מושהות בזמן ההקלטה.", "Ask the person to speak naturally, at a normal distance from the selected microphone. If the bar doesn’t move while speaking, the microphone isn’t hearing anything. Captions are paused during recording."))
         } else {
             PrimaryButton(
                 tr("הקלטה ושמירה (%1 שניות)", "Record and save (%1 seconds)", listOf("$RECORDING_SECONDS")),
@@ -134,7 +134,7 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
                 enabled = name.isNotBlank(),
             )
         }
-        GroupFootnote(tr("לזיהוי טוב יותר, הקליטו כל אדם 3–4 פעמים באותו שם, בימים ובמקומות שונים: חדר שקט, עם טלוויזיה ברקע, מהצד השני של החדר.", "For better recognition, record each person 3–4 times under the same name, on different days and in different places: a quiet room, with the TV on, from across the room."))
+        GroupFootnote(tr("כדי לשפר את הזיהוי, הקליטו כל אדם 3–4 פעמים תחת אותו שם, בימים שונים ובמקומות שונים: בחדר שקט, כשהטלוויזיה פועלת ברקע ומהצד השני של החדר.", "For better recognition, record each person 3–4 times under the same name, on different days and in different places: a quiet room, with the TV on, from across the room."))
         GroupFootnote(tr("ההקלטה עצמה לא נשמרת — רק \"טביעת קול\" מספרית קצרה שממנה אי אפשר לשחזר את הדיבור.", "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from."))
     }
     if (mine?.saved == false) {

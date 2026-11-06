@@ -95,7 +95,7 @@ struct StarredLinesView: View {
                             utcOffsetAt: { TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: $0)) },
                             marksUncertain: viewModel.display.markUncertainLines
                         ),
-                        subject: Text(tr("שורות מסומנות מאוזן", "Starred lines from Ozen"))
+                        subject: Text(tr("שורות מסומנות מתוך אוזן", "Starred lines from Ozen"))
                     ) {
                         Label(tr("שיתוף", "Share"), systemImage: "square.and.arrow.up")
                     }

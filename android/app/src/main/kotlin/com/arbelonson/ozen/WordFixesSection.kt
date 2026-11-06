@@ -43,10 +43,10 @@ internal fun WordFixesSection(fixes: List<WordFix>, onChange: (List<WordFix>) ->
         GroupHeader(tr("תיקוני מילים", "Word fixes"), modifier = Modifier.weight(1f))
         Text("${fixes.size} / ${WordFixes.MAXIMUM_FIXES}", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 16.dp))
     }
-    GroupFootnote(tr("מילה ששמעו לא נכון תיכתב תמיד כמו שתכתבו כאן.", "A word heard wrongly is always written the way you set here."))
+    GroupFootnote(tr("מילה שזוהתה לא נכון תיכתב תמיד כפי שתכתבו כאן.", "A word heard wrongly is always written the way you set here."))
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
-        OutlinedTextField(heard, { heard = it }, label = { Text(tr("מה נשמע", "Heard")) }, singleLine = true, modifier = Modifier.weight(1f))
-        OutlinedTextField(written, { written = it }, label = { Text(tr("מה לכתוב", "Written")) }, singleLine = true, modifier = Modifier.weight(1f))
+        OutlinedTextField(heard, { heard = it }, label = { Text(tr("מה שנשמע", "Heard")) }, singleLine = true, modifier = Modifier.weight(1f))
+        OutlinedTextField(written, { written = it }, label = { Text(tr("מה שייכתב", "Written")) }, singleLine = true, modifier = Modifier.weight(1f))
     }
     TonalButton(tr("הוספת תיקון", "Add fix"), onClick = { onChange(added); heard = ""; written = "" }, enabled = canAdd)
     if (fixes.isNotEmpty()) {

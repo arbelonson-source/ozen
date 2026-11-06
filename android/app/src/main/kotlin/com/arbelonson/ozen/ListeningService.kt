@@ -161,7 +161,7 @@ class ListeningService : Service() {
         internal fun notification(context: Context, content: LockScreenCaptionContent, public: Boolean): Notification {
             val manager = context.getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, tr("מקשיב", "Listening"), NotificationManager.IMPORTANCE_LOW),
+                NotificationChannel(CHANNEL_ID, tr("מאזינה", "Listening"), NotificationManager.IMPORTANCE_LOW),
             )
             val open = PendingIntent.getActivity(
                 context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,

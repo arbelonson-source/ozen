@@ -169,7 +169,7 @@ object DiagnosticsReport {
         }
 
     fun nearMissNote(alertConfidence: Double): String =
-        tr("התראה צריכה ביטחון של %1%. צליל שמופיע כאן נשמע, אבל רחוק או חלש מדי.", "An alert needs %1% confidence. A sound listed here was heard, but too far or too faint.", listOf("${(alertConfidence * 100).roundToInt()}"))
+        tr("התראה מופעלת רק כשהזיהוי בטוח לפחות ב־%1%. צליל שמופיע כאן נשמע, אבל היה רחוק או חלש מדי.", "An alert needs %1% confidence. A sound listed here was heard, but too far or too faint.", listOf("${(alertConfidence * 100).roundToInt()}"))
 
     /** The stage in the iPhone's own technical words: "preparing engine: downloadingModel 42% large-v3". */
     fun stage(phase: PipelinePhase): String = when (phase) {
@@ -211,7 +211,7 @@ object DiagnosticsReport {
     fun temperature(status: Int?): String = when (status) {
         null -> "—"
         0 -> tr("רגיל", "Normal")
-        1 -> tr("חמים", "Warm")
+        1 -> tr("מתחמם", "Warm")
         2, 3 -> tr("חם · הכתוביות מאטות", "Hot · captions are slowing down")
         4, 5, 6 -> tr("חם מאוד · הכתוביות מאטות מאוד", "Very hot · captions are slowing a lot")
         else -> tr("לא ידוע", "Unknown")

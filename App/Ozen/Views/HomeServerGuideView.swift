@@ -13,7 +13,7 @@ struct HomeServerGuideView: View {
         Step(
             id: 1, systemImage: "desktopcomputer",
             title: tr("מחשב מתאים", "A suitable computer"),
-            text: tr("מחשב Windows בבית עם כרטיס מסך של NVIDIA, שיש לו לפחות 6 ג׳יגה זיכרון (8 ג׳יגה ומעלה לכתוביות מדויקות יותר). הוא צריך להישאר דלוק כשרוצים כתוביות ממנו.", "A Windows computer at home with an NVIDIA graphics card of at least 6 GB (8 GB or more for the more accurate captions). It has to be on when captions should come from it.")
+            text: tr("מחשב Windows בבית עם כרטיס מסך של NVIDIA, שיש לו לפחות 6 ג׳יגה זיכרון (8 ג׳יגה ומעלה לכתוביות מדויקות יותר). המחשב צריך להיות דלוק כשרוצים לקבל ממנו כתוביות.", "A Windows computer at home with an NVIDIA graphics card of at least 6 GB (8 GB or more for the more accurate captions). It has to be on when captions should come from it.")
         ),
         Step(
             id: 2, systemImage: "arrow.down.circle",
@@ -23,11 +23,11 @@ struct HomeServerGuideView: View {
         Step(
             id: 3, systemImage: "hand.tap",
             title: tr("ללחוץ עליו פעמיים ולענות על השאלות", "Double-click it and answer its questions"),
-            text: tr("הוא בודק קודם שכרטיס המסך מתאים, ומתקין הכול לבד (10 עד 30 דקות). אם Windows שואל אם לאפשר, עונים כן. הוא ישאל אם להשתמש במחשב גם מחוץ לבית.", "It first checks that the graphics card is good enough, then installs everything by itself (10 to 30 minutes). If Windows asks whether to allow it, say yes. It asks whether to use the computer away from home too.")
+            text: tr("הקובץ בודק קודם שכרטיס המסך מתאים, ואז מתקין הכול לבד (10 עד 30 דקות). אם Windows שואל אם לאפשר לו לפעול, עונים \"כן\". בהמשך הוא ישאל אם להשתמש במחשב גם כשאתם מחוץ לבית.", "It first checks that the graphics card is good enough, then installs everything by itself (10 to 30 minutes). If Windows asks whether to allow it, say yes. It asks whether to use the computer away from home too.")
         ),
         Step(
             id: 4, systemImage: "qrcode.viewfinder",
-            title: tr("לסרוק את הריבוע במצלמת ה-%1", "Scan the square code with the %1 camera", args: ["\(DeviceWord.brand)"]),
+            title: tr("לסרוק את הריבוע במצלמת ה־%1", "Scan the square code with the %1 camera", args: ["\(DeviceWord.brand)"]),
             text: tr("בסוף מופיע במחשב ריבוע שחור־לבן. פותחים את המצלמה ב-%1, מכוונים אליו, לוחצים על הקישור של Ozen ומאשרים. אפשר להציג אותו שוב מתפריט התחל, בשורה \u{2068}Ozen\u{00A0}-\u{00A0}pair\u{00A0}a\u{00A0}phone\u{2069}.", "At the end the computer shows a black-and-white square. Open the Camera on the %1, point it at the square, tap the Ozen link and confirm. To show it again: Start menu, “Ozen - pair a phone”.", args: ["\(DeviceWord.brand)"])
         ),
     ] }
@@ -60,7 +60,7 @@ struct HomeServerGuideView: View {
             } footer: {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(tr("מחשב שנכנס למצב שינה לא עונה, כמו מחשב כבוי. ההתקנה מציעה למנוע ממנו להירדם מעצמו כשהוא מחובר לחשמל.", "A computer that has gone to sleep doesn’t answer, just like one that is off. Setup offers to stop it from falling asleep by itself while it is plugged in."))
-                    Text(tr("כשהמחשב כבוי או רחוק, טלפון שמודל העברית כבר הורד אליו ממשיך לכתוב כתוביות לבד, וחוזר למחשב כשהוא עונה שוב. בלי המודל, הכתוביות מחכות למחשב.", "When the computer is off or out of reach, a phone that already has the Hebrew model downloaded keeps writing captions by itself, and goes back to the computer once it answers again. Without the model, captions wait for the computer."))
+                    Text(tr("כשהמחשב כבוי או שאין אליו חיבור, טלפון שמודל העברית כבר הורד אליו ממשיך לכתוב כתוביות לבד, וחוזר למחשב כשהוא זמין שוב. בלי המודל, הכתוביות מחכות למחשב.", "When the computer is off or out of reach, a phone that already has the Hebrew model downloaded keeps writing captions by itself, and goes back to the computer once it answers again. Without the model, captions wait for the computer."))
                 }
             }
         }

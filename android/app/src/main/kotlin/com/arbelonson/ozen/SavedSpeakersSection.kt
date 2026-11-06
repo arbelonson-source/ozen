@@ -143,7 +143,7 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
                         // never matched again, silently.
                         if (speakers.needsNewRecording(speaker)) {
                             Text(
-                                tr("נשמר בגרסה ישנה ולא מזוהה. כדי לתקן: \"הוספת דובר\" באותו שם.", "Saved by an older version and not recognized. To fix: “Add speaker” with the same name."),
+                                tr("נשמר בגרסה ישנה ולכן לא מזוהה. כדי לתקן, בחרו \"הוספת דובר\" ותנו אותו שם.", "Saved by an older version and not recognized. To fix: “Add speaker” with the same name."),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = cautionOrange(),
                             )
@@ -172,7 +172,7 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
     }
     Footnote(
         tr(
-            "דובר שמור מזוהה בשמו מהמשפט הראשון. אפשר גם להשאיר אצבע על שורה בכתוביות, לבחור \"מי מדבר?\" ולתת שם אחרי שהאדם כבר דיבר. בהוספה מהקלטות, כל קובץ נשמר בשם שבשם הקובץ: \"סבתא 1\" ו-\"סבתא 2\" הם שתי הקלטות של סבתא. בכל קובץ רק אדם אחד מדבר.",
+            "דובר שמור מזוהה בשמו כבר מהמשפט הראשון. אפשר גם ללחוץ לחיצה ארוכה על שורה בכתוביות, לבחור \"מי מדבר?\" ולתת שם אחרי שהאדם כבר דיבר. בהוספה מהקלטות, כל קובץ נשמר תחת השם שמופיע בשם הקובץ: \"סבתא 1\" ו־\"סבתא 2\" הן שתי הקלטות של סבתא. בכל קובץ צריך לדבר רק אדם אחד.",
             "A saved speaker is recognized by name from the first sentence. You can also press and hold a line in the captions, choose “Who is speaking?”, and give a name after the person has already spoken. When adding from recordings, each file is saved under the name in its file name: “Savta 1” and “Savta 2” are two recordings of Savta. Only one person should speak in each file.",
         ),
     )
@@ -198,7 +198,7 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
         AlertDialog(
             onDismissRequest = { removing = null },
             title = { Text(tr("למחוק את %1 מהדוברים השמורים?", "Delete %1 from saved speakers?", listOf(name))) },
-            text = { Text(tr("כדי שיזוהו שוב בשמם צריך להקליט את הקול מחדש.", "To be recognized by name again, their voice needs to be recorded again.")) },
+            text = { Text(tr("כדי שיזוהו שוב בשמם, צריך להקליט את הקול שלהם מחדש.", "To be recognized by name again, their voice needs to be recorded again.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -220,7 +220,7 @@ private fun RenameSpeakerDialog(name: String, onRename: (String) -> Unit, onDism
         title = { Text(tr("שינוי שם", "Rename")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tr("השם החדש יופיע גם על השורות שכבר בכתוביות.", "The new name will also appear on lines already in the captions."))
+                Text(tr("השם החדש יופיע גם בשורות שכבר מוצגות.", "The new name will also appear on lines already in the captions."))
                 OutlinedTextField(value = draft, onValueChange = { draft = it }, label = { Text(tr("שם", "Name")) }, singleLine = true)
             }
         },

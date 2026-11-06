@@ -26,9 +26,9 @@ import com.arbelonson.ozen.core.tr
 internal object HomeServerGuide {
     val steps: List<Pair<String, String>>
         get() = listOf(
-            tr("מחשב מתאים", "A suitable computer") to tr("מחשב Windows בבית עם כרטיס מסך של NVIDIA, שיש לו לפחות 6 ג׳יגה זיכרון (8 ג׳יגה ומעלה לכתוביות מדויקות יותר). הוא צריך להישאר דלוק כשרוצים כתוביות ממנו.", "A Windows computer at home with an NVIDIA graphics card of at least 6 GB (8 GB or more for the more accurate captions). It has to be on when captions should come from it."),
+            tr("מחשב מתאים", "A suitable computer") to tr("מחשב Windows בבית עם כרטיס מסך של NVIDIA, שיש לו לפחות 6 ג׳יגה זיכרון (8 ג׳יגה ומעלה לכתוביות מדויקות יותר). המחשב צריך להיות דלוק כשרוצים לקבל ממנו כתוביות.", "A Windows computer at home with an NVIDIA graphics card of at least 6 GB (8 GB or more for the more accurate captions). It has to be on when captions should come from it."),
             tr("להוריד במחשב את קובץ ההתקנה", "Download the setup file on the computer") to tr("שלחו לעצמכם את הקישור שלמטה (בדוא״ל או בוואטסאפ) ופתחו אותו במחשב. יורד קובץ אחד.", "Send yourself the link below (by email or WhatsApp) and open it on the computer. One file downloads."),
-            tr("ללחוץ עליו פעמיים ולענות על השאלות", "Double-click it and answer its questions") to tr("הוא בודק קודם שכרטיס המסך מתאים, ומתקין הכול לבד (10 עד 30 דקות). אם Windows שואל אם לאפשר, עונים כן. הוא ישאל אם להשתמש במחשב גם מחוץ לבית.", "It first checks that the graphics card is good enough, then installs everything by itself (10 to 30 minutes). If Windows asks whether to allow it, say yes. It asks whether to use the computer away from home too."),
+            tr("ללחוץ עליו פעמיים ולענות על השאלות", "Double-click it and answer its questions") to tr("הקובץ בודק קודם שכרטיס המסך מתאים, ואז מתקין הכול לבד (10 עד 30 דקות). אם Windows שואל אם לאפשר לו לפעול, עונים \"כן\". בהמשך הוא ישאל אם להשתמש במחשב גם כשאתם מחוץ לבית.", "It first checks that the graphics card is good enough, then installs everything by itself (10 to 30 minutes). If Windows asks whether to allow it, say yes. It asks whether to use the computer away from home too."),
             tr("להקליד את הכתובת והקוד שהוא מציג", "Type in the address and code it shows") to tr(
                 "בסוף מופיע במחשב ריבוע שחור־לבן. מתחתיו כתובת המחשב וקוד צימוד: מקלידים את שניהם בתיבות שתחת ״המחשב בבית״ בהגדרות. אפשר להציג אותו שוב מתפריט התחל, בשורה \u2068Ozen\u00A0-\u00A0pair\u00A0a\u00A0phone\u2069.",
                 "At the end the computer shows a black-and-white square. Under it are the computer’s address and a pairing code: type both into the boxes under “Home computer” in Settings. To show it again: Start menu, “Ozen - pair a phone”.",
@@ -37,9 +37,9 @@ internal object HomeServerGuide {
 
     fun whenTheComputerIsOff(spoken: UILanguage): String =
         if (WhisperModelCatalog.phoneModelSource(spoken) == null) {
-            tr("כשהמחשב כבוי או רחוק, הכתוביות מחכות לו וחוזרות לבד כשהוא עונה שוב.", "When the computer is off or out of reach, captions wait for it and start again by themselves once it answers.")
+            tr("כשהמחשב כבוי או שאין אליו חיבור, הכתוביות מחכות לו וחוזרות לבד כשהוא זמין שוב.", "When the computer is off or out of reach, captions wait for it and start again by themselves once it answers.")
         } else {
-            tr("כשהמחשב כבוי או רחוק, טלפון שהגיבוי כבר הורד אליו ממשיך לכתוב כתוביות לבד, וחוזר למחשב כשהוא עונה שוב. בלי הגיבוי, הכתוביות מחכות למחשב.", "When the computer is off or out of reach, a phone that already has the backup downloaded keeps writing captions by itself, and goes back to the computer once it answers again. Without the backup, captions wait for the computer.")
+            tr("כשהמחשב כבוי או שאין אליו חיבור, טלפון שהגיבוי כבר הורד אליו ממשיך לכתוב כתוביות לבד, וחוזר למחשב כשהוא זמין שוב. בלי הגיבוי, הכתוביות מחכות למחשב.", "When the computer is off or out of reach, a phone that already has the backup downloaded keeps writing captions by itself, and goes back to the computer once it answers again. Without the backup, captions wait for the computer.")
         }
 
     fun sendLink(context: Context) {

@@ -35,7 +35,7 @@ class SoundEventsTest {
         assertNull(SoundEventCatalog.event("speech"))
         assertNull(SoundEventCatalog.event("whispering"))
         assertEquals(SoundEvent.Importance.Critical, SoundEventCatalog.event("civil_defense_siren")?.importance)
-        assertEquals("פעמון דלת", SoundEventCatalog.event("door_bell")?.name)
+        assertEquals("צלצול בדלת", SoundEventCatalog.event("door_bell")?.name)
     }
 
     @Test

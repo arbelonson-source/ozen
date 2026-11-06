@@ -26,7 +26,7 @@ object TranscriptionProgress {
         return when {
             hours == 0 -> tr("נותרו בערך %1 דק׳", "About %1 min left", listOf("$minutes"))
             rest == 0 -> tr("נותרו בערך %1 ש׳", "About %1 h left", listOf("$hours"))
-            else -> tr("נותרו בערך %1 ש׳ ו-%2 דק׳", "About %1 h %2 min left", listOf("$hours", "$rest"))
+            else -> tr("נותרו בערך %1 ש׳ ו־%2 דק׳", "About %1 h %2 min left", listOf("$hours", "$rest"))
         }
     }
 }

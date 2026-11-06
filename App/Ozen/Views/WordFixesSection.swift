@@ -30,9 +30,9 @@ struct WordFixesSection: View {
             }
             .onDelete { viewModel.removeWordFixes(at: $0) }
             VStack(alignment: .leading) {
-                TextField(tr("מה נשמע", "Heard"), text: $heard)
+                TextField(tr("מה שנשמע", "Heard"), text: $heard)
                     .autocorrectionDisabled()
-                TextField(tr("מה לכתוב", "Written"), text: $written)
+                TextField(tr("מה שייכתב", "Written"), text: $written)
                     .autocorrectionDisabled()
                 Button(tr("הוספת תיקון", "Add fix")) {
                     viewModel.addWordFix(WordFix(heard: heard, written: written))
@@ -44,7 +44,7 @@ struct WordFixesSection: View {
         } header: {
             Text(tr("תיקוני מילים", "Word fixes"))
         } footer: {
-            Text(tr("מילה ששמעו לא נכון תיכתב תמיד כמו שתכתבו כאן.", "A word heard wrongly is always written the way you set here."))
+            Text(tr("מילה שזוהתה לא נכון תיכתב תמיד כפי שתכתבו כאן.", "A word heard wrongly is always written the way you set here."))
         }
     }
 }

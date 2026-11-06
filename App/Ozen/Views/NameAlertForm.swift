@@ -18,12 +18,12 @@ struct NameAlertForm: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             formLayout {
-                TextField(tr("השם שלך", "Your name"), text: $nameDraft)
+                TextField(tr("השם שלכם", "Your name"), text: $nameDraft)
                     .textFieldStyle(.roundedBorder)
                     .submitLabel(.done)
                     .onSubmit(addName)
                     .announcing(otherLettersNote, whenTurningTrue: HebrewText.isInOtherLetters(nameDraft, captionLanguage: viewModel.settings.languageCode))
-                Button(tr("להוסיף", "Add"), action: addName)
+                Button(tr("הוספה", "Add"), action: addName)
                     .buttonStyle(.bordered)
                     .controlSize(.large)
                     .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
@@ -50,7 +50,7 @@ struct NameAlertForm: View {
     }
 
     private var otherLettersNote: String {
-        tr("הכתוביות באותיות עבריות, ולכן מילה שנכתבה באותיות אחרות עלולה לא להימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found.")
+        tr("הכתוביות נכתבות באותיות עבריות, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found.")
     }
 
     private func suggestionButton(_ word: String) -> some View {
@@ -88,16 +88,16 @@ struct NameAlertSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text(tr("כשמישהו אומר את השם שלך, הטלפון רוטט והשורה מסומנת, גם כשלא מסתכלים על המסך.", "When someone says your name, the phone vibrates and the line is marked, even when you’re not looking at the screen."))
+                    Text(tr("כשמישהו אומר את השם שלכם, הטלפון רוטט והשורה מסומנת, גם כשלא מסתכלים על המסך.", "When someone says your name, the phone vibrates and the line is marked, even when you’re not looking at the screen."))
                     NameAlertForm(viewModel: viewModel)
-                    Text(tr("אפשר להוסיף עוד מילים, או למחוק, בהגדרות ← התראות ← מילים חשובות.", "You can add more words, or delete them, in Settings → Alerts → Important words."))
+                    Text(tr("אפשר להוסיף עוד מילים או למחוק מילים בהגדרות ← התראות ← מילים חשובות.", "You can add more words, or delete them, in Settings → Alerts → Important words."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
                 .font(.title3)
                 .padding(24)
             }
-            .navigationTitle(tr("כשקוראים לך", "When your name is called"))
+            .navigationTitle(tr("כשקוראים לכם", "When your name is called"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

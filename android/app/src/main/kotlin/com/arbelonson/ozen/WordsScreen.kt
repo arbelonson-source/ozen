@@ -86,13 +86,13 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
         note?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp)) }
         GroupFootnote(
             tr(
-                "שמות של בני משפחה, שכנים, רופאים, תרופות, מקומות — כל מילה שהכתוביות מתקשות איתה. הראשונים ברשימה חשובים ביותר.",
+                "שמות של בני משפחה, שכנים ורופאים, שמות של תרופות ומקומות — כל מילה שהכתוביות מתקשות בה. המילים הראשונות ברשימה הן החשובות ביותר.",
                 "Names of family members, neighbors, doctors, medicines, places — any word the captions struggle with. The first ones on the list matter most.",
             ),
         )
         if (VocabularyHints.normalized(words + speakerNames) != words) {
             SettingsGroup(dividerInset = 56.dp) {
-                item { SettingRow(tr("להוסיף את שמות הדוברים השמורים", "Add the saved speaker names"), icon = Icons.Rounded.PersonAdd, onClick = { onChange(words + speakerNames) }) }
+                item { SettingRow(tr("הוספת שמות הדוברים השמורים", "Add the saved speaker names"), icon = Icons.Rounded.PersonAdd, onClick = { onChange(words + speakerNames) }) }
             }
         }
         Row(verticalAlignment = Alignment.Bottom) {
@@ -119,7 +119,7 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
         }
         WordFixesSection(wordFixes, onWordFixes)
         GroupFootnote(
-            tr("השינויים נכנסים לתוקף מהמשפט הבא, בלי להפעיל מחדש.", "Changes take effect from the next sentence, without restarting."),
+            tr("השינויים חלים מהמשפט הבא, בלי צורך להפעיל מחדש.", "Changes take effect from the next sentence, without restarting."),
             modifier = Modifier.padding(bottom = OzenSpacing.Unit),
         )
     }
@@ -133,8 +133,8 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
 @Composable
 private fun WordRow(word: String, onMoveUp: (() -> Unit)?, onMoveDown: (() -> Unit)?, onDelete: () -> Unit) {
     val choices = listOfNotNull(
-        onMoveUp?.let { tr("להזיז למעלה", "Move up") to it },
-        onMoveDown?.let { tr("להזיז למטה", "Move down") to it },
+        onMoveUp?.let { tr("הזזה למעלה", "Move up") to it },
+        onMoveDown?.let { tr("הזזה למטה", "Move down") to it },
         tr("מחיקה", "Delete") to onDelete,
     )
     var menu by remember { mutableStateOf(false) }

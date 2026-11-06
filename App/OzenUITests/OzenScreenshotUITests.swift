@@ -919,7 +919,7 @@ final class OzenScreenshotUITests: XCTestCase {
 
         // The "hebrewDefault" fixture always sets the UI language to
         // Hebrew, regardless of the test runner's own locale.
-        let flipButton = app.descendants(matching: .any).buttons["להפוך"]
+        let flipButton = app.descendants(matching: .any).buttons["היפוך"]
         if flipButton.waitForExistence(timeout: 5) {
             flipButton.tap()
             capture(app, name: "big-text-accessibility-text-flipped")
@@ -1152,7 +1152,7 @@ final class OzenScreenshotUITests: XCTestCase {
             // A menu here showed only the start and end of the chosen
             // choice at this size; like the colors in Settings, each choice
             // gets a row of its own.
-            XCTAssertTrue(app.descendants(matching: .any)["רק חירום"].exists, "sound alerts: the alert-for choices aren't rows of their own at the largest text size")
+            XCTAssertTrue(app.descendants(matching: .any)["חירום בלבד"].exists, "sound alerts: the alert-for choices aren't rows of their own at the largest text size")
             // A sound the classifier knows by two labels is one switch; it
             // was listed once per label, two identical rows in Hebrew. The
             // second label sits right after the first in the catalog.
@@ -1466,7 +1466,7 @@ final class OzenScreenshotUITests: XCTestCase {
             return frame.width > frame.height
         }
         wait(for: [XCTNSPredicateExpectation(predicate: rotated, object: nil)], timeout: 10)
-        let play = app.buttons["להשמיע"].firstMatch
+        let play = app.buttons["השמעה"].firstMatch
         reach(play, startUp: false)
         capture(app, name: "type-to-speak-accessibility-text-landscape")
         XCTAssertTrue(play.exists && play.isHittable, "say sheet: the Play button could not be reached in landscape")

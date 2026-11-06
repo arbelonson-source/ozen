@@ -77,7 +77,7 @@ internal fun ImportantWordsScreen(
             draft = ""
         }
     }
-    val otherLetters = tr("הכתוביות באותיות עבריות, ולכן מילה שנכתבה באותיות אחרות עלולה לא להימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found.")
+    val otherLetters = tr("הכתוביות נכתבות באותיות עבריות, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found.")
     SettingsPageFrame(tr("מילים חשובות", "Important words"), onClose = onClose, closeLabel = tr("חזרה", "Back")) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
             OutlinedTextField(
@@ -100,7 +100,7 @@ internal fun ImportantWordsScreen(
                 if (it.isEnabled) {
                     tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", listOf(shown))
                 } else {
-                    tr("\"%1\" כבר ברשימה, במצב כבוי. הקישו על הפלוס כדי להפעיל מחדש.", "“%1” is already in the list, turned off. Tap the plus to turn it back on.", listOf(shown))
+                    tr("\"%1\" כבר ברשימה, במצב כבוי. הקישו על הפלוס כדי להפעיל אותה שוב.", "“%1” is already in the list, turned off. Tap the plus to turn it back on.", listOf(shown))
                 },
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -109,7 +109,7 @@ internal fun ImportantWordsScreen(
         if (HebrewText.isInOtherLetters(draft, captionLanguage)) Text(otherLetters, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
         Footnote(
             tr(
-                "כשמילה מהרשימה נאמרת, הטלפון ירטוט והשורה תודגש בצהוב עם פעמון. גם צורות כמו \"לסבתא\" או \"וסבתא\" נחשבות. כדאי לכתוב מילים בלי ה׳ בהתחלה: \"רופא\" ולא \"הרופא\", כדי שגם \"לרופא\" ייחשב.",
+                "כשמילה מהרשימה נאמרת, הטלפון ירטוט והשורה תודגש בצהוב עם פעמון. גם צורות כמו \"לסבתא\" או \"וסבתא\" נחשבות. כדאי לכתוב מילים בלי ה׳ הידיעה: \"רופא\" ולא \"הרופא\", כדי שגם \"לרופא\" ייחשב.",
                 "When a word from the list is said, the phone will vibrate and the line will be highlighted in yellow with a bell. Forms like “to grandma” or “and grandma” count too. It’s best to write words without a leading “the”: “doctor” instead of “the doctor”, so “to the doctor” counts too.",
             ),
         )
@@ -118,7 +118,7 @@ internal fun ImportantWordsScreen(
             if (alerts.isEmpty()) {
                 item {
                     Text(
-                        tr("עדיין אין מילים. הוסיפו את השם שלך, שמות של נכדים, או מילים כמו \"תרופה\".", "No words yet. Add your name, grandchildren’s names, or words like “medicine”."),
+                        tr("עדיין אין מילים. הוסיפו את השם שלכם, שמות של הנכדים או מילים כמו \"תרופה\".", "No words yet. Add your name, grandchildren’s names, or words like “medicine”."),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(16.dp),
                     )
@@ -142,7 +142,7 @@ internal fun ImportantWordsScreen(
                 for (word in suggestions) {
                     item {
                         SettingRow(
-                            tr("להוסיף: %1", "Add: %1", listOf(AlertSuggestions.label(word, Localization.language))),
+                            tr("הוספה: %1", "Add: %1", listOf(AlertSuggestions.label(word, Localization.language))),
                             icon = Icons.Rounded.Add,
                             onClick = { onChange(ImportantWords.adding(word, alerts)) },
                         )
@@ -175,7 +175,7 @@ internal fun ImportantWordsScreen(
         AlertDialog(
             onDismissRequest = { pendingDeleteId = null },
             title = { Text(tr("למחוק את \"%1\"?", "Delete “%1”?", listOf(shown(alert.phrase)))) },
-            text = { Text(tr("הטלפון יפסיק להתריע כשהמילה נאמרת.", "The phone will stop alerting when this word is said.")) },
+            text = { Text(tr("הטלפון יפסיק להתריע כשהמילה הזו תיאמר.", "The phone will stop alerting when this word is said.")) },
             confirmButton = {
                 TextButton(
                     onClick = {

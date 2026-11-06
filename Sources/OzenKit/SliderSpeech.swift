@@ -6,9 +6,9 @@ public enum SliderSpeech {
         let number = String(format: "%.2f", Double(step) / 20)
         let word: String
         if step < 8 {
-            word = tr("לאט", "Slow", in: language)
+            word = tr("איטי", "Slow", in: language)
         } else if step > 11 {
-            word = tr("מהר", "Fast", in: language)
+            word = tr("מהיר", "Fast", in: language)
         } else {
             word = tr("רגיל", "Normal", in: language)
         }

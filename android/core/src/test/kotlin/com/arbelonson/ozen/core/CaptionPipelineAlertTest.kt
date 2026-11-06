@@ -197,7 +197,7 @@ class CaptionPipelineAlertTest {
 
         detector.push(SoundObservation("door_bell", 0.9, 100.0))
         assertTrue(eventually { pipeline.soundAlerts.size == 1 })
-        assertEquals("פעמון דלת", pipeline.soundAlerts.firstOrNull()?.event?.name)
+        assertEquals("צלצול בדלת", pipeline.soundAlerts.firstOrNull()?.event?.name)
 
         // Same sound inside the cooldown: no second banner.
         detector.push(SoundObservation("door_bell", 0.95, 105.0))

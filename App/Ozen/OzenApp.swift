@@ -121,7 +121,7 @@ struct OzenApp: App {
                 Button(tr("ביטול", "Cancel"), role: .cancel) {}
             } message: { pairing in
                 Text(tr(
-                    "הקול ישלח לכתוביות אל %1. אשרו רק אם זה המחשב של המשפחה.", "The audio will go to %1 for captions. Only connect if this is the family’s computer.", args: ["\(pairing.computerName)"]
+                    "כדי ליצור כתוביות, הקול יישלח אל %1. אשרו רק אם זה המחשב של המשפחה.", "The audio will go to %1 for captions. Only connect if this is the family’s computer.", args: ["\(pairing.computerName)"]
                 ))
             }
             .alert(
@@ -134,7 +134,7 @@ struct OzenApp: App {
                 Button(tr("סגירה", "Close"), role: .cancel) {}
             } message: {
                 Text(tr(
-                    "הכתוביות ממשיכות כמו קודם. סרקו שוב את הקוד, או בקשו עזרה ממי שהתקין את הטלפון.",
+                    "הכתוביות ממשיכות כמו קודם. סרקו שוב את הקוד, או בקשו עזרה ממי שהגדיר את הטלפון.",
                     "Captions carry on as before. Scan the code again, or ask whoever set up the phone for help."
                 ))
             }
@@ -148,7 +148,7 @@ struct OzenApp: App {
                 Button(tr("סגירה", "Close"), role: .cancel) {}
             } message: {
                 Text(tr(
-                    "חלק מהקישור חסר או השתבש. סרקו שוב את הריבוע במחשב עם מצלמת ה-%1, ממש מקרוב.",
+                    "חלק מהקישור חסר או משובש. סרקו שוב מקרוב את הריבוע שעל מסך המחשב, במצלמה של ה־%1.",
                     "Part of the link is missing or garbled. Scan the square on the computer again with the %1 camera, up close.",
                     args: ["\(DeviceWord.brand)"]
                 ))

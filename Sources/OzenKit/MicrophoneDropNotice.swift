@@ -28,12 +28,12 @@ public struct MicrophoneDropNotice: Sendable, Equatable {
     public static func detail(listening: Bool) -> String {
         guard listening else {
             return tr(
-                "כשהכתוביות יחזרו, הן יעברו דרך המיקרופון של הטלפון, ואולי יהיו פחות מדויקות. חברו אותו שוב כדי לחזור אליו.",
+                "כשהכתוביות יחזרו, הקול ייקלט דרך המיקרופון של הטלפון עצמו, וייתכן שהכתוביות יהיו פחות מדויקות. כדי לחזור למיקרופון הקודם, חברו אותו שוב.",
                 "When captions start again they will use the phone's own microphone and may be less accurate. Reconnect it to go back to it."
             )
         }
         return tr(
-            "הכתוביות ממשיכות דרך המיקרופון של הטלפון, ואולי יהיו פחות מדויקות. חברו אותו שוב כדי לחזור אליו.",
+            "הכתוביות ממשיכות עם המיקרופון של הטלפון עצמו, וייתכן שיהיו פחות מדויקות. כדי לחזור למיקרופון הקודם, חברו אותו שוב.",
             "Captions carry on through the phone's own microphone and may be less accurate. Reconnect it to go back to it."
         )
     }

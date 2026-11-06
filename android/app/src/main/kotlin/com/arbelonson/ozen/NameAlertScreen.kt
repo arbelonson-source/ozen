@@ -42,16 +42,16 @@ internal fun NameAlertScreen(settings: AppSettings, onAddName: (String) -> Unit,
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            ScreenTitle(tr("כשקוראים לך", "When your name is called")) {
+            ScreenTitle(tr("כשקוראים לכם", "When your name is called")) {
                 TextButton(onClick = close) { Text(tr("סיום", "Done")) }
             }
             Text(
-                tr("כשמישהו אומר את השם שלך, הטלפון רוטט והשורה מסומנת, גם כשלא מסתכלים על המסך.", "When someone says your name, the phone vibrates and the line is marked, even when you’re not looking at the screen."),
+                tr("כשמישהו אומר את השם שלכם, הטלפון רוטט והשורה מסומנת, גם כשלא מסתכלים על המסך.", "When someone says your name, the phone vibrates and the line is marked, even when you’re not looking at the screen."),
                 style = MaterialTheme.typography.titleLarge,
             )
             NameAlertForm(settings, draft, addDraft, onAddAlert)
             Text(
-                tr("אפשר להוסיף עוד מילים, או למחוק, בהגדרות ← התראות ← מילים חשובות.", "You can add more words, or delete them, in Settings → Alerts → Important words."),
+                tr("אפשר להוסיף עוד מילים או למחוק מילים בהגדרות ← התראות ← מילים חשובות.", "You can add more words, or delete them, in Settings → Alerts → Important words."),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -42,11 +42,11 @@ struct MicPickerView: View {
                     LevelMeter(level: viewModel.inputLevel, isActive: viewModel.captionsAreRunning)
                         .id(viewModel.selectedInputUID)
                     if viewModel.captionsAreRunning {
-                        Text(tr("דברו ותראו את הפס זז. אם הוא לא זז, המיקרופון שנבחר לא שומע.", "Speak and watch the bar move. If it doesn’t move, the selected microphone isn’t hearing anything."))
+                        Text(tr("דברו ובדקו שהפס זז. אם הוא לא זז, המיקרופון שנבחר לא קולט כלום.", "Speak and watch the bar move. If it doesn’t move, the selected microphone isn’t hearing anything."))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     } else {
-                        Text(tr("המד פעיל רק בזמן האזנה.", "The meter is only active while listening."))
+                        Text(tr("המד פועל רק בזמן ההאזנה.", "The meter is only active while listening."))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -54,12 +54,12 @@ struct MicPickerView: View {
 
                 Section(tr("טיפים", "Tips")) {
                     Label {
-                        Text(tr("מיקרופון USB‑C צריך להיות מסוג \"USB Audio\" (כמו רוב מיקרופוני הדש). אם הוא לא מופיע ברשימה, ה-%1 לא מזהה אותו בכלל, ולא רק האפליקציה.", "A USB‑C microphone needs to be of the “USB Audio” type (like most lapel mics). If it doesn’t appear in the list, the %1 isn’t recognizing it at all, not just the app.", args: ["\(DeviceWord.brand)"]))
+                        Text(tr("מיקרופון USB‑C צריך להיות מסוג \"USB Audio\" (כמו רוב מיקרופוני הדש). אם הוא לא מופיע ברשימה, ה־%1 עצמו לא מזהה אותו, ולא רק האפליקציה.", "A USB‑C microphone needs to be of the “USB Audio” type (like most lapel mics). If it doesn’t appear in the list, the %1 isn’t recognizing it at all, not just the app.", args: ["\(DeviceWord.brand)"]))
                     } icon: {
                         Image(systemName: "cable.connector")
                     }
                     Label {
-                        Text(tr("AirPods מופיעים כשהם באוזניים ומחוברים. איכות ההקלטה דרכם נמוכה יותר מאשר מיקרופון חוטי.", "AirPods appear when they’re in the ears and connected. Recording quality through them is lower than a wired microphone."))
+                        Text(tr("AirPods מופיעים כשהם באוזניים ומחוברים. איכות ההקלטה דרכם נמוכה יותר מאשר במיקרופון חוטי.", "AirPods appear when they’re in the ears and connected. Recording quality through them is lower than a wired microphone."))
                     } icon: {
                         Image(systemName: "airpodspro")
                     }
@@ -71,7 +71,7 @@ struct MicPickerView: View {
                     ContentUnavailableView {
                         Label(tr("אין מיקרופונים זמינים", "No microphones available"), systemImage: "mic.slash")
                     } description: {
-                        Text(tr("אם האפליקציה עדיין מתחילה, חכו רגע. אחרת חברו אוזניות או מיקרופון חיצוני והקישו על רענון.", "If the app is still starting up, wait a moment. Otherwise, connect headphones or an external microphone and tap refresh."))
+                        Text(tr("אם האפליקציה עדיין עולה, חכו רגע. אחרת, חברו אוזניות או מיקרופון חיצוני והקישו על רענון.", "If the app is still starting up, wait a moment. Otherwise, connect headphones or an external microphone and tap refresh."))
                     }
                 }
             }

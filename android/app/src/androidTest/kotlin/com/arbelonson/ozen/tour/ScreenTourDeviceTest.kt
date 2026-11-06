@@ -164,7 +164,7 @@ class ScreenTourDeviceTest {
             shot("captions-empty")
         }
         step("name-alert") {
-            click(tr("הקישו כדי לכתוב את השם שלך", "Tap to write your name"), substring = true)
+            click(tr("הקישו כדי לכתוב את השם שלכם", "Tap to write your name"), substring = true)
             pages("name-alert")
             backToCaptions()
         }

@@ -1581,7 +1581,7 @@ public final class CaptionPipeline {
             TranscriptSegment(
                 id: UUID(),
                 text: tr(
-                    "די טוב, תודה. יש לי תור לרופא ב-10:30 ואני צריכה לקחת שני כדורים לפני.",
+                    "די טוב, תודה. יש לי תור לרופא ב־10:30, ואני צריכה לקחת שני כדורים לפני כן.",
                     "Pretty good, thanks. I have a doctor's appointment at 10:30 and I need to take two pills before."
                 ),
                 isCommitted: true, speakerClusterID: strangerID,

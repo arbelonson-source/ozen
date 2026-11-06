@@ -1479,7 +1479,7 @@ struct LiveCaptionViewModelBackgroundAlertTests {
 
         viewModel.sceneActivityChanged(isActive: false)
         viewModel.batteryWarningRaised(.critical(percent: 10))
-        #expect(posted.map(\.title) == ["הסוללה ב-10%"])
+        #expect(posted.map(\.title) == ["הסוללה ב־10%"])
 
         viewModel.notifyWhenInBackground = false
         viewModel.batteryWarningRaised(.critical(percent: 9))

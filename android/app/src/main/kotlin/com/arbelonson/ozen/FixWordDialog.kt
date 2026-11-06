@@ -68,7 +68,7 @@ internal fun FixWordDialog(shown: String, languageCode: String, error: String? =
         title = { Text(tr("תיקון מילה", "Fix a word")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text(tr("נגעו במילים שנשמעו לא נכון", "Tap the words that came out wrong"), style = MaterialTheme.typography.labelLarge)
+                Text(tr("הקישו על המילים שנכתבו לא נכון", "Tap the words that came out wrong"), style = MaterialTheme.typography.labelLarge)
                 CompositionLocalProvider(LocalLayoutDirection provides direction) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     words.forEachIndexed { index, word ->

@@ -21,7 +21,7 @@ class SavingTroubleNotice {
         val title: String get() = tr("השמירה בטלפון נכשלה", "Saving on the phone failed")
         val detail: String
             get() = tr(
-                "כנראה שהטלפון מלא. שיחות והגדרות חדשות לא יישמרו עד שיתפנה מקום. בקשו ממי שעוזר לך עם הטלפון לפנות מקום (הגדרות ← אחסון).",
+                "כנראה שהזיכרון בטלפון מלא. שיחות והגדרות חדשות לא יישמרו עד שיתפנה מקום. בקשו ממי שעוזר לכם עם הטלפון לפנות מקום (הגדרות ← אחסון).",
                 "The phone is probably full. New conversations and settings won't be saved until space frees up. Ask whoever helps you with the phone to free some (Settings → Storage).",
             )
     }

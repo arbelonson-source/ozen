@@ -66,7 +66,7 @@ struct TypeToSpeakView: View {
                         .foregroundStyle(viewModel.canSay(phrase) ? .primary : .secondary)
                         .disabled(!viewModel.canSay(phrase))
                         .accessibilityLabel(phrase)
-                        .accessibilityHint(tr("להשמיע", "Play"))
+                        .accessibilityHint(tr("השמעה", "Play"))
                     }
                 } header: {
                     HStack {
@@ -148,7 +148,7 @@ struct TypeToSpeakView: View {
                     .controlSize(.large)
                 }
                 Button(action: speakTyped) {
-                    Label(tr("להשמיע", "Play"), systemImage: "speaker.wave.3.fill")
+                    Label(tr("השמעה", "Play"), systemImage: "speaker.wave.3.fill")
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity)
                 }
@@ -171,16 +171,16 @@ struct TypeToSpeakView: View {
                     .frame(maxWidth: .infinity)
             }
             .ozenGlassButton()
-            .accessibilityHint(tr("כדי שמישהו יכתוב לך, או כדי להראות למי שמולך מה כתבת", "So someone can write to you, or to show the person you’re talking with what you wrote"))
+            .accessibilityHint(tr("כדי שמישהו יוכל לכתוב לכם, או כדי להראות למי שמולכם מה כתבתם", "So someone can write to you, or to show the person you’re talking with what you wrote"))
             .accessibilityIdentifier("bigTextButton")
 
             if !viewModel.hasVoiceForAppLanguage {
-                Label(tr("אין בטלפון קול ל%1, ולכן אי אפשר להקריא את המשפטים. אפשר להוסיף אחד בהגדרות ← נגישות ← תוכן מדובר ← קולות.", "No voice for %1 is installed on this phone, so these phrases can’t be read aloud. Add one in Settings → Accessibility → Spoken Content → Voices.", args: ["\(viewModel.uiLanguage.nativeName)"]), systemImage: "exclamationmark.triangle")
+                Label(tr("אין בטלפון קול ל%1, ולכן אי אפשר להקריא את המשפטים. אפשר להוסיף קול בהגדרות ← נגישות ← תוכן מדובר ← קולות.", "No voice for %1 is installed on this phone, so these phrases can’t be read aloud. Add one in Settings → Accessibility → Spoken Content → Voices.", args: ["\(viewModel.uiLanguage.nativeName)"]), systemImage: "exclamationmark.triangle")
                     .font(.footnote)
                     .foregroundStyle(.readable(.orange))
             }
             if !viewModel.hasHebrewVoice {
-                Label(tr("אין קול עברי מותקן. הגדרות ← נגישות ← תוכן מדובר ← קולות ← עברית.", "No Hebrew voice installed. Settings → Accessibility → Spoken Content → Voices → Hebrew."), systemImage: "exclamationmark.triangle")
+                Label(tr("לא מותקן קול בעברית. הגדרות ← נגישות ← תוכן מדובר ← קולות ← עברית.", "No Hebrew voice installed. Settings → Accessibility → Spoken Content → Voices → Hebrew."), systemImage: "exclamationmark.triangle")
                     .font(.footnote)
                     .foregroundStyle(.readable(.orange))
             }
@@ -199,7 +199,7 @@ struct TypeToSpeakView: View {
             }
             .ozenGlassButton()
             .disabled(!viewModel.canSay(phrase))
-            .accessibilityLabel(tr("להשמיע שוב: %1", "Play again: %1", args: ["\(phrase)"]))
+            .accessibilityLabel(tr("השמעה חוזרת: %1", "Play again: %1", args: ["\(phrase)"]))
 
             if !viewModel.quickPhrases.contains(phrase) {
                 Button {
@@ -209,7 +209,7 @@ struct TypeToSpeakView: View {
                         .frame(minWidth: 44, minHeight: 44)
                 }
                 .ozenGlassButton()
-                .accessibilityLabel(tr("להוסיף למשפטים המוכנים", "Add to quick phrases"))
+                .accessibilityLabel(tr("הוספה למשפטים המוכנים", "Add to quick phrases"))
             }
         }
     }
@@ -254,12 +254,12 @@ private struct QuickPhrasesEditor: View {
             .onMove { from, to in
                 viewModel.moveQuickPhrases(from: from, to: to)
             }
-            Button(tr("לשחזר את ברירת המחדל", "Restore defaults"), role: .destructive) {
+            Button(tr("שחזור ברירת המחדל", "Restore defaults"), role: .destructive) {
                 confirmingReset = true
             }
             .disabled(viewModel.quickPhrases == AppSettings.defaultQuickPhrases(for: viewModel.uiLanguage))
-            .confirmationDialog(tr("לשחזר את המשפטים המוכנים?", "Restore the default phrases?"), isPresented: $confirmingReset, titleVisibility: .visible) {
-                Button(tr("לשחזר", "Restore"), role: .destructive) {
+            .confirmationDialog(tr("לחזור למשפטים המוכנים המקוריים?", "Restore the default phrases?"), isPresented: $confirmingReset, titleVisibility: .visible) {
+                Button(tr("שחזור", "Restore"), role: .destructive) {
                     viewModel.resetQuickPhrases()
                 }
                 Button(tr("ביטול", "Cancel"), role: .cancel) {}

@@ -128,7 +128,7 @@ class PhasePresentationTest {
         }
         Localization.withLanguage(UILanguage.Hebrew) {
             assertEquals(
-                "צריך לפנות עוד $size · או הקישו לבחור מודל קטן יותר",
+                "צריך לפנות עוד $size · או הקישו כדי לבחור מודל קטן יותר",
                 present(failure(state), TranscriptionEngineKind.WhisperKit).detail,
             )
         }
@@ -148,7 +148,7 @@ class PhasePresentationTest {
         }
         Localization.withLanguage(UILanguage.Hebrew) {
             assertEquals(
-                "הקישו לנסות שוב, או בחרו מודל קטן יותר בהגדרות",
+                "הקישו כדי לנסות שוב, או בחרו מודל קטן יותר בהגדרות",
                 present(failure(state), TranscriptionEngineKind.WhisperKit).detail,
             )
         }
@@ -181,7 +181,7 @@ class PhasePresentationTest {
                 assertEquals("Or tap to choose a smaller model", present(failure(state), TranscriptionEngineKind.WhisperKit).detail, "english, missing $missing")
             }
             Localization.withLanguage(UILanguage.Hebrew) {
-                assertEquals("או הקישו לבחור מודל קטן יותר", present(failure(state), TranscriptionEngineKind.WhisperKit).detail, "hebrew, missing $missing")
+                assertEquals("או הקישו כדי לבחור מודל קטן יותר", present(failure(state), TranscriptionEngineKind.WhisperKit).detail, "hebrew, missing $missing")
             }
         }
     }
@@ -192,7 +192,7 @@ class PhasePresentationTest {
         val downloadFailed = present(failure(unavailable(EngineUnavailability.Kind.ModelDownloadFailed)), TranscriptionEngineKind.WhisperKit)
         assertNotEquals(downloadFailed.title, missing.title)
         assertFalse(missing.title.contains("הורדת") || missing.detail.orEmpty().contains("אינטרנט"))
-        assertTrue(missing.detail?.contains("ממי שהתקין את הטלפון") == true)
+        assertTrue(missing.detail?.contains("ממי שהגדיר את הטלפון") == true)
         assertEquals(Action.OpenEngineSettings, missing.action)
         assertEquals(PhaseTint.Problem, missing.tint)
     }
@@ -218,7 +218,7 @@ class PhasePresentationTest {
         )
         for (kind in kinds) {
             val shown = present(failure(unavailable(kind)), TranscriptionEngineKind.Cloud)
-            assertTrue(shown.detail?.contains("ממי שהתקין את הטלפון") == true, "$kind")
+            assertTrue(shown.detail?.contains("ממי שהגדיר את הטלפון") == true, "$kind")
             assertEquals(Action.OpenEngineSettings, shown.action)
         }
         val phone = present(failure(unavailable(EngineUnavailability.Kind.Other)), TranscriptionEngineKind.WhisperKit)
@@ -247,7 +247,7 @@ class PhasePresentationTest {
         assertTrue(unreachable.detail?.contains("אין חיבור למחשב בבית") == true)
         assertTrue(refused.detail?.contains("קוד הצימוד") == true)
         assertTrue(refused.action == Action.OpenEngineSettings && refused.tint == PhaseTint.Active)
-        assertTrue(refused.detail?.contains("ממי שהתקין את הטלפון") == true)
+        assertTrue(refused.detail?.contains("ממי שהגדיר את הטלפון") == true)
         assertTrue(!refused.detailFitsInStatus && !unreachable.detailFitsInStatus)
     }
 
@@ -281,7 +281,7 @@ class PhasePresentationTest {
         val noKey = covering(EngineUnavailability.Kind.CloudKeyNeeded)
         val noCredit = covering(EngineUnavailability.Kind.CloudOutOfCredit)
         val offline = covering(EngineUnavailability.Kind.NoInternet)
-        assertTrue(noKey.detail?.contains("OpenRouter") == false && noKey.detail?.contains("ממי שהתקין את הטלפון") == true)
+        assertTrue(noKey.detail?.contains("OpenRouter") == false && noKey.detail?.contains("ממי שהגדיר את הטלפון") == true)
         assertTrue(noKey.action == Action.OpenEngineSettings && noKey.tint == PhaseTint.Active)
         assertTrue(noCredit.detail?.contains("התקציב") == true)
         assertTrue(noCredit.action == Action.OpenEngineSettings && noCredit.tint == PhaseTint.Active)
@@ -326,7 +326,7 @@ class PhasePresentationTest {
         )
         assertEquals(Action.Retry, presentation.action)
         assertTrue(presentation.isBusy)
-        assertTrue(presentation.detail?.contains("מנסה שוב לבד") == true)
+        assertTrue(presentation.detail?.contains("מנסים שוב אוטומטית") == true)
     }
 
     @Test
@@ -353,7 +353,7 @@ class PhasePresentationTest {
             TranscriptionEngineKind.WhisperKit,
             downloadSecondsRemaining = 200.0,
         )
-        assertTrue(timed.detail?.startsWith("עוד כ-3 דקות · ") == true)
+        assertTrue(timed.detail?.startsWith("עוד כ־3 דקות · ") == true)
     }
 
     @Test
@@ -393,7 +393,7 @@ class PhasePresentationTest {
         assertEquals("עוד פחות מדקה", PhasePresentation.remainingText(20.0))
         assertEquals("עוד כדקה", PhasePresentation.remainingText(75.0))
         assertEquals("עוד כשתי דקות", PhasePresentation.remainingText(125.0))
-        assertEquals("עוד כ-25 דקות", PhasePresentation.remainingText(1_500.0))
+        assertEquals("עוד כ־25 דקות", PhasePresentation.remainingText(1_500.0))
         assertEquals("עוד יותר משעה", PhasePresentation.remainingText(3_600.0))
     }
 
@@ -423,14 +423,14 @@ class PhasePresentationTest {
     fun `a language the chosen service cannot caption says so, and the phone carries on while covering`() {
         val failed = present(failure(unavailable(EngineUnavailability.Kind.CloudLanguageNotCovered)), TranscriptionEngineKind.Cloud)
         assertEquals("השירות לא מתמלל את השפה הזו", failed.title)
-        assertEquals("בחרו שירות אחר · הקישו להגדרות", failed.detail)
+        assertEquals("בחרו שירות אחר · הקישו כדי לפתוח את ההגדרות", failed.detail)
         assertEquals(Action.OpenEngineSettings, failed.action)
         val covering = present(
             PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
             coveringForCloud = true, coveredEngine = TranscriptionEngineKind.Cloud,
             coverReason = EngineUnavailability.Kind.CloudLanguageNotCovered,
         )
-        assertEquals("השירות לא מתמלל את השפה הזו, ממשיך עם הזיהוי שבטלפון · בחרו שירות אחר בהגדרות", covering.detail)
+        assertEquals("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", covering.detail)
         assertEquals(Action.OpenEngineSettings, covering.action)
         assertEquals(PhaseTint.Active, covering.tint)
     }

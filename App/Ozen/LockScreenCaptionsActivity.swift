@@ -50,7 +50,7 @@ final class LockScreenCaptionsActivity: LockScreenCaptionsDisplaying {
             large: content.textSize == .large,
             english: Localization.language == .english,
             appName: tr("אוזן", "Ozen"),
-            listening: tr("מקשיב…", "Listening…"),
+            listening: tr("מאזינה…", "Listening…"),
             notUpdating: tr("הכתוביות לא מתעדכנות. פתחו את אוזן.", "Captions aren’t updating. Open Ozen."),
             appRightToLeft: content.language.isRightToLeft
         )

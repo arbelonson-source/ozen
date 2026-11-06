@@ -87,7 +87,7 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
         AlertDialog(
             onDismissRequest = { confirmingStop = false },
             title = { Text(tr("לעצור את ההמרה לטקסט?", "Stop turning the recording into text?")) },
-            text = { Text(tr("מה שכבר הומר לא יישמר.", "What was already turned into text won’t be saved.")) },
+            text = { Text(tr("הטקסט שכבר נוצר לא יישמר.", "What was already turned into text won’t be saved.")) },
             confirmButton = { TextButton(onClick = { confirmingStop = false; transcriber.cancel() }) { Text(tr("עצירה", "Stop")) } },
             dismissButton = { TextButton(onClick = { confirmingStop = false }) { Text(tr("להמשיך", "Keep going")) } },
         )
@@ -110,7 +110,7 @@ private fun ReadyPage(transcriber: FileTranscriber, ready: FileTranscription.Rea
         } else {
             Text(
                 tr(
-                    "אין בטלפון מודל לשפה %1. אוזן יוריד את \"%2\" (%3 MB) לפני ההמרה לטקסט.",
+                    "אין בטלפון מודל לשפה %1. לפני ההמרה לטקסט, אוזן תוריד את \"%2\" (%3 MB).",
                     "There is no model for %1 on this phone. Ozen will download “%2” (%3 MB) before turning the recording into text.",
                     listOf(ready.language.nativeName, ready.toDownload.displayName, "${ready.toDownload.megabytes}"),
                 ),
@@ -118,7 +118,7 @@ private fun ReadyPage(transcriber: FileTranscriber, ready: FileTranscription.Rea
             )
         }
         Text(
-            tr("הקלטה ארוכה לוקחת זמן. כדאי להשאיר את אוזן פתוח ואת הטלפון מחובר לטעינה.", "A long recording takes a while. Keep Ozen open, and the phone charging."),
+            tr("הקלטה ארוכה לוקחת זמן. כדאי להשאיר את אוזן פתוחה ואת הטלפון בטעינה.", "A long recording takes a while. Keep Ozen open, and the phone charging."),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -149,7 +149,7 @@ private fun ReadyPage(transcriber: FileTranscriber, ready: FileTranscription.Rea
         AlertDialog(
             onDismissRequest = { stoppingCaptions = false },
             title = { Text(tr("הכתוביות פועלות עכשיו", "Captions are on right now")) },
-            text = { Text(tr("מודל אחד לא יכול להפעיל גם כתוביות חיות וגם המרת הקלטה. לעצור את הכתוביות?", "One model can’t run live captions and a recording at the same time. Stop the captions?")) },
+            text = { Text(tr("אותו מודל לא יכול לעבוד בבת אחת על כתוביות חיות ועל הקלטה. לעצור את הכתוביות?", "One model can’t run live captions and a recording at the same time. Stop the captions?")) },
             confirmButton = {
                 TextButton(onClick = { stoppingCaptions = false; transcriber.stopCaptions(); transcriber.start() }, modifier = Modifier.testTag("transcribe-stop-captions")) {
                     Text(tr("עצירת הכתוביות", "Stop captions"))
@@ -246,7 +246,7 @@ private fun DonePage(done: FileTranscription.Done, close: () -> Unit) {
         )
         if (done.endMissing) {
             Text(
-                tr("סוף ההקלטה לא נקרא, ולכן הטקסט נעצר מוקדם.", "The end of this recording couldn’t be read, so the text stops early."),
+                tr("לא היה אפשר לקרוא את סוף ההקלטה, ולכן הטקסט נקטע לפני הסוף.", "The end of this recording couldn’t be read, so the text stops early."),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.testTag("transcribe-end-missing"),
             )

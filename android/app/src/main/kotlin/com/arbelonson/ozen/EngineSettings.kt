@@ -206,7 +206,7 @@ class EngineSettings(
         const val BEAM_SETTLE_MILLIS = 1_000L
 
         fun cloudModelName(model: String): String =
-            if (model == CloudSpeech.FAST_MODEL) tr("מהיר (Gemini Flash Lite)", "Fast (Gemini Flash Lite)") else tr("מדויק יותר, קצת איטי (Gemini Flash)", "More accurate, a bit slower (Gemini Flash)")
+            if (model == CloudSpeech.FAST_MODEL) tr("מהיר (Gemini Flash Lite)", "Fast (Gemini Flash Lite)") else tr("מדויק יותר, קצת יותר איטי (Gemini Flash)", "More accurate, a bit slower (Gemini Flash)")
 
         fun beamDescription(beam: Int): String {
             val top = AppSettings.homeServerBeamRange.last

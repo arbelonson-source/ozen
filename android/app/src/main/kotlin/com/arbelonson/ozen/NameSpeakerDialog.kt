@@ -60,7 +60,7 @@ internal fun NameSpeakerDialog(shown: String, hasVoice: Boolean, savedNames: Lis
                     if (hasVoice) {
                         tr("מעכשיו כל מה שהקול הזה יגיד יופיע עם השם הזה.", "From now on, everything this voice says will show with this name.")
                     } else {
-                        tr("עדיין לא זוהה קול לשורה הזו. נסו שוב אחרי שידברו עוד קצת.", "No voice has been identified for this line yet. Try again after the person talks a bit more.")
+                        tr("עדיין לא זוהה קול לשורה הזו. נסו שוב אחרי שהאדם ידבר עוד קצת.", "No voice has been identified for this line yet. Try again after the person talks a bit more.")
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

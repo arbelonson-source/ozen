@@ -71,7 +71,7 @@ struct HistoryDetailView: View {
         } header: {
             Text(tr("מספרים שנאמרו", "Numbers mentioned"))
         } footer: {
-            Text(tr("שעות, כמויות ומספרי טלפון מהשיחה. נגיעה בשורה מובילה אליה.", "Times, amounts, and phone numbers from the conversation. Tap a line to jump to it."))
+            Text(tr("שעות, כמויות ומספרי טלפון מהשיחה. הקשה על שורה מובילה אליה.", "Times, amounts, and phone numbers from the conversation. Tap a line to jump to it."))
         }
     }
 
@@ -173,10 +173,10 @@ struct HistoryDetailView: View {
 
     private var nextMatchTitle: String {
         if isSearch {
-            return tr("המקום הבא (%1 מתוך %2)", "Next match (%1 of %2)", args: ["\(currentMatch + 1)", "\(matches.count)"])
+            return tr("התוצאה הבאה (%1 מתוך %2)", "Next match (%1 of %2)", args: ["\(currentMatch + 1)", "\(matches.count)"])
         }
         return hasJumped
-            ? tr("הסימון הבא (%1 מתוך %2)", "Next starred (%1 of %2)", args: ["\(currentMatch + 1)", "\(matches.count)"])
+            ? tr("השורה המסומנת הבאה (%1 מתוך %2)", "Next starred (%1 of %2)", args: ["\(currentMatch + 1)", "\(matches.count)"])
             : tr("לשורות המסומנות (%1)", "To starred lines (%1)", args: ["\(matches.count)"])
     }
 
@@ -204,7 +204,7 @@ struct HistoryDetailView: View {
                         utcOffsetAt: { TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: $0)) },
                         marksUncertain: viewModel.display.markUncertainLines
                     ),
-                    subject: Text(tr("שיחה מאוזן", "Conversation from Ozen")),
+                    subject: Text(tr("שיחה מתוך אוזן", "Conversation from Ozen")),
                     message: Text(Date(timeIntervalSince1970: record.startedAt).formatted(inAppLanguage: .abbreviated, time: .shortened))
                 ) {
                     Label(tr("שיתוף", "Share"), systemImage: "square.and.arrow.up")
@@ -251,7 +251,7 @@ struct HistoryDetailView: View {
             }
             .alertOverlay(for: viewModel)
         }
-        .alert(tr("שם לשיחה", "Conversation name"), isPresented: $renaming) {
+        .alert(tr("שם השיחה", "Conversation name"), isPresented: $renaming) {
             TextField(tr("למשל: ביקור אצל הרופא", "For example: doctor’s visit"), text: $newTitle)
             Button(tr("שמירה", "Save")) {
                 viewModel.renameConversation(id: sessionID, title: newTitle)
@@ -534,7 +534,7 @@ private struct SavedLineRow: View {
         .environment(\.layoutDirection, CaptionLayout.readsRightToLeft(segment.text, languageCode: languageCode) ? .rightToLeft : .leftToRight)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(accessibilityText))
-        .accessibilityHint(isMatch ? tr("מכילה את מה שחיפשת", "Contains what you searched for") : "")
+        .accessibilityHint(isMatch ? tr("מכילה את מה שחיפשתם", "Contains what you searched for") : "")
         .accessibilityActions {
             ForEach(PhoneNumbers.matches(in: segment.text), id: \.dialable) { phone in
                 if let url = phone.url {

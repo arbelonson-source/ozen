@@ -110,9 +110,9 @@ class BackgroundAlertPolicy(
         val testNotification: AlertNotificationContent
             get() = AlertNotificationContent(
                 identifier = "test-alert",
-                title = tr("בדיקה: פעמון דלת", "Test: doorbell"),
+                title = tr("בדיקה: צלצול בדלת", "Test: doorbell"),
                 body = tr(
-                    "כך תיראה התראה מאוזן כשהטלפון בכיס או נעול.",
+                    "כך נראית התראה של אוזן כשהטלפון בכיס או נעול.",
                     "This is what a notification from Ozen looks like when the phone is in a pocket or locked.",
                 ),
                 threadIdentifier = "sounds",

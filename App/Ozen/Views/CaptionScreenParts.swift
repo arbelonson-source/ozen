@@ -112,7 +112,7 @@ struct CaptionRow: View {
 
     private var accessibilityLabelText: AttributedString {
         var before = ""
-        if isStarred { before += tr("מסומן כחשוב. ", "Marked as important. ") }
+        if isStarred { before += tr("מסומנת כחשובה. ", "Marked as important. ") }
         if isUncertain { before += tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") }
         if let speakerName { before += "\(speakerName): " }
         var after = ""
@@ -159,7 +159,7 @@ struct NameSpeakerSheet: View {
                         .onSubmit { if canSave { save() } }
                 } footer: {
                     Text(segment.speakerClusterID == nil
-                         ? tr("עדיין לא זוהה קול לשורה הזו. נסו שוב אחרי שידברו עוד קצת.", "No voice has been identified for this line yet. Try again after the person talks a bit more.")
+                         ? tr("עדיין לא זוהה קול לשורה הזו. נסו שוב אחרי שהאדם ידבר עוד קצת.", "No voice has been identified for this line yet. Try again after the person talks a bit more.")
                          : tr("מעכשיו כל מה שהקול הזה יגיד יופיע עם השם הזה.", "From now on, everything this voice says will show with this name."))
                 }
                 if segment.speakerClusterID != nil, !savedNames.isEmpty {

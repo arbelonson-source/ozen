@@ -108,7 +108,7 @@ class PluralizationTest {
     @Test
     fun `a download's minutes left take the form 'about' needs, Russian and Ukrainian 21, 31, 41, 51, Arabic 3 to 10`() {
         val expected = listOf(
-            Triple(UILanguage.Hebrew, 5, "עוד כ-5 דקות"),
+            Triple(UILanguage.Hebrew, 5, "עוד כ־5 דקות"),
             Triple(UILanguage.English, 21, "About 21 minutes left"),
             Triple(UILanguage.Russian, 5, "Осталось около 5 минут"),
             Triple(UILanguage.Russian, 21, "Осталось около 21 минуты"),
@@ -302,8 +302,8 @@ class PluralizationTest {
     fun `counts put into Russian, Ukrainian and Arabic sentences agree with the number`() {
         assertEquals("21%", tr("%1 אחוז", "%1 percent", listOf("21"), UILanguage.Russian))
         assertEquals("2%", tr("%1 אחוז", "%1 percent", listOf("2"), UILanguage.Ukrainian))
-        assertEquals("Батарея на 21%", tr("הסוללה ב-%1 אחוזים", "Battery at %1 percent", listOf("21"), UILanguage.Russian))
-        assertEquals("Батарея на 2%", tr("הסוללה ב-%1 אחוזים", "Battery at %1 percent", listOf("2"), UILanguage.Ukrainian))
+        assertEquals("Батарея на 21%", tr("הסוללה ב־%1 אחוז", "Battery at %1 percent", listOf("21"), UILanguage.Russian))
+        assertEquals("Батарея на 2%", tr("הסוללה ב־%1 אחוז", "Battery at %1 percent", listOf("2"), UILanguage.Ukrainian))
         assertEquals("تسجيل وحفظ (30 ثانية)", tr("הקלטה ושמירה (%1 שניות)", "Record and save (%1 seconds)", listOf("30"), UILanguage.Arabic))
         val twoRecordings = RecordingImport.Result(added = mapOf("Savta" to 2))
         assertTrue("Savta (записей: 2)" in Localization.withLanguage(UILanguage.Russian) { twoRecordings.summary })

@@ -80,7 +80,7 @@ internal fun MicPickerScreen(
             EmptyState(
                 Icons.Rounded.MicOff,
                 tr("אין מיקרופונים זמינים", "No microphones available"),
-                tr("אם האפליקציה עדיין מתחילה, חכו רגע. אחרת חברו אוזניות או מיקרופון חיצוני והקישו על רענון.", "If the app is still starting up, wait a moment. Otherwise, connect headphones or an external microphone and tap refresh."),
+                tr("אם האפליקציה עדיין עולה, חכו רגע. אחרת, חברו אוזניות או מיקרופון חיצוני והקישו על רענון.", "If the app is still starting up, wait a moment. Otherwise, connect headphones or an external microphone and tap refresh."),
             )
         } else {
             SectionHeader(tr("מיקרופונים זמינים", "Available microphones"))
@@ -110,9 +110,9 @@ internal fun MicPickerScreen(
         }
         Footnote(
             if (listening) {
-                tr("דברו ותראו את הפס זז. אם הוא לא זז, המיקרופון שנבחר לא שומע.", "Speak and watch the bar move. If it doesn’t move, the selected microphone isn’t hearing anything.")
+                tr("דברו ובדקו שהפס זז. אם הוא לא זז, המיקרופון שנבחר לא קולט כלום.", "Speak and watch the bar move. If it doesn’t move, the selected microphone isn’t hearing anything.")
             } else {
-                tr("המד פעיל רק בזמן האזנה.", "The meter is only active while listening.")
+                tr("המד פועל רק בזמן ההאזנה.", "The meter is only active while listening.")
             },
         )
 
@@ -121,13 +121,13 @@ internal fun MicPickerScreen(
             item {
                 Tip(
                     Icons.Rounded.Usb,
-                    tr("מיקרופון USB‑C צריך להיות מסוג \"USB Audio\" (כמו רוב מיקרופוני הדש). אם הוא לא מופיע ברשימה, הטלפון לא מזהה אותו בכלל, ולא רק האפליקציה.", "A USB‑C microphone needs to be of the “USB Audio” type (like most lapel mics). If it doesn’t appear in the list, the phone isn’t recognizing it at all, not just the app."),
+                    tr("מיקרופון USB‑C צריך להיות מסוג \"USB Audio\" (כמו רוב מיקרופוני הדש). אם הוא לא מופיע ברשימה, הטלפון עצמו לא מזהה אותו, ולא רק האפליקציה.", "A USB‑C microphone needs to be of the “USB Audio” type (like most lapel mics). If it doesn’t appear in the list, the phone isn’t recognizing it at all, not just the app."),
                 )
             }
             item {
                 Tip(
                     Icons.Rounded.Bluetooth,
-                    tr("אוזניות Bluetooth מופיעות כשהן מחוברות. איכות ההקלטה דרכן נמוכה יותר מאשר מיקרופון חוטי.", "A Bluetooth headset appears once it’s connected. Recording quality through it is lower than a wired microphone."),
+                    tr("אוזניות Bluetooth מופיעות כשהן מחוברות. איכות ההקלטה דרכן נמוכה יותר מאשר במיקרופון חוטי.", "A Bluetooth headset appears once it’s connected. Recording quality through it is lower than a wired microphone."),
                 )
             }
         }

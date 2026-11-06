@@ -123,7 +123,7 @@ internal fun BigTextScreen(
             )
         }
         // As on the iPhone, a screen reader hears what flipping is for.
-        val flipHint = tr("להפוך את הטקסט כדי שמי שיושב מולך יוכל לקרוא", "Flip the text so the person sitting across from you can read it")
+        val flipHint = tr("היפוך הטקסט כדי שמי שיושב מולכם יוכל לקרוא אותו", "Flip the text so the person sitting across from you can read it")
         val clear = {
             cleared = BigTextClear.cleared(text, cleared)
             onText("")
@@ -144,12 +144,12 @@ internal fun BigTextScreen(
             add(
                 BigAction(
                     if (flipped) Icons.AutoMirrored.Rounded.ArrowBack else Icons.Rounded.Flip,
-                    if (flipped) tr("חזרה", "Back") else tr("להפוך", "Flip"),
+                    if (flipped) tr("חזרה", "Back") else tr("היפוך", "Flip"),
                     flipHint.takeUnless { flipped },
                     { flipped = !flipped }.takeUnless { empty },
                 ),
             )
-            if (canSpeak) add(BigAction(Icons.AutoMirrored.Rounded.VolumeUp, tr("להשמיע", "Speak"), null, onSpeak.takeUnless { empty }))
+            if (canSpeak) add(BigAction(Icons.AutoMirrored.Rounded.VolumeUp, tr("השמעה", "Speak"), null, onSpeak.takeUnless { empty }))
             add(BigAction(Icons.Rounded.Close, tr("סגירה", "Close"), null, onClose))
         }
         HorizontalDivider(color = look.chrome.copy(alpha = 0.2f))

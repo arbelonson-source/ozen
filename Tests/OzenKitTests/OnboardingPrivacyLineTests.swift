@@ -7,7 +7,7 @@ struct OnboardingPrivacyLineTests {
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
 
     private static let english = "By default it all happens on the phone."
-    private static let hebrew = "כברירת מחדל, הכל קורה בתוך הטלפון."
+    private static let hebrew = "כברירת מחדל, הכול קורה בתוך הטלפון."
     private static let oldEnglish = "Nothing is sent to the internet"
     private static let oldHebrew = "שום דבר לא נשלח לאינטרנט"
 

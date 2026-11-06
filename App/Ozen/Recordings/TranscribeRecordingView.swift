@@ -35,7 +35,7 @@ struct TranscribeRecordingView: View {
                 Button(tr("עצירה", "Stop"), role: .destructive) { model.stop() }
                 Button(tr("להמשיך", "Keep going"), role: .cancel) {}
             } message: {
-                Text(tr("מה שכבר הומר לא יישמר.", "What was already turned into text won’t be saved."))
+                Text(tr("הטקסט שכבר נוצר לא יישמר.", "What was already turned into text won’t be saved."))
             }
             .accessibilityIdentifier("transcribeRecordingScreen")
     }
@@ -79,7 +79,7 @@ struct TranscribeRecordingView: View {
             }
             if ready.captionsRunning {
                 Section {
-                    Text(tr("מודל אחד לא יכול להפעיל גם כתוביות חיות וגם המרת הקלטה. לעצור את הכתוביות?", "One model can’t run live captions and a recording at the same time. Stop the captions?"))
+                    Text(tr("אותו מודל לא יכול לעבוד בבת אחת על כתוביות חיות ועל הקלטה. לעצור את הכתוביות?", "One model can’t run live captions and a recording at the same time. Stop the captions?"))
                     Button(tr("עצירת הכתוביות", "Stop captions")) {
                         Task { await model.stopCaptions() }
                     }
@@ -97,7 +97,7 @@ struct TranscribeRecordingView: View {
                 .disabled(ready.captionsRunning)
                 .accessibilityIdentifier("transcribeStartButton")
             } footer: {
-                Text(tr("הקלטה ארוכה לוקחת זמן. כדאי להשאיר את אוזן פתוח ואת הטלפון מחובר לטעינה.", "A long recording takes a while. Keep Ozen open, and the phone charging."))
+                Text(tr("הקלטה ארוכה לוקחת זמן. כדאי להשאיר את אוזן פתוחה ואת הטלפון בטעינה.", "A long recording takes a while. Keep Ozen open, and the phone charging."))
             }
         }
     }
@@ -114,7 +114,7 @@ struct TranscribeRecordingView: View {
             Text(tr("מודל: %1", "Model: %1", args: ["\(chosen.displayName)"]))
         } else {
             Text(tr(
-                "אין בטלפון מודל לשפה %1. אוזן יוריד את \"%2\" (%3 MB) לפני ההמרה לטקסט.",
+                "אין בטלפון מודל לשפה %1. לפני ההמרה לטקסט, אוזן תוריד את \"%2\" (%3 MB).",
                 "There is no model for %1 on this phone. Ozen will download “%2” (%3 MB) before turning the recording into text.",
                 args: ["\(ready.language.spokenName)", "\(ready.toDownload.displayName)", "\(ready.toDownload.sizeMB)"]
             ))
@@ -166,7 +166,7 @@ struct TranscribeRecordingView: View {
                         .foregroundStyle(.secondary)
                 }
                 if done.endMissing {
-                    Text(tr("סוף ההקלטה לא נקרא, ולכן הטקסט נעצר מוקדם.", "The end of this recording couldn’t be read, so the text stops early."))
+                    Text(tr("לא היה אפשר לקרוא את סוף ההקלטה, ולכן הטקסט נקטע לפני הסוף.", "The end of this recording couldn’t be read, so the text stops early."))
                         .foregroundStyle(.readable(.orange))
                 }
             }

@@ -262,7 +262,7 @@ public struct ConversationStats: Sendable, Equatable {
     /// 21, 31, 41, 51; Arabic counts 3 to 10 in the plural. The table has
     /// one wording per language, so only the noun is changed here.
     public static func aboutMinutesLeftText(_ minutes: Int) -> String {
-        let text = tr("עוד כ-%1 דקות", "About %1 minutes left", args: ["\(minutes)"])
+        let text = tr("עוד כ־%1 דקות", "About %1 minutes left", args: ["\(minutes)"])
         let endsInOne = minutes % 10 == 1 && minutes % 100 != 11
         switch Localization.language {
         case .russian where endsInOne: return text.replacingOccurrences(of: " минут", with: " минуты")

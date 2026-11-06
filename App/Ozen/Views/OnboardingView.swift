@@ -134,12 +134,12 @@ struct OnboardingView: View {
         switch step {
         case .welcome: return tr("אוזן", "Ozen")
         case .howItWorks: return tr("איך זה עובד", "How it works")
-        case .language: return tr("באיזו שפה מדברים סביבך?", "Which language do people around you speak?")
-        case .engine: return tr("הכנה חד-פעמית", "One-time setup")
+        case .language: return tr("באיזו שפה מדברים סביבכם?", "Which language do people around you speak?")
+        case .engine: return tr("הכנה חד־פעמית", "One-time setup")
         case .model: return tr("בחירת מודל הדיבור", "Choose the speech model")
         case .microphone: return tr("המיקרופון", "The microphone")
-        case .name: return tr("כשקוראים לך", "When you’re called")
-        case .ready: return tr("מוכן", "Ready")
+        case .name: return tr("כשקוראים לכם", "When you’re called")
+        case .ready: return tr("הכול מוכן", "Ready")
         }
     }
 
@@ -156,29 +156,29 @@ struct OnboardingView: View {
 
     private var welcomePage: some View {
         OnboardingPage(symbol: "ear", title: tr("אוזן", "Ozen")) {
-            Text(tr("כתוביות חיות לשיחה.", "Live captions for conversation."))
-            Text(tr("מה שאומרים לידך מופיע על המסך, באותיות גדולות, תוך כדי הדיבור.", "What’s said near you appears on the screen, in large letters, as it’s spoken."))
+            Text(tr("כתוביות בזמן אמת לכל שיחה.", "Live captions for conversation."))
+            Text(tr("מה שאומרים לידכם מופיע על המסך באותיות גדולות, תוך כדי הדיבור.", "What’s said near you appears on the screen, in large letters, as it’s spoken."))
             if viewModel.settings.engine == .homeServer {
                 Text(tr("הקול נשלח רק למחשב של המשפחה בבית, ורק בזמן שהכתוביות פועלות.", "The audio goes only to the family’s computer at home, and only while captions are on."))
             } else if !viewModel.settings.audioLeavesPhone {
-                Text(tr("כברירת מחדל, הכל קורה בתוך הטלפון.", "By default it all happens on the phone."))
+                Text(tr("כברירת מחדל, הכול קורה בתוך הטלפון.", "By default it all happens on the phone."))
             }
         }
     }
 
     private var howItWorksPage: some View {
         OnboardingPage(symbol: "text.bubble", title: tr("איך זה עובד", "How it works")) {
-            OnboardingRow(symbol: "mic.fill", text: tr("מניחים את הטלפון על השולחן, והכתוביות רצות לבד.", "Set the phone on the table, and the captions run on their own."))
+            OnboardingRow(symbol: "mic.fill", text: tr("מניחים את הטלפון על השולחן, והכתוביות מופיעות מעצמן.", "Set the phone on the table, and the captions run on their own."))
             OnboardingRow(symbol: "person.2.fill", text: tr("האפליקציה מבדילה בין דוברים ויכולה ללמוד את השמות שלהם.", "The app tells speakers apart and can learn their names."))
-            OnboardingRow(symbol: "bell.badge.fill", text: tr("היא מתריעה על שמות שחשובים לך, ועל צלצול בדלת או אזעקה, ברטט שונה לכל אחד.", "It alerts you to names that matter to you, and to a doorbell or alarm, with a different vibration for each."))
-            OnboardingRow(symbol: "keyboard", text: tr("ואפשר להקליד תשובה, והטלפון יגיד אותה בקול.", "And you can type a reply, and the phone will speak it aloud."))
+            OnboardingRow(symbol: "bell.badge.fill", text: tr("היא מתריעה כשאומרים שמות שחשובים לכם, וגם על צלצול בדלת או על אזעקה, ברטט שונה לכל אחד מהם.", "It alerts you to names that matter to you, and to a doorbell or alarm, with a different vibration for each."))
+            OnboardingRow(symbol: "keyboard", text: tr("ואפשר גם להקליד תשובה, והטלפון יקריא אותה בקול.", "And you can type a reply, and the phone will speak it aloud."))
         }
     }
 
     /// Before the engine page, which then offers the model for it. Hebrew
     /// is chosen until she picks another.
     private var languagePage: some View {
-        OnboardingPage(symbol: "globe", title: tr("באיזו שפה מדברים סביבך?", "Which language do people around you speak?")) {
+        OnboardingPage(symbol: "globe", title: tr("באיזו שפה מדברים סביבכם?", "Which language do people around you speak?")) {
             VStack(spacing: 8) {
                 ForEach(UILanguage.allCases, id: \.self) { language in
                     LanguageChoiceRow(name: language.spokenName, selected: viewModel.settings.spokenLanguage == language) {
@@ -186,14 +186,14 @@ struct OnboardingView: View {
                     }
                 }
             }
-            Text(tr("הכתוביות נכתבות בשפה הזו. אפשר לשנות בכל רגע בהגדרות.", "The captions are written in this language. You can change it anytime in Settings."))
+            Text(tr("הכתוביות נכתבות בשפה הזו. אפשר לשנות אותה בכל רגע בהגדרות.", "The captions are written in this language. You can change it anytime in Settings."))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
     }
 
     private var enginePage: some View {
-        OnboardingPage(symbol: "cpu", title: tr("הכנה חד-פעמית", "One-time setup")) {
+        OnboardingPage(symbol: "cpu", title: tr("הכנה חד־פעמית", "One-time setup")) {
             // Scanning the home computer's QR code on a new phone lands here
             // with that engine already chosen; without its own card nothing
             // looked selected, and "recommended" quietly undid the pairing.
@@ -207,7 +207,7 @@ struct OnboardingView: View {
             }
             EngineCard(
                 title: viewModel.settings.spokenLanguage == .hebrew ? tr("עברית מדויקת (מומלץ)", "Accurate Hebrew (recommended)") : tr("מדויק (מומלץ)", "Accurate (recommended)"),
-                subtitle: tr("מוריד פעם אחת קובץ של כ-%1, ב-Wi-Fi, ומכין אותו לטלפון במשך כמה דקות. אחר כך עובד בלי אינטרנט.", "Downloads a file of about %1 once, over Wi‑Fi, and takes a few minutes to set it up for the phone. After that it works without the internet.", args: ["\(modelSizeText)"]),
+                subtitle: tr("הורדה חד־פעמית של קובץ בגודל של כ־%1 ב־Wi‑Fi, ואחריה כמה דקות של הכנה לטלפון. מאותו רגע הכול עובד גם בלי אינטרנט.", "Downloads a file of about %1 once, over Wi‑Fi, and takes a few minutes to set it up for the phone. After that it works without the internet.", args: ["\(modelSizeText)"]),
                 symbol: "sparkles",
                 selected: viewModel.settings.engine == .whisperKit
             ) {
@@ -223,8 +223,8 @@ struct OnboardingView: View {
             EngineCard(
                 title: tr("בלי הורדה", "No download"),
                 subtitle: viewModel.settings.spokenLanguage == .hebrew
-                    ? tr("הזיהוי של אפל, שמובנה בטלפון. מתחיל מיד, אבל עברית זמינה רק בחלק מגרסאות iOS.", "Apple’s recognition, built into the phone. Starts right away, but Hebrew is only available on some iOS versions.")
-                    : tr("הזיהוי של אפל, שמובנה בטלפון. מתחיל מיד, אבל לא כל השפות זמינות.", "Apple’s recognition, built into the phone. Starts right away, but not every language is available."),
+                    ? tr("זיהוי הדיבור של אפל, המובנה בטלפון. מתחיל מיד, אבל עברית זמינה רק בחלק מגרסאות iOS.", "Apple’s recognition, built into the phone. Starts right away, but Hebrew is only available on some iOS versions.")
+                    : tr("זיהוי הדיבור של אפל, המובנה בטלפון. מתחיל מיד, אבל לא כל השפות זמינות.", "Apple’s recognition, built into the phone. Starts right away, but not every language is available."),
                 symbol: "bolt.fill",
                 selected: viewModel.settings.engine == .appleSpeech
             ) {
@@ -293,9 +293,9 @@ struct OnboardingView: View {
                     .foregroundStyle(.readable(.green))
                     .font(.title3.weight(.semibold))
                     .accessibilityIdentifier("onboardingMicrophoneApproved")
-                Text(tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע על צלצול בדלת, אזעקה או השם שלך.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."))
+                Text(tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע לכם על צלצול בדלת, על אזעקה או כשקוראים בשמכם.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."))
                 if let notificationsAllowed {
-                    Label(notificationsAllowed ? tr("ההתראות מאושרות", "Notifications approved") : tr("בלי התראות. אפשר לשנות בהגדרות.", "No notifications. This can be changed in Settings."), systemImage: notificationsAllowed ? "checkmark.circle.fill" : "bell.slash")
+                    Label(notificationsAllowed ? tr("ההתראות מאושרות", "Notifications approved") : tr("ההתראות לא אושרו. אפשר לשנות את זה בהגדרות.", "No notifications. This can be changed in Settings."), systemImage: notificationsAllowed ? "checkmark.circle.fill" : "bell.slash")
                         .foregroundStyle(.readable(notificationsAllowed ? .green : .secondary))
                         .accessibilityIdentifier("onboardingNotificationsAnswered")
                     if OnboardingNotificationAdvice.showsSettingsButton(allowed: notificationsAllowed) {
@@ -318,7 +318,7 @@ struct OnboardingView: View {
                     Label(tr("המיקרופון חסום", "Microphone blocked"), systemImage: "xmark.circle.fill")
                         .foregroundStyle(.readable(.red))
                         .font(.title3.weight(.semibold))
-                    Text(tr("בלי מיקרופון אין כתוביות. אפשר לאשר בהגדרות הטלפון.", "Without a microphone there are no captions. It can be approved in the phone’s Settings."))
+                    Text(tr("בלי מיקרופון אין כתוביות. אפשר לאשר אותו בהגדרות הטלפון.", "Without a microphone there are no captions. It can be approved in the phone’s Settings."))
                     Button {
                         if let url = URL(string: UIApplication.openSettingsURLString) {
                             openURL(url)
@@ -361,28 +361,28 @@ struct OnboardingView: View {
     /// it's asked for while the family member setting the phone up is
     /// still holding it.
     private var namePage: some View {
-        OnboardingPage(symbol: "bell.and.waves.left.and.right", title: tr("כשקוראים לך", "When you’re called")) {
-            Text(tr("כשמישהו אומר את השם שלך, הטלפון רוטט והשורה מסומנת, גם כשלא מסתכלים על המסך.", "When someone says your name, the phone vibrates and the line is highlighted, even when no one is looking at the screen."))
+        OnboardingPage(symbol: "bell.and.waves.left.and.right", title: tr("כשקוראים לכם", "When you’re called")) {
+            Text(tr("כשמישהו אומר את השם שלכם, הטלפון רוטט והשורה מסומנת, גם כשלא מסתכלים על המסך.", "When someone says your name, the phone vibrates and the line is highlighted, even when no one is looking at the screen."))
             NameAlertForm(viewModel: viewModel)
-            Text(tr("אפשר להוסיף עוד מילים, או למחוק, בהגדרות ← התראות ← מילים חשובות.", "More words can be added or removed in Settings → Alerts → Important words."))
+            Text(tr("אפשר להוסיף עוד מילים או למחוק מילים בהגדרות ← התראות ← מילים חשובות.", "More words can be added or removed in Settings → Alerts → Important words."))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
     }
 
     private var readyPage: some View {
-        OnboardingPage(symbol: "checkmark.seal", title: tr("מוכן", "Ready")) {
+        OnboardingPage(symbol: "checkmark.seal", title: tr("הכול מוכן", "Ready")) {
             switch viewModel.settings.engine.firstRunNote {
             case .modelDownload:
-                Text(tr("בהפעלה הראשונה אוזן תוריד את מודל הדיבור (%1). זה לוקח כמה דקות ומוצג על המסך. אחר כך — מיד.", "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.", args: ["\(modelSizeText)"]))
+                Text(tr("בהפעלה הראשונה אוזן תוריד את מודל הדיבור (%1). זה לוקח כמה דקות, וההתקדמות מוצגת על המסך. בפעמים הבאות הכתוביות יתחילו מיד.", "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.", args: ["\(modelSizeText)"]))
             case .speechPermission:
-                Text(tr("בהפעלה הראשונה iOS עשוי לבקש אישור לזיהוי דיבור.", "The first time it runs, iOS may ask for permission to recognize speech."))
+                Text(tr("בהפעלה הראשונה ייתכן ש־iOS יבקש אישור לזיהוי דיבור.", "The first time it runs, iOS may ask for permission to recognize speech."))
             case .homeComputer:
                 Text(Self.pairedNote)
             case .none:
                 EmptyView()
             }
-            Text(tr("הכפתור למטה מתחיל את הכתוביות. בהצלחה, סבתא.", "The button below starts the captions. Good luck, Grandma."))
+            Text(tr("הכפתור למטה מפעיל את הכתוביות. בהצלחה, סבתא.", "The button below starts the captions. Good luck, Grandma."))
         }
     }
 
@@ -414,7 +414,7 @@ struct OnboardingView: View {
                 Button {
                     finish()
                 } label: {
-                    Label(tr("להתחיל", "Start"), systemImage: "captions.bubble.fill")
+                    Label(tr("התחלה", "Start"), systemImage: "captions.bubble.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .ozenGlassButton(prominent: true)
@@ -504,7 +504,7 @@ struct OnboardingView: View {
     }
 
     private static var pairedNote: String {
-        tr("מחובר בקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home.")
+        tr("החיבור נעשה בעזרת הקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home.")
     }
 
     private var modelSizeText: String {
