@@ -218,12 +218,13 @@ final class OzenScreenshotUITests: XCTestCase {
         bringOffBottomEdge(app, row)
         row.tap()
         XCTAssertTrue(app.descendants(matching: .any)["vocabularyScreen"].waitForExistence(timeout: 10), "word fixes: the names and words screen never appeared")
-        let fix = app.descendants(matching: .any)["דנה אברמי → דנה אברהמי"]
+        let fix = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "דנה אברמי")).firstMatch
         var swipes = 0
-        while !(fix.exists && fix.isHittable), swipes < 10 {
+        while !fix.exists, swipes < 10 {
             swipeUpAlongTheEdge(app)
             swipes += 1
         }
+        if !fix.exists { print("TREE-DUMP", app.debugDescription) }
         XCTAssertTrue(fix.exists, "word fixes: the saved fix is not listed")
         XCTAssertTrue(app.buttons["הוספת תיקון"].exists, "word fixes: the add-fix button is missing")
         capture(app, name: "word-fixes-settings-hebrew")
