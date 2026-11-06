@@ -22,8 +22,11 @@ public enum ModelFitWatch {
     public static func measurementToKeep(
         saved: LivePassMeasurement?,
         counted: LivePassMeasurement?,
-        live: LivePassMeasurement?
+        live: LivePassMeasurement?,
+        selected: String
     ) -> LivePassMeasurement? {
+        let counted = counted?.variant == selected ? counted : nil
+        let live = live?.variant == selected ? live : nil
         if let counted, shouldSave(passes: counted.passes) { return counted }
         guard let live, live.passes >= DeviceModelAdvisor.minimumMeasuredPasses else { return saved }
         if let saved, saved.fitEligible == true, shouldSave(passes: saved.passes), saved.variant == live.variant { return saved }
