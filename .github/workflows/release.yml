@@ -26,7 +26,7 @@ jobs:
       - name: Build the release APK, signed with Ozen's key
         # Android installs an update only over an app signed with the same
         # key, so every release is signed with the one key kept in the
-        # repository's secrets. The version is the iPhone build's: 0.2.N.
+        # repository's secrets. The version is the iPhone build's: 0.3.N.
         working-directory: android
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -155,7 +155,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # Tagged as a version (v0.2.18 for build 18 of 0.2.0): GitHub
+          # Tagged as a version (v0.3.18 for build 18 of 0.3.0): GitHub
           # orders releases made on the same day by their version, and a
           # tag like build-18 isn't one, so they came out shuffled.
           VERSION=$(sed -n 's/^ *MARKETING_VERSION: *"\([0-9.]*\)".*/\1/p' project.yml | head -n 1)
