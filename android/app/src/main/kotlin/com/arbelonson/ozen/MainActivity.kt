@@ -1639,7 +1639,7 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, onSwitch: () 
                 }
             }
             if (waiting) Text(
-                tr("ממתין ל‑Wi‑Fi כדי להוריד. אפשר לאשר הורדה בגלישה סלולרית בהגדרות.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings."),
+                tr("ממתינים ל־Wi‑Fi כדי להוריד. אפשר לאשר בהגדרות הורדה בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings."),
                 color = colors.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp, bottom = OzenSpacing.Unit).testTag("model-fit-waiting"),
