@@ -122,7 +122,7 @@ internal fun SayScreen(
         BigTextScreen(draft, onDraft, look, captionSize, canSpeak = canSay(draft), onSpeak = speakTyped, onClose = { bigLetters = false })
         return
     }
-    val play = tr("להשמיע", "Play")
+    val play = tr("השמעה", "Play")
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(modifier = Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())) {
             OzenTopBar(tr("להגיד משהו", "Say something"), onClose = onClose, closeLabel = tr("סגירה", "Close"))
@@ -159,21 +159,21 @@ internal fun SayScreen(
                         OutlinedButton(
                             onClick = { onSpeak(phrase) },
                             enabled = canSay(phrase),
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics { contentDescription = tr("להשמיע שוב: %1", "Play again: %1", listOf(phrase)) },
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics { contentDescription = tr("השמעה חוזרת: %1", "Play again: %1", listOf(phrase)) },
                         ) {
                             Icon(Icons.Rounded.Replay, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(phrase, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                         }
                         if (phrase !in phrases) {
-                            IconButton(onClick = { onAddPhrase(phrase) }, modifier = Modifier.semantics { contentDescription = tr("להוסיף למשפטים המוכנים", "Add to quick phrases") }) {
+                            IconButton(onClick = { onAddPhrase(phrase) }, modifier = Modifier.semantics { contentDescription = tr("הוספה למשפטים המוכנים", "Add to quick phrases") }) {
                                 Icon(Icons.Rounded.Add, contentDescription = null)
                             }
                         }
                     }
                 }
                 // As on the iPhone, a screen reader hears what the big letters are for.
-                val bigLettersFor = tr("לתת למישהו לכתוב לך, או להראות למי שמולך מה כתבת", "Let someone write to you, or show the person you’re talking with what you wrote")
+                val bigLettersFor = tr("כדי שמישהו יוכל לכתוב לכם, או כדי להראות למי שמולכם מה כתבתם", "Let someone write to you, or show the person you’re talking with what you wrote")
                 TonalButton(
                     tr("מסך מלא באותיות גדולות", "Full screen, big letters"),
                     onClick = { bigLetters = true },
@@ -230,7 +230,7 @@ internal fun SayScreen(
                         }
                     }
                     TextButton(onClick = { confirmingRestore = true }, enabled = !phrasesAreDefault) {
-                        Text(tr("לשחזר את ברירת המחדל", "Restore defaults"), color = if (phrasesAreDefault) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
+                        Text(tr("שחזור ברירת המחדל", "Restore defaults"), color = if (phrasesAreDefault) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
                     }
                 } else {
                     val sayableNow = phrases.map { it to canSay(it) }
@@ -265,7 +265,7 @@ internal fun SayScreen(
     if (confirmingRestore) {
         AlertDialog(
             onDismissRequest = { confirmingRestore = false },
-            title = { Text(tr("לשחזר את המשפטים המוכנים?", "Restore the default phrases?")) },
+            title = { Text(tr("לחזור למשפטים המוכנים המקוריים?", "Restore the default phrases?")) },
             text = { Text(tr("המשפטים שנוספו או שונו יימחקו.", "Phrases that were added or changed will be deleted.")) },
             confirmButton = {
                 TextButton(
@@ -273,7 +273,7 @@ internal fun SayScreen(
                         confirmingRestore = false
                         onRestorePhrases()
                     },
-                ) { Text(tr("לשחזר", "Restore"), color = MaterialTheme.colorScheme.error) }
+                ) { Text(tr("שחזור", "Restore"), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { confirmingRestore = false }) { Text(tr("ביטול", "Cancel")) } },
         )
@@ -286,8 +286,8 @@ private fun EditablePhraseRow(phrase: String, onMoveUp: (() -> Unit)?, onMoveDow
     // The iPhone drags a phrase to its place; here, as with Delete, the
     // hold menu and the screen reader move it a place at a time.
     val choices = listOfNotNull(
-        onMoveUp?.let { tr("להזיז למעלה", "Move up") to it },
-        onMoveDown?.let { tr("להזיז למטה", "Move down") to it },
+        onMoveUp?.let { tr("הזזה למעלה", "Move up") to it },
+        onMoveDown?.let { tr("הזזה למטה", "Move down") to it },
         tr("מחיקה", "Delete") to onDelete,
     )
     var menu by remember { mutableStateOf(false) }

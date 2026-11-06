@@ -102,19 +102,19 @@ internal fun SoundAlertsScreen(
         Footnote(SoundAlertsText.safetyNote(Localization.language))
         Footnote(
             tr(
-                "הזיהוי נעשה בטלפון בלבד, על אותו אודיו שמשמש לכתוביות. אותו צליל לא יופיע שוב במשך 20 שניות.",
+                "הזיהוי נעשה בטלפון בלבד, על אותו קול שמשמש לכתוביות. אותו צליל לא יופיע שוב במשך 20 שניות.",
                 "Detection happens only on the phone, using the same audio as the captions. The same sound won’t appear again for 20 seconds.",
             ),
         )
 
         // Each kind of alert buzzes differently, which only helps once
         // she knows which is which.
-        SectionHeader(tr("איך כל התראה מרגישה", "How each alert feels"))
+        SectionHeader(tr("הרטט של כל התראה", "How each alert feels"))
         val samples = listOf(
             Triple(tr("חירום: אזעקה, גלאי עשן", "Emergency: alarm, smoke detector"), AlertVibration.pattern(SoundEvent.Importance.Critical), Icons.Rounded.LocalFireDepartment),
-            Triple(tr("חשוב: פעמון, דפיקה בדלת, בכי של תינוק", "Important: doorbell, knock at the door, baby crying"), AlertVibration.pattern(SoundEvent.Importance.High), Icons.Rounded.DoorFront),
+            Triple(tr("חשוב: פעמון בדלת, דפיקה בדלת, בכי של תינוק", "Important: doorbell, knock at the door, baby crying"), AlertVibration.pattern(SoundEvent.Importance.High), Icons.Rounded.DoorFront),
             Triple(tr("צליל אחר בבית", "Other sound at home"), AlertVibration.pattern(SoundEvent.Importance.Medium), Icons.Rounded.Home),
-            Triple(tr("מילה מהרשימה, כמו השם שלך", "A word from the list, like your name"), AlertVibration.keyword, Icons.Rounded.NotificationsActive),
+            Triple(tr("מילה מהרשימה, כמו השם שלכם", "A word from the list, like your name"), AlertVibration.keyword, Icons.Rounded.NotificationsActive),
             Triple(tr("מישהו מתחיל לדבר אחרי שקט", "Someone starts speaking after silence"), AlertVibration.speechResumed, Icons.Rounded.RecordVoiceOver),
         )
         SettingsGroup(dividerInset = 56.dp) {
@@ -124,7 +124,7 @@ internal fun SoundAlertsScreen(
         }
         Footnote(
             tr(
-                "כשהאפליקציה פתוחה, כל סוג התראה רוטט אחרת, כך שאפשר לדעת מה קרה גם בלי להסתכל. הקישו כדי להרגיש.",
+                "כשהאפליקציה פתוחה, כל סוג התראה רוטט אחרת, כך שאפשר לדעת מה קרה גם בלי להסתכל. הקישו כדי לנסות.",
                 "When the app is open, each kind of alert vibrates differently, so you can tell what happened without looking. Tap to feel it.",
             ),
         )
@@ -161,9 +161,9 @@ private fun com.arbelonson.ozen.ui.SettingsGroupScope.soundRows(
         item {
             Text(
                 if (nearMiss != null) {
-                    tr("נשמע ב-%1%, קצת חלש מדי", "Heard at %1%, a bit too faint", listOf("${(nearMiss.bestConfidence * 100).roundToInt()}"))
+                    tr("נשמע ב־%1%, קצת חלש מדי", "Heard at %1%, a bit too faint", listOf("${(nearMiss.bestConfidence * 100).roundToInt()}"))
                 } else {
-                    tr("מתריע גם על צליל חלש. הקישו כדי לבטל.", "Alerts on a faint sound too. Tap to undo.")
+                    tr("יש התראה גם על צליל חלש. הקישו כדי לבטל.", "Alerts on a faint sound too. Tap to undo.")
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -177,7 +177,7 @@ private fun com.arbelonson.ozen.ui.SettingsGroupScope.soundRows(
 }
 
 internal fun soundFloorName(importance: SoundEvent.Importance): String = when (importance) {
-    SoundEvent.Importance.Critical -> tr("רק חירום", "Emergency only")
+    SoundEvent.Importance.Critical -> tr("חירום בלבד", "Emergency only")
     SoundEvent.Importance.High -> tr("חשוב ומעלה", "Important and above")
     SoundEvent.Importance.Medium -> tr("צלילי בית ומעלה", "Home sounds and above")
     SoundEvent.Importance.Low -> tr("הכול", "Everything")

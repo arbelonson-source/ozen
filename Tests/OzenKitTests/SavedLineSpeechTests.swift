@@ -27,6 +27,6 @@ struct SavedLineSpeechTests {
     @Test("star and doubt come before the words, after the time")
     func markers() {
         let label = SavedLineSpeech.label(for: line("כדור אחד", speaker: nil, starred: true), time: "9:30", uncertain: true)
-        #expect(label == "9:30. מסומן כחשוב. ייתכן שלא נשמע נכון. כדור אחד")
+        #expect(label == "9:30. מסומנת כחשובה. ייתכן שלא נשמע נכון. כדור אחד")
     }
 }

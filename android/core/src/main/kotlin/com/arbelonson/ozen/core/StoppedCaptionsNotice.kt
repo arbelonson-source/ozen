@@ -132,11 +132,11 @@ class StoppedCaptionsNotice {
                 when {
                     failure.kind == PipelineFailure.Kind.MicrophonePermissionDenied ||
                         why == EngineUnavailability.Kind.PermissionDenied -> tr(
-                        "לאוזן אין הרשאה להקשיב. פתחו את האפליקציה כדי לתקן.",
+                        "לאוזן אין הרשאה להשתמש במיקרופון. פתחו את האפליקציה כדי לתקן את זה.",
                         "Ozen doesn't have permission to listen. Open the app to fix it.",
                     )
                     why == EngineUnavailability.Kind.NotEnoughStorage -> tr(
-                        "אין מספיק מקום בטלפון. פתחו את אוזן לפרטים.",
+                        "אין מספיק מקום בטלפון. פתחו את אוזן כדי לראות פרטים.",
                         "There isn't enough space on the phone. Open Ozen for details.",
                     )
                     failure.kind == PipelineFailure.Kind.NoAudioInputs -> tr(
@@ -144,7 +144,7 @@ class StoppedCaptionsNotice {
                         "No microphone was found. Open Ozen to continue.",
                     )
                     why == EngineUnavailability.Kind.CloudKeyNeeded -> tr(
-                        "יש בעיה במפתח של התמלול בענן. פתחו את אוזן לפרטים.",
+                        "יש בעיה במפתח של התמלול בענן. פתחו את אוזן כדי לראות פרטים.",
                         "There's a problem with the cloud transcription key. Open Ozen for details.",
                     )
                     why == EngineUnavailability.Kind.CloudLanguageNotCovered -> tr(
@@ -152,19 +152,19 @@ class StoppedCaptionsNotice {
                         "This service can't caption this language. Open Ozen and choose another service.",
                     )
                     why == EngineUnavailability.Kind.CloudOutOfCredit -> tr(
-                        "נגמר התקציב לתמלול בענן. פתחו את אוזן לפרטים.",
+                        "נגמר התקציב לתמלול בענן. פתחו את אוזן כדי לראות פרטים.",
                         "Cloud transcription’s budget ran out. Open Ozen for details.",
                     )
                     why == EngineUnavailability.Kind.NoInternet -> tr(
-                        "אין אינטרנט, והתמלול בענן צריך אותו. פתחו את אוזן ונסו שוב, או בקשו ממי שהתקין את הטלפון לעבור לזיהוי הדיבור שבטלפון.",
+                        "אין חיבור לאינטרנט, והתמלול בענן לא יכול לעבוד בלעדיו. פתחו את אוזן ונסו שוב, או בקשו ממי שהגדיר את הטלפון לעבור לזיהוי הדיבור שבטלפון.",
                         "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition.",
                     )
                     HomeServer.refusedPlainAddress(failure.engineUnavailability) -> tr(
-                        "מחוץ לרשת הביתית, צריך את הכתובת שמתחילה ב-wss://",
+                        "מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://",
                         "Outside the home network, use the address that starts with wss://",
                     )
                     why == EngineUnavailability.Kind.HomeServerUnreachable -> tr(
-                        "אין תשובה מהמחשב. בדקו שהוא דלוק, ער (לא במצב שינה) ומחובר לאינטרנט.",
+                        "אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.",
                         "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.",
                     )
                     else -> tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")

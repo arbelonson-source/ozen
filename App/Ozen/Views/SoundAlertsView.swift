@@ -40,9 +40,9 @@ struct SoundAlertsView: View {
                     .disabled(!viewModel.soundAlertPreferences.isEnabled)
             } footer: {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(tr("אוזן היא כלי עזר, לא אזעקה מאושרת. אין לסמוך עליה במצבים שבהם אפשר להיפגע או בשעת חירום: השאירו את גלאי העשן במקומם, ואת ההתרעות של פיקוד העורף פעילות.", "Ozen is a helper, not a certified alarm. Don’t rely on it where you could be hurt or in an emergency: keep your smoke alarms, and keep official emergency alerts turned on."))
-                    Text(tr("הזיהוי נעשה בטלפון בלבד, על אותו אודיו שמשמש לכתוביות. אותו צליל לא יופיע שוב במשך 20 שניות.", "Detection happens only on the phone, using the same audio as the captions. The same sound won’t appear again for 20 seconds."))
-                    Text(tr("כדי שאזעקה או גלאי עשן יעירו גם במצב שינה או ״נא לא להפריע״: בהגדרות ה-%1, מיקוד, בכל מצב מיקוד, אפליקציות מותרות, הוסיפו את אוזן.", "So an alarm or smoke detector still wakes you in Sleep or Do Not Disturb: in %1 Settings, Focus, in each Focus, Allowed Apps, add Ozen.", args: ["\(DeviceWord.brand)"]))
+                    Text(tr("אוזן היא כלי עזר, ולא מערכת התרעה מאושרת. אין לסמוך עליה במצבים שבהם אפשר להיפגע או בשעת חירום: השאירו את גלאי העשן במקומם, ואת ההתרעות של פיקוד העורף פעילות.", "Ozen is a helper, not a certified alarm. Don’t rely on it where you could be hurt or in an emergency: keep your smoke alarms, and keep official emergency alerts turned on."))
+                    Text(tr("הזיהוי נעשה בטלפון בלבד, על אותו קול שמשמש לכתוביות. אותו צליל לא יופיע שוב במשך 20 שניות.", "Detection happens only on the phone, using the same audio as the captions. The same sound won’t appear again for 20 seconds."))
+                    Text(tr("כדי שאזעקה או גלאי עשן יעירו אתכם גם במצב שינה או ב־״נא לא להפריע״: בהגדרות ה־%1 עברו אל ״מיקוד״, ובכל מצב מיקוד הוסיפו את אוזן ל״אפליקציות מותרות״.", "So an alarm or smoke detector still wakes you in Sleep or Do Not Disturb: in %1 Settings, Focus, in each Focus, Allowed Apps, add Ozen.", args: ["\(DeviceWord.brand)"]))
                 }
             }
 
@@ -91,14 +91,14 @@ struct SoundAlertsView: View {
     private var vibrationSamples: some View {
         Section {
             sampleButton(tr("חירום: אזעקה, גלאי עשן", "Emergency: alarm, smoke detector"), vibration: .pattern(for: .critical))
-            sampleButton(tr("חשוב: פעמון, דפיקה בדלת, בכי של תינוק", "Important: doorbell, knock at the door, baby crying"), vibration: .pattern(for: .high))
+            sampleButton(tr("חשוב: פעמון בדלת, דפיקה בדלת, בכי של תינוק", "Important: doorbell, knock at the door, baby crying"), vibration: .pattern(for: .high))
             sampleButton(tr("צליל אחר בבית", "Other sound at home"), vibration: .pattern(for: .medium))
-            sampleButton(tr("מילה מהרשימה, כמו השם שלך", "A word from the list, like your name"), vibration: .keyword)
+            sampleButton(tr("מילה מהרשימה, כמו השם שלכם", "A word from the list, like your name"), vibration: .keyword)
             sampleButton(tr("מישהו מתחיל לדבר אחרי שקט", "Someone starts speaking after silence"), vibration: .speechResumed)
         } header: {
-            Text(tr("איך כל התראה מרגישה", "How each alert feels"))
+            Text(tr("הרטט של כל התראה", "How each alert feels"))
         } footer: {
-            Text(tr("כשהאפליקציה פתוחה, כל סוג התראה רוטט אחרת, כך שאפשר לדעת מה קרה גם בלי להסתכל. הקישו כדי להרגיש.", "When the app is open, each kind of alert vibrates differently, so you can tell what happened without looking. Tap to feel it."))
+            Text(tr("כשהאפליקציה פתוחה, כל סוג התראה רוטט אחרת, כך שאפשר לדעת מה קרה גם בלי להסתכל. הקישו כדי לנסות.", "When the app is open, each kind of alert vibrates differently, so you can tell what happened without looking. Tap to feel it."))
         }
     }
 
@@ -115,7 +115,7 @@ struct SoundAlertsView: View {
 
     static func floorName(_ importance: SoundEvent.Importance) -> String {
         switch importance {
-        case .critical: return tr("רק חירום", "Emergency only")
+        case .critical: return tr("חירום בלבד", "Emergency only")
         case .high: return tr("חשוב ומעלה", "Important and above")
         case .medium: return tr("צלילי בית ומעלה", "Home sounds and above")
         case .low: return tr("הכול", "Everything")
@@ -202,10 +202,10 @@ private struct SoundEventRow: View {
             Group {
                 if let nearMiss {
                     Text(tr(
-                        "נשמע ב-%1%, קצת חלש מדי", "Heard at %1%, a bit too faint", args: ["\(Int((nearMiss.bestConfidence * 100).rounded()))"]
+                        "נשמע ב־%1%, קצת חלש מדי", "Heard at %1%, a bit too faint", args: ["\(Int((nearMiss.bestConfidence * 100).rounded()))"]
                     ))
                 } else {
-                    Text(tr("מתריע גם על צליל חלש. הקישו כדי לבטל.", "Alerts on a faint sound too. Tap to undo."))
+                    Text(tr("יש התראה גם על צליל חלש. הקישו כדי לבטל.", "Alerts on a faint sound too. Tap to undo."))
                 }
             }
             .font(.caption)

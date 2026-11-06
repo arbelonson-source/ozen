@@ -179,4 +179,4 @@ private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: 
 
 // Years of stars can outgrow a message as a long conversation does.
 private fun starredShareSheet(context: Context, lines: List<StarredLine>, marksUncertain: Boolean): Intent =
-    textShareSheet(context, tr("שורות מסומנות מאוזן", "Starred lines from Ozen"), TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt = ::localOffset, marksUncertain = marksUncertain))
+    textShareSheet(context, tr("שורות מסומנות מתוך אוזן", "Starred lines from Ozen"), TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt = ::localOffset, marksUncertain = marksUncertain))

@@ -2715,7 +2715,7 @@ struct CaptionPipelineAlertTests {
 
         detector.push(SoundObservation(identifier: "door_bell", confidence: 0.9, timestamp: 100))
         #expect(await eventually { pipeline.soundAlerts.count == 1 })
-        #expect(pipeline.soundAlerts.first?.event.name == "פעמון דלת")
+        #expect(pipeline.soundAlerts.first?.event.name == "צלצול בדלת")
 
         // Same sound inside the cooldown: no second banner.
         detector.push(SoundObservation(identifier: "door_bell", confidence: 0.95, timestamp: 105))

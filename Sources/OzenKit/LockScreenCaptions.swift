@@ -189,7 +189,7 @@ extension LockScreenCaptions {
     public static var endedNotice: AlertNotificationContent {
         AlertNotificationContent(
             identifier: "ozen.lockscreen.ended",
-            title: tr("הכתוביות ירדו ממסך הנעילה", "Captions left the lock screen"),
+            title: tr("הכתוביות כבר לא מוצגות במסך הנעילה", "Captions left the lock screen"),
             body: tr("הכתוביות ממשיכות באפליקציה. פתחו את אוזן כדי להחזיר אותן למסך הנעילה.", "Captions carry on in the app. Open Ozen to bring them back to the lock screen."),
             threadIdentifier: "status",
             isUrgent: false

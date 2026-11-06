@@ -234,7 +234,7 @@ struct CaptionLinesView: View {
     }
 
     private var listeningLabel: some View {
-        Label(state.listening ?? (state.english ? "Listening…" : "מקשיב…"), systemImage: "ear")
+        Label(state.listening ?? (state.english ? "Listening…" : "מאזינה…"), systemImage: "ear")
             .font(.system(size: fontSize, weight: .semibold))
             .foregroundStyle(.white.opacity(0.8))
             .inAppDirection(appDirection)

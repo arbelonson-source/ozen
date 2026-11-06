@@ -24,7 +24,7 @@ object VoiceNotice {
         if (installed == null) return null
         if (installed.isEmpty()) {
             return tr(
-                "אין בטלפון מנוע דיבור או קול מותקן, ולכן אי אפשר להקריא את המשפטים.",
+                "לא מותקנים בטלפון מנוע הקראה או קול, ולכן אי אפשר להקריא את המשפטים.",
                 "No speech engine or voice is installed on this phone, so phrases can’t be read aloud.",
             )
         }
@@ -37,7 +37,7 @@ object VoiceNotice {
     }
 
     private fun missingHebrew(installed: Set<UILanguage>?): String? =
-        if (installed == null || UILanguage.Hebrew in installed) null else tr("אין קול עברי מותקן.", "No Hebrew voice is installed.")
+        if (installed == null || UILanguage.Hebrew in installed) null else tr("לא מותקן קול בעברית.", "No Hebrew voice is installed.")
 }
 
 @Composable

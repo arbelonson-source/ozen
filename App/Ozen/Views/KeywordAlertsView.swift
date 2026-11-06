@@ -41,7 +41,7 @@ struct KeywordAlertsView: View {
                     .accessibilityLabel(Text(listed == nil ? tr("הוספה", "Add") : tr("הפעלה", "Turn on")))
                 }
                 if let listed {
-                    Text(listed.isEnabled ? tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", args: ["\(shown(listed.phrase))"]) : tr("\"%1\" כבר ברשימה, במצב כבוי. הקישו על הפלוס כדי להפעיל מחדש.", "“%1” is already in the list, turned off. Tap the plus to turn it back on.", args: ["\(shown(listed.phrase))"]))
+                    Text(listed.isEnabled ? tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", args: ["\(shown(listed.phrase))"]) : tr("\"%1\" כבר ברשימה, במצב כבוי. הקישו על הפלוס כדי להפעיל אותה שוב.", "“%1” is already in the list, turned off. Tap the plus to turn it back on.", args: ["\(shown(listed.phrase))"]))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -51,12 +51,12 @@ struct KeywordAlertsView: View {
                         .foregroundStyle(.secondary)
                 }
             } footer: {
-                Text(tr("כשמילה מהרשימה נאמרת, הטלפון ירטוט והשורה תודגש בצהוב עם פעמון. גם צורות כמו \"לסבתא\" או \"וסבתא\" נחשבות. כדאי לכתוב מילים בלי ה׳ בהתחלה: \"רופא\" ולא \"הרופא\", כדי שגם \"לרופא\" ייחשב.", "When a word from the list is said, the phone will vibrate and the line will be highlighted in yellow with a bell. Forms like “to grandma” or “and grandma” count too. It’s best to write words without a leading “the”: “doctor” instead of “the doctor”, so “to the doctor” counts too."))
+                Text(tr("כשמילה מהרשימה נאמרת, הטלפון ירטוט והשורה תודגש בצהוב עם פעמון. גם צורות כמו \"לסבתא\" או \"וסבתא\" נחשבות. כדאי לכתוב מילים בלי ה׳ הידיעה: \"רופא\" ולא \"הרופא\", כדי שגם \"לרופא\" ייחשב.", "When a word from the list is said, the phone will vibrate and the line will be highlighted in yellow with a bell. Forms like “to grandma” or “and grandma” count too. It’s best to write words without a leading “the”: “doctor” instead of “the doctor”, so “to the doctor” counts too."))
             }
 
             Section(tr("הרשימה", "List")) {
                 if viewModel.keywordAlerts.isEmpty {
-                    Text(tr("עדיין אין מילים. הוסיפו את השם שלך, שמות של נכדים, או מילים כמו \"תרופה\".", "No words yet. Add your name, grandchildren’s names, or words like “medicine”."))
+                    Text(tr("עדיין אין מילים. הוסיפו את השם שלכם, שמות של הנכדים או מילים כמו \"תרופה\".", "No words yet. Add your name, grandchildren’s names, or words like “medicine”."))
                         .foregroundStyle(.secondary)
                 }
                 ForEach(viewModel.keywordAlerts) { alert in
@@ -89,7 +89,7 @@ struct KeywordAlertsView: View {
                     Button {
                         viewModel.addKeywordAlert(phrase: word)
                     } label: {
-                        Label(tr("להוסיף: %1", "Add: %1", args: ["\(AlertSuggestions.label(for: word, in: viewModel.uiLanguage))"]), systemImage: "plus.circle")
+                        Label(tr("הוספה: %1", "Add: %1", args: ["\(AlertSuggestions.label(for: word, in: viewModel.uiLanguage))"]), systemImage: "plus.circle")
                     }
                 }
             }
@@ -129,7 +129,7 @@ struct KeywordAlertsView: View {
             }
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
         } message: {
-            Text(tr("הטלפון יפסיק להתריע כשהמילה נאמרת.", "The phone will stop alerting when this word is said."))
+            Text(tr("הטלפון יפסיק להתריע כשהמילה הזו תיאמר.", "The phone will stop alerting when this word is said."))
         }
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -163,7 +163,7 @@ struct KeywordAlertsView: View {
     }
 
     private var otherLettersNote: String {
-        tr("הכתוביות באותיות עבריות, ולכן מילה שנכתבה באותיות אחרות עלולה לא להימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found.")
+        tr("הכתוביות נכתבות באותיות עבריות, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found.")
     }
 
     private func add() {

@@ -170,7 +170,7 @@ class PhasePresentation private constructor(
                 // captions stay safely paused.
                 return PhasePresentation(
                     title = tr("הכתוביות מושהות בגלל שיחה", "Captions paused for a call"),
-                    detail = tr("ימשיכו לבד כשהשיחה תסתיים · הקישו לנסות עכשיו", "They’ll continue on their own when the call ends · Tap to try now"),
+                    detail = tr("הכתוביות ימשיכו לבד כשהשיחה תסתיים · הקישו כדי לנסות עכשיו", "They’ll continue on their own when the call ends · Tap to try now"),
                     systemImage = "phone.fill",
                     tint = PhaseTint.Attention,
                     action = Action.Resume,
@@ -187,7 +187,7 @@ class PhasePresentation private constructor(
                 )
 
                 PipelinePhase.RequestingMicrophonePermission -> PhasePresentation(
-                    title = tr("מבקש גישה למיקרופון", "Asking for microphone access"),
+                    title = tr("מבקשים גישה למיקרופון", "Asking for microphone access"),
                     detail = tr("אשרו בחלון שנפתח", "Allow it in the window that opens"),
                     systemImage = "mic.badge.plus",
                     tint = PhaseTint.Working,
@@ -197,7 +197,7 @@ class PhasePresentation private constructor(
                 is PipelinePhase.PreparingEngine -> preparing(phase.progress, downloadSecondsRemaining)
 
                 PipelinePhase.StartingAudio -> PhasePresentation(
-                    title = tr("מפעיל את המיקרופון", "Starting the microphone"),
+                    title = tr("מפעילים את המיקרופון", "Starting the microphone"),
                     detail = null,
                     systemImage = "mic",
                     tint = PhaseTint.Working,
@@ -212,7 +212,7 @@ class PhasePresentation private constructor(
                         // it would open the microphone onto the phone's own voice.
                         PhasePresentation(
                             title = tr("הטלפון מדבר", "The phone is talking"),
-                            detail = tr("הכתוביות ימשיכו לבד כשיסיים · הקישו כדי לעצור אותו", "Captions will continue on their own when it finishes · Tap to stop it"),
+                            detail = tr("הכתוביות ימשיכו לבד כשהטלפון יסיים לדבר · הקישו כדי לעצור אותו", "Captions will continue on their own when it finishes · Tap to stop it"),
                             systemImage = "speaker.wave.2.fill",
                             tint = PhaseTint.Attention,
                             action = Action.StopSpeaking,
@@ -237,7 +237,7 @@ class PhasePresentation private constructor(
             coverReason: EngineUnavailability.Kind?,
         ): PhasePresentation {
             fun listening(detail: String, action: Action) = PhasePresentation(
-                title = tr("מקשיב", "Listening"),
+                title = tr("מאזינה", "Listening"),
                 detail = detail,
                 systemImage = "waveform",
                 tint = PhaseTint.Active,
@@ -247,13 +247,13 @@ class PhasePresentation private constructor(
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.HomeServer &&
                     coverReason == EngineUnavailability.Kind.HomeServerRejected ->
                     listening(
-                        tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיך עם הזיהוי שבטלפון · בקשו עזרה ממי שהתקין את הטלפון", "The home computer didn’t accept the pairing code, carrying on with the phone’s own · Ask whoever set up the phone for help"),
+                        tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, carrying on with the phone’s own · Ask whoever set up the phone for help"),
                         Action.OpenEngineSettings,
                     )
 
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.HomeServer ->
                     listening(
-                        tr("אין חיבור למחשב בבית, ממשיך עם הזיהוי שבטלפון · הקישו כדי להשהות", "Can’t reach the home computer, carrying on with the phone’s own · Tap to pause"),
+                        tr("אין חיבור למחשב בבית, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Can’t reach the home computer, carrying on with the phone’s own · Tap to pause"),
                         Action.Pause,
                     )
 
@@ -265,21 +265,21 @@ class PhasePresentation private constructor(
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.Cloud &&
                     coverReason == EngineUnavailability.Kind.CloudKeyNeeded ->
                     listening(
-                        tr("התמלול בענן לא מוגדר, ממשיך עם הזיהוי שבטלפון · בקשו עזרה ממי שהתקין את הטלפון", "Cloud transcription isn’t set up, carrying on with the phone’s own · Ask whoever set up the phone for help"),
+                        tr("התמלול בענן לא מוגדר, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription isn’t set up, carrying on with the phone’s own · Ask whoever set up the phone for help"),
                         Action.OpenEngineSettings,
                     )
 
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.Cloud &&
                     coverReason == EngineUnavailability.Kind.CloudOutOfCredit ->
                     listening(
-                        tr("נגמר התקציב לתמלול בענן, ממשיך עם הזיהוי שבטלפון · בקשו עזרה ממי שהתקין את הטלפון", "Cloud transcription’s budget ran out, carrying on with the phone’s own · Ask whoever set up the phone for help"),
+                        tr("נגמר התקציב לתמלול בענן, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription’s budget ran out, carrying on with the phone’s own · Ask whoever set up the phone for help"),
                         Action.OpenEngineSettings,
                     )
 
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.Cloud &&
                     coverReason == EngineUnavailability.Kind.CloudLanguageNotCovered ->
                     listening(
-                        tr("השירות לא מתמלל את השפה הזו, ממשיך עם הזיהוי שבטלפון · בחרו שירות אחר בהגדרות", "This service can’t caption this language, carrying on with the phone’s own · Choose another service in Settings"),
+                        tr("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", "This service can’t caption this language, carrying on with the phone’s own · Choose another service in Settings"),
                         Action.OpenEngineSettings,
                     )
 
@@ -287,7 +287,7 @@ class PhasePresentation private constructor(
                 // from the phone's own model while the cloud can't be used.
                 coveringForCloud ->
                     listening(
-                        tr("הכתוביות בענן לא זמינות, ממשיך עם הזיהוי שבטלפון · הקישו כדי להשהות", "Cloud captions aren’t available, carrying on with the phone’s own · Tap to pause"),
+                        tr("התמלול בענן לא זמין, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Cloud captions aren’t available, carrying on with the phone’s own · Tap to pause"),
                         Action.Pause,
                     )
 
@@ -307,7 +307,7 @@ class PhasePresentation private constructor(
                 // tap as "try right now" rather than the only way out.
                 result = PhasePresentation(
                     title = result.title,
-                    detail = tr("מנסה שוב לבד · הקישו כדי לנסות עכשיו", "Trying again on its own · Tap to try now"),
+                    detail = tr("מנסים שוב אוטומטית · הקישו כדי לנסות עכשיו", "Trying again on its own · Tap to try now"),
                     systemImage = "arrow.clockwise",
                     tint = PhaseTint.Attention,
                     isBusy = true,
@@ -322,9 +322,9 @@ class PhasePresentation private constructor(
                 result = PhasePresentation(
                     title = result.title,
                     detail = if (scheduledRetry != null) {
-                        tr("מנסה שוב לבד · הקישו להוספת גיבוי בטלפון", "Trying again on its own · Tap to add a backup on the phone")
+                        tr("מנסים שוב אוטומטית · הקישו כדי להוסיף גיבוי בטלפון", "Trying again on its own · Tap to add a backup on the phone")
                     } else {
-                        tr("בדקו שהמחשב דלוק · הקישו להוספת גיבוי בטלפון", "Check that the computer is on · Tap to add a backup on the phone")
+                        tr("בדקו שהמחשב דלוק · הקישו כדי להוסיף גיבוי בטלפון", "Check that the computer is on · Tap to add a backup on the phone")
                     },
                     systemImage = result.systemImage,
                     tint = PhaseTint.Attention,
@@ -339,7 +339,7 @@ class PhasePresentation private constructor(
             val modelName = preparation.detail?.let { WhisperModelCatalog.option(it)?.displayName ?: it }
             return when (preparation.stage) {
                 EnginePreparationProgress.Stage.CheckingSupport -> PhasePresentation(
-                    title = tr("בודק את מנוע התמלול", "Checking the transcription engine"),
+                    title = tr("בודקים את מנוע התמלול", "Checking the transcription engine"),
                     detail = null,
                     systemImage = "gearshape.2",
                     tint = PhaseTint.Working,
@@ -347,7 +347,7 @@ class PhasePresentation private constructor(
                 )
 
                 EnginePreparationProgress.Stage.RequestingPermission -> PhasePresentation(
-                    title = tr("מבקש אישור לזיהוי דיבור", "Asking for speech recognition permission"),
+                    title = tr("מבקשים אישור לזיהוי דיבור", "Asking for speech recognition permission"),
                     detail = tr("אשרו בחלון שנפתח", "Allow it in the window that opens"),
                     systemImage = "waveform.badge.plus",
                     tint = PhaseTint.Working,
@@ -356,8 +356,8 @@ class PhasePresentation private constructor(
 
                 EnginePreparationProgress.Stage.DownloadingModel -> {
                     val percent = preparation.fraction?.let { roundHalfAwayFromZero(it * 100) }
-                    val title = percent?.let { tr("מוריד את מודל השפה · %1%", "Downloading the language model · %1%", listOf("$it")) }
-                        ?: tr("מוריד את מודל השפה", "Downloading the language model")
+                    val title = percent?.let { tr("מורידים את מודל הדיבור · %1%", "Downloading the language model · %1%", listOf("$it")) }
+                        ?: tr("מורידים את מודל הדיבור", "Downloading the language model")
                     // The download only runs while the app is open; the screen
                     // is kept on meanwhile, but the person might still switch
                     // away.
@@ -380,16 +380,16 @@ class PhasePresentation private constructor(
                 EnginePreparationProgress.Stage.LoadingModel ->
                     if (preparation.isFirstTime) {
                         PhasePresentation(
-                            title = tr("מתאים את המודל לטלפון הזה", "Setting the model up for this phone"),
-                            detail = tr("זה יכול לקחת כמה דקות", "It can take a few minutes") + " · " + tr("השאירו את האפליקציה פתוחה", "Leave the app open"),
+                            title = tr("מתאימים את המודל לטלפון הזה", "Setting the model up for this phone"),
+                            detail = tr("זה עשוי לקחת כמה דקות", "It can take a few minutes") + " · " + tr("השאירו את האפליקציה פתוחה", "Leave the app open"),
                             systemImage = "cpu",
                             tint = PhaseTint.Working,
                             isBusy = true,
                         )
                     } else if (preparation.isTakingLong) {
-                        val detail = tr("זה יכול לקחת כמה דקות", "It can take a few minutes") + " · " + tr("השאירו את האפליקציה פתוחה", "Leave the app open")
+                        val detail = tr("זה עשוי לקחת כמה דקות", "It can take a few minutes") + " · " + tr("השאירו את האפליקציה פתוחה", "Leave the app open")
                         PhasePresentation(
-                            title = tr("עדיין טוען את המודל", "Still loading the model"),
+                            title = tr("המודל עדיין נטען", "Still loading the model"),
                             detail = detail,
                             systemImage = "cpu",
                             tint = PhaseTint.Working,
@@ -397,7 +397,7 @@ class PhasePresentation private constructor(
                         )
                     } else {
                         PhasePresentation(
-                            title = tr("טוען את המודל", "Loading the model"),
+                            title = tr("טוענים את המודל", "Loading the model"),
                             detail = tr("רק רגע", "Just a moment"),
                             systemImage = "cpu",
                             tint = PhaseTint.Working,
@@ -406,7 +406,7 @@ class PhasePresentation private constructor(
                     }
 
                 EnginePreparationProgress.Stage.WarmingUp -> PhasePresentation(
-                    title = tr("כמעט מוכן", "Almost ready"),
+                    title = tr("כמעט מוכנים", "Almost ready"),
                     detail = null,
                     systemImage = "flame",
                     tint = PhaseTint.Working,
@@ -419,7 +419,7 @@ class PhasePresentation private constructor(
             when (failure.kind) {
                 PipelineFailure.Kind.MicrophonePermissionDenied -> PhasePresentation(
                     title = tr("אין גישה למיקרופון", "No microphone access"),
-                    detail = tr("הקישו כדי לפתוח את הגדרות המכשיר ולאפשר", "Tap to open device settings and allow it"),
+                    detail = tr("הקישו כדי לפתוח את הגדרות המכשיר ולאשר גישה", "Tap to open device settings and allow it"),
                     systemImage = "mic.slash",
                     tint = PhaseTint.Problem,
                     action = Action.OpenSystemSettings,
@@ -427,7 +427,7 @@ class PhasePresentation private constructor(
 
                 PipelineFailure.Kind.AudioSessionFailed -> PhasePresentation(
                     title = tr("המיקרופון לא מגיב", "The microphone isn’t responding"),
-                    detail = tr("הקישו לנסות שוב", "Tap to try again"),
+                    detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
                     systemImage = "exclamationmark.triangle",
                     tint = PhaseTint.Problem,
                     action = Action.Retry,
@@ -435,7 +435,7 @@ class PhasePresentation private constructor(
 
                 PipelineFailure.Kind.NoAudioInputs -> PhasePresentation(
                     title = tr("לא נמצא מיקרופון", "No microphone found"),
-                    detail = tr("הקישו לנסות שוב", "Tap to try again"),
+                    detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
                     systemImage = "mic.slash",
                     tint = PhaseTint.Problem,
                     action = Action.Retry,
@@ -462,7 +462,7 @@ class PhasePresentation private constructor(
             return when (engineFailure?.kind) {
                 EngineUnavailability.Kind.PermissionDenied -> PhasePresentation(
                     title = tr("אין אישור לזיהוי דיבור", "No speech recognition permission"),
-                    detail = tr("הקישו כדי לפתוח את הגדרות המכשיר ולאפשר", "Tap to open device settings and allow it"),
+                    detail = tr("הקישו כדי לפתוח את הגדרות המכשיר ולאשר גישה", "Tap to open device settings and allow it"),
                     systemImage = "waveform.slash",
                     tint = PhaseTint.Problem,
                     action = Action.OpenSystemSettings,
@@ -478,15 +478,15 @@ class PhasePresentation private constructor(
 
                 EngineUnavailability.Kind.ModelDownloadFailed -> PhasePresentation(
                     title = tr("הורדת המודל נכשלה", "Downloading the model failed"),
-                    detail = tr("בדקו חיבור לאינטרנט והקישו לנסות שוב", "Check the internet connection and tap to try again"),
+                    detail = tr("בדקו את החיבור לאינטרנט והקישו כדי לנסות שוב", "Check the internet connection and tap to try again"),
                     systemImage = "wifi.exclamationmark",
                     tint = PhaseTint.Problem,
                     action = Action.Retry,
                 )
 
                 EngineUnavailability.Kind.ModelNotOnDevice -> PhasePresentation(
-                    title = tr("מודל השפה עוד לא נמצא בטלפון", "The language model isn’t on this phone yet"),
-                    detail = tr("בקשו עזרה ממי שהתקין את הטלפון", "Ask whoever set up the phone for help"),
+                    title = tr("מודל הדיבור עוד לא הורד לטלפון", "The language model isn’t on this phone yet"),
+                    detail = tr("בקשו עזרה ממי שהגדיר את הטלפון", "Ask whoever set up the phone for help"),
                     systemImage = "arrow.down.circle",
                     tint = PhaseTint.Problem,
                     action = Action.OpenEngineSettings,
@@ -495,8 +495,8 @@ class PhasePresentation private constructor(
                 EngineUnavailability.Kind.WaitingForWiFi -> {
                     val size = engineFailure.downloadMegabytes?.let { if (it > 0) "$it MB" else null }
                     PhasePresentation(
-                        title = tr("ממתין ל-Wi-Fi כדי להוריד את מודל השפה", "Waiting for Wi‑Fi to download the language model"),
-                        detail = listOfNotNull(size, tr("יורד לבד כשיהיה Wi-Fi · הקישו להורדה עכשיו", "Downloads on its own once there’s Wi‑Fi · Tap to download now")).joinToString(" · "),
+                        title = tr("ממתינים ל־Wi‑Fi כדי להוריד את מודל הדיבור", "Waiting for Wi‑Fi to download the language model"),
+                        detail = listOfNotNull(size, tr("יורד לבד כשיהיה Wi‑Fi · הקישו כדי להוריד עכשיו", "Downloads on its own once there’s Wi‑Fi · Tap to download now")).joinToString(" · "),
                         systemImage = "wifi",
                         tint = PhaseTint.Attention,
                         action = Action.ConfirmCellularDownload,
@@ -509,7 +509,7 @@ class PhasePresentation private constructor(
                     }
                     PhasePresentation(
                         title = tr("אין מספיק מקום פנוי בטלפון", "Not enough free space on the phone"),
-                        detail = listOfNotNull(missing, tr("או הקישו לבחור מודל קטן יותר", "Or tap to choose a smaller model")).joinToString(" · "),
+                        detail = listOfNotNull(missing, tr("או הקישו כדי לבחור מודל קטן יותר", "Or tap to choose a smaller model")).joinToString(" · "),
                         systemImage = "externaldrive.badge.exclamationmark",
                         tint = PhaseTint.Problem,
                         action = Action.OpenEngineSettings,
@@ -518,7 +518,7 @@ class PhasePresentation private constructor(
 
                 EngineUnavailability.Kind.ModelLoadFailed -> PhasePresentation(
                     title = tr("טעינת המודל נכשלה", "Loading the model failed"),
-                    detail = tr("הקישו לנסות שוב, או בחרו מודל קטן יותר בהגדרות", "Tap to try again, or choose a smaller model in Settings"),
+                    detail = tr("הקישו כדי לנסות שוב, או בחרו מודל קטן יותר בהגדרות", "Tap to try again, or choose a smaller model in Settings"),
                     systemImage = "cpu",
                     tint = PhaseTint.Problem,
                     action = Action.Retry,
@@ -526,7 +526,7 @@ class PhasePresentation private constructor(
 
                 EngineUnavailability.Kind.CloudKeyNeeded -> PhasePresentation(
                     title = tr("התמלול בענן לא מוגדר", "Cloud transcription isn’t set up"),
-                    detail = tr("בקשו ממי שהתקין את הטלפון לתקן · הקישו להגדרות", "Ask whoever set up the phone to fix it · Tap for Settings"),
+                    detail = tr("בקשו ממי שהגדיר את הטלפון לתקן את זה · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to fix it · Tap for Settings"),
                     systemImage = "key",
                     tint = PhaseTint.Attention,
                     action = Action.OpenEngineSettings,
@@ -534,7 +534,7 @@ class PhasePresentation private constructor(
 
                 EngineUnavailability.Kind.CloudLanguageNotCovered -> PhasePresentation(
                     title = tr("השירות לא מתמלל את השפה הזו", "This service can't caption this language"),
-                    detail = tr("בחרו שירות אחר · הקישו להגדרות", "Choose another service · Tap for Settings"),
+                    detail = tr("בחרו שירות אחר · הקישו כדי לפתוח את ההגדרות", "Choose another service · Tap for Settings"),
                     systemImage = "globe",
                     tint = PhaseTint.Attention,
                     action = Action.OpenEngineSettings,
@@ -542,7 +542,7 @@ class PhasePresentation private constructor(
 
                 EngineUnavailability.Kind.CloudOutOfCredit -> PhasePresentation(
                     title = tr("נגמר התקציב לתמלול בענן", "Cloud transcription’s budget ran out"),
-                    detail = tr("בקשו ממי שהתקין את הטלפון להוסיף תקציב · הקישו להגדרות", "Ask whoever set up the phone to add budget · Tap for Settings"),
+                    detail = tr("בקשו ממי שהגדיר את הטלפון להוסיף תקציב · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to add budget · Tap for Settings"),
                     systemImage = "creditcard",
                     tint = PhaseTint.Attention,
                     action = Action.OpenEngineSettings,
@@ -550,7 +550,7 @@ class PhasePresentation private constructor(
 
                 EngineUnavailability.Kind.NoInternet -> PhasePresentation(
                     title = tr("אין חיבור לאינטרנט", "No internet connection"),
-                    detail = tr("התמלול בענן צריך אינטרנט · הקישו לנסות שוב", "Cloud transcription needs the internet · Tap to try again"),
+                    detail = tr("התמלול בענן צריך חיבור לאינטרנט · הקישו כדי לנסות שוב", "Cloud transcription needs the internet · Tap to try again"),
                     systemImage = "wifi.slash",
                     tint = PhaseTint.Attention,
                     action = Action.Retry,
@@ -562,7 +562,7 @@ class PhasePresentation private constructor(
                 EngineUnavailability.Kind.HomeServerUnreachable -> if (HomeServer.refusedPlainAddress(engineFailure)) {
                     PhasePresentation(
                         title = tr("אין חיבור למחשב בבית", "Can’t reach the home computer"),
-                        detail = tr("מחוץ לרשת הביתית, צריך את הכתובת שמתחילה ב-wss:// · הקישו להגדרות", "Outside the home network, use the address that starts with wss:// · Tap for Settings"),
+                        detail = tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss:// · הקישו כדי לפתוח את ההגדרות", "Outside the home network, use the address that starts with wss:// · Tap for Settings"),
                         systemImage = "desktopcomputer.trianglebadge.exclamationmark",
                         tint = PhaseTint.Attention,
                         action = Action.OpenEngineSettings,
@@ -570,7 +570,7 @@ class PhasePresentation private constructor(
                 } else {
                     PhasePresentation(
                         title = tr("אין חיבור למחשב בבית", "Can’t reach the home computer"),
-                        detail = tr("בדקו שהמחשב דלוק ומחובר · הקישו לנסות שוב", "Check that the computer is on and connected · Tap to try again"),
+                        detail = tr("בדקו שהמחשב דלוק ומחובר · הקישו כדי לנסות שוב", "Check that the computer is on and connected · Tap to try again"),
                         systemImage = "desktopcomputer.trianglebadge.exclamationmark",
                         tint = PhaseTint.Attention,
                         action = Action.Retry,
@@ -579,7 +579,7 @@ class PhasePresentation private constructor(
 
                 EngineUnavailability.Kind.HomeServerRejected -> PhasePresentation(
                     title = tr("המחשב בבית לא קיבל את קוד הצימוד", "The home computer didn’t accept the pairing code"),
-                    detail = tr("בקשו ממי שהתקין את הטלפון לסרוק שוב את קוד ה‑QR · הקישו להגדרות", "Ask whoever set up the phone to scan the QR code again · Tap for Settings"),
+                    detail = tr("בקשו ממי שהגדיר את הטלפון לסרוק שוב את קוד ה־QR · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to scan the QR code again · Tap for Settings"),
                     systemImage = "key",
                     tint = PhaseTint.Attention,
                     action = Action.OpenEngineSettings,
@@ -587,7 +587,7 @@ class PhasePresentation private constructor(
 
                 EngineUnavailability.Kind.TemporarilyUnavailable -> PhasePresentation(
                     title = tr("%1 לא זמין כרגע", "%1 isn’t available right now", listOf(engineName)),
-                    detail = tr("הקישו לנסות שוב", "Tap to try again"),
+                    detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
                     systemImage = "clock",
                     tint = PhaseTint.Attention,
                     action = Action.Retry,
@@ -595,7 +595,7 @@ class PhasePresentation private constructor(
 
                 EngineUnavailability.Kind.Other, null -> PhasePresentation(
                     title = tr("%1 לא זמין", "%1 isn’t available", listOf(engineName)),
-                    detail = tr("הקישו לנסות שוב", "Tap to try again"),
+                    detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
                     systemImage = "exclamationmark.triangle",
                     tint = PhaseTint.Problem,
                     action = Action.Retry,
@@ -626,7 +626,7 @@ class PhasePresentation private constructor(
         }
 
         private fun aboutMinutesLeftText(minutes: Int): String {
-            val text = tr("עוד כ-%1 דקות", "About %1 minutes left", listOf("$minutes"))
+            val text = tr("עוד כ־%1 דקות", "About %1 minutes left", listOf("$minutes"))
             val endsInOne = minutes % 10 == 1 && minutes % 100 != 11
             return when {
                 Localization.language == UILanguage.Russian && endsInOne -> text.replace(" минут", " минуты")

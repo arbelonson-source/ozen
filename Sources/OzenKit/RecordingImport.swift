@@ -28,7 +28,7 @@ public enum RecordingImport {
                 lines.append(tr("נוספו: ", "Added: ") + added.joined(separator: ", "))
             }
             if !unusable.isEmpty {
-                lines.append(tr("לא נוספו (אין בהן מספיק דיבור, או שאין שם בשם הקובץ): ", "Not added (too little speech, or no name in the file name): ") + unusable.joined(separator: ", "))
+                lines.append(tr("לא נוספו (אין בהן מספיק דיבור או שאין שם בשם הקובץ): ", "Not added (too little speech, or no name in the file name): ") + unusable.joined(separator: ", "))
             }
             return lines.joined(separator: "\n\n")
         }

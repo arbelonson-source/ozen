@@ -87,7 +87,7 @@ internal fun SupportScreen(onClose: () -> Unit) {
         SettingsGroup {
             item { Step(tr("1. פתחו את אפליקציית ארנק הקריפטו שלכם ובחרו ״שליחה״.", "1. Open your crypto wallet app and choose Send.")) }
             item { Step(tr("2. בחרו את אותו מטבע שמופיע כאן. מטבע שנשלח לכתובת של מטבע אחר הולך לאיבוד.", "2. Pick the same coin as shown here. A coin sent to another coin’s address is lost.")) }
-            item { Step(tr("3. סרקו את הקוד עם הארנק, או העתיקו את הכתובת והדביקו אותה.", "3. Scan the code with the wallet, or copy the address and paste it.")) }
+            item { Step(tr("3. סרקו את הקוד בעזרת הארנק, או העתיקו את הכתובת והדביקו אותה.", "3. Scan the code with the wallet, or copy the address and paste it.")) }
             item { Step(tr("4. לפני השליחה, ודאו שהתווים הראשונים והאחרונים של הכתובת זהים.", "4. Before sending, check that the first and last few characters of the address match.")) }
         }
         for (donation in SupportOzen.addresses) DonationRow(donation)

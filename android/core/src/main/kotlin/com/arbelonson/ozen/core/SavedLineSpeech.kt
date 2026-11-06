@@ -8,7 +8,7 @@ object SavedLineSpeech {
             line = "$name: $line"
         }
         if (uncertain) line = tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") + line
-        if (segment.isStarred) line = tr("מסומן כחשוב. ", "Marked as important. ") + line
+        if (segment.isStarred) line = tr("מסומנת כחשובה. ", "Marked as important. ") + line
         if (time != null) line = "$time. $line"
         return line
     }

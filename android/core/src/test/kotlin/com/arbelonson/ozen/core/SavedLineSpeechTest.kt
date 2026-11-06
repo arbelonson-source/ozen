@@ -29,6 +29,6 @@ class SavedLineSpeechTest {
     @Test
     fun `star and doubt come before the words, after the time`() {
         val label = SavedLineSpeech.label(line("כדור אחד", null, starred = true), time = "9:30", uncertain = true)
-        assertEquals("9:30. מסומן כחשוב. ייתכן שלא נשמע נכון. כדור אחד", label)
+        assertEquals("9:30. מסומנת כחשובה. ייתכן שלא נשמע נכון. כדור אחד", label)
     }
 }

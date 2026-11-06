@@ -97,7 +97,7 @@ struct PhasePresentationTests {
     func familyOnlyFailures() {
         for kind in [EngineUnavailability.Kind.cloudKeyNeeded, .cloudOutOfCredit, .homeServerRejected] {
             let shown = PhasePresentation(phase: failure(EngineUnavailability(kind: kind, detail: "")), engine: .cloud, interruptedBySystem: false)
-            #expect(shown.detail?.contains("ממי שהתקין את הטלפון") == true, "\(kind)")
+            #expect(shown.detail?.contains("ממי שהגדיר את הטלפון") == true, "\(kind)")
             #expect(shown.action == .openEngineSettings)
         }
         let phone = PhasePresentation(phase: failure(EngineUnavailability(kind: .other, detail: "")), engine: .whisperKit, interruptedBySystem: false)
@@ -125,7 +125,7 @@ struct PhasePresentationTests {
         #expect(unreachable.detail?.contains("אין חיבור למחשב בבית") == true)
         #expect(refused.detail?.contains("קוד הצימוד") == true)
         #expect(refused.action == .openEngineSettings && refused.tint == .green)
-        #expect(refused.detail?.contains("ממי שהתקין את הטלפון") == true)
+        #expect(refused.detail?.contains("ממי שהגדיר את הטלפון") == true)
         #expect(!refused.detailFitsInStatus && !unreachable.detailFitsInStatus)
     }
 
@@ -148,7 +148,7 @@ struct PhasePresentationTests {
         let noKey = covering(.cloudKeyNeeded)
         let noCredit = covering(.cloudOutOfCredit)
         let offline = covering(.noInternet)
-        #expect(noKey.detail?.contains("OpenRouter") == false && noKey.detail?.contains("ממי שהתקין את הטלפון") == true)
+        #expect(noKey.detail?.contains("OpenRouter") == false && noKey.detail?.contains("ממי שהגדיר את הטלפון") == true)
         #expect(noKey.action == .openEngineSettings && noKey.tint == .green)
         #expect(noCredit.detail?.contains("התקציב") == true)
         #expect(noCredit.action == .openEngineSettings && noCredit.tint == .green)
@@ -200,7 +200,7 @@ struct PhasePresentationTests {
         )
         #expect(presentation.action == .retry)
         #expect(presentation.isBusy)
-        #expect(presentation.detail?.contains("מנסה שוב לבד") == true)
+        #expect(presentation.detail?.contains("מנסים שוב אוטומטית") == true)
     }
 
     @Test("a denied microphone sends her to the system settings, not to a retry that can't work")
@@ -230,7 +230,7 @@ struct PhasePresentationTests {
             interruptedBySystem: false,
             downloadSecondsRemaining: 200
         )
-        #expect(timed.detail?.hasPrefix("עוד כ-3 דקות · ") == true)
+        #expect(timed.detail?.hasPrefix("עוד כ־3 דקות · ") == true)
     }
 
     @Test("the first load of a model says it is a wait of minutes, without promising it is the only one; later loads don't")
@@ -274,7 +274,7 @@ struct PhasePresentationTests {
         #expect(PhasePresentation.remainingText(seconds: 20) == "עוד פחות מדקה")
         #expect(PhasePresentation.remainingText(seconds: 75) == "עוד כדקה")
         #expect(PhasePresentation.remainingText(seconds: 125) == "עוד כשתי דקות")
-        #expect(PhasePresentation.remainingText(seconds: 1_500) == "עוד כ-25 דקות")
+        #expect(PhasePresentation.remainingText(seconds: 1_500) == "עוד כ־25 דקות")
         #expect(PhasePresentation.remainingText(seconds: 3_600) == "עוד יותר משעה")
     }
 

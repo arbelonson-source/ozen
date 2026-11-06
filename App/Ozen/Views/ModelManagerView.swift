@@ -36,7 +36,7 @@ struct ModelManagerView: View {
             } header: {
                 Text(tr("מודלים", "Models"))
             } footer: {
-                Text(tr("הורדה נעשית פעם אחת ונשמרת בטלפון (לא מגובה ל‑iCloud). סה\"כ שטח: %1.", "Downloaded once and saved on the phone (not backed up to iCloud). Total space: %1.", args: ["\(Self.format(bytes: totalOnDisk))"]) + (freeBytes.map { " " + tr("פנוי בטלפון: %1.", "Free on the phone: %1.", args: ["\(Self.format(bytes: $0))"]) } ?? ""))
+                Text(tr("המודלים יורדים פעם אחת ונשמרים בטלפון (הם לא מגובים ב־iCloud). המקום שהם תופסים: %1.", "Downloaded once and saved on the phone (not backed up to iCloud). Total space: %1.", args: ["\(Self.format(bytes: totalOnDisk))"]) + (freeBytes.map { " " + tr("פנוי בטלפון: %1.", "Free on the phone: %1.", args: ["\(Self.format(bytes: $0))"]) } ?? ""))
             }
         }
         .accessibilityIdentifier("modelManagerScreen")
@@ -61,7 +61,7 @@ struct ModelManagerView: View {
                 // The picked one: the next time it has to load (the next
                 // launch, say) it downloads all over again first, which
                 // with no Wi-Fi nearby is a long wait nobody expects.
-                Text(tr("זה המודל שנבחר. בפעם הבאה שהוא ייטען, למשל כשהאפליקציה תיפתח מחדש, הוא יירד שוב (%1) לפני שיהיו כתוביות.", "This is the selected model. Next time it needs to load, for example when the app reopens, it will download again (%1) before there are captions.", args: ["\(option.sizeLabel)"]))
+                Text(tr("זה המודל שנבחר. בפעם הבאה שהוא ייטען, למשל כשהאפליקציה תיפתח מחדש, יהיה צריך להוריד אותו שוב (%1) לפני שיופיעו כתוביות.", "This is the selected model. Next time it needs to load, for example when the app reopens, it will download again (%1) before there are captions.", args: ["\(option.sizeLabel)"]))
             } else {
                 Text(tr("אפשר להוריד אותו שוב בכל עת.", "It can be downloaded again anytime."))
             }
@@ -77,7 +77,7 @@ struct ModelManagerView: View {
             }
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
         } message: { option in
-            Text(tr("הכתוביות ייעצרו עד שההורדה (%1) תסתיים והמודל ייטען. בלי Wi-Fi ההורדה עשויה לחכות לו.", "Captions will stop until the download (%1) finishes and the model loads. Without Wi‑Fi, the download may wait for it.", args: ["\(option.sizeLabel)"]))
+            Text(tr("הכתוביות ייעצרו עד שההורדה (%1) תסתיים והמודל ייטען. בלי Wi‑Fi, ייתכן שההורדה תחכה עד שיהיה חיבור.", "Captions will stop until the download (%1) finishes and the model loads. Without Wi‑Fi, the download may wait for it.", args: ["\(option.sizeLabel)"]))
         }
         .alert(tr("המחיקה נכשלה", "Delete failed"), isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
             Button(tr("סגירה", "Close"), role: .cancel) {}
@@ -96,7 +96,7 @@ struct ModelManagerView: View {
             .accessibilityIdentifier("modelManagerTestPhone")
             if let check = viewModel.settings.deviceModelCheck {
                 if let measured = check.measurement, measured.passes >= DeviceModelAdvisor.minimumMeasuredPasses {
-                    Text(tr("נמדד בטלפון הזה: כ-%1 שניות לעדכון עם %2.", "Timed on this phone: about %1 seconds per update with %2.", args: ["\(String(format: "%.1f", measured.averageSeconds))", "\(WhisperModelCatalog.option(for: measured.variant)?.displayName ?? measured.variant)"]))
+                    Text(tr("נמדד בטלפון הזה: כ־%1 שניות לכל עדכון עם %2.", "Timed on this phone: about %1 seconds per update with %2.", args: ["\(String(format: "%.1f", measured.averageSeconds))", "\(WhisperModelCatalog.option(for: measured.variant)?.displayName ?? measured.variant)"]))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -113,7 +113,7 @@ struct ModelManagerView: View {
                             if await viewModel.modelRowTapped(recommended, isInstalled: installed.contains(recommended)) { pendingSwitch = option }
                         }
                     } label: {
-                        Label(tr("המודל הזה מפגר אחרי הדיבור בטלפון הזה. הקישו כדי לעבור ל-%1, %2", "This model falls behind the speech on this phone. Tap to switch to %1, %2", args: ["\(option.displayName)", "\(option.sizeLabel)"]), systemImage: "arrow.triangle.swap")
+                        Label(tr("המודל הזה לא עומד בקצב הדיבור בטלפון הזה. הקישו כדי לעבור ל־%1, %2", "This model falls behind the speech on this phone. Tap to switch to %1, %2", args: ["\(option.displayName)", "\(option.sizeLabel)"]), systemImage: "arrow.triangle.swap")
                     }
                     .accessibilityIdentifier("modelManagerSwitchToLighter")
                 }
@@ -121,7 +121,7 @@ struct ModelManagerView: View {
         } header: {
             Text(tr("בחירת מודל הדיבור", "Choose the speech model"))
         } footer: {
-            Text(tr("הרשימה מבוססת על המודלים שידוע שרצים על הדגם הזה של הטלפון. אחרי שהכתוביות רצו כדקה, אפשר לבדוק שוב כדי להוסיף מדידת זמנים אמיתית.", "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings."))
+            Text(tr("הרשימה מבוססת על המודלים שידוע שפועלים בדגם הטלפון הזה. אחרי שהכתוביות פועלות כדקה, אפשר לבדוק שוב כדי להוסיף מדידות זמן אמיתיות.", "The list is based on which models are known to run on this model of phone. After captions have run for about a minute, test again to add real timings."))
         }
     }
 
@@ -207,7 +207,7 @@ struct ModelManagerView: View {
                 statusLayout {
                     Text(option.sizeLabel)
                     if let progress = downloadProgress {
-                        Text(tr("· מוריד %1%", "· downloading %1%", args: ["\(Int((progress * 100).rounded()))"]))
+                        Text(tr("· בהורדה %1%", "· downloading %1%", args: ["\(Int((progress * 100).rounded()))"]))
                     } else if isInstalled {
                         Image(systemName: "checkmark")
                             .accessibilityHidden(true)
@@ -218,9 +218,9 @@ struct ModelManagerView: View {
                     } else if isPartial {
                         Image(systemName: "exclamationmark.arrow.circlepath")
                             .accessibilityHidden(true)
-                        Text(tr("ההורדה נקטעה · תימשך מאיפה שנעצרה בבחירה", "Download interrupted · will resume from where it stopped when selected"))
+                        Text(tr("ההורדה נקטעה · תמשיך מהמקום שבו נעצרה כשהמודל ייבחר", "Download interrupted · will resume from where it stopped when selected"))
                         if let size = sizesOnDisk[option.variant] {
-                            Text(tr("· %1 כבר ירדו", "· %1 already downloaded", args: ["\(Self.format(bytes: size))"]))
+                            Text(tr("· %1 כבר הורדו", "· %1 already downloaded", args: ["\(Self.format(bytes: size))"]))
                         }
                     } else if StorageSpaceGate.shortfallMegabytes(downloadMegabytes: option.installMegabytes, availableBytes: freeBytes) != nil {
                         Image(systemName: "externaldrive.badge.exclamationmark")
@@ -229,7 +229,7 @@ struct ModelManagerView: View {
                     } else {
                         Image(systemName: "icloud.and.arrow.down")
                             .accessibilityHidden(true)
-                        Text(tr("יורד בבחירה", "Downloads when selected"))
+                        Text(tr("יורד כשבוחרים בו", "Downloads when selected"))
                     }
                 }
                 .font(.caption)

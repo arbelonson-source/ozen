@@ -64,11 +64,11 @@ enum SpeakIntentError: Error, CustomLocalizedStringResourceConvertible {
         let message: String
         switch self {
         case .nothingToSay:
-            message = tr("אין מה להגיד. כתבו משפט.", "There is nothing to say. Write a sentence.")
+            message = tr("אין טקסט להשמעה. כתבו משפט.", "There is nothing to say. Write a sentence.")
         case .noVoice:
-            message = tr("אין קול מותקן לשפה הזו, אז לא נאמר דבר.", "No voice for this language is installed, so nothing was said.")
+            message = tr("לשפה הזו לא מותקן קול, ולכן שום דבר לא הושמע.", "No voice for this language is installed, so nothing was said.")
         case .notReady:
-            message = tr("אוזן עוד לא מוכנה, אז לא נאמר דבר. סיימו את ההתחלה ונסו שוב.", "Ozen is not ready yet, so nothing was said. Finish setting up and try again.")
+            message = tr("אוזן עוד לא מוכנה, ולכן שום דבר לא הושמע. סיימו את ההגדרה הראשונית ונסו שוב.", "Ozen is not ready yet, so nothing was said. Finish setting up and try again.")
         }
         return "\(message)"
     }
@@ -78,7 +78,7 @@ enum SpeakIntentError: Error, CustomLocalizedStringResourceConvertible {
 /// button, for when captions can't keep up and someone needs to type.
 struct ShowBigTextIntent: AppIntent {
     static let title: LocalizedStringResource = "כתבו לי"
-    static let description = IntentDescription("פותח את אוזן במסך מלא באותיות גדולות, כדי שמישהו יכתוב לך.")
+    static let description = IntentDescription("פותח את אוזן במסך מלא באותיות גדולות, כדי שמישהו יוכל לכתוב לכם.")
     static let openAppWhenRun = true
 
     @MainActor

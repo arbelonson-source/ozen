@@ -73,8 +73,8 @@ struct BatteryAdvisorTests {
     func notification() {
         let low = BatteryWarning.low(percent: 20).notificationContent
         let critical = BatteryWarning.critical(percent: 9).notificationContent
-        #expect(low.title == "הסוללה ב-20%")
-        #expect(critical.title == "הסוללה ב-9%")
+        #expect(low.title == "הסוללה ב־20%")
+        #expect(critical.title == "הסוללה ב־9%")
         #expect(low.identifier == critical.identifier)
         #expect(!low.isUrgent && critical.isUrgent)
         #expect(low.body != critical.body)

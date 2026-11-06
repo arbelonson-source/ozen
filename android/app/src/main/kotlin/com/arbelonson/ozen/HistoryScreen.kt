@@ -470,7 +470,7 @@ private fun SavingSection(
         if (saving && failure != null) {
             Text(
                 tr(
-                    "השמירה האחרונה של שיחה נכשלה, כנראה כי אין מקום פנוי בטלפון. מה שנאמר מאז אולי לא נשמר.",
+                    "השמירה האחרונה של שיחה נכשלה, כנראה כי נגמר המקום בטלפון. ייתכן שמה שנאמר מאז לא נשמר.",
                     "The last conversation save failed, probably because the phone is out of space. What was said since then may not have been saved.",
                 ),
                 color = MaterialTheme.colorScheme.error,
@@ -479,7 +479,7 @@ private fun SavingSection(
         }
         var choosing by remember { mutableStateOf(false) }
         SettingsGroup {
-            item { SettingSwitchRow(tr("לשמור שיחות", "Save conversations"), checked = saving, onCheckedChange = onSaving) }
+            item { SettingSwitchRow(tr("שמירת שיחות", "Save conversations"), checked = saving, onCheckedChange = onSaving) }
             item {
                 Box {
                     SettingRow(
@@ -769,7 +769,7 @@ internal fun ConversationScreen(
     naming?.let { draft ->
         AlertDialog(
             onDismissRequest = { naming = null },
-            title = { Text(tr("שם לשיחה", "Conversation name")) },
+            title = { Text(tr("שם השיחה", "Conversation name")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(tr("השם יופיע ברשימת השיחות, ואפשר יהיה לחפש לפיו.", "The name will appear in the conversations list, and you’ll be able to search by it."))
@@ -957,7 +957,7 @@ private fun NumbersSection(numbers: NumbersMentioned, isUncertain: (SavedSegment
         }
         numbers.moreText?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Text(
-            tr("שעות, כמויות ומספרי טלפון מהשיחה. נגיעה בשורה מובילה אליה.", "Times, amounts, and phone numbers from the conversation. Tap a line to jump to it."),
+            tr("שעות, כמויות ומספרי טלפון מהשיחה. הקשה על שורה מובילה אליה.", "Times, amounts, and phone numbers from the conversation. Tap a line to jump to it."),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -966,7 +966,7 @@ private fun NumbersSection(numbers: NumbersMentioned, isUncertain: (SavedSegment
 
 @Composable
 private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: Boolean, arrived: Boolean = false, onFix: () -> Unit = {}, onStar: () -> Unit) {
-    val found = tr("מכילה את מה שחיפשת", "Contains what you searched for")
+    val found = tr("מכילה את מה שחיפשתם", "Contains what you searched for")
     val star = if (line.starred) tr("הסרת הסימון", "Remove the star") else tr("סימון כחשובה", "Mark as important")
     val copy = tr("העתקה", "Copy")
     val fix = tr("תיקון מילה", "Fix a word")
@@ -1077,7 +1077,7 @@ private val SEARCH_MATCH = Color(red = 1f, green = 0.84f, blue = 0.04f, alpha = 
 private const val LONGEST_SHARED_TEXT = 50_000
 
 private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksUncertain: Boolean, languageCode: String): Intent =
-    textShareSheet(context, tr("שיחה מאוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain, usesDecimalComma(languageCode)))
+    textShareSheet(context, tr("שיחה מתוך אוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain, usesDecimalComma(languageCode)))
 
 /** The share sheet for a conversation or the starred lines: as a message, or past [LONGEST_SHARED_TEXT] as a file. */
 internal fun textShareSheet(context: Context, subject: String, text: String): Intent {

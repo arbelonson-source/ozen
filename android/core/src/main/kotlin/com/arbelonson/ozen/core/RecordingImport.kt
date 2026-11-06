@@ -36,7 +36,7 @@ object RecordingImport {
                     lines.add(tr("נוספו: ", "Added: ") + names.joinToString(", "))
                 }
                 if (unusable.isNotEmpty()) {
-                    lines.add(tr("לא נוספו (אין בהן מספיק דיבור, או שאין שם בשם הקובץ): ", "Not added (too little speech, or no name in the file name): ") + unusable.joinToString(", "))
+                    lines.add(tr("לא נוספו (אין בהן מספיק דיבור או שאין שם בשם הקובץ): ", "Not added (too little speech, or no name in the file name): ") + unusable.joinToString(", "))
                 }
                 return lines.joinToString("\n\n")
             }

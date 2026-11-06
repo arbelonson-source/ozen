@@ -70,7 +70,7 @@ struct DiagnosticsView: View {
                 DiagnosticsRow(tr("חבילות אודיו", "Audio chunks"), "\(viewModel.stats.audioChunksReceived)")
                 DiagnosticsRow(tr("שניות אודיו", "Audio seconds"), String(format: "%.1f", viewModel.stats.audioSecondsReceived))
                 DiagnosticsRow(tr("החלפות מיקרופון", "Microphone changes"), "\(viewModel.stats.inputChanges)")
-                DiagnosticsRow(tr("המיקרופון נתקע", "Microphone stalls"), "\(viewModel.stats.audioStalls)")
+                DiagnosticsRow(tr("תקיעות מיקרופון", "Microphone stalls"), "\(viewModel.stats.audioStalls)")
                 DiagnosticsRow(tr("רמות קול (dBFS)", "Sound levels (dBFS)"), Self.levelsText(viewModel.stats.inputLevels))
                 DiagnosticsRow(tr("נשמע כדיבור", "Sounded like speech"), viewModel.stats.speechShare.map { String(format: "%.0f%%", $0 * 100) } ?? "—")
                 DiagnosticsRow(tr("זיהוי צלילים", "Sound detection"), viewModel.stats.soundDetectionRunning ? tr("פועל", "Running") : (viewModel.isListening ? tr("נעצר", "Stopped") : "—"))
@@ -82,7 +82,7 @@ struct DiagnosticsView: View {
                 DiagnosticsRow(tr("עדכונים מהמנוע", "Updates from engine"), "\(viewModel.stats.tokensReceived)")
                 DiagnosticsRow(tr("שורות שנסגרו", "Lines closed"), "\(viewModel.stats.segmentsCommitted)")
                 DiagnosticsRow(tr("שורות על המסך", "Lines on screen"), "\(viewModel.segments.count)")
-                DiagnosticsRow(tr("פיגור כתוביות", "Caption lag"), viewModel.stats.captionLagSeconds.map { String(format: tr("%.1f שנ׳", "%.1f s"), $0) } ?? "—")
+                DiagnosticsRow(tr("עיכוב בכתוביות", "Caption lag"), viewModel.stats.captionLagSeconds.map { String(format: tr("%.1f שנ׳", "%.1f s"), $0) } ?? "—")
                 DiagnosticsRow(tr("הפעלות מחדש", "Restarts"), "\(viewModel.stats.engineRestarts)")
                 DiagnosticsRow(tr("דוברים שזוהו", "Speakers identified"), "\(viewModel.pipeline.speakerClusters.count)")
                 DiagnosticsRow(tr("דוברים חדשים מאז שהאפליקציה נפתחה", "New speakers since the app opened"), "\(viewModel.stats.speakerClustersOpened)")
@@ -96,7 +96,7 @@ struct DiagnosticsView: View {
                 DiagnosticsRow(tr("שיחת טלפון תופסת את האודיו", "Phone call is using the audio"), viewModel.isInterruptedBySystem ? tr("כן", "Yes") : tr("לא", "No"))
                 DiagnosticsRow(tr("שמירת הגדרות", "Settings save"), viewModel.settingsSaveError == nil ? tr("תקינה", "OK") : tr("נכשלה", "Failed"))
                 DiagnosticsRow(tr("שמירת שיחות", "Conversation history save"), viewModel.historySaveFailure == nil ? tr("תקינה", "OK") : tr("נכשלה", "Failed"))
-                DiagnosticsRow(tr("הודעות בטלפון", "Phone notifications"), notificationsText)
+                DiagnosticsRow(tr("התראות בטלפון", "Phone notifications"), notificationsText)
                 DiagnosticsRow(tr("רטט להתראות", "Alert vibration"), Self.vibrationText)
                 DiagnosticsRow(tr("חיבור לאינטרנט", "Internet connection"), Self.describe(viewModel.pipeline.networkConditions))
             }
@@ -117,7 +117,7 @@ struct DiagnosticsView: View {
             } header: {
                 Text(tr("אירועים אחרונים", "Recent events"))
             } footer: {
-                Text(tr("החדש ביותר למעלה. הדוח המועתק כולל את כל הרשימה.", "Newest at the top. The copied report includes the full list."))
+                Text(tr("החדשים ביותר למעלה. הדוח המועתק כולל את הרשימה המלאה.", "Newest at the top. The copied report includes the full list."))
             }
 
             Section {
@@ -162,9 +162,9 @@ struct DiagnosticsView: View {
                         problemClips = viewModel.problemAudio?.clips() ?? []
                     }
                 } header: {
-                    Text(tr("הקול מהבעיות שסומנו", "Sound from marked problems"))
+                    Text(tr("הקלטות של בעיות שסומנו", "Sound from marked problems"))
                 } footer: {
-                    Text(tr("כשמסמנים בעיה נשמרות 30 השניות האחרונות של הקול, רק בטלפון, כדי להשוות מה נאמר למה שנכתב. נשמרות עד 5; שליחה רק כשלוחצים עליהן. החלקה מוחקת.", "Marking a problem keeps the last 30 seconds of sound, on the phone only, to compare what was said with what was shown. Up to 5 are kept, and they’re sent only when you tap one. Swipe to delete."))
+                    Text(tr("כשמסמנים בעיה, 30 השניות האחרונות של הקול נשמרות בטלפון בלבד, כדי להשוות בין מה שנאמר למה שהוצג. נשמרות עד 5 הקלטות, והן נשלחות רק כשמקישים על אחת מהן. כדי למחוק, מחליקים.", "Marking a problem keeps the last 30 seconds of sound, on the phone only, to compare what was said with what was shown. Up to 5 are kept, and they’re sent only when you tap one. Swipe to delete."))
                 }
             }
 
@@ -176,7 +176,7 @@ struct DiagnosticsView: View {
             }
 
             Section(tr("מכשיר", "Device")) {
-                DiagnosticsRow(tr("חום", "Temperature"), Self.describe(ProcessInfo.processInfo.thermalState))
+                DiagnosticsRow(tr("טמפרטורה", "Temperature"), Self.describe(ProcessInfo.processInfo.thermalState))
                 DiagnosticsRow(tr("מצב חיסכון בסוללה", "Low power mode"), ProcessInfo.processInfo.isLowPowerModeEnabled ? tr("פעיל", "On") : tr("כבוי", "Off"))
                 DiagnosticsRow(tr("סוללה", "Battery"), Self.batteryText)
                 DiagnosticsRow(tr("מקום פנוי", "Free space"), Self.freeSpaceText)
@@ -188,7 +188,7 @@ struct DiagnosticsView: View {
             }
 
             Section {
-                ShareLink(item: reportText, subject: Text(tr("דוח אבחון מאוזן", "Ozen diagnostics report"))) {
+                ShareLink(item: reportText, subject: Text(tr("דוח אבחון של אוזן", "Ozen diagnostics report"))) {
                     Label(tr("שליחת הדוח", "Send report"), systemImage: "square.and.arrow.up")
                 }
                 Button {
@@ -272,8 +272,8 @@ struct DiagnosticsView: View {
 
     private static var vibrationText: String {
         let player = AlertHapticPlayer.shared
-        guard player.supportsHaptics else { return tr("לא נתמך במכשיר", "Not supported on this device") }
-        return player.lastFailure == nil ? tr("תקין", "OK") : tr("נכשל, רטט רגיל במקום", "Failed, using standard vibration instead")
+        guard player.supportsHaptics else { return tr("לא נתמך במכשיר הזה", "Not supported on this device") }
+        return player.lastFailure == nil ? tr("תקין", "OK") : tr("נכשל, ולכן משתמשים ברטט רגיל", "Failed, using standard vibration instead")
     }
 
     private static var batteryText: String {
@@ -321,7 +321,7 @@ struct DiagnosticsView: View {
     static func describe(_ state: ModelFolderState) -> String {
         switch state {
         case .missing: return tr("לא הורד", "Not downloaded")
-        case .partial: return tr("הורדה נקטעה", "Download interrupted")
+        case .partial: return tr("ההורדה נקטעה", "Download interrupted")
         case .unverified: return tr("מותקן (לא אומת)", "Installed (unverified)")
         case .verified: return tr("מותקן", "Installed")
         }
@@ -330,7 +330,7 @@ struct DiagnosticsView: View {
     static func describe(_ thermal: ProcessInfo.ThermalState) -> String {
         switch thermal {
         case .nominal: return tr("רגיל", "Normal")
-        case .fair: return tr("חמים", "Warm")
+        case .fair: return tr("מתחמם", "Warm")
         case .serious: return tr("חם · הכתוביות מאטות", "Hot · captions are slowing down")
         case .critical: return tr("חם מאוד · הכתוביות מאטות מאוד", "Very hot · captions are slowing a lot")
         @unknown default: return tr("לא ידוע", "Unknown")
@@ -389,9 +389,9 @@ struct DiagnosticsView: View {
                     )
                 }
             } header: {
-                Text(tr("צלילים שנשמעו חלש מדי להתראה", "Sounds heard too faint to alert"))
+                Text(tr("צלילים שנשמעו חלשים מדי בשביל התראה", "Sounds heard too faint to alert"))
             } footer: {
-                Text(tr("התראה צריכה ביטחון של %1%. צליל שמופיע כאן נשמע, אבל רחוק או חלש מדי.", "An alert needs %1% confidence. A sound listed here was heard, but too far or too faint.", args: ["\(Int((viewModel.pipeline.soundAlertConfidence * 100).rounded()))"]))
+                Text(tr("התראה מופעלת רק כשהזיהוי בטוח לפחות ב־%1%. צליל שמופיע כאן נשמע, אבל היה רחוק או חלש מדי.", "An alert needs %1% confidence. A sound listed here was heard, but too far or too faint.", args: ["\(Int((viewModel.pipeline.soundAlertConfidence * 100).rounded()))"]))
             }
         }
     }
@@ -412,7 +412,7 @@ struct DiagnosticsView: View {
               let middle = levels.decibels(atFraction: 0.5),
               let loud = levels.decibels(atFraction: 0.9)
         else { return "—" }
-        return tr("שקט %1 · אמצע %2 · חזק %3", "quiet %1 · mid %2 · loud %3", args: ["\(quiet)", "\(middle)", "\(loud)"])
+        return tr("שקט %1 · בינוני %2 · חזק %3", "quiet %1 · mid %2 · loud %3", args: ["\(quiet)", "\(middle)", "\(loud)"])
     }
 
     static func describe(_ network: NetworkConditions?) -> String {

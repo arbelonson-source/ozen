@@ -76,7 +76,7 @@ final class BatteryMonitor {
 struct BatteryBanner: View {
     /// What VoiceOver reads for it, on the banner and when it appears.
     static func spoken(_ warning: BatteryWarning) -> String {
-        tr("הסוללה ב-%1 אחוזים", "Battery at %1 percent", args: ["\(warning.percent)"]) + ". " + advice(for: warning)
+        tr("הסוללה ב־%1 אחוז", "Battery at %1 percent", args: ["\(warning.percent)"]) + ". " + advice(for: warning)
     }
 
     let notice: BatteryMonitor.Notice
@@ -92,7 +92,7 @@ struct BatteryBanner: View {
     private var advice: String { Self.advice(for: notice.warning) }
 
     private static func advice(for warning: BatteryWarning) -> String {
-        isCritical(warning) ? tr("הטלפון עלול להיכבות באמצע השיחה. חברו למטען.", "The phone might shut down mid-conversation. Plug in a charger.") : tr("כדאי לחבר למטען.", "Consider plugging in a charger.")
+        isCritical(warning) ? tr("הטלפון עלול להיכבות באמצע השיחה. חברו אותו למטען.", "The phone might shut down mid-conversation. Plug in a charger.") : tr("כדאי לחבר את הטלפון למטען.", "Consider plugging in a charger.")
     }
 
     var body: some View {
@@ -101,7 +101,7 @@ struct BatteryBanner: View {
                 Image(systemName: isCritical ? "battery.0percent" : "battery.25percent")
                     .font(.system(size: 26, weight: .semibold))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(tr("הסוללה ב-%1%", "Battery at %1%", args: ["\(notice.warning.percent)"]))
+                    Text(tr("הסוללה ב־%1%", "Battery at %1%", args: ["\(notice.warning.percent)"]))
                         .font(.headline)
                     Text(advice)
                         .font(.subheadline)

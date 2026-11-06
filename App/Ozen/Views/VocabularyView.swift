@@ -35,7 +35,7 @@ struct VocabularyView: View {
                         .foregroundStyle(.secondary)
                 }
             } footer: {
-                Text(tr("שמות של בני משפחה, שכנים, רופאים, תרופות, מקומות — כל מילה שהכתוביות מתקשות איתה. הראשונים ברשימה חשובים ביותר.", "Names of family members, neighbors, doctors, medicines, places — any word the captions struggle with. The first ones on the list matter most."))
+                Text(tr("שמות של בני משפחה, שכנים ורופאים, שמות של תרופות ומקומות — כל מילה שהכתוביות מתקשות בה. המילים הראשונות ברשימה הן החשובות ביותר.", "Names of family members, neighbors, doctors, medicines, places — any word the captions struggle with. The first ones on the list matter most."))
             }
 
             if speakerNamesMissing {
@@ -43,7 +43,7 @@ struct VocabularyView: View {
                     Button {
                         viewModel.addSpeakerNamesToVocabulary()
                     } label: {
-                        Label(tr("להוסיף את שמות הדוברים השמורים", "Add the saved speaker names"), systemImage: "person.2.badge.plus")
+                        Label(tr("הוספת שמות הדוברים השמורים", "Add the saved speaker names"), systemImage: "person.2.badge.plus")
                     }
                 }
             }
@@ -75,7 +75,7 @@ struct VocabularyView: View {
                         .monospacedDigit()
                 }
             } footer: {
-                Text(tr("השינויים נכנסים לתוקף מהמשפט הבא, בלי להפעיל מחדש.", "Changes take effect from the next sentence, without restarting."))
+                Text(tr("השינויים חלים מהמשפט הבא, בלי צורך להפעיל מחדש.", "Changes take effect from the next sentence, without restarting."))
             }
 
             WordFixesSection(viewModel: viewModel)

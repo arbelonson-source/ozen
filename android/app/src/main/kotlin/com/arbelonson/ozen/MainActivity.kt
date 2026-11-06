@@ -626,9 +626,9 @@ private fun CellularDownloadDialog(megabytes: Int?, onDownload: () -> Unit, onWa
     AlertDialog(
         onDismissRequest = onWait,
         title = { Text(tr("להוריד את המודל בחבילת הגלישה?", "Download the model over cellular data?")) },
-        text = { Text(tr("המודל שוקל %1. בחבילת גלישה זה יכול לעלות כסף או לגמור את נפח הגלישה. ב-Wi-Fi ההורדה תתחיל לבד.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", listOf(size))) },
+        text = { Text(tr("גודל המודל הוא בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi ההורדה תתחיל מעצמה.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", listOf(size))) },
         confirmButton = { TextButton(onClick = onDownload) { Text(tr("להוריד עכשיו", "Download now")) } },
-        dismissButton = { TextButton(onClick = onWait) { Text(tr("לחכות ל-Wi-Fi", "Wait for Wi‑Fi")) } },
+        dismissButton = { TextButton(onClick = onWait) { Text(tr("לחכות ל־Wi-Fi", "Wait for Wi‑Fi")) } },
     )
 }
 
@@ -654,7 +654,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
             text = {
                 Text(
                     tr(
-                        "הקול ישלח לכתוביות אל %1. אשרו רק אם זה המחשב של המשפחה.",
+                        "כדי ליצור כתוביות, הקול יישלח אל %1. אשרו רק אם זה המחשב של המשפחה.",
                         "The audio will go to %1 for captions. Only connect if this is the family’s computer.",
                         listOf(shown.computerName),
                     ),
@@ -671,7 +671,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
             text = {
                 Text(
                     tr(
-                        "הכתוביות ממשיכות כמו קודם. סרקו שוב את הקוד, או בקשו עזרה ממי שהתקין את הטלפון.",
+                        "הכתוביות ממשיכות כמו קודם. סרקו שוב את הקוד, או בקשו עזרה ממי שהגדיר את הטלפון.",
                         "Captions carry on as before. Scan the code again, or ask whoever set up the phone for help.",
                     ),
                 )
@@ -686,7 +686,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
             text = {
                 Text(
                     tr(
-                        "חלק מהקישור חסר או השתבש. סרקו שוב את הריבוע במחשב עם מצלמת הטלפון, ממש מקרוב.",
+                        "חלק מהקישור חסר או משובש. סרקו שוב מקרוב את הריבוע שעל מסך המחשב, במצלמה של הטלפון.",
                         "Part of the link is missing or garbled. Scan the square on the computer again with the phone’s camera, up close.",
                     ),
                 )
@@ -956,7 +956,7 @@ private fun CaptionScreen(
                             val running = state.captionsRunning
                             IconBadge(if (running) Icons.Rounded.Hearing else Icons.Rounded.MicOff, size = 72.dp)
                             Text(
-                                text = if (running) tr("מקשיב.", "Listening.") else tr("הכתוביות יופיעו כאן.", "Captions will appear here."),
+                                text = if (running) tr("מאזינה.", "Listening.") else tr("הכתוביות יופיעו כאן.", "Captions will appear here."),
                                 color = look.text,
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Medium,
@@ -965,11 +965,11 @@ private fun CaptionScreen(
                             Text(
                                 text = if (running) {
                                     tr(
-                                        "כשמישהו ידבר, המילים יופיעו כאן בזמן אמת. השאירו אצבע על שורה כדי לסמן אותה כחשובה או לתת שם לדובר, וצבטו בשתי אצבעות כדי להגדיל או להקטין את הטקסט.",
+                                        "כשמישהו ידבר, המילים יופיעו כאן בזמן אמת. לחיצה ארוכה על שורה מאפשרת לסמן אותה כחשובה או לתת שם לדובר, וצביטה בשתי אצבעות מגדילה או מקטינה את הטקסט.",
                                         "When someone talks, the words will appear here in real time. Press and hold a line to mark it as important or name the speaker, and pinch with two fingers to make the text bigger or smaller.",
                                     )
                                 } else {
-                                    tr("אפשר לבחור מיקרופון בכפתור למטה מימין ולשנות מנוע תמלול בהגדרות.", "You can choose a microphone with the microphone button at the bottom, and change the transcription engine in Settings.")
+                                    tr("אפשר לבחור מיקרופון בכפתור המיקרופון שבתחתית המסך, ולהחליף את מנוע התמלול בהגדרות.", "You can choose a microphone with the microphone button at the bottom, and change the transcription engine in Settings.")
                                 },
                                 color = look.pendingText,
                                 style = MaterialTheme.typography.bodyLarge,
@@ -1352,7 +1352,7 @@ private fun CaptionLineRow(
     val spoken = UncertainWords.spoken(line.text, doubtful)
     val colour = if (line.isFinal) look.text else look.pendingText
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val star = if (line.starred) tr("ביטול הסימון", "Remove mark") else tr("סימון כחשוב", "Mark as important")
+    val star = if (line.starred) tr("ביטול הסימון", "Remove mark") else tr("סימון כחשובה", "Mark as important")
     val copy = tr("העתקה", "Copy")
     val fix = tr("תיקון מילה", "Fix a word")
     val ask = tr("לבקש שיחזרו על זה", "Ask them to repeat that")
@@ -1563,11 +1563,11 @@ private fun BatteryBanner(warning: BatteryWarning, onDismiss: () -> Unit) {
     NoticeBanner(
         if (critical) Icons.Rounded.BatteryAlert else Icons.Rounded.BatteryChargingFull,
         if (critical) NoticeTone.Emergency else NoticeTone.Warning,
-        tr("הסוללה ב-%1%", "Battery at %1%", listOf("${warning.percent}")),
+        tr("הסוללה ב־%1%", "Battery at %1%", listOf("${warning.percent}")),
         if (critical) {
-            tr("הטלפון עלול להיכבות באמצע השיחה. חברו למטען.", "The phone might shut down mid-conversation. Plug in a charger.")
+            tr("הטלפון עלול להיכבות באמצע השיחה. חברו אותו למטען.", "The phone might shut down mid-conversation. Plug in a charger.")
         } else {
-            tr("כדאי לחבר למטען.", "Consider plugging in a charger.")
+            tr("כדאי לחבר את הטלפון למטען.", "Consider plugging in a charger.")
         },
         Modifier.clickable(onClickLabel = tr("סגירה", "Close"), onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
     ) { Icon(Icons.Rounded.Close, contentDescription = null) }
@@ -1598,10 +1598,10 @@ private fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: ()
         Column(Modifier.weight(1f).clickable(onClick = onOpen).padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Unit)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
                 Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
-                Text(tr("שהטלפון ירטוט כשקוראים לך?", "Have the phone buzz when someone calls your name?"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
+                Text(tr("שהטלפון ירטוט כשקוראים לכם?", "Have the phone buzz when someone calls your name?"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
             }
             Text(
-                tr("הקישו כדי לכתוב את השם שלך", "Tap to write your name"),
+                tr("הקישו כדי לכתוב את השם שלכם", "Tap to write your name"),
                 color = colors.primary,
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.align(Alignment.End).heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
@@ -1625,7 +1625,7 @@ private fun LighterModelOffer(model: PhoneModel, onSwitch: () -> Unit, onDismiss
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
                     Text(
-                        tr("%1 (%2) קל יותר ומצליח לעמוד בקצב טוב יותר כאן.", "%1 (%2) is lighter and keeps up better here.", listOf(model.displayName, ByteSize.text(model.bytes))),
+                        tr("%1 (%2) קל יותר ועומד בקצב טוב יותר בטלפון הזה.", "%1 (%2) is lighter and keeps up better here.", listOf(model.displayName, ByteSize.text(model.bytes))),
                         color = colors.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -1719,7 +1719,7 @@ private fun StarMark(fontSize: Double, colour: Color) {
             .padding(top = inset)
             .padding(end = 8.dp)
             .clearAndSetSemantics {
-                contentDescription = tr("מסומן כחשוב. ", "Marked as important. ").trim()
+                contentDescription = tr("מסומנת כחשובה. ", "Marked as important. ").trim()
                 hideFromAccessibility()
             },
     )

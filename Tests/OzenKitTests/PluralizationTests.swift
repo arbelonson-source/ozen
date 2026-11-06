@@ -92,7 +92,7 @@ struct PluralizationTests {
     @Test("a download's minutes left take the form 'about' needs: Russian and Ukrainian 21, 31, 41, 51; Arabic 3 to 10")
     func aboutMinutesLeft() {
         let expected: [(UILanguage, Int, String)] = [
-            (.hebrew, 5, "עוד כ-5 דקות"),
+            (.hebrew, 5, "עוד כ־5 דקות"),
             (.english, 21, "About 21 minutes left"),
             (.russian, 5, "Осталось около 5 минут"),
             (.russian, 21, "Осталось около 21 минуты"),
@@ -348,8 +348,8 @@ struct PluralizationTests {
     func countsInTranslatedSentences() {
         #expect(tr("%1 אחוז", "%1 percent", args: ["21"], in: .russian) == "21%")
         #expect(tr("%1 אחוז", "%1 percent", args: ["2"], in: .ukrainian) == "2%")
-        #expect(tr("הסוללה ב-%1 אחוזים", "Battery at %1 percent", args: ["21"], in: .russian) == "Батарея на 21%")
-        #expect(tr("הסוללה ב-%1 אחוזים", "Battery at %1 percent", args: ["2"], in: .ukrainian) == "Батарея на 2%")
+        #expect(tr("הסוללה ב־%1 אחוז", "Battery at %1 percent", args: ["21"], in: .russian) == "Батарея на 21%")
+        #expect(tr("הסוללה ב־%1 אחוז", "Battery at %1 percent", args: ["2"], in: .ukrainian) == "Батарея на 2%")
         #expect(tr("הקלטה ושמירה (%1 שניות)", "Record and save (%1 seconds)", args: ["30"], in: .arabic) == "تسجيل وحفظ (30 ثانية)")
         let twoRecordings = RecordingImport.Result(added: ["Savta": 2])
         #expect(Localization.$override.withValue(.russian) { twoRecordings.summary }.contains("Savta (записей: 2)"))

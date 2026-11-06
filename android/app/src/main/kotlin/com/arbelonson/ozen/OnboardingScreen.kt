@@ -150,35 +150,35 @@ internal fun OnboardingScreen(
             HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
                 when (page) {
                     0 -> Page(Icons.Rounded.Hearing, tr("אוזן", "Ozen")) {
-                        Body(tr("כתוביות חיות לשיחה.", "Live captions for conversation."))
-                        Body(tr("מה שאומרים לידך מופיע על המסך, באותיות גדולות, תוך כדי הדיבור.", "What’s said near you appears on the screen, in large letters, as it’s spoken."))
+                        Body(tr("כתוביות בזמן אמת לכל שיחה.", "Live captions for conversation."))
+                        Body(tr("מה שאומרים לידכם מופיע על המסך באותיות גדולות, תוך כדי הדיבור.", "What’s said near you appears on the screen, in large letters, as it’s spoken."))
                         if (settings.engine == TranscriptionEngineKind.HomeServer) {
                             Body(tr("הקול נשלח רק למחשב של המשפחה בבית, ורק בזמן שהכתוביות פועלות.", "The audio goes only to the family’s computer at home, and only while captions are on."))
                         } else if (!settings.audioLeavesPhone) {
-                            Body(tr("כברירת מחדל, הכל קורה בתוך הטלפון.", "By default it all happens on the phone."))
+                            Body(tr("כברירת מחדל, הכול קורה בתוך הטלפון.", "By default it all happens on the phone."))
                         }
                     }
                     1 -> Page(Icons.Rounded.Forum, tr("איך זה עובד", "How it works")) {
                         SettingsGroup(dividerInset = 72.dp) {
-                            item { Point(Icons.Rounded.Mic, tr("מניחים את הטלפון על השולחן, והכתוביות רצות לבד.", "Set the phone on the table, and the captions run on their own.")) }
+                            item { Point(Icons.Rounded.Mic, tr("מניחים את הטלפון על השולחן, והכתוביות מופיעות מעצמן.", "Set the phone on the table, and the captions run on their own.")) }
                             item { Point(Icons.Rounded.Groups, tr("האפליקציה מבדילה בין דוברים ויכולה ללמוד את השמות שלהם.", "The app tells speakers apart and can learn their names.")) }
-                            item { Point(Icons.Rounded.NotificationsActive, tr("היא מתריעה על שמות שחשובים לך, ועל צלצול בדלת או אזעקה, ברטט שונה לכל אחד.", "It alerts you to names that matter to you, and to a doorbell or alarm, with a different vibration for each.")) }
-                            item { Point(Icons.Rounded.Keyboard, tr("ואפשר להקליד תשובה, והטלפון יגיד אותה בקול.", "And you can type a reply, and the phone will speak it aloud.")) }
+                            item { Point(Icons.Rounded.NotificationsActive, tr("היא מתריעה כשאומרים שמות שחשובים לכם, וגם על צלצול בדלת או על אזעקה, ברטט שונה לכל אחד מהם.", "It alerts you to names that matter to you, and to a doorbell or alarm, with a different vibration for each.")) }
+                            item { Point(Icons.Rounded.Keyboard, tr("ואפשר גם להקליד תשובה, והטלפון יקריא אותה בקול.", "And you can type a reply, and the phone will speak it aloud.")) }
                         }
                     }
                     2 -> LanguagePage(settings.spokenLanguage, onSpokenLanguage)
                     MODEL_PAGE -> ModelPage(settings, phoneModels)
                     4 -> MicrophonePage(settings, microphone, notifications, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
                     NAME_PAGE -> NamePage(settings, nameDraft, addDraft, onAddAlert)
-                    else -> Page(Icons.Rounded.CheckCircle, tr("מוכן", "Ready")) {
+                    else -> Page(Icons.Rounded.CheckCircle, tr("הכול מוכן", "Ready")) {
                         if (settings.engine.firstRunNote == FirstRunNote.ModelDownload) {
                             val model = settings.phoneModel
-                            Body(tr("בהפעלה הראשונה אוזן תוריד את מודל השפה: %1, %2. זה לוקח כמה דקות ומוצג על המסך. אחר כך — מיד.", "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that — instantly.", listOf(model.displayName, ByteSize.text(model.bytes))))
+                            Body(tr("בהפעלה הראשונה אוזן תוריד את מודל הדיבור: %1, %2. זה לוקח כמה דקות, וההתקדמות מוצגת על המסך. בפעמים הבאות הכתוביות יתחילו מיד.", "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that — instantly.", listOf(model.displayName, ByteSize.text(model.bytes))))
                         }
                         if (settings.engine.firstRunNote == FirstRunNote.HomeComputer) {
-                            Body(tr("מחובר בקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home."))
+                            Body(tr("החיבור נעשה בעזרת הקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home."))
                         }
-                        Body(tr("הכפתור למטה מתחיל את הכתוביות. בהצלחה, סבתא.", "The button below starts the captions. Good luck, Grandma."))
+                        Body(tr("הכפתור למטה מפעיל את הכתוביות. בהצלחה, סבתא.", "The button below starts the captions. Good luck, Grandma."))
                     }
                 }
             }
@@ -208,16 +208,16 @@ private fun MicrophonePage(
         when (microphone) {
             true -> {
                 Status("✓ " + tr("המיקרופון מאושר", "Microphone approved"), good = true)
-                Body(tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע על צלצול בדלת, אזעקה או השם שלך.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."))
+                Body(tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע לכם על צלצול בדלת, על אזעקה או כשקוראים בשמכם.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."))
                 when (notifications) {
                     true -> Status("✓ " + tr("ההתראות מאושרות", "Notifications approved"), good = true)
-                    false -> Body(tr("בלי התראות. אפשר לשנות בהגדרות.", "No notifications. This can be changed in Settings."))
+                    false -> Body(tr("ההתראות לא אושרו. אפשר לשנות את זה בהגדרות.", "No notifications. This can be changed in Settings."))
                     null -> TonalButton(tr("לאשר התראות", "Approve notifications"), onApproveNotifications, Modifier.fillMaxWidth(), icon = Icons.Rounded.NotificationsActive)
                 }
             }
             false -> {
                 Status("✕ " + tr("המיקרופון חסום", "Microphone blocked"), good = false)
-                Body(tr("בלי מיקרופון אין כתוביות. אפשר לאשר בהגדרות הטלפון.", "Without a microphone there are no captions. It can be approved in the phone’s Settings."))
+                Body(tr("בלי מיקרופון אין כתוביות. אפשר לאשר אותו בהגדרות הטלפון.", "Without a microphone there are no captions. It can be approved in the phone’s Settings."))
                 TonalButton(tr("פתיחת הגדרות הטלפון", "Open phone settings"), onOpenPhoneSettings, Modifier.fillMaxWidth(), icon = Icons.Rounded.Settings)
             }
             null -> PrimaryButton(tr("לאשר את המיקרופון", "Approve the microphone"), onApproveMicrophone, Modifier.fillMaxWidth(), icon = Icons.Rounded.Mic)
@@ -232,11 +232,11 @@ private fun MicrophonePage(
  */
 @Composable
 private fun NamePage(settings: AppSettings, draft: MutableState<String>, addDraft: () -> Unit, onAddAlert: (String) -> Unit) {
-    Page(Icons.Rounded.NotificationsActive, tr("כשקוראים לך", "When you’re called")) {
-        Body(tr("כשמישהו אומר את השם שלך, הטלפון רוטט והשורה מסומנת, גם כשלא מסתכלים על המסך.", "When someone says your name, the phone vibrates and the line is highlighted, even when no one is looking at the screen."))
+    Page(Icons.Rounded.NotificationsActive, tr("כשקוראים לכם", "When you’re called")) {
+        Body(tr("כשמישהו אומר את השם שלכם, הטלפון רוטט והשורה מסומנת, גם כשלא מסתכלים על המסך.", "When someone says your name, the phone vibrates and the line is highlighted, even when no one is looking at the screen."))
         NameAlertForm(settings, draft, addDraft, onAddAlert)
         Text(
-            tr("אפשר להוסיף עוד מילים, או למחוק, בהגדרות ← התראות ← מילים חשובות.", "More words can be added or removed in Settings → Alerts → Important words."),
+            tr("אפשר להוסיף עוד מילים או למחוק מילים בהגדרות ← התראות ← מילים חשובות.", "More words can be added or removed in Settings → Alerts → Important words."),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -258,7 +258,7 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
         OutlinedTextField(
             value = draft.value,
             onValueChange = { draft.value = it },
-            placeholder = { Text(tr("השם שלך", "Your name")) },
+            placeholder = { Text(tr("השם שלכם", "Your name")) },
             singleLine = true,
             textStyle = MaterialTheme.typography.titleMedium,
             shape = MaterialTheme.shapes.medium,
@@ -268,7 +268,7 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
         )
     }
     val add = @Composable { modifier: Modifier ->
-        TonalButton(tr("להוסיף", "Add"), addDraft, modifier, enabled = draft.value.isNotBlank())
+        TonalButton(tr("הוספה", "Add"), addDraft, modifier, enabled = draft.value.isNotBlank())
     }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (stacked) {
@@ -282,7 +282,7 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
         }
         if (HebrewText.isInOtherLetters(draft.value, settings.languageCode)) {
             Text(
-                tr("הכתוביות באותיות עבריות, ולכן מילה שנכתבה באותיות אחרות עלולה לא להימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found."),
+                tr("הכתוביות נכתבות באותיות עבריות, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found."),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -309,16 +309,16 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
 private fun ModelPage(settings: AppSettings, models: PhoneModels) {
     LaunchedEffect(Unit) { if (settings.phoneSpeed == null) models.runCheck(thenChooseBest = true) }
     Page(Icons.Rounded.Speed, tr("מודל הדיבור", "The speech model")) {
-        Body(tr("אוזן כותבת את הכתוביות בעזרת מודל שרץ בתוך הטלפון. היא בודקת כמה הטלפון הזה מהיר ובוחרת מודל שמתאים לו. אפשר לבחור אחר.", "Ozen writes the captions with a model that runs inside the phone. It tests how fast this phone is and chooses a model that suits it. You can pick another."))
+        Body(tr("אוזן כותבת את הכתוביות בעזרת מודל שפועל בתוך הטלפון. היא בודקת כמה הטלפון הזה מהיר ובוחרת מודל שמתאים לו. אפשר לבחור מודל אחר.", "Ozen writes the captions with a model that runs inside the phone. It tests how fast this phone is and chooses a model that suits it. You can pick another."))
         PhoneModelPicker(settings, models, chooseBestAfterTest = true)
-        Body(tr("דילוג משאיר את המודל שנבחר. אפשר לשנות בכל רגע בהגדרות.", "Skipping keeps the chosen model. You can change it anytime in Settings."))
+        Body(tr("אם מדלגים, המודל שנבחר נשאר. אפשר לשנות אותו בכל רגע בהגדרות.", "Skipping keeps the chosen model. You can change it anytime in Settings."))
     }
 }
 
 /** Before the microphone, as before the iPhone's engine page; Hebrew until she picks another. */
 @Composable
 private fun LanguagePage(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
-    Page(Icons.Rounded.Translate, tr("באיזו שפה מדברים סביבך?", "Which language do people around you speak?")) {
+    Page(Icons.Rounded.Translate, tr("באיזו שפה מדברים סביבכם?", "Which language do people around you speak?")) {
         SettingsGroup(modifier = Modifier.selectableGroup()) {
             for (language in UILanguage.entries) {
                 item {
@@ -341,7 +341,7 @@ private fun LanguagePage(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
                 }
             }
         }
-        Body(tr("הכתוביות נכתבות בשפה הזו. אפשר לשנות בכל רגע בהגדרות.", "The captions are written in this language. You can change it anytime in Settings."))
+        Body(tr("הכתוביות נכתבות בשפה הזו. אפשר לשנות אותה בכל רגע בהגדרות.", "The captions are written in this language. You can change it anytime in Settings."))
     }
 }
 
@@ -465,7 +465,7 @@ private fun Footer(pager: PagerState, onFinish: () -> Unit) {
                 },
             )
         } else {
-            PrimaryButton(tr("להתחיל", "Start"), onFinish, Modifier.fillMaxWidth(), icon = Icons.Rounded.PlayArrow)
+            PrimaryButton(tr("התחלה", "Start"), onFinish, Modifier.fillMaxWidth(), icon = Icons.Rounded.PlayArrow)
         }
     }
 }

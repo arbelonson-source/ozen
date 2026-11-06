@@ -73,10 +73,10 @@ struct HistoryView: View {
     private var savingSection: some View {
         Section {
             if viewModel.saveHistory, viewModel.historySaveFailure != nil {
-                Label(tr("השמירה האחרונה של שיחה נכשלה, כנראה כי אין מקום פנוי בטלפון. מה שנאמר מאז אולי לא נשמר.", "The last conversation save failed, probably because the phone is out of space. What was said since then may not have been saved."), systemImage: "exclamationmark.triangle.fill")
+                Label(tr("השמירה האחרונה של שיחה נכשלה, כנראה כי נגמר המקום בטלפון. ייתכן שמה שנאמר מאז לא נשמר.", "The last conversation save failed, probably because the phone is out of space. What was said since then may not have been saved."), systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.readable(.red))
             }
-            Toggle(tr("לשמור שיחות", "Save conversations"), isOn: $viewModel.saveHistory)
+            Toggle(tr("שמירת שיחות", "Save conversations"), isOn: $viewModel.saveHistory)
             Picker(tr("מחיקה אוטומטית", "Automatic deletion"), selection: retentionChoice) {
                 ForEach(HistoryRetention.allCases, id: \.self) { retention in
                     Text(Self.name(for: retention)).tag(retention)
@@ -91,8 +91,8 @@ struct HistoryView: View {
     /// conversations are being saved.
     static func savingFooter(saving: Bool, size: String, retention: HistoryRetention) -> String {
         let base = saving
-            ? tr("השיחות נשמרות בטלפון הזה (%1), וגם בגיבוי שלו ל-iCloud או למחשב כשהגיבוי פועל. אפשר למחוק אותן בכל רגע.", "Conversations are saved on this phone (%1), and in its iCloud or computer backup when that is on. They can be deleted anytime.", args: ["\(size)"])
-            : tr("שיחות חדשות לא נשמרות. השיחות שכבר נשמרו נשארות בטלפון הזה (%1), וגם בגיבוי שלו ל-iCloud או למחשב כשהגיבוי פועל. אפשר למחוק אותן בכל רגע.", "New conversations are not being saved. Those saved before stay on this phone (%1), and in its iCloud or computer backup when that is on. They can be deleted anytime.", args: ["\(size)"])
+            ? tr("השיחות נשמרות בטלפון הזה (%1), וגם בגיבוי שלו ל־iCloud או למחשב כשהגיבוי פועל. אפשר למחוק אותן בכל רגע.", "Conversations are saved on this phone (%1), and in its iCloud or computer backup when that is on. They can be deleted anytime.", args: ["\(size)"])
+            : tr("שיחות חדשות לא נשמרות. השיחות שכבר נשמרו נשארות בטלפון הזה (%1), וגם בגיבוי שלו ל־iCloud או למחשב כשהגיבוי פועל. אפשר למחוק אותן בכל רגע.", "New conversations are not being saved. Those saved before stay on this phone (%1), and in its iCloud or computer backup when that is on. They can be deleted anytime.", args: ["\(size)"])
         guard retention != .forever else { return base }
         return base + tr(" שיחות עם שורה מסומנת או עם שם נשמרות תמיד.", " Conversations with a starred line or a name are always kept.")
     }

@@ -25,11 +25,11 @@ struct SpeakerEnrollmentView: View {
                 Section {
                     if isRecording {
                         ProgressView(value: progress) {
-                            Text(tr("מקליט… %1/%2 שניות", "Recording… %1/%2 seconds", args: ["\(Int(progress * targetSeconds))", "\(Int(targetSeconds))"]))
+                            Text(tr("מקליטים… %1/%2 שניות", "Recording… %1/%2 seconds", args: ["\(Int(progress * targetSeconds))", "\(Int(targetSeconds))"]))
                         }
                         .accessibilityValue(ConversationStats.secondsText(Int(progress * targetSeconds)))
                         LevelMeter(level: viewModel.inputLevel, isActive: true)
-                        Text(tr("בקשו מהאדם לדבר בטבעיות, במרחק רגיל מהמיקרופון שנבחר. אם הפס לא זז כשמדברים, המיקרופון לא שומע. הכתוביות מושהות בזמן ההקלטה.", "Ask the person to speak naturally, at a normal distance from the selected microphone. If the bar doesn’t move while speaking, the microphone isn’t hearing anything. Captions are paused during recording."))
+                        Text(tr("בקשו מהאדם לדבר בטבעיות, במרחק רגיל מהמיקרופון שנבחר. אם הפס לא זז כשמדברים, המיקרופון לא קולט כלום. הכתוביות מושהות בזמן ההקלטה.", "Ask the person to speak naturally, at a normal distance from the selected microphone. If the bar doesn’t move while speaking, the microphone isn’t hearing anything. Captions are paused during recording."))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         Button(tr("עצירה בלי לשמור", "Stop without saving"), role: .destructive) {
@@ -47,7 +47,7 @@ struct SpeakerEnrollmentView: View {
                     Text(tr("הקלטה", "Recording"))
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(tr("לזיהוי טוב יותר, הקליטו כל אדם 3–4 פעמים באותו שם, בימים ובמקומות שונים: חדר שקט, עם טלוויזיה ברקע, מהצד השני של החדר.", "For better recognition, record each person 3–4 times under the same name, on different days and in different places: a quiet room, with the TV on, from across the room."))
+                        Text(tr("כדי לשפר את הזיהוי, הקליטו כל אדם 3–4 פעמים תחת אותו שם, בימים שונים ובמקומות שונים: בחדר שקט, כשהטלוויזיה פועלת ברקע ומהצד השני של החדר.", "For better recognition, record each person 3–4 times under the same name, on different days and in different places: a quiet room, with the TV on, from across the room."))
                         Text(tr("ההקלטה עצמה לא נשמרת — רק \"טביעת קול\" מספרית קצרה שממנה אי אפשר לשחזר את הדיבור.", "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from."))
                     }
                 }

@@ -257,7 +257,7 @@ data class ConversationStats(
          * one wording per language, so only the noun is changed here.
          */
         fun aboutMinutesLeftText(minutes: Int): String {
-            val text = tr("עוד כ-%1 דקות", "About %1 minutes left", listOf("$minutes"))
+            val text = tr("עוד כ־%1 דקות", "About %1 minutes left", listOf("$minutes"))
             val endsInOne = minutes % 10 == 1 && minutes % 100 != 11
             return when (Localization.language) {
                 UILanguage.Russian -> if (endsInOne) text.replace(" минут", " минуты") else text

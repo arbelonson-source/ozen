@@ -65,8 +65,8 @@ class BatteryAdvisorTest {
         Localization.withLanguage(UILanguage.Hebrew) {
             val low = BatteryWarning.Low(20).notificationContent
             val critical = BatteryWarning.Critical(9).notificationContent
-            assertEquals("הסוללה ב-20%", low.title)
-            assertEquals("הסוללה ב-9%", critical.title)
+            assertEquals("הסוללה ב־20%", low.title)
+            assertEquals("הסוללה ב־9%", critical.title)
             assertEquals(critical.identifier, low.identifier)
             assertTrue(!low.isUrgent && critical.isUrgent)
             assertNotEquals(critical.body, low.body)

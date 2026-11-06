@@ -561,7 +561,7 @@ struct LiveCaptionView: View {
             Button(tr("להוריד עכשיו", "Download now")) {
                 Task { await viewModel.approveCellularDownload() }
             }
-            Button(tr("לחכות ל-Wi-Fi", "Wait for Wi‑Fi"), role: .cancel) {}
+            Button(tr("לחכות ל־Wi-Fi", "Wait for Wi‑Fi"), role: .cancel) {}
         } message: {
             Text(cellularDownloadMessage)
         }
@@ -603,8 +603,8 @@ struct LiveCaptionView: View {
                 Button(tr("אישור", "OK"), role: .cancel) {}
             } message: {
                 Text(viewModel.problemKeptSound
-                    ? tr("פרטי התקלה, השורות האחרונות ו-30 השניות האחרונות של הקול נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לך: הגדרות ← אבחון.", "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.")
-                    : tr("פרטי התקלה והשורות האחרונות נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לך: הגדרות ← אבחון ← שליחת הדוח.", "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report."))
+                    ? tr("פרטי התקלה, השורות האחרונות ו־30 השניות האחרונות של הקול נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לכם: הגדרות ← אבחון.", "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.")
+                    : tr("פרטי התקלה והשורות האחרונות נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לכם: הגדרות ← אבחון ← שליחת הדוח.", "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report."))
             }
     }
 
@@ -697,7 +697,7 @@ struct LiveCaptionView: View {
             Button {
                 viewModel.toggleStar(segment)
             } label: {
-                Label(starred ? tr("ביטול הסימון", "Remove mark") : tr("סימון כחשוב", "Mark as important"), systemImage: starred ? "star.slash" : "star")
+                Label(starred ? tr("ביטול הסימון", "Remove mark") : tr("סימון כחשובה", "Mark as important"), systemImage: starred ? "star.slash" : "star")
             }
             if viewModel.canSay(LiveCaptionViewModel.repeatRequest) {
                 Button {
@@ -739,7 +739,7 @@ struct LiveCaptionView: View {
             }
         }
         .accessibilityActions {
-            Button(viewModel.starredSegmentIDs.contains(segment.id) ? tr("ביטול הסימון", "Remove mark") : tr("סימון כחשוב", "Mark as important")) {
+            Button(viewModel.starredSegmentIDs.contains(segment.id) ? tr("ביטול הסימון", "Remove mark") : tr("סימון כחשובה", "Mark as important")) {
                 viewModel.toggleStar(segment)
             }
             if viewModel.canSay(LiveCaptionViewModel.repeatRequest) {
@@ -935,12 +935,12 @@ struct LiveCaptionView: View {
         VStack(alignment: .leading, spacing: 12) {
             // Not while a call holds the microphone: the phase stays on
             // listening, but nothing is being heard.
-            Text(viewModel.captionsAreRunning ? tr("מקשיב.", "Listening.") : tr("הכתוביות יופיעו כאן.", "Captions will appear here."))
+            Text(viewModel.captionsAreRunning ? tr("מאזינה.", "Listening.") : tr("הכתוביות יופיעו כאן.", "Captions will appear here."))
                 .font(.system(size: liveDisplay.fontSize, weight: .medium))
                 .foregroundStyle(theme.text)
             Text(viewModel.captionsAreRunning
-                 ? tr("כשמישהו ידבר, המילים יופיעו כאן בזמן אמת. השאירו אצבע על שורה כדי לסמן אותה כחשובה או לתת שם לדובר, וצבטו בשתי אצבעות כדי להגדיל או להקטין את הטקסט.", "When someone talks, the words will appear here in real time. Press and hold a line to mark it as important or name the speaker, and pinch with two fingers to make the text bigger or smaller.")
-                 : tr("אפשר לבחור מיקרופון בכפתור למטה מימין ולשנות מנוע תמלול בהגדרות.", "You can choose a microphone with the microphone button at the bottom, and change the transcription engine in Settings."))
+                 ? tr("כשמישהו ידבר, המילים יופיעו כאן בזמן אמת. לחיצה ארוכה על שורה מאפשרת לסמן אותה כחשובה או לתת שם לדובר, וצביטה בשתי אצבעות מגדילה או מקטינה את הטקסט.", "When someone talks, the words will appear here in real time. Press and hold a line to mark it as important or name the speaker, and pinch with two fingers to make the text bigger or smaller.")
+                 : tr("אפשר לבחור מיקרופון בכפתור המיקרופון שבתחתית המסך, ולהחליף את מנוע התמלול בהגדרות.", "You can choose a microphone with the microphone button at the bottom, and change the transcription engine in Settings."))
                 .font(.system(size: max(17, liveDisplay.fontSize * 0.6)))
                 .foregroundStyle(theme.pendingText)
                 .fixedSize(horizontal: false, vertical: true)
@@ -991,7 +991,7 @@ struct LiveCaptionView: View {
                              ? tr("עברית מדויקת בהרבה עם מודל אחר", "Much more accurate Hebrew with a different model")
                              : tr("כתוביות מדויקות בהרבה עם מודל אחר", "Much more accurate captions with a different model"))
                             .font(.headline)
-                        Text(tr("הקישו כדי להוריד %1, %2, פעם אחת ב-Wi-Fi", "Tap to download %1, %2, once over Wi-Fi", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
+                        Text(tr("הקישו כדי להוריד את %1, %2, פעם אחת ב־Wi-Fi", "Tap to download %1, %2, once over Wi-Fi", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
                             .font(.subheadline.weight(.semibold))
                     }
                     .multilineTextAlignment(.leading)
@@ -1025,7 +1025,7 @@ struct LiveCaptionView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone"))
                         .font(.headline)
-                    Text(tr("%1 (%2) קל יותר ומצליח לעמוד בקצב טוב יותר כאן.", "%1 (%2) is lighter and keeps up better here.", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
+                    Text(tr("%1 (%2) קל יותר ועומד בקצב טוב יותר בטלפון הזה.", "%1 (%2) is lighter and keeps up better here.", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
                         .font(.subheadline)
                 }
                 .multilineTextAlignment(.leading)
@@ -1068,9 +1068,9 @@ struct LiveCaptionView: View {
                     Image(systemName: "bell.and.waves.left.and.right")
                         .font(.title2)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(tr("שהטלפון ירטוט כשקוראים לך?", "Have the phone buzz when someone calls your name?"))
+                        Text(tr("שהטלפון ירטוט כשקוראים לכם?", "Have the phone buzz when someone calls your name?"))
                             .font(.headline)
-                        Text(tr("הקישו כדי לכתוב את השם שלך", "Tap to write your name"))
+                        Text(tr("הקישו כדי לכתוב את השם שלכם", "Tap to write your name"))
                             .font(.subheadline.weight(.semibold))
                     }
                     .multilineTextAlignment(.leading)
@@ -1616,7 +1616,7 @@ struct LiveCaptionView: View {
     private var cellularDownloadMessage: String {
         let megabytes = viewModel.phase.failure?.engineUnavailability?.downloadMegabytes ?? 0
         let size = megabytes > 0 ? "\(megabytes)\u{00A0}MB" : tr("כמה מאות MB", "A few hundred MB")
-        return tr("המודל שוקל %1. בחבילת גלישה זה יכול לעלות כסף או לגמור את נפח הגלישה. ב-Wi-Fi ההורדה תתחיל לבד.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", args: ["\(size)"])
+        return tr("גודל המודל הוא בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi ההורדה תתחיל מעצמה.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", args: ["\(size)"])
     }
 
     private func perform(_ action: PhasePresentation.Action) {

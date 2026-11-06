@@ -82,13 +82,13 @@ struct LocalizationTests {
 
     @Test("an interpolated string is translated as a template, with the values still substituted in")
     func templatedTranslation() {
-        let french = tr("הסוללה ב-%1%", "Battery at %1%", args: ["42"], in: .french)
+        let french = tr("הסוללה ב־%1%", "Battery at %1%", args: ["42"], in: .french)
         #expect(french.contains("42"))
         #expect(french != "Battery at 42%")
-        let english = tr("הסוללה ב-%1%", "Battery at %1%", args: ["42"], in: .english)
+        let english = tr("הסוללה ב־%1%", "Battery at %1%", args: ["42"], in: .english)
         #expect(english == "Battery at 42%")
-        let hebrew = tr("הסוללה ב-%1%", "Battery at %1%", args: ["42"], in: .hebrew)
-        #expect(hebrew == "הסוללה ב-42%")
+        let hebrew = tr("הסוללה ב־%1%", "Battery at %1%", args: ["42"], in: .hebrew)
+        #expect(hebrew == "הסוללה ב־42%")
     }
 
     @Test("a template used twice repeats the same value both times")

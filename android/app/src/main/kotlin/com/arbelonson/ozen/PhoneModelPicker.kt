@@ -79,7 +79,7 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
         }
         val picked = PhoneModelCatalog.effective(language, chosen)
         if (speed != null && PhoneModelEstimate.fit(picked, speed, memory) != PhoneModelFit.KeepsUp) {
-            Caution(tr("בטלפון הזה המודל הזה עלול לפגר אחרי הדיבור. אפשר להשתמש בו בכל זאת.", "On this phone this model may lag behind the speech. You can still use it."))
+            Caution(tr("בטלפון הזה ייתכן שהמודל הזה לא יעמוד בקצב הדיבור. אפשר להשתמש בו בכל זאת.", "On this phone this model may lag behind the speech. You can still use it."))
         }
         SwitchNote(switching)
     }
@@ -103,14 +103,14 @@ private fun PhoneTest(check: PhoneCheckState, tested: Boolean, captionsBusy: Boo
         TonalButton(label, onTest, Modifier.fillMaxWidth().testTag("phone-test"), icon = Icons.Rounded.Speed, enabled = running == null && !captionsBusy)
         if (running != null) {
             val percent = (running.fraction * 100).toInt()
-            val text = tr("בודק את הטלפון… %1%", "Testing this phone… %1%", listOf("$percent"))
+            val text = tr("בודקים את הטלפון… %1%", "Testing this phone… %1%", listOf("$percent"))
             LinearProgressIndicator(progress = { running.fraction }, modifier = Modifier.fillMaxWidth())
             Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         } else if (check == PhoneCheckState.Failed) {
-            Warning(tr("הבדיקה לא הצליחה. אפשר לנסות שוב.", "The test could not run. Try again."))
+            Warning(tr("לא היה אפשר להריץ את הבדיקה. נסו שוב.", "The test could not run. Try again."))
         } else if (captionsBusy) {
             Text(
-                tr("כדי לבדוק את הטלפון הזה, עוצרים את הכתוביות. הבדיקה צריכה את כל כוחו.", "Stop the captions to test this phone. The test needs all of its power."),
+                tr("כדי לבדוק את הטלפון, צריך לעצור את הכתוביות: הבדיקה צריכה את כל כוח העיבוד שלו.", "Stop the captions to test this phone. The test needs all of its power."),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -164,7 +164,7 @@ private fun ModelRow(
             Text(model.displayName, style = MaterialTheme.typography.bodyLarge, fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal)
             tag?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
             val place = when {
-                progress != null -> tr("מוריד… %1%", "Downloading… %1%", listOf("${(progress.fraction * 100).toInt()}"))
+                progress != null -> tr("מורידים… %1%", "Downloading… %1%", listOf("${(progress.fraction * 100).toInt()}"))
                 onPhone -> tr("כבר בטלפון", "Already on the phone")
                 leftoverBytes != null -> tr("הורדה שלא הושלמה, %1 בטלפון", "Unfinished download, %1 on the phone", listOf(ByteSize.text(leftoverBytes)))
                 else -> tr("הורדה של %1", "Download of %1", listOf(ByteSize.text(model.bytes)))
@@ -227,7 +227,7 @@ private fun Rating(label: String, value: Int) {
 private fun FitLabel(fit: PhoneModelFit) {
     when (fit) {
         PhoneModelFit.KeepsUp -> Text(tr("עומד בקצב", "Keeps up"), style = MaterialTheme.typography.labelLarge, color = savedGreen())
-        PhoneModelFit.ALittleBehind -> Text(tr("מפגר קצת", "A little behind"), style = MaterialTheme.typography.labelLarge, color = cautionOrange())
+        PhoneModelFit.ALittleBehind -> Text(tr("מתעכב קצת", "A little behind"), style = MaterialTheme.typography.labelLarge, color = cautionOrange())
         PhoneModelFit.TooSlow -> Text(tr("איטי מדי בטלפון הזה", "Too slow on this phone"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
     }
 }
@@ -238,9 +238,9 @@ private fun SwitchNote(switching: PhoneModelSwitch) {
         PhoneModelSwitch.Idle -> null
         is PhoneModelSwitch.Downloading -> tr("הכתוביות ממשיכות עם המודל הנוכחי עד שהחדש יהיה מוכן.", "Captions keep using the current model until the new one is ready.")
         is PhoneModelSwitch.NotEnoughRoom -> tr("אין מקום להורדה. צריך לפנות עוד %1 MB.", "There is no room to download it. Free up %1 MB more.", listOf("${switching.megabytes}"))
-        is PhoneModelSwitch.WaitingForWiFi -> tr("ממתין ל‑Wi‑Fi כדי להוריד. אפשר לאשר הורדה בגלישה סלולרית בהגדרות.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings.")
-        is PhoneModelSwitch.Offline -> tr("אין חיבור לאינטרנט להורדה.", "There is no internet connection to download it.")
-        is PhoneModelSwitch.Failed -> tr("ההורדה נכשלה. בחרו את המודל שוב כדי לנסות שוב.", "The download failed. Choose the model again to try again.")
+        is PhoneModelSwitch.WaitingForWiFi -> tr("ממתינים ל־Wi‑Fi כדי להוריד. אפשר לאשר בהגדרות הורדה בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings.")
+        is PhoneModelSwitch.Offline -> tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד.", "There is no internet connection to download it.")
+        is PhoneModelSwitch.Failed -> tr("ההורדה נכשלה. כדי לנסות שוב, בחרו את המודל מחדש.", "The download failed. Choose the model again to try again.")
     }
     text?.let {
         val cautious = switching !is PhoneModelSwitch.Downloading

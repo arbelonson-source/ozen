@@ -132,7 +132,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             value(tr("חבילות אודיו", "Audio chunks"), "${stats.audioChunksReceived}")
             value(tr("שניות אודיו", "Audio seconds"), format("%.1f", stats.audioSecondsReceived))
             value(tr("החלפות מיקרופון", "Microphone changes"), "${stats.inputChanges}")
-            value(tr("המיקרופון נתקע", "Microphone stalls"), "${stats.audioStalls}")
+            value(tr("תקיעות מיקרופון", "Microphone stalls"), "${stats.audioStalls}")
             value(tr("רמות קול (dBFS)", "Sound levels (dBFS)"), levels(stats.inputLevels))
             value(tr("עוצמה עכשיו", "Level now"), format("%.0f%%", level * 100.0))
             value(tr("נשמע כדיבור", "Sounded like speech"), stats.speechShare?.let { format("%.0f%%", it * 100) } ?: "—")
@@ -148,7 +148,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
 
         val misses = DiagnosticsReport.nearMisses(now.soundNearMisses)
         if (misses.isNotEmpty()) {
-            SectionHeader(tr("צלילים שנשמעו חלש מדי להתראה", "Sounds heard too faint to alert"))
+            SectionHeader(tr("צלילים שנשמעו חלשים מדי בשביל התראה", "Sounds heard too faint to alert"))
             SettingsGroup {
                 for ((name, heard) in misses) value(name, heard)
             }
@@ -160,7 +160,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             value(tr("עדכונים מהמנוע", "Updates from engine"), "${stats.tokensReceived}")
             value(tr("שורות שנסגרו", "Lines closed"), "${stats.segmentsCommitted}")
             value(tr("שורות על המסך", "Lines on screen"), "${now.linesOnScreen}")
-            value(tr("פיגור כתוביות", "Caption lag"), stats.captionLagSeconds?.let { format(tr("%.1f שנ׳", "%.1f s"), it) } ?: "—")
+            value(tr("עיכוב בכתוביות", "Caption lag"), stats.captionLagSeconds?.let { format(tr("%.1f שנ׳", "%.1f s"), it) } ?: "—")
             value(tr("הפעלות מחדש", "Restarts"), "${stats.engineRestarts}")
             value(tr("דוברים שזוהו", "Speakers identified"), "${now.speakersIdentified}")
             value(tr("דוברים חדשים מאז שהאפליקציה נפתחה", "New speakers since the app opened"), "${stats.speakerClustersOpened}")
@@ -175,8 +175,8 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             value(tr("שיחת טלפון תופסת את האודיו", "Phone call is using the audio"), if (now.interruptedBySystem) tr("כן", "Yes") else tr("לא", "No"))
             value(tr("שמירת הגדרות", "Settings save"), if (now.settingsSaveFailed) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
             value(tr("שמירת שיחות", "Conversation history save"), if (now.historySaveFailure != null) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
-            value(tr("הודעות בטלפון", "Phone notifications"), if (now.notificationsAllowed) tr("תקינות", "OK") else tr("כבויות בהגדרות של Android", "Turned off in Android settings"))
-            value(tr("רטט להתראות", "Alert vibration"), if (now.canVibrate) tr("תקין", "OK") else tr("לא נתמך במכשיר", "Not supported on this device"))
+            value(tr("התראות בטלפון", "Phone notifications"), if (now.notificationsAllowed) tr("תקינות", "OK") else tr("כבויות בהגדרות של Android", "Turned off in Android settings"))
+            value(tr("רטט להתראות", "Alert vibration"), if (now.canVibrate) tr("תקין", "OK") else tr("לא נתמך במכשיר הזה", "Not supported on this device"))
             value(tr("חיבור לאינטרנט", "Internet connection"), DiagnosticsReport.network(now.network))
         }
 
@@ -197,7 +197,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 }
             }
         }
-        Footnote(tr("החדש ביותר למעלה. הדוח המועתק כולל את כל הרשימה.", "Newest at the top. The copied report includes the full list."))
+        Footnote(tr("החדשים ביותר למעלה. הדוח המועתק כולל את הרשימה המלאה.", "Newest at the top. The copied report includes the full list."))
 
         TonalButton(
             tr("לסמן בעיה עכשיו", "Mark a problem now"),
@@ -236,7 +236,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
         Footnote(ProblemNotes.diagnostics(now.settings.saveHistory))
 
         if (now.problemClips.isNotEmpty()) {
-            SectionHeader(tr("הקול מהבעיות שסומנו", "Sound from marked problems"))
+            SectionHeader(tr("הקלטות של בעיות שסומנו", "Sound from marked problems"))
             SettingsGroup(dividerInset = 56.dp) {
                 for (clip in now.problemClips) {
                     item {
@@ -252,7 +252,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 }
             }
             Footnote(
-                tr("כשמסמנים בעיה נשמרות 30 השניות האחרונות של הקול, רק בטלפון, כדי להשוות מה נאמר למה שנכתב. נשמרות עד 5; שליחה רק כשלוחצים עליהן. לחיצה ארוכה מוחקת.", "Marking a problem keeps the last 30 seconds of sound, on the phone only, to compare what was said with what was shown. Up to 5 are kept, and they’re sent only when you tap one. Hold one to delete it."),
+                tr("כשמסמנים בעיה, 30 השניות האחרונות של הקול נשמרות בטלפון בלבד, כדי להשוות בין מה שנאמר למה שהוצג. נשמרות עד 5 הקלטות, והן נשלחות רק כשמקישים על אחת מהן. כדי למחוק הקלטה, לוחצים עליה לחיצה ארוכה.", "Marking a problem keeps the last 30 seconds of sound, on the phone only, to compare what was said with what was shown. Up to 5 are kept, and they’re sent only when you tap one. Hold one to delete it."),
             )
         }
 
@@ -265,7 +265,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
 
         SectionHeader(tr("מכשיר", "Device"))
         SettingsGroup {
-            value(tr("חום", "Temperature"), DiagnosticsReport.temperature(now.thermalStatus))
+            value(tr("טמפרטורה", "Temperature"), DiagnosticsReport.temperature(now.thermalStatus))
             value(tr("חיסכון בסוללה", "Battery Saver"), if (now.batterySaver) tr("פעיל", "On") else tr("כבוי", "Off"))
             value(tr("סוללה", "Battery"), DiagnosticsReport.battery(now.batteryPercent, now.charging))
             value(tr("מקום פנוי", "Free space"), ByteSize.text(now.freeBytes))
@@ -338,7 +338,7 @@ private fun levels(histogram: AudioLevelHistogram): String {
     val quiet = histogram.decibels(0.1) ?: return "—"
     val middle = histogram.decibels(0.5) ?: return "—"
     val loud = histogram.decibels(0.9) ?: return "—"
-    return tr("שקט %1 · אמצע %2 · חזק %3", "quiet %1 · mid %2 · loud %3", listOf("$quiet", "$middle", "$loud"))
+    return tr("שקט %1 · בינוני %2 · חזק %3", "quiet %1 · mid %2 · loud %3", listOf("$quiet", "$middle", "$loud"))
 }
 
 /** A kept sound: tapped, it goes out through the share sheet; held, or from a screen reader, it can be deleted. */
@@ -375,13 +375,13 @@ private fun clipSheet(context: Context, clip: File): Intent {
 private fun reportSheet(report: String): Intent {
     val send = Intent(Intent.ACTION_SEND)
         .setType("text/plain")
-        .putExtra(Intent.EXTRA_SUBJECT, tr("דוח אבחון מאוזן", "Ozen diagnostics report"))
+        .putExtra(Intent.EXTRA_SUBJECT, tr("דוח אבחון של אוזן", "Ozen diagnostics report"))
         .putExtra(Intent.EXTRA_TEXT, report)
     return Intent.createChooser(send, null)
 }
 
 private fun copyReport(context: Context, report: String) {
-    context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(tr("דוח אבחון מאוזן", "Ozen diagnostics report"), report))
+    context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(tr("דוח אבחון של אוזן", "Ozen diagnostics report"), report))
 }
 
 private fun format(pattern: String, value: Double): String = String.format(Locale.ROOT, pattern, value)

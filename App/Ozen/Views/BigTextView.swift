@@ -129,18 +129,18 @@ struct BigTextView: View {
                 isFlipped.toggle()
                 isTyping = !isFlipped
             } label: {
-                Label(isFlipped ? tr("חזרה", "Back") : tr("להפוך", "Flip"), systemImage: "arrow.up.arrow.down")
+                Label(isFlipped ? tr("חזרה", "Back") : tr("היפוך", "Flip"), systemImage: "arrow.up.arrow.down")
                     .frame(maxWidth: .infinity)
             }
             .accessibilityShowsLargeContentViewer()
             .disabled(isEmpty)
-            .accessibilityHint(tr("הופך את הטקסט כדי שמי שיושב מולך יוכל לקרוא", "Flips the text so the person sitting across from you can read it"))
+            .accessibilityHint(tr("הופך את הטקסט כדי שמי שיושב מולכם יוכל לקרוא אותו", "Flips the text so the person sitting across from you can read it"))
 
             if canSpeak {
                 Button {
                     onSpeak(text)
                 } label: {
-                    Label(tr("להשמיע", "Speak"), systemImage: "speaker.wave.3.fill")
+                    Label(tr("השמעה", "Speak"), systemImage: "speaker.wave.3.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .accessibilityShowsLargeContentViewer()
