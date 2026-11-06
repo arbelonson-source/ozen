@@ -12,6 +12,18 @@ from unittest import mock
 import lan_tls
 import pairing
 
+_certificates = tempfile.TemporaryDirectory()
+_cert_dir = mock.patch.object(pairing, "DEFAULT_CERT_DIR", _certificates.name)
+
+
+def setUpModule():
+    _cert_dir.start()
+
+
+def tearDownModule():
+    _cert_dir.stop()
+    _certificates.cleanup()
+
 
 class Done:
     def __init__(self, stdout):
@@ -149,7 +161,7 @@ class PairingPage(unittest.TestCase):
             with open(code, "w", encoding="utf-8") as f:
                 f.write("example-code-123\n")
             out = os.path.join(folder, "pairing.html")
-            argv = ["pairing.py", "--address", "192.168.1.20", "--code-file", code, "--out", out, "--no-open"]
+            argv = ["pairing.py", "--address", "192.168.1.20", "--code-file", code, "--out", out, "--no-open", "--cert-dir", folder]
             with mock.patch("sys.argv", argv), mock.patch("sys.stdout", io.StringIO()):
                 runpy.run_path(pairing.__file__, run_name="__main__")
             self.assertTrue(os.path.exists(out))
@@ -237,12 +249,12 @@ class AddressChoice(unittest.TestCase):
 
 
 class EncryptedHomeLink(unittest.TestCase):
-    def link(self, folder, address):
+    def link(self, folder, address, *more, cert_dir=None):
         code = os.path.join(folder, "pairing-code")
         with open(code, "w", encoding="utf-8") as f:
             f.write("example-code-123\n")
         argv = ["pairing.py", "--address", address, "--code-file", code,
-                "--out", os.path.join(folder, "pairing.html"), "--no-open"]
+                "--out", os.path.join(folder, "pairing.html"), "--no-open", "--cert-dir", cert_dir or folder, *more]
         out = io.StringIO()
         with mock.patch("sys.argv", argv), mock.patch("sys.stdout", out):
             pairing.main()
@@ -262,7 +274,7 @@ class EncryptedHomeLink(unittest.TestCase):
             with open(code, "w", encoding="utf-8") as f:
                 f.write("example-code-123\n")
             argv = ["pairing.py", "--address", "192.168.1.20", "--code-file", code,
-                    "--out", os.path.join(folder, "pairing.html"), "--no-open"]
+                    "--out", os.path.join(folder, "pairing.html"), "--no-open", "--cert-dir", folder]
             out = io.StringIO()
             with mock.patch("sys.argv", argv), mock.patch("sys.stdout", out):
                 pairing.main()
@@ -276,6 +288,22 @@ class EncryptedHomeLink(unittest.TestCase):
                 self.assertNotIn("pin", query, address)
                 self.assertEqual(os.listdir(folder).count("lan-cert.pem"), 0, address)
         self.assertEqual(query["address"], ["wss://192.168.1.20:9000"])
+
+    def test_the_link_follows_the_servers_tls_port_and_stays_plain_when_it_is_off(self):
+        with tempfile.TemporaryDirectory() as folder:
+            query = self.link(folder, "192.168.1.20", "--tls-port", "9443")
+            pin = lan_tls.certificate_pin(os.path.join(folder, "lan-cert.pem"))
+        self.assertEqual(query, {"address": ["wss://192.168.1.20:9443"], "code": ["example-code-123"], "pin": [pin]})
+        with tempfile.TemporaryDirectory() as folder:
+            query = self.link(folder, "192.168.1.20", "--tls-port", "0")
+            self.assertNotIn("lan-cert.pem", os.listdir(folder))
+        self.assertEqual(query, {"address": ["192.168.1.20"], "code": ["example-code-123"]})
+
+    def test_the_pin_is_of_the_certificate_in_the_servers_folder_not_beside_the_code_file(self):
+        with tempfile.TemporaryDirectory() as codes, tempfile.TemporaryDirectory() as server:
+            query = self.link(codes, "192.168.1.20", cert_dir=server)
+            self.assertNotIn("lan-cert.pem", os.listdir(codes))
+            self.assertEqual(query["pin"], [lan_tls.certificate_pin(os.path.join(server, "lan-cert.pem"))])
 
     def test_a_plain_address_out_on_the_internet_is_left_alone(self):
         with tempfile.TemporaryDirectory() as folder:

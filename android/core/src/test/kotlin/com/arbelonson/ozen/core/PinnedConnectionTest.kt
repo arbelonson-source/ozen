@@ -40,7 +40,7 @@ class PinnedConnectionTest {
         val store = KeyStore.getInstance("PKCS12").apply { keystore.inputStream().use { load(it, password) } }
         val keys = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm()).apply { init(store, password) }
         val context = SSLContext.getInstance("TLS").apply { init(keys.keyManagers, null, null) }
-        val socket = context.serverSocketFactory.createServerSocket(0, 5, InetAddress.getLoopbackAddress()) as SSLServerSocket
+        val socket = context.serverSocketFactory.createServerSocket(0, 5, InetAddress.getByName("127.0.0.1")) as SSLServerSocket
         server = socket
         thread(isDaemon = true) {
             while (!socket.isClosed) {
