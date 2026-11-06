@@ -87,6 +87,28 @@ class PhoneModelSettingsDeviceTest {
     }
 
     @Test
+    fun aPhoneWhereOnlyALightModelKeepsUpIsToldOfTheComputerAndTheCloud() {
+        val now = System.currentTimeMillis() / 1_000.0
+        val noNote = { compose.onAllNodesWithTag("light-model-note").fetchSemanticsNodes().isEmpty() }
+        app.settings.change {
+            it.languageCode = "en"
+            it.engine = TranscriptionEngineKind.WhisperKit
+            it.phoneSpeed = PhoneSpeed(gflops = 20.0, threads = 4, measuredAt = now)
+        }
+        openSection()
+        compose.onNodeWithTag("light-model-note").performScrollTo().assertExists()
+        app.settings.change { it.phoneSpeed = PhoneSpeed(gflops = 2_000.0, threads = 4, measuredAt = now) }
+        compose.waitUntil(5_000, noNote)
+        app.settings.change {
+            it.phoneSpeed = PhoneSpeed(gflops = 20.0, threads = 4, measuredAt = now)
+            it.engine = TranscriptionEngineKind.HomeServer
+        }
+        compose.waitUntil(5_000, noNote)
+        app.settings.change { it.engine = TranscriptionEngineKind.WhisperKit }
+        compose.waitUntil(5_000) { !noNote() }
+    }
+
+    @Test
     fun withTheCloudAsTheEngineTheCellularDownloadSwitchStaysBesideTheModelDownloads() {
         app.settings.change { it.engine = TranscriptionEngineKind.Cloud }
         openSection()

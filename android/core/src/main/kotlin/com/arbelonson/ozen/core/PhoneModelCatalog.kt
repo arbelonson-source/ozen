@@ -150,4 +150,15 @@ object PhoneModelEstimate {
         }
         return offered.minBy { it.passGflop }
     }
+
+    /** At or below this quality a model makes many mistakes in the language ("Small" and "Base" in Hebrew, "Base" in others). */
+    const val LIGHT_QUALITY = 2
+
+    /**
+     * Only a model at [LIGHT_QUALITY] or below keeps up on this phone, so
+     * the captions will have many mistakes: a home computer or a cloud
+     * service would write better ones.
+     */
+    fun onlyLightModelsKeepUp(language: UILanguage, measuredGflops: Double, totalMemoryBytes: Long? = null): Boolean =
+        recommend(language, measuredGflops, totalMemoryBytes).quality(language) <= LIGHT_QUALITY
 }

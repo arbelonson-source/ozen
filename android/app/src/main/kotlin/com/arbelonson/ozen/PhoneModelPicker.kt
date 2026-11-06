@@ -46,6 +46,7 @@ import com.arbelonson.ozen.core.PhoneModelEstimate
 import com.arbelonson.ozen.core.PhoneModelFit
 import com.arbelonson.ozen.core.PhoneModelShelf
 import com.arbelonson.ozen.core.PhoneModelSwitch
+import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.OzenSpacing
@@ -80,6 +81,20 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
         val picked = PhoneModelCatalog.effective(language, chosen)
         if (speed != null && PhoneModelEstimate.fit(picked, speed, memory) != PhoneModelFit.KeepsUp) {
             Caution(tr("בטלפון הזה ייתכן שהמודל הזה לא יעמוד בקצב הדיבור. אפשר להשתמש בו בכל זאת.", "On this phone this model may lag behind the speech. You can still use it."))
+        }
+        // A cheap phone lands on a model that gets much of the speech wrong,
+        // and nothing said that a computer at home or a cloud service would
+        // do far better.
+        if (speed != null && settings.engine == TranscriptionEngineKind.WhisperKit && PhoneModelEstimate.onlyLightModelsKeepUp(language, speed, memory)) {
+            Text(
+                tr(
+                    "בטלפון הזה רק מודל קל עומד בקצב, והוא טועה לא מעט. מחשב בבית או שירות ענן יכולים לכתוב כתוביות מדויקות יותר. אפשר לחבר אחד מהם בהגדרות.",
+                    "Only a light model keeps up on this phone, and it makes quite a few mistakes. A home computer or a cloud service can write more accurate captions. You can connect one in Settings.",
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("light-model-note"),
+            )
         }
         SwitchNote(switching)
     }
