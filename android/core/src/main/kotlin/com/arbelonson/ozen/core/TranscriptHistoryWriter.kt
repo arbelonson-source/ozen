@@ -189,7 +189,7 @@ class TranscriptHistoryWriter(
         }
         for (next in pendingRenames.texts.toList()) {
             try {
-                store.fixText(next.segmentID, next.sessionID, next.text)
+                store.fixText(next.segmentID, next.sessionID, next.change)
                 pendingRenames.texts.remove(next)
             } catch (error: Exception) {
                 failure.record(error.toString())
@@ -242,20 +242,29 @@ class TranscriptHistoryWriter(
      * refused stays waiting, is tried again after every later write, and
      * until it goes through its error is the one reported.
      */
-    fun fixTextNow(sessionID: UUID, segmentID: UUID, text: String): Boolean = queue.sync {
+    fun fixTextNow(sessionID: UUID, segmentID: UUID, text: String): Boolean = fixTextNow(sessionID, segmentID) { text }
+
+    /**
+     * The same, changing the line's text as it is when the write happens.
+     * An older change of that line still waiting goes first and is dropped
+     * from the queue, so it is neither written after this one nor lost.
+     */
+    fun fixTextNow(sessionID: UUID, segmentID: UUID, change: (String) -> String): Boolean = queue.sync {
         lastWritten.record = null
+        val earlier = pendingRenames.texts.filter { it.sessionID == sessionID && it.segmentID == segmentID }
+        val combined = { text: String -> change(earlier.fold(text) { shown, older -> older.change(shown) }) }
         var done = false
-        val written = failure.capture { done = store.fixText(segmentID, sessionID, text) }
+        val written = failure.capture { done = store.fixText(segmentID, sessionID, combined) }
+        pendingRenames.texts.removeAll(earlier)
         val waiting = pendingSaves.records[sessionID]
         val index = waiting?.segments?.indexOfFirst { it.id == segmentID } ?: -1
         if (waiting != null && index >= 0) {
             val segments = waiting.segments.toMutableList()
-            segments[index] = segments[index].copy(text = text)
+            segments[index] = segments[index].copy(text = combined(segments[index].text))
             pendingSaves.records[sessionID] = waiting.copy(segments = segments)
             done = true
         } else if (!written) {
-            pendingRenames.texts.removeAll { it.sessionID == sessionID && it.segmentID == segmentID }
-            pendingRenames.texts.add(PendingText(sessionID, segmentID, text))
+            pendingRenames.texts.add(PendingText(sessionID, segmentID, combined))
         }
         catchUp(null)
         done
@@ -368,7 +377,7 @@ class TranscriptHistoryWriter(
 
     private class PendingRename(val from: String, val to: String)
 
-    private class PendingText(val sessionID: UUID, val segmentID: UUID, val text: String)
+    private class PendingText(val sessionID: UUID, val segmentID: UUID, val change: (String) -> String)
 
     /** Voice renames and line-text fixes not yet written to every saved conversation. Only touched on the writer's queue. */
     private class PendingRenames {

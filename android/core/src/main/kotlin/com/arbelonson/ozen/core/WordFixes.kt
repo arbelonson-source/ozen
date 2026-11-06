@@ -8,27 +8,46 @@ object WordFixes {
     private const val MAXIMUM_WORDS = 4
     private const val PREFIX_LETTERS = "והבלמשכ"
 
-    private class Word(val start: Int, val end: Int, val key: String, val bases: List<Pair<Char, Int>>)
+    private class Word(val start: Int, val end: Int, val key: String, val bases: List<Pair<Int, Int>>)
     private class Compiled(val words: List<String>, val written: String)
 
-    private fun isMark(c: Char) = c in '֑'..'ׇ'
-    private fun isJoiner(c: Char) = c == '\'' || c == '’' || c == '׳' || c == '״'
+    private fun isMark(c: Int) = c in 0x0591..0x05C7 && c != 0x05BE && c != 0x05C0 && c != 0x05C3 && c != 0x05C6
+
+    private fun isCombining(c: Int) = when (Character.getType(c).toByte()) {
+        Character.NON_SPACING_MARK, Character.COMBINING_SPACING_MARK, Character.ENCLOSING_MARK -> true
+        else -> false
+    }
+
+    private fun isLetter(c: Int) = Character.isLetterOrDigit(c)
+    private fun isJoiner(c: Int) = c == '\''.code || c == '’'.code || c == '׳'.code || c == '״'.code
 
     private fun keyOf(text: String) =
-        text.filterNot { isMark(it) }.trim().replace(Regex("\\s+"), " ").lowercase()
+        text.filterNot { isMark(it.code) }.trim().replace(Regex("\\s+"), " ").lowercase()
 
     private fun words(text: String): List<Word> {
         val out = ArrayList<Word>()
+        fun inWord(at: Int): Boolean {
+            val c = text.codePointAt(at)
+            if (isLetter(c) || isMark(c) || isCombining(c)) return true
+            if (!isJoiner(c) || at == 0) return false
+            val next = at + Character.charCount(c)
+            return next < text.length && isLetter(text.codePointBefore(at)) && isLetter(text.codePointAt(next))
+        }
         var i = 0
         while (i < text.length) {
-            fun inWord(at: Int) = text[at].isLetterOrDigit() || isMark(text[at]) ||
-                (isJoiner(text[at]) && at > 0 && at + 1 < text.length && text[at - 1].isLetterOrDigit() && text[at + 1].isLetterOrDigit())
-            if (!inWord(i)) { i++; continue }
+            if (!inWord(i)) { i += Character.charCount(text.codePointAt(i)); continue }
             var j = i
-            while (j < text.length && inWord(j)) j++
-            val bases = ArrayList<Pair<Char, Int>>()
-            for (k in i until j) if (!isMark(text[k])) bases.add(text[k].lowercaseChar() to k)
-            out.add(Word(i, j, bases.joinToString("") { it.first.toString() }, bases))
+            while (j < text.length && inWord(j)) j += Character.charCount(text.codePointAt(j))
+            val bases = ArrayList<Pair<Int, Int>>()
+            var k = i
+            while (k < j) {
+                val c = text.codePointAt(k)
+                if (!isMark(c)) bases.add(Character.toLowerCase(c) to k)
+                k += Character.charCount(c)
+            }
+            val key = StringBuilder()
+            for ((c, _) in bases) key.appendCodePoint(c)
+            out.add(Word(i, j, key.toString(), bases))
             i = j
         }
         return out
@@ -38,18 +57,28 @@ object WordFixes {
         if (word.key == heard) return word.start
         for (n in 1..3) {
             if (word.bases.size <= n) return null
-            if (word.bases[n - 1].first !in PREFIX_LETTERS) return null
+            if (word.bases[n - 1].first.toChar() !in PREFIX_LETTERS) return null
             if (word.key.substring(n) == heard) return word.bases[n].second
         }
         return null
     }
 
-    private fun isHan(word: String) = word.isNotEmpty() && word.all { isHan(it) }
+    private fun isHan(word: String) = word.isNotEmpty() && word.codePoints().allMatch { isHan(it) }
 
-    private fun isHan(c: Char) = Character.isIdeographic(c.code) && c.code !in 0x3000..0x303F
+    private fun isHan(c: Int) = Character.isIdeographic(c) && c !in 0x3000..0x303F
+
+    private fun hasHan(text: String, word: Word): Boolean {
+        var at = word.start
+        while (at < word.end) {
+            val c = text.codePointAt(at)
+            if (isHan(c)) return true
+            at += Character.charCount(c)
+        }
+        return false
+    }
 
     private fun replacingHan(fixes: List<Compiled>, text: String, word: Word): String? {
-        if (fixes.isEmpty() || (word.start until word.end).none { isHan(text[it]) }) return null
+        if (fixes.isEmpty() || !hasHan(text, word)) return null
         val out = StringBuilder()
         var changed = false
         var at = word.start
@@ -60,8 +89,9 @@ object WordFixes {
                 at += hit.words[0].length
                 changed = true
             } else {
-                out.append(text[at])
-                at++
+                val c = text.codePointAt(at)
+                out.appendCodePoint(c)
+                at += Character.charCount(c)
             }
         }
         return if (changed) out.toString() else null
@@ -100,6 +130,26 @@ object WordFixes {
         return out
     }
 
+    /** Whether [fix] can go into [fixes]: a valid fix, and room for it unless it replaces the one with the same heard words. */
+    fun canAdd(fix: WordFix, fixes: List<WordFix>): Boolean {
+        val one = normalized(listOf(fix)).firstOrNull() ?: return false
+        return fixes.size < MAXIMUM_FIXES || fixes.any { keyOf(it.heard) == keyOf(one.heard) }
+    }
+
+    /** The arrow between heard and written words, pointing the way [heard] is read: left for Hebrew or Arabic. */
+    fun arrow(heard: String): String {
+        var at = 0
+        while (at < heard.length) {
+            val c = heard.codePointAt(at)
+            when (Character.getDirectionality(c)) {
+                Character.DIRECTIONALITY_RIGHT_TO_LEFT, Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC -> return "\u2190"
+                Character.DIRECTIONALITY_LEFT_TO_RIGHT -> return "\u2192"
+                else -> at += Character.charCount(c)
+            }
+        }
+        return "\u2192"
+    }
+
     /** Puts [fix] first; a fix whose written form is the word being corrected now writes the new form. */
     fun adding(fix: WordFix, to: List<WordFix>): List<WordFix> {
         val moved = keyOf(fix.heard)
@@ -107,16 +157,47 @@ object WordFixes {
         return normalized(listOf(fix) + carried)
     }
 
-    fun apply(fixes: List<WordFix>, text: String): String {
-        if (fixes.isEmpty() || text.isEmpty()) return text
+    private class Span(val first: Int, val last: Int, val replacement: String)
+    private class Rewrite(val text: String, val words: List<Word>, val spans: List<Span>)
+
+    fun apply(fixes: List<WordFix>, text: String): String = rewrite(fixes, text).text
+
+    /**
+     * The words the model was unsure of in [text], after [fixes] rewrote it.
+     * A word inside a rewritten stretch (the "york" of "New York" written as
+     * "NYC") is replaced by the words written there, once, so the doubt stays
+     * on the new words; each entry is matched to its own word of [text], so
+     * a repeated word is not marked in place of another.
+     */
+    fun applyToUncertain(fixes: List<WordFix>, text: String, uncertain: List<String>): List<String> {
+        if (uncertain.isEmpty()) return uncertain
+        val rewritten = rewrite(fixes, text)
+        val taken = HashSet<Int>()
+        val written = HashSet<Span>()
+        val out = ArrayList<String>()
+        for (entry in uncertain) {
+            val key = keyOf(entry)
+            val index = rewritten.words.indices.firstOrNull { it !in taken && rewritten.words[it].key == key }
+            if (index == null) { out.add(apply(fixes, entry)); continue }
+            taken.add(index)
+            val span = rewritten.spans.firstOrNull { index in it.first..it.last }
+            if (span == null) { out.add(entry); continue }
+            if (written.add(span)) out.addAll(words(span.replacement).map { span.replacement.substring(it.start, it.end) })
+        }
+        return out
+    }
+
+    private fun rewrite(fixes: List<WordFix>, text: String): Rewrite {
+        if (fixes.isEmpty() || text.isEmpty()) return Rewrite(text, words(text), emptyList())
         val compiled = normalized(fixes).mapNotNull { fix ->
             val parts = words(fix.heard).map { it.key }
             if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) null else Compiled(parts, fix.written)
         }
-        if (compiled.isEmpty()) return text
+        if (compiled.isEmpty()) return Rewrite(text, words(text), emptyList())
         val han = compiled.filter { it.words.size == 1 && isHan(it.words[0]) }.sortedByDescending { it.words[0].length }
         val all = words(text)
         val sb = StringBuilder()
+        val spans = ArrayList<Span>()
         var copied = 0
         var index = 0
         while (index < all.size) {
@@ -139,15 +220,18 @@ object WordFixes {
                 if (inside != null) {
                     sb.append(text, copied, all[index].start).append(inside)
                     copied = all[index].end
+                    spans.add(Span(index, index, inside))
                 }
                 index++
                 continue
             }
             val last = all[index + best.words.size - 1]
-            sb.append(text, copied, all[index].start).append(text, all[index].start, keep).append(best.written)
+            val replacement = text.substring(all[index].start, keep) + best.written
+            sb.append(text, copied, all[index].start).append(replacement)
+            spans.add(Span(index, index + best.words.size - 1, replacement))
             copied = last.end
             index += best.words.size
         }
-        return sb.append(text, copied, text.length).toString()
+        return Rewrite(sb.append(text, copied, text.length).toString(), all, spans)
     }
 }

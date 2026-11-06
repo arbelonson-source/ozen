@@ -833,14 +833,24 @@ class TranscriptHistoryStore(private val directory: File) {
         return toggled.isStarred
     }
 
-    fun fixText(segmentID: UUID, inSession: UUID, text: String): Boolean {
-        val record = load(inSession) ?: return false
+    fun fixText(segmentID: UUID, inSession: UUID, text: String): Boolean = fixText(segmentID, inSession) { text }
+
+    /**
+     * Changes the text of one line as the file has it now. False when the
+     * conversation or line is not there (or the file is damaged for good); a
+     * file that exists but cannot be read now throws, so the caller keeps the
+     * change waiting instead of taking it for gone.
+     */
+    fun fixText(segmentID: UUID, inSession: UUID, change: (String) -> String): Boolean {
+        val file = fileFor(inSession)
+        if (!file.exists()) return false
+        val data = file.readBytes()
+        val record = lenientHistory { TranscriptSessionRecord.fromJson(strictUtf8(data)) } ?: return false
         val index = record.segments.indexOfFirst { it.id == segmentID }
         if (index < 0) return false
         val segments = record.segments.toMutableList()
-        segments[index] = segments[index].copy(text = text)
+        segments[index] = segments[index].copy(text = change(segments[index].text))
         val updated = record.copy(segments = segments)
-        val file = fileFor(inSession)
         PrivateFileWrites.write(file, updated.toJson().toByteArray(Charsets.UTF_8))
         val written = modificationDate(file)
         writeSummary(TranscriptSessionSummary.summarizing(updated), file, written)

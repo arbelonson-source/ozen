@@ -371,9 +371,14 @@ class CaptionSession(
 
         override fun saveWordFix(heard: String, written: String, everyTime: Boolean) = this@CaptionSession.saveWordFix(heard, written, everyTime)
 
-        override fun fixLine(sessionID: UUID, segmentID: UUID, text: String): Boolean {
-            runBlocking { withContext(Dispatchers.Main.immediate) { pipeline.replaceText(segmentID, text) } }
-            return conversations.fixLine(sessionID, segmentID, text)
+        override fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean {
+            val fix = WordFix(heard, written)
+            val onScreen = { line: UUID, change: WordFix ->
+                runBlocking { withContext(Dispatchers.Main.immediate) { pipeline.correctWord(line, change) } } != null
+            }
+            val saved = conversations.fixLine(sessionID, segmentID, fix, onScreen)
+            if (saved && !conversations.isCurrent(sessionID)) onScreen(segmentID, fix)
+            return saved
         }
 
         override fun switchSaving(on: Boolean) {

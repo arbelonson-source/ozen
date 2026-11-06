@@ -8,6 +8,8 @@ import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
+import com.arbelonson.ozen.core.WordFix
+import com.arbelonson.ozen.core.WordFixes
 import java.util.UUID
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
@@ -252,12 +254,20 @@ class ConversationSaver(
         for (conversation in closed.keys.reversed()) if (writer.fixTextNow(conversation, segmentID, text)) return
     }
 
-    fun fixLine(sessionID: UUID, segmentID: UUID, text: String): Boolean {
+    /**
+     * Fixes a word of a saved line, in the text the line has now. A line of
+     * the conversation being captioned is first fixed on screen by
+     * [onScreen], and a screen that refuses (the line is still being heard)
+     * leaves the line as it was. A line of an earlier conversation is
+     * changed in its file, whether or not its lines are still on screen.
+     */
+    fun fixLine(sessionID: UUID, segmentID: UUID, fix: WordFix, onScreen: (UUID, WordFix) -> Boolean): Boolean {
         if (sessionID == id && currentLines.any { it.id == segmentID }) {
+            if (!onScreen(segmentID, fix)) return false
             save(ended = false)
             return true
         }
-        return writer.fixTextNow(sessionID, segmentID, text)
+        return writer.fixTextNow(sessionID, segmentID) { WordFixes.apply(listOf(fix), it) }
     }
 
     /**

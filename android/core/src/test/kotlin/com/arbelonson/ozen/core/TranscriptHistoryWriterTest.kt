@@ -431,6 +431,58 @@ class TranscriptHistoryWriterTest {
     }
 
     @Test
+    fun `a text fix waiting for room is kept while its conversation cannot be read, and written once it can`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.unreadable-fix"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw aval", null, null, 100.0, true)))
+        writer.saveNow(old)
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        permissions(dir, "r-x------")
+        writer.fixTextNow(old.id, line, "I saw Avi")
+        permissions(dir, "rwx------")
+        permissions(file, "---------")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertNotNull(writer.lastFailure)
+
+        permissions(file, "rw-------")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals("I saw Avi", store.load(old.id)?.segments?.first()?.text)
+        assertNull(writer.lastFailure)
+    }
+
+    @Test
+    fun `a newer text fix is not overwritten by an older one still waiting for the same line`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.newer-fix"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw aval and Dan", null, null, 100.0, true)))
+        writer.saveNow(old)
+        permissions(dir, "r-x------")
+        writer.fixTextNow(old.id, line) { it.replace("aval", "Avi") }
+        permissions(dir, "rwx------")
+        writer.fixTextNow(old.id, line) { it.replace("Dan", "Dana") }
+        assertEquals("I saw Avi and Dana", store.load(old.id)?.segments?.first()?.text)
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals("I saw Avi and Dana", store.load(old.id)?.segments?.first()?.text)
+    }
+
+    @Test
+    fun `a newer fixed text is not replaced by an older one still waiting for the same line`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.newer-text"))
+        val line = UUID.randomUUID()
+        val old = record(UUID.randomUUID(), 0, true).copy(segments = listOf(SavedSegment(line, "I saw aval", null, null, 100.0, true)))
+        writer.saveNow(old)
+        permissions(dir, "r-x------")
+        writer.fixTextNow(old.id, line, "first")
+        permissions(dir, "rwx------")
+        writer.fixTextNow(old.id, line, "second")
+        writer.saveNow(record(UUID.randomUUID(), 1, true))
+        assertEquals("second", store.load(old.id)?.segments?.first()?.text)
+    }
+
+    @Test
     fun `a star tapped in History follows the conversation as History shows it, the file on disk, and the waiting version takes the same state`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)
         val writer = TranscriptHistoryWriter(store, SerialQueue("test.refused-unstar"))
