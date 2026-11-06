@@ -1238,6 +1238,13 @@ final class OzenScreenshotUITests: XCTestCase {
             // second label sits right after the first in the catalog.
             let shout = self.scrollDownUntilVisible(app, identifier: "soundRow-shout", maxSwipes: 40)
             XCTAssertTrue(shout.exists, "sound alerts: the shout row never appeared")
+            // A symbol held to 28 points spilled over the sound's name at
+            // this size ("צעקה" under the shouting figure).
+            let symbol = shout.descendants(matching: .image).firstMatch
+            let name = shout.staticTexts["צעקה"]
+            XCTAssertTrue(symbol.exists && name.exists, "sound alerts: the shout row has no symbol or no name")
+            let shared = symbol.frame.intersection(name.frame)
+            XCTAssertFalse(shared.width > 2 && shared.height > 2, "sound alerts: the symbol covers the name (\(symbol.frame) over \(name.frame))")
             self.capture(app, name: "sound-alerts-important-accessibility-text")
             XCTAssertFalse(app.descendants(matching: .any)["soundRow-yell"].exists, "sound alerts: one sound is listed twice")
         }
