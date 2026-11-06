@@ -1,5 +1,7 @@
 {
  "amharic": {
+  "Ozen closed while setting up the speech model": "ኦዜን የንግግር ሞዴሉን ሲያዘጋጅ ተዘጋ",
+  "This phone may not have enough memory for %1. %2 (%3) is lighter.": "ይህ ስልክ ለ%1 በቂ ማህደረ ትውስታ ላይኖረው ይችላል። %2 (%3) ቀላል ነው።",
   " Conversations with a starred line or a name are always kept.": " ኮከብ ወይም ስም ያለበት መስመር ሁልጊዜ ይቀመጣል።",
   " and more": " እና ተጨማሪ",
   " · charging": " · ኃይል በመሙላት ላይ",
@@ -960,6 +962,8 @@
   "Large v3": "Large v3"
  },
  "arabic": {
+  "Ozen closed while setting up the speech model": "أُغلق أوزن أثناء تجهيز نموذج الكلام",
+  "This phone may not have enough memory for %1. %2 (%3) is lighter.": "قد لا يملك هذا الهاتف ذاكرة كافية لـ%1. النموذج %2 (%3) أخف.",
   " Conversations with a starred line or a name are always kept.": " المحادثات التي فيها سطر مميز بنجمة أو اسم تبقى محفوظة دائمًا.",
   " and more": " والمزيد",
   " · charging": " · يشحن",
@@ -1920,6 +1924,8 @@
   "Large v3": "Large v3"
  },
  "chineseSimplified": {
+  "Ozen closed while setting up the speech model": "Ozen 在准备语音模型时关闭了",
+  "This phone may not have enough memory for %1. %2 (%3) is lighter.": "这部手机的内存可能不足以运行 %1。%2（%3）更轻量。",
   " Conversations with a starred line or a name are always kept.": " 有星标或姓名的对话会一直保留。",
   " and more": " 及更多",
   " · charging": " · 正在充电",
@@ -2880,6 +2886,8 @@
   "Large v3": "Large v3"
  },
  "french": {
+  "Ozen closed while setting up the speech model": "Ozen s’est fermé pendant la préparation du modèle vocal",
+  "This phone may not have enough memory for %1. %2 (%3) is lighter.": "Ce téléphone n’a peut-être pas assez de mémoire pour %1. %2 (%3) est plus léger.",
   " Conversations with a starred line or a name are always kept.": " Les conversations avec une ligne marquée d’une étoile ou un nom sont toujours conservées.",
   " and more": " et plus",
   " · charging": " · en charge",
@@ -3840,6 +3848,8 @@
   "Large v3": "Large v3"
  },
  "german": {
+  "Ozen closed while setting up the speech model": "Ozen wurde beim Vorbereiten des Sprachmodells beendet",
+  "This phone may not have enough memory for %1. %2 (%3) is lighter.": "Dieses Telefon hat vielleicht nicht genug Speicher für %1. %2 (%3) ist leichter.",
   " Conversations with a starred line or a name are always kept.": " Gespräche mit einer markierten Zeile oder einem Namen bleiben immer erhalten.",
   " and more": " und mehr",
   " · charging": " · lädt",
@@ -4800,6 +4810,8 @@
   "Large v3": "Large v3"
  },
  "hindi": {
+  "Ozen closed while setting up the speech model": "स्पीच मॉडल तैयार करते समय Ozen बंद हो गया",
+  "This phone may not have enough memory for %1. %2 (%3) is lighter.": "हो सकता है इस फ़ोन में %1 के लिए पर्याप्त मेमोरी न हो। %2 (%3) हल्का है।",
   " Conversations with a starred line or a name are always kept.": " जिस बातचीत में तारांकित लाइन या नाम हो, वह हमेशा रखी जाती है।",
   " and more": " और अधिक",
   " · charging": " · चार्ज हो रहा है",
@@ -5760,6 +5772,8 @@
   "Large v3": "Large v3"
  },
  "portuguese": {
+  "Ozen closed while setting up the speech model": "O Ozen fechou ao preparar o modelo de fala",
+  "This phone may not have enough memory for %1. %2 (%3) is lighter.": "Este telefone pode não ter memória suficiente para %1. %2 (%3) é mais leve.",
   " Conversations with a starred line or a name are always kept.": " As conversas com uma linha assinalada ou um nome são sempre mantidas.",
   " and more": " e mais",
   " · charging": " · a carregar",
@@ -6720,6 +6734,8 @@
   "Large v3": "Large v3"
  },
  "russian": {
+  "Ozen closed while setting up the speech model": "Ozen закрылся при подготовке модели речи",
+  "This phone may not have enough memory for %1. %2 (%3) is lighter.": "Возможно, в этом телефоне не хватает памяти для %1. %2 (%3) легче.",
   " Conversations with a starred line or a name are always kept.": " Разговоры с отмеченной строкой или именем всегда сохраняются.",
   " and more": " и другое",
   " · charging": " · заряжается",
@@ -7680,6 +7696,8 @@
   "Large v3": "Large v3"
  },
  "spanish": {
+  "Ozen closed while setting up the speech model": "Ozen se cerró mientras preparaba el modelo de voz",
+  "This phone may not have enough memory for %1. %2 (%3) is lighter.": "Es posible que este teléfono no tenga memoria suficiente para %1. %2 (%3) es más ligero.",
   " Conversations with a starred line or a name are always kept.": " Las conversaciones con una línea marcada o un nombre siempre se conservan.",
   " and more": " y más",
   " · charging": " · cargando",
@@ -8640,6 +8658,8 @@
   "Large v3": "Large v3"
  },
  "ukrainian": {
+  "Ozen closed while setting up the speech model": "Ozen закрився під час підготовки моделі мовлення",
+  "This phone may not have enough memory for %1. %2 (%3) is lighter.": "Можливо, у цьому телефоні не вистачає пам’яті для %1. %2 (%3) легша.",
   " Conversations with a starred line or a name are always kept.": " Розмови з позначеним рядком або іменем завжди зберігаються.",
   " and more": " і інше",
   " · charging": " · заряджається",
