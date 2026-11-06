@@ -130,11 +130,39 @@ struct WordFixesReviewTests {
     func doubtStaysOnTheFixedWord() {
         let phone = [fix("אייפון", "iPhone")]
         let shown = WordFixes.apply(phone, to: "קניתי באייפון חדש")
-        let marked = UncertainWords.ranges(in: shown, words: WordFixes.applyToUncertain(phone, ["באייפון"]))
+        let marked = UncertainWords.ranges(in: shown, words: WordFixes.applyToUncertain(phone, text: "קניתי באייפון חדש", ["באייפון"]))
         #expect(marked.map { String(shown[$0]) } == ["ב\u{05BE}iPhone"])
         let plain = WordFixes.apply(phone, to: "אייפון חדש")
-        #expect(UncertainWords.ranges(in: plain, words: WordFixes.applyToUncertain(phone, ["אייפון"])).map { String(plain[$0]) } == ["iPhone"])
-        #expect(WordFixes.applyToUncertain(phone, ["~אייפון", "חדש"]) == ["~iphone", "חדש"])
-        #expect(WordFixes.applyToUncertain([], ["~אייפון"]) == ["~אייפון"])
+        #expect(UncertainWords.ranges(in: plain, words: WordFixes.applyToUncertain(phone, text: "אייפון חדש", ["אייפון"])).map { String(plain[$0]) } == ["iPhone"])
+        #expect(WordFixes.applyToUncertain(phone, text: "שום דבר", ["~אייפון", "חדש"]) == ["~iphone", "חדש"])
+        #expect(WordFixes.applyToUncertain([], text: "אייפון", ["~אייפון"]) == ["~אייפון"])
+    }
+
+    @Test("doubtful words follow a phrase fix, each to its own word")
+    func doubtFollowsAPhraseFix() {
+        let nyc = [fix("New York", "NYC")]
+        let text = "I love New York and York"
+        #expect(WordFixes.applyToUncertain(nyc, text: text, ["york"]) == ["nyc"])
+        #expect(WordFixes.applyToUncertain(nyc, text: text, ["new", "york"]) == ["nyc"])
+        #expect(WordFixes.applyToUncertain(nyc, text: text, ["york", "york"]) == ["nyc", "york"])
+        #expect(WordFixes.applyToUncertain(nyc, text: text, ["love"]) == ["love"])
+        let line = "I love New York"
+        let shown = WordFixes.apply(nyc, to: line)
+        #expect(UncertainWords.ranges(in: shown, words: WordFixes.applyToUncertain(nyc, text: line, ["york"])).map { String(shown[$0]) } == ["NYC"])
+    }
+
+    @Test
+    func aSureCopyKeepsTheDoubtOnItsOwnCopy() {
+        let nyc = [fix("New York", "NYC")]
+        let line = "I love New York and York"
+        let shown = WordFixes.apply(nyc, to: line)
+        let marked = { (entries: [String]) in
+            UncertainWords.ranges(in: shown, words: WordFixes.applyToUncertain(nyc, text: line, entries)).map { String(shown[$0]) }
+        }
+        #expect(marked(["~york", "york"]) == ["York"])
+        #expect(marked(["york", "~york"]) == ["NYC"])
+        let lala = [fix("la la", "lala")]
+        let doubt = WordFixes.applyToUncertain(lala, text: "la la", ["~la", "la"])
+        #expect(UncertainWords.ranges(in: "lala", words: doubt).count == 1)
     }
 }

@@ -65,7 +65,19 @@ public enum WordFixes {
     }
 
     public static func apply(_ fixes: [WordFix], to text: String) -> String {
-        guard !fixes.isEmpty, !text.isEmpty else { return text }
+        rewrite(fixes, text).text
+    }
+
+    /// The text after `fixes`, its words as they were heard, and which of
+    /// those words each fix replaced and with what.
+    private struct Rewrite {
+        let text: String
+        let tokens: [Token]
+        let spans: [(first: Int, last: Int, replacement: String)]
+    }
+
+    private static func rewrite(_ fixes: [WordFix], _ text: String) -> Rewrite {
+        guard !fixes.isEmpty, !text.isEmpty else { return Rewrite(text: text, tokens: [], spans: []) }
         let prepared = normalized(fixes).compactMap { fix -> Prepared? in
             let words = fix.heard.split(separator: " ").map { key(String($0)) }
             guard (1...maximumPhraseWords).contains(words.count) else { return nil }
@@ -74,8 +86,9 @@ public enum WordFixes {
         let han = prepared.filter { $0.words.count == 1 && isHan($0.words[0]) }
             .map { (heard: Array($0.words[0].unicodeScalars), written: $0.written) }
             .sorted { $0.heard.count > $1.heard.count }
-        guard !prepared.isEmpty else { return text }
+        guard !prepared.isEmpty else { return Rewrite(text: text, tokens: [], spans: []) }
         let tokens = Token.split(Array(text.unicodeScalars))
+        var spans: [(first: Int, last: Int, replacement: String)] = []
         var out = String.UnicodeScalarView()
         var index = 0
         var cursor = 0
@@ -86,9 +99,11 @@ public enum WordFixes {
                 let last = tokens[index + hit.count - 1]
                 out.append(contentsOf: first.scalars[..<first.coreStart])
                 let prefix = first.scalars[first.coreStart..<hit.prefixEnd]
-                out.append(contentsOf: prefix)
-                if !prefix.isEmpty, needsMaqaf(hit.written) { out.append("\u{05BE}") }
-                out.append(contentsOf: hit.written.unicodeScalars)
+                var replacement = String.UnicodeScalarView(prefix)
+                if !prefix.isEmpty, needsMaqaf(hit.written) { replacement.append("\u{05BE}") }
+                replacement.append(contentsOf: hit.written.unicodeScalars)
+                out.append(contentsOf: replacement)
+                spans.append((index, index + hit.count - 1, String(replacement)))
                 out.append(contentsOf: last.scalars[last.coreEnd...])
                 out.append(contentsOf: last.gap)
                 index += hit.count
@@ -96,6 +111,7 @@ public enum WordFixes {
             } else if let inside = replacingHan(han, in: tokens[index]) {
                 out.append(contentsOf: slice(tokens, cursor, index))
                 out.append(contentsOf: inside)
+                spans.append((index, index, String(String.UnicodeScalarView(inside))))
                 out.append(contentsOf: tokens[index].gap)
                 index += 1
                 cursor = index
@@ -104,26 +120,62 @@ public enum WordFixes {
             }
         }
         out.append(contentsOf: cursor < tokens.count ? slice(tokens, cursor, tokens.count) : [])
-        return String(out)
+        return Rewrite(text: String(out), tokens: tokens, spans: spans)
     }
 
-    /// The words the model was unsure of, after `fixes` rewrote them, in
-    /// the form `UncertainWords.ranges` looks for: one normalized entry
-    /// per word the line now shows, so the doubt stays on a word fixed to
-    /// capitals, to two words, or after a prefix and a maqaf. A sure copy
-    /// keeps its mark.
-    public static func applyToUncertain(_ fixes: [WordFix], _ uncertain: [String]) -> [String] {
-        guard !fixes.isEmpty else { return uncertain }
-        return uncertain.flatMap { entry -> [String] in
+    /// The words the model was unsure of in `text`, after `fixes` rewrote
+    /// it, in the form `UncertainWords.ranges` looks for: one normalized
+    /// entry per word the line now shows, so the doubt stays on a word fixed
+    /// to capitals or after a prefix and a maqaf. A doubtful word inside a
+    /// rewritten stretch (the "york" of "New York" written as "NYC") hands
+    /// its doubt to the words written there, once; each entry is matched to
+    /// its own word of `text`, so a repeated word is not marked in place of
+    /// another. A sure copy keeps its mark.
+    public static func applyToUncertain(_ fixes: [WordFix], text: String, _ uncertain: [String]) -> [String] {
+        guard !fixes.isEmpty, !uncertain.isEmpty else { return uncertain }
+        let rewritten = rewrite(fixes, text)
+        var taken = Set<Int>()
+        var written: [Int: (start: Int, isSure: Bool)] = [:]
+        var out: [String] = []
+        for entry in uncertain {
+            // A sure copy takes its own heard copy too, so the doubtful one
+            // after it lands on the right word.
             let isSure = entry.hasPrefix(UncertainWords.sureCopy)
             let word = isSure ? String(entry.dropFirst(UncertainWords.sureCopy.count)) : entry
-            let fixed = apply(fixes, to: word)
-            guard fixed != word else { return [entry] }
-            return fixed.split(whereSeparator: \.isWhitespace)
-                .map { UncertainWords.normalize(String($0)) }
-                .filter { !$0.isEmpty }
-                .map { isSure ? UncertainWords.sureCopy + $0 : $0 }
+            let key = Token.split(Array(word.unicodeScalars)).map(\.key).joined(separator: " ")
+            guard let index = rewritten.tokens.indices.first(where: { !taken.contains($0) && rewritten.tokens[$0].key == key }) else {
+                out += fixedEntry(fixes, entry)
+                continue
+            }
+            taken.insert(index)
+            guard let span = rewritten.spans.firstIndex(where: { $0.first <= index && index <= $0.last }) else {
+                out.append(entry)
+                continue
+            }
+            let words = shownWords(rewritten.spans[span].replacement)
+            if let before = written[span] {
+                // Any doubt about a word of the phrase marks what replaced it.
+                guard before.isSure, !isSure else { continue }
+                out.replaceSubrange(before.start..<(before.start + words.count), with: words)
+                written[span] = (before.start, false)
+            } else {
+                written[span] = (out.count, isSure)
+                out += isSure ? words.map { UncertainWords.sureCopy + $0 } : words
+            }
         }
+        return out
+    }
+
+    private static func fixedEntry(_ fixes: [WordFix], _ entry: String) -> [String] {
+        let isSure = entry.hasPrefix(UncertainWords.sureCopy)
+        let word = isSure ? String(entry.dropFirst(UncertainWords.sureCopy.count)) : entry
+        let fixed = apply(fixes, to: word)
+        guard fixed != word else { return [entry] }
+        return shownWords(fixed).map { isSure ? UncertainWords.sureCopy + $0 : $0 }
+    }
+
+    private static func shownWords(_ text: String) -> [String] {
+        text.split(whereSeparator: \.isWhitespace).map { UncertainWords.normalize(String($0)) }.filter { !$0.isEmpty }
     }
 
     /// A Hebrew prefix letter kept before a word in another script, or

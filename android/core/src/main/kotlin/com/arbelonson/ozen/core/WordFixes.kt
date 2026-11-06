@@ -191,16 +191,28 @@ object WordFixes {
         if (uncertain.isEmpty()) return uncertain
         val rewritten = rewrite(fixes, text)
         val taken = HashSet<Int>()
-        val written = HashSet<Span>()
+        val written = HashMap<Span, Pair<Int, Boolean>>()
         val out = ArrayList<String>()
         for (entry in uncertain) {
-            val key = keyOf(entry)
+            // A sure copy takes its own heard copy too, so the doubtful one
+            // after it lands on the right word.
+            val sure = entry.startsWith(UncertainWords.sureCopy)
+            val key = keyOf(if (sure) entry.substring(UncertainWords.sureCopy.length) else entry)
             val index = rewritten.words.indices.firstOrNull { it !in taken && rewritten.words[it].key == key }
             if (index == null) { out.addAll(fixedEntry(fixes, entry)); continue }
             taken.add(index)
             val span = rewritten.spans.firstOrNull { index in it.first..it.last }
             if (span == null) { out.add(entry); continue }
-            if (written.add(span)) out.addAll(shownWords(span.replacement))
+            val words = shownWords(span.replacement)
+            val before = written[span]
+            if (before == null) {
+                written[span] = out.size to sure
+                out.addAll(if (sure) words.map { UncertainWords.sureCopy + it } else words)
+            } else if (before.second && !sure) {
+                // Any doubt about a word of the phrase marks what replaced it.
+                for ((at, word) in words.withIndex()) out[before.first + at] = word
+                written[span] = before.first to false
+            }
         }
         return out
     }
