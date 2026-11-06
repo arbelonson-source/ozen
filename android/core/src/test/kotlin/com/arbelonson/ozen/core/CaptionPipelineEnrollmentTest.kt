@@ -44,6 +44,20 @@ class CaptionPipelineEnrollmentTest {
     }
 
     @Test
+    fun `recording a voice sample while captions run asks the engine to save its counted timing first`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))
+        pipeline.start(AppSettings.default)
+        assertEquals(0, engine.fitSaveCount)
+
+        val recording = async { pipeline.captureEnrollmentSamples(0.5) }
+        assertTrue(eventually { pipeline.isRecordingVoice })
+        assertEquals(1, engine.fitSaveCount)
+        audio.push(FloatArray(8_000) { 0.1f })
+        recording.await()
+    }
+
+    @Test
     fun `enrollment records through the live capture path, pausing and resuming captions around it`() = runTest {
         val (pipeline, audio, _) = makePipeline()
         pipeline.start(AppSettings.default)

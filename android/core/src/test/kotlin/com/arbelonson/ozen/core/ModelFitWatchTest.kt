@@ -104,6 +104,14 @@ class ModelFitWatchTest {
     }
 
     @Test
+    fun `a lighter model that is itself too slow is not offered`() {
+        val measurement = measured(ozen, 120.0)!!
+        assertEquals(PhoneModelFit.TooSlow, PhoneModelEstimate.fit(base, measurement.gflops, plenty))
+        assertNull(offer(measurement, ozen))
+        assertNull(offer(measured(turbo, 120.0), turbo, UILanguage.English))
+    }
+
+    @Test
     fun `a model behind with nothing lighter gets no offer`() {
         assertNull(offer(measured(base, 5.0), base, UILanguage.English))
     }

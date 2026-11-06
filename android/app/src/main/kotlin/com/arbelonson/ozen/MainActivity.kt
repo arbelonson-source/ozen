@@ -169,6 +169,8 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.SoundAlert
@@ -410,6 +412,9 @@ private fun OzenApp(
     var choosingMicrophone by rememberSaveable { mutableStateOf(false) }
     var namingAlert by rememberSaveable { mutableStateOf(false) }
     val modelSwitch by app.captions.phoneModels.switching.collectAsStateWithLifecycle()
+    var comebacks by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { comebacks++ }
+    val fitOffer = remember(current, comebacks) { app.captions.modelFitOffer() }
     var sayDraft by rememberSaveable { mutableStateOf("") }
     var awakeClock by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1_000.0) }
     LaunchedEffect(state.phase.isListening) {
@@ -572,7 +577,8 @@ private fun OzenApp(
                                 offersNameAlert = current.offersNameAlert,
                                 onNameAlert = { namingAlert = true },
                                 onDismissNameAlert = app.captions::dismissNameAlertOffer,
-                                modelOffer = remember(current) { app.captions.modelFitOffer() }?.takeIf { it.file != modelSwitch.inProgressFile },
+                                modelOffer = fitOffer?.takeIf { it.file != modelSwitch.downloadingFile },
+                                modelOfferWaiting = modelSwitch.let { it is PhoneModelSwitch.WaitingForWiFi && it.file == fitOffer?.file },
                                 onSwitchModel = { app.captions.phoneModels.choose(it.file) },
                                 onDismissModelOffer = app.captions::dismissModelFitOffer,
                                 // Not while it slides away under another screen: talk
@@ -716,6 +722,7 @@ private fun CaptionScreen(
     onNameAlert: () -> Unit,
     onDismissNameAlert: () -> Unit,
     modelOffer: PhoneModel?,
+    modelOfferWaiting: Boolean,
     onSwitchModel: (PhoneModel) -> Unit,
     onDismissModelOffer: (PhoneModel) -> Unit,
     buzzWhenTalkResumes: Boolean,
@@ -963,7 +970,7 @@ private fun CaptionScreen(
                                 modifier = Modifier.widthIn(max = 360.dp),
                             )
                             val recent = state.recentConversation
-                            if (offer != null) LighterModelOffer(offer, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
+                            if (offer != null) LighterModelOffer(offer, modelOfferWaiting, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             if (recent != null) {
                                 RecentConversationCard(recent, look, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent)
                             } else if (offer == null && offersNameAlert) {
@@ -971,7 +978,7 @@ private fun CaptionScreen(
                             }
                         }
                     } else {
-                        val trailing: (@Composable () -> Unit)? = offer?.let { { LighterModelOffer(it, { onSwitchModel(it) }, { onDismissModelOffer(it) }) } }
+                        val trailing: (@Composable () -> Unit)? = offer?.let { { LighterModelOffer(it, modelOfferWaiting, { onSwitchModel(it) }, { onDismissModelOffer(it) }) } }
                         CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
                         if (!following) {
                             JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
@@ -1597,7 +1604,7 @@ private fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: ()
 
 /** The running model kept falling behind the speech and a lighter one fits this phone; see `ModelFitWatch`. */
 @Composable
-private fun LighterModelOffer(model: PhoneModel, onSwitch: () -> Unit, onDismiss: () -> Unit) {
+private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, onSwitch: () -> Unit, onDismiss: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.Top,
@@ -1615,7 +1622,12 @@ private fun LighterModelOffer(model: PhoneModel, onSwitch: () -> Unit, onDismiss
                     )
                 }
             }
-            Text(
+            if (waiting) Text(
+                tr("ממתין ל‑Wi‑Fi כדי להוריד. אפשר לאשר הורדה בגלישה סלולרית בהגדרות.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings."),
+                color = colors.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp, bottom = OzenSpacing.Unit).testTag("model-fit-waiting"),
+            ) else Text(
                 tr("החלפה", "Switch"),
                 color = colors.primary,
                 style = MaterialTheme.typography.labelLarge,
@@ -1830,9 +1842,5 @@ private fun OnTabletWidth(capped: Boolean, content: @Composable () -> Unit) {
     }
 }
 
-private val PhoneModelSwitch.inProgressFile: String?
-    get() = when (this) {
-        is PhoneModelSwitch.Downloading -> file
-        is PhoneModelSwitch.WaitingForWiFi -> file
-        else -> null
-    }
+private val PhoneModelSwitch.downloadingFile: String?
+    get() = (this as? PhoneModelSwitch.Downloading)?.file
