@@ -1632,7 +1632,7 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, onSwitch: () 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
                     Text(
-                        tr("המודל \"%1\" (%2) קל יותר ועומד בקצב טוב יותר בטלפון הזה.", "%1 (%2) is lighter and keeps up better here.", listOf(model.displayName, ByteSize.text(model.bytes))),
+                        tr("המודל \"\u2068%1\u2069\" (%2) קל יותר ועומד בקצב טוב יותר בטלפון הזה.", "%1 (%2) is lighter and keeps up better here.", listOf(model.displayName, ByteSize.text(model.bytes))),
                         color = colors.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium,
                     )
