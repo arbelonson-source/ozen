@@ -135,10 +135,14 @@ public enum WordFixes {
         guard !fixes.isEmpty, !uncertain.isEmpty else { return uncertain }
         let rewritten = rewrite(fixes, text)
         var taken = Set<Int>()
-        var written = Set<Int>()
+        var written: [Int: (start: Int, isSure: Bool)] = [:]
         var out: [String] = []
         for entry in uncertain {
-            let key = entry.hasPrefix(UncertainWords.sureCopy) ? nil : Token.split(Array(entry.unicodeScalars)).map(\.key).joined(separator: " ")
+            // A sure copy takes its own heard copy too, so the doubtful one
+            // after it lands on the right word.
+            let isSure = entry.hasPrefix(UncertainWords.sureCopy)
+            let word = isSure ? String(entry.dropFirst(UncertainWords.sureCopy.count)) : entry
+            let key = Token.split(Array(word.unicodeScalars)).map(\.key).joined(separator: " ")
             guard let index = rewritten.tokens.indices.first(where: { !taken.contains($0) && rewritten.tokens[$0].key == key }) else {
                 out += fixedEntry(fixes, entry)
                 continue
@@ -148,7 +152,16 @@ public enum WordFixes {
                 out.append(entry)
                 continue
             }
-            if written.insert(span).inserted { out += shownWords(rewritten.spans[span].replacement) }
+            let words = shownWords(rewritten.spans[span].replacement)
+            if let before = written[span] {
+                // Any doubt about a word of the phrase marks what replaced it.
+                guard before.isSure, !isSure else { continue }
+                out.replaceSubrange(before.start..<(before.start + words.count), with: words)
+                written[span] = (before.start, false)
+            } else {
+                written[span] = (out.count, isSure)
+                out += isSure ? words.map { UncertainWords.sureCopy + $0 } : words
+            }
         }
         return out
     }

@@ -105,4 +105,17 @@ class WordFixesReviewTest {
         assertEquals(listOf("NYC"), marked(listOf(fix("New York", "NYC")), "I love New York", listOf("york")))
         assertEquals(listOf("~iphone", "חדש"), WordFixes.applyToUncertain(phone, "שום דבר", listOf("~אייפון", "חדש")))
     }
+
+    @Test
+    fun `a sure copy keeps the doubt on its own copy`() {
+        val nyc = listOf(fix("New York", "NYC"))
+        val line = "I love New York and York"
+        val shown = WordFixes.apply(nyc, line)
+        fun marked(entries: List<String>) =
+            UncertainWords.ranges(shown, WordFixes.applyToUncertain(nyc, line, entries)).map { shown.substring(it.start, it.endExclusive) }
+        assertEquals(listOf("York"), marked(listOf("~york", "york")))
+        assertEquals(listOf("NYC"), marked(listOf("york", "~york")))
+        val lala = listOf(fix("la la", "lala"))
+        assertEquals(1, UncertainWords.ranges("lala", WordFixes.applyToUncertain(lala, "la la", listOf("~la", "la"))).size)
+    }
 }

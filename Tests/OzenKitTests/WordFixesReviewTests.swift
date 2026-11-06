@@ -150,4 +150,19 @@ struct WordFixesReviewTests {
         let shown = WordFixes.apply(nyc, to: line)
         #expect(UncertainWords.ranges(in: shown, words: WordFixes.applyToUncertain(nyc, text: line, ["york"])).map { String(shown[$0]) } == ["NYC"])
     }
+
+    @Test
+    func aSureCopyKeepsTheDoubtOnItsOwnCopy() {
+        let nyc = [fix("New York", "NYC")]
+        let line = "I love New York and York"
+        let shown = WordFixes.apply(nyc, to: line)
+        let marked = { (entries: [String]) in
+            UncertainWords.ranges(in: shown, words: WordFixes.applyToUncertain(nyc, text: line, entries)).map { String(shown[$0]) }
+        }
+        #expect(marked(["~york", "york"]) == ["York"])
+        #expect(marked(["york", "~york"]) == ["NYC"])
+        let lala = [fix("la la", "lala")]
+        let doubt = WordFixes.applyToUncertain(lala, text: "la la", ["~la", "la"])
+        #expect(UncertainWords.ranges(in: "lala", words: doubt).count == 1)
+    }
 }
