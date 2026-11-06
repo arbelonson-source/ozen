@@ -63,6 +63,13 @@ object WordFixes {
         return null
     }
 
+    /** A Hebrew prefix letter kept before a word in another script, or before a number, is joined to it with a maqaf (U+05BE). */
+    private fun needsMaqaf(written: String): Boolean {
+        if (written.isEmpty()) return false
+        val start = written.codePointAt(0)
+        return isLetter(start) && start !in 0x0590..0x05FF
+    }
+
     private fun isHan(word: String) = word.isNotEmpty() && word.codePoints().allMatch { isHan(it) }
 
     private fun isHan(c: Int) = Character.isIdeographic(c) && c !in 0x3000..0x303F
@@ -226,7 +233,8 @@ object WordFixes {
                 continue
             }
             val last = all[index + best.words.size - 1]
-            val replacement = text.substring(all[index].start, keep) + best.written
+            val prefix = text.substring(all[index].start, keep)
+            val replacement = prefix + (if (prefix.isNotEmpty() && needsMaqaf(best.written)) "\u05BE" else "") + best.written
             sb.append(text, copied, all[index].start).append(replacement)
             spans.add(Span(index, index + best.words.size - 1, replacement))
             copied = last.end

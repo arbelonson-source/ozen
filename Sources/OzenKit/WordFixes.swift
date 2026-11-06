@@ -85,7 +85,9 @@ public enum WordFixes {
                 let first = tokens[index]
                 let last = tokens[index + hit.count - 1]
                 out.append(contentsOf: first.scalars[..<first.coreStart])
-                out.append(contentsOf: first.scalars[first.coreStart..<hit.prefixEnd])
+                let prefix = first.scalars[first.coreStart..<hit.prefixEnd]
+                out.append(contentsOf: prefix)
+                if !prefix.isEmpty, needsMaqaf(hit.written) { out.append("\u{05BE}") }
                 out.append(contentsOf: hit.written.unicodeScalars)
                 out.append(contentsOf: last.scalars[last.coreEnd...])
                 out.append(contentsOf: last.gap)
@@ -103,6 +105,13 @@ public enum WordFixes {
         }
         out.append(contentsOf: cursor < tokens.count ? slice(tokens, cursor, tokens.count) : [])
         return String(out)
+    }
+
+    /// A Hebrew prefix letter kept before a word in another script, or
+    /// before a number, is joined to it with a maqaf (U+05BE).
+    private static func needsMaqaf(_ written: String) -> Bool {
+        guard let start = written.unicodeScalars.first, Token.isCore(start) else { return false }
+        return !(0x0590...0x05FF).contains(start.value)
     }
 
     private struct Prepared {
