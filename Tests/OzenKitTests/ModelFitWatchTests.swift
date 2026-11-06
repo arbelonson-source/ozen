@@ -179,26 +179,35 @@ struct ModelFitMeasurementToKeepTests {
     func savedEligibleSurvivesUnfilteredLive() {
         let saved = Self.timing(passes: 25)
         let live = Self.timing(passes: 6, eligible: false)
-        #expect(ModelFitWatch.measurementToKeep(saved: saved, counted: Self.timing(passes: 3), live: live) == saved)
+        #expect(ModelFitWatch.measurementToKeep(saved: saved, counted: Self.timing(passes: 3), live: live, selected: Self.turbo) == saved)
     }
 
     @Test("twenty new counted passes replace the saved timing")
     func countedReplaces() {
         let counted = Self.timing(passes: 20)
-        #expect(ModelFitWatch.measurementToKeep(saved: Self.timing(passes: 30), counted: counted, live: Self.timing(passes: 9, eligible: false)) == counted)
+        #expect(ModelFitWatch.measurementToKeep(saved: Self.timing(passes: 30), counted: counted, live: Self.timing(passes: 9, eligible: false), selected: Self.turbo) == counted)
     }
 
     @Test("another model's live timing replaces the saved one")
     func otherModelReplaces() {
         let live = Self.timing("small_216MB", passes: 6, eligible: false)
-        #expect(ModelFitWatch.measurementToKeep(saved: Self.timing(passes: 25), counted: nil, live: live) == live)
+        #expect(ModelFitWatch.measurementToKeep(saved: Self.timing(passes: 25), counted: nil, live: live, selected: "small_216MB") == live)
     }
 
     @Test("with no eligible timing saved, enough live passes are used; too few keep the saved one")
     func liveFallback() {
         let live = Self.timing(passes: 6, eligible: false)
-        #expect(ModelFitWatch.measurementToKeep(saved: nil, counted: nil, live: live) == live)
+        #expect(ModelFitWatch.measurementToKeep(saved: nil, counted: nil, live: live, selected: Self.turbo) == live)
         let saved = Self.timing(passes: 8, eligible: false)
-        #expect(ModelFitWatch.measurementToKeep(saved: saved, counted: nil, live: Self.timing(passes: 2, eligible: false)) == saved)
+        #expect(ModelFitWatch.measurementToKeep(saved: saved, counted: nil, live: Self.timing(passes: 2, eligible: false), selected: Self.turbo) == saved)
+    }
+
+    @Test("a timing the old model took while the selection changed is not kept for the new one")
+    func timingOfAnotherModelIsDropped() {
+        let saved = Self.timing(passes: 25)
+        let counted = Self.timing(passes: 20)
+        let live = Self.timing(passes: 9, eligible: false)
+        #expect(ModelFitWatch.measurementToKeep(saved: saved, counted: counted, live: live, selected: "small_216MB") == saved)
+        #expect(ModelFitWatch.measurementToKeep(saved: nil, counted: counted, live: live, selected: "small_216MB") == nil)
     }
 }

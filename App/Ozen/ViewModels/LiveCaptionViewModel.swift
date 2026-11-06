@@ -1529,10 +1529,17 @@ public final class LiveCaptionViewModel {
     /// phone, plus the time the running captions' own passes have taken,
     /// once there are enough of them. The pick itself stays hers.
     public func testThisPhone() async {
+        let selected = settings.whisperModelVariant
+        let counted = await pipeline.engineFitPassMeasurement()
+        let live = await pipeline.engineLivePassMeasurement()
+        // The model was changed while the engine was being asked: the
+        // change's own restart measures the new one.
+        guard settings.whisperModelVariant == selected else { return }
         let measurement = ModelFitWatch.measurementToKeep(
             saved: DeviceModelAdvisor.timingToKeep(from: settings.deviceModelCheck, onDevice: DeviceModelTable.currentDeviceName),
-            counted: await pipeline.engineFitPassMeasurement(),
-            live: await pipeline.engineLivePassMeasurement()
+            counted: counted,
+            live: live,
+            selected: selected
         )
         settings.deviceModelCheck = DeviceModelTable.check(measurement: measurement)
         persist()
