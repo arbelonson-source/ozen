@@ -114,7 +114,7 @@ if ($LASTEXITCODE -ne 0) {
         "Free some space or check the internet, then run this setup again. The phone keeps writing captions by itself.") 'Warning'
     exit 1
 }
-Copy-Item (Join-Path $here 'ozen_server.py'), (Join-Path $here 'try_server.py'), (Join-Path $here 'pairing.py') $Dir -Force
+Copy-Item (Join-Path $here 'ozen_server.py'), (Join-Path $here 'try_server.py'), (Join-Path $here 'pairing.py'), (Join-Path $here 'lan_tls.py') $Dir -Force
 
 $codeFile = Join-Path $Dir 'pairing-code'
 if (-not (Test-Path $codeFile)) {
@@ -142,6 +142,10 @@ $run = @(
 # Windows' firewall blocks unless it's let in (home networks only).
 if (-not (Get-NetFirewallRule -DisplayName 'Ozen server' -ErrorAction SilentlyContinue)) {
     New-NetFirewallRule -DisplayName 'Ozen server' -Direction Inbound -Protocol TCP -LocalPort 8765 -Profile Private -Action Allow | Out-Null
+}
+# The encrypted home link (lan_tls.py) listens on its own port.
+if (-not (Get-NetFirewallRule -DisplayName 'Ozen server (encrypted)' -ErrorAction SilentlyContinue)) {
+    New-NetFirewallRule -DisplayName 'Ozen server (encrypted)' -Direction Inbound -Protocol TCP -LocalPort 8766 -Profile Private -Action Allow | Out-Null
 }
 # Windows often files a home Wi-Fi as "Public", where the rule above
 # doesn't apply and the phone at home finds nothing.

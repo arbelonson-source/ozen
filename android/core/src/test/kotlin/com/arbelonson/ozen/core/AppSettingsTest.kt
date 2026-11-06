@@ -612,6 +612,23 @@ class OtherSettingsDecodingTest {
     }
 
     @Test
+    fun `the certificate pin survives a save and a copy, and settings saved before it existed load with none`() {
+        val settings = AppSettings.default
+        assertNull(settings.homeServerCertificatePin)
+        settings.homeServerCertificatePin = "EqUZTsqNgJ8Ol0fkhpLbMwToY-7X9n7_oEzJ2hZACBk"
+        val json = settings.toJson()
+        assertEquals("EqUZTsqNgJ8Ol0fkhpLbMwToY-7X9n7_oEzJ2hZACBk", decode(json).homeServerCertificatePin)
+        assertEquals("EqUZTsqNgJ8Ol0fkhpLbMwToY-7X9n7_oEzJ2hZACBk", settings.copy().homeServerCertificatePin)
+        val old = kotlinx.serialization.json.Json.parseToJsonElement(json) as kotlinx.serialization.json.JsonObject
+        val withoutPin = kotlinx.serialization.json.JsonObject(old.filterKeys { it != "homeServerCertificatePin" })
+        assertNull(decode(withoutPin.toString()).homeServerCertificatePin)
+        assertNull(decode(AppSettings.default.toJson()).homeServerCertificatePin)
+        assertEquals(settings.copy(), settings)
+        val other = settings.copy().also { it.homeServerCertificatePin = null }
+        assertTrue(other != settings)
+    }
+
+    @Test
     fun `every language's ready-made phrases are read by that language's voice`() {
         for (language in UILanguage.entries) {
             for (phrase in AppSettings.defaultQuickPhrases(language)) {

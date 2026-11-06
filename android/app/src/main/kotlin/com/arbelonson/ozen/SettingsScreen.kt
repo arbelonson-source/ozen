@@ -694,6 +694,14 @@ private fun HomeComputerSection(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (address.trim() != saved) TonalButton(tr("שמירת הכתובת", "Save address"), onClick = saveAddress, modifier = Modifier.fillMaxWidth())
+                if (HomeServer.homeLinkIsPlain(address, if (address.trim() == saved) current.homeServerCertificatePin else null)) {
+                    Caution(
+                        tr(
+                            "החיבור למחשב לא מוצפן ברשת הביתית. כדי להצפין אותו, סורקים שוב את הקוד מהמחשב.",
+                            "The link to the computer isn't encrypted on the home Wi-Fi. To encrypt it, scan the code from the computer again.",
+                        ),
+                    )
+                }
                 if (HomeServer.needsEncryptedAddress(address)) {
                     Caution(tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://"))
                 } else if (address.isNotBlank() && HomeServer.url(address) == null) {

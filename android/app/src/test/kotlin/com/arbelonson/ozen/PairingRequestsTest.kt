@@ -50,6 +50,24 @@ class PairingRequestsTest {
     }
 
     @Test
+    fun `a link with a pin saves the address and the pin together, and a later link without one drops the old pin`() = runBlocking<Unit> {
+        val pairing = PairingRequests(settings, codes::save)
+        val pin = "EqUZTsqNgJ8Ol0fkhpLbMwToY-7X9n7_oEzJ2hZACBk"
+        pairing.open("ozen://pair?address=wss%3A%2F%2F192.168.1.20%3A8766&code=example-code-123&pin=$pin")
+        assertEquals(pin, pairing.pending.value?.pin)
+        assertTrue(pairing.acceptPending())
+        assertEquals("wss://192.168.1.20:8766", settings.current.value.homeServerAddress)
+        assertEquals(pin, settings.current.value.homeServerCertificatePin)
+        assertEquals(pin, SettingsStore(settingsFile).load().homeServerCertificatePin)
+
+        pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=example-code-123")
+        assertTrue(pairing.acceptPending())
+        assertEquals("wss://desktop.tail.ts.net", settings.current.value.homeServerAddress)
+        assertNull(settings.current.value.homeServerCertificatePin)
+        assertNull(SettingsStore(settingsFile).load().homeServerCertificatePin)
+    }
+
+    @Test
     fun `accepting a link saves the code off the calling thread`() = runBlocking<Unit> {
         var savedOn: Thread? = null
         val pairing = PairingRequests(settings, { savedOn = Thread.currentThread(); true })

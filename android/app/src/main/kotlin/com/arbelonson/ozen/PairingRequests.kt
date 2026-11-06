@@ -51,6 +51,7 @@ class PairingRequests(
         }
         settings.change {
             it.homeServerAddress = pairing.address
+            it.homeServerCertificatePin = pairing.pin
             it.engine = TranscriptionEngineKind.HomeServer
         }
         onPaired?.invoke()

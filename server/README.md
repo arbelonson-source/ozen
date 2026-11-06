@@ -192,6 +192,15 @@ address: `python pairing.py --address wss://<computer>.<tailnet>.ts.net`.
   network: `sudo ufw allow from 192.168.1.0/24 to any port 8765 proto tcp`
   (your network's own range in place of `192.168.1.0/24`). Tailscale
   Funnel needs no rule: it reaches the server from the computer itself.
+- **Encrypted at home:** the pairing code for a home address also carries
+  the fingerprint of a certificate this computer makes for itself (kept in
+  `lan-cert.pem` and `lan-key.pem` next to the pairing code; never delete
+  them, or every phone has to be paired again). The phone then connects to
+  port 8766 over TLS and accepts only that certificate, so the sound, the
+  code and the names list can't be read on the Wi-Fi. On Linux with a
+  firewall, let port 8766 in the same way as 8765 (`--tls-port 0` turns the
+  encrypted port off). Phones paired before this keep working on the plain
+  port until they scan the code again.
 - **From anywhere, no app on the phone:** Tailscale Funnel gives the
   server a public `wss://` address with a real certificate:
   `tailscale funnel --bg 8765` (on Windows, in the Windows command prompt;

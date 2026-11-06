@@ -828,6 +828,10 @@ async def main():
     p = argparse.ArgumentParser()
     p.add_argument("--host", default="0.0.0.0")
     p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--tls-port", type=int, default=8766,
+                   help="also serve over TLS (the encrypted home link) on this port; 0 turns it off")
+    p.add_argument("--cert-dir", default=os.path.dirname(os.path.abspath(__file__)),
+                   help="where lan-cert.pem and lan-key.pem for --tls-port are kept")
     p.add_argument("--model", default="ivrit-ai/whisper-large-v3-turbo-ct2")
     p.add_argument("--device", default="cuda")
     p.add_argument("--compute-type", default="float16")
@@ -895,19 +899,43 @@ def audio_cleaner(args):
     return make_enhancer
 
 
+def tls_context(folder):
+    import lan_tls
+    return lan_tls.server_context(folder)
+
+
 async def serve(args, transcriber, token, make_enhancer, general=None):
-    async with websockets.serve(lambda ws: handle(ws, transcriber, token, args.live_interval, make_enhancer, general),
-                                args.host, args.port, max_size=2**22, ping_interval=10, ping_timeout=20):
+    def connection(ws):
+        return handle(ws, transcriber, token, args.live_interval, make_enhancer, general)
+
+    async with contextlib.AsyncExitStack() as servers:
+        await servers.enter_async_context(
+            websockets.serve(connection, args.host, args.port, max_size=2**22, ping_interval=10, ping_timeout=20))
         if isinstance(transcriber, OnDemandTranscriber):
             log.info("listening on %s:%d with %s, loaded when a phone connects and freed after %.0f idle minutes",
                      args.host, args.port, transcriber.name, transcriber.unload_after / 60)
         else:
             log.info("listening on %s:%d with %s", args.host, args.port, transcriber.name)
+        await listen_encrypted(args, connection, servers)
         if general is not None:
             log.info("other languages than Hebrew use %s, loaded when such a phone connects and freed after %.0f idle "
                      "minutes", general.name, general.unload_after / 60)
         idle = [models for models in (transcriber, general) if isinstance(models, OnDemandTranscriber)]
         await asyncio.gather(*(unload_when_idle(models) for models in idle)) if idle else await asyncio.Future()
+
+
+async def listen_encrypted(args, connection, servers):
+    if not args.tls_port:
+        return
+    try:
+        context = tls_context(args.cert_dir)
+        await servers.enter_async_context(
+            websockets.serve(connection, args.host, args.tls_port, ssl=context, max_size=2**22, ping_interval=10,
+                             ping_timeout=20))
+    except (ImportError, OSError) as error:
+        log.warning("the encrypted home link on port %d is off (%s); the plain port still works", args.tls_port, error)
+        return
+    log.info("listening on %s:%d over TLS (the encrypted home link)", args.host, args.tls_port)
 
 
 if __name__ == "__main__":

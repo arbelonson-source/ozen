@@ -187,7 +187,7 @@ jobs:
           # newest commit, not the commit this IPA was built from.
           # The home computer's setup: one file to double-click, which
           # fetches the server from the newest release's zip.
-          (cd server && zip -q ../ozen-home-server.zip ozen_server.py pairing.py try_server.py requirements.txt setup-windows.ps1)
+          (cd server && zip -q ../ozen-home-server.zip ozen_server.py pairing.py lan_tls.py try_server.py requirements.txt setup-windows.ps1)
           cp server/Ozen-Home-Setup.cmd .
           gh release create "$TAG" Ozen.ipa ozen-home-server.zip Ozen-Home-Setup.cmd Ozen.apk \
             --target "${{ github.sha }}" \
