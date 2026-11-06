@@ -84,7 +84,7 @@ enum ScreenshotFixtures {
         viewModel.completeOnboarding()
         // The conversation is written with `tr`, so the language has to be
         // set before it is seeded for its lines to come out in English.
-        if variant == .galleryDark || variant == .galleryLight {
+        if variant == .galleryDark || variant == .galleryLight || variant == .modelFitEnglish {
             viewModel.setAppLanguage(.english)
         }
         // History is kept on disk between launches, and each launch saves
@@ -115,6 +115,7 @@ enum ScreenshotFixtures {
             viewModel.addWordFix(WordFix(heard: "\u{05D3}\u{05E0}\u{05D4} \u{05D0}\u{05D1}\u{05E8}\u{05DE}\u{05D9}", written: "\u{05D3}\u{05E0}\u{05D4} \u{05D0}\u{05D1}\u{05E8}\u{05D4}\u{05DE}\u{05D9}"))
         case .modelFit, .modelFitEnglish:
             viewModel.setAppLanguage(variant == .modelFit ? .hebrew : .english)
+            viewModel.pipeline.pauseForScreenshots()
             viewModel.seedDeviceModelCheckForScreenshots(
                 averageSeconds: 2.4,
                 supported: ["openai_whisper-small", "openai_whisper-large-v3-v20240930_626MB"]

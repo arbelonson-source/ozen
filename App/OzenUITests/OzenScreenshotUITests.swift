@@ -189,7 +189,7 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(app.buttons[saveTitle].waitForExistence(timeout: 10), "\(name): the sheet has no \(saveTitle) button")
         XCTAssertTrue(app.switches.firstMatch.waitForExistence(timeout: 5), "\(name): the sheet has no every-time switch")
         XCTAssertTrue(app.textFields[hintField].exists, "\(name): the sheet has no \(hintField) field")
-        let word = app.buttons[wordButton]
+        let word = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", wordButton)).firstMatch
         if !word.waitForExistence(timeout: 5) { print("TREE-DUMP", app.debugDescription) }
         XCTAssertTrue(word.exists, "\(name): the line's word \(wordButton) is not a button")
         word.tap()
@@ -202,7 +202,7 @@ final class OzenScreenshotUITests: XCTestCase {
     }
 
     func testFixWordSheetEnglish() throws {
-        try fixWordSheet(variant: "english", name: "fix-word-sheet-english", lineText: "Good morning", menuTitle: "Fix a word", saveTitle: "Save", hintField: "Or type what was heard", wordButton: "morning,")
+        try fixWordSheet(variant: "galleryDark", name: "fix-word-sheet-english", lineText: "Good morning", menuTitle: "Fix a word", saveTitle: "Save", hintField: "Or type what was heard", wordButton: "morning,")
     }
 
     func testWordFixesSettingsHebrew() throws {
