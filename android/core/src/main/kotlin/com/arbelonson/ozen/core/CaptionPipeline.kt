@@ -1567,6 +1567,7 @@ class CaptionPipeline(
         // a start that was under way was left paused for good.
         val wasRunning = phase.isListening || phase.isTransitioning
         if (wasRunning) {
+            saveFitMeasurements()
             tearDownSession()
             phase = PipelinePhase.Paused
         }

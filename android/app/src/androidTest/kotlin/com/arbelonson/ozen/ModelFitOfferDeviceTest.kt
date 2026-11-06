@@ -2,13 +2,20 @@ package com.arbelonson.ozen
 
 import android.os.Build
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.PhoneModelSwitch
+import java.io.File
+import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.ModelFitWatch
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PipelinePhase
@@ -17,6 +24,7 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.util.UUID
 import com.arbelonson.ozen.core.UILanguage
 import org.junit.After
+import org.junit.Before
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 
@@ -29,11 +37,24 @@ class ModelFitOfferDeviceTest {
 
     private val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
     private val before: AppSettings = app.settings.current.value.copy()
+    private val modelFiles = ModelFilesAside(app.filesDir)
+    private val freeSpaceBefore = app.captions.freeSpace
+    private val small = PhoneModelCatalog.all.first { it.file == "ggml-small-q5_1.bin" }
     private val title = "Captions ran late on this phone"
+
+    @Before
+    fun readEnglish() {
+        app.settings.change { it.appLanguage = AppLanguage.English }
+        compose.activityRule.scenario.recreate()
+        compose.waitUntil(10_000) { Localization.language == UILanguage.English }
+    }
 
     @After
     fun restore() {
+        app.captions.freeSpace = freeSpaceBefore
+        modelFiles.putBack()
         app.settings.change {
+            it.appLanguage = before.appLanguage
             it.hasCompletedOnboarding = before.hasCompletedOnboarding
             it.engine = before.engine
             it.spokenLanguage = before.spokenLanguage
@@ -64,6 +85,7 @@ class ModelFitOfferDeviceTest {
 
     @Test
     fun aModelThatFellBehindOffersTheLighterOneAndSwitchChoosesIt() {
+        assertTrue("put ${small.file} in ${app.filesDir}: without it the switch starts a download the test runner blocks", File(app.filesDir, small.file).isFile)
         fallBehindOnTurbo()
         captionsStopped()
         compose.onNodeWithText(title).assertExists()
@@ -79,7 +101,6 @@ class ModelFitOfferDeviceTest {
         captionsStopped()
         compose.onNodeWithText(title).assertExists()
         compose.onNodeWithContentDescription("Not now").performClick()
-        val small = PhoneModelCatalog.all.first { it.file == "ggml-small-q5_1.bin" }
         compose.waitUntil(5_000) { ModelFitWatch.dismissalKey(small.variant, Build.MODEL.orEmpty()) in app.settings.current.value.modelFitDismissed }
         compose.onNodeWithText(title).assertDoesNotExist()
         assertEquals(null, app.settings.current.value.phoneModelFile)
@@ -134,5 +155,41 @@ class ModelFitOfferDeviceTest {
             CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lastConversation())
         }
         compose.onNodeWithText(title).assertDoesNotExist()
+    }
+
+    @Test
+    fun aLighterModelThatLackedRoomIsOfferedOnceThePhoneIsBackWithRoomToSpare() {
+        modelFiles.hold()
+        app.captions.freeSpace = { 0L }
+        fallBehindOnTurbo()
+        captionsStopped()
+        compose.onNodeWithText(title).assertDoesNotExist()
+        app.captions.freeSpace = { 8_000_000_000L }
+        compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        captionsStopped()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(title).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun theCardSaysTheSwitchIsWaitingForWiFiInsteadOfVanishing() {
+        val networkBefore = app.captions.networkNow
+        val cellularBefore = before.allowCellularModelDownload
+        try {
+            modelFiles.hold()
+            app.captions.freeSpace = { 8_000_000_000L }
+            app.captions.networkNow = { NetworkConditions.cellular }
+            fallBehindOnTurbo()
+            app.settings.change { it.allowCellularModelDownload = false }
+            captionsStopped()
+            compose.onNodeWithTag("model-fit-switch").performClick()
+            compose.waitUntil(5_000) { app.captions.phoneModels.switching.value is PhoneModelSwitch.WaitingForWiFi }
+            compose.onNodeWithTag("model-fit-waiting").assertExists()
+            compose.onNodeWithTag("model-fit-switch").assertDoesNotExist()
+            compose.onNodeWithText(title).assertExists()
+        } finally {
+            app.captions.networkNow = networkBefore
+            app.settings.change { it.allowCellularModelDownload = cellularBefore }
+        }
     }
 }
