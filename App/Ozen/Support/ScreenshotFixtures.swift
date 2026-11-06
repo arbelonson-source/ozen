@@ -116,6 +116,7 @@ enum ScreenshotFixtures {
         case .modelFit, .modelFitEnglish:
             viewModel.setAppLanguage(variant == .modelFit ? .hebrew : .english)
             viewModel.pipeline.pauseForScreenshots()
+            _ = viewModel.takeFirstAppearance()
             viewModel.seedDeviceModelCheckForScreenshots(
                 averageSeconds: 2.4,
                 supported: ["openai_whisper-small", "openai_whisper-large-v3-v20240930_626MB"]
