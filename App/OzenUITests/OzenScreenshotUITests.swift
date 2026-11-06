@@ -220,12 +220,12 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["vocabularyScreen"].waitForExistence(timeout: 10), "word fixes: the names and words screen never appeared")
         let fix = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "דנה אברמי")).firstMatch
         var swipes = 0
-        while !fix.exists, swipes < 10 {
+        while !fix.isHittable, swipes < 10 {
             swipeUpAlongTheEdge(app)
             swipes += 1
         }
-        if !fix.exists { print("TREE-DUMP", app.debugDescription) }
-        XCTAssertTrue(fix.exists, "word fixes: the saved fix is not listed")
+        if !fix.isHittable { print("TREE-DUMP", app.debugDescription) }
+        XCTAssertTrue(fix.isHittable, "word fixes: the saved fix is not on screen")
         XCTAssertTrue(app.buttons["הוספת תיקון"].exists, "word fixes: the add-fix button is missing")
         capture(app, name: "word-fixes-settings-hebrew")
     }
