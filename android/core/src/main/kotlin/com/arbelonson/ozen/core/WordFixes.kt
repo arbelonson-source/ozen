@@ -150,6 +150,7 @@ object WordFixes {
 
     /** Whether [fix] can go into [fixes]: a valid fix, and room for it unless it replaces the one with the same heard words. */
     fun canAdd(fix: WordFix, fixes: List<WordFix>): Boolean {
+        if (listOf(fix.heard, fix.written).any { it.trim().length > MAXIMUM_LENGTH }) return false
         val one = normalized(listOf(fix)).firstOrNull() ?: return false
         return fixes.size < MAXIMUM_FIXES || fixes.any { keyOf(it.heard) == keyOf(one.heard) }
     }

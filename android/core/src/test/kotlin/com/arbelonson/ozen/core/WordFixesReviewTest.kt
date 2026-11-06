@@ -118,4 +118,13 @@ class WordFixesReviewTest {
         val lala = listOf(fix("la la", "lala"))
         assertEquals(1, UncertainWords.ranges("lala", WordFixes.applyToUncertain(lala, "la la", listOf("~la", "la"))).size)
     }
+
+    @Test
+    fun `a fix longer than the limit cannot be added, as on the iPhone`() {
+        val longest = "a".repeat(WordFixes.MAXIMUM_LENGTH)
+        assertTrue(WordFixes.canAdd(fix(longest, "b".repeat(WordFixes.MAXIMUM_LENGTH)), emptyList()))
+        assertTrue(WordFixes.canAdd(fix(" $longest ", "other"), emptyList()))
+        assertTrue(!WordFixes.canAdd(fix(longest + "b", "other"), emptyList()))
+        assertTrue(!WordFixes.canAdd(fix("fresh", longest + "b"), emptyList()))
+    }
 }
