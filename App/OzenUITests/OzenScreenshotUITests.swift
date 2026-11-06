@@ -218,7 +218,7 @@ final class OzenScreenshotUITests: XCTestCase {
         bringOffBottomEdge(app, row)
         row.tap()
         XCTAssertTrue(app.descendants(matching: .any)["vocabularyScreen"].waitForExistence(timeout: 10), "word fixes: the names and words screen never appeared")
-        let fix = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "דנה אברמי")).firstMatch
+        let fix = app.descendants(matching: .any)["דנה אברמי → דנה אברהמי"]
         var swipes = 0
         while !(fix.exists && fix.isHittable), swipes < 10 {
             swipeUpAlongTheEdge(app)
