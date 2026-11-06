@@ -111,6 +111,51 @@ class CaptionPipelineTokenTest {
     }
 
     @Test
+    fun `a second hand correction on a line keeps the first one working when the engine rewrites the line`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine), now = { 1_001.0 })
+        pipeline.start(AppSettings.default)
+        val id = UUID.randomUUID()
+        engine.emit(token(id, "I saw aval", at = 1_000.0))
+        assertTrue(eventually { pipeline.segments.size == 1 })
+        pipeline.commitStaleSegments(now = 1_000_000.0)
+        assertEquals("I saw Avi", pipeline.correctWord(id, WordFix("aval", "Avi")))
+        assertEquals("I saw Avy", pipeline.correctWord(id, WordFix("Avi", "Avy")))
+        engine.emit(token(id, "I saw aval today", final = true, at = 1_002.0))
+        assertTrue(eventually { pipeline.segments[0].text == "I saw Avy today" })
+    }
+
+    @Test
+    fun `a line rewritten by hand in History moves its keyword highlight`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine))
+        val settings = AppSettings.default
+        settings.keywordAlerts = listOf(KeywordAlert(phrase = "Avi"))
+        pipeline.start(settings)
+        val id = UUID.randomUUID()
+        engine.emit(token(id, "I saw aval", final = true))
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.isCommitted == true })
+        assertFalse(id in pipeline.keywordHitSegmentIDs)
+        assertTrue(pipeline.replaceText(id, "I saw Avi"))
+        assertTrue(id in pipeline.keywordHitSegmentIDs)
+        assertTrue(pipeline.replaceText(id, "I saw nobody"))
+        assertFalse(id in pipeline.keywordHitSegmentIDs)
+    }
+
+    @Test
+    fun `a phrase fix keeps the doubt mark on the words written in place of the doubtful one`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine))
+        val settings = AppSettings.default
+        settings.wordFixes = listOf(WordFix("New York", "NYC"))
+        pipeline.start(settings)
+        engine.emit(TranscriptToken(utteranceID = UUID.randomUUID(), text = "I love New York and York", isFinal = true, timestamp = 1.0, uncertainWords = listOf("York")))
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.isCommitted == true })
+        assertEquals("I love NYC and York", pipeline.segments.single().text)
+        assertEquals(listOf("NYC"), pipeline.segments.single().uncertainWords)
+    }
+
+    @Test
     fun `the last sound heard is kept in memory for a marked problem, and forgotten when captions stop`() = runTest {
         val audio = FakeAudioCapturer()
         val (pipeline, _, _) = makePipeline(audio = audio, engines = mapOf(whisper to FakeEngine()))

@@ -65,7 +65,7 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
     }
     val typing = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (words.isEmpty()) typing.requestFocus() }
-    OzenScreen(tr("שמות ומילים", "Names and words"), modifier = Modifier.imePadding(), onClose = onClose, closeLabel = tr("חזרה", "Back"), scrolls = false) {
+    OzenScreen(tr("שמות ומילים", "Names and words"), modifier = Modifier.imePadding(), onClose = onClose, closeLabel = tr("חזרה", "Back"), scrolls = true) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
             OutlinedTextField(
                 value = draft,
@@ -103,7 +103,7 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
             EmptyState(Icons.Rounded.Spellcheck, tr("עדיין אין שמות", "No names yet"), tr("הוסיפו את השמות שנאמרים הכי הרבה בבית.", "Add the names said most often at home."))
         } else {
             GroupFootnote(tr("לחיצה ארוכה על שם מאפשרת להזיז אותו או למחוק אותו.", "Press and hold a name to move it or delete it."))
-            Surface(modifier = Modifier.weight(1f, fill = false), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
+            Surface(modifier = Modifier.heightIn(max = 320.dp), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
                 LazyColumn {
                     itemsIndexed(words, key = { _, word -> word }) { at, word ->
                         if (at > 0) HorizontalDivider(Modifier.padding(start = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)

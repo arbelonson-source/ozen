@@ -38,15 +38,15 @@ internal fun WordFixesSection(fixes: List<WordFix>, onChange: (List<WordFix>) ->
     var written by rememberSaveable { mutableStateOf("") }
     val added = WordFixes.adding(WordFix(heard, written), fixes)
     val fits = heard.trim().length <= WordFixes.MAXIMUM_LENGTH && written.trim().length <= WordFixes.MAXIMUM_LENGTH
-    val canAdd = fits && WordFixes.normalized(listOf(WordFix(heard, written))).isNotEmpty() && fixes.size < WordFixes.MAXIMUM_FIXES
+    val canAdd = fits && WordFixes.canAdd(WordFix(heard, written), fixes)
     Row(verticalAlignment = Alignment.Bottom) {
         GroupHeader(tr("תיקוני מילים", "Word fixes"), modifier = Modifier.weight(1f))
         Text("${fixes.size} / ${WordFixes.MAXIMUM_FIXES}", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 16.dp))
     }
     GroupFootnote(tr("מילה ששמעו לא נכון תיכתב תמיד כמו שתכתבו כאן.", "A word heard wrongly is always written the way you set here."))
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
-        OutlinedTextField(heard, { heard = it }, placeholder = { Text(tr("מה נשמע", "Heard")) }, singleLine = true, modifier = Modifier.weight(1f))
-        OutlinedTextField(written, { written = it }, placeholder = { Text(tr("מה לכתוב", "Written")) }, singleLine = true, modifier = Modifier.weight(1f))
+        OutlinedTextField(heard, { heard = it }, label = { Text(tr("מה נשמע", "Heard")) }, singleLine = true, modifier = Modifier.weight(1f))
+        OutlinedTextField(written, { written = it }, label = { Text(tr("מה לכתוב", "Written")) }, singleLine = true, modifier = Modifier.weight(1f))
     }
     TonalButton(tr("הוספת תיקון", "Add fix"), onClick = { onChange(added); heard = ""; written = "" }, enabled = canAdd)
     if (fixes.isNotEmpty()) {
@@ -55,9 +55,9 @@ internal fun WordFixesSection(fixes: List<WordFix>, onChange: (List<WordFix>) ->
                 itemsIndexed(fixes, key = { _, fix -> fix.heard }) { at, fix ->
                     if (at > 0) HorizontalDivider(Modifier.padding(start = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
                     Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("${fix.heard} → ${fix.written}", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                        Text("${fix.heard} ${WordFixes.arrow(fix.heard)} ${fix.written}", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                         IconButton(onClick = { onChange(fixes - fix) }, modifier = Modifier.padding(0.dp)) {
-                            Icon(Icons.Rounded.Close, contentDescription = tr("מחיקת התיקון %1", "Delete the fix %1", listOf("${fix.heard} → ${fix.written}")))
+                            Icon(Icons.Rounded.Close, contentDescription = tr("מחיקת התיקון %1", "Delete the fix %1", listOf("${fix.heard} ${WordFixes.arrow(fix.heard)} ${fix.written}")))
                         }
                     }
                 }

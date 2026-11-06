@@ -1844,7 +1844,7 @@ class CaptionPipeline(
                 speakerClusterID = incoming.speakerClusterID,
                 confidence = incoming.confidence,
                 startsNewSpeakerTurn = incoming.startsNewSpeakerTurn,
-                uncertainWords = incoming.uncertainWords.map { WordFixes.apply(fixes, HebrewText.removingDirectionMarks(it)) },
+                uncertainWords = WordFixes.applyToUncertain(fixes, heardText, incoming.uncertainWords.map { HebrewText.removingDirectionMarks(it) }),
             )
         }
         statsData.lastTokenAt = now()
@@ -2038,6 +2038,7 @@ class CaptionPipeline(
         val index = segments.indexOfLast { it.id == id }
         if (index < 0 || !segments[index].isCommitted) return false
         setSegment(index, segments[index].copy(text = text))
+        keywordHitSegmentIDs = if (keywordMatcher.matches(text).isEmpty()) keywordHitSegmentIDs - id else keywordHitSegmentIDs + id
         onCaptionsChanged?.invoke()
         return true
     }
@@ -2054,7 +2055,7 @@ class CaptionPipeline(
         val current = segments[index].text
         val text = WordFixes.apply(listOf(fix), current)
         if (text == current) return current
-        handFixes[id] = handFixes[id].orEmpty() + fix
+        handFixes[id] = WordFixes.adding(fix, handFixes[id].orEmpty())
         setSegment(index, segments[index].copy(text = text))
         keywordHitSegmentIDs = if (keywordMatcher.matches(text).isEmpty()) keywordHitSegmentIDs - id else keywordHitSegmentIDs + id
         onCaptionsChanged?.invoke()
