@@ -86,10 +86,23 @@ class WordFixesReviewTest {
     fun `doubtful words follow a phrase fix, each to its own word`() {
         val list = listOf(fix("New York", "NYC"))
         val text = "I love New York and York"
-        assertEquals(listOf("NYC"), WordFixes.applyToUncertain(list, text, listOf("York")))
-        assertEquals(listOf("NYC"), WordFixes.applyToUncertain(list, text, listOf("New", "York")))
-        assertEquals(listOf("NYC", "York"), WordFixes.applyToUncertain(list, text, listOf("York", "York")))
+        assertEquals(listOf("nyc"), WordFixes.applyToUncertain(list, text, listOf("York")))
+        assertEquals(listOf("nyc"), WordFixes.applyToUncertain(list, text, listOf("New", "York")))
+        assertEquals(listOf("nyc", "York"), WordFixes.applyToUncertain(list, text, listOf("York", "York")))
         assertEquals(listOf("love"), WordFixes.applyToUncertain(list, text, listOf("love")))
         assertEquals(listOf("והרותי"), WordFixes.applyToUncertain(listOf(fix("רותם", "רותי")), "וגם והרותם", listOf("והרותם")))
+    }
+
+    @Test
+    fun `a doubtful word stays marked after a fix to capitals or after a prefix and a maqaf`() {
+        fun marked(fixes: List<WordFix>, heard: String, doubtful: List<String>): List<String> {
+            val shown = WordFixes.apply(fixes, heard)
+            return UncertainWords.ranges(shown, WordFixes.applyToUncertain(fixes, heard, doubtful)).map { shown.substring(it.start, it.endExclusive) }
+        }
+        val phone = listOf(fix("אייפון", "iPhone"))
+        assertEquals(listOf("ב\u05BEiPhone"), marked(phone, "קניתי באייפון חדש", listOf("באייפון")))
+        assertEquals(listOf("iPhone"), marked(phone, "אייפון חדש", listOf("אייפון")))
+        assertEquals(listOf("NYC"), marked(listOf(fix("New York", "NYC")), "I love New York", listOf("york")))
+        assertEquals(listOf("~iphone", "חדש"), WordFixes.applyToUncertain(phone, "שום דבר", listOf("~אייפון", "חדש")))
     }
 }

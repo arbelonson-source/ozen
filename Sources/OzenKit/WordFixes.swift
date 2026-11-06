@@ -107,6 +107,25 @@ public enum WordFixes {
         return String(out)
     }
 
+    /// The words the model was unsure of, after `fixes` rewrote them, in
+    /// the form `UncertainWords.ranges` looks for: one normalized entry
+    /// per word the line now shows, so the doubt stays on a word fixed to
+    /// capitals, to two words, or after a prefix and a maqaf. A sure copy
+    /// keeps its mark.
+    public static func applyToUncertain(_ fixes: [WordFix], _ uncertain: [String]) -> [String] {
+        guard !fixes.isEmpty else { return uncertain }
+        return uncertain.flatMap { entry -> [String] in
+            let isSure = entry.hasPrefix(UncertainWords.sureCopy)
+            let word = isSure ? String(entry.dropFirst(UncertainWords.sureCopy.count)) : entry
+            let fixed = apply(fixes, to: word)
+            guard fixed != word else { return [entry] }
+            return fixed.split(whereSeparator: \.isWhitespace)
+                .map { UncertainWords.normalize(String($0)) }
+                .filter { !$0.isEmpty }
+                .map { isSure ? UncertainWords.sureCopy + $0 : $0 }
+        }
+    }
+
     /// A Hebrew prefix letter kept before a word in another script, or
     /// before a number, is joined to it with a maqaf (U+05BE).
     private static func needsMaqaf(_ written: String) -> Bool {

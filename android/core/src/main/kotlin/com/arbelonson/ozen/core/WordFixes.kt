@@ -63,6 +63,17 @@ object WordFixes {
         return null
     }
 
+    /** Doubtful entries are the normalized words [UncertainWords.ranges] looks for, one per word the line shows. */
+    private fun shownWords(text: String) = text.split(Regex("\\s+")).map(UncertainWords::normalize).filter { it.isNotEmpty() }
+
+    private fun fixedEntry(fixes: List<WordFix>, entry: String): List<String> {
+        val sure = entry.startsWith(UncertainWords.sureCopy)
+        val word = if (sure) entry.substring(UncertainWords.sureCopy.length) else entry
+        val fixed = apply(fixes, word)
+        if (fixed == word) return listOf(entry)
+        return shownWords(fixed).map { if (sure) UncertainWords.sureCopy + it else it }
+    }
+
     /** A Hebrew prefix letter kept before a word in another script, or before a number, is joined to it with a maqaf (U+05BE). */
     private fun needsMaqaf(written: String): Boolean {
         if (written.isEmpty()) return false
@@ -185,11 +196,11 @@ object WordFixes {
         for (entry in uncertain) {
             val key = keyOf(entry)
             val index = rewritten.words.indices.firstOrNull { it !in taken && rewritten.words[it].key == key }
-            if (index == null) { out.add(apply(fixes, entry)); continue }
+            if (index == null) { out.addAll(fixedEntry(fixes, entry)); continue }
             taken.add(index)
             val span = rewritten.spans.firstOrNull { index in it.first..it.last }
             if (span == null) { out.add(entry); continue }
-            if (written.add(span)) out.addAll(words(span.replacement).map { span.replacement.substring(it.start, it.end) })
+            if (written.add(span)) out.addAll(shownWords(span.replacement))
         }
         return out
     }

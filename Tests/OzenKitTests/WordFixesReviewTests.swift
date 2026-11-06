@@ -125,4 +125,16 @@ struct WordFixesReviewTests {
         #expect(!WordFixes.canAdd(WordFix(heard: longest + "b", written: "other"), to: []))
         #expect(!WordFixes.canAdd(WordFix(heard: "fresh", written: longest + "b"), to: []))
     }
+
+    @Test("a doubtful word stays marked after a fix to capitals or after a prefix and a maqaf")
+    func doubtStaysOnTheFixedWord() {
+        let phone = [fix("אייפון", "iPhone")]
+        let shown = WordFixes.apply(phone, to: "קניתי באייפון חדש")
+        let marked = UncertainWords.ranges(in: shown, words: WordFixes.applyToUncertain(phone, ["באייפון"]))
+        #expect(marked.map { String(shown[$0]) } == ["ב\u{05BE}iPhone"])
+        let plain = WordFixes.apply(phone, to: "אייפון חדש")
+        #expect(UncertainWords.ranges(in: plain, words: WordFixes.applyToUncertain(phone, ["אייפון"])).map { String(plain[$0]) } == ["iPhone"])
+        #expect(WordFixes.applyToUncertain(phone, ["~אייפון", "חדש"]) == ["~iphone", "חדש"])
+        #expect(WordFixes.applyToUncertain([], ["~אייפון"]) == ["~אייפון"])
+    }
 }

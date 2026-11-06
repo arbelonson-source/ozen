@@ -1802,7 +1802,7 @@ public final class CaptionPipeline {
             speakerClusterID: incoming.speakerClusterID,
             confidence: incoming.confidence,
             startsNewSpeakerTurn: incoming.startsNewSpeakerTurn,
-            uncertainWords: incoming.uncertainWords.map { WordFixes.apply(fixes, to: HebrewText.removingDirectionMarks($0)) }
+            uncertainWords: WordFixes.applyToUncertain(fixes, incoming.uncertainWords.map(HebrewText.removingDirectionMarks))
         )
         stats.lastTokenAt = now()
         // A brand-new utterance with nothing to show yet isn't worth an
