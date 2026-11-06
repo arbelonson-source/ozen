@@ -86,7 +86,8 @@ class CaptionSessionDeviceTest {
             clip.exists() && reference.exists() && model.exists(),
         )
         val work = File(context.cacheDir, "caption-session-test").apply { deleteRecursively(); mkdirs() }
-        val audio = ClipAudio(DeviceClips.readWav(clip))
+        val samples = DeviceClips.readWav(clip)
+        val audio = ClipAudio(samples, after = roomTone(samples))
         val session = withContext(Dispatchers.Main) {
             CaptionState.clear()
             CaptionSession(
@@ -1258,7 +1259,19 @@ class CaptionSessionDeviceTest {
         }
     }
 
-    private class ClipAudio(private val samples: FloatArray) : AudioCapturing {
+    /**
+     * The clip's own quietest tenth of a second, played on after it ends. A
+     * microphone in a room never sends exact zeros, and the app takes 8 s of
+     * those for a dead microphone, so a phone still catching up on the
+     * lecture lost its captions to that check instead of finishing.
+     */
+    private fun roomTone(samples: FloatArray): FloatArray =
+        (0..samples.size - 1_600 step 1_600)
+            .map { samples.copyOfRange(it, it + 1_600) }
+            .filter { chunk -> chunk.any { it != 0f } }
+            .minByOrNull { chunk -> chunk.sumOf { (it * it).toDouble() } } ?: FloatArray(1_600)
+
+    private class ClipAudio(private val samples: FloatArray, private val after: FloatArray = FloatArray(1_600)) : AudioCapturing {
         @Volatile
         var fedAll = false
 
@@ -1284,7 +1297,7 @@ class CaptionSessionDeviceTest {
             }
             fedAll = true
             while (!stopped) {
-                emit(FloatArray(1_600))
+                emit(after.copyOf())
                 delay(100)
             }
         }
