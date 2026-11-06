@@ -33,6 +33,16 @@ struct WordFixesTests {
         #expect(WordFixes.apply(rotem, to: "רותם") == "רותי")
     }
 
+    @Test("a Hebrew prefix kept before Latin letters or a number takes a maqaf")
+    func hebrewPrefixBeforeLatinTakesMaqaf() {
+        let phone = [fix("אייפון", "iPhone")]
+        #expect(WordFixes.apply(phone, to: "קניתי באייפון") == "קניתי ב\u{05BE}iPhone")
+        #expect(WordFixes.apply(phone, to: "ושבאייפון") == "ושב\u{05BE}iPhone")
+        #expect(WordFixes.apply(phone, to: "אייפון חדש") == "iPhone חדש")
+        #expect(WordFixes.apply([fix("שבע", "7")], to: "בשבע") == "ב\u{05BE}7")
+        #expect(WordFixes.apply([fix("רותם", "רותי")], to: "ורותם") == "ורותי")
+    }
+
     @Test("rule 4: niqqud is ignored when matching, written is verbatim")
     func niqqud() {
         let rotem = [fix("רותם", "רוּתִי")]

@@ -48,7 +48,7 @@ struct ModelManagerView: View {
         .onChange(of: viewModel.phase.step) { _, _ in refresh() }
         .onChange(of: viewModel.backupModelProgress == nil) { _, _ in refresh() }
         .confirmationDialog(
-            tr("למחוק את %1 מהטלפון?", "Delete %1 from the phone?", args: ["\(pendingDelete?.displayName ?? "")"]),
+            tr("למחוק את המודל \"\u{2068}%1\u{2069}\" מהטלפון?", "Delete %1 from the phone?", args: ["\(pendingDelete?.displayName ?? "")"]),
             isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
             titleVisibility: .visible
         ) {
@@ -67,7 +67,7 @@ struct ModelManagerView: View {
             }
         }
         .confirmationDialog(
-            tr("להוריד את %1 ולעבור אליו?", "Download %1 and switch to it?", args: ["\(pendingSwitch?.displayName ?? "")"]),
+            tr("להוריד את המודל \"\u{2068}%1\u{2069}\" ולעבור אליו?", "Download %1 and switch to it?", args: ["\(pendingSwitch?.displayName ?? "")"]),
             isPresented: Binding(get: { pendingSwitch != nil }, set: { if !$0 { pendingSwitch = nil } }),
             titleVisibility: .visible,
             presenting: pendingSwitch
@@ -96,7 +96,7 @@ struct ModelManagerView: View {
             .accessibilityIdentifier("modelManagerTestPhone")
             if let check = viewModel.settings.deviceModelCheck {
                 if let measured = check.measurement, measured.passes >= DeviceModelAdvisor.minimumMeasuredPasses {
-                    Text(tr("נמדד בטלפון הזה: כ־%1 שניות לכל עדכון עם %2.", "Timed on this phone: about %1 seconds per update with %2.", args: ["\(String(format: "%.1f", measured.averageSeconds))", "\(WhisperModelCatalog.option(for: measured.variant)?.displayName ?? measured.variant)"]))
+                    Text(tr("נמדד בטלפון הזה: כ־%1 שניות לכל עדכון עם המודל \"\u{2068}%2\u{2069}\".", "Timed on this phone: about %1 seconds per update with %2.", args: ["\(String(format: "%.1f", measured.averageSeconds))", "\(WhisperModelCatalog.option(for: measured.variant)?.displayName ?? measured.variant)"]))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -113,7 +113,7 @@ struct ModelManagerView: View {
                             if await viewModel.modelRowTapped(recommended, isInstalled: installed.contains(recommended)) { pendingSwitch = option }
                         }
                     } label: {
-                        Label(tr("המודל הזה לא עומד בקצב הדיבור בטלפון הזה. הקישו כדי לעבור ל־%1, %2", "This model falls behind the speech on this phone. Tap to switch to %1, %2", args: ["\(option.displayName)", "\(option.sizeLabel)"]), systemImage: "arrow.triangle.swap")
+                        Label(tr("המודל הזה לא עומד בקצב הדיבור בטלפון הזה. הקישו כדי לעבור למודל \"\u{2068}%1\u{2069}\", %2", "This model falls behind the speech on this phone. Tap to switch to %1, %2", args: ["\(option.displayName)", "\(option.sizeLabel)"]), systemImage: "arrow.triangle.swap")
                     }
                     .accessibilityIdentifier("modelManagerSwitchToLighter")
                 }

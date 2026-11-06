@@ -991,7 +991,7 @@ struct LiveCaptionView: View {
                              ? tr("עברית מדויקת בהרבה עם מודל אחר", "Much more accurate Hebrew with a different model")
                              : tr("כתוביות מדויקות בהרבה עם מודל אחר", "Much more accurate captions with a different model"))
                             .font(.headline)
-                        Text(tr("הקישו כדי להוריד את %1, %2, פעם אחת ב־Wi-Fi", "Tap to download %1, %2, once over Wi-Fi", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
+                        Text(tr("הקישו כדי להוריד את המודל \"\u{2068}%1\u{2069}\", %2, פעם אחת ב־Wi-Fi", "Tap to download %1, %2, once over Wi-Fi", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
                             .font(.subheadline.weight(.semibold))
                     }
                     .multilineTextAlignment(.leading)
@@ -1025,7 +1025,7 @@ struct LiveCaptionView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone"))
                         .font(.headline)
-                    Text(tr("%1 (%2) קל יותר ועומד בקצב טוב יותר בטלפון הזה.", "%1 (%2) is lighter and keeps up better here.", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
+                    Text(tr("המודל \"\u{2068}%1\u{2069}\" (%2) קל יותר ועומד בקצב טוב יותר בטלפון הזה.", "%1 (%2) is lighter and keeps up better here.", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
                         .font(.subheadline)
                 }
                 .multilineTextAlignment(.leading)
