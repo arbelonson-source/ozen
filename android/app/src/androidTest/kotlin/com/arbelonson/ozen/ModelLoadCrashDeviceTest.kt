@@ -73,4 +73,11 @@ class ModelLoadCrashDeviceTest {
         compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
         compose.onNodeWithTag("model-load-crash").assertDoesNotExist()
     }
+
+    @Test
+    fun startingTheCaptionsAnotherWayTakesTheCardAwayEvenWhenTheModelIsNotThere() {
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("model-load-crash").fetchSemanticsNodes().isNotEmpty() }
+        compose.runOnUiThread { app.captions.listen() }
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("model-load-crash").fetchSemanticsNodes().isEmpty() }
+    }
 }

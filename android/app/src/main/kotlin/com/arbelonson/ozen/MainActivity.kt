@@ -93,6 +93,7 @@ import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelSwitch
+import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SharedRecordingLink
 import com.arbelonson.ozen.ui.IconBadge
 import com.arbelonson.ozen.ui.OzenColors
@@ -416,7 +417,10 @@ private fun OzenApp(
     LifecycleEventEffect(Lifecycle.Event.ON_START) { comebacks++ }
     val fitOffer = remember(current, comebacks) { app.captions.modelFitOffer() }
     val loadCrash by app.captions.loadCrash.showing.collectAsStateWithLifecycle()
-    LaunchedEffect(state.phase.isListening) { if (state.phase.isListening) app.captions.dismissLoadCrash() }
+    // Any start, from the card or the status line, ends the question, even
+    // one that waits for Wi-Fi or fails before the captions run.
+    val captionsStarted = state.phase != PipelinePhase.Idle
+    LaunchedEffect(captionsStarted) { if (captionsStarted) app.captions.dismissLoadCrash() }
     var sayDraft by rememberSaveable { mutableStateOf("") }
     var awakeClock by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1_000.0) }
     LaunchedEffect(state.phase.isListening) {
