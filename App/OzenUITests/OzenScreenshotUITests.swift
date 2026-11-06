@@ -247,7 +247,7 @@ final class OzenScreenshotUITests: XCTestCase {
     }
 
     func testModelFitCardHebrew() throws {
-        try modelFitCard(variant: "modelFit", name: "model-fit-card-hebrew", switchTitle: "החלפה", notNowTitle: "לא עכשיו", lightName: "Small")
+        try modelFitCard(variant: "modelFit", name: "model-fit-card-hebrew", switchTitle: "החלפה", notNowTitle: "לא עכשיו", lightName: "קטן")
     }
 
     func testModelFitCardEnglish() throws {
