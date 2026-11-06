@@ -95,11 +95,11 @@ This section will say so here once someone has confirmed it opens.
 ## Getting the build
 
 Each run of the release workflow attaches `Ozen.ipa` to a GitHub Release named
-"Ozen build N", tagged `v0.2.N` (the app's version series, then the build
+"Ozen build N", tagged `v0.3.N` (the app's version series, then the build
 number, which Settings shows in brackets). Download it from the repository's Releases page, or with the GitHub CLI:
 
 ```
-gh release download v0.2.N -R arbelonson-source/ozen -p Ozen.ipa --clobber
+gh release download v0.3.N -R arbelonson-source/ozen -p Ozen.ipa --clobber
 ```
 
 ## The command
@@ -123,7 +123,7 @@ paid developer account removes the limit).
 
 Ozen warns on its own caption screen two days before it stops opening, and sends
 a reminder notification the day before; Settings → About (odot) shows the exact moment
-under "Install valid until" (ha-hatkana tkefa ad). Settings shows the installed build as "0.2.0 (N)", N being
+under "Install valid until" (ha-hatkana tkefa ad). Settings shows the installed build as "0.3.0 (N)", N being
 the release's build number.
 
 Refresh with the **same Apple ID** as last time, with Impactor (AltServer only
