@@ -180,7 +180,8 @@ final class OzenScreenshotUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.descendants(matching: .any)["transcriptScroll"].waitForExistence(timeout: 10), "\(name): the captions never appeared")
         let line = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", lineText)).firstMatch
-        XCTAssertTrue(line.waitForExistence(timeout: 10), "\(name): the finished line never appeared")
+        if !line.waitForExistence(timeout: 10) { print("TREE-DUMP", app.debugDescription) }
+        XCTAssertTrue(line.exists, "\(name): the finished line never appeared")
         line.press(forDuration: 1.2)
         let menuItem = app.buttons[menuTitle]
         XCTAssertTrue(menuItem.waitForExistence(timeout: 10), "\(name): the hold menu has no \(menuTitle)")
@@ -234,7 +235,8 @@ final class OzenScreenshotUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.descendants(matching: .any)["transcriptScroll"].waitForExistence(timeout: 10), "\(name): the captions never appeared")
         let switchButton = app.descendants(matching: .any)["modelFitOfferSwitch"]
-        XCTAssertTrue(switchButton.waitForExistence(timeout: 10), "\(name): the lighter-model card has no Switch button")
+        if !switchButton.waitForExistence(timeout: 10) { print("TREE-DUMP", app.debugDescription) }
+        XCTAssertTrue(switchButton.exists, "\(name): the lighter-model card has no Switch button")
         XCTAssertTrue(app.descendants(matching: .any)["modelFitOfferNotNow"].exists, "\(name): the lighter-model card has no Not now button")
         XCTAssertTrue(app.staticTexts[switchTitle].exists, "\(name): the Switch button is not labelled \(switchTitle)")
         XCTAssertTrue(app.staticTexts[notNowTitle].exists, "\(name): the Not now button is not labelled \(notNowTitle)")
