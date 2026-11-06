@@ -248,6 +248,19 @@ Open a section for the details.
   a dozen full names and medicines, so put the important ones
   first), edits apply from the next sentence, and Whisper output that is
   just the list read back is dropped.
+- **Fix a word.** Press and hold a finished caption line, tap Fix a
+  word, tap the words that came out wrong (or type them) and write how
+  they should be written: the line changes on screen and in the saved
+  conversation. With Fix it every time on, the fix is kept and applied
+  to every later caption, up to 100 fixes, listed and deletable next to
+  the names and words list. A Hebrew prefix letter stays on the fixed
+  word, joined by a maqaf before Latin letters or a number, and a word
+  the model was unsure of keeps its mark.
+- **A lighter model when the phone can't keep up.** Ozen times its own
+  speech model while it captions (passes on a hot or power-saving phone
+  don't count). If the phone keeps falling behind, a card under the
+  stopped captions offers a lighter model that fits on the phone.
+  Nothing changes until Switch is tapped; Not now hides it.
 - **Robust audio**: a live level meter per microphone, automatic recovery
   from phone-call interruptions and route changes (AirPods in/out, USB mic
   unplugged), Whisper-hallucination filtering on silence, no model runs on

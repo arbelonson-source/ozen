@@ -44,7 +44,7 @@ on, and when it is on the sound goes to Apple.
 | What | Where it lives | How long |
 | --- | --- | --- |
 | Saved conversations | Ozen's own storage on the phone, one small file each | Until you delete them, or the automatic deletion does |
-| Settings, saved speakers' voice prints, names and alert words | One settings file in Ozen's storage | Until you change or delete them |
+| Settings, saved speakers' voice prints, names and alert words, word fixes | One settings file in Ozen's storage | Until you change or delete them |
 | Cloud keys and the home computer's pairing code | The phone's Keychain | Until you delete them |
 | Sound from a marked problem | A few short clips in Ozen's storage | Up to 5, the newest kept |
 | The journal | One small log file | About 500 lines; older lines drop off |
