@@ -29,11 +29,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -46,7 +49,7 @@ import com.arbelonson.ozen.core.tr
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun FixWordDialog(shown: String, languageCode: String, onSave: (heard: String, written: String, everyTime: Boolean) -> Unit, onDismiss: () -> Unit) {
+internal fun FixWordDialog(shown: String, languageCode: String, error: String? = null, onSave: (heard: String, written: String, everyTime: Boolean) -> Unit, onDismiss: () -> Unit) {
     val words = WordFixes.wordsOf(shown)
     var first by rememberSaveable { mutableStateOf(-1) }
     var last by rememberSaveable { mutableStateOf(-1) }
@@ -107,6 +110,7 @@ internal fun FixWordDialog(shown: String, languageCode: String, onSave: (heard: 
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier

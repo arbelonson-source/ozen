@@ -12,6 +12,7 @@ import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.WordFix
 import java.io.File
 import java.nio.file.Files
 import java.time.Instant
@@ -499,6 +500,42 @@ class ConversationSaverTest {
         assertTrue(saver.isStarred(lines[0].id))
         stop()
         assertTrue(saved().isEmpty())
+    }
+
+    @Test
+    fun `a word fixed in History on a line of the conversation being captioned says whether the screen took it`() {
+        start()
+        say("I saw aval")
+        saver.save(ended = false)
+        val conversation = saved().single().id
+        val line = lines[0].id
+
+        assertFalse(saver.fixLine(conversation, line, WordFix("aval", "Avi")) { _, _ -> false })
+        assertEquals("I saw aval", store.load(conversation)!!.segments.single().text)
+
+        assertTrue(
+            saver.fixLine(conversation, line, WordFix("aval", "Avi")) { _, _ ->
+                lines[0] = lines[0].copy(text = "I saw Avi")
+                true
+            },
+        )
+        assertEquals("I saw Avi", store.load(conversation)!!.segments.single().text)
+    }
+
+    @Test
+    fun `a word fixed in History on an earlier conversation is written to the text saved now and never asks the screen`() {
+        val earlier = oldConversation(clock - 3_600)
+        val line = store.load(earlier)!!.segments.single().id
+        store.fixText(line, earlier, "I saw aval today")
+        start()
+        say("Something else entirely")
+        saver.save(ended = false)
+
+        var asked = false
+        assertTrue(saver.fixLine(earlier, line, WordFix("aval", "Avi")) { _, _ -> asked = true; false })
+        assertFalse(asked)
+        assertEquals("I saw Avi today", store.load(earlier)!!.segments.single().text)
+        assertFalse(saver.fixLine(earlier, UUID.randomUUID(), WordFix("aval", "Avi")) { _, _ -> true })
     }
 
     @Test

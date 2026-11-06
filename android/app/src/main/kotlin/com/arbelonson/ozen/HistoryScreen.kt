@@ -97,8 +97,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.ByteSize
-import com.arbelonson.ozen.core.WordFix
-import com.arbelonson.ozen.core.WordFixes
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
@@ -157,7 +155,8 @@ interface SavedConversations {
     /** Stars a saved line or takes its star away: its new state, or null when it is gone. */
     fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean?
 
-    fun fixLine(sessionID: UUID, segmentID: UUID, text: String): Boolean
+    /** Fixes a word of a saved line, in the text it has now: false when the line could not be fixed (still being heard, or gone). */
+    fun fixLine(sessionID: UUID, segmentID: UUID, heard: String, written: String): Boolean
 
     fun saveWordFix(heard: String, written: String, everyTime: Boolean)
 
@@ -671,19 +670,35 @@ internal fun ConversationScreen(
     var deleteError by rememberSaveable { mutableStateOf<String?>(null) }
     var naming by rememberSaveable { mutableStateOf<String?>(null) }
     val record = loaded?.record
-    var fixingLine by remember { mutableStateOf<SavedLine?>(null) }
+    var fixingID by rememberSaveable { mutableStateOf<String?>(null) }
+    var fixRejected by rememberSaveable { mutableStateOf(false) }
+    var fixSaving by remember { mutableStateOf(false) }
+    val fixingLine = fixingID?.let { wanted -> loaded?.lines?.firstOrNull { it.id.toString() == wanted } }
     fixingLine?.let { line ->
-        FixWordDialog(line.text, languageCode = languageCode, onSave = { heard, written, everyTime ->
-            fixingLine = null
-            val fixed = WordFixes.apply(listOf(WordFix(heard, written)), line.text)
-            marking.launch {
-                withContext(Dispatchers.IO) {
-                    conversations.fixLine(id, line.id, fixed)
-                    conversations.saveWordFix(heard, written, everyTime)
-                    loaded = opened(conversations.load(id), query, marksUncertain, languageCode)
+        FixWordDialog(
+            line.text,
+            languageCode = languageCode,
+            error = tr("התיקון לא נשמר. אפשר לנסות שוב עוד רגע.", "The fix was not saved. Try again in a moment.").takeIf { fixRejected },
+            onSave = { heard, written, everyTime ->
+                if (!fixSaving) {
+                    fixSaving = true
+                    fixRejected = false
+                    marking.launch {
+                        val saved = withContext(Dispatchers.IO) {
+                            conversations.fixLine(id, line.id, heard, written).also { accepted ->
+                                if (accepted) {
+                                    conversations.saveWordFix(heard, written, everyTime)
+                                    loaded = opened(conversations.load(id), query, marksUncertain, languageCode)
+                                }
+                            }
+                        }
+                        fixSaving = false
+                        if (!saved) fixRejected = true else if (fixingID == line.id.toString()) fixingID = null
+                    }
                 }
-            }
-        }, onDismiss = { fixingLine = null })
+            },
+            onDismiss = { fixingID = null; fixRejected = false },
+        )
     }
     Screen(title = tr("שיחה", "Conversation"), close = tr("חזרה", "Back"), onClose = onClose) {
         val shown = loaded
@@ -752,7 +767,7 @@ internal fun ConversationScreen(
                         SectionHeader(conversationHeading(shown.record.startedAt, now = System.currentTimeMillis() / 1_000.0))
                     }
                     items(shown.lines, key = { it.id.toString() }) { line ->
-                        SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, onFix = { fixingLine = line }) {
+                        SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, onFix = { fixingID = line.id.toString(); fixRejected = false }) {
                             scope.launch {
                                 conversations.toggleStar(id, line.id)
                                 show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
