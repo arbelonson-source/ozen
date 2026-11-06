@@ -47,6 +47,12 @@ enum ScreenshotFixtures {
         /// Large English captions with the saving-failed banner up, to see
         /// the banner push the captions down rather than cover them.
         case banner
+        /// Hebrew captions with one saved word fix, for Settings' list.
+        case wordFixes
+        /// Captions stopped on a phone where the running model fell behind
+        /// and a lighter one fits, so the caption screen offers it.
+        case modelFit
+        case modelFitEnglish
     }
 
     @MainActor
@@ -78,7 +84,7 @@ enum ScreenshotFixtures {
         viewModel.completeOnboarding()
         // The conversation is written with `tr`, so the language has to be
         // set before it is seeded for its lines to come out in English.
-        if variant == .galleryDark || variant == .galleryLight {
+        if variant == .galleryDark || variant == .galleryLight || variant == .modelFitEnglish {
             viewModel.setAppLanguage(.english)
         }
         // History is kept on disk between launches, and each launch saves
@@ -104,6 +110,17 @@ enum ScreenshotFixtures {
         switch variant {
         case .hebrewDefault:
             viewModel.setAppLanguage(.hebrew)
+        case .wordFixes:
+            viewModel.setAppLanguage(.hebrew)
+            viewModel.addWordFix(WordFix(heard: "\u{05D3}\u{05E0}\u{05D4} \u{05D0}\u{05D1}\u{05E8}\u{05DE}\u{05D9}", written: "\u{05D3}\u{05E0}\u{05D4} \u{05D0}\u{05D1}\u{05E8}\u{05D4}\u{05DE}\u{05D9}"))
+        case .modelFit, .modelFitEnglish:
+            viewModel.setAppLanguage(variant == .modelFit ? .hebrew : .english)
+            viewModel.pipeline.pauseForScreenshots()
+            _ = viewModel.takeFirstAppearance()
+            viewModel.seedDeviceModelCheckForScreenshots(
+                averageSeconds: 2.4,
+                supported: ["openai_whisper-small", "openai_whisper-large-v3-v20240930_626MB"]
+            )
         case .hebrewLargeText:
             viewModel.setAppLanguage(.hebrew)
             viewModel.display.fontSize = 50

@@ -174,6 +174,86 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertGreaterThan(captions.frame.height, window.height * 0.3, "banner: the banner left the captions too little room (\(captions.frame))")
     }
 
+    private func fixWordSheet(variant: String, name: String, lineText: String, menuTitle: String, saveTitle: String, hintField: String, wordButton: String) throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", variant]
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["transcriptScroll"].waitForExistence(timeout: 10), "\(name): the captions never appeared")
+        let line = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", lineText)).firstMatch
+        if !line.waitForExistence(timeout: 10) { print("TREE-DUMP", app.debugDescription) }
+        XCTAssertTrue(line.exists, "\(name): the finished line never appeared")
+        line.press(forDuration: 1.2)
+        let menuItem = app.buttons[menuTitle]
+        XCTAssertTrue(menuItem.waitForExistence(timeout: 10), "\(name): the hold menu has no \(menuTitle)")
+        menuItem.tap()
+        XCTAssertTrue(app.buttons[saveTitle].waitForExistence(timeout: 10), "\(name): the sheet has no \(saveTitle) button")
+        XCTAssertTrue(app.switches.firstMatch.waitForExistence(timeout: 5), "\(name): the sheet has no every-time switch")
+        XCTAssertTrue(app.textFields[hintField].exists, "\(name): the sheet has no \(hintField) field")
+        let word = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", wordButton)).firstMatch
+        if !word.waitForExistence(timeout: 5) { print("TREE-DUMP", app.debugDescription) }
+        XCTAssertTrue(word.exists, "\(name): the line's word \(wordButton) is not a button")
+        word.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+        capture(app, name: name)
+    }
+
+    func testFixWordSheetHebrew() throws {
+        try fixWordSheet(variant: "hebrewDefault", name: "fix-word-sheet-hebrew", lineText: "בוקר טוב", menuTitle: "תיקון מילה", saveTitle: "שמירה", hintField: "או הקלידו מה נשמע", wordButton: "בוקר")
+    }
+
+    func testFixWordSheetEnglish() throws {
+        try fixWordSheet(variant: "galleryDark", name: "fix-word-sheet-english", lineText: "Good morning", menuTitle: "Fix a word", saveTitle: "Save", hintField: "Or type what was heard", wordButton: "morning,")
+    }
+
+    func testWordFixesSettingsHebrew() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "wordFixes"]
+        app.launch()
+        let settingsButton = app.descendants(matching: .any)["settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "word fixes: the settings button never appeared")
+        settingsButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "word fixes: settings never appeared")
+        let row = scrollDownUntilVisible(app, identifier: "vocabularyRow")
+        XCTAssertTrue(row.exists, "word fixes: the names and words row never appeared")
+        bringOffBottomEdge(app, row)
+        row.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["vocabularyScreen"].waitForExistence(timeout: 10), "word fixes: the names and words screen never appeared")
+        let fix = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "דנה אברמי")).firstMatch
+        var swipes = 0
+        while !fix.isHittable, swipes < 10 {
+            swipeUpAlongTheEdge(app)
+            swipes += 1
+        }
+        if !fix.isHittable { print("TREE-DUMP", app.debugDescription) }
+        XCTAssertTrue(fix.isHittable, "word fixes: the saved fix is not on screen")
+        XCTAssertTrue(app.buttons["הוספת תיקון"].exists, "word fixes: the add-fix button is missing")
+        capture(app, name: "word-fixes-settings-hebrew")
+    }
+
+    private func modelFitCard(variant: String, name: String, switchTitle: String, notNowTitle: String, lightName: String) throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", variant]
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["transcriptScroll"].waitForExistence(timeout: 10), "\(name): the captions never appeared")
+        let switchButton = app.descendants(matching: .any)["modelFitOfferSwitch"]
+        if !switchButton.waitForExistence(timeout: 10) { print("TREE-DUMP", app.debugDescription) }
+        XCTAssertTrue(switchButton.exists, "\(name): the lighter-model card has no Switch button")
+        XCTAssertTrue(app.descendants(matching: .any)["modelFitOfferNotNow"].exists, "\(name): the lighter-model card has no Not now button")
+        XCTAssertEqual(switchButton.label, switchTitle, "\(name): the Switch button is labelled wrongly")
+        XCTAssertEqual(app.descendants(matching: .any)["modelFitOfferNotNow"].label, notNowTitle, "\(name): the Not now button is labelled wrongly")
+        let text = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", lightName)).firstMatch
+        XCTAssertTrue(text.exists, "\(name): the card does not name the lighter model \(lightName)")
+        capture(app, name: name)
+    }
+
+    func testModelFitCardHebrew() throws {
+        try modelFitCard(variant: "modelFit", name: "model-fit-card-hebrew", switchTitle: "החלפה", notNowTitle: "לא עכשיו", lightName: "קטן")
+    }
+
+    func testModelFitCardEnglish() throws {
+        try modelFitCard(variant: "modelFitEnglish", name: "model-fit-card-english", switchTitle: "Switch", notNowTitle: "Not now", lightName: "Small")
+    }
+
     func testHebrewDefault() throws {
         try run(variant: "hebrewDefault", name: "hebrew-default")
     }

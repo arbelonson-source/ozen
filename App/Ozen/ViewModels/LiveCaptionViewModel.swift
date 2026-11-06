@@ -39,6 +39,13 @@ public final class LiveCaptionViewModel {
     @ObservationIgnored var savesFailForScreenshots = false {
         didSet { refreshSavingTrouble() }
     }
+    /// A screenshot fixture's measurement of the running model on this
+    /// phone, so the lighter-model card has something to stand on.
+    func seedDeviceModelCheckForScreenshots(averageSeconds: Double, supported: [String]) {
+        let measurement = LivePassMeasurement(variant: settings.whisperModelVariant, averageSeconds: averageSeconds, passes: ModelFitWatch.passesToSave + 5, fitEligible: true)
+        settings.deviceModelCheck = DeviceModelCheck(deviceName: DeviceModelTable.currentDeviceName, supported: supported, measurement: measurement)
+        persist()
+    }
     #endif
     /// Where the lines said while the screen was away begin.
     var awayCatchUp = AwayCatchUp()

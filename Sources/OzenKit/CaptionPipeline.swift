@@ -1616,6 +1616,12 @@ public final class CaptionPipeline {
         return segments
     }
 
+    /// The seeded conversation with captions stopped, as on a phone that
+    /// listened and was paused, for screens that only show then.
+    public func pauseForScreenshots() {
+        phase = .paused
+    }
+
     /// One more finished line on a seeded conversation, as if just said:
     /// for the UI test that reads back while lines keep coming.
     public func addLineForScreenshots(_ text: String) {
