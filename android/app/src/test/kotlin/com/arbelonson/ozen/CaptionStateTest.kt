@@ -20,7 +20,9 @@ import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotSame
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class CaptionStateTest {
@@ -513,5 +515,32 @@ class CaptionStateTest {
         assertEquals(listOf(null, null), CaptionState.lockScreenLines(2, LockScreenTextSize.Regular, namesShown = true).map { it.speaker })
         CaptionState.clear()
         assertTrue(CaptionState.lockScreenLines(2, LockScreenTextSize.Regular, namesShown = true).isEmpty())
+    }
+
+    @Test
+    fun `a new word redraws only its own line, and a fixed line shows its new words`() {
+        CaptionState.clear()
+        val said = line("OK, נתראה מחר", committed = true)
+        val live = line("ועוד", committed = false)
+        show(PipelinePhase.Listening, listOf(said, live))
+        val before = CaptionState.screen.value.lines
+
+        show(PipelinePhase.Listening, listOf(said, live.copy(text = "ועוד מילה")))
+        val after = CaptionState.screen.value.lines
+        assertSame(before[0], after[0])
+        assertNotSame(before[1], after[1])
+        assertEquals(CaptionLayout.displayText("ועוד מילה", "he"), after[1].text)
+
+        val fixed = said.copy(text = "OK, נתראה מחרתיים")
+        show(PipelinePhase.Listening, listOf(fixed, live.copy(text = "ועוד מילה")))
+        val corrected = CaptionState.screen.value.lines
+        assertEquals(CaptionLayout.displayText("OK, נתראה מחרתיים", "he"), corrected[0].text)
+        assertEquals("OK, נתראה מחרתיים", corrected[0].copied)
+        assertSame(after[1], corrected[1])
+
+        CaptionState.markStarred(said.id, starred = true)
+        show(PipelinePhase.Listening, listOf(fixed, live.copy(text = "ועוד מילה")))
+        assertFalse(CaptionState.screen.value.lines[0].starred)
+        CaptionState.clear()
     }
 }

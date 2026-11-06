@@ -3,7 +3,6 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AwayCatchUp
 import com.arbelonson.ozen.core.BatteryWarning
-import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ControlBarAutoHide
 import com.arbelonson.ozen.core.EngineUnavailability
@@ -166,6 +165,7 @@ object CaptionState {
     private var speechResume = SpeechResume()
     private var awayCatchUp = AwayCatchUp()
     private var segmentsShown: List<TranscriptSegment> = emptyList()
+    private val shapes = CaptionLineShapes()
 
     fun show(
         phase: PipelinePhase,
@@ -195,6 +195,13 @@ object CaptionState {
         val firstShown = segments.size - minOf(segments.size, MAXIMUM_LINES)
         val named = { segment: TranscriptSegment -> segment.takeIf { it.speakerClusterID != null }?.let(speakerName) }
         val recent = recentlyHeard.takeLast(10).reversed()
+        // Only a changed line is shaped again, and an unchanged one keeps
+        // its object so the list skips redrawing it: rebuilding all 200
+        // lines at every word took 13 ms on a desktop computer, close to a
+        // whole 16 ms frame, and a phone is slower.
+        val shown = segments.drop(firstShown)
+        val shaped = shapes.shape(shown, languageCode, scoringEngine, scoringModel)
+        val before = state.value.lines.associateBy { it.id }
         // A copy, so what the captions don't set (a sound alert, the battery,
         // a banner) stays: a rebuilt state once dropped the smoke alarm's
         // banner at the next word.
@@ -210,17 +217,18 @@ object CaptionState {
             coverReason = coverReason,
             offerBackup = offerBackup,
             lineCount = segments.size,
-            lines = segments.drop(firstShown).mapIndexed { at, it ->
+            lines = shown.mapIndexed { at, it ->
+                val shape = shaped[at]
                 CaptionLine(
                     id = it.id,
-                    text = CaptionLayout.displayText(it.text, languageCode),
+                    text = shape.text,
                     isFinal = it.isCommitted,
-                    unsure = CaptionConfidence.isUncertain(it, scoringEngine, scoringModel),
+                    unsure = shape.unsure,
                     doubtfulWords = if (it.isCommitted) it.uncertainWords else emptyList(),
                     starred = starred(it.id),
-                    copied = CaptionLayout.copiedText(it.text),
+                    copied = shape.copied,
                     spoken = it.text,
-                    phones = if (it.isSettled) PhoneNumbers.matches(it.text) else emptyList(),
+                    phones = shape.phones,
                     conversation = conversation(firstShown + at),
                     important = it.id in keywordHits,
                     afterQuiet = segments.getOrNull(firstShown + at - 1)
@@ -230,8 +238,8 @@ object CaptionState {
                     speakerCluster = it.speakerClusterID,
                     showsSpeaker = named(it) != null &&
                         CaptionLayout.showsSpeakerLabel(it, segments.getOrNull(firstShown + at - 1)) { other -> named(other) ?: "" },
-                    rightToLeft = CaptionLayout.readsRightToLeft(it.text, languageCode),
-                )
+                    rightToLeft = shape.rightToLeft,
+                ).let { line -> before[line.id]?.takeIf { it == line } ?: line }
             },
             lastActivityAt = listOfNotNull(segments.lastOrNull()?.lastUpdateTimestamp, listeningStartedAt).maxOrNull(),
             recentlyHeard = recent,
@@ -321,6 +329,7 @@ object CaptionState {
         speechResume = SpeechResume()
         awayCatchUp = AwayCatchUp()
         segmentsShown = emptyList()
+        shapes.clear()
         state.value = CaptionScreenState(speechResumed = state.value.speechResumed)
     }
 
