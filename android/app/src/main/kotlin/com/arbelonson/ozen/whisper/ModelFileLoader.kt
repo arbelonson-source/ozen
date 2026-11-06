@@ -28,6 +28,7 @@ class ModelFileLoader(
     private val freeBytes: () -> Long? = { null },
     /** The model list's name for the model, which the status line shows while it downloads and is set up. */
     private val variant: String? = null,
+    private val marker: ModelLoadMarker? = null,
     private val open: (path: String, libraryDir: String) -> WhisperModel? = { path, libraryDir -> WhisperModel.load(path, libraryDir) },
 ) : WhisperModelLoader {
     override suspend fun pendingDownloadMegabytes(): Int? = if (file.isFile) null else download?.pendingMegabytes()
@@ -51,15 +52,26 @@ class ModelFileLoader(
         progress(EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel, detail = variant ?: file.name))
         var opened: WhisperModel? = null
         try {
-            withContext(Dispatchers.IO) { opened = open(file.path, libraryDir) }
+            withContext(Dispatchers.IO) {
+                marker?.begin(file.name)
+                opened = open(file.path, libraryDir)
+            }
         } catch (stopped: CancellationException) {
             opened?.close()
+            marker?.clear()
             throw stopped
+        } catch (failed: Exception) {
+            marker?.clear()
+            throw failed
         }
-        val model = opened ?: throw EngineUnavailability(EngineUnavailability.Kind.ModelLoadFailed, "${file.name} did not load")
+        val model = opened ?: run {
+            marker?.clear()
+            throw EngineUnavailability(EngineUnavailability.Kind.ModelLoadFailed, "${file.name} did not load")
+        }
         return WhisperLoadedModel(
             passes = WhisperFallbackPasses(WhisperCppPasses(model, threads)),
             release = { thread(name = "ozen-model-release") { model.close() } },
+            settled = { marker?.clear() },
         )
     }
 

@@ -205,6 +205,8 @@ class OnDeviceWhisperEngine(
             throw error
         } catch (error: Exception) {
             // A failed warm-up is not a broken model.
+        } finally {
+            loaded.settled()
         }
         var letGo = false
         val superseded = synchronized(lock) {

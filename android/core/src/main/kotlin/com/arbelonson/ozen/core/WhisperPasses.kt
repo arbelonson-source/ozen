@@ -49,7 +49,7 @@ interface WhisperPasses {
     fun abortRunningPass() {}
 }
 
-class WhisperLoadedModel(val passes: WhisperPasses, val isFirstTime: Boolean = false, val release: () -> Unit = {})
+class WhisperLoadedModel(val passes: WhisperPasses, val isFirstTime: Boolean = false, val release: () -> Unit = {}, val settled: () -> Unit = {})
 
 interface WhisperModelLoader {
     suspend fun load(

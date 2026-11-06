@@ -93,6 +93,7 @@ import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelSwitch
+import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SharedRecordingLink
 import com.arbelonson.ozen.ui.IconBadge
 import com.arbelonson.ozen.ui.OzenColors
@@ -415,6 +416,11 @@ private fun OzenApp(
     var comebacks by remember { mutableIntStateOf(0) }
     LifecycleEventEffect(Lifecycle.Event.ON_START) { comebacks++ }
     val fitOffer = remember(current, comebacks) { app.captions.modelFitOffer() }
+    val loadCrash by app.captions.loadCrash.showing.collectAsStateWithLifecycle()
+    // Any start, from the card or the status line, ends the question, even
+    // one that waits for Wi-Fi or fails before the captions run.
+    val captionsStarted = state.phase != PipelinePhase.Idle
+    LaunchedEffect(captionsStarted) { if (captionsStarted) app.captions.dismissLoadCrash() }
     var sayDraft by rememberSaveable { mutableStateOf("") }
     var awakeClock by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1_000.0) }
     LaunchedEffect(state.phase.isListening) {
@@ -585,6 +591,23 @@ private fun OzenApp(
                                 modelOfferWaiting = modelSwitch.let { it is PhoneModelSwitch.WaitingForWiFi && it.file == fitOffer?.file },
                                 onSwitchModel = { app.captions.phoneModels.choose(it.file) },
                                 onDismissModelOffer = app.captions::dismissModelFitOffer,
+                                loadCrashCard = loadCrash?.let { lighter ->
+                                    {
+                                        ModelLoadCrashCard(
+                                            current.phoneModel,
+                                            lighter,
+                                            onSwitch = {
+                                                app.captions.dismissLoadCrash()
+                                                app.captions.phoneModels.choose(lighter.file)
+                                                if (app.settings.current.value.phoneModel.file == lighter.file) onLaunch()
+                                            },
+                                            onRetry = {
+                                                app.captions.dismissLoadCrash()
+                                                onLaunch()
+                                            },
+                                        )
+                                    }
+                                },
                                 // Not while it slides away under another screen: talk
                                 // that resumes then is heard there, not buzzed here.
                                 buzzWhenTalkResumes = current.hapticOnSpeechResume && transition.targetState == EnterExitState.Visible,
@@ -730,6 +753,7 @@ private fun CaptionScreen(
     modelOfferWaiting: Boolean,
     onSwitchModel: (PhoneModel) -> Unit,
     onDismissModelOffer: (PhoneModel) -> Unit,
+    loadCrashCard: (@Composable () -> Unit)?,
     buzzWhenTalkResumes: Boolean,
     onBuzz: (AlertVibration) -> Unit,
     soundSecondsLeft: (SoundAlert) -> Double,
@@ -984,6 +1008,7 @@ private fun CaptionScreen(
                                 modifier = Modifier.widthIn(max = 360.dp),
                             )
                             val recent = state.recentConversation
+                            loadCrashCard?.invoke()
                             if (offer != null) LighterModelOffer(offer, modelOfferWaiting, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             if (recent != null) {
                                 RecentConversationCard(recent, look, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent)
@@ -992,7 +1017,12 @@ private fun CaptionScreen(
                             }
                         }
                     } else {
-                        val trailing: (@Composable () -> Unit)? = offer?.let { { LighterModelOffer(it, modelOfferWaiting, { onSwitchModel(it) }, { onDismissModelOffer(it) }) } }
+                        val trailing: (@Composable () -> Unit)? = if (offer == null && loadCrashCard == null) null else {
+                            {
+                                loadCrashCard?.invoke()
+                                if (offer != null) LighterModelOffer(offer, modelOfferWaiting, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
+                            }
+                        }
                         CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
                         if (!following) {
                             JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
@@ -1651,6 +1681,46 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, onSwitch: () 
             )
         }
         BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, onDismiss)
+    }
+}
+
+/** The app was ended while it set up the chosen model, most likely for lack of memory; the captions wait for her choice instead of starting on their own. */
+@Composable
+private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, onSwitch: () -> Unit, onRetry: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh)
+            .padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Page).testTag("model-load-crash"),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+            Icon(Icons.Rounded.Speed, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(tr("אוזן נסגרה בזמן שהכינה את מודל הדיבור", "Ozen closed while setting up the speech model"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    tr(
+                        "ייתכן שאין בטלפון הזה מספיק זיכרון בשביל המודל \"\u2068%1\u2069\". המודל \"\u2068%2\u2069\" (%3) קל יותר.",
+                        "This phone may not have enough memory for %1. %2 (%3) is lighter.",
+                        listOf(model.displayName, lighter.displayName, ByteSize.text(lighter.bytes)),
+                    ),
+                    color = colors.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Page, Alignment.End), modifier = Modifier.fillMaxWidth()) {
+            Text(
+                tr("נסו שוב", "Try again"),
+                color = colors.onSurfaceVariant,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.clickable(onClick = onRetry).testTag("model-load-crash-retry").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+            )
+            Text(
+                tr("החלפה", "Switch"),
+                color = colors.primary,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.clickable(onClick = onSwitch).testTag("model-load-crash-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+            )
+        }
     }
 }
 

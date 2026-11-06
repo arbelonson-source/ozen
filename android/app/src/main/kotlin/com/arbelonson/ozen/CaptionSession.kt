@@ -75,7 +75,9 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import com.arbelonson.ozen.core.WhisperModelCatalog
 import com.arbelonson.ozen.whisper.ModelFileLoader
+import com.arbelonson.ozen.whisper.ModelLoadMarker
 import com.arbelonson.ozen.whisper.PhoneSpeedMeter
+import com.arbelonson.ozen.whisper.PreferencesMarkerStore
 import com.arbelonson.ozen.whisper.SileroVoiceScorer
 import java.io.File
 import java.io.IOException
@@ -237,8 +239,30 @@ class CaptionSession(
     fun takeFirstAppearance(): Boolean {
         val first = !launchHandled
         launchHandled = true
-        return first
+        return first && loadCrash.mayStartCaptions()
     }
+
+    private val loadMarker = ModelLoadMarker(PreferencesMarkerStore(context))
+
+    /**
+     * Whether the last run was ended while it set up the chosen model. Read
+     * once as the app starts; if it was, the first appearance waits for her
+     * choice between a lighter model and trying the same one again.
+     */
+    internal var loadCrash = LoadCrashLaunch(null)
+        private set
+
+    init {
+        checkLoadMarker()
+    }
+
+    internal fun checkLoadMarker() {
+        val current = settings.current.value
+        loadCrash = LoadCrashLaunch.from(loadMarker, current.phoneModel, current.spokenLanguage, totalMemory())
+        loadCrash.showing.value?.let { note("The app was ended while it set up ${current.phoneModel.file}; offered ${it.file}") }
+    }
+
+    fun dismissLoadCrash() = loadCrash.dismiss()
 
     private var screensInFront = 0
 
@@ -1132,6 +1156,7 @@ class CaptionSession(
                     network = { networkNow() },
                     freeBytes = { freeSpace() },
                     variant = settings.phoneModel.variant,
+                    marker = loadMarker,
                 ),
                 voiceScorerFactory = ::voiceScore,
                 heat = { heatNow },
