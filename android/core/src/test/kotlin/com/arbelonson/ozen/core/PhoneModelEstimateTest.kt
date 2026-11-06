@@ -2,6 +2,7 @@ package com.arbelonson.ozen.core
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PhoneModelEstimateTest {
@@ -157,5 +158,25 @@ class PhoneModelEstimateTest {
         val tight = PhoneModelEstimate.recommend(UILanguage.Hebrew, 50_000.0, 2_500_000_000)
         assertTrue(tight.file != full.file)
         assertEquals(PhoneModelFit.KeepsUp, PhoneModelEstimate.fit(tight, 50_000.0, 2_500_000_000))
+    }
+
+    @Test
+    fun `a phone where only a light model fits is told so, by language and by memory, even when that one falls behind`() {
+        val turbo = model("ozen-a3")
+        val small = model("small")
+        val fast = speedFor(turbo, PhoneModelEstimate.KEEPS_UP_SECONDS - 0.1)
+        val middling = speedFor(small, PhoneModelEstimate.KEEPS_UP_SECONDS - 0.1)
+        assertEquals(PhoneModelFit.TooSlow, PhoneModelEstimate.fit(turbo, middling))
+        val crawling = speedFor(model("base"), PhoneModelEstimate.BEHIND_SECONDS - 0.1)
+
+        assertFalse(PhoneModelEstimate.onlyLightModelsFit(UILanguage.Hebrew, fast))
+        assertTrue(PhoneModelEstimate.onlyLightModelsFit(UILanguage.Hebrew, middling))
+        assertFalse(PhoneModelEstimate.onlyLightModelsFit(UILanguage.English, middling))
+        assertTrue(PhoneModelEstimate.onlyLightModelsFit(UILanguage.English, crawling))
+        val stuck = speedFor(model("base"), PhoneModelEstimate.BEHIND_SECONDS + 1)
+        assertEquals(PhoneModelFit.TooSlow, PhoneModelEstimate.fit(model("base"), stuck))
+        assertTrue(PhoneModelEstimate.onlyLightModelsFit(UILanguage.Hebrew, stuck))
+        assertTrue(PhoneModelEstimate.onlyLightModelsFit(UILanguage.Hebrew, fast, turbo.comfortableRamBytes - 1))
+        assertFalse(PhoneModelEstimate.onlyLightModelsFit(UILanguage.Hebrew, fast, turbo.comfortableRamBytes))
     }
 }
