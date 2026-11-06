@@ -1209,12 +1209,15 @@ class Listening(Exception):
 class Startup(unittest.TestCase):
     """What main() makes of its command line, up to where it would listen."""
 
+    tls_failure = None
+
     def start(self, *argv, listening=False):
         made, cleaners = [], []
         self.warmed = warmed = []
         self.warm_languages = languages = []
         self.served = served = []
         self.serve_options = options = {}
+        self.all_serve_options = all_options = []
         self.order = order = []
 
         class Warm:
@@ -1232,7 +1235,9 @@ class Startup(unittest.TestCase):
         class Serve:
             def __init__(self, *args, **kwargs):
                 served.append(args)
-                options.update(kwargs)
+                all_options.append(kwargs)
+                if len(served) == 1:
+                    options.update(kwargs)
 
             async def __aenter__(self):
                 if not listening:
@@ -1244,7 +1249,9 @@ class Startup(unittest.TestCase):
 
         enhance = types.ModuleType("enhance")
         enhance.StreamingEnhancer = lambda path, mix: cleaners.append(mix)
+        self.tls_context = mock.Mock(return_value="the tls context", side_effect=self.tls_failure)
         with mock.patch.object(S, "Transcriber", Warm), \
+                mock.patch.object(S, "tls_context", self.tls_context, create=True), \
                 mock.patch.object(S, "setup_logging", lambda: order.append("log")), \
                 mock.patch.object(S.websockets, "serve", Serve, create=True), \
                 mock.patch.dict(sys.modules, {"enhance": enhance}), \
@@ -1271,6 +1278,33 @@ class Startup(unittest.TestCase):
         self.assertEqual((made[0][3], made[0][6]), (5, 0.05))
         self.assertEqual(self.serve_options, {"max_size": 2 ** 22, "ping_interval": 10, "ping_timeout": 20})
 
+    def test_the_encrypted_home_port_serves_the_same_handler_next_to_the_plain_one(self):
+        self.start(listening=True)
+        self.assertEqual([call[1:3] for call in self.served], [("0.0.0.0", 8765), ("0.0.0.0", 8766)])
+        self.assertEqual(self.all_serve_options[1],
+                         {"max_size": 2 ** 22, "ping_interval": 10, "ping_timeout": 20, "ssl": "the tls context"})
+        with mock.patch.object(S, "handle") as handle:
+            self.served[1][0]("phone")
+        self.assertEqual(handle.call_args.args[0], "phone")
+        self.tls_context.assert_called_once_with(os.path.dirname(os.path.abspath(S.__file__)))
+
+    def test_the_encrypted_port_and_its_certificate_folder_follow_the_command_line(self):
+        self.start("--tls-port", "9100", "--host", "127.0.0.1", "--cert-dir", "/etc/ozen", listening=True)
+        self.assertEqual([call[1:3] for call in self.served], [("127.0.0.1", 8765), ("127.0.0.1", 9100)])
+        self.tls_context.assert_called_once_with("/etc/ozen")
+
+    def test_tls_port_zero_turns_the_encrypted_port_off(self):
+        self.start("--tls-port", "0", listening=True)
+        self.assertEqual(len(self.served), 1)
+        self.tls_context.assert_not_called()
+
+    def test_a_computer_that_cannot_make_the_certificate_still_serves_the_plain_port_and_says_why(self):
+        self.tls_failure = ImportError("No module named 'cryptography'")
+        with self.assertLogs(S.log, "WARNING") as logged:
+            self.start(listening=True)
+        self.assertEqual(len(self.served), 1)
+        self.assertTrue(any("cryptography" in line and "8766" in line for line in logged.output), logged.output)
+
     def test_the_readme_gives_the_beam_gate_and_port_it_starts_with(self):
         made, _ = self.start()
         with open(os.path.join(os.path.dirname(os.path.abspath(S.__file__)), "README.md"), encoding="utf-8") as f:
@@ -1291,7 +1325,7 @@ class Startup(unittest.TestCase):
             self.assertEqual(handle.call_args.args[3], interval, argv)
 
     def test_once_listening_the_server_stays_up_instead_of_ending(self):
-        self.start(listening=True)
+        self.start("--tls-port", "0", listening=True)
         self.assertEqual(len(self.served), 1)
 
     def test_running_the_file_starts_the_server(self):
@@ -2125,6 +2159,83 @@ class DocNumbers(unittest.TestCase):
     def test_the_main_readme_gives_the_pause_that_finishes_a_line(self):
         self.assertIn(f"a sentence counts as finished after a {S.Session.pause} s pause whatever the card",
                       self.doc("..", "README.md"))
+
+
+class EncryptedHomePort(unittest.TestCase):
+    def test_a_real_tls_handshake_shows_the_certificate_whose_pin_the_pairing_link_carries(self):
+        import lan_tls
+        import ssl
+        import tempfile
+
+        async def handshake(context, folder):
+            async def hello(reader, writer):
+                writer.close()
+
+            server = await asyncio.start_server(hello, "127.0.0.1", 0, ssl=context)
+            port = server.sockets[0].getsockname()[1]
+            client = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            client.check_hostname = False
+            client.verify_mode = ssl.CERT_NONE
+            _, writer = await asyncio.open_connection("127.0.0.1", port, ssl=client)
+            der = writer.get_extra_info("ssl_object").getpeercert(binary_form=True)
+            writer.close()
+            server.close()
+            return der
+
+        with tempfile.TemporaryDirectory() as folder:
+            context = S.tls_context(folder)
+            der = asyncio.run(asyncio.wait_for(handshake(context, folder), 10))
+            expected = lan_tls.certificate_pin(os.path.join(folder, "lan-cert.pem"))
+        self.assertEqual(lan_tls.der_pin(der), expected)
+
+    @unittest.skipUnless(any(os.path.isdir(os.path.join(p, "websockets", "asyncio")) for p in sys.path),
+                         "needs the real websockets package")
+    def test_a_phone_over_tls_gets_the_same_ready_and_error_answers_as_on_the_plain_port(self):
+        import lan_tls
+        import ssl
+        import tempfile
+
+        loaded = {name: module for name, module in sys.modules.items() if name.split(".")[0] == "websockets"}
+        for name in loaded:
+            del sys.modules[name]
+        import websockets
+
+        def restore():
+            for name in [name for name in sys.modules if name.split(".")[0] == "websockets"]:
+                del sys.modules[name]
+            sys.modules.update(loaded)
+
+        self.addCleanup(restore)
+        self.enterContext(mock.patch.object(S, "websockets", websockets))
+
+        class Models:
+            name = "model"
+            beam = 1
+
+        async def ask(token):
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            async with websockets.connect(f"wss://127.0.0.1:{port}", ssl=context) as ws:
+                der = ws.transport.get_extra_info("ssl_object").getpeercert(binary_form=True)
+                await ws.send(json.dumps({"type": "hello", "token": token, "purpose": "check"}))
+                return lan_tls.der_pin(der), json.loads(await asyncio.wait_for(ws.recv(), 5))
+
+        async def run(folder):
+            nonlocal port
+            context = S.tls_context(folder)
+            async with websockets.serve(lambda ws: S.handle(ws, Models(), "example-code-123", 1.0), "127.0.0.1", 0, ssl=context) as server:
+                port = server.sockets[0].getsockname()[1]
+                good = await ask("example-code-123")
+                bad = await ask("wrong")
+            return good, bad
+
+        port = 0
+        with tempfile.TemporaryDirectory() as folder:
+            (pin, ready), (_, refused) = asyncio.run(asyncio.wait_for(run(folder), 20))
+            self.assertEqual(pin, lan_tls.certificate_pin(os.path.join(folder, "lan-cert.pem")))
+        self.assertEqual(ready["type"], "ready")
+        self.assertEqual((refused["type"], refused["code"]), ("error", "unauthorized"))
 
 
 if __name__ == "__main__":

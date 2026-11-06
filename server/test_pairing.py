@@ -9,7 +9,20 @@ import unittest
 import urllib.parse
 from unittest import mock
 
+import lan_tls
 import pairing
+
+_certificates = tempfile.TemporaryDirectory()
+_cert_dir = mock.patch.object(pairing, "DEFAULT_CERT_DIR", _certificates.name)
+
+
+def setUpModule():
+    _cert_dir.start()
+
+
+def tearDownModule():
+    _cert_dir.stop()
+    _certificates.cleanup()
 
 
 class Done:
@@ -148,7 +161,7 @@ class PairingPage(unittest.TestCase):
             with open(code, "w", encoding="utf-8") as f:
                 f.write("example-code-123\n")
             out = os.path.join(folder, "pairing.html")
-            argv = ["pairing.py", "--address", "192.168.1.20", "--code-file", code, "--out", out, "--no-open"]
+            argv = ["pairing.py", "--address", "192.168.1.20", "--code-file", code, "--out", out, "--no-open", "--cert-dir", folder]
             with mock.patch("sys.argv", argv), mock.patch("sys.stdout", io.StringIO()):
                 runpy.run_path(pairing.__file__, run_name="__main__")
             self.assertTrue(os.path.exists(out))
@@ -217,7 +230,7 @@ class AddressChoice(unittest.TestCase):
     def test_without_tailscale_the_home_address_is_used_and_said_to_work_at_home_only(self):
         with tempfile.TemporaryDirectory() as folder:
             out, err, _ = self.run_main(folder, [], None, "192.168.1.20")
-            self.assertIn("address=192.168.1.20", out)
+            self.assertIn("address=wss%3A%2F%2F192.168.1.20%3A8766", out)
             self.assertIn("home Wi-Fi only", err)
 
     def test_with_no_address_at_all_it_stops_and_says_how_to_give_one(self):
@@ -230,9 +243,72 @@ class AddressChoice(unittest.TestCase):
     def test_lan_asks_only_for_the_home_address(self):
         with tempfile.TemporaryDirectory() as folder:
             out, err, asked_tailscale = self.run_main(folder, ["--lan"], "wss://pc.tail0example.ts.net", "192.168.1.20")
-            self.assertIn("address=192.168.1.20", out)
+            self.assertIn("address=wss%3A%2F%2F192.168.1.20%3A8766", out)
             self.assertFalse(asked_tailscale)
             self.assertEqual(err, "")
+
+
+class EncryptedHomeLink(unittest.TestCase):
+    def link(self, folder, address, *more, cert_dir=None):
+        code = os.path.join(folder, "pairing-code")
+        with open(code, "w", encoding="utf-8") as f:
+            f.write("example-code-123\n")
+        argv = ["pairing.py", "--address", address, "--code-file", code,
+                "--out", os.path.join(folder, "pairing.html"), "--no-open", "--cert-dir", cert_dir or folder, *more]
+        out = io.StringIO()
+        with mock.patch("sys.argv", argv), mock.patch("sys.stdout", out):
+            pairing.main()
+        return urllib.parse.parse_qs(urllib.parse.urlsplit(out.getvalue().split("Link: ")[1].strip()).query)
+
+    def test_a_home_network_address_becomes_wss_on_8766_with_the_pin_of_the_served_certificate(self):
+        for address in ["192.168.1.20", "192.168.1.20:8765", "ws://192.168.1.20:8765", "grandma-pc", "ws://pc.local:8765"]:
+            with tempfile.TemporaryDirectory() as folder:
+                query = self.link(folder, address)
+                host = address.replace("ws://", "").split(":")[0]
+                pin = lan_tls.certificate_pin(os.path.join(folder, "lan-cert.pem"))
+            self.assertEqual(query, {"address": [f"wss://{host}:8766"], "code": ["example-code-123"], "pin": [pin]}, address)
+
+    def test_the_link_text_orders_address_then_code_then_pin(self):
+        with tempfile.TemporaryDirectory() as folder:
+            code = os.path.join(folder, "pairing-code")
+            with open(code, "w", encoding="utf-8") as f:
+                f.write("example-code-123\n")
+            argv = ["pairing.py", "--address", "192.168.1.20", "--code-file", code,
+                    "--out", os.path.join(folder, "pairing.html"), "--no-open", "--cert-dir", folder]
+            out = io.StringIO()
+            with mock.patch("sys.argv", argv), mock.patch("sys.stdout", out):
+                pairing.main()
+        link = out.getvalue().split("Link: ")[1].strip()
+        self.assertRegex(link, r"^ozen://pair\?address=wss%3A%2F%2F192\.168\.1\.20%3A8766&code=example-code-123&pin=[A-Za-z0-9_-]{43}$")
+
+    def test_a_wss_address_gets_no_pin_and_no_certificate(self):
+        for address in ["wss://pc.tail0example.ts.net", "https://pc.tail0example.ts.net", "wss://192.168.1.20:9000"]:
+            with tempfile.TemporaryDirectory() as folder:
+                query = self.link(folder, address)
+                self.assertNotIn("pin", query, address)
+                self.assertEqual(os.listdir(folder).count("lan-cert.pem"), 0, address)
+        self.assertEqual(query["address"], ["wss://192.168.1.20:9000"])
+
+    def test_the_link_follows_the_servers_tls_port_and_stays_plain_when_it_is_off(self):
+        with tempfile.TemporaryDirectory() as folder:
+            query = self.link(folder, "192.168.1.20", "--tls-port", "9443")
+            pin = lan_tls.certificate_pin(os.path.join(folder, "lan-cert.pem"))
+        self.assertEqual(query, {"address": ["wss://192.168.1.20:9443"], "code": ["example-code-123"], "pin": [pin]})
+        with tempfile.TemporaryDirectory() as folder:
+            query = self.link(folder, "192.168.1.20", "--tls-port", "0")
+            self.assertNotIn("lan-cert.pem", os.listdir(folder))
+        self.assertEqual(query, {"address": ["192.168.1.20"], "code": ["example-code-123"]})
+
+    def test_the_pin_is_of_the_certificate_in_the_servers_folder_not_beside_the_code_file(self):
+        with tempfile.TemporaryDirectory() as codes, tempfile.TemporaryDirectory() as server:
+            query = self.link(codes, "192.168.1.20", cert_dir=server)
+            self.assertNotIn("lan-cert.pem", os.listdir(codes))
+            self.assertEqual(query["pin"], [lan_tls.certificate_pin(os.path.join(server, "lan-cert.pem"))])
+
+    def test_a_plain_address_out_on_the_internet_is_left_alone(self):
+        with tempfile.TemporaryDirectory() as folder:
+            query = self.link(folder, "ws://203.0.113.9:8765")
+        self.assertEqual(query, {"address": ["ws://203.0.113.9:8765"], "code": ["example-code-123"]})
 
 
 class CodeFile(unittest.TestCase):

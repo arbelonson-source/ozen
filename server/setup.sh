@@ -18,7 +18,7 @@ python3 -m venv "$home_dir/venv"
 if [[ $cpu == 0 ]]; then
     "$home_dir/venv/bin/pip" install --quiet nvidia-cublas-cu12 'nvidia-cudnn-cu12==9.*'
 fi
-cp "$here/ozen_server.py" "$here/try_server.py" "$here/pairing.py" "$home_dir/"
+cp "$here/ozen_server.py" "$here/try_server.py" "$here/pairing.py" "$here/lan_tls.py" "$home_dir/"
 
 code_file="$home_dir/pairing-code"
 if [[ ! -s "$code_file" ]]; then

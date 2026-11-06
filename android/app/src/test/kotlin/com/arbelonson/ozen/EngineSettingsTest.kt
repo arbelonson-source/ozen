@@ -266,6 +266,20 @@ class EngineSettingsTest {
     }
 
     @Test
+    fun `a typed address clears the certificate pin that came with a pairing, saving the same address again keeps it`() {
+        val pin = "EqUZTsqNgJ8Ol0fkhpLbMwToY-7X9n7_oEzJ2hZACBk"
+        settings.change {
+            it.homeServerAddress = "wss://192.168.1.20:8766"
+            it.homeServerCertificatePin = pin
+        }
+        engineSettings.saveHomeComputerAddress(" wss://192.168.1.20:8766 ")
+        assertEquals(pin, saved().homeServerCertificatePin)
+        engineSettings.saveHomeComputerAddress("wss://192.168.1.21:8766")
+        assertEquals("wss://192.168.1.21:8766", saved().homeServerAddress)
+        assertNull(saved().homeServerCertificatePin)
+    }
+
+    @Test
     fun `a pairing code is saved trimmed and restarts captions only while the home computer is the engine`() = runBlocking<Unit> {
         assertFalse(engineSettings.hasPairingCode())
         assertTrue(engineSettings.savePairingCode(" code-one "))

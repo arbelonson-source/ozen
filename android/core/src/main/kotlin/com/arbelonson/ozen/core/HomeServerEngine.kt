@@ -56,10 +56,11 @@ class HomeServerEngine(
     private val beam: Int? = null,
     private val approvalSeconds: Double = DEFAULT_APPROVAL_SECONDS,
     private val timeSource: TimeSource = TimeSource.Monotonic,
+    private val certificatePin: String? = null,
 ) : TranscriptionEngine {
     override val kind: TranscriptionEngineKind = TranscriptionEngineKind.HomeServer
 
-    private class Target(val url: URI, val token: String)
+    private class Target(val url: URI, val token: String, val pin: String?)
 
     private val lock = Any()
     private var speechDetector = EnergyVoiceDetector.forWhisperLines()
@@ -112,7 +113,7 @@ class HomeServerEngine(
         val trusted = synchronized(lock) {
             val known = verified
             val heard = lastHeardAt
-            known != null && known.url == target.url && known.token == target.token &&
+            known != null && known.url == target.url && known.token == target.token && known.pin == target.pin &&
                 heard != null && heard.elapsedNow() < approvalSeconds.seconds
         }
         if (trusted) return EngineAvailability.Available
@@ -455,7 +456,7 @@ class HomeServerEngine(
             ?: throw EngineUnavailability.homeServerUnreachable(if (HomeServer.needsEncryptedAddress(address)) HomeServer.NEEDS_ENCRYPTION else HomeServer.NO_ADDRESS)
         val code = token()
         if (code.isNullOrEmpty()) throw EngineUnavailability.homeServerRejected(HomeServer.NO_CODE)
-        return Target(url, code)
+        return Target(url, code, certificatePin)
     }
 
     /**
@@ -465,7 +466,7 @@ class HomeServerEngine(
      */
     private suspend fun handshake(target: Target, languageCode: String, purpose: String, terms: List<String>): HomeServerSocket {
         val socket = try {
-            connector.open(target.url)
+            if (target.pin != null) connector.openPinned(target.url, target.pin) else connector.open(target.url)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {

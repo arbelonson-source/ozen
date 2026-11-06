@@ -376,6 +376,12 @@ class AppSettings(
      * and a model she chose by hand against the warning, which is then never offered a swap.
      */
     var modelFitDismissed: List<String> = emptyList(),
+    /**
+     * The fingerprint of the home computer's own certificate, from the
+     * pairing link; with it the home Wi-Fi link is encrypted. Not a secret.
+     * An address typed by hand clears it.
+     */
+    var homeServerCertificatePin: String? = null,
 ) {
     var homeServerBeam: Int = minOf(maxOf(homeServerBeam, homeServerBeamRange.first), homeServerBeamRange.last)
 
@@ -542,6 +548,7 @@ class AppSettings(
             phoneSpeed = phoneSpeed,
             phoneLiveMeasurement = phoneLiveMeasurement,
             modelFitDismissed = modelFitDismissed,
+            homeServerCertificatePin = homeServerCertificatePin,
         )
         other.homeServerBeam = homeServerBeam
         other.vocabulary = vocabulary
@@ -556,6 +563,7 @@ class AppSettings(
         speechRate, vocabulary, wordFixes, hasCompletedOnboarding, appLanguage, notifyWhenInBackground,
         allowCellularModelDownload, historyRetention, quietHours, nameAlertOfferDismissed, betterModelOfferDeclines,
         betterModelOfferSnoozedUntil, phoneModelFile, phoneSpeed, phoneLiveMeasurement, modelFitDismissed,
+        homeServerCertificatePin,
     )
 
     override fun equals(other: Any?): Boolean = other is AppSettings && fields() == other.fields()
@@ -609,6 +617,7 @@ class AppSettings(
         phoneSpeed?.let { put("phoneSpeed", it.toJsonObject()) }
         phoneLiveMeasurement?.let { put("phoneLiveMeasurement", it.toJsonObject()) }
         put("modelFitDismissed", JsonArray(modelFitDismissed.map { JsonPrimitive(it) }))
+        homeServerCertificatePin?.let { put("homeServerCertificatePin", it) }
     }.toString()
 
     companion object {
@@ -772,6 +781,7 @@ class AppSettings(
                 phoneSpeed = container.lenientObject("phoneSpeed") { PhoneSpeed.fromJsonObject(it as JsonObject) ?: error("not a usable speed") },
                 phoneLiveMeasurement = container.lenientObject("phoneLiveMeasurement") { LiveMeasurement.fromJsonObject(it as JsonObject) ?: error("not a usable measurement") },
                 modelFitDismissed = container.lenientStrings("modelFitDismissed") ?: emptyList(),
+                homeServerCertificatePin = container.lenientString("homeServerCertificatePin")?.takeIf { CertificatePin.shape.matches(it) },
             )
             var threshold = container.lenientFloat("speakerSimilarityThreshold") ?: defaults.speakerSimilarityThreshold
             // The Settings slider's range; a file saying otherwise gets the nearest edge.

@@ -113,6 +113,17 @@ object HomeServer {
     }
 
     /**
+     * A home-network address still on the plain port because the pairing
+     * came with no certificate pin (a pairing from before the link was
+     * encrypted): Settings tells her to scan the computer's code again.
+     */
+    fun homeLinkIsPlain(address: String, pin: String?): Boolean {
+        if (pin != null) return false
+        val url = parsedURL(address) ?: return false
+        return url.scheme?.lowercase(Locale.ROOT) == "ws" && isPrivate(hostOf(url) ?: "")
+    }
+
+    /**
      * Refused by [url] only for being plain `ws` out on the internet, so
      * Settings can say to use the wss:// address instead of that it doesn't
      * look like an address.
@@ -251,31 +262,33 @@ object HomeServer {
  * the app, which asks before using it: a link like this points the
  * microphone at whatever computer it names.
  */
-class HomeServerPairing private constructor(val address: String, val code: String) {
+class HomeServerPairing private constructor(val address: String, val code: String, val pin: String? = null) {
     /** The computer's name as a person would recognise it: its host. */
     val computerName: String
         get() = HomeServer.url(address)?.let { hostOf(it) } ?: address
 
     val url: URI
         get() = URI(
-            "$SCHEME://pair?address=${queryEncoded(address)}&code=${queryEncoded(code)}",
+            "$SCHEME://pair?address=${queryEncoded(address)}&code=${queryEncoded(code)}" + (pin?.let { "&pin=${queryEncoded(it)}" } ?: ""),
         )
 
-    override fun equals(other: Any?): Boolean = other is HomeServerPairing && other.address == address && other.code == code
+    override fun equals(other: Any?): Boolean =
+        other is HomeServerPairing && other.address == address && other.code == code && other.pin == pin
 
-    override fun hashCode(): Int = 31 * address.hashCode() + code.hashCode()
+    override fun hashCode(): Int = 31 * (31 * address.hashCode() + code.hashCode()) + (pin?.hashCode() ?: 0)
 
-    override fun toString(): String = "HomeServerPairing(address=$address, code=$code)"
+    override fun toString(): String = "HomeServerPairing(address=$address, code=$code, pin=$pin)"
 
     companion object {
         const val SCHEME = "ozen"
 
-        operator fun invoke(address: String, code: String): HomeServerPairing? {
+        operator fun invoke(address: String, code: String, pin: String? = null): HomeServerPairing? {
+            if (pin != null && !CertificatePin.shape.matches(pin)) return null
             val trimmedAddress = homeServerTrimmed(address)
             val trimmedCode = homeServerTrimmed(code)
             if (HomeServer.url(trimmedAddress) == null || trimmedCode.isEmpty() || graphemes(trimmedCode).size > 200) return null
             if (graphemes(trimmedCode).any { homeServerIsWhiteSpace(it.codePointAt(0)) }) return null
-            return HomeServerPairing(trimmedAddress, trimmedCode)
+            return HomeServerPairing(trimmedAddress, trimmedCode, pin)
         }
 
         /**
@@ -297,7 +310,10 @@ class HomeServerPairing private constructor(val address: String, val code: Strin
             }
             val address = items.firstOrNull { it.first == "address" }?.second ?: return null
             val code = items.firstOrNull { it.first == "code" }?.second ?: return null
-            return invoke(address, code)
+            val pinGiven = items.any { it.first == "pin" }
+            val pin = items.firstOrNull { it.first == "pin" }?.second
+            if (pinGiven && pin == null) return null
+            return invoke(address, code, pin)
         }
 
         private fun graphemes(text: String): List<String> {
@@ -480,6 +496,14 @@ interface HomeServerSocket {
 
 interface HomeServerConnecting {
     suspend fun open(url: URI): HomeServerSocket
+
+    /**
+     * A connection that trusts one certificate only, the one whose
+     * fingerprint is [certificatePin] (see [CertificatePin]). A connector
+     * that cannot check it must not connect, so the default refuses.
+     */
+    suspend fun openPinned(url: URI, certificatePin: String): HomeServerSocket =
+        throw UnsupportedOperationException("this connector cannot pin a certificate")
 }
 
 /**
