@@ -155,10 +155,11 @@ object PhoneModelEstimate {
     const val LIGHT_QUALITY = 2
 
     /**
-     * Only a model at [LIGHT_QUALITY] or below keeps up on this phone, so
-     * the captions will have many mistakes: a home computer or a cloud
-     * service would write better ones.
+     * The best model for this phone, by its speed and memory, is at
+     * [LIGHT_QUALITY] or below (it may even fall behind), so the captions
+     * will have many mistakes: a home computer or a cloud service would
+     * write better ones.
      */
-    fun onlyLightModelsKeepUp(language: UILanguage, measuredGflops: Double, totalMemoryBytes: Long? = null): Boolean =
+    fun onlyLightModelsFit(language: UILanguage, measuredGflops: Double, totalMemoryBytes: Long? = null): Boolean =
         recommend(language, measuredGflops, totalMemoryBytes).quality(language) <= LIGHT_QUALITY
 }

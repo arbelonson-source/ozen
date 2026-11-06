@@ -85,11 +85,12 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
         // A cheap phone lands on a model that gets much of the speech wrong,
         // and nothing said that a computer at home or a cloud service would
         // do far better.
-        if (speed != null && settings.engine == TranscriptionEngineKind.WhisperKit && PhoneModelEstimate.onlyLightModelsKeepUp(language, speed, memory)) {
+        val phoneOwn = settings.engine == TranscriptionEngineKind.WhisperKit || settings.engine == TranscriptionEngineKind.AppleSpeech
+        if (speed != null && phoneOwn && PhoneModelEstimate.onlyLightModelsFit(language, speed, memory)) {
             Text(
                 tr(
-                    "בטלפון הזה רק מודל קל עומד בקצב, והוא טועה לא מעט. מחשב בבית או שירות ענן יכולים לכתוב כתוביות מדויקות יותר. אפשר לחבר אחד מהם בהגדרות.",
-                    "Only a light model keeps up on this phone, and it makes quite a few mistakes. A home computer or a cloud service can write more accurate captions. You can connect one in Settings.",
+                    "בטלפון הזה המודלים המדויקים כבדים מדי, והקלים טועים לא מעט. מחשב בבית או שירות ענן יכולים לכתוב כתוביות מדויקות יותר. אפשר לחבר אחד מהם בהגדרות.",
+                    "On this phone the accurate models are too heavy, and the light ones make quite a few mistakes. A home computer or a cloud service can write more accurate captions. You can connect one in Settings.",
                 ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

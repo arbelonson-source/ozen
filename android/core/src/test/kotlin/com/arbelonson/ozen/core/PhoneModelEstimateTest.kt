@@ -161,7 +161,7 @@ class PhoneModelEstimateTest {
     }
 
     @Test
-    fun `a phone where only a light model keeps up is told so, by language and by memory`() {
+    fun `a phone where only a light model fits is told so, by language and by memory, even when that one falls behind`() {
         val turbo = model("ozen-a3")
         val small = model("small")
         val fast = speedFor(turbo, PhoneModelEstimate.KEEPS_UP_SECONDS - 0.1)
@@ -169,11 +169,14 @@ class PhoneModelEstimateTest {
         assertEquals(PhoneModelFit.TooSlow, PhoneModelEstimate.fit(turbo, middling))
         val crawling = speedFor(model("base"), PhoneModelEstimate.BEHIND_SECONDS - 0.1)
 
-        assertFalse(PhoneModelEstimate.onlyLightModelsKeepUp(UILanguage.Hebrew, fast))
-        assertTrue(PhoneModelEstimate.onlyLightModelsKeepUp(UILanguage.Hebrew, middling))
-        assertFalse(PhoneModelEstimate.onlyLightModelsKeepUp(UILanguage.English, middling))
-        assertTrue(PhoneModelEstimate.onlyLightModelsKeepUp(UILanguage.English, crawling))
-        assertTrue(PhoneModelEstimate.onlyLightModelsKeepUp(UILanguage.Hebrew, fast, turbo.comfortableRamBytes - 1))
-        assertFalse(PhoneModelEstimate.onlyLightModelsKeepUp(UILanguage.Hebrew, fast, turbo.comfortableRamBytes))
+        assertFalse(PhoneModelEstimate.onlyLightModelsFit(UILanguage.Hebrew, fast))
+        assertTrue(PhoneModelEstimate.onlyLightModelsFit(UILanguage.Hebrew, middling))
+        assertFalse(PhoneModelEstimate.onlyLightModelsFit(UILanguage.English, middling))
+        assertTrue(PhoneModelEstimate.onlyLightModelsFit(UILanguage.English, crawling))
+        val stuck = speedFor(model("base"), PhoneModelEstimate.BEHIND_SECONDS + 1)
+        assertEquals(PhoneModelFit.TooSlow, PhoneModelEstimate.fit(model("base"), stuck))
+        assertTrue(PhoneModelEstimate.onlyLightModelsFit(UILanguage.Hebrew, stuck))
+        assertTrue(PhoneModelEstimate.onlyLightModelsFit(UILanguage.Hebrew, fast, turbo.comfortableRamBytes - 1))
+        assertFalse(PhoneModelEstimate.onlyLightModelsFit(UILanguage.Hebrew, fast, turbo.comfortableRamBytes))
     }
 }

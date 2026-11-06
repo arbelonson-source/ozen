@@ -106,6 +106,10 @@ class PhoneModelSettingsDeviceTest {
         compose.waitUntil(5_000, noNote)
         app.settings.change { it.engine = TranscriptionEngineKind.WhisperKit }
         compose.waitUntil(5_000) { !noNote() }
+        app.settings.change { it.engine = TranscriptionEngineKind.HomeServer }
+        compose.waitUntil(5_000, noNote)
+        app.settings.change { it.engine = TranscriptionEngineKind.AppleSpeech }
+        compose.waitUntil(5_000) { !noNote() }
     }
 
     @Test
