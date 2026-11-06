@@ -189,7 +189,8 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(app.switches.firstMatch.waitForExistence(timeout: 5), "\(name): the sheet has no every-time switch")
         XCTAssertTrue(app.textFields[hintField].exists, "\(name): the sheet has no \(hintField) field")
         let word = app.buttons[wordButton]
-        XCTAssertTrue(word.waitForExistence(timeout: 5), "\(name): the line's word \(wordButton) is not a button")
+        if !word.waitForExistence(timeout: 5) { print("TREE-DUMP", app.debugDescription) }
+        XCTAssertTrue(word.exists, "\(name): the line's word \(wordButton) is not a button")
         word.tap()
         Thread.sleep(forTimeInterval: 0.5)
         capture(app, name: name)
