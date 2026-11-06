@@ -105,4 +105,16 @@ struct WordFixesReviewTests {
         #expect(store.load(id: old.id)?.segments.first?.text == "I saw Avi")
         #expect(writer.lastFailure == nil)
     }
+
+    @Test("at the limit a fix may replace one with the same heard word but not add another")
+    func limitAllowsReplacing() {
+        let full = (1...WordFixes.maximumFixes).map { WordFix(heard: "heard\($0)", written: "written\($0)") }
+        #expect(WordFixes.canAdd(WordFix(heard: "Heard5", written: "other"), to: full))
+        #expect(!WordFixes.canAdd(WordFix(heard: "fresh", written: "other"), to: full))
+        #expect(WordFixes.canAdd(WordFix(heard: "fresh", written: "other"), to: Array(full.dropFirst())))
+        #expect(!WordFixes.canAdd(WordFix(heard: "", written: "other"), to: Array(full.dropFirst())))
+        let replaced = WordFixes.adding(WordFix(heard: "heard5", written: "other"), to: full)
+        #expect(replaced.count == WordFixes.maximumFixes)
+        #expect(replaced.first == WordFix(heard: "heard5", written: "other"))
+    }
 }
