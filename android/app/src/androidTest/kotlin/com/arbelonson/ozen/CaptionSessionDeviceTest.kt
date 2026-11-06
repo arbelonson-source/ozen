@@ -1263,12 +1263,14 @@ class CaptionSessionDeviceTest {
      * The clip's own quietest tenth of a second, played on after it ends. A
      * microphone in a room never sends exact zeros, and the app takes 8 s of
      * those for a dead microphone, so a phone still catching up on the
-     * lecture lost its captions to that check instead of finishing.
+     * lecture lost its captions to that check instead of finishing. A piece
+     * counts only when at least half of it is sound, so one stray sample in
+     * near silence cannot stand in for a room.
      */
     private fun roomTone(samples: FloatArray): FloatArray =
         (0..samples.size - 1_600 step 1_600)
             .map { samples.copyOfRange(it, it + 1_600) }
-            .filter { chunk -> chunk.any { it != 0f } }
+            .filter { chunk -> chunk.count { it != 0f } >= chunk.size / 2 }
             .minByOrNull { chunk -> chunk.sumOf { (it * it).toDouble() } } ?: FloatArray(1_600)
 
     private class ClipAudio(private val samples: FloatArray, private val after: FloatArray = FloatArray(1_600)) : AudioCapturing {
