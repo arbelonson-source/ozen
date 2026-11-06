@@ -33,6 +33,15 @@ public enum WordFixes {
         return result
     }
 
+    /// Whether `fix` can go into `list`: a valid fix short enough to keep
+    /// whole, and room for it unless it replaces the one with the same
+    /// heard words.
+    public static func canAdd(_ fix: WordFix, to list: [WordFix]) -> Bool {
+        let fits = [fix.heard, fix.written].allSatisfy { $0.trimmingCharacters(in: .whitespacesAndNewlines).count <= maximumLength }
+        guard fits, let one = normalized([fix]).first else { return false }
+        return list.count < maximumFixes || list.contains { key($0.heard) == key(one.heard) }
+    }
+
     public static func adding(_ fix: WordFix, to list: [WordFix]) -> [WordFix] {
         let moved = key(fix.heard)
         let carried = list.map { old in

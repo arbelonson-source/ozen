@@ -7,8 +7,7 @@ struct WordFixesSection: View {
     @State private var written = ""
 
     private var canAdd: Bool {
-        !WordFixes.normalized([WordFix(heard: heard, written: written)]).isEmpty
-            && viewModel.wordFixes.count < WordFixes.maximumFixes
+        WordFixes.canAdd(WordFix(heard: heard, written: written), to: viewModel.wordFixes)
     }
 
     var body: some View {

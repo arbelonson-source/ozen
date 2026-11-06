@@ -6,8 +6,9 @@ import java.io.File
 class ModelFilesAside(private val folder: File) {
     private val held = ArrayList<Pair<File, File>>()
 
-    fun hold() {
+    fun hold(keep: String? = null) {
         for (model in PhoneModelCatalog.all) {
+            if (model.file == keep) continue
             val file = File(folder, model.file)
             val aside = File(folder, model.file + ".held")
             if (file.isFile && file.renameTo(aside)) held += aside to file

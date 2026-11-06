@@ -144,15 +144,15 @@ extension WhisperModelOption {
         switch variant {
         case "tiny": return tr("המהיר ביותר, אבל העברית שלו שגויה ברובה. מתאים רק לבדיקת המיקרופון.", "The fastest. Its Hebrew is mostly wrong — for testing the microphone only.")
         case "base": return tr("מהיר מאוד, אבל חלש בעברית.", "Very fast, still weak at Hebrew.")
-        case "small_216MB": return tr("חצי מגודל ההורדה של Small, עם תוצאות כמעט זהות.", "Half the download of Small with nearly the same results.")
+        case "small_216MB": return tr("חצי מגודל ההורדה של המודל הקטן, עם תוצאות כמעט זהות.", "Half the download of Small with nearly the same results.")
         case "small": return tr("הורדה קצרה ותגובה מהירה. עברית מובנת, עם טעויות.", "A short download and a quick response. Hebrew is understandable, with mistakes.")
-        case "ozen-turbo-hebrew-a3-8bit": return tr("Turbo Hebrew שאוזן המשיכה לאמן על דיבור מהצד השני של החדר, ברעש וליד טלוויזיה: בתנאים כאלה יש בו כעשירית פחות מילים שגויות, ומקרוב התוצאות זהות. מהיר באותה מידה, ובאותו גודל הורדה.", "Turbo Hebrew trained further by Ozen on speech from across a room, in noise and over a TV: about a tenth fewer wrong words there, the same up close. As quick, the same download.")
-        case "ivrit-large-v3-turbo-8bit": return tr("Turbo ש־ivrit.ai אימנו על כ־5,000 שעות של עברית: בהקלטות בדיקה יש בו שליש פחות מילים שגויות מאשר ב־Turbo. מהיר באותה מידה, אבל ההורדה גדולה יותר.", "Turbo trained on about 5,000 hours of Hebrew by ivrit.ai: a third fewer wrong words than Turbo on test recordings. As quick, a bigger download.")
-        case "large-v3-v20240930_626MB": return tr("עברית טובה בהרבה מ־Small, בערך באותו גודל הורדה. קצת יותר איטי בכל עדכון.", "Much better Hebrew than Small at roughly the same download size. A bit slower on each update.")
-        case "large-v3-v20240930": return tr("Turbo בגרסה המלאה, בלי דחיסה. אותה רמת דיוק, אבל הורדה גדולה יותר.", "Turbo at full precision. Same accuracy, a larger download.")
-        case "medium": return tr("מודל בינוני ישן יותר. Turbo מדויק ממנו וגם מהיר ממנו.", "An older mid-size model; Turbo is both more accurate and faster.")
-        case "large-v3_947MB": return tr("פחות מדויק בעברית מ־Turbo Hebrew, ואיטי מדי לכתוביות בזמן אמת בטלפון.", "Less accurate in Hebrew than Turbo Hebrew, and too slow to feel “live” on the phone.")
-        case "large-v3": return tr("3 GB. פחות מדויק בעברית מ־Turbo Hebrew, והאיטי ביותר. מיועד להשוואה בלבד.", "3 GB. Less accurate in Hebrew than Turbo Hebrew, and the slowest; for comparison only.")
+        case "ozen-turbo-hebrew-a3-8bit": return tr("טורבו עברית שאוזן המשיכה לאמן על דיבור מהצד השני של החדר, ברעש וליד טלוויזיה: בתנאים כאלה יש בו כעשירית פחות מילים שגויות, ומקרוב התוצאות זהות. מהיר באותה מידה, ובאותו גודל הורדה.", "Turbo Hebrew trained further by Ozen on speech from across a room, in noise and over a TV: about a tenth fewer wrong words there, the same up close. As quick, the same download.")
+        case "ivrit-large-v3-turbo-8bit": return tr("טורבו ש־ivrit.ai אימנו על כ־5,000 שעות של עברית: בהקלטות בדיקה יש בו שליש פחות מילים שגויות מאשר בטורבו. מהיר באותה מידה, אבל ההורדה גדולה יותר.", "Turbo trained on about 5,000 hours of Hebrew by ivrit.ai: a third fewer wrong words than Turbo on test recordings. As quick, a bigger download.")
+        case "large-v3-v20240930_626MB": return tr("עברית טובה בהרבה מהמודל הקטן, בערך באותו גודל הורדה. קצת יותר איטי בכל עדכון.", "Much better Hebrew than Small at roughly the same download size. A bit slower on each update.")
+        case "large-v3-v20240930": return tr("טורבו בגרסה המלאה, בלי דחיסה. אותה רמת דיוק, אבל הורדה גדולה יותר.", "Turbo at full precision. Same accuracy, a larger download.")
+        case "medium": return tr("מודל בינוני ישן יותר. טורבו מדויק ממנו וגם מהיר ממנו.", "An older mid-size model; Turbo is both more accurate and faster.")
+        case "large-v3_947MB": return tr("פחות מדויק בעברית מטורבו עברית, ואיטי מדי לכתוביות בזמן אמת בטלפון.", "Less accurate in Hebrew than Turbo Hebrew, and too slow to feel “live” on the phone.")
+        case "large-v3": return tr("3 GB. פחות מדויק בעברית מטורבו עברית, והאיטי ביותר. מיועד להשוואה בלבד.", "3 GB. Less accurate in Hebrew than Turbo Hebrew, and the slowest; for comparison only.")
         default: return note
         }
     }

@@ -66,11 +66,11 @@ class ModelFitOfferDeviceTest {
         compose.runOnUiThread { CaptionState.clear() }
     }
 
-    private fun fallBehindOnTurbo() {
+    private fun fallBehindOnTurbo(spoken: UILanguage = UILanguage.English) {
         app.settings.change {
             it.hasCompletedOnboarding = true
             it.engine = TranscriptionEngineKind.WhisperKit
-            it.spokenLanguage = UILanguage.English
+            it.spokenLanguage = spoken
             it.phoneModelFile = null
             it.modelFitDismissed = emptyList()
             it.phoneLiveMeasurement = ModelFitWatch.measurement(it.phoneModel, 20, 20 * 2.4, now = System.currentTimeMillis() / 1000.0, device = Build.MODEL.orEmpty())
@@ -176,10 +176,14 @@ class ModelFitOfferDeviceTest {
         val networkBefore = app.captions.networkNow
         val cellularBefore = before.allowCellularModelDownload
         try {
-            modelFiles.hold()
+            // The running model has to be on the phone, or a switch skips
+            // the download and simply changes the choice.
+            val running = PhoneModelCatalog.recommended(UILanguage.Hebrew)
+            assertTrue("put ${running.file} in ${app.filesDir}: without the running model the switch never waits for Wi-Fi", File(app.filesDir, running.file).isFile)
+            modelFiles.hold(keep = running.file)
             app.captions.freeSpace = { 8_000_000_000L }
             app.captions.networkNow = { NetworkConditions.cellular }
-            fallBehindOnTurbo()
+            fallBehindOnTurbo(UILanguage.Hebrew)
             app.settings.change { it.allowCellularModelDownload = false }
             captionsStopped()
             compose.onNodeWithTag("model-fit-switch").performClick()

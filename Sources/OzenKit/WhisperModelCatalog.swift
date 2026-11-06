@@ -9,7 +9,9 @@ import Foundation
 /// names (`openai_whisper-<variant>`).
 public struct WhisperModelOption: Sendable, Equatable, Identifiable {
     public let variant: String
-    public let displayName: String
+    /// The English name, which the catalog is written in; `displayName`
+    /// is what the screens show.
+    public let englishName: String
     public let sizeMB: Int
     /// 1 (barely usable for Hebrew) … 5 (best Whisper can do).
     public let hebrewQuality: Int
@@ -45,7 +47,7 @@ public struct WhisperModelOption: Sendable, Equatable, Identifiable {
         self.uncertainBelow = uncertainBelow
         self.isHebrewOnly = isHebrewOnly
         self.variant = variant
-        self.displayName = displayName
+        self.englishName = displayName
         self.sizeMB = sizeMB
         self.hebrewQuality = hebrewQuality
         self.speed = speed
@@ -56,6 +58,27 @@ public struct WhisperModelOption: Sendable, Equatable, Identifiable {
     }
 
     public var id: String { variant }
+
+    /// The model's name in the app's language, so a Hebrew sentence never
+    /// carries a Latin name that shows out of order inside right-to-left text.
+    public var displayName: String { displayName(in: Localization.language) }
+
+    public func displayName(in language: UILanguage) -> String {
+        switch variant {
+        case "tiny": return tr("זעיר", "Tiny", in: language)
+        case "base": return tr("בסיסי", "Base", in: language)
+        case "small_216MB": return tr("קטן (דחוס)", "Small (compressed)", in: language)
+        case "small": return tr("קטן", "Small", in: language)
+        case "ozen-turbo-hebrew-a3-8bit": return tr("טורבו עברית של אוזן", "Ozen Turbo Hebrew", in: language)
+        case "ivrit-large-v3-turbo-8bit": return tr("טורבו עברית של ivrit.ai", "Turbo Hebrew by ivrit.ai", in: language)
+        case "large-v3-v20240930_626MB": return tr("טורבו (דחוס)", "Turbo (compressed)", in: language)
+        case "large-v3-v20240930": return tr("טורבו", "Turbo", in: language)
+        case "medium": return tr("בינוני", "Medium", in: language)
+        case "large-v3_947MB": return tr("גדול 3 (דחוס)", "Large v3 (compressed)", in: language)
+        case "large-v3": return tr("גדול 3", "Large v3", in: language)
+        default: return englishName
+        }
+    }
 
     /// Room the install takes at its peak. A model from WhisperKit's hub
     /// is its download; one from a release is compiled on the phone, and
@@ -135,7 +158,7 @@ public enum WhisperModelCatalog {
         // short answer. Measured on the computer's copy of the model, whose
         // scores the phone's are averaged to match.
         WhisperModelOption(
-            variant: "ozen-turbo-hebrew-a3-8bit", displayName: "Turbo Hebrew, noise-trained (Ozen)", sizeMB: 819,
+            variant: "ozen-turbo-hebrew-a3-8bit", displayName: "Ozen Turbo Hebrew", sizeMB: 819,
             hebrewQuality: 5, speed: 3,
             note: "Turbo Hebrew trained further by Ozen on speech from across a room, in noise and over a TV: about a tenth fewer wrong words there, the same up close. As quick, the same download.",
             isRecommended: true,
@@ -145,7 +168,7 @@ public enum WhisperModelCatalog {
             isHebrewOnly: true
         ),
         WhisperModelOption(
-            variant: "ivrit-large-v3-turbo-8bit", displayName: "Turbo Hebrew (ivrit.ai)", sizeMB: 819,
+            variant: "ivrit-large-v3-turbo-8bit", displayName: "Turbo Hebrew by ivrit.ai", sizeMB: 819,
             hebrewQuality: 5, speed: 3,
             note: "Turbo trained on 5,000 hours of Hebrew by ivrit.ai: a third fewer wrong words than Turbo on test recordings. As quick, a bigger download.",
             isRecommended: false,
