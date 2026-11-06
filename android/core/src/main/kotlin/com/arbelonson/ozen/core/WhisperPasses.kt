@@ -49,7 +49,6 @@ interface WhisperPasses {
     fun abortRunningPass() {}
 }
 
-/** [settled] is called once the model has lived through its first pass, or that pass was cut short; until then a kill of the app can only come from this model. */
 class WhisperLoadedModel(val passes: WhisperPasses, val isFirstTime: Boolean = false, val release: () -> Unit = {}, val settled: () -> Unit = {})
 
 interface WhisperModelLoader {

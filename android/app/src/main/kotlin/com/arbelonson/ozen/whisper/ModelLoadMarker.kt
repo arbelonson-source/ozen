@@ -29,12 +29,6 @@ class PreferencesMarkerStore(context: Context) : MarkerStore {
     }
 }
 
-/**
- * Written, synchronously, right before whisper.cpp opens a model file and
- * cleared once the app lived through the load and the first pass. Android's
- * low-memory killer cannot be caught, so a mark found at the next start means
- * the app was ended while it set that model up.
- */
 class ModelLoadMarker(private val store: MarkerStore) {
     fun begin(file: String) = store.write(ModelLoadCrash.marker(file))
 
