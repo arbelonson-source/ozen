@@ -44,8 +44,10 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.hasImeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -744,7 +746,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Delete the computer’s code?").assertExists()
         compose.onNodeWithText("Until the computer’s QR code is scanned again", substring = true).assertExists()
         assertEquals("code-to-delete", app.homeServerCode.read())
-        compose.onNodeWithText("Delete").performClick()
+        compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
         compose.waitUntil(5_000) { app.homeServerCode.read() == null }
         assertNull(app.homeServerCode.read())
         compose.onNodeWithText("Pairing code saved on the phone").assertDoesNotExist()
@@ -836,7 +838,7 @@ class SettingsScreenDeviceTest {
         compose.onNode(hasText("Names and special words") and hasText("Empty")).assertExists()
         compose.onNodeWithText("Names and special words").performClick()
         compose.onNodeWithText("No names yet").assertExists()
-        val field = compose.onNode(hasSetTextAction())
+        val field = compose.onNode(hasSetTextAction() and hasImeAction(ImeAction.Done))
         field.performTextInput("Shira")
         compose.onNodeWithText("Add").performClick()
         compose.waitUntil(5_000) { app.settings.current.value.vocabulary == listOf("Shira") }
@@ -1262,10 +1264,10 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Settings").performClick()
         compose.onNodeWithText("Names and special words").performScrollTo().performClick()
         compose.onNodeWithText("200 / 200").assertExists()
-        compose.onNode(hasSetTextAction()).performTextInput("One more")
+        compose.onNode(hasSetTextAction() and hasImeAction(ImeAction.Done)).performTextInput("One more")
         compose.onNodeWithText("The list is full. Delete a word to add another.").assertExists()
         compose.onNodeWithText("Add").assertIsNotEnabled()
-        compose.onNode(hasSetTextAction()).performImeAction()
+        compose.onNode(hasSetTextAction() and hasImeAction(ImeAction.Done)).performImeAction()
         compose.waitForIdle()
         assertEquals(full, app.settings.current.value.vocabulary)
     }
@@ -1786,7 +1788,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Cancel").performClick()
         assertEquals(1, CaptionState.screen.value.lines.size)
         compose.onNodeWithText("Clear captions from the screen").performScrollTo().performClick()
-        compose.onNodeWithText("Delete").performClick()
+        compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
         compose.waitUntil(5_000) { CaptionState.screen.value.lines.isEmpty() }
     }
 
