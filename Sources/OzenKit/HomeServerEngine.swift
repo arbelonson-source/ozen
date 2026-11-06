@@ -16,6 +16,7 @@ public actor HomeServerEngine: TranscriptionEngine {
     public nonisolated let address: String
     private let token: @Sendable () -> String?
     private let connector: any HomeServerConnecting
+    private let certificatePin: String?
     private let handshakeSeconds: Double
     private let client: String
     private let stallSeconds: Double
@@ -58,8 +59,10 @@ public actor HomeServerEngine: TranscriptionEngine {
         pingSeconds: Double = 5,
         pongSeconds: Double = 8,
         beam: Int? = nil,
-        approvalSeconds: Double = HomeServerEngine.defaultApprovalSeconds
+        approvalSeconds: Double = HomeServerEngine.defaultApprovalSeconds,
+        certificatePin: String? = nil
     ) {
+        self.certificatePin = certificatePin
         self.approvalSeconds = approvalSeconds
         self.address = address
         self.token = token
@@ -397,8 +400,9 @@ public actor HomeServerEngine: TranscriptionEngine {
     private func handshake(_ target: (url: URL, token: String), languageCode: String, purpose: String, vocabulary terms: [String]) async throws -> any HomeServerSocket {
         let socket: any HomeServerSocket
         do {
-            socket = try await connector.open(target.url)
+            socket = try await connector.open(target.url, pinnedTo: certificatePin)
         } catch {
+            if error is CertificateMismatch { throw EngineUnavailability.homeServerUnreachable("\(CertificateMismatch())") }
             throw EngineUnavailability.homeServerUnreachable("could not connect: \(error)")
         }
         do {
@@ -421,6 +425,7 @@ public actor HomeServerEngine: TranscriptionEngine {
             }
         } catch {
             await socket.close()
+            if error is CertificateMismatch { throw EngineUnavailability.homeServerUnreachable("\(CertificateMismatch())") }
             throw error as? EngineUnavailability ?? .homeServerUnreachable("\(error)")
         }
     }

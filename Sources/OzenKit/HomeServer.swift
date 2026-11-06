@@ -98,6 +98,12 @@ public enum HomeServer {
         why?.kind == .homeServerUnreachable && why?.detail == needsEncryption
     }
 
+    /// A plain ws:// link on the home network with no pin saved: a pairing
+    /// from before the link could be encrypted there.
+    public static func linkIsNotEncrypted(address: String, pin: String?) -> Bool {
+        pin == nil && url(from: address)?.scheme?.lowercased() == "ws"
+    }
+
     private static func parsedURL(from address: String) -> URL? {
         let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !trimmed.contains(" ") else { return nil }
@@ -178,15 +184,20 @@ public struct HomeServerPairing: Sendable, Equatable {
     public static let scheme = "ozen"
     public let address: String
     public let code: String
+    /// The fingerprint of a home computer's own certificate (see
+    /// `CertificatePin`); nil for an address with a real certificate.
+    public let pin: String?
 
-    public init?(address: String, code: String) {
+    public init?(address: String, code: String, pin: String? = nil) {
         let address = address.trimmingCharacters(in: .whitespacesAndNewlines)
         let code = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard HomeServer.url(from: address) != nil,
               !code.isEmpty, code.count <= 200, !code.contains(where: \.isWhitespace)
         else { return nil }
+        if let pin, !CertificatePin.isWellFormed(pin) { return nil }
         self.address = address
         self.code = code
+        self.pin = pin
     }
 
     /// Meant as a pairing link, whether or not it survived the trip: a
@@ -203,7 +214,7 @@ public struct HomeServerPairing: Sendable, Equatable {
               let address = parts.queryItems?.first(where: { $0.name == "address" })?.value,
               let code = parts.queryItems?.first(where: { $0.name == "code" })?.value
         else { return nil }
-        self.init(address: address, code: code)
+        self.init(address: address, code: code, pin: parts.queryItems?.first(where: { $0.name == "pin" })?.value)
     }
 
     /// The computer's name as a person would recognise it: its host.
@@ -216,6 +227,7 @@ public struct HomeServerPairing: Sendable, Equatable {
         parts.scheme = Self.scheme
         parts.host = "pair"
         parts.queryItems = [URLQueryItem(name: "address", value: address), URLQueryItem(name: "code", value: code)]
+        if let pin { parts.queryItems?.append(URLQueryItem(name: "pin", value: pin)) }
         return parts.url!
     }
 }
@@ -330,6 +342,15 @@ public protocol HomeServerSocket: Sendable {
 
 public protocol HomeServerConnecting: Sendable {
     func open(_ url: URL) async throws -> any HomeServerSocket
+    /// With a pin, the server's certificate is accepted if and only if it
+    /// has that fingerprint (see `CertificatePin`); without one, as `open(_:)`.
+    func open(_ url: URL, pinnedTo pin: String?) async throws -> any HomeServerSocket
+}
+
+extension HomeServerConnecting {
+    public func open(_ url: URL, pinnedTo pin: String?) async throws -> any HomeServerSocket {
+        try await open(url)
+    }
 }
 
 /// Opens a connection that has to carry headers when it opens, such as a
