@@ -238,8 +238,8 @@ final class OzenScreenshotUITests: XCTestCase {
         if !switchButton.waitForExistence(timeout: 10) { print("TREE-DUMP", app.debugDescription) }
         XCTAssertTrue(switchButton.exists, "\(name): the lighter-model card has no Switch button")
         XCTAssertTrue(app.descendants(matching: .any)["modelFitOfferNotNow"].exists, "\(name): the lighter-model card has no Not now button")
-        XCTAssertTrue(app.staticTexts[switchTitle].exists, "\(name): the Switch button is not labelled \(switchTitle)")
-        XCTAssertTrue(app.staticTexts[notNowTitle].exists, "\(name): the Not now button is not labelled \(notNowTitle)")
+        XCTAssertEqual(switchButton.label, switchTitle, "\(name): the Switch button is labelled wrongly")
+        XCTAssertEqual(app.descendants(matching: .any)["modelFitOfferNotNow"].label, notNowTitle, "\(name): the Not now button is labelled wrongly")
         let text = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", lightName)).firstMatch
         XCTAssertTrue(text.exists, "\(name): the card does not name the lighter model \(lightName)")
         capture(app, name: name)
