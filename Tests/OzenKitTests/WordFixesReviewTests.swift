@@ -117,4 +117,12 @@ struct WordFixesReviewTests {
         #expect(replaced.count == WordFixes.maximumFixes)
         #expect(replaced.first == WordFix(heard: "heard5", written: "other"))
     }
+
+    @Test("a fix longer than the limit cannot be added, so nothing is cut short when it is saved")
+    func tooLongCannotBeAdded() {
+        let longest = String(repeating: "a", count: WordFixes.maximumLength)
+        #expect(WordFixes.canAdd(WordFix(heard: longest, written: String(repeating: "b", count: WordFixes.maximumLength)), to: []))
+        #expect(!WordFixes.canAdd(WordFix(heard: longest + "b", written: "other"), to: []))
+        #expect(!WordFixes.canAdd(WordFix(heard: "fresh", written: longest + "b"), to: []))
+    }
 }
