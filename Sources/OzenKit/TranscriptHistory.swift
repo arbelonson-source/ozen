@@ -182,15 +182,15 @@ public extension TranscriptSessionRecord {
     var sourceLine: String { sourceLine(in: Localization.language) }
 
     func sourceLine(in language: UILanguage) -> String {
-        [engine.displayName(in: language), modelName, inputName]
+        [engine.displayName(in: language), modelName(in: language), inputName]
             .compactMap { $0 }
             .joined(separator: " · ")
     }
 
-    private var modelName: String? {
+    private func modelName(in language: UILanguage) -> String? {
         guard let modelVariant else { return nil }
         switch engine {
-        case .whisperKit: return WhisperModelCatalog.option(for: modelVariant)?.displayName ?? modelVariant
+        case .whisperKit: return WhisperModelCatalog.option(for: modelVariant)?.displayName(in: language) ?? modelVariant
         case .cloud:
             switch modelVariant {
             case CloudSpeech.fastModel: return "OpenRouter · Gemini Flash Lite"

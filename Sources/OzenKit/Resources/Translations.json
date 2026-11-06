@@ -951,7 +951,13 @@
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "በታሪክ ውስጥ ማስቀመጥ አልተቻለም። ስልኩ ሞልቶ ሊሆን ይችላል። ይህን ስክሪን ከመዝጋትዎ በፊት ጽሑፉን ያጋሩ።",
   "Captions ran late on this phone": "በዚህ ስልክ ላይ የጽሑፍ ትርጉሙ ዘገየ",
   "%1 (%2) is lighter and keeps up better here.": "%1 (%2) ቀለል ያለ ነው፣ እዚህ ከንግግሩ ጋር በተሻለ ይሄዳል።",
-  "Switch": "ቀይር"
+  "Switch": "ቀይር",
+  "Tiny": "ጥቃቅን",
+  "Small (compressed)": "ትንሽ (የተጨመቀ)",
+  "Turbo (compressed)": "Turbo (የተጨመቀ)",
+  "Medium": "መካከለኛ",
+  "Large v3 (compressed)": "Large v3 (የተጨመቀ)",
+  "Large v3": "Large v3"
  },
  "arabic": {
   " Conversations with a starred line or a name are always kept.": " المحادثات التي فيها سطر مميز بنجمة أو اسم تبقى محفوظة دائمًا.",
@@ -1905,7 +1911,13 @@
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "تعذّر الحفظ في السجل. قد يكون الهاتف ممتلئًا. شاركوا النص قبل إغلاق هذه الشاشة.",
   "Captions ran late on this phone": "تأخرت الترجمة النصية على هذا الهاتف",
   "%1 (%2) is lighter and keeps up better here.": "%1 (%2) أخفّ ويواكب الكلام بشكل أفضل هنا.",
-  "Switch": "تبديل"
+  "Switch": "تبديل",
+  "Tiny": "صغير جدًا",
+  "Small (compressed)": "صغير (مضغوط)",
+  "Turbo (compressed)": "Turbo (مضغوط)",
+  "Medium": "متوسط",
+  "Large v3 (compressed)": "Large v3 (مضغوط)",
+  "Large v3": "Large v3"
  },
  "chineseSimplified": {
   " Conversations with a starred line or a name are always kept.": " 有星标或姓名的对话会一直保留。",
@@ -2859,7 +2871,13 @@
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "无法保存到历史记录。手机可能已满。请在关闭此屏幕之前分享文字。",
   "Captions ran late on this phone": "字幕在这部手机上出现了延迟",
   "%1 (%2) is lighter and keeps up better here.": "%1（%2）更轻，在这里能更好地跟上说话速度。",
-  "Switch": "切换"
+  "Switch": "切换",
+  "Tiny": "微型",
+  "Small (compressed)": "小型（压缩）",
+  "Turbo (compressed)": "Turbo（压缩）",
+  "Medium": "中型",
+  "Large v3 (compressed)": "Large v3（压缩）",
+  "Large v3": "Large v3"
  },
  "french": {
   " Conversations with a starred line or a name are always kept.": " Les conversations avec une ligne marquée d’une étoile ou un nom sont toujours conservées.",
@@ -3813,7 +3831,13 @@
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "Impossible d’enregistrer dans l’historique. Le téléphone est peut-être plein. Partagez le texte avant de fermer cet écran.",
   "Captions ran late on this phone": "Les sous-titres ont pris du retard sur ce téléphone",
   "%1 (%2) is lighter and keeps up better here.": "%1 (%2) est plus léger et suit mieux le rythme ici.",
-  "Switch": "Changer"
+  "Switch": "Changer",
+  "Tiny": "Minuscule",
+  "Small (compressed)": "Petit (compressé)",
+  "Turbo (compressed)": "Turbo (compressé)",
+  "Medium": "Moyen",
+  "Large v3 (compressed)": "Large v3 (compressé)",
+  "Large v3": "Large v3"
  },
  "german": {
   " Conversations with a starred line or a name are always kept.": " Gespräche mit einer markierten Zeile oder einem Namen bleiben immer erhalten.",
@@ -4767,7 +4791,13 @@
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "Das Speichern im Verlauf ist fehlgeschlagen. Das Telefon ist möglicherweise voll. Teilen Sie den Text, bevor Sie diesen Bildschirm schließen.",
   "Captions ran late on this phone": "Die Untertitel kamen auf diesem Telefon zu spät",
   "%1 (%2) is lighter and keeps up better here.": "%1 (%2) ist leichter und hält hier besser mit.",
-  "Switch": "Wechseln"
+  "Switch": "Wechseln",
+  "Tiny": "Winzig",
+  "Small (compressed)": "Klein (komprimiert)",
+  "Turbo (compressed)": "Turbo (komprimiert)",
+  "Medium": "Mittel",
+  "Large v3 (compressed)": "Large v3 (komprimiert)",
+  "Large v3": "Large v3"
  },
  "hindi": {
   " Conversations with a starred line or a name are always kept.": " जिस बातचीत में तारांकित लाइन या नाम हो, वह हमेशा रखी जाती है।",
@@ -5721,7 +5751,13 @@
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "इतिहास में सहेजा नहीं जा सका। हो सकता है फ़ोन भर गया हो। इस स्क्रीन को बंद करने से पहले टेक्स्ट साझा करें।",
   "Captions ran late on this phone": "इस फ़ोन पर कैप्शन देर से आए",
   "%1 (%2) is lighter and keeps up better here.": "%1 (%2) हल्का है और यहाँ बोलने की रफ़्तार के साथ बेहतर चलता है।",
-  "Switch": "बदलें"
+  "Switch": "बदलें",
+  "Tiny": "बहुत छोटा",
+  "Small (compressed)": "छोटा (संपीड़ित)",
+  "Turbo (compressed)": "Turbo (संपीड़ित)",
+  "Medium": "मध्यम",
+  "Large v3 (compressed)": "Large v3 (संपीड़ित)",
+  "Large v3": "Large v3"
  },
  "portuguese": {
   " Conversations with a starred line or a name are always kept.": " As conversas com uma linha assinalada ou um nome são sempre mantidas.",
@@ -6675,7 +6711,13 @@
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "Não foi possível guardar no histórico. O telemóvel pode estar cheio. Partilhe o texto antes de fechar este ecrã.",
   "Captions ran late on this phone": "As legendas atrasaram-se neste telemóvel",
   "%1 (%2) is lighter and keeps up better here.": "%1 (%2) é mais leve e acompanha melhor a fala aqui.",
-  "Switch": "Mudar"
+  "Switch": "Mudar",
+  "Tiny": "Minúsculo",
+  "Small (compressed)": "Pequeno (comprimido)",
+  "Turbo (compressed)": "Turbo (comprimido)",
+  "Medium": "Médio",
+  "Large v3 (compressed)": "Large v3 (comprimido)",
+  "Large v3": "Large v3"
  },
  "russian": {
   " Conversations with a starred line or a name are always kept.": " Разговоры с отмеченной строкой или именем всегда сохраняются.",
@@ -7629,7 +7671,13 @@
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "Не удалось сохранить в историю. Возможно, телефон заполнен. Поделитесь текстом, прежде чем закрыть этот экран.",
   "Captions ran late on this phone": "Субтитры на этом телефоне опаздывали",
   "%1 (%2) is lighter and keeps up better here.": "%1 (%2) легче и лучше успевает за речью на этом телефоне.",
-  "Switch": "Сменить"
+  "Switch": "Сменить",
+  "Tiny": "Крошечная",
+  "Small (compressed)": "Малая (сжатая)",
+  "Turbo (compressed)": "Turbo (сжатая)",
+  "Medium": "Средняя",
+  "Large v3 (compressed)": "Large v3 (сжатая)",
+  "Large v3": "Large v3"
  },
  "spanish": {
   " Conversations with a starred line or a name are always kept.": " Las conversaciones con una línea marcada o un nombre siempre se conservan.",
@@ -8583,7 +8631,13 @@
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "No se pudo guardar en el historial. Puede que el teléfono esté lleno. Comparte el texto antes de cerrar esta pantalla.",
   "Captions ran late on this phone": "Los subtítulos llegaron tarde en este teléfono",
   "%1 (%2) is lighter and keeps up better here.": "%1 (%2) es más ligero y sigue mejor el ritmo aquí.",
-  "Switch": "Cambiar"
+  "Switch": "Cambiar",
+  "Tiny": "Diminuto",
+  "Small (compressed)": "Pequeño (comprimido)",
+  "Turbo (compressed)": "Turbo (comprimido)",
+  "Medium": "Mediano",
+  "Large v3 (compressed)": "Large v3 (comprimido)",
+  "Large v3": "Large v3"
  },
  "ukrainian": {
   " Conversations with a starred line or a name are always kept.": " Розмови з позначеним рядком або іменем завжди зберігаються.",
@@ -9532,6 +9586,12 @@
   "Couldn’t save to History. The phone may be full. Share the text before you close this screen.": "Не вдалося зберегти в історію. Можливо, телефон заповнений. Поділіться текстом, перш ніж закрити цей екран.",
   "Captions ran late on this phone": "Субтитри на цьому телефоні запізнювалися",
   "%1 (%2) is lighter and keeps up better here.": "%1 (%2) легший і краще встигає за мовленням тут.",
-  "Switch": "Змінити"
+  "Switch": "Змінити",
+  "Tiny": "Крихітна",
+  "Small (compressed)": "Мала (стиснена)",
+  "Turbo (compressed)": "Turbo (стиснена)",
+  "Medium": "Середня",
+  "Large v3 (compressed)": "Large v3 (стиснена)",
+  "Large v3": "Large v3"
  }
 }
