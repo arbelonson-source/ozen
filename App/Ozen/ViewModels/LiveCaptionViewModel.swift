@@ -174,7 +174,8 @@ public final class LiveCaptionViewModel {
                         token: { HomeServerCodeStore.read() },
                         connector: URLSessionHomeServerConnector(),
                         client: LiveCaptionViewModel.homeServerClient,
-                        beam: settings.homeServerBeam
+                        beam: settings.homeServerBeam,
+                        certificatePin: settings.homeServerCertificatePin
                     )
                 }
             },
@@ -1100,7 +1101,7 @@ public final class LiveCaptionViewModel {
     public func setHomeServerAddress(_ address: String) async {
         let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
         guard settings.homeServerAddress != trimmed else { return }
-        settings.homeServerAddress = trimmed
+        settings.typeHomeServerAddress(trimmed)
         persist()
         // This restart carries the current beam too: one still settling
         // from the slider would only reconnect a second time.
@@ -1151,7 +1152,7 @@ public final class LiveCaptionViewModel {
             pairingSaveFailed = true
             return false
         }
-        settings.homeServerAddress = pairing.address
+        settings.usePairing(pairing)
         settings.engine = .homeServer
         persist()
         beamRestart?.cancel()
@@ -1179,7 +1180,8 @@ public final class LiveCaptionViewModel {
             address: settings.homeServerAddress,
             token: { HomeServerCodeStore.read() },
             connector: URLSessionHomeServerConnector(),
-            client: Self.homeServerClient
+            client: Self.homeServerClient,
+            certificatePin: settings.homeServerCertificatePin
         )
         return await engine.sendReport(text, languageCode: settings.languageCode)
     }
@@ -1191,7 +1193,8 @@ public final class LiveCaptionViewModel {
             address: settings.homeServerAddress,
             token: { HomeServerCodeStore.read() },
             connector: URLSessionHomeServerConnector(),
-            client: Self.homeServerClient
+            client: Self.homeServerClient,
+            certificatePin: settings.homeServerCertificatePin
         )
         let clock = ContinuousClock()
         let start = clock.now
