@@ -152,7 +152,8 @@ class CaptionPipelineTokenTest {
         engine.emit(TranscriptToken(utteranceID = UUID.randomUUID(), text = "I love New York and York", isFinal = true, timestamp = 1.0, uncertainWords = listOf("York")))
         assertTrue(eventually { pipeline.segments.firstOrNull()?.isCommitted == true })
         assertEquals("I love NYC and York", pipeline.segments.single().text)
-        assertEquals(listOf("NYC"), pipeline.segments.single().uncertainWords)
+        val line = pipeline.segments.single()
+        assertEquals(listOf("NYC"), UncertainWords.ranges(line.text, line.uncertainWords).map { line.text.substring(it.start, it.endExclusive) })
     }
 
     @Test

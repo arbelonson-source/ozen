@@ -31,6 +31,15 @@ class WordFixesTest {
         assertEquals("ושלהרותם", run("ושלהרותם", f))
     }
 
+    @Test fun aHebrewPrefixKeptBeforeLatinLettersOrANumberTakesAMaqaf() {
+        val phone = fix("אייפון", "iPhone")
+        assertEquals("קניתי ב\u05BEiPhone", run("קניתי באייפון", phone))
+        assertEquals("ושב\u05BEiPhone", run("ושבאייפון", phone))
+        assertEquals("iPhone חדש", run("אייפון חדש", phone))
+        assertEquals("ב\u05BE7", run("בשבע", fix("שבע", "7")))
+        assertEquals("ורותי", run("ורותם", fix("רותם", "רותי")))
+    }
+
     @Test fun rule3PrefixNotAppliedToLatin() {
         assertEquals("lavi", run("lavi", fix("avi", "Avi")))
     }
