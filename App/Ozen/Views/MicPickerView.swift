@@ -134,13 +134,14 @@ struct MicPickerView: View {
 private struct InputRow: View {
     let input: AudioInputDescriptor
     let isSelected: Bool
+    @ScaledMetric(relativeTo: .title3) private var iconWidth: CGFloat = 28
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: MicPickerView.icon(for: input.portType))
                 .accessibilityHidden(true)
                 .font(.title3)
-                .frame(width: 28)
+                .frame(width: iconWidth)
             VStack(alignment: .leading, spacing: 2) {
                 Text(input.portName)
                 Text(MicPickerView.typeName(for: input.portType))

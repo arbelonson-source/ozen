@@ -157,6 +157,9 @@ private struct SoundEventRow: View {
     let nearMiss: SoundNearMisses.Entry?
     @Binding var isSensitive: Bool
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    // The symbol grows with the text: at the largest sizes a fixed 28
+    // points let it spill over the sound's name.
+    @ScaledMetric(relativeTo: .body) private var iconWidth: CGFloat = 28
 
     private var nudgeLayout: AnyLayout {
         dynamicTypeSize.isAccessibilitySize
@@ -171,7 +174,7 @@ private struct SoundEventRow: View {
                     Image(systemName: event.systemImage)
                         .accessibilityHidden(true)
                         .foregroundStyle(.readable(SoundAlertsView.tint(event.importance)))
-                        .frame(width: 28)
+                        .frame(width: iconWidth)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(event.name)
                         if !isSupported {

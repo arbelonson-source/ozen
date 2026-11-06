@@ -40,7 +40,7 @@ struct ModelManagerView: View {
             }
         }
         .accessibilityIdentifier("modelManagerScreen")
-        .navigationTitle(tr("מודל Whisper", "Whisper model"))
+        .navigationTitle(tr("מודל הדיבור בטלפון", "Speech model on the phone"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: refresh)
         .task { await viewModel.testThisPhone() }
