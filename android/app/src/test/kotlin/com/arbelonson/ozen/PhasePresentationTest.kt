@@ -15,6 +15,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -354,6 +355,17 @@ class PhasePresentationTest {
             downloadSecondsRemaining = 200.0,
         )
         assertTrue(timed.detail?.startsWith("עוד כ־3 דקות · ") == true)
+    }
+
+    @Test
+    fun `after the last byte the screen says the file is being checked, not a bar stuck at 100 percent`() {
+        val checking = present(
+            PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.CheckingModel, detail = "small")),
+            TranscriptionEngineKind.WhisperKit,
+        )
+        assertEquals("בודקים את הקובץ…", checking.title)
+        assertNull(checking.progress)
+        assertTrue(checking.isBusy)
     }
 
     @Test

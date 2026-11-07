@@ -199,7 +199,10 @@ class PhoneModelChooser(
             val outcome = withContext(io) {
                 runCatching {
                     downloader.pendingMegabytes()?.let { makeRoom(StorageSpaceGate.requiredMegabytes(it) * StorageSpaceGate.BYTES_PER_MEGABYTE) }
-                    downloader.download { fraction ->
+                    downloader.download(checking = {
+                        if (stopped.get()) throw IOException("stopped: another model was chosen")
+                        switchState.value = PhoneModelSwitch.Downloading(model.file, 1.0, checking = true)
+                    }) { fraction ->
                         if (stopped.get()) throw IOException("stopped: another model was chosen")
                         if (ModelDownloadGate.decide(network(), settings.current.value.allowCellularModelDownload) == ModelDownloadGate.Decision.WaitForWiFi) {
                             lostWiFi = true
