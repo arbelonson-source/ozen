@@ -85,6 +85,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
@@ -535,7 +536,7 @@ private fun ConversationRowContent(row: ConversationRow, onOpen: () -> Unit, onH
             modifier = Modifier
                 .fillMaxWidth()
                 .onHold(onHold)
-                .clickable(onClick = onOpen)
+                .clickable(role = Role.Button, onClick = onOpen)
                 .semantics { customActions = actions }
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
