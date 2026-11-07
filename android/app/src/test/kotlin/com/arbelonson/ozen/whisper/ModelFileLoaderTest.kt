@@ -153,6 +153,45 @@ class ModelFileLoaderTest {
     }
 
     @Test
+    fun `room is asked for once, for the whole download with its margin, before the first byte is written`() = runBlocking {
+        val asked = mutableListOf<Pair<Long, Long>>()
+        val loader = ModelFileLoader(
+            file, "/lib", download = PhoneModelDownloader(file, source, ChunkedModel(data)),
+            makeRoom = { bytes -> asked += bytes to File(file.path + ".part").length() },
+        ) { _, _ -> null }
+        assertFailsWith<EngineUnavailability> { loader.load("en", cellularDownloadAllowed = true) {} }
+        assertEquals(listOf((StorageSpaceGate.requiredMegabytes(1) * StorageSpaceGate.BYTES_PER_MEGABYTE) to 0L), asked)
+    }
+
+    @Test
+    fun `no room is asked for when the model is already on the phone`() = runBlocking {
+        file.writeBytes(data)
+        var asked = 0
+        val loader = ModelFileLoader(file, "/lib", download = PhoneModelDownloader(file, source, ChunkedModel(data)), makeRoom = { asked += 1 }) { _, _ -> null }
+        assertFailsWith<EngineUnavailability> { loader.load("en", cellularDownloadAllowed = true) {} }
+        assertEquals(0, asked)
+    }
+
+    @Test
+    fun `no room is asked for while the phone is offline or waits for Wi-Fi, so no cache is cleared for a download that cannot start`() = runBlocking {
+        for ((network, cellular) in listOf(NetworkConditions.offline to true, NetworkConditions.cellular to false)) {
+            var asked = 0
+            val loader = ModelFileLoader(file, "/lib", download = PhoneModelDownloader(file, source, ChunkedModel(data)), network = { network }, makeRoom = { asked += 1 }) { _, _ -> null }
+            assertFailsWith<EngineUnavailability> { loader.load("en", cellularDownloadAllowed = cellular) {} }
+            assertEquals(0, asked, "asked for room on $network")
+        }
+    }
+
+    @Test
+    fun `room is asked for off the caller's thread`() = runBlocking {
+        val callers = mutableListOf<String>()
+        val loader = ModelFileLoader(file, "/lib", download = PhoneModelDownloader(file, source, ChunkedModel(data)), makeRoom = { callers += Thread.currentThread().name }) { _, _ -> null }
+        assertFailsWith<EngineUnavailability> { loader.load("en", cellularDownloadAllowed = true) {} }
+        assertEquals(1, callers.size)
+        assertTrue(callers.single().contains("DefaultDispatcher"), callers.single())
+    }
+
+    @Test
     fun `a download whose Wi-Fi drops stops rather than going on over the phone plan, and goes on from there on Wi-Fi`() = runBlocking {
         var network = NetworkConditions.wifi
         val served = ChunkedModel(data)

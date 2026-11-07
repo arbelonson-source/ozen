@@ -42,6 +42,21 @@ class StorageSpaceGateTest {
     }
 
     @Test
+    fun `the room is what the system could free when that is more than what is free now`() {
+        assertEquals(5_000L, StorageSpaceGate.roomBytes(usable = 2_000, allocatable = 5_000))
+    }
+
+    @Test
+    fun `the room is never less than what is free now, even when the system keeps a reserve`() {
+        assertEquals(2_000L, StorageSpaceGate.roomBytes(usable = 2_000, allocatable = 1_500))
+    }
+
+    @Test
+    fun `the room is what is free now when the system cannot say what it could free`() {
+        assertEquals(2_000L, StorageSpaceGate.roomBytes(usable = 2_000, allocatable = null))
+    }
+
+    @Test
     fun `unknown size, unknown free space, or nothing to download don't block`() {
         assertNull(StorageSpaceGate.shortfallMegabytes(0, 0))
         assertNull(StorageSpaceGate.shortfallMegabytes(626, null))
