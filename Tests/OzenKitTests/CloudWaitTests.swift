@@ -53,6 +53,19 @@ struct CloudWaitTests {
         #expect(captions.phase.failure != nil)
     }
 
+    @Test("a key problem that turns up during the wait ends it and is shown")
+    func keyProblemDuringTheWaitIsShown() async throws {
+        let cloud = FakeEngine(kind: .cloud, availability: .unavailable(.temporarilyUnavailable, "test"))
+        let captions = pipeline(cloud: cloud)
+        await captions.start(settings: cloudSettings)
+        #expect(await eventually { cloud.prepareCount >= 4 && captions.scheduledRetry == nil })
+        cloud.availability = .unavailable(.cloudKeyNeeded, "test")
+        #expect(await eventually { captions.phase.failure?.engineUnavailability?.kind == .cloudKeyNeeded })
+        cloud.availability = .available
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(captions.phase.failure != nil)
+    }
+
     @Test("stopping during the wait means nothing restarts when the cloud answers")
     func stopDuringTheWait() async throws {
         let cloud = FakeEngine(kind: .cloud, availability: .unavailable(.temporarilyUnavailable, "test"))

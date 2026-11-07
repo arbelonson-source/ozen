@@ -119,6 +119,8 @@ public final class CaptionPipeline {
     /// Calmer than the home computer's 15 s: the cloud is asked over the
     /// internet, and an outage there rarely ends within seconds.
     public var cloudWaitSeconds: Double = 30
+
+    private static let cloudProblemsForAPerson: Set<EngineUnavailability.Kind> = [.cloudKeyNeeded, .cloudOutOfCredit, .cloudLanguageNotCovered]
     /// While the phone covers for the cloud after losing the internet, how
     /// often to look whether it can be reached again. Without it, a single
     /// dropped connection kept a phone that is never stopped on its own
@@ -2739,10 +2741,20 @@ public final class CaptionPipeline {
                 guard !Task.isCancelled, let self, case .failed(let current) = self.phase, current == failure else { return }
                 guard let chosen = self.activeSettings, chosen.engine == .cloud else { return }
                 guard !self.systemInterrupted, !self.isRecordingVoice else { continue }
-                guard await self.probeEngine(for: chosen).checkAvailability(languageCode: chosen.languageCode) == .available,
-                      !Task.isCancelled, !self.systemInterrupted, !self.isRecordingVoice,
+                let answer = await self.probeEngine(for: chosen).checkAvailability(languageCode: chosen.languageCode)
+                guard !Task.isCancelled, !self.systemInterrupted, !self.isRecordingVoice,
                       case .failed(let still) = self.phase, still == failure
                 else { continue }
+                if answer != .available {
+                    guard let kind = answer.unavailability?.kind, Self.cloudProblemsForAPerson.contains(kind) else { continue }
+                    // A key or credit problem found while waiting is the
+                    // real reason now: a try shows it, with its way to
+                    // Settings, instead of the outage message staying up.
+                    self.logEvent(.note("the cloud answers with a problem only a person can fix, showing it"))
+                    self.homeServerRecheck = nil
+                    await self.retry()
+                    return
+                }
                 self.logEvent(.note("the cloud answers again, starting captions"))
                 self.homeServerRecheck = nil
                 self.recovery.reset()

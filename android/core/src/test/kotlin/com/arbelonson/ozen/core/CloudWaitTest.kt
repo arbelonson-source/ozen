@@ -71,6 +71,19 @@ class CloudWaitTest {
     }
 
     @Test
+    fun `a key problem that turns up during the wait ends it and is shown`() = runTest {
+        val cloud = cloudDown(EngineUnavailability.Kind.TemporarilyUnavailable)
+        val captions = cloudPipeline(cloud)
+        captions.start(cloudSettings())
+        assertTrue(eventually { cloud.prepareCount >= 4 && captions.scheduledRetry == null })
+        cloud.availability = EngineAvailability.unavailable(EngineUnavailability.Kind.CloudKeyNeeded, "test")
+        assertTrue(eventually { (captions.phase as? PipelinePhase.Failed)?.reason?.engineUnavailability?.kind == EngineUnavailability.Kind.CloudKeyNeeded })
+        cloud.availability = EngineAvailability.Available
+        delay(300.milliseconds)
+        assertTrue(captions.phase is PipelinePhase.Failed)
+    }
+
+    @Test
     fun `stopping during the wait means nothing restarts when the cloud answers`() = runTest {
         val cloud = cloudDown(EngineUnavailability.Kind.TemporarilyUnavailable)
         val captions = cloudPipeline(cloud)

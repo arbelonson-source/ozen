@@ -232,6 +232,12 @@ class CaptionPipeline(
      */
     var cloudWaitSeconds: Double = 30.0
 
+    private val cloudProblemsForAPerson = setOf(
+        EngineUnavailability.Kind.CloudKeyNeeded,
+        EngineUnavailability.Kind.CloudOutOfCredit,
+        EngineUnavailability.Kind.CloudLanguageNotCovered,
+    )
+
     /**
      * While the phone covers for the cloud after losing the internet, how
      * often to look whether it can be reached again. Without it, a single
@@ -2793,10 +2799,16 @@ class CaptionPipeline(
                 if (systemInterrupted || isRecordingVoice) continue
                 val answer = probeEngine(chosen).checkAvailability(chosen.languageCode)
                 val still = phase
-                if (answer != EngineAvailability.Available || !isActive || systemInterrupted || isRecordingVoice ||
-                    still !is PipelinePhase.Failed || still.reason != failure
-                ) {
-                    continue
+                if (!isActive || systemInterrupted || isRecordingVoice || still !is PipelinePhase.Failed || still.reason != failure) continue
+                if (answer != EngineAvailability.Available) {
+                    if (answer.unavailability?.kind !in cloudProblemsForAPerson) continue
+                    // A key or credit problem found while waiting is the
+                    // real reason now: a try shows it, with its way to
+                    // Settings, instead of the outage message staying up.
+                    logEvent(PipelineEvent.Kind.Note("the cloud answers with a problem only a person can fix, showing it"))
+                    homeServerRecheck = null
+                    retry()
+                    return@launch
                 }
                 logEvent(PipelineEvent.Kind.Note("the cloud answers again, starting captions"))
                 homeServerRecheck = null
