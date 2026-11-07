@@ -41,6 +41,9 @@ enum ScreenshotFixtures {
         /// family member would see the app on her phone.
         case galleryDark
         case galleryLight
+        /// The Hebrew App Store picture in the light theme, at the gallery's
+        /// size: `hebrewLightTheme`'s 50 ran the conversation past the screen.
+        case hebrewGalleryLight
         /// Past the screen's line limit, with a new line every half second,
         /// for the test that reads back while lines keep coming.
         case readingBack
@@ -144,6 +147,10 @@ enum ScreenshotFixtures {
         case .galleryLight:
             // At 40, and still at 36, the conversation ran past the screen
             // and its top sat under the clock.
+            viewModel.display.fontSize = 32
+            viewModel.display.theme = .light
+        case .hebrewGalleryLight:
+            viewModel.setAppLanguage(.hebrew)
             viewModel.display.fontSize = 32
             viewModel.display.theme = .light
         case .banner:
