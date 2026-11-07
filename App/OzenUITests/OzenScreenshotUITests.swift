@@ -524,7 +524,12 @@ final class OzenScreenshotUITests: XCTestCase {
         }
         capture(app, name: "caption-screen-accessibility-text-controls")
         for identifier in ["settingsButton", "micPickerButton", "transcriptScroll"] {
-            let element = app.descendants(matching: .any)[identifier].firstMatch
+            // "transcriptScroll" names the captions inside the scroll view,
+            // which at this size run longer than an iPhone SE's screen; the
+            // scroll view holding them is what has to fit.
+            let element = identifier == "transcriptScroll"
+                ? app.scrollViews.containing(.any, identifier: identifier).firstMatch
+                : app.descendants(matching: .any)[identifier].firstMatch
             XCTAssertTrue(element.exists, "caption screen: \(identifier) is missing")
             let onScreen = { (frame: CGRect) in
                 frame.minX >= screen.minX - 1 && frame.maxX <= screen.maxX + 1 && frame.minY >= screen.minY - 1 && frame.maxY <= screen.maxY + 1
@@ -1391,11 +1396,18 @@ final class OzenScreenshotUITests: XCTestCase {
         let revealControls = app.descendants(matching: .any)["showControlsButton"]
         let windowBottom = app.windows.firstMatch.frame.maxY
         var reachable = false
+        var last = CGRect.null
         for _ in 0..<20 {
-            if button.exists, button.isHittable, button.frame.midY <= windowBottom - 60 {
+            // Whole on screen and resting where it was half a second ago:
+            // a bar still sliding in is hittable but moves under the tap. A
+            // fixed margin from the bottom never held on an iPhone SE, whose
+            // bar sits lower with no home indicator below it.
+            let frame = button.exists ? button.frame : .null
+            if button.exists, button.isHittable, frame.maxY <= windowBottom, frame == last {
                 reachable = true
                 break
             }
+            last = frame
             if revealControls.exists, revealControls.isHittable { revealControls.tap() }
             if button.exists { bringOffBottomEdge(app, button) }
             Thread.sleep(forTimeInterval: 0.5)

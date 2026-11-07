@@ -58,7 +58,9 @@ struct FixWordSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        // Half the screen left Fix it every time below the edge of an
+        // iPhone SE; seven tenths still shows the caption above the sheet.
+        .presentationDetents([.fraction(0.7), .large])
     }
 
     private func wordButton(_ index: Int, _ word: String) -> some View {
