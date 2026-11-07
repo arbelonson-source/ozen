@@ -66,6 +66,9 @@ jobs:
   # The Android app. Its shared core is plain Kotlin, so its tests run on
   # the JVM in seconds, reading the same translations and test cases as
   # OzenKit; the debug APK is kept so a phone can install this commit.
+  # The device tests only run on an emulator, by hand, but they are
+  # compiled here: a changed constructor or callback they use would
+  # otherwise stay hidden until the next emulator run.
   android:
     name: Android (core tests, debug APK)
     runs-on: ubuntu-24.04
@@ -77,9 +80,9 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
-      - name: Core tests and debug APK
+      - name: Core tests, debug APK, device tests compiled
         working-directory: android
-        run: ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug
+        run: ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin
       - name: The APK carries the speech code for every processor
         working-directory: android
         run: bash check-apk.sh
