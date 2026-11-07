@@ -88,7 +88,11 @@ class ModelFileLoader(
                     download.pendingMegabytes()?.let { makeRoom(StorageSpaceGate.requiredMegabytes(it) * StorageSpaceGate.BYTES_PER_MEGABYTE) }
                 }
                 var shown = -1.0
-                download.download { fraction ->
+                download.download(checking = {
+                    job.ensureActive()
+                    if (stopped.get()) throw IOException("stopped: another model was chosen")
+                    progress(EnginePreparationProgress(EnginePreparationProgress.Stage.CheckingModel, detail = variant ?: file.name))
+                }) { fraction ->
                     job.ensureActive()
                     if (stopped.get()) throw IOException("stopped: another model was chosen")
                     if (ModelDownloadGate.decide(network(), cellularAllowed) == ModelDownloadGate.Decision.WaitForWiFi) {

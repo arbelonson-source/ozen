@@ -20,7 +20,7 @@ class PhoneModelDownloader(val file: File, val source: PhoneModelSource, private
         return if (left <= 0) null else ((left + 999_999) / 1_000_000).toInt()
     }
 
-    fun download(progress: (Double) -> Unit) {
+    fun download(checking: () -> Unit = {}, progress: (Double) -> Unit) {
         val lock = locks.computeIfAbsent(file.absolutePath) { ReentrantLock() }
         while (!lock.tryLock(WAIT_STEP_MILLIS, TimeUnit.MILLISECONDS)) progress(fraction(resumeFrom()))
         try {
@@ -28,13 +28,13 @@ class PhoneModelDownloader(val file: File, val source: PhoneModelSource, private
                 progress(1.0)
                 return
             }
-            fetch(progress)
+            fetch(checking, progress)
         } finally {
             lock.unlock()
         }
     }
 
-    private fun fetch(progress: (Double) -> Unit) {
+    private fun fetch(checking: () -> Unit, progress: (Double) -> Unit) {
         file.absoluteFile.parentFile?.mkdirs()
         val from = resumeFrom()
         if (from == 0L) part.delete()
@@ -46,6 +46,7 @@ class PhoneModelDownloader(val file: File, val source: PhoneModelSource, private
                 progress(fraction(done))
             }
         }
+        checking()
         if (part.length() != source.bytes || !fetcher.sha256(part).equals(source.sha256, ignoreCase = true)) {
             part.delete()
             throw ChecksumMismatch(file.name)

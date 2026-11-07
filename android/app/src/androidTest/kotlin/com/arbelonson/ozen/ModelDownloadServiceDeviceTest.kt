@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationManager
+import android.os.ParcelFileDescriptor
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -22,6 +23,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -137,5 +139,47 @@ class ModelDownloadServiceDeviceTest {
         } finally {
             app.settings.change { it.allowCellularModelDownload = cellularBefore }
         }
+    }
+
+    @Test
+    fun theCpuIsKeptAwakeOnlyWhileTheDownloadTransfersAndLetGoWhenItIsDone() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Speech model on the phone").performScrollTo()
+        compose.onNodeWithTag("phone-model-" + target.file).performScrollTo().performClick()
+        assertTrue("the download never began", started.await(10, TimeUnit.SECONDS))
+        compose.waitUntil(15_000) { ModelDownloadService.wakeLockHeld }
+        assertTrue(heldWakeLocks(), heldWakeLocks().contains("ozen:model-download"))
+        release.countDown()
+        compose.waitUntil(15_000) { app.settings.current.value.phoneModelFile == target.file }
+        compose.waitUntil(10_000) { !ModelDownloadService.wakeLockHeld }
+        assertFalse(heldWakeLocks(), heldWakeLocks().contains("ozen:model-download"))
+    }
+
+    @Test
+    fun theCpuLockIsLetGoWhileTheDownloadWaitsForWiFi() {
+        val cellularBefore = app.settings.current.value.allowCellularModelDownload
+        try {
+            app.settings.change { it.allowCellularModelDownload = false }
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Speech model on the phone").performScrollTo()
+            compose.onNodeWithTag("phone-model-" + target.file).performScrollTo().performClick()
+            assertTrue("the download never began", started.await(10, TimeUnit.SECONDS))
+            compose.waitUntil(15_000) { ModelDownloadService.wakeLockHeld }
+            app.captions.networkNow = { NetworkConditions.cellular }
+            release.countDown()
+            compose.waitUntil(10_000) { app.captions.phoneModels.switching.value is PhoneModelSwitch.WaitingForWiFi }
+            compose.waitUntil(10_000) { !ModelDownloadService.wakeLockHeld }
+            assertTrue("the service went while the download waited for Wi-Fi", ModelDownloadService.running)
+            assertFalse(heldWakeLocks(), heldWakeLocks().contains("ozen:model-download"))
+        } finally {
+            app.settings.change { it.allowCellularModelDownload = cellularBefore }
+        }
+    }
+
+    /** The wake locks held now; the report's log further down keeps released ones too. */
+    private fun heldWakeLocks(): String {
+        val output = instrumentation.uiAutomation.executeShellCommand("dumpsys power")
+        val report = ParcelFileDescriptor.AutoCloseInputStream(output).bufferedReader().use { it.readLines() }
+        return report.dropWhile { !it.startsWith("Wake Locks: size=") }.takeWhile { it.isNotBlank() }.joinToString("\n")
     }
 }

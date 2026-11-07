@@ -31,11 +31,13 @@ class ModelDownloadService : Service() {
     private val models get() = (application as OzenApplication).captions.phoneModels
     private val scope = MainScope()
     private var watching: Job? = null
+    private var wake: DownloadWakeLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         running = true
+        if (wake == null) wake = DownloadWakeLock.of(this)
         val shown = notification(this, models.switching.value)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, shown, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
@@ -56,6 +58,8 @@ class ModelDownloadService : Service() {
     private suspend fun watch() {
         var posted: PhoneModelSwitch? = null
         models.switching.collect { state ->
+            wake?.follow(state)
+            wakeLockHeld = wake?.held == true
             if (state.keepsServiceUp) {
                 if (state != posted) {
                     getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(this, state))
@@ -77,10 +81,14 @@ class ModelDownloadService : Service() {
     override fun onDestroy() {
         running = false
         scope.cancel()
+        wake?.release()
+        wakeLockHeld = false
         super.onDestroy()
     }
 
     private fun finish() {
+        wake?.release()
+        wakeLockHeld = false
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -92,6 +100,9 @@ class ModelDownloadService : Service() {
         private const val QUIET_MILLISECONDS = 1_000L
 
         @Volatile var running = false
+            private set
+
+        @Volatile var wakeLockHeld = false
             private set
 
         /** False when Android refuses to start it from here; the download then goes on without. */
@@ -119,7 +130,11 @@ class ModelDownloadService : Service() {
             when (state) {
                 is PhoneModelSwitch.Downloading -> {
                     val percent = (state.fraction * 100).toInt()
-                    builder.setContentText(tr("מורידים… %1%", "Downloading… %1%", listOf("$percent"))).setProgress(100, percent, false)
+                    if (state.checking) {
+                        builder.setContentText(tr("בודקים את הקובץ…", "Checking the file…")).setProgress(0, 0, true)
+                    } else {
+                        builder.setContentText(tr("מורידים… %1%", "Downloading… %1%", listOf("$percent"))).setProgress(100, percent, false)
+                    }
                 }
                 is PhoneModelSwitch.Retrying -> builder.setContentText(tr("ההורדה נעצרה. ננסה שוב אוטומטית.", "The download stopped. Trying again on its own."))
                 is PhoneModelSwitch.WaitingForWiFi -> builder.setContentText(tr("ממתינים ל־Wi‑Fi כדי להוריד. אפשר לאשר בהגדרות הורדה בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings."))
