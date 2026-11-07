@@ -46,6 +46,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -120,8 +121,11 @@ internal fun SayScreen(
     // the phrase editor when a turn of the phone rebuilds the screen.
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (!bigLetters && !editing) focus.requestFocus() }
-    // Opened again on an earlier draft: typing goes on after it.
+    // Opened again on an earlier draft: typing goes on after it. Text set
+    // from outside becomes the field's own, as on the big letters.
     var typing by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
+    val typed = typingValue(draft, typing)
+    SideEffect { typing = typed }
     if (bigLetters) {
         BigTextScreen(draft, onDraft, look, captionSize, canSpeak = canSay(draft), onSpeak = speakTyped, onClose = { bigLetters = false })
         return
@@ -135,7 +139,7 @@ internal fun SayScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedTextField(
-                    value = typingValue(draft, typing),
+                    value = typed,
                     onValueChange = {
                         typing = it
                         if (it.text != draft) onDraft(it.text)
