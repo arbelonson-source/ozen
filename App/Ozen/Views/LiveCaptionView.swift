@@ -937,7 +937,8 @@ struct LiveCaptionView: View {
         if viewModel.captionsAreRunning {
             return tr("כשמישהו ידבר, המילים יופיעו כאן בזמן אמת. לחיצה ארוכה על שורה מאפשרת לסמן אותה כחשובה או לתת שם לדובר, וצביטה בשתי אצבעות מגדילה או מקטינה את הטקסט.", "When someone talks, the words will appear here in real time. Press and hold a line to mark it as important or name the speaker, and pinch with two fingers to make the text bigger or smaller.")
         }
-        if case .preparingEngine = viewModel.phase {
+        // The home computer and the cloud only check support; no model on the phone.
+        if case .preparingEngine(let progress) = viewModel.phase, progress.stage != .checkingSupport, progress.stage != .requestingPermission {
             return tr("מודל הדיבור בהכנה. ההתקדמות מופיעה למטה, והכתוביות יתחילו מעצמן.", "The speech model is getting ready. The progress is shown below, and captions start on their own.")
         }
         return tr("אפשר לבחור מיקרופון בכפתור המיקרופון שבתחתית המסך, ולהחליף את מנוע התמלול בהגדרות.", "You can choose a microphone with the microphone button at the bottom, and change the transcription engine in Settings.")

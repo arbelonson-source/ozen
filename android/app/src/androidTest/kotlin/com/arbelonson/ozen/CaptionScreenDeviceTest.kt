@@ -2255,6 +2255,10 @@ class CaptionScreenDeviceTest {
         show(PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel, detail = "small")))
         compose.onNodeWithText(ready).assertExists()
 
+        // The home computer and the cloud get ready without a model on the phone.
+        show(PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.CheckingSupport)))
+        compose.onNodeWithText(ready).assertDoesNotExist()
+
         show(PipelinePhase.Idle)
         compose.onNodeWithText(ready).assertDoesNotExist()
         compose.onNodeWithText(hint, substring = true).assertExists()
