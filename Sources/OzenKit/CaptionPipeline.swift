@@ -1210,6 +1210,10 @@ public final class CaptionPipeline {
         await currentEngine?.fitPassMeasurement()
     }
 
+    public func engineLowPowerFitPassMeasurement() async -> LivePassMeasurement? {
+        await currentEngine?.lowPowerFitPassMeasurement()
+    }
+
     private func logEvent(_ kind: PipelineEvent.Kind) {
         let count = eventLog.events.count
         let last = eventLog.events.last

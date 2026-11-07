@@ -1542,6 +1542,7 @@ public final class LiveCaptionViewModel {
         let selected = settings.whisperModelVariant
         let counted = await pipeline.engineFitPassMeasurement()
         let live = await pipeline.engineLivePassMeasurement()
+        let lowPowerCounted = await pipeline.engineLowPowerFitPassMeasurement()
         // The model was changed while the engine was being asked: the
         // change's own restart measures the new one.
         guard settings.whisperModelVariant == selected else { return }
@@ -1549,7 +1550,8 @@ public final class LiveCaptionViewModel {
             saved: DeviceModelAdvisor.timingToKeep(from: settings.deviceModelCheck, onDevice: DeviceModelTable.currentDeviceName),
             counted: counted,
             live: live,
-            selected: selected
+            selected: selected,
+            lowPowerCounted: lowPowerCounted
         )
         settings.deviceModelCheck = DeviceModelTable.check(measurement: measurement)
         persist()
@@ -1559,13 +1561,15 @@ public final class LiveCaptionViewModel {
     /// check once there are enough of them, so Settings and the lighter-model
     /// offer follow real use and not only "Test this phone".
     public func saveFitMeasurementIfReady() async {
-        guard let live = await pipeline.engineFitPassMeasurement(),
-              ModelFitWatch.shouldSave(passes: live.passes),
-              live.variant == settings.whisperModelVariant
+        let selected = settings.whisperModelVariant
+        let counted = await pipeline.engineFitPassMeasurement()
+        let lowPowerCounted = await pipeline.engineLowPowerFitPassMeasurement()
+        guard settings.whisperModelVariant == selected else { return }
+        let saved = DeviceModelAdvisor.timingToKeep(from: settings.deviceModelCheck, onDevice: DeviceModelTable.currentDeviceName)
+        guard let keep = ModelFitWatch.measurementToKeep(saved: saved, counted: counted, live: nil, selected: selected, lowPowerCounted: lowPowerCounted),
+              keep != saved
         else { return }
-        let device = DeviceModelTable.currentDeviceName
-        if let saved = DeviceModelAdvisor.timingToKeep(from: settings.deviceModelCheck, onDevice: device), saved == live { return }
-        settings.deviceModelCheck = DeviceModelTable.check(measurement: live)
+        settings.deviceModelCheck = DeviceModelTable.check(measurement: keep)
         persist()
     }
 

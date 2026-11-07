@@ -267,6 +267,10 @@ public protocol TranscriptionEngine: Sendable {
     /// suits the phone (`ModelFitWatch.counts`): none taken hot or in Low
     /// Power Mode.
     func fitPassMeasurement() async -> LivePassMeasurement?
+
+    /// The same for passes made with Low Power Mode on throughout, for
+    /// phones that stay in it; the measurement says `lowPower`.
+    func lowPowerFitPassMeasurement() async -> LivePassMeasurement?
 }
 
 public extension TranscriptionEngine {
@@ -277,6 +281,8 @@ public extension TranscriptionEngine {
     func livePassMeasurement() async -> LivePassMeasurement? { nil }
 
     func fitPassMeasurement() async -> LivePassMeasurement? { nil }
+
+    func lowPowerFitPassMeasurement() async -> LivePassMeasurement? { nil }
 
     func pendingDownloadMegabytes() async -> Int? { nil }
 

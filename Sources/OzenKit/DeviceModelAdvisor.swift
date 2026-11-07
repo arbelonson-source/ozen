@@ -11,12 +11,34 @@ public struct LivePassMeasurement: Codable, Equatable, Sendable {
     public var averageSeconds: Double
     public var passes: Int
     public var fitEligible: Bool?
+    public var lowPower: Bool = false
 
-    public init(variant: String, averageSeconds: Double, passes: Int, fitEligible: Bool? = nil) {
+    private enum CodingKeys: String, CodingKey { case variant, averageSeconds, passes, fitEligible, lowPower }
+
+    public init(variant: String, averageSeconds: Double, passes: Int, fitEligible: Bool? = nil, lowPower: Bool = false) {
         self.variant = variant
         self.averageSeconds = averageSeconds
         self.passes = passes
         self.fitEligible = fitEligible
+        self.lowPower = lowPower
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        variant = try container.decode(String.self, forKey: .variant)
+        averageSeconds = try container.decode(Double.self, forKey: .averageSeconds)
+        passes = try container.decode(Int.self, forKey: .passes)
+        fitEligible = try container.decodeIfPresent(Bool.self, forKey: .fitEligible)
+        lowPower = (try? container.decodeIfPresent(Bool.self, forKey: .lowPower)) ?? false
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(variant, forKey: .variant)
+        try container.encode(averageSeconds, forKey: .averageSeconds)
+        try container.encode(passes, forKey: .passes)
+        try container.encodeIfPresent(fitEligible, forKey: .fitEligible)
+        if lowPower { try container.encode(true, forKey: .lowPower) }
     }
 }
 
