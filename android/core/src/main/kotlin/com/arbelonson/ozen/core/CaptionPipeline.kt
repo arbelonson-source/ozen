@@ -17,7 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.isActive
@@ -825,10 +825,7 @@ class CaptionPipeline(
         fanOut = fan
         val tokens = engine.stream(settings.languageCode, fan.outputs[0])
         val embedderAudio = fan.outputs[1]
-        // Sound alerts switched off give the classifier nothing to hear: it
-        // ran twice a second all through the captions for nothing but the
-        // near-miss count, and never loads its model until they are on.
-        val soundObservations = soundDetector?.observations(fan.outputs[2].filter { soundPolicy.preferences.isEnabled })
+        val soundObservations = soundDetector?.let { it.observations(whileSoundAlertsAreOn(fan.outputs[2], it.windowSamples)) }
 
         statsData.sessionStartedAt = now()
         listeningStartedAt = statsData.sessionStartedAt
@@ -2617,6 +2614,21 @@ class CaptionPipeline(
     }
 
     /**
+     * Sound alerts switched off give the classifier nothing to hear: it ran
+     * twice a second all through the captions for nothing but the near-miss
+     * count, and never loads its model until they are on. The switch is read
+     * for every chunk. The classifier hears in overlapping windows, so after
+     * a gap a window of silence goes first ([SoundAlertGate]): one window
+     * would otherwise join sound from before the switch went off to sound
+     * from after it came back on, and could be heard as a sound that never
+     * happened.
+     */
+    private fun whileSoundAlertsAreOn(audio: Flow<FloatArray>, windowSamples: Int): Flow<FloatArray> = flow {
+        val gate = SoundAlertGate(windowSamples)
+        audio.collect { chunk -> gate.pass(chunk, soundPolicy.preferences.isEnabled).forEach { emit(it) } }
+    }
+
+    /**
      * Captions stopped because their engine can't run for now (the home
      * computer asleep, the cloud down, a model download being retried)
      * used to take sound alerts down with them: the microphone stayed off
@@ -2636,7 +2648,7 @@ class CaptionPipeline(
         fanOut = fan
         isListeningForSoundsOnly = true
         statsData.soundDetectionRunning = true
-        val observations = detector.observations(fan.outputs[0].filter { soundPolicy.preferences.isEnabled })
+        val observations = detector.observations(whileSoundAlertsAreOn(fan.outputs[0], detector.windowSamples))
         soundTask = scope.launch {
             observations.takeWhile { runID == run }.collect { observation ->
                 handleSoundObservation(observation)
