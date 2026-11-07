@@ -511,7 +511,9 @@ class CaptionPipelineAlertTest {
 
         pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
         audio.push(chunk())
-        assertTrue(eventually { detector.chunksSeen == 1 })
+        assertTrue(eventually { detector.chunksSeen == 2 })
+        assertEquals(0, detector.heard[0].size)
+        assertEquals(chunk().toList(), detector.heard[1].toList())
     }
 
     @Test

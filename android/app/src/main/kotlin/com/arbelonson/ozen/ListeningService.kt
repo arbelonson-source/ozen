@@ -43,21 +43,37 @@ class ListeningService : Service() {
             finish()
             return START_NOT_STICKY
         }
+        if (intent == null && !captions.resumeAfterRestart()) {
+            finish()
+            return START_NOT_STICKY
+        }
         val content = content()
         val public = onLockScreen()
         val sharing = intent?.action == ACTION_PHONE_SOUND
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // The sharing type goes up first: Android 14 refuses to hand out
-            // the projection to a service that is not yet of that type.
-            val types = if (sharing || captions.phoneSoundOn) MICROPHONE_AND_SHARING else ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            startForeground(NOTIFICATION_ID, notification(this, content, public), types)
-        } else {
-            startForeground(NOTIFICATION_ID, notification(this, content, public))
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // The sharing type goes up first: Android 14 refuses to hand out
+                // the projection to a service that is not yet of that type.
+                val types = if (sharing || captions.phoneSoundOn) MICROPHONE_AND_SHARING else ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                startForeground(NOTIFICATION_ID, notification(this, content, public), types)
+            } else {
+                startForeground(NOTIFICATION_ID, notification(this, content, public))
+            }
+        } catch (error: SecurityException) {
+            return foregroundRefused(error)
+        } catch (error: IllegalStateException) {
+            return foregroundRefused(error)
         }
         if (sharing) takePhoneSound(intent)
         drawn(content, public)
         captions.listen()
         if (watching == null) watching = scope.launch { watch() }
+        return START_STICKY
+    }
+
+    private fun foregroundRefused(error: Exception): Int {
+        captions.foregroundRefused(error)
+        stopSelf()
         return START_NOT_STICKY
     }
 
