@@ -23,8 +23,9 @@ import kotlinx.coroutines.launch
  * Keeps the app going while a speech model chosen in Settings downloads. Out
  * of sight, Android freezes the app and cuts its network, so a model of a few
  * hundred megabytes stalled as soon as the person left Settings. A notification
- * is what asks Android not to; it goes when the download is over, given up
- * on, or waiting for its next try is over.
+ * is what asks Android not to; it goes when the download is over or given
+ * up on, and stays while it waits for its next try, for Wi-Fi, or for a
+ * connection.
  */
 class ModelDownloadService : Service() {
     private val models get() = (application as OzenApplication).captions.phoneModels
@@ -121,6 +122,8 @@ class ModelDownloadService : Service() {
                     builder.setContentText(tr("מורידים… %1%", "Downloading… %1%", listOf("$percent"))).setProgress(100, percent, false)
                 }
                 is PhoneModelSwitch.Retrying -> builder.setContentText(tr("ההורדה נעצרה. ננסה שוב אוטומטית.", "The download stopped. Trying again on its own."))
+                is PhoneModelSwitch.WaitingForWiFi -> builder.setContentText(tr("ממתינים ל־Wi‑Fi כדי להוריד. אפשר לאשר בהגדרות הורדה בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings."))
+                is PhoneModelSwitch.Offline -> builder.setContentText(tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד.", "There is no internet connection to download it."))
                 else -> Unit
             }
             return builder.build()
@@ -129,10 +132,16 @@ class ModelDownloadService : Service() {
         private fun PhoneModelSwitch.modelName(): String? = when (this) {
             is PhoneModelSwitch.Downloading -> file
             is PhoneModelSwitch.Retrying -> file
+            is PhoneModelSwitch.WaitingForWiFi -> file
+            is PhoneModelSwitch.Offline -> file
             else -> null
         }?.let { file -> PhoneModelCatalog.byFile(file)?.displayName }
     }
 }
 
+// A download that lost Wi-Fi or the connection on the way waits with the
+// service still up: the network callback that resumes it only reaches a
+// process Android hasn't frozen or ended.
 private val PhoneModelSwitch.keepsServiceUp: Boolean
-    get() = this is PhoneModelSwitch.Downloading || this is PhoneModelSwitch.Retrying
+    get() = this is PhoneModelSwitch.Downloading || this is PhoneModelSwitch.Retrying ||
+        this is PhoneModelSwitch.WaitingForWiFi || this is PhoneModelSwitch.Offline

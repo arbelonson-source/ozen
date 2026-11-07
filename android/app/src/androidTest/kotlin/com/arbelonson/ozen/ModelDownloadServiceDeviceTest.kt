@@ -13,6 +13,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneModelCatalog
+import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.ReleaseFileFetching
 import java.io.File
 import java.io.RandomAccessFile
@@ -111,5 +112,30 @@ class ModelDownloadServiceDeviceTest {
         release.countDown()
         compose.waitUntil(15_000) { app.settings.current.value.phoneModelFile == target.file }
         compose.waitUntil(10_000) { !ModelDownloadService.running && shown() == null && !runningInTheForeground() }
+    }
+
+    @Test
+    fun aDownloadThatLosesWiFiKeepsTheServiceUpAndFinishesWhenWiFiIsBack() {
+        val cellularBefore = app.settings.current.value.allowCellularModelDownload
+        try {
+            app.settings.change { it.allowCellularModelDownload = false }
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Speech model on the phone").performScrollTo()
+            compose.onNodeWithTag("phone-model-" + target.file).performScrollTo().performClick()
+            assertTrue("the download never began", started.await(10, TimeUnit.SECONDS))
+            app.captions.networkNow = { NetworkConditions.cellular }
+            release.countDown()
+            compose.waitUntil(10_000) { app.captions.phoneModels.switching.value is PhoneModelSwitch.WaitingForWiFi }
+            Thread.sleep(3_000)
+            assertTrue("the service went while the download waited for Wi-Fi", ModelDownloadService.running)
+            compose.waitUntil(15_000) { runningInTheForeground() && shown()?.extras?.getCharSequence(Notification.EXTRA_TEXT)?.startsWith("Waiting for Wi") == true }
+
+            app.captions.networkNow = { NetworkConditions.wifi }
+            compose.runOnUiThread { app.captions.phoneModels.resumeWaiting() }
+            compose.waitUntil(15_000) { app.settings.current.value.phoneModelFile == target.file }
+            compose.waitUntil(10_000) { !ModelDownloadService.running && shown() == null && !runningInTheForeground() }
+        } finally {
+            app.settings.change { it.allowCellularModelDownload = cellularBefore }
+        }
     }
 }
