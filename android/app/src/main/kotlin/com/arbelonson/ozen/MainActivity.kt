@@ -93,6 +93,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.neverEqualPolicy
 import androidx.core.content.IntentCompat
 import com.arbelonson.ozen.core.ByteSize
+import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelSwitch
@@ -1072,6 +1073,11 @@ private fun CaptionScreen(
                                         "כשמישהו ידבר, המילים יופיעו כאן בזמן אמת. לחיצה ארוכה על שורה מאפשרת לסמן אותה כחשובה או לתת שם לדובר, וצביטה בשתי אצבעות מגדילה או מקטינה את הטקסט.",
                                         "When someone talks, the words will appear here in real time. Press and hold a line to mark it as important or name the speaker, and pinch with two fingers to make the text bigger or smaller.",
                                     )
+                                } else if (state.phase.modelGettingReady()) {
+                                    // A first model can take minutes to download; the
+                                    // hint about the microphone read as "ready, nobody
+                                    // talking yet" while the status below said otherwise.
+                                    tr("מודל הדיבור בהכנה. ההתקדמות מופיעה למטה, והכתוביות יתחילו מעצמן.", "The speech model is getting ready. The progress is shown below, and captions start on their own.")
                                 } else {
                                     tr("אפשר לבחור מיקרופון בכפתור המיקרופון שבתחתית המסך, ולהחליף את מנוע התמלול בהגדרות.", "You can choose a microphone with the microphone button at the bottom, and change the transcription engine in Settings.")
                                 },
@@ -1312,6 +1318,12 @@ private fun CaptionLines(
         }
         if (trailing != null) item(key = "model-fit-offer") { trailing() }
     }
+}
+
+/** A speech model on the phone downloading, checking, loading or warming up; the home computer and the cloud only check support. */
+private fun PipelinePhase.modelGettingReady(): Boolean {
+    val stage = (this as? PipelinePhase.PreparingEngine)?.progress?.stage ?: return false
+    return stage != EnginePreparationProgress.Stage.CheckingSupport && stage != EnginePreparationProgress.Stage.RequestingPermission
 }
 
 /** Where the screen's own following last left the list, and how many of its moves are under way. */
