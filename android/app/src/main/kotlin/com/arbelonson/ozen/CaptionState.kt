@@ -89,6 +89,8 @@ data class CaptionScreenState(
     val selectedInput: AudioInputDescriptor? = null,
     /** A microphone placed near the talker came out while captions were on; see `MicrophoneDropNotice`. */
     val dropped: AudioInputDescriptor? = null,
+    /** The system ended the sharing of the phone's own sound and the microphone is back; said until she puts it away. */
+    val phoneSoundStopped: Boolean = false,
     /** A conversation still going moments before the app last closed, offered on the empty screen; see `RecentConversation`. */
     val recentConversation: TranscriptSessionSummary? = null,
     /**
@@ -305,6 +307,10 @@ object CaptionState {
     /** The phone started or stopped saying something for her: the caption screen's Say button stops it meanwhile. */
     fun speaking(on: Boolean) {
         state.value = state.value.copy(speaking = on)
+    }
+
+    fun phoneSoundStopped(show: Boolean) {
+        state.value = state.value.copy(phoneSoundStopped = show)
     }
 
     fun battery(warning: BatteryWarning?) {

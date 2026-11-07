@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
+import android.media.projection.MediaProjection
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Debug
@@ -46,6 +47,7 @@ import com.arbelonson.ozen.core.ModelFitWatch
 import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelDownloader
+import com.arbelonson.ozen.core.PhoneSound
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ProblemAudioStore
 import com.arbelonson.ozen.core.ProblemSnapshot
@@ -428,6 +430,7 @@ class CaptionSession(
     }
 
     init {
+        (audio as? AndroidAudioCapture)?.onPhoneSoundStopped = { CaptionState.phoneSoundStopped(true) }
         (audio as? AndroidAudioCapture)?.onInterruption = { active ->
             interruptedBySystem = active
             if (active) replies.callChanged(began = true)
@@ -733,9 +736,30 @@ class CaptionSession(
      */
     fun selectInput(uid: String): Boolean {
         val switched = pipeline.selectInput(uid)
-        settings.change { it.preferredInputUID = uid }
+        if (!PhoneSound.isPhoneSound(uid)) settings.change { it.preferredInputUID = uid }
+        if (switched) CaptionState.phoneSoundStopped(false)
         return switched
     }
+
+    /** True while the phone's own sound is what the captions hear. */
+    val phoneSoundOn: Boolean get() = pipeline.selectedInputUID == PhoneSound.UID
+
+    /** The system's sharing was agreed to: [projection] lets the captions hear the phone's own sound. */
+    fun usePhoneSound(projection: MediaProjection) {
+        val capture = audio as? AndroidAudioCapture ?: return projection.stop()
+        CaptionState.phoneSoundStopped(false)
+        capture.startPhoneSound(projection)
+    }
+
+    /** Android would not hand the sharing over: the microphone stays, and the screen says so as a stop does. */
+    fun phoneSoundRefused() = CaptionState.phoneSoundStopped(true)
+
+    /** The captions stopped or the app is closing: back to the microphone, nothing said. */
+    fun endPhoneSound() {
+        (audio as? AndroidAudioCapture)?.endPhoneSound()
+    }
+
+    fun dismissPhoneSoundStopped() = CaptionState.phoneSoundStopped(false)
 
     /** Asks the phone again which microphones there are: "I just plugged it in". */
     fun refreshInputs() = pipeline.refreshInputs()

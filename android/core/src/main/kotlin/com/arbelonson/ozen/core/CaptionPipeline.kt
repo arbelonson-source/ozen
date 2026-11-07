@@ -1336,8 +1336,12 @@ class CaptionPipeline(
      * in use afterwards: the system can refuse it, or settle on another.
      */
     fun selectInput(uid: String): Boolean {
-        settingsInUse?.preferredInputUID = uid
-        coveredSettings?.preferredInputUID = uid
+        // Phone sound is never the saved choice: a consent dialog at every
+        // launch would be wrong, and the next start uses the microphone.
+        if (!PhoneSound.isPhoneSound(uid)) {
+            settingsInUse?.preferredInputUID = uid
+            coveredSettings?.preferredInputUID = uid
+        }
         try {
             audio.selectInput(uid)
             statsData.inputChanges += 1

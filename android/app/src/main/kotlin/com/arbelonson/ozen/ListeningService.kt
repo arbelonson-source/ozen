@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
 import com.arbelonson.ozen.core.LockScreenCaptionContent
@@ -43,18 +44,36 @@ class ListeningService : Service() {
         }
         val content = content()
         val public = onLockScreen()
+        val sharing = intent?.action == ACTION_PHONE_SOUND
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification(this, content, public), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            // The sharing type goes up first: Android 14 refuses to hand out
+            // the projection to a service that is not yet of that type.
+            val types = if (sharing || captions.phoneSoundOn) MICROPHONE_AND_SHARING else ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            startForeground(NOTIFICATION_ID, notification(this, content, public), types)
         } else {
             startForeground(NOTIFICATION_ID, notification(this, content, public))
         }
+        if (sharing) takePhoneSound(intent)
         drawn(content, public)
         captions.listen()
         if (watching == null) watching = scope.launch { watch() }
         return START_NOT_STICKY
     }
 
+    private fun takePhoneSound(intent: Intent?) {
+        val data = intent?.let { if (Build.VERSION.SDK_INT >= 33) it.getParcelableExtra(EXTRA_CONSENT, Intent::class.java) else @Suppress("DEPRECATION") it.getParcelableExtra(EXTRA_CONSENT) }
+        val code = intent?.getIntExtra(EXTRA_RESULT_CODE, 0) ?: 0
+        if (data == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        try {
+            val projection = getSystemService(MediaProjectionManager::class.java).getMediaProjection(code, data)
+            if (projection != null) captions.usePhoneSound(projection) else captions.phoneSoundRefused()
+        } catch (error: SecurityException) {
+            captions.phoneSoundRefused()
+        }
+    }
+
     override fun onDestroy() {
+        captions.endPhoneSound()
         showingOnLockScreen = false
         scope.cancel()
         val phase = captions.pipeline.phase
@@ -143,9 +162,18 @@ class ListeningService : Service() {
         const val CHANNEL_ID = "listening"
         private const val NOTIFICATION_ID = 1
         internal const val ACTION_PAUSE = "com.arbelonson.ozen.PAUSE"
+        internal const val ACTION_PHONE_SOUND = "com.arbelonson.ozen.PHONE_SOUND"
+        private const val EXTRA_RESULT_CODE = "resultCode"
+        private const val EXTRA_CONSENT = "consent"
+        private const val MICROPHONE_AND_SHARING = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
         private const val KEEP_ALIVE_MILLISECONDS = 30_000L
 
         fun start(context: Context) = context.startForegroundService(Intent(context, ListeningService::class.java))
+
+        /** She agreed in the system's sharing dialog: [consent] is its answer, used once to hear the phone's own sound. */
+        fun startPhoneSound(context: Context, resultCode: Int, consent: Intent) = context.startForegroundService(
+            Intent(context, ListeningService::class.java).setAction(ACTION_PHONE_SOUND).putExtra(EXTRA_RESULT_CODE, resultCode).putExtra(EXTRA_CONSENT, consent),
+        )
 
         /** Its notification is up with the captions on the lock screen, for the diagnostics report. */
         @Volatile var showingOnLockScreen = false

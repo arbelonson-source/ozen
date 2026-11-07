@@ -1,10 +1,12 @@
 package com.arbelonson.ozen
 
 import android.Manifest
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -13,6 +15,7 @@ import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -93,6 +96,7 @@ import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelSwitch
+import com.arbelonson.ozen.core.PhoneSound
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SharedRecordingLink
 import com.arbelonson.ozen.ui.IconBadge
@@ -411,6 +415,12 @@ private fun OzenApp(
     var reading by rememberSaveable { mutableStateOf<Pair<UUID, UUID?>?>(null) }
     var saying by rememberSaveable { mutableStateOf(false) }
     var choosingMicrophone by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    // Cancelled changes nothing: the microphone stays.
+    val sharingAnswer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { answer ->
+        val consent = answer.data
+        if (answer.resultCode == Activity.RESULT_OK && consent != null) ListeningService.startPhoneSound(context, answer.resultCode, consent)
+    }
     var namingAlert by rememberSaveable { mutableStateOf(false) }
     val modelSwitch by app.captions.phoneModels.switching.collectAsStateWithLifecycle()
     var comebacks by remember { mutableIntStateOf(0) }
@@ -521,7 +531,14 @@ private fun OzenApp(
                             selected = state.selectedInput,
                             listening = state.phase.isListening,
                             level = { app.captions.pipeline.inputLevel },
-                            onChoose = { app.captions.selectInput(it.uid) },
+                            onChoose = {
+                                if (!PhoneSound.isPhoneSound(it.uid)) {
+                                    app.captions.selectInput(it.uid)
+                                } else {
+                                    if (state.selectedInput?.uid != it.uid) sharingAnswer.launch(context.getSystemService(MediaProjectionManager::class.java).createScreenCaptureIntent())
+                                    true
+                                }
+                            },
                             onRefresh = app.captions::refreshInputs,
                             onClose = { choosingMicrophone = false },
                         )
@@ -581,6 +598,7 @@ private fun OzenApp(
                                 onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
                                 onDismissSavingTrouble = app.captions::dismissSavingTrouble,
                                 onDismissMicrophoneDrop = app.captions::dismissMicrophoneDrop,
+                                onDismissPhoneSoundStopped = app.captions::dismissPhoneSoundStopped,
                                 onMarkProblem = app.captions::markProblem,
                                 savesConversations = current.saveHistory,
                                 onMicrophone = { choosingMicrophone = true },
@@ -743,6 +761,7 @@ private fun CaptionScreen(
     onSay: () -> Unit,
     onDismissSavingTrouble: () -> Unit,
     onDismissMicrophoneDrop: () -> Unit,
+    onDismissPhoneSoundStopped: () -> Unit,
     onMarkProblem: () -> Boolean,
     savesConversations: Boolean,
     onMicrophone: () -> Unit,
@@ -960,6 +979,7 @@ private fun CaptionScreen(
                             onDismiss = onDismissMicrophoneDrop,
                         )
                     }
+                    ArrivingBanner(Unit.takeIf { state.phoneSoundStopped }) { PhoneSoundStoppedBanner(onDismissPhoneSoundStopped) }
                     ArrivingBanner(state.battery) { BatteryBanner(it, onDismissBattery) }
                 }
                 Box(
@@ -1589,6 +1609,18 @@ private fun SavingTroubleBanner(onDismiss: () -> Unit) {
         NoticeTone.Warning,
         SavingTroubleNotice.title,
         SavingTroubleNotice.detail,
+        Modifier.clickable(onClickLabel = tr("סגירה", "Close"), onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
+    ) { Icon(Icons.Rounded.Close, contentDescription = null) }
+}
+
+/** The system ended the sharing of the phone's sound; the microphone is back, and a tap puts this away. */
+@Composable
+private fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
+    NoticeBanner(
+        Icons.Rounded.MicOff,
+        NoticeTone.Warning,
+        tr("ההאזנה לקול מהטלפון הופסקה. חזרה למיקרופון.", "Stopped listening to the phone's sound. Back to the microphone."),
+        "",
         Modifier.clickable(onClickLabel = tr("סגירה", "Close"), onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
     ) { Icon(Icons.Rounded.Close, contentDescription = null) }
 }
