@@ -68,6 +68,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
@@ -98,6 +99,7 @@ import com.arbelonson.ozen.ui.OzenSpacing
 import com.arbelonson.ozen.ui.PrimaryButton
 import com.arbelonson.ozen.ui.SettingsGroup
 import com.arbelonson.ozen.ui.TonalButton
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 /**
@@ -145,11 +147,21 @@ internal fun OnboardingScreen(
     LaunchedEffect(pager) {
         snapshotFlow { pager.currentPage }.collect { if (it != NAME_PAGE) addDraft() }
     }
+    // As on the iPhone, a screen reader hears which page a turn landed on:
+    // the focus stays on Next, so nothing else says the page changed.
+    val context = LocalContext.current
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.settledPage }.drop(1).collect { page ->
+            if (ScreenReader.isOn(context)) {
+                ScreenReader.announce(context, tr("עמוד %1 מתוך %2: %3", "Page %1 of %2: %3", listOf("${page + 1}", "$PAGES", pageTitle(page))))
+            }
+        }
+    }
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
                 when (page) {
-                    0 -> Page(Icons.Rounded.Hearing, tr("אוזן", "Ozen")) {
+                    0 -> Page(Icons.Rounded.Hearing, pageTitle(0)) {
                         Body(tr("כתוביות בזמן אמת לכל שיחה.", "Live captions for conversation."))
                         Body(tr("מה שאומרים לידכם מופיע על המסך באותיות גדולות, תוך כדי הדיבור.", "What’s said near you appears on the screen, in large letters, as it’s spoken."))
                         if (settings.engine == TranscriptionEngineKind.HomeServer) {
@@ -158,7 +170,7 @@ internal fun OnboardingScreen(
                             Body(tr("כברירת מחדל, הכול קורה בתוך הטלפון.", "By default it all happens on the phone."))
                         }
                     }
-                    1 -> Page(Icons.Rounded.Forum, tr("איך זה עובד", "How it works")) {
+                    1 -> Page(Icons.Rounded.Forum, pageTitle(1)) {
                         SettingsGroup(dividerInset = 72.dp) {
                             item { Point(Icons.Rounded.Mic, tr("מניחים את הטלפון על השולחן, והכתוביות מופיעות מעצמן.", "Set the phone on the table, and the captions run on their own.")) }
                             item { Point(Icons.Rounded.Groups, tr("האפליקציה מבדילה בין דוברים ויכולה ללמוד את השמות שלהם.", "The app tells speakers apart and can learn their names.")) }
@@ -170,7 +182,7 @@ internal fun OnboardingScreen(
                     MODEL_PAGE -> ModelPage(settings, phoneModels)
                     4 -> MicrophonePage(settings, microphone, notifications, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
                     NAME_PAGE -> NamePage(settings, nameDraft, addDraft, onAddAlert)
-                    else -> Page(Icons.Rounded.CheckCircle, tr("הכול מוכן", "Ready")) {
+                    else -> Page(Icons.Rounded.CheckCircle, pageTitle(PAGES - 1)) {
                         if (settings.engine.firstRunNote == FirstRunNote.ModelDownload) {
                             val model = settings.phoneModel
                             Body(tr("בהפעלה הראשונה אוזן תוריד את מודל הדיבור: %1, %2. זה לוקח כמה דקות, וההתקדמות מוצגת על המסך. בפעמים הבאות הכתוביות יתחילו מיד.", "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that — instantly.", listOf(model.displayName, ByteSize.text(model.bytes))))
@@ -200,7 +212,7 @@ private fun MicrophonePage(
     onApproveNotifications: () -> Unit,
     onOpenPhoneSettings: () -> Unit,
 ) {
-    Page(Icons.Rounded.Mic, tr("המיקרופון", "The microphone")) {
+    Page(Icons.Rounded.Mic, pageTitle(4)) {
         Body(tr("כדי להציג כתוביות לשיחה, אוזן צריכה להאזין דרך המיקרופון.", "To caption the conversation, Ozen needs to listen through the microphone."))
         if (!settings.audioLeavesPhone) {
             Body(tr("הקול לא יוצא מהטלפון, ולא נשמר אלא אם מסמנים בעיה.", "The sound doesn’t leave the phone, and it isn’t kept unless you mark a problem."))
@@ -232,7 +244,7 @@ private fun MicrophonePage(
  */
 @Composable
 private fun NamePage(settings: AppSettings, draft: MutableState<String>, addDraft: () -> Unit, onAddAlert: (String) -> Unit) {
-    Page(Icons.Rounded.NotificationsActive, tr("כשקוראים לכם", "When you’re called")) {
+    Page(Icons.Rounded.NotificationsActive, pageTitle(NAME_PAGE)) {
         Body(tr("כשמישהו אומר את השם שלכם, הטלפון רוטט והשורה מסומנת, גם כשלא מסתכלים על המסך.", "When someone says your name, the phone vibrates and the line is highlighted, even when no one is looking at the screen."))
         NameAlertForm(settings, draft, addDraft, onAddAlert)
         Text(
@@ -308,7 +320,7 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
 @Composable
 private fun ModelPage(settings: AppSettings, models: PhoneModels) {
     LaunchedEffect(Unit) { if (settings.phoneSpeed == null) models.runCheck(thenChooseBest = true) }
-    Page(Icons.Rounded.Speed, tr("מודל הדיבור", "The speech model")) {
+    Page(Icons.Rounded.Speed, pageTitle(MODEL_PAGE)) {
         Body(tr("אוזן כותבת את הכתוביות בעזרת מודל שפועל בתוך הטלפון. היא בודקת כמה הטלפון הזה מהיר ובוחרת מודל שמתאים לו. אפשר לבחור מודל אחר.", "Ozen writes the captions with a model that runs inside the phone. It tests how fast this phone is and chooses a model that suits it. You can pick another."))
         PhoneModelPicker(settings, models, chooseBestAfterTest = true)
         Body(tr("אם מדלגים, המודל שנבחר נשאר. אפשר לשנות אותו בכל רגע בהגדרות.", "Skipping keeps the chosen model. You can change it anytime in Settings."))
@@ -318,7 +330,7 @@ private fun ModelPage(settings: AppSettings, models: PhoneModels) {
 /** Before the microphone, as before the iPhone's engine page; Hebrew until she picks another. */
 @Composable
 private fun LanguagePage(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
-    Page(Icons.Rounded.Translate, tr("באיזו שפה מדברים סביבכם?", "Which language do people around you speak?")) {
+    Page(Icons.Rounded.Translate, pageTitle(2)) {
         SettingsGroup(modifier = Modifier.selectableGroup()) {
             for (language in UILanguage.entries) {
                 item {
@@ -501,6 +513,16 @@ private fun SideBySideOrStacked(gap: Dp, start: @Composable () -> Unit, end: @Co
             }
         }
     }
+}
+
+private fun pageTitle(page: Int): String = when (page) {
+    0 -> tr("אוזן", "Ozen")
+    1 -> tr("איך זה עובד", "How it works")
+    2 -> tr("באיזו שפה מדברים סביבכם?", "Which language do people around you speak?")
+    MODEL_PAGE -> tr("מודל הדיבור", "The speech model")
+    4 -> tr("המיקרופון", "The microphone")
+    NAME_PAGE -> tr("כשקוראים לכם", "When you’re called")
+    else -> tr("הכול מוכן", "Ready")
 }
 
 private const val PAGES = 7
