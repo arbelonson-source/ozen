@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.SettingsInputAntenna
 import androidx.compose.material.icons.rounded.Hearing
 import androidx.compose.material.icons.rounded.Headset
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.MicOff
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Usb
@@ -38,6 +39,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
+import com.arbelonson.ozen.core.PhoneSound
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.EmptyState
 import com.arbelonson.ozen.ui.SettingsGroup
@@ -87,7 +89,7 @@ internal fun MicPickerScreen(
             SettingsGroup(modifier = Modifier.selectableGroup(), dividerInset = 56.dp) {
                 for (input in inputs) {
                     item {
-                        ChoiceRow(input.portName, inputTypeName(input.portType), selected = input.uid == selected?.uid, icon = inputIcon(input.portType)) {
+                        ChoiceRow(input.portName, inputSummary(input), selected = input.uid == selected?.uid, icon = inputIcon(input)) {
                             refused = if (onChoose(input)) null else input.portName
                         }
                     }
@@ -172,6 +174,11 @@ internal fun LevelMeter(level: () -> Float, active: Boolean) {
         },
     )
 }
+
+private fun inputSummary(input: AudioInputDescriptor): String =
+    if (PhoneSound.isPhoneSound(input.uid)) PhoneSound.summary else inputTypeName(input.portType)
+
+private fun inputIcon(input: AudioInputDescriptor): ImageVector = if (PhoneSound.isPhoneSound(input.uid)) Icons.Rounded.PhoneAndroid else inputIcon(input.portType)
 
 private fun inputIcon(type: AudioPortType): ImageVector = when (type) {
     AudioPortType.BuiltInMic -> Icons.Rounded.Mic

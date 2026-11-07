@@ -4,13 +4,16 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioFormat
+import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioRecordingConfiguration
 import android.media.MediaRecorder
+import android.media.projection.MediaProjection
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -20,6 +23,8 @@ import com.arbelonson.ozen.core.AudioPermission
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.AudioRoutePolicy
 import com.arbelonson.ozen.core.EnergyVoiceDetector
+import com.arbelonson.ozen.core.PhoneSound
+import com.arbelonson.ozen.core.PhoneSoundListening
 import kotlin.concurrent.thread
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -34,6 +39,11 @@ import kotlinx.coroutines.flow.callbackFlow
  * [onInterruption], the way the iPhone reports a call taking its
  * microphone. The recording is kept running through the call, so the
  * call's end is heard too.
+ *
+ * On Android 10 and later the phone's own sound is one more input, after
+ * the microphones: what other apps play, heard once she has agreed in the
+ * system's sharing dialog. It is never the saved choice, and it ends with
+ * the captions or when the system stops the sharing.
  */
 class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     private val manager = context.getSystemService(AudioManager::class.java)
@@ -51,12 +61,28 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     override var onInputsChanged: (() -> Unit)? = null
     override var onCaptureLost: (() -> Unit)? = null
 
+    /** Told once when the system ends the sharing and the microphone is back. */
+    var onPhoneSoundStopped: (() -> Unit)? = null
+
     /** True while a call silences the recording, false once it is heard again. */
     var onInterruption: ((Boolean) -> Unit)? = null
 
     private var preferredInputUID: String? = null
     private var devices: Map<String, AudioDeviceInfo> = emptyMap()
     private var listening = false
+    private val phoneSound = PhoneSoundListening()
+    @Volatile
+    private var projection: MediaProjection? = null
+
+    // Counts changes of what is recorded, so the recording thread swaps it.
+    @Volatile
+    private var sourceVersion = 0
+
+    private val projectionCallback = object : MediaProjection.Callback() {
+        override fun onStop() {
+            main.post { projectionEnded() }
+        }
+    }
 
     // Not reset when a recording starts: the new recording's first report
     // tells whether the call is still on.
@@ -103,6 +129,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     }
 
     internal fun silencedChanged(now: Boolean) {
+        if (!phoneSound.heedsMicrophoneSilence) return
         if (now == silenced) return
         silenced = now
         onInterruption?.invoke(now)
@@ -116,7 +143,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
         }
 
     override suspend fun prepareSession(preferredInputUID: String?) {
-        this.preferredInputUID = preferredInputUID
+        this.preferredInputUID = preferredInputUID?.takeUnless(PhoneSound::isPhoneSound)
         if (!listening) {
             listening = true
             manager.registerAudioDeviceCallback(deviceCallback, main)
@@ -128,37 +155,32 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     @SuppressLint("MissingPermission")
     override fun startCapture(): Flow<FloatArray> = callbackFlow {
         stopCapture()
-        val minimum = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        val made = if (minimum > 0) {
-            try {
-                AudioRecord(
-                    MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                    RATE,
-                    AudioFormat.CHANNEL_IN_MONO,
-                    AudioFormat.ENCODING_PCM_16BIT,
-                    maxOf(minimum, CHUNK * 2 * 4),
-                )
-            } catch (error: SecurityException) {
-                null
-            }
-        } else {
-            null
-        }
-        if (made == null || made.state != AudioRecord.STATE_INITIALIZED) {
-            made?.release()
+        var seen = sourceVersion
+        val first = openSource()
+        if (first == null) {
             close(IllegalStateException("the microphone could not be opened"))
             return@callbackFlow
         }
-        selectedInputUID?.let { uid -> devices[uid]?.let { made.setPreferredDevice(it) } }
-        made.startRecording()
+        val made: AudioRecord = first
         record = made
         running = true
         worker = thread(name = "ozen-microphone") {
             val buffer = ShortArray(CHUNK)
             var lost = false
+            var current = made
             try {
                 while (running) {
-                    val read = readChunk(made, buffer)
+                    if (seen != sourceVersion) {
+                        seen = sourceVersion
+                        val next = openSource()
+                        if (next != null) {
+                            runCatching { current.stop() }
+                            current.release()
+                            current = next
+                            record = next
+                        }
+                    }
+                    val read = readChunk(current, buffer)
                     if (read < 0) {
                         lost = true
                         break
@@ -169,8 +191,8 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
                     trySend(chunk)
                 }
             } finally {
-                runCatching { made.stop() }
-                made.release()
+                runCatching { current.stop() }
+                current.release()
                 inputLevel = 0f
                 if (lost && running) main.post { onCaptureLost?.invoke() }
                 channel.close()
@@ -192,7 +214,12 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     }
 
     override fun selectInput(uid: String) {
+        if (PhoneSound.isPhoneSound(uid)) {
+            if (!phoneSound.active) throw IllegalArgumentException("no input $uid")
+            return
+        }
         val device = devices[uid] ?: throw IllegalArgumentException("no input $uid")
+        if (phoneSound.active) leavePhoneSound()
         preferredInputUID = uid
         selectedInputUID = uid
         record?.setPreferredDevice(device)
@@ -202,12 +229,105 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
         val found = manager.getDevices(AudioManager.GET_DEVICES_INPUTS)
             .mapNotNull { device -> portType(device.type)?.let { device to descriptor(device, it) } }
         devices = found.associate { (device, descriptor) -> descriptor.uid to device }
-        availableInputs = found.map { it.second }
-        selectedInputUID = AudioRoutePolicy.resolveSelection(
-            available = availableInputs,
-            preferredUID = preferredInputUID,
-            currentUID = selectedInputUID,
-        )
+        availableInputs = PhoneSound.inputs(found.map { it.second }, Build.VERSION.SDK_INT)
+        selectedInputUID = if (phoneSound.active) {
+            PhoneSound.UID
+        } else {
+            AudioRoutePolicy.resolveSelection(
+                available = availableInputs,
+                preferredUID = preferredInputUID,
+                currentUID = selectedInputUID,
+            )
+        }
+    }
+
+    /** She agreed in the system's dialog: [granted] is the sharing, and the phone's sound is heard from now on. */
+    fun startPhoneSound(granted: MediaProjection) {
+        if (phoneSound.active) leavePhoneSound()
+        if (silenced) silencedChanged(false)
+        phoneSound.begin(selectedInputUID)
+        projection = granted
+        granted.registerCallback(projectionCallback, main)
+        refreshInputs()
+        sourceVersion++
+        onInputsChanged?.invoke()
+    }
+
+    /** The captions ended, or the app is closing: the microphone again, nothing said. */
+    fun endPhoneSound() {
+        if (!phoneSound.active) return
+        leavePhoneSound()
+        refreshInputs()
+        sourceVersion++
+        onInputsChanged?.invoke()
+    }
+
+    internal fun projectionEnded() {
+        val stop = phoneSound.projectionStopped() ?: return
+        releaseProjection()
+        selectedInputUID = stop.returnTo
+        refreshInputs()
+        sourceVersion++
+        onInputsChanged?.invoke()
+        onPhoneSoundStopped?.invoke()
+    }
+
+    private fun leavePhoneSound() {
+        val back = phoneSound.leave()
+        releaseProjection()
+        selectedInputUID = back
+        sourceVersion++
+    }
+
+    private fun releaseProjection() {
+        val ended = projection ?: return
+        projection = null
+        runCatching { ended.unregisterCallback(projectionCallback) }
+        runCatching { ended.stop() }
+    }
+
+    private fun openSource(): AudioRecord? {
+        val minimum = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+        if (minimum <= 0) return null
+        val size = maxOf(minimum, CHUNK * 2 * 4)
+        val shared = projection
+        val made = try {
+            if (phoneSound.active && shared != null) phoneRecord(shared, size) else microphoneRecord(size)
+        } catch (error: SecurityException) {
+            null
+        } catch (error: IllegalArgumentException) {
+            null
+        } catch (error: UnsupportedOperationException) {
+            null
+        }
+        if (made == null || made.state != AudioRecord.STATE_INITIALIZED) {
+            made?.release()
+            if (phoneSound.active) main.post { projectionEnded() }
+            return null
+        }
+        if (!phoneSound.active) selectedInputUID?.let { uid -> devices[uid]?.let { made.setPreferredDevice(it) } }
+        made.startRecording()
+        return made
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun microphoneRecord(size: Int) =
+        AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, size)
+
+    @SuppressLint("MissingPermission")
+    private fun phoneRecord(shared: MediaProjection, size: Int): AudioRecord? {
+        if (Build.VERSION.SDK_INT < PhoneSound.FIRST_API) return null
+        val config = AudioPlaybackCaptureConfiguration.Builder(shared)
+            .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+            .addMatchingUsage(AudioAttributes.USAGE_GAME)
+            .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+            .build()
+        val format = AudioFormat.Builder()
+            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+            .setSampleRate(RATE)
+            .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+            .build()
+        return AudioRecord.Builder().setAudioPlaybackCaptureConfig(config).setAudioFormat(format).setBufferSizeInBytes(size).build()
     }
 
     private fun inputsChanged() {
