@@ -50,7 +50,7 @@ class OnDeviceWhisperEngine(
     private val voiceScorerFactory: () -> ((FloatArray) -> Float?)? = { null },
     private val heat: () -> DeviceHeat = { DeviceHeat.Nominal },
     private val lowPowerMode: () -> Boolean = { false },
-    private val onFitMeasurement: (countedPasses: Int, totalSeconds: Double) -> Unit = { _, _ -> },
+    private val onFitMeasurement: (countedPasses: Int, totalSeconds: Double, lowPower: Boolean) -> Unit = { _, _, _ -> },
     private val timeSource: TimeSource = TimeSource.Monotonic,
     private val wallClockSeconds: () -> Double = { System.currentTimeMillis() / 1000.0 },
     private val passDispatcher: CoroutineDispatcher = Dispatchers.Default,
@@ -229,15 +229,19 @@ class OnDeviceWhisperEngine(
     }
 
     override fun saveFitMeasurement() {
-        val report = synchronized(lock) {
+        val reports = synchronized(lock) {
+            val due = ArrayList<Triple<Int, Double, Boolean>>(2)
+            if (tally.lowPowerPasses > tally.reportedLowPowerPasses && ModelFitWatch.shouldSave(tally.lowPowerPasses)) {
+                tally.markLowPowerReported()
+                due.add(Triple(tally.lowPowerPasses, tally.lowPowerSeconds, true))
+            }
             if (tally.countedPasses > tally.reportedPasses && ModelFitWatch.shouldSave(tally.countedPasses)) {
                 tally.markReported()
-                tally.countedPasses to tally.countedSeconds
-            } else {
-                null
+                due.add(Triple(tally.countedPasses, tally.countedSeconds, false))
             }
+            due
         }
-        report?.let { onFitMeasurement(it.first, it.second) }
+        reports.forEach { onFitMeasurement(it.first, it.second, it.third) }
     }
 
     override fun release() {
@@ -433,6 +437,7 @@ class OnDeviceWhisperEngine(
             val heard = SpeechGain.normalized(window)
             val passStarted = timeSource.markNow()
             val coolAtStart = ModelFitWatch.counts(1.0, heat(), lowPowerMode(), kind)
+            val saverAtStart = ModelFitWatch.countsInLowPower(1.0, heat(), lowPowerMode(), kind)
             var retried = false
             val results: List<WhisperSegment> = try {
                 runPass(pipe, heard, options)
@@ -452,17 +457,24 @@ class OnDeviceWhisperEngine(
                 // temperatures and would overstate how slow the phone is.
                 val seconds = passStarted.elapsedNow().toDouble(DurationUnit.SECONDS)
                 lastLivePassSeconds = seconds
-                val report = synchronized(lock) {
+                val reports = synchronized(lock) {
                     tally.recordLivePass(seconds)
                     if (coolAtStart && !retried && ModelFitWatch.counts(seconds, heat(), lowPowerMode(), kind)) tally.recordCountedPass(seconds)
+                    // Battery saver on at both ends of the pass: a phone that
+                    // always runs in it is judged by its battery saver speed.
+                    if (saverAtStart && !retried && ModelFitWatch.countsInLowPower(seconds, heat(), lowPowerMode(), kind)) tally.recordLowPowerPass(seconds)
+                    val due = ArrayList<Triple<Int, Double, Boolean>>(2)
+                    if (tally.lowPowerPasses - tally.reportedLowPowerPasses >= ModelFitWatch.PASSES_TO_SAVE) {
+                        tally.markLowPowerReported()
+                        due.add(Triple(tally.lowPowerPasses, tally.lowPowerSeconds, true))
+                    }
                     if (tally.countedPasses - tally.reportedPasses >= ModelFitWatch.PASSES_TO_SAVE) {
                         tally.markReported()
-                        tally.countedPasses to tally.countedSeconds
-                    } else {
-                        null
+                        due.add(Triple(tally.countedPasses, tally.countedSeconds, false))
                     }
+                    due
                 }
-                report?.let { onFitMeasurement(it.first, it.second) }
+                reports.forEach { onFitMeasurement(it.first, it.second, it.third) }
             }
             val summaries = results.map {
                 WhisperSegmentSummary(

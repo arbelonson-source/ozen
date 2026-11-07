@@ -13,6 +13,7 @@ data class LiveMeasurement(
     val measuredAt: Double,
     val fitEligible: Boolean = false,
     val device: String? = null,
+    val lowPower: Boolean = false,
 ) {
     fun toJsonObject(): JsonObject = buildJsonObject {
         put("file", file)
@@ -22,6 +23,7 @@ data class LiveMeasurement(
         put("measuredAt", measuredAt)
         put("fitEligible", fitEligible)
         device?.let { put("device", it) }
+        if (lowPower) put("lowPower", true)
     }
 
     companion object {
@@ -33,7 +35,8 @@ data class LiveMeasurement(
             val measuredAt = number(element["measuredAt"]) ?: return null
             val eligible = (element["fitEligible"] as? JsonPrimitive)?.takeIf { !it.isString }?.content == "true"
             val device = (element["device"] as? JsonPrimitive)?.takeIf { it.isString }?.content
-            return if (averageSeconds > 0 && passes > 0 && gflops > 0) LiveMeasurement(file, averageSeconds, passes, gflops, measuredAt, eligible, device) else null
+            val lowPower = (element["lowPower"] as? JsonPrimitive)?.takeIf { !it.isString }?.content == "true"
+            return if (averageSeconds > 0 && passes > 0 && gflops > 0) LiveMeasurement(file, averageSeconds, passes, gflops, measuredAt, eligible, device, lowPower) else null
         }
 
         private fun number(element: Any?): Double? =

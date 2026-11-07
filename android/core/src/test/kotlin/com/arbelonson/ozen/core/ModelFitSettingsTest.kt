@@ -139,4 +139,32 @@ class ModelFitSettingsTest {
         settings.phoneLiveMeasurement = null
         assertNull(settings.gflopsOn("Galaxy S10"))
     }
+
+    @Test
+    fun `the battery saver flag survives saving and loading and an old file reads false`() {
+        val settings = behind()
+        settings.phoneLiveMeasurement = ModelFitWatch.measurement(settings.phoneModel, 20, 48.0, now = 500.0, device = phone, lowPower = true)
+        val loaded = AppSettings.fromJson(settings.toJson())
+        assertEquals(true, loaded.phoneLiveMeasurement!!.lowPower)
+        assertEquals(settings, loaded)
+        assertEquals(false, AppSettings.fromJson(behind().toJson()).phoneLiveMeasurement!!.lowPower)
+        val old = AppSettings.fromJson("""{"phoneLiveMeasurement":{"file":"a.bin","averageSeconds":2.4,"passes":20,"gflops":5.0,"measuredAt":1.0}}""")
+        assertEquals(false, old.phoneLiveMeasurement!!.lowPower)
+    }
+
+    @Test
+    fun `a measurement outside battery saver writes no battery saver key`() {
+        assertEquals(false, behind().phoneLiveMeasurement!!.toJsonObject().containsKey("lowPower"))
+        val saver = behind().phoneLiveMeasurement!!.copy(lowPower = true)
+        assertEquals(true, saver.toJsonObject().containsKey("lowPower"))
+    }
+
+    @Test
+    fun `a battery saver measurement gets the same offer and labels as a normal one`() {
+        val settings = behind()
+        val normalOffer = settings.modelFitOffer(plenty, phone) { true }
+        settings.phoneLiveMeasurement = settings.phoneLiveMeasurement!!.copy(lowPower = true)
+        assertEquals(normalOffer, settings.modelFitOffer(plenty, phone) { true })
+        assertEquals(settings.phoneLiveMeasurement!!.gflops, settings.effectiveGflops)
+    }
 }
