@@ -342,13 +342,15 @@ class CaptionScreenDeviceTest {
     @Test
     fun rereadingWithAScreenReaderKeepsThePlaceToo() {
         val lines = (1..30).map { committed("Line $it here") }
+        fun inSight() = (1..32).filter { displayed("Line $it here") }
         showLines(lines)
         assertTrue(displayed("Line 30 here"))
         compose.onNode(hasScrollToIndexAction()).performScrollToIndex(5)
         compose.waitForIdle()
-        assertFalse(displayed("Line 30 here"))
+        val reading = inSight()
+        assertTrue("line 6 is not in sight: $reading", 6 in reading)
         showLines(lines + committed("Line 31 here"))
-        assertFalse("a new line pulled the list away from the line being read", displayed("Line 31 here"))
+        assertEquals("a new line moved the list away from the lines being read", reading, inSight())
         compose.onNodeWithText("1 new line").assertExists()
 
         compose.onNodeWithText("1 new line").performClick()
@@ -356,9 +358,10 @@ class CaptionScreenDeviceTest {
         assertTrue(displayed("Line 31 here"))
         compose.onNode(hasScrollToIndexAction()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, -2_000f) }
         compose.waitForIdle()
-        assertFalse(displayed("Line 31 here"))
+        val back = inSight()
+        assertFalse("the scroll back left line 31 in sight: $back", 31 in back)
         showLines(lines + (31..32).map { committed("Line $it here") })
-        assertFalse("a new line pulled the list away after a scroll back", displayed("Line 32 here"))
+        assertEquals("a new line moved the list away after a scroll back", back, inSight())
         compose.onNodeWithText("1 new line").assertExists()
     }
 

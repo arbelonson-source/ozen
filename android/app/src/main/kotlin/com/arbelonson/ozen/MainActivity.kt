@@ -903,7 +903,7 @@ private fun CaptionScreen(
         snapshotFlow { list.place() }
             .drop(1)
             .collect { at ->
-                if (marks.scrolling || at == marks.at) return@collect
+                if (marks.scrolling > 0 || at == marks.at) return@collect
                 val atEnd = !list.canScrollForward
                 if (following && !atEnd) countWhenLeft = lineCount
                 following = atEnd
@@ -1300,13 +1300,9 @@ private fun CaptionLines(
     }
 }
 
-/**
- * To the bottom of the newest line, not its top: a long line at a large
- * size can be taller than the screen, and its newest words come last.
- */
-/** Where the screen's own following last left the list, and whether it is moving it now. */
+/** Where the screen's own following last left the list, and how many of its moves are under way. */
 private class FollowMarks {
-    var scrolling = false
+    var scrolling = 0
     var at: Pair<Any?, Int>? = null
 }
 
@@ -1314,15 +1310,19 @@ private class FollowMarks {
 private fun LazyListState.place(): Pair<Any?, Int> = layoutInfo.visibleItemsInfo.firstOrNull()?.key to firstVisibleItemScrollOffset
 
 private suspend fun LazyListState.follow(lastIndex: Int, marks: FollowMarks) {
-    marks.scrolling = true
+    marks.scrolling++
     try {
         scrollToEnd(lastIndex)
     } finally {
         marks.at = place()
-        marks.scrolling = false
+        marks.scrolling--
     }
 }
 
+/**
+ * To the bottom of the newest line, not its top: a long line at a large
+ * size can be taller than the screen, and its newest words come last.
+ */
 private suspend fun LazyListState.scrollToEnd(lastIndex: Int) {
     scrollToItem(lastIndex)
     val last = layoutInfo.visibleItemsInfo.lastOrNull() ?: return
