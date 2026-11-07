@@ -41,6 +41,7 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.OzenSpacing
 import com.arbelonson.ozen.ui.SettingRow
 import com.arbelonson.ozen.ui.SettingSwitchRow
@@ -175,7 +176,7 @@ internal fun ImportantWordsScreen(
         AlertDialog(
             onDismissRequest = { pendingDeleteId = null },
             title = { Text(tr("למחוק את \"%1\"?", "Delete “%1”?", listOf(shown(alert.phrase)))) },
-            text = { Text(tr("הטלפון יפסיק להתריע כשהמילה הזו תיאמר.", "The phone will stop alerting when this word is said.")) },
+            text = { DialogText(tr("הטלפון יפסיק להתריע כשהמילה הזו תיאמר.", "The phone will stop alerting when this word is said.")) },
             confirmButton = {
                 TextButton(
                     onClick = {

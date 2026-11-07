@@ -16,6 +16,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -34,6 +35,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
@@ -111,9 +113,11 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.EmptyState
 import com.arbelonson.ozen.ui.GroupFootnote
 import com.arbelonson.ozen.ui.OzenScreen
+import com.arbelonson.ozen.ui.OzenSpacing
 import com.arbelonson.ozen.ui.ProgressState
 import com.arbelonson.ozen.ui.SectionHeader
 import com.arbelonson.ozen.ui.SettingRow
@@ -357,7 +361,7 @@ fun HistoryScreen(
         AlertDialog(
             onDismissRequest = { pendingRetentionValue = null },
             title = { Text(HistoryTexts.expiryWarning(choice.expiringCount(loadedSummaries, System.currentTimeMillis() / 1_000.0) ?: 0)) },
-            text = { Text(tr("שיחות עם שורה מסומנת או עם שם לא יימחקו.", "Conversations with a starred line or a name won’t be deleted.")) },
+            text = { DialogText(tr("שיחות עם שורה מסומנת או עם שם לא יימחקו.", "Conversations with a starred line or a name won’t be deleted.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -373,7 +377,7 @@ fun HistoryScreen(
         AlertDialog(
             onDismissRequest = { pendingDeletionID = null },
             title = { Text(tr("למחוק את השיחה הזו?", "Delete this conversation?")) },
-            text = { Text(session.title ?: CaptionLayout.directed(session.preview)) },
+            text = { DialogText(session.title ?: CaptionLayout.directed(session.preview)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -722,73 +726,81 @@ internal fun ConversationScreen(
                 val numbers = shown.numbers?.takeIf { it.listed.isNotEmpty() }
                 val header = shown.headerItems
                 val matched = shown.matches.toSet()
-                // Held above the lines, unlike the name: opened at a line far
-                // down, the conversation can still be shared, named or deleted,
-                // and each jump goes on from where the last one left the list.
-                FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ActionChip(Icons.Rounded.Share, tr("שיתוף", "Share"), onClick = { scope.launch { shareOrSayFull(context) { shareSheet(context, shown.record, marksUncertain, languageCode) } } })
-                    ActionChip(Icons.Rounded.Edit, tr("מתן שם לשיחה", "Name this conversation"), onClick = { naming = shown.record.title ?: "" })
-                    ActionChip(Icons.Rounded.Delete, tr("מחיקה", "Delete"), onClick = { confirmingDelete = true }, colour = MaterialTheme.colorScheme.error)
-                    if (shown.matches.size > 1) {
-                        ActionChip(
-                            Icons.Rounded.KeyboardArrowDown,
-                            SearchMatches.nextTitle(current, shown.matches.size),
-                            onClick = {
-                                current = (current + 1) % shown.matches.size
-                                val target = shown.lines.indexOfFirst { it.id == shown.matches[current] }
-                                if (target >= 0) scope.launch { list.scrollToItem(header + target) }
-                            },
-                        )
-                    }
-                    if (shown.starred.isNotEmpty()) {
-                        ActionChip(
-                            Icons.Rounded.Star,
-                            SearchMatches.starredTitle(starAt, shown.starred.size, jumpedToStar),
-                            onClick = {
-                                starAt = if (jumpedToStar) (starAt + 1) % shown.starred.size else 0
-                                jumpedToStar = true
-                                val target = shown.lines.indexOfFirst { it.id == shown.starred[starAt] }
-                                if (target >= 0) scope.launch { list.scrollToItem(header + target) }
-                            },
-                        )
-                    }
-                }
-                LazyColumn(
-                    state = list,
-                    modifier = Modifier.fillMaxSize().imePadding(),
-                    contentPadding = PaddingValues(bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    // Its name scrolls away with the lines: held above them, a
-                    // long name at the largest text took half the screen and left
-                    // the lines a strip.
-                    shown.record.title?.let { name ->
-                        item(key = "name") {
-                            Text(name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 16.dp).semantics { heading() })
-                        }
-                    }
-                    shown.stats?.let { stats -> item(key = "summary") { SummarySection(stats) } }
-                    if (numbers != null) {
-                        item(key = "numbers") {
-                            NumbersSection(numbers, isUncertain = { marksUncertain && CaptionConfidence.isUncertain(it, shown.record.engine, shown.record.modelVariant) }) { said ->
-                                val target = shown.lines.indexOfFirst { it.id == said.id }
-                                if (target >= 0) scope.launch { list.scrollToItem(header + target) }
+                // At the largest text on a small phone the chips wrapped into rows
+                // that left the lines a strip: they keep at most a third of the
+                // room and scroll inside it.
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                    val room = maxHeight
+                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
+                        // Held above the lines, unlike the name: opened at a line far
+                        // down, the conversation can still be shared, named or deleted,
+                        // and each jump goes on from where the last one left the list.
+                        FlowRow(modifier = Modifier.fillMaxWidth().heightIn(max = room / 3).verticalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ActionChip(Icons.Rounded.Share, tr("שיתוף", "Share"), onClick = { scope.launch { shareOrSayFull(context) { shareSheet(context, shown.record, marksUncertain, languageCode) } } })
+                            ActionChip(Icons.Rounded.Edit, tr("מתן שם לשיחה", "Name this conversation"), onClick = { naming = shown.record.title ?: "" })
+                            ActionChip(Icons.Rounded.Delete, tr("מחיקה", "Delete"), onClick = { confirmingDelete = true }, colour = MaterialTheme.colorScheme.error)
+                            if (shown.matches.size > 1) {
+                                ActionChip(
+                                    Icons.Rounded.KeyboardArrowDown,
+                                    SearchMatches.nextTitle(current, shown.matches.size),
+                                    onClick = {
+                                        current = (current + 1) % shown.matches.size
+                                        val target = shown.lines.indexOfFirst { it.id == shown.matches[current] }
+                                        if (target >= 0) scope.launch { list.scrollToItem(header + target) }
+                                    },
+                                )
+                            }
+                            if (shown.starred.isNotEmpty()) {
+                                ActionChip(
+                                    Icons.Rounded.Star,
+                                    SearchMatches.starredTitle(starAt, shown.starred.size, jumpedToStar),
+                                    onClick = {
+                                        starAt = if (jumpedToStar) (starAt + 1) % shown.starred.size else 0
+                                        jumpedToStar = true
+                                        val target = shown.lines.indexOfFirst { it.id == shown.starred[starAt] }
+                                        if (target >= 0) scope.launch { list.scrollToItem(header + target) }
+                                    },
+                                )
                             }
                         }
-                    }
-                    item(key = "when") {
-                        SectionHeader(conversationHeading(shown.record.startedAt, now = System.currentTimeMillis() / 1_000.0))
-                    }
-                    items(shown.lines, key = { it.id.toString() }) { line ->
-                        SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, onFix = { fixingID = line.id.toString(); fixRejected = false }) {
-                            scope.launch {
-                                conversations.toggleStar(id, line.id)
-                                show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
+                        LazyColumn(
+                            state = list,
+                            modifier = Modifier.weight(1f).fillMaxWidth().imePadding(),
+                            contentPadding = PaddingValues(bottom = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            // Its name scrolls away with the lines: held above them, a
+                            // long name at the largest text took half the screen and left
+                            // the lines a strip.
+                            shown.record.title?.let { name ->
+                                item(key = "name") {
+                                    Text(name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 16.dp).semantics { heading() })
+                                }
+                            }
+                            shown.stats?.let { stats -> item(key = "summary") { SummarySection(stats) } }
+                            if (numbers != null) {
+                                item(key = "numbers") {
+                                    NumbersSection(numbers, isUncertain = { marksUncertain && CaptionConfidence.isUncertain(it, shown.record.engine, shown.record.modelVariant) }) { said ->
+                                        val target = shown.lines.indexOfFirst { it.id == said.id }
+                                        if (target >= 0) scope.launch { list.scrollToItem(header + target) }
+                                    }
+                                }
+                            }
+                            item(key = "when") {
+                                SectionHeader(conversationHeading(shown.record.startedAt, now = System.currentTimeMillis() / 1_000.0))
+                            }
+                            items(shown.lines, key = { it.id.toString() }) { line ->
+                                SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, onFix = { fixingID = line.id.toString(); fixRejected = false }) {
+                                    scope.launch {
+                                        conversations.toggleStar(id, line.id)
+                                        show(withContext(Dispatchers.IO) { opened(conversations.load(id), query, marksUncertain, languageCode) })
+                                    }
+                                }
+                            }
+                            item(key = "source") {
+                                Text(shown.record.sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
                             }
                         }
-                    }
-                    item(key = "source") {
-                        Text(shown.record.sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
                     }
                 }
             }
@@ -799,7 +811,7 @@ internal fun ConversationScreen(
             onDismissRequest = { naming = null },
             title = { Text(tr("שם השיחה", "Conversation name")) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(tr("השם יופיע ברשימת השיחות, ואפשר יהיה לחפש לפיו.", "The name will appear in the conversations list, and you’ll be able to search by it."))
                     OutlinedTextField(
                         value = draft,
@@ -856,7 +868,7 @@ private fun DeletionFailed(error: String, onClose: () -> Unit) {
         onDismissRequest = onClose,
         title = { Text(tr("המחיקה נכשלה", "Deletion failed")) },
         text = {
-            Text(
+            DialogText(
                 tr(
                     "מה שלא נמחק עדיין שמור בטלפון. אפשר לנסות שוב.\n%1",
                     "What wasn’t deleted is still saved on the phone. You can try again.\n%1",

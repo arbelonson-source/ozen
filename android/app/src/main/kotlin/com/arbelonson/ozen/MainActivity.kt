@@ -100,6 +100,7 @@ import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.PhoneSound
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SharedRecordingLink
+import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.IconBadge
 import com.arbelonson.ozen.ui.OzenColors
 import com.arbelonson.ozen.ui.OzenSpacing
@@ -710,7 +711,7 @@ private fun CellularDownloadDialog(megabytes: Int?, onDownload: () -> Unit, onWa
     AlertDialog(
         onDismissRequest = onWait,
         title = { Text(tr("להוריד את המודל בחבילת הגלישה?", "Download the model over cellular data?")) },
-        text = { Text(tr("גודל המודל הוא בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi ההורדה תתחיל מעצמה.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", listOf(size))) },
+        text = { DialogText(tr("גודל המודל הוא בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi ההורדה תתחיל מעצמה.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", listOf(size))) },
         confirmButton = { TextButton(onClick = onDownload) { Text(tr("להוריד עכשיו", "Download now")) } },
         dismissButton = { TextButton(onClick = onWait) { Text(tr("לחכות ל־Wi-Fi", "Wait for Wi‑Fi")) } },
     )
@@ -736,7 +737,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
             onDismissRequest = { pairing.pending.value = null },
             title = { Text(tr("להתחבר למחשב בבית?", "Connect to the home computer?")) },
             text = {
-                Text(
+                DialogText(
                     tr(
                         "כדי ליצור כתוביות, הקול יישלח אל %1. אשרו רק אם זה המחשב של המשפחה.",
                         "The audio will go to %1 for captions. Only connect if this is the family’s computer.",
@@ -753,7 +754,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
             onDismissRequest = { pairing.saveFailed.value = false },
             title = { Text(tr("החיבור למחשב בבית לא נשמר", "The connection to the home computer wasn’t saved")) },
             text = {
-                Text(
+                DialogText(
                     tr(
                         "הכתוביות ממשיכות כמו קודם. סרקו שוב את הקוד, או בקשו עזרה ממי שהגדיר את הטלפון.",
                         "Captions carry on as before. Scan the code again, or ask whoever set up the phone for help.",
@@ -768,7 +769,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
             onDismissRequest = { pairing.linkBroken.value = false },
             title = { Text(tr("הקישור למחשב בבית לא תקין", "The home computer link didn’t come through")) },
             text = {
-                Text(
+                DialogText(
                     tr(
                         "חלק מהקישור חסר או משובש. סרקו שוב מקרוב את הריבוע שעל מסך המחשב, במצלמה של הטלפון.",
                         "Part of the link is missing or garbled. Scan the square on the computer again with the phone’s camera, up close.",
@@ -1693,7 +1694,7 @@ private fun ProblemMarkedDialog(keptSound: Boolean, keptCaptions: Boolean, onDis
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("הבעיה סומנה", "Problem marked")) },
-        text = { Text(ProblemNotes.marked(keptSound, keptCaptions)) },
+        text = { DialogText(ProblemNotes.marked(keptSound, keptCaptions)) },
         confirmButton = { TextButton(onClick = onDismiss) { Text(tr("אישור", "OK")) } },
     )
 }

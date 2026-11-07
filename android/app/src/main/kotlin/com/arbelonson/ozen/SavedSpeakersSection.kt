@@ -17,6 +17,8 @@ import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +46,7 @@ import com.arbelonson.ozen.core.RecordingImport
 import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SpeakerProfile
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.SettingRow
 import com.arbelonson.ozen.ui.SettingSwitchRow
 import com.arbelonson.ozen.ui.SettingsGroup
@@ -180,7 +183,7 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
         AlertDialog(
             onDismissRequest = { RecordingImports.imported.value = null },
             title = { Text(tr("הקלטות", "Recordings")) },
-            text = { Text(result.summary) },
+            text = { DialogText(result.summary) },
             confirmButton = { TextButton(onClick = { RecordingImports.imported.value = null }) { Text(tr("אישור", "OK")) } },
         )
     }
@@ -198,7 +201,7 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
         AlertDialog(
             onDismissRequest = { removing = null },
             title = { Text(tr("למחוק את %1 מהדוברים השמורים?", "Delete %1 from saved speakers?", listOf(name))) },
-            text = { Text(tr("כדי שיזוהו שוב בשמם, צריך להקליט את הקול שלהם מחדש.", "To be recognized by name again, their voice needs to be recorded again.")) },
+            text = { DialogText(tr("כדי שיזוהו שוב בשמם, צריך להקליט את הקול שלהם מחדש.", "To be recognized by name again, their voice needs to be recorded again.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -219,7 +222,7 @@ private fun RenameSpeakerDialog(name: String, onRename: (String) -> Unit, onDism
         onDismissRequest = onDismiss,
         title = { Text(tr("שינוי שם", "Rename")) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(tr("השם החדש יופיע גם בשורות שכבר מוצגות.", "The new name will also appear on lines already in the captions."))
                 OutlinedTextField(value = draft, onValueChange = { draft = it }, label = { Text(tr("שם", "Name")) }, singleLine = true)
             }

@@ -3,7 +3,10 @@ package com.arbelonson.ozen
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,11 +37,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -53,7 +59,9 @@ import com.arbelonson.ozen.core.TranscriptFormats
 import com.arbelonson.ozen.core.TranscriptionProgress
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.OzenScreen
+import com.arbelonson.ozen.ui.OzenSpacing
 import com.arbelonson.ozen.ui.PrimaryButton
 import com.arbelonson.ozen.ui.ProgressCard
 import com.arbelonson.ozen.ui.TonalButton
@@ -91,7 +99,7 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
         AlertDialog(
             onDismissRequest = { confirmingStop = false },
             title = { Text(tr("לעצור את ההמרה לטקסט?", "Stop turning the recording into text?")) },
-            text = { Text(tr("הטקסט שכבר נוצר לא יישמר.", "What was already turned into text won’t be saved.")) },
+            text = { DialogText(tr("הטקסט שכבר נוצר לא יישמר.", "What was already turned into text won’t be saved.")) },
             confirmButton = { TextButton(onClick = { confirmingStop = false; transcriber.cancel() }) { Text(tr("עצירה", "Stop")) } },
             dismissButton = { TextButton(onClick = { confirmingStop = false }) { Text(tr("להמשיך", "Keep going")) } },
         )
@@ -153,7 +161,7 @@ private fun ReadyPage(transcriber: FileTranscriber, ready: FileTranscription.Rea
         AlertDialog(
             onDismissRequest = { stoppingCaptions = false },
             title = { Text(tr("הכתוביות פועלות עכשיו", "Captions are on right now")) },
-            text = { Text(tr("אותו מודל לא יכול לעבוד בבת אחת על כתוביות חיות ועל הקלטה. לעצור את הכתוביות?", "One model can’t run live captions and a recording at the same time. Stop the captions?")) },
+            text = { DialogText(tr("אותו מודל לא יכול לעבוד בבת אחת על כתוביות חיות ועל הקלטה. לעצור את הכתוביות?", "One model can’t run live captions and a recording at the same time. Stop the captions?")) },
             confirmButton = {
                 TextButton(onClick = { stoppingCaptions = false; transcriber.stopCaptions(); transcriber.start() }, modifier = Modifier.testTag("transcribe-stop-captions")) {
                     Text(tr("עצירת הכתוביות", "Stop captions"))
@@ -206,18 +214,38 @@ private fun WorkingPage(transcriber: FileTranscriber, working: FileTranscription
     }
     val left = working.timeLeftSeconds?.let(TranscriptionProgress::timeLeftText)
     val detail = listOfNotNull(working.model.displayName, left).joinToString(" · ")
-    OzenScreen(working.name, closeLabel = "", scrolls = false) {
-        ProgressCard(
-            Icons.Rounded.GraphicEq,
-            title,
-            modifier = Modifier.testTag("transcribe-progress"),
-            percent = percent,
-            detail = detail,
-        ) {
-            TonalButton(tr("ביטול", "Cancel"), onClick = transcriber::cancel, modifier = Modifier.testTag(TRANSCRIBE_CANCEL))
+    val header: @Composable () -> Unit = {
+        Column(verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
+            ProgressCard(
+                Icons.Rounded.GraphicEq,
+                title,
+                modifier = Modifier.testTag("transcribe-progress"),
+                percent = percent,
+                detail = detail,
+            ) {
+                TonalButton(tr("ביטול", "Cancel"), onClick = transcriber::cancel, modifier = Modifier.testTag(TRANSCRIBE_CANCEL))
+            }
+            Text(PRIVACY_LINE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Text(PRIVACY_LINE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        LinesList(working.lines, working.language.languageCode, follow = true)
+    }
+    OzenScreen(working.name, closeLabel = "", scrolls = false) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            // The progress stays put above the newest lines while they leave
+            // room for two lines. At the largest text on a small phone the
+            // progress alone fills the page (and squeezed Cancel), so there
+            // the whole page scrolls as one list instead.
+            val room = constraints.maxHeight
+            val twoLines = with(LocalDensity.current) { 2 * (MaterialTheme.typography.bodyLarge.lineHeight.toPx() + 10.dp.toPx()) }
+            var oneList by remember(room) { mutableStateOf(false) }
+            if (oneList) {
+                LinesList(working.lines, working.language.languageCode, follow = false, lead = header)
+            } else {
+                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
+                    Box(Modifier.onSizeChanged { if (room - it.height < twoLines) oneList = true }) { header() }
+                    LinesList(working.lines, working.language.languageCode, follow = true, Modifier.weight(1f))
+                }
+            }
+        }
     }
 }
 
@@ -226,6 +254,7 @@ private fun WorkingPage(transcriber: FileTranscriber, working: FileTranscription
 private fun DonePage(done: FileTranscription.Done, close: () -> Unit) {
     val context = LocalContext.current
     OzenScreen(tr("ההקלטה הומרה לטקסט", "Recording turned into text"), onClose = close, closeLabel = tr("סיום", "Done"), scrolls = false) {
+        HeaderAndLines(lines = { LinesList(done.lines, done.language.languageCode, follow = false, Modifier.weight(1f)) }) {
         Text(done.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() }.testTag("transcribe-name"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AssistChip(
@@ -257,15 +286,44 @@ private fun DonePage(done: FileTranscription.Done, close: () -> Unit) {
         }
         Text(tr("מודל: %1", "Model: %1", listOf(done.model.displayName)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(PRIVACY_LINE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        LinesList(done.lines, done.language.languageCode, follow = false)
+        }
+    }
+}
+
+/**
+ * At the largest text on a small phone the header above a finished
+ * transcript (the name, the share buttons, the notes) filled the whole page
+ * and left the lines no room. It keeps at most half the room and scrolls
+ * inside it, so the lines always get the other half.
+ */
+@Composable
+private fun HeaderAndLines(lines: @Composable ColumnScope.() -> Unit, header: @Composable ColumnScope.() -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val room = maxHeight
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
+            Column(
+                Modifier.heightIn(max = room / 2).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit),
+                content = header,
+            )
+            lines()
+        }
     }
 }
 
 @Composable
-private fun LinesList(lines: List<TranscribedLine>, languageCode: String, follow: Boolean) {
+private fun LinesList(
+    lines: List<TranscribedLine>,
+    languageCode: String,
+    follow: Boolean,
+    modifier: Modifier = Modifier,
+    lead: (@Composable () -> Unit)? = null,
+) {
     val list = rememberLazyListState()
-    LaunchedEffect(lines.size) { if (follow && lines.isNotEmpty()) list.animateScrollToItem(lines.size - 1) }
-    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val before = if (lead != null) 1 else 0
+    LaunchedEffect(lines.size) { if (follow && lines.isNotEmpty()) list.animateScrollToItem(before + lines.size - 1) }
+    LazyColumn(modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (lead != null) item { lead() }
         items(lines) { line ->
             Row(Modifier.fillMaxWidth().testTag(TRANSCRIBE_LINE), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(TranscriptFormats.clock(line.startSeconds), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))

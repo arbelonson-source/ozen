@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.GroupFootnote
 import com.arbelonson.ozen.ui.OzenScreen
 import com.arbelonson.ozen.ui.PrimaryButton
@@ -142,7 +143,7 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
             onDismissRequest = { SpeakerRecordings.outcome.value = null },
             icon = { Icon(Icons.Rounded.Warning, contentDescription = null) },
             title = { Text(tr("ההקלטה קצרה או שקטה מדי", "The recording is too short or too quiet")) },
-            text = { Text(tr("לא הצלחנו להפיק טביעת קול. ודאו שהמיקרופון הנכון נבחר ושהאדם מדבר לאורך כל ההקלטה.", "We couldn’t produce a voiceprint. Make sure the right microphone is selected and the person speaks throughout the recording.")) },
+            text = { DialogText(tr("לא הצלחנו להפיק טביעת קול. ודאו שהמיקרופון הנכון נבחר ושהאדם מדבר לאורך כל ההקלטה.", "We couldn’t produce a voiceprint. Make sure the right microphone is selected and the person speaks throughout the recording.")) },
             confirmButton = { TextButton(onClick = { SpeakerRecordings.outcome.value = null }) { Text(tr("נסו שוב", "Try again")) } },
         )
     }

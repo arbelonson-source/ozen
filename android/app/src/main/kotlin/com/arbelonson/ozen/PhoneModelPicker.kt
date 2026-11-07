@@ -49,6 +49,7 @@ import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.OzenSpacing
 import com.arbelonson.ozen.ui.SettingsGroup
 import com.arbelonson.ozen.ui.TonalButton
@@ -213,7 +214,7 @@ private fun ModelRow(
         AlertDialog(
             onDismissRequest = { asking = false },
             title = { Text(tr("למחוק את המודל \"\u2068%1\u2069\" מהטלפון?", "Delete %1 from the phone?", listOf(model.displayName))) },
-            text = { Text(tr("אפשר להוריד אותו שוב בכל עת.", "It can be downloaded again anytime.")) },
+            text = { DialogText(tr("אפשר להוריד אותו שוב בכל עת.", "It can be downloaded again anytime.")) },
             confirmButton = {
                 TextButton(
                     onClick = {

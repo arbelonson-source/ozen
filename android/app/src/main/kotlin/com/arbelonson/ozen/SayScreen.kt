@@ -69,6 +69,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.OzenTopBar
 import com.arbelonson.ozen.ui.PrimaryButton
 import com.arbelonson.ozen.ui.SettingsGroup
@@ -277,7 +278,7 @@ internal fun SayScreen(
         AlertDialog(
             onDismissRequest = { confirmingRestore = false },
             title = { Text(tr("לחזור למשפטים המוכנים המקוריים?", "Restore the default phrases?")) },
-            text = { Text(tr("המשפטים שנוספו או שונו יימחקו.", "Phrases that were added or changed will be deleted.")) },
+            text = { DialogText(tr("המשפטים שנוספו או שונו יימחקו.", "Phrases that were added or changed will be deleted.")) },
             confirmButton = {
                 TextButton(
                     onClick = {

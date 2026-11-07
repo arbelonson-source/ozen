@@ -70,6 +70,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.arbelonson.ozen.ui.Chevron
+import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.OzenSpacing
 import com.arbelonson.ozen.ui.OzenSlider
 import com.arbelonson.ozen.ui.OzenTopBar
@@ -560,7 +561,7 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
             onDismissRequest = { askingConsent = false },
             title = { Text(tr("לשלוח את הקול ל־%1?", "Send the audio to %1?", listOf(service.displayName))) },
             text = {
-                Text(
+                DialogText(
                     tr(
                         "כשהכתוביות מגיעות מ־%1, הקול מהמיקרופון נשלח אליו דרך האינטרנט, יחד עם השמות, המילים המיוחדות והמילים החשובות. על מה שנשלח חלים התנאים ומדיניות הפרטיות של %1. בלי אישור שלכם, המפתח לא יישמר ושום דבר לא יישלח.",
                         "While captions come from %1, the audio from the microphone is sent to it over the internet, together with the names and special words and the important words. %1’s own terms and privacy policy apply to what it receives. Without your OK, the key isn’t saved and nothing is sent.",
@@ -584,7 +585,7 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
         AlertDialog(
             onDismissRequest = { confirmingDelete = false },
             title = { Text(tr("למחוק את מפתח הענן?", "Delete the cloud key?")) },
-            text = { Text(tr("בלי המפתח, הכתוביות לא יוכלו להגיע מהענן עד שיזינו אותו שוב.", "Without the key, captions can’t come from the cloud until it’s entered again.")) },
+            text = { DialogText(tr("בלי המפתח, הכתוביות לא יוכלו להגיע מהענן עד שיזינו אותו שוב.", "Without the key, captions can’t come from the cloud until it’s entered again.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -780,7 +781,7 @@ private fun HomeComputerSection(
         AlertDialog(
             onDismissRequest = { confirmingCodeDelete = false },
             title = { Text(tr("למחוק את קוד המחשב?", "Delete the computer’s code?")) },
-            text = { Text(tr("עד שיסרקו שוב את קוד ה־QR של המחשב, הכתוביות יגיעו מהגיבוי שבטלפון אם הוא הורד. אם הוא לא הורד, הן ייעצרו.", "Until the computer’s QR code is scanned again, captions come from the backup on the phone if it’s downloaded, and stop if it isn’t.")) },
+            text = { DialogText(tr("עד שיסרקו שוב את קוד ה־QR של המחשב, הכתוביות יגיעו מהגיבוי שבטלפון אם הוא הורד. אם הוא לא הורד, הן ייעצרו.", "Until the computer’s QR code is scanned again, captions come from the backup on the phone if it’s downloaded, and stop if it isn’t.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -1369,7 +1370,7 @@ private fun WalkthroughAgainRow(onShow: () -> Unit) {
         AlertDialog(
             onDismissRequest = { asking = false },
             title = { Text(tr("להציג שוב את ההסבר הראשוני?", "Show the initial walkthrough again?")) },
-            text = { Text(tr("הכתוביות ייעצרו עד סוף ההסבר.", "Captions stop until the walkthrough ends.")) },
+            text = { DialogText(tr("הכתוביות ייעצרו עד סוף ההסבר.", "Captions stop until the walkthrough ends.")) },
             confirmButton = {
                 TextButton(
                     onClick = {

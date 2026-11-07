@@ -3,6 +3,7 @@ package com.arbelonson.ozen.tour
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.ParcelFileDescriptor
+import androidx.activity.compose.setContent
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
@@ -13,14 +14,15 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
-import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextLayoutResult
@@ -36,19 +38,26 @@ import com.arbelonson.ozen.CaptionState
 import com.arbelonson.ozen.HeardWord
 import com.arbelonson.ozen.MainActivity
 import com.arbelonson.ozen.OzenApplication
+import com.arbelonson.ozen.TranscribeScreen
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.BatteryWarning
+import com.arbelonson.ozen.core.CloudHTTP
+import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.EnginePreparationProgress
-import com.arbelonson.ozen.core.PipelineFailure
+import com.arbelonson.ozen.core.FileModelChoice
+import com.arbelonson.ozen.core.FileTranscription
+import com.arbelonson.ozen.core.HistorySave
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundEventCatalog
+import com.arbelonson.ozen.core.TranscribedLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
@@ -56,7 +65,9 @@ import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
 import java.io.File
+import java.io.IOException
 import java.util.UUID
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
@@ -95,6 +106,7 @@ class ScreenTourDeviceTest {
         Setup("ar-dark", AppLanguage.Arabic, DisplayPreferences.Theme.Dark, 1f),
         Setup("ru-small", AppLanguage.Russian, DisplayPreferences.Theme.Dark, 1.15f, screen = "720x1280:320"),
         Setup("en-small-big", AppLanguage.English, DisplayPreferences.Theme.Dark, 1.5f, screen = "720x1280:320"),
+        Setup("he-small-max", AppLanguage.Hebrew, DisplayPreferences.Theme.Light, 2f, screen = "720x1280:320"),
         Setup("en-sideways", AppLanguage.English, DisplayPreferences.Theme.Dark, 1f, sideways = true),
         Setup("he-tablet", AppLanguage.Hebrew, DisplayPreferences.Theme.Light, 1f, screen = "1600x2560:320"),
     )
@@ -265,6 +277,51 @@ class ScreenTourDeviceTest {
                     pressBack()
                 }
             }
+            backToCaptions()
+        }
+        step("cloud-consent") {
+            val acknowledged = app.settings.current.value.cloudSoundAcknowledged
+            val engine = app.settings.current.value.engine
+            val service = app.settings.current.value.cloudProvider
+            val keyCheck = app.cloudKeyCheckHTTP
+            app.cloudKeyCheckHTTP = CloudHTTP { throw IOException("the tour never reaches a real service") }
+            app.settings.change { it.cloudSoundAcknowledged = emptySet() }
+            try {
+                click(tr("הגדרות", "Settings"))
+                click(tr("תמלול בענן", "Cloud transcription"))
+                click("Deepgram")
+                val field = compose.onAllNodes(hasText(tr("הדביקו כאן את המפתח של %1", "Paste your %1 key here", listOf("Deepgram")))).onFirst()
+                runCatching { field.performScrollTo() }
+                field.performTextInput("tour-key")
+                field.performImeAction()
+                pages("cloud-consent", maxPages = 6)
+                click(tr("ביטול", "Cancel"))
+            } finally {
+                app.cloudKeyCheckHTTP = keyCheck
+                app.cloudKeys.remove(CloudProvider.Deepgram)
+                app.settings.change {
+                    it.cloudSoundAcknowledged = acknowledged
+                    it.engine = engine
+                    it.cloudProvider = service
+                }
+                backToCaptions()
+            }
+        }
+        step("transcribe-done") {
+            val lines = (1..30).map { TranscribedLine(it * 4.0, it * 4.0 + 4.0, "Line $it of the talk at the community centre") }
+            val done = FileTranscription.Done(
+                "The talk at the community centre on Tuesday evening, part two.m4a",
+                UILanguage.English,
+                FileModelChoice.toDownload(UILanguage.English),
+                lines,
+                HistorySave.Off,
+            )
+            val shown = activity()
+            instrumentation.runOnMainSync { shown.setContent { TranscribeScreen(app.transcriber, done, onClose = {}) } }
+            shot("transcribe-done")
+            val again = activity()
+            instrumentation.runOnMainSync { again.recreate() }
+            compose.waitForIdle()
             backToCaptions()
         }
         step("walkthrough") {
