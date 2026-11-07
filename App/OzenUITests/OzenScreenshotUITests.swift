@@ -1444,6 +1444,51 @@ final class OzenScreenshotUITests: XCTestCase {
         back.tap()
     }
 
+    /// At the largest text size, a conversation opened from a search keeps
+    /// its "Next match" button in the bottom bar on screen, so the person can
+    /// step to the next place the words were said.
+    func testSearchResultNextMatchAtAccessibilityText() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+
+        let settingsButton = app.descendants(matching: .any)["settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "search result: the settings button never appeared")
+        // On an iPhone SE the bar had already slid below the screen's edge.
+        let revealControls = app.descendants(matching: .any)["showControlsButton"]
+        for _ in 0..<5 where !settingsButton.isHittable {
+            if revealControls.exists { revealControls.tap() }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        settingsButton.tap()
+        let historyRow = scrollDownUntilVisible(app, identifier: "historyRow")
+        XCTAssertTrue(historyRow.exists, "search result: the history row never appeared")
+        bringOffBottomEdge(app, historyRow)
+        historyRow.tap()
+        let historyScreen = app.descendants(matching: .any)["historyScreen"]
+        if !historyScreen.waitForExistence(timeout: 3), historyRow.exists { historyRow.tap() }
+        XCTAssertTrue(historyScreen.waitForExistence(timeout: 10), "search result: history never appeared")
+
+        // The seeded conversation says "to take" (lakachat) twice.
+        let search = app.searchFields.firstMatch
+        if !search.waitForExistence(timeout: 3) { app.swipeDown() }
+        XCTAssertTrue(search.waitForExistence(timeout: 10), "search result: history has no search field")
+        search.tap()
+        search.typeText("לקחת\n")
+        let result = app.descendants(matching: .any)["conversationRow"].firstMatch
+        XCTAssertTrue(result.waitForExistence(timeout: 10), "search result: the seeded conversation was not found")
+        bringOffBottomEdge(app, result)
+        result.tap()
+        let first = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "התוצאה הבאה (1")).firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 10), "search result: the conversation has no Next match button")
+        capture(app, name: "conversation-search-accessibility-text")
+        XCTAssertTrue(first.isHittable, "search result: Next match is off the screen")
+        first.tap()
+        let second = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "התוצאה הבאה (2")).firstMatch
+        XCTAssertTrue(second.waitForExistence(timeout: 10), "search result: Next match did not step to the second place")
+        capture(app, name: "conversation-search-next-accessibility-text")
+    }
+
     /// At the largest text size, with the keyboard up, the Say sheet's
     /// composer used to fill the sheet and leave the quick phrases no
     /// height. The whole sheet must scroll to them, in portrait and in
