@@ -9,6 +9,7 @@ import android.content.Intent
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import com.arbelonson.ozen.core.AlertNotificationContent
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppSettings
@@ -58,10 +59,7 @@ class AlertNotifier(private val context: Context) {
         val shown = if (alarm) manager.areNotificationsEnabled() && manager.getNotificationChannel(ALARM_CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE else allowed(context)
         if (!shown) return Delivery(false)
         val channel = if (alarm) {
-            NotificationChannel(ALARM_CHANNEL_ID, tr("חירום", "Emergency"), NotificationManager.IMPORTANCE_HIGH).apply {
-                enableVibration(true)
-                vibrationPattern = vibration.waveform().first
-            }
+            alarmChannel()
         } else {
             NotificationChannel(CHANNEL_ID, tr("התראות", "Alerts"), NotificationManager.IMPORTANCE_HIGH).apply {
                 enableVibration(true)
@@ -131,6 +129,30 @@ class AlertNotifier(private val context: Context) {
             }
             return AlertVibration(pulses)
         }
+
+        fun alarmChannel(): NotificationChannel =
+            NotificationChannel(ALARM_CHANNEL_ID, tr("חירום", "Emergency"), NotificationManager.IMPORTANCE_HIGH).apply {
+                enableVibration(true)
+                vibrationPattern = AlertVibration.pattern(SoundEvent.Importance.Critical).waveform().first
+            }
+
+        /**
+         * The phone's own page for the Emergency channel, where it can be
+         * let through Do Not Disturb (an app can't do that for itself). The
+         * channel is made first, so the page is there before any alarm.
+         */
+        fun alarmSettings(context: Context): Intent {
+            context.getSystemService(NotificationManager::class.java).createNotificationChannel(alarmChannel())
+            return Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                .putExtra(Settings.EXTRA_CHANNEL_ID, ALARM_CHANNEL_ID)
+        }
+
+        var alarmsOverrideDoNotDisturb: (Context) -> Boolean = { context ->
+            context.getSystemService(NotificationManager::class.java).getNotificationChannel(ALARM_CHANNEL_ID)?.canBypassDnd() == true
+        }
+
+        var openAlarmSettings: (Context) -> Unit = { context -> context.startActivity(alarmSettings(context)) }
 
         var allowed: (Context) -> Boolean = { context ->
             val manager = context.getSystemService(NotificationManager::class.java)

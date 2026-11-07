@@ -119,6 +119,8 @@ import java.io.File
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlin.math.abs
@@ -2034,6 +2036,33 @@ class SettingsScreenDeviceTest {
         val (name, heard) = DiagnosticsReport.nearMisses(app.captions.diagnostics().soundNearMisses).single { it.first == "Doorbell" }
         compose.onNode(hasText(name) and hasText(heard)).performScrollTo()
         compose.onNodeWithText("An alert needs ${(app.captions.pipeline.soundAlertConfidence * 100).roundToInt()}% confidence", substring = true).assertExists()
+    }
+
+    @Test
+    fun theSoundsPageLeadsToLettingEmergencyAlertsThroughDoNotDisturbUntilTheyAreLetThrough() {
+        val row = "Emergency alerts in Do Not Disturb"
+        val overrideBefore = AlertNotifier.alarmsOverrideDoNotDisturb
+        val openBefore = AlertNotifier.openAlarmSettings
+        val overrides = AtomicBoolean(false)
+        val opened = AtomicInteger(0)
+        AlertNotifier.alarmsOverrideDoNotDisturb = { overrides.get() }
+        AlertNotifier.openAlarmSettings = { opened.incrementAndGet() }
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Sounds at home").performScrollTo().performClick()
+            compose.onNodeWithText("tap above and let Ozen’s Emergency alerts override Do Not Disturb", substring = true).performScrollTo().assertExists()
+            compose.onNodeWithText(row).performScrollTo().performClick()
+            compose.waitUntil(5_000) { opened.get() == 1 }
+
+            overrides.set(true)
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(row).fetchSemanticsNodes().isEmpty() }
+            compose.onNodeWithText("tap above and let Ozen’s Emergency alerts override Do Not Disturb", substring = true).assertDoesNotExist()
+        } finally {
+            AlertNotifier.alarmsOverrideDoNotDisturb = overrideBefore
+            AlertNotifier.openAlarmSettings = openBefore
+        }
     }
 
     @Test

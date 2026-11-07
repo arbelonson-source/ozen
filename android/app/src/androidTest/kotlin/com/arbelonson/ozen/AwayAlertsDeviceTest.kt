@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationManager
 import android.os.Build
+import android.provider.Settings
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AlertVibration
@@ -15,6 +16,7 @@ import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -75,5 +77,19 @@ class AwayAlertsDeviceTest {
         } finally {
             AlertNotifier.allowed = before
         }
+    }
+
+    @Test
+    fun theEmergencySettingsPageIsTheEmergencyChannelsOwnAndTheChannelIsThereBeforeAnyAlarm() {
+        manager.deleteNotificationChannel(AlertNotifier.ALARM_CHANNEL_ID)
+        val page = AlertNotifier.alarmSettings(context)
+        assertEquals(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS, page.action)
+        assertEquals(context.packageName, page.getStringExtra(Settings.EXTRA_APP_PACKAGE))
+        assertEquals(AlertNotifier.ALARM_CHANNEL_ID, page.getStringExtra(Settings.EXTRA_CHANNEL_ID))
+        assertNotNull(page.resolveActivity(context.packageManager))
+        val channel = manager.getNotificationChannel(AlertNotifier.ALARM_CHANNEL_ID)
+        assertEquals(NotificationManager.IMPORTANCE_HIGH, channel.importance)
+        assertArrayEquals(AlertVibration.pattern(SoundEvent.Importance.Critical).waveform().first, channel.vibrationPattern)
+        assertEquals(channel.canBypassDnd(), AlertNotifier.alarmsOverrideDoNotDisturb(context))
     }
 }

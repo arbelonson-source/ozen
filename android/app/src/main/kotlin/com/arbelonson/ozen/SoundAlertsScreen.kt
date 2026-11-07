@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Air
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ChildCare
 import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.DirectionsCar
+import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.DoorFront
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Hearing
@@ -41,10 +43,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.SoundAlertPreferences
@@ -106,6 +113,7 @@ internal fun SoundAlertsScreen(
                 "Detection happens only on the phone, using the same audio as the captions. The same sound won’t appear again for 20 seconds.",
             ),
         )
+        LetAlarmsThroughDoNotDisturb()
 
         // Each kind of alert buzzes differently, which only helps once
         // she knows which is which.
@@ -139,6 +147,32 @@ internal fun SoundAlertsScreen(
             }
         }
     }
+}
+
+/**
+ * An alarm alert already comes through Do Not Disturb as an alarm, unless
+ * alarms are silenced there too; letting its channel override Do Not
+ * Disturb is the one sure way, and only the phone's settings can do it,
+ * as the iPhone's Focus note says for its own. Checked again on coming back.
+ */
+@Composable
+private fun LetAlarmsThroughDoNotDisturb() {
+    val context = LocalContext.current
+    var through by remember { mutableStateOf(AlertNotifier.alarmsOverrideDoNotDisturb(context)) }
+    LifecycleResumeEffect(Unit) {
+        through = AlertNotifier.alarmsOverrideDoNotDisturb(context)
+        onPauseOrDispose { }
+    }
+    if (through) return
+    SettingsGroup(dividerInset = 56.dp) {
+        item { SettingRow(tr("התראות חירום גם ב״נא לא להפריע״", "Emergency alerts in Do Not Disturb"), icon = Icons.Rounded.DoNotDisturbOn, onClick = { AlertNotifier.openAlarmSettings(context) }, trailing = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }) }
+    }
+    Footnote(
+        tr(
+            "כדי שאזעקה או גלאי עשן יעירו אתכם גם ב״נא לא להפריע״ או במצב שינה: הקישו למעלה ואפשרו להתראות ״חירום״ של אוזן לעקוף את ״נא לא להפריע״.",
+            "So an alarm or smoke detector still wakes you in Do Not Disturb or a sleep mode: tap above and let Ozen’s Emergency alerts override Do Not Disturb.",
+        ),
+    )
 }
 
 private fun com.arbelonson.ozen.ui.SettingsGroupScope.soundRows(
