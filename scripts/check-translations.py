@@ -276,6 +276,19 @@ def check(path, list_untranslated, keys):
     return problems, untranslated
 
 
+# Letters each language may not use: another language's alphabet. Latin is
+# allowed everywhere (Wi-Fi, MB, names); Hebrew only in the tr() calls.
+SCRIPTS = {
+    "Arabic": re.compile("[\u0600-\u06FF]"),
+    "Cyrillic": re.compile("[\u0400-\u04FF]"),
+    "Ethiopic": re.compile("[\u1200-\u137F]"),
+    "Devanagari": re.compile("[\u0900-\u097F]"),
+    "Chinese": re.compile("[\u4E00-\u9FFF]"),
+    "Hebrew": re.compile("[\u0590-\u05FF]"),
+}
+OWN_SCRIPT = {"amharic": "Ethiopic", "arabic": "Arabic", "chineseSimplified": "Chinese", "hindi": "Devanagari", "russian": "Cyrillic", "ukrainian": "Cyrillic"}
+
+
 def check_translation_table(keys):
     """Every English key from every tr() call must have an entry in every
     other language, with the placeholder numbers it was built with."""
@@ -321,6 +334,11 @@ def check_translation_table(keys):
             if not translation.strip():
                 problems.append(f"{TRANSLATIONS_PATH}: {language}[{key[:40]!r}] is empty")
                 continue
+            # A line pasted into the wrong block shows a reader another
+            # alphabet: the Chinese microphone line once held the Arabic one.
+            for script, letters in SCRIPTS.items():
+                if script != OWN_SCRIPT.get(language) and letters.search(translation):
+                    problems.append(f"{TRANSLATIONS_PATH}: {language}[{key[:40]!r}] has {script} letters: {translation[:40]!r}")
             # A Swift escape copied into JSON as text shows on screen as
             # a backslash and a letter instead of a line break or a quote.
             if "\\n" in translation or '\\"' in translation:
