@@ -181,6 +181,7 @@ private fun ModelRow(
             Text(model.displayName, style = MaterialTheme.typography.bodyLarge, fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal)
             tag?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
             val place = when {
+                progress?.checking == true -> tr("בודקים את הקובץ…", "Checking the file…")
                 progress != null -> tr("מורידים… %1%", "Downloading… %1%", listOf("${(progress.fraction * 100).toInt()}"))
                 onPhone -> tr("כבר בטלפון", "Already on the phone")
                 leftoverBytes != null -> tr("הורדה שלא הושלמה, %1 בטלפון", "Unfinished download, %1 on the phone", listOf(ByteSize.text(leftoverBytes)))

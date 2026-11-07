@@ -3,7 +3,7 @@ package com.arbelonson.ozen.core
 sealed class PhoneModelSwitch {
     data object Idle : PhoneModelSwitch()
 
-    data class Downloading(val file: String, val fraction: Double) : PhoneModelSwitch()
+    data class Downloading(val file: String, val fraction: Double, val checking: Boolean = false) : PhoneModelSwitch()
 
     data class NotEnoughRoom(val file: String, val megabytes: Int) : PhoneModelSwitch()
 

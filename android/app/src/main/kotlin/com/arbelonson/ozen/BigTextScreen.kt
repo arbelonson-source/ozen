@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +52,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -83,6 +85,13 @@ internal fun BigTextScreen(
     // Never smaller than her own captions, which can be set larger.
     val words = TextStyle(color = look.text, fontSize = maxOf(FONT_SIZE, captionSize).sp, fontWeight = FontWeight.Bold)
     val focus = remember { FocusRequester() }
+    // Opened on what the Say pad holds, or given it back by Restore: typing
+    // goes on after it, where a plain text field would put it in front. Text
+    // set from outside becomes the field's own, so Restore after Clear
+    // doesn't bring back a cursor left inside the words.
+    var typing by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
+    val typed = typingValue(text, typing)
+    SideEffect { typing = typed }
     LaunchedEffect(flipped) { if (!flipped) focus.requestFocus() }
     Column(
         modifier = Modifier
@@ -104,8 +113,14 @@ internal fun BigTextScreen(
             }
         } else {
             BasicTextField(
-                value = text,
-                onValueChange = { cleared = BigTextClear.typed(it, cleared); onText(it) },
+                value = typed,
+                onValueChange = {
+                    typing = it
+                    if (it.text != text) {
+                        cleared = BigTextClear.typed(it.text, cleared)
+                        onText(it.text)
+                    }
+                },
                 textStyle = words,
                 cursorBrush = SolidColor(look.text),
                 modifier = Modifier
