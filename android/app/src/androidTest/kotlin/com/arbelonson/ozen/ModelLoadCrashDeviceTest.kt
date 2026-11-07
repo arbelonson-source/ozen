@@ -1,5 +1,10 @@
 package com.arbelonson.ozen
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,6 +18,7 @@ import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.whisper.PreferencesMarkerStore
+import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -72,6 +78,27 @@ class ModelLoadCrashDeviceTest {
         compose.onNodeWithTag("model-load-crash-retry").performClick()
         compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
         compose.onNodeWithTag("model-load-crash").assertDoesNotExist()
+    }
+
+    @Test
+    fun aScreenReaderHearsTheCardAndItsChoicesAreButtons() {
+        val isOnBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        val heard = CopyOnWriteArrayList<String>()
+        try {
+            ScreenReader.isOn = { true }
+            ScreenReader.announce = { _, text -> heard += text }
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag("model-load-crash").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { heard.any { it.startsWith("Ozen closed while setting up the speech model.") && "is lighter" in it } }
+            compose.onNodeWithText("Ozen closed while setting up the speech model").assert(isHeading())
+            for (tag in listOf("model-load-crash-retry", "model-load-crash-switch")) {
+                compose.onNodeWithTag(tag).assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            }
+        } finally {
+            ScreenReader.isOn = isOnBefore
+            ScreenReader.announce = announceBefore
+        }
     }
 
     @Test

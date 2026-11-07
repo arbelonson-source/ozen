@@ -1219,7 +1219,14 @@ private fun LanguageSection(chosen: AppLanguage, onChoose: (AppLanguage) -> Unit
     SettingsGroup(dividerInset = 56.dp) {
         item {
             Box {
-                SettingRow(languageName(chosen), icon = Icons.Rounded.Translate, onClick = { open = true }, trailing = { MenuArrow() })
+                SettingRow(
+                    languageName(chosen),
+                    // The row shows only the choice; heard alone it doesn't say what it sets.
+                    modifier = Modifier.semantics { contentDescription = "${tr("שפת האפליקציה", "App language")}, ${languageName(chosen)}" },
+                    icon = Icons.Rounded.Translate,
+                    onClick = { open = true },
+                    trailing = { MenuArrow() },
+                )
                 DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                     for (language in AppLanguage.entries) {
                         DropdownMenuItem(
@@ -1245,7 +1252,13 @@ private fun SpokenLanguageSection(chosen: UILanguage, onChoose: (UILanguage) -> 
     SettingsGroup(dividerInset = 56.dp) {
         item {
             Box {
-                SettingRow(chosen.spokenName, icon = Icons.Rounded.RecordVoiceOver, onClick = { open = true }, trailing = { MenuArrow() })
+                SettingRow(
+                    chosen.spokenName,
+                    modifier = Modifier.semantics { contentDescription = "${tr("שפת הדיבור", "Spoken language")}, ${chosen.spokenName}" },
+                    icon = Icons.Rounded.RecordVoiceOver,
+                    onClick = { open = true },
+                    trailing = { MenuArrow() },
+                )
                 DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                     for (language in UILanguage.entries) {
                         DropdownMenuItem(

@@ -167,7 +167,7 @@ private fun ReadyPage(transcriber: FileTranscriber, ready: FileTranscription.Rea
 @Composable
 private fun ChoiceRow(label: String, value: String, tag: String, enabled: Boolean = true, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(vertical = 12.dp).testTag(tag),
+        Modifier.fillMaxWidth().clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(vertical = 12.dp).testTag(tag),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
