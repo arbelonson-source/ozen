@@ -82,7 +82,11 @@ class ModelFileLoader(
         try {
             withContext(Dispatchers.IO) {
                 val job = coroutineContext.job
-                download.pendingMegabytes()?.let { makeRoom(StorageSpaceGate.requiredMegabytes(it) * StorageSpaceGate.BYTES_PER_MEGABYTE) }
+                // Room is asked for only when the download can start: asking
+                // clears other apps' caches.
+                if (ModelDownloadGate.decide(network(), cellularAllowed) == ModelDownloadGate.Decision.Proceed) {
+                    download.pendingMegabytes()?.let { makeRoom(StorageSpaceGate.requiredMegabytes(it) * StorageSpaceGate.BYTES_PER_MEGABYTE) }
+                }
                 var shown = -1.0
                 download.download { fraction ->
                     job.ensureActive()

@@ -173,6 +173,16 @@ class ModelFileLoaderTest {
     }
 
     @Test
+    fun `no room is asked for while the phone is offline or waits for Wi-Fi, so no cache is cleared for a download that cannot start`() = runBlocking {
+        for ((network, cellular) in listOf(NetworkConditions.offline to true, NetworkConditions.cellular to false)) {
+            var asked = 0
+            val loader = ModelFileLoader(file, "/lib", download = PhoneModelDownloader(file, source, ChunkedModel(data)), network = { network }, makeRoom = { asked += 1 }) { _, _ -> null }
+            assertFailsWith<EngineUnavailability> { loader.load("en", cellularDownloadAllowed = cellular) {} }
+            assertEquals(0, asked, "asked for room on $network")
+        }
+    }
+
+    @Test
     fun `room is asked for off the caller's thread`() = runBlocking {
         val callers = mutableListOf<String>()
         val loader = ModelFileLoader(file, "/lib", download = PhoneModelDownloader(file, source, ChunkedModel(data)), makeRoom = { callers += Thread.currentThread().name }) { _, _ -> null }
