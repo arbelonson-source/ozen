@@ -119,6 +119,11 @@ class FileTranscriber(
         work.cancel()
     }
 
+    fun retry() {
+        val failed = shown.value as? FileTranscription.Failed ?: return
+        if (failed.problem.canTryAgain) showReady()
+    }
+
     fun start() {
         if (work.running) return
         val ready = shown.value as? FileTranscription.Ready ?: return

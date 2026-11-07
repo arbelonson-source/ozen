@@ -18,6 +18,9 @@ enum class FileTranscriptionProblem {
             Unexpected -> tr("משהו השתבש בהמרת ההקלטה לטקסט. אפשר לנסות שוב.", "Something went wrong while turning the recording into text. Try again.")
         }
 
+    val canTryAgain: Boolean
+        get() = this != CouldNotRead && this != NoAudio
+
     companion object {
         fun of(failure: EngineUnavailability): FileTranscriptionProblem = when (failure.kind) {
             EngineUnavailability.Kind.NotEnoughStorage -> NotEnoughStorage
