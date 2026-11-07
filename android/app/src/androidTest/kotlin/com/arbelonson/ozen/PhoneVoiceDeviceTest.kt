@@ -7,6 +7,7 @@ import com.arbelonson.ozen.core.UILanguage
 import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -42,6 +43,26 @@ class PhoneVoiceDeviceTest {
     }
 
     @Test
+    fun restingLetsGoOfThePhonesSpeechEngine() {
+        val voice = connected()
+        val held = connections()
+        assertTrue("nothing holds the speech engine", held > 0)
+        instrumentation.runOnMainSync { voice.rest() }
+        assertTrue("still held after resting: ${connections()} of $held", within(5_000) { connections() == held - 1 })
+        instrumentation.runOnMainSync { voice.refreshVoice() }
+        assertTrue("not held again after coming back: ${connections()} of $held", within(10_000) { connections() == held })
+    }
+
+    @Test
+    fun aReplyAskedForWhileRestingIsStillSaid() {
+        val voice = connected()
+        instrumentation.runOnMainSync { voice.rest() }
+        assertTrue(voice.isResting)
+        assertEquals("the reply was not said", listOf(true, false), said(voice))
+        assertFalse(voice.isResting)
+    }
+
+    @Test
     fun aReplyCutOffByTheSpeechEngineStoppingEndsOnComingBack() {
         val voice = connected()
         val events = CopyOnWriteArrayList<Boolean>()
@@ -63,6 +84,14 @@ class PhoneVoiceDeviceTest {
         assertTrue("the speech engine never answered", within(10_000) { voice.installed.value != null })
         assertTrue("no English voice: ${voice.installed.value}", UILanguage.English in voice.installed.value!!)
         return voice
+    }
+
+    // Each voice's connection to the phone's speech engine. Since Android 11
+    // the system makes it for the app, so the system is the one listed.
+    private fun connections(): Int {
+        val out = instrumentation.uiAutomation.executeShellCommand("dumpsys activity services com.google.android.tts")
+        val text = ParcelFileDescriptor.AutoCloseInputStream(out).use { it.readBytes().decodeToString() }
+        return text.lines().count { it.startsWith("      ConnectionRecord{") }
     }
 
     private fun speechEngineStopped() {

@@ -333,7 +333,9 @@ class CaptionSession(
      * The wait is measured on a clock that keeps counting while the phone
      * sleeps: a coroutine's delay stops with the processor, so a phone left
      * asleep for an hour still held the model for the full wait once woken,
-     * just as the person's other apps started again.
+     * just as the person's other apps started again. The phone's speech
+     * engine is let go of at each look once nothing is being said, captions
+     * running or not; coming back connects it again.
      */
     private fun startBackgroundRelease() {
         cancelBackgroundRelease()
@@ -342,6 +344,7 @@ class CaptionSession(
         backgroundRelease = scope.launch {
             while (true) {
                 delay(minOf(seconds, BACKGROUND_CHECK_SECONDS) * 1_000)
+                voice.rest()
                 val away = (backgroundClock() - leftAt) / 1_000
                 if (away < seconds) continue
                 val phase = pipeline.phase
