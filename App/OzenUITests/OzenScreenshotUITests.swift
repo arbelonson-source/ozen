@@ -381,7 +381,7 @@ final class OzenScreenshotUITests: XCTestCase {
     }
 
     func testAppStoreHebrew() throws {
-        storeScreenshots(prefix: "store-he", dark: "hebrewDefault", light: "hebrewLightTheme", reply: "אפשר לחזור על זה, קצת יותר לאט?", settingsTitle: "הגדרות")
+        storeScreenshots(prefix: "store-he", dark: "hebrewDefault", light: "hebrewGalleryLight", reply: "אפשר לחזור על זה, קצת יותר לאט?", settingsTitle: "הגדרות")
     }
 
     private func storeScreenshots(prefix: String, dark: String, light: String, reply: String, settingsTitle: String) {
