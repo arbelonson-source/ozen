@@ -377,6 +377,14 @@ class PhasePresentation private constructor(
                     )
                 }
 
+                EnginePreparationProgress.Stage.CheckingModel -> PhasePresentation(
+                    title = tr("בודקים את הקובץ…", "Checking the file…"),
+                    detail = listOfNotNull(modelName, tr("השאירו את האפליקציה פתוחה", "Leave the app open")).joinToString(" · "),
+                    systemImage = "gearshape.2",
+                    tint = PhaseTint.Working,
+                    isBusy = true,
+                )
+
                 EnginePreparationProgress.Stage.LoadingModel ->
                     if (preparation.isFirstTime) {
                         PhasePresentation(

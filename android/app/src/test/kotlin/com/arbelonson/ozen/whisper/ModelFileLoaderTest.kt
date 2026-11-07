@@ -122,11 +122,24 @@ class ModelFileLoaderTest {
     }
 
     @Test
+    fun `after the last byte the loader says it is checking the file, then loads it`() = runBlocking {
+        val loader = loader(ChunkedModel(data))
+        val steps = mutableListOf<EnginePreparationProgress>()
+        assertFailsWith<EngineUnavailability> { loader.load("en", cellularDownloadAllowed = true) { steps.add(it) } }
+        val stages = steps.map { it.stage }.fold(listOf<EnginePreparationProgress.Stage>()) { kept, stage -> if (kept.lastOrNull() == stage) kept else kept + stage }
+        assertEquals(
+            listOf(EnginePreparationProgress.Stage.DownloadingModel, EnginePreparationProgress.Stage.CheckingModel, EnginePreparationProgress.Stage.LoadingModel),
+            stages,
+        )
+        assertEquals(file.name, steps.first { it.stage == EnginePreparationProgress.Stage.CheckingModel }.detail)
+    }
+
+    @Test
     fun `the download and the set-up name the model as the model list does, not by its file`() = runBlocking {
         val loader = ModelFileLoader(file, "/lib", download = PhoneModelDownloader(file, source, ChunkedModel(data)), variant = WhisperModelCatalog.RECOMMENDED_VARIANT) { _, _ -> null }
         val steps = mutableListOf<EnginePreparationProgress>()
         assertFailsWith<EngineUnavailability> { loader.load("he", cellularDownloadAllowed = true) { steps.add(it) } }
-        assertEquals(setOf(EnginePreparationProgress.Stage.DownloadingModel, EnginePreparationProgress.Stage.LoadingModel), steps.map { it.stage }.toSet())
+        assertEquals(setOf(EnginePreparationProgress.Stage.DownloadingModel, EnginePreparationProgress.Stage.CheckingModel, EnginePreparationProgress.Stage.LoadingModel), steps.map { it.stage }.toSet())
         assertEquals(setOf("Turbo Hebrew, noise-trained (Ozen)"), steps.map { WhisperModelCatalog.option(it.detail ?: "")?.displayName }.toSet())
     }
 

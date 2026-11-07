@@ -104,6 +104,7 @@ data class EnginePreparationProgress(
         CheckingSupport("checkingSupport"),
         RequestingPermission("requestingPermission"),
         DownloadingModel("downloadingModel"),
+        CheckingModel("checkingModel"),
         LoadingModel("loadingModel"),
         WarmingUp("warmingUp"),
     }

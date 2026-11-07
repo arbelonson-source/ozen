@@ -39,6 +39,26 @@ private class ServedModel(private val data: ByteArray) : ReleaseFileFetching {
 private fun sha256(data: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(data).joinToString("") { "%02x".format(it) }
 
 class PhoneModelDownloaderTest {
+    @Test
+    fun `after the last byte the download says it is checking the file, before the file takes its name`() {
+        val events = mutableListOf<String>()
+        var atHash: List<String> = emptyList()
+        var namedAtHash = true
+        val fetcher = object : ReleaseFileFetching by ServedModel(data) {
+            override fun sha256(file: File): String {
+                atHash = events.toList()
+                namedAtHash = this@PhoneModelDownloaderTest.file.exists()
+                return HTTPFileFetcher().sha256(file)
+            }
+        }
+        PhoneModelDownloader(file, source, fetcher).download(checking = { events.add("checking") }) { events.add("progress ${it}") }
+        assertEquals("progress 1.0", atHash[atHash.size - 2])
+        assertEquals("checking", atHash.last())
+        assertEquals(1, events.count { it == "checking" })
+        assertFalse(namedAtHash)
+        assertTrue(file.isFile)
+    }
+
     private val folder = Files.createTempDirectory("ozen-phone-model").toFile()
     private val file = File(folder, "ggml-model.bin")
     private val data = ByteArray(10_000) { (it * 13 % 251).toByte() }

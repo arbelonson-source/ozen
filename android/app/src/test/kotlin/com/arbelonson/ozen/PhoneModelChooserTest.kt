@@ -55,6 +55,7 @@ class PhoneModelChooserTest {
     private val roomAsked = ArrayList<Pair<Long, Int>>()
     private var breaksLeft = 0
     private var downloadsStarted = 0
+    private var whenHashing: () -> Unit = {}
 
     private val fetcher = object : ReleaseFileFetching {
         override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
@@ -77,7 +78,10 @@ class PhoneModelChooserTest {
             }
         }
 
-        override fun sha256(file: File): String = PhoneModelCatalog.all.first { it.bytes == file.length() }.source.sha256
+        override fun sha256(file: File): String {
+            whenHashing()
+            return PhoneModelCatalog.all.first { it.bytes == file.length() }.source.sha256
+        }
     }
 
     private val chooser = PhoneModelChooser(
@@ -210,6 +214,17 @@ class PhoneModelChooserTest {
         assertEquals(PhoneModelSwitch.Offline("ggml-base-q5_1.bin"), chooser.switching.value)
         scope.runCurrent()
         assertTrue(fetched.isEmpty())
+    }
+
+    @Test
+    fun `while the finished download is being checked the Settings state says so, at full length`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        var seen: PhoneModelSwitch? = null
+        whenHashing = { seen = chooser.switching.value }
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertEquals(PhoneModelSwitch.Downloading("ggml-base-q5_1.bin", 1.0, checking = true), seen)
+        assertEquals(PhoneModelSwitch.Idle, chooser.switching.value)
     }
 
     @Test
