@@ -2240,6 +2240,28 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun whileTheModelGetsReadyTheEmptyScreenSaysSoInsteadOfOfferingTheMicrophoneButton() {
+        fun show(phase: PipelinePhase) {
+            compose.runOnUiThread { CaptionState.show(phase, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
+            compose.waitForIdle()
+        }
+        val ready = "The speech model is getting ready. The progress is shown below, and captions start on their own."
+        val hint = "You can choose a microphone with the microphone button"
+
+        show(PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.42, detail = "small")))
+        compose.onNodeWithText(ready).assertExists()
+        compose.onNodeWithText(hint, substring = true).assertDoesNotExist()
+
+        show(PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel, detail = "small")))
+        compose.onNodeWithText(ready).assertExists()
+
+        show(PipelinePhase.Idle)
+        compose.onNodeWithText(ready).assertDoesNotExist()
+        compose.onNodeWithText(hint, substring = true).assertExists()
+        compose.runOnUiThread { CaptionState.clear() }
+    }
+
+    @Test
     fun theStatusShowsWhenItIsBusyAndHowFarADownloadIsAndIsNoButtonWhenATapWouldDoNothing() {
         fun show(phase: PipelinePhase) {
             compose.runOnUiThread { CaptionState.show(phase, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }

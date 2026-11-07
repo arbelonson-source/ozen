@@ -1058,6 +1058,11 @@ private fun CaptionScreen(
                                         "כשמישהו ידבר, המילים יופיעו כאן בזמן אמת. לחיצה ארוכה על שורה מאפשרת לסמן אותה כחשובה או לתת שם לדובר, וצביטה בשתי אצבעות מגדילה או מקטינה את הטקסט.",
                                         "When someone talks, the words will appear here in real time. Press and hold a line to mark it as important or name the speaker, and pinch with two fingers to make the text bigger or smaller.",
                                     )
+                                } else if (state.phase is PipelinePhase.PreparingEngine) {
+                                    // A first model can take minutes to download; the
+                                    // hint about the microphone read as "ready, nobody
+                                    // talking yet" while the status below said otherwise.
+                                    tr("מודל הדיבור בהכנה. ההתקדמות מופיעה למטה, והכתוביות יתחילו מעצמן.", "The speech model is getting ready. The progress is shown below, and captions start on their own.")
                                 } else {
                                     tr("אפשר לבחור מיקרופון בכפתור המיקרופון שבתחתית המסך, ולהחליף את מנוע התמלול בהגדרות.", "You can choose a microphone with the microphone button at the bottom, and change the transcription engine in Settings.")
                                 },
