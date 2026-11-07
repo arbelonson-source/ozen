@@ -255,8 +255,8 @@ class FakeEngine(
         return availability
     }
 
-    /** False for an engine like the home computer's or the cloud's, which loads nothing on the phone. */
-    var loadsModel = true
+    /** Whether a successful prepare loads a model on the phone: only the phone's own engine does, not the home computer's or the cloud's. */
+    var loadsModel = kind == TranscriptionEngineKind.WhisperKit
     override var holdsModel = false
         private set
 
