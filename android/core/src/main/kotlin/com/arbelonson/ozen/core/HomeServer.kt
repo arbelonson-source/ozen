@@ -286,7 +286,11 @@ class HomeServerPairing private constructor(val address: String, val code: Strin
             if (pin != null && !CertificatePin.shape.matches(pin)) return null
             val trimmedAddress = homeServerTrimmed(address)
             val trimmedCode = homeServerTrimmed(code)
-            if (HomeServer.url(trimmedAddress) == null || trimmedCode.isEmpty() || graphemes(trimmedCode).size > 200) return null
+            val url = HomeServer.url(trimmedAddress)
+            if (url == null || trimmedCode.isEmpty() || graphemes(trimmedCode).size > 200) return null
+            // A pin is for an encrypted link: with a plain ws:// address it would protect nothing
+            // and only hide the note that the link isn't encrypted.
+            if (pin != null && url.scheme?.lowercase(Locale.ROOT) != "wss") return null
             if (graphemes(trimmedCode).any { homeServerIsWhiteSpace(it.codePointAt(0)) }) return null
             return HomeServerPairing(trimmedAddress, trimmedCode, pin)
         }

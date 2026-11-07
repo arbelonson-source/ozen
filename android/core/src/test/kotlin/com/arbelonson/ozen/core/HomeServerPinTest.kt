@@ -28,9 +28,17 @@ class HomeServerPinTest {
 
     @Test
     fun `a pin that is not a certificate fingerprint makes the link damaged instead of being dropped`() {
-        for (bad in listOf("", "short", "$pin=", pin.replace('-', '+'), pin + "A")) {
+        for (bad in listOf("", "short", "$pin=", pin.replace('-', '+'), pin + "A", pin.dropLast(1) + "l")) {
             assertNull(HomeServerPairing.from(URI("ozen://pair?address=wss%3A%2F%2F192.168.1.20%3A8766&code=example-code-123&pin=$bad")), bad)
         }
+    }
+
+    @Test
+    fun `a pin with an address that is not encrypted makes the link damaged`() {
+        for (address in listOf("192.168.1.20", "ws%3A%2F%2F192.168.1.20%3A8765", "grandma-pc")) {
+            assertNull(HomeServerPairing.from(URI("ozen://pair?address=$address&code=example-code-123&pin=$pin")), address)
+        }
+        assertNull(HomeServerPairing("ws://192.168.1.20:8765", "example-code-123", pin))
     }
 
     @Test
