@@ -24,6 +24,17 @@ done
 for variant in x64 sse42 sandybridge ivybridge piledriver haswell skylakex cannonlake cascadelake icelake cooperlake zen4 alderlake sapphirerapids; do
     need "lib/x86_64/libggml-cpu-$variant.so"
 done
+if [[ $apk == *release* ]]; then
+    dex=$(awk '/ classes[0-9]*\.dex$/ { total += $1 } END { print total + 0 }' <<< "$listing")
+    if (( dex > 12 * 1024 * 1024 )); then
+        echo "$apk carries $(( dex / 1024 / 1024 )) MB of code: the release build is not shrunk" >&2
+        missing=1
+    fi
+    if (( $(unzip -p "$apk" 'classes*.dex' | grep -ac 'Lcom/arbelonson/ozen/whisper/WhisperCpp;') == 0 )); then
+        echo "$apk lost the WhisperCpp class name its native code is bound to" >&2
+        missing=1
+    fi
+fi
 sdk=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$(sed -n 's/^sdk.dir=//p' local.properties 2>/dev/null)}}
 aapt2=$(ls "$sdk"/build-tools/*/aapt2 | sort -V | tail -1)
 permissions=$("$aapt2" dump permissions "$apk")

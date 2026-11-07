@@ -80,12 +80,12 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
-      - name: Core tests, debug APK, device tests compiled
+      - name: Core tests, debug and release APKs, device tests compiled
         working-directory: android
-        run: ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin
-      - name: The APK carries the speech code for every processor
+        run: ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:compileDebugAndroidTestKotlin
+      - name: The APKs carry the speech code for every processor, and the release build is shrunk
         working-directory: android
-        run: bash check-apk.sh
+        run: bash check-apk.sh && bash check-apk.sh app/build/outputs/apk/release/app-release-unsigned.apk
       - uses: actions/upload-artifact@v6
         with:
           name: ozen-android-debug

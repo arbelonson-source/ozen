@@ -1,13 +1,17 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.CloudHTTP
+import com.arbelonson.ozen.core.CloudKeyCheck
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
+import com.arbelonson.ozen.core.UrlConnectionCloudHTTP
 import com.arbelonson.ozen.core.tr
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +19,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -27,6 +33,7 @@ class EngineSettings(
     private val checkHomeComputer: suspend () -> HomeServerCheck,
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val http: CloudHTTP = UrlConnectionCloudHTTP(),
     private val restartIfRunning: () -> Unit,
 ) {
     private var beamRestart: Job? = null
@@ -65,6 +72,7 @@ class EngineSettings(
     fun chooseCloudService(service: CloudProvider) {
         if (provider == service) return
         settings.change { it.cloudProvider = service }
+        forgetKeyCheck()
         if (cloudIsTheEngine) restart()
     }
 
@@ -80,6 +88,19 @@ class EngineSettings(
     val pairingCodeHeld = MutableStateFlow(false)
 
     private val credentialWork = Mutex()
+
+    private val keyCheckState = MutableStateFlow<CloudKeyCheck?>(null)
+
+    /** What trying the saved key at its service showed, for the key row under the field; null until a reply. */
+    val cloudKeyCheck: StateFlow<CloudKeyCheck?> = keyCheckState.asStateFlow()
+
+    private val keyCheckGeneration = AtomicInteger()
+
+    private fun forgetKeyCheck(): Int {
+        val generation = keyCheckGeneration.incrementAndGet()
+        keyCheckState.value = null
+        return generation
+    }
 
     suspend fun loadKeyState() = credentialWork.withLock {
         val held = withContext(io) { CloudProvider.entries.filter { cloudKeys.hasKey(it) }.toSet() to (homeServerCode.read() != null) }
@@ -101,12 +122,23 @@ class EngineSettings(
             val key = draft.trim()
             if (key.isEmpty() || !cloudSoundAcknowledged()) return@withContext false
             val service = provider
+            var generation = 0
             credentialWork.withLock {
                 if (!withContext(io) { cloudKeys.save(key, service) }) return@withContext false
                 cloudKeysHeld.value = cloudKeysHeld.value + service
+                generation = forgetKeyCheck()
             }
+            checkSavedKey(service, key, generation)
             if (cloudIsTheEngine) restart()
             true
+        }
+    }
+
+    private fun checkSavedKey(service: CloudProvider, key: String, generation: Int) {
+        scope.launch {
+            val result = CloudKeyCheck.result(service, key, http)
+            val stillSaved = withContext(io) { cloudKeys.read(service) == key }
+            if (generation == keyCheckGeneration.get() && provider == service && stillSaved) keyCheckState.value = result
         }
     }
 
@@ -116,6 +148,7 @@ class EngineSettings(
             credentialWork.withLock {
                 withContext(io) { cloudKeys.remove(service) }
                 cloudKeysHeld.value = cloudKeysHeld.value - service
+                forgetKeyCheck()
             }
             if (cloudIsTheEngine) restart()
         }
