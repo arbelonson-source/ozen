@@ -87,6 +87,7 @@ class StartCaptionsDeviceTest {
 
     @Test
     fun theAppIconHasAStartCaptionsShortcutThatCarriesTheStartAction() {
+        ShortcutManagerCompat.removeAllDynamicShortcuts(context)
         ActivityScenario.launch(MainActivity::class.java).use {
             val shortcut = ShortcutManagerCompat.getDynamicShortcuts(context).firstOrNull { it.id == "start-captions" }
             assertNotNull("no start-captions shortcut", shortcut)
