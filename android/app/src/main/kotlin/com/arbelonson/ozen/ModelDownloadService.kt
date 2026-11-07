@@ -31,6 +31,7 @@ class ModelDownloadService : Service() {
     private val models get() = (application as OzenApplication).captions.phoneModels
     private val scope = MainScope()
     private var watching: Job? = null
+    private var renewing: Job? = null
     private var wake: DownloadWakeLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -45,6 +46,9 @@ class ModelDownloadService : Service() {
             startForeground(NOTIFICATION_ID, shown)
         }
         if (watching == null) watching = scope.launch { watch() }
+        // The state moves with each whole percent; on a link slow enough to
+        // stay on one for longer than the lock's time limit, this renews it.
+        if (renewing == null) renewing = scope.launch { wake?.keepUp { models.switching.value } }
         return START_NOT_STICKY
     }
 

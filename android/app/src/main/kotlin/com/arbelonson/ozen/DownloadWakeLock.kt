@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import android.content.Context
 import android.os.PowerManager
 import com.arbelonson.ozen.core.PhoneModelSwitch
+import kotlinx.coroutines.delay
 
 interface TimedLock {
     fun acquire(timeoutMillis: Long)
@@ -24,6 +25,13 @@ class DownloadWakeLock(private val lock: TimedLock) {
         }
     }
 
+    suspend fun keepUp(state: () -> PhoneModelSwitch) {
+        while (true) {
+            follow(state())
+            delay(RENEW_MILLISECONDS)
+        }
+    }
+
     @Synchronized
     fun release() {
         if (!held) return
@@ -33,6 +41,7 @@ class DownloadWakeLock(private val lock: TimedLock) {
 
     companion object {
         const val TIMEOUT_MILLISECONDS = 10 * 60 * 1_000L
+        const val RENEW_MILLISECONDS = 60 * 1_000L
 
         fun of(context: Context): DownloadWakeLock {
             val power = context.getSystemService(PowerManager::class.java)
