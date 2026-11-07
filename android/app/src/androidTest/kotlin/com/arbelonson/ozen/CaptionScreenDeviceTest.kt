@@ -35,6 +35,7 @@ import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.longClick
@@ -332,6 +333,31 @@ class CaptionScreenDeviceTest {
         compose.waitForIdle()
         assertTrue(displayed("Line 32 here"))
         compose.onNodeWithText("2 new lines").assertDoesNotExist()
+    }
+
+    // TalkBack, a braille display and a keyboard move the list through its
+    // accessibility actions, not a finger's scroll.
+    @Test
+    fun rereadingWithAScreenReaderKeepsThePlaceToo() {
+        val lines = (1..30).map { committed("Line $it here") }
+        showLines(lines)
+        assertTrue(displayed("Line 30 here"))
+        compose.onNode(hasScrollToIndexAction()).performScrollToIndex(5)
+        compose.waitForIdle()
+        assertFalse(displayed("Line 30 here"))
+        showLines(lines + committed("Line 31 here"))
+        assertFalse("a new line pulled the list away from the line being read", displayed("Line 31 here"))
+        compose.onNodeWithText("1 new line").assertExists()
+
+        compose.onNodeWithText("1 new line").performClick()
+        compose.waitForIdle()
+        assertTrue(displayed("Line 31 here"))
+        compose.onNode(hasScrollToIndexAction()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, -2_000f) }
+        compose.waitForIdle()
+        assertFalse(displayed("Line 31 here"))
+        showLines(lines + (31..32).map { committed("Line $it here") })
+        assertFalse("a new line pulled the list away after a scroll back", displayed("Line 32 here"))
+        compose.onNodeWithText("1 new line").assertExists()
     }
 
     @Test

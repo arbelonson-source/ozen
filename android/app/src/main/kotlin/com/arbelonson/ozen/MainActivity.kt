@@ -197,6 +197,7 @@ import com.arbelonson.ozen.ui.OzenTheme
 import java.util.UUID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -892,6 +893,21 @@ private fun CaptionScreen(
             }
         }
     }
+    // TalkBack, a braille display or a keyboard move the list through its
+    // accessibility actions, which never pass through the connection above:
+    // reading back an earlier line that way was undone by the next word. Any
+    // move the screen's own following didn't make counts as hers.
+    val marks = remember(list) { FollowMarks() }
+    LaunchedEffect(list) {
+        snapshotFlow { list.place() }
+            .drop(1)
+            .collect { at ->
+                if (marks.scrolling || at == marks.at) return@collect
+                val atEnd = !list.canScrollForward
+                if (following && !atEnd) countWhenLeft = lineCount
+                following = atEnd
+            }
+    }
     LaunchedEffect(state.lines.isEmpty()) { if (state.lines.isEmpty()) following = true }
     val scope = rememberCoroutineScope()
     val awayLine by rememberUpdatedState(state.away?.line)
@@ -1065,7 +1081,7 @@ private fun CaptionScreen(
                                 if (offer != null) LighterModelOffer(offer, modelOfferWaiting, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             }
                         }
-                        CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
+                        CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, marks, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
                         if (!following) {
                             JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                                 following = true
@@ -1223,6 +1239,7 @@ private fun CaptionLines(
     look: CaptionTheme,
     list: LazyListState,
     following: Boolean,
+    marks: FollowMarks,
     modifier: Modifier,
     trailing: (@Composable () -> Unit)?,
     onStar: (UUID) -> Unit,
@@ -1234,7 +1251,7 @@ private fun CaptionLines(
 ) {
     val lastIndex = if (trailing != null) lines.size else lines.lastIndex
     LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize, trailing != null) {
-        if (following) list.scrollToEnd(lastIndex)
+        if (following) list.follow(lastIndex, marks)
     }
     // The buttons coming back, or a turn of the phone, change the room the
     // lines have; the list keeps its top, so the newest line was left under
@@ -1244,7 +1261,7 @@ private fun CaptionLines(
         if (!following) return@LaunchedEffect
         snapshotFlow { list.layoutInfo.viewportSize.height }
             .distinctUntilChanged()
-            .collect { if (list.layoutInfo.totalItemsCount > 0) list.scrollToEnd(list.layoutInfo.totalItemsCount - 1) }
+            .collect { if (list.layoutInfo.totalItemsCount > 0) list.follow(list.layoutInfo.totalItemsCount - 1, marks) }
     }
     LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(lines, key = { it.id }) { line ->
@@ -1286,6 +1303,25 @@ private fun CaptionLines(
  * To the bottom of the newest line, not its top: a long line at a large
  * size can be taller than the screen, and its newest words come last.
  */
+/** Where the screen's own following last left the list, and whether it is moving it now. */
+private class FollowMarks {
+    var scrolling = false
+    var at: Pair<Any?, Int>? = null
+}
+
+/** The first line in sight and how far it is scrolled: lines added below or dropped above leave it alone. */
+private fun LazyListState.place(): Pair<Any?, Int> = layoutInfo.visibleItemsInfo.firstOrNull()?.key to firstVisibleItemScrollOffset
+
+private suspend fun LazyListState.follow(lastIndex: Int, marks: FollowMarks) {
+    marks.scrolling = true
+    try {
+        scrollToEnd(lastIndex)
+    } finally {
+        marks.at = place()
+        marks.scrolling = false
+    }
+}
+
 private suspend fun LazyListState.scrollToEnd(lastIndex: Int) {
     scrollToItem(lastIndex)
     val last = layoutInfo.visibleItemsInfo.lastOrNull() ?: return
