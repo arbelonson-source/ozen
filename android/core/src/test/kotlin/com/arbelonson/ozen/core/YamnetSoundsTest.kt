@@ -61,4 +61,15 @@ class YamnetSoundsTest {
         assertTrue(windows.add(FloatArray(YamnetSounds.SAMPLES_BETWEEN_WINDOWS - 1)).isEmpty())
         assertEquals(1, windows.add(FloatArray(1)).size)
     }
+
+    @Test
+    fun `an empty chunk drops the sound held back for the next window`() {
+        val windows = SoundWindows()
+        assertTrue(windows.add(FloatArray(YamnetSounds.SAMPLES_PER_WINDOW - 1) { 0.5f }).isEmpty())
+        assertTrue(windows.add(FloatArray(0)).isEmpty())
+        assertTrue(windows.add(FloatArray(1) { 0.9f }).isEmpty())
+        val next = windows.add(FloatArray(YamnetSounds.SAMPLES_PER_WINDOW - 1) { 0.9f })
+        assertEquals(1, next.size)
+        assertTrue(next[0].all { it == 0.9f })
+    }
 }

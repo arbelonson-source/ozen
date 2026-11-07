@@ -385,13 +385,17 @@ class FakeSoundDetector : SoundEventDetecting {
     private var channel: Channel<SoundObservation>? = null
     var chunksSeen = 0
         private set
+    val heard = mutableListOf<FloatArray>()
 
     override fun observations(audio: Flow<FloatArray>): Flow<SoundObservation> {
         val created = Channel<SoundObservation>(Channel.UNLIMITED)
         channel = created
         return channelFlow {
             val feeder = launch {
-                audio.collect { chunksSeen += 1 }
+                audio.collect {
+                    heard += it
+                    chunksSeen += 1
+                }
                 created.close()
             }
             for (observation in created) send(observation)

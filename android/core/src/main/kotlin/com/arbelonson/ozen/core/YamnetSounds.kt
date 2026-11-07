@@ -68,6 +68,10 @@ class SoundWindows {
     private var pending = FloatArray(0)
 
     fun add(chunk: FloatArray): List<FloatArray> {
+        if (chunk.isEmpty()) {
+            pending = FloatArray(0)
+            return emptyList()
+        }
         pending += chunk
         val windows = mutableListOf<FloatArray>()
         var start = 0
