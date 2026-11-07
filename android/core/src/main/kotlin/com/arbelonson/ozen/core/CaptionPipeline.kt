@@ -2636,7 +2636,7 @@ class CaptionPipeline(
         fanOut = fan
         isListeningForSoundsOnly = true
         statsData.soundDetectionRunning = true
-        val observations = detector.observations(fan.outputs[0])
+        val observations = detector.observations(fan.outputs[0].filter { soundPolicy.preferences.isEnabled })
         soundTask = scope.launch {
             observations.takeWhile { runID == run }.collect { observation ->
                 handleSoundObservation(observation)

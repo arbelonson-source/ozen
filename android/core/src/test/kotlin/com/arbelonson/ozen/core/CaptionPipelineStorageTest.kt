@@ -62,6 +62,26 @@ class CaptionPipelineStorageTest {
     }
 
     @Test
+    fun `sound alerts switched off while only sounds are listened for give the classifier no more sound`() = runTest {
+        val detector = FakeSoundDetector()
+        val (pipeline, _, audio) = makeStoragePipeline(storage = FakeStorage(300), soundDetector = detector)
+        pipeline.start(AppSettings.default)
+        assertTrue(pipeline.isListeningForSoundsOnly)
+        audio.push(FloatArray(1_024) { 0.1f })
+        assertTrue(eventually { detector.chunksSeen == 1 })
+
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = false))
+        audio.push(FloatArray(1_024) { 0.1f })
+        audio.push(FloatArray(1_024) { 0.1f })
+        delay(50.milliseconds)
+        assertEquals(1, detector.chunksSeen)
+
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        audio.push(FloatArray(1_024) { 0.1f })
+        assertTrue(eventually { detector.chunksSeen == 2 })
+    }
+
+    @Test
     fun `enough room, nothing to download, an unknown size, or no way to check - it goes ahead`() = runTest {
         val cases: List<Pair<FakeStorage?, Int?>> = listOf(
             FakeStorage(20_000) to 626,
