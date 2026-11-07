@@ -59,8 +59,19 @@ class PhoneModelDownloader(val file: File, val source: PhoneModelSource, private
 
     private fun fraction(done: Long): Double = if (source.bytes <= 0) 1.0 else (done.toDouble() / source.bytes).coerceIn(0.0, 1.0)
 
-    private companion object {
-        const val WAIT_STEP_MILLIS = 100L
-        val locks = ConcurrentHashMap<String, ReentrantLock>()
+    companion object {
+        private const val WAIT_STEP_MILLIS = 100L
+        private val locks = ConcurrentHashMap<String, ReentrantLock>()
+
+        fun ifNotDownloading(file: File, action: () -> Unit): Boolean {
+            val lock = locks.computeIfAbsent(file.absolutePath) { ReentrantLock() }
+            if (!lock.tryLock()) return false
+            try {
+                action()
+            } finally {
+                lock.unlock()
+            }
+            return true
+        }
     }
 }

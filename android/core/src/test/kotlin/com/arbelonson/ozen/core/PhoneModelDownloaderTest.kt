@@ -40,6 +40,23 @@ private fun sha256(data: ByteArray): String = MessageDigest.getInstance("SHA-256
 
 class PhoneModelDownloaderTest {
     @Test
+    fun `a download waits while another part of the app removes its unfinished file`() {
+        val inside = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val remover = thread { PhoneModelDownloader.ifNotDownloading(file) { inside.countDown(); release.await(10, TimeUnit.SECONDS) } }
+        assertTrue(inside.await(10, TimeUnit.SECONDS))
+        val served = ServedModel(data)
+        val downloading = thread { PhoneModelDownloader(file, source, served).download {} }
+        Thread.sleep(300)
+        val fetchedWhileRemoving = served.fetchedFrom.toList()
+        release.countDown()
+        remover.join(10_000)
+        downloading.join(10_000)
+        assertEquals(emptyList(), fetchedWhileRemoving)
+        assertEquals(listOf(0L), served.fetchedFrom)
+    }
+
+    @Test
     fun `after the last byte the download says it is checking the file, before the file takes its name`() {
         val events = mutableListOf<String>()
         var atHash: List<String> = emptyList()

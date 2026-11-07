@@ -5,6 +5,7 @@ import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelDeletion
+import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.ReleaseFileFetching
@@ -16,6 +17,9 @@ import java.io.IOException
 import java.io.RandomAccessFile
 import java.net.URI
 import java.nio.file.Files
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -784,5 +788,138 @@ class PhoneModelChooserTest {
         network = NetworkConditions.cellular
         chooser.choose("ggml-small-q5_1.bin")
         assertEquals(1, downloadsStarted)
+    }
+
+    private fun onPhone(file: String) = File(models, file).isFile
+
+    @Test
+    fun `replacing the model in use with one that must download keeps it during the download and deletes it after`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        chooser.replaceWith("ggml-base-q5_1.bin")
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        assertFalse(onPhone("ggml-ozen-a3-q5_0.bin"))
+        assertEquals(setOf("ggml-base-q5_1.bin"), chooser.installed.value)
+    }
+
+    @Test
+    fun `replacing the model in use with one already on the phone deletes the old one at once`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        chooser.replaceWith("ggml-small-q5_1.bin")
+        assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
+        assertFalse(onPhone("ggml-ozen-a3-q5_0.bin"))
+        assertEquals(setOf("ggml-small-q5_1.bin"), chooser.installed.value)
+    }
+
+    @Test
+    fun `a replacing download that fails for good keeps the old model`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        breaksLeft = -1
+        chooser.replaceWith("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        runOutTheWaits()
+        assertEquals(PhoneModelSwitch.Failed("ggml-base-q5_1.bin"), chooser.switching.value)
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+    }
+
+    @Test
+    fun `choosing the old model back, or another one, while a replacing download waits keeps the old model`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        breaksLeft = 1
+        chooser.replaceWith("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        chooser.choose("ggml-ozen-a3-q5_0.bin")
+        runOutTheWaits()
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        breaksLeft = 1
+        chooser.replaceWith("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        chooser.choose("ggml-small-q5_1.bin")
+        runOutTheWaits()
+        assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        assertTrue(onPhone("ggml-small-q5_1.bin"))
+    }
+
+    @Test
+    fun `a replacing download that waited for Wi-Fi deletes the old model once it arrives`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        network = NetworkConditions.cellular
+        chooser.replaceWith("ggml-base-q5_1.bin")
+        assertTrue(chooser.switching.value is PhoneModelSwitch.WaitingForWiFi)
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        network = NetworkConditions.wifi
+        chooser.resumeWaiting()
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        assertFalse(onPhone("ggml-ozen-a3-q5_0.bin"))
+    }
+
+    @Test
+    fun `a plain choice keeps the old model`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        chooser.choose("ggml-small-q5_1.bin")
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        assertTrue(onPhone("ggml-small-q5_1.bin"))
+    }
+
+    @Test
+    fun `a finished download deletes the unfinished downloads of other models but not whole models`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        have("ggml-large-v3-turbo-q5_0.bin.part")
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        assertFalse(onPhone("ggml-large-v3-turbo-q5_0.bin.part"))
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        assertTrue(onPhone("ggml-small-q5_1.bin"))
+        assertTrue(chooser.partial.value.isEmpty())
+    }
+
+    @Test
+    fun `an unfinished download is kept while the download that finished is of another model failing`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-large-v3-turbo-q5_0.bin.part")
+        corrupt = true
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertTrue(onPhone("ggml-large-v3-turbo-q5_0.bin.part"))
+    }
+
+    @Test
+    fun `a finished download leaves alone the unfinished download another download is still writing`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        val turbo = PhoneModelCatalog.all.first { it.file == "ggml-large-v3-turbo-q5_0.bin" }
+        val writing = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val slow = object : ReleaseFileFetching {
+            override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
+                RandomAccessFile(appendingTo, "rw").use { it.setLength(1_000_000) }
+                writing.countDown()
+                release.await(10, TimeUnit.SECONDS)
+                throw IOException("connection reset")
+            }
+
+            override fun sha256(file: File): String = ""
+        }
+        val other = thread { runCatching { PhoneModelDownloader(File(models, turbo.file), turbo.source, slow).download {} } }
+        try {
+            assertTrue(writing.await(10, TimeUnit.SECONDS))
+            chooser.choose("ggml-base-q5_1.bin")
+            scope.runCurrent()
+            assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+            assertTrue(onPhone("ggml-large-v3-turbo-q5_0.bin.part"))
+        } finally {
+            release.countDown()
+            other.join(10_000)
+        }
     }
 }
