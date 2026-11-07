@@ -2285,6 +2285,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Settings").performClick()
         compose.onNode(hasText("Made by") and hasText("Arbel")).performScrollTo().assertIsDisplayed()
         compose.onNode(hasText("Version") and hasText(version)).assertExists()
+        compose.onNodeWithText("Privacy policy").assertExists()
         compose.onNodeWithText("Source code on GitHub").assertExists()
         compose.onNodeWithText("Support Ozen (only if you want to)").performScrollTo().performClick()
         compose.onNodeWithText("How to donate").assertExists()
