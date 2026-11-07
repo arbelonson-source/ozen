@@ -225,6 +225,7 @@ fun HistoryScreen(
         speakerFilter = TranscriptSessionSummary.speakerFilter(speakerFilter, keptAfterLoading = list.summaries, everyConversation = !searching)
     }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var pendingRetentionValue by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingDeletionID by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmingDeleteAll by rememberSaveable { mutableStateOf(false) }
@@ -251,6 +252,16 @@ fun HistoryScreen(
         close = tr("סגירה", "Close"),
         onClose = onClose,
         actions = {
+            if (loaded?.summaries?.isNotEmpty() == true) {
+                TextButton(onClick = {
+                    scope.launch {
+                        val sheet = withContext(Dispatchers.IO) { allConversationsShareSheet(context, conversations, marksUncertain, languageCode) }
+                        if (sheet != null) context.startActivity(sheet)
+                    }
+                }) {
+                    Text(tr("שיתוף כל השיחות", "Share all conversations"))
+                }
+            }
             TextButton(onClick = { confirmingDeleteAll = true }, enabled = loaded?.summaries?.isNotEmpty() == true) {
                 Text(tr("מחיקת הכול", "Delete all"), color = if (loaded?.summaries?.isNotEmpty() == true) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -1093,6 +1104,25 @@ private const val LONGEST_SHARED_TEXT = 50_000
 
 private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksUncertain: Boolean, languageCode: String): Intent =
     textShareSheet(context, tr("שיחה מתוך אוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain, usesDecimalComma(languageCode)))
+
+/**
+ * Every saved conversation as one text file, sent through the share sheet:
+ * the way to keep them all, as cloud backup is off. Null when none is saved.
+ */
+internal fun allConversationsShareSheet(context: Context, conversations: SavedConversations, marksUncertain: Boolean, languageCode: String): Intent? {
+    val records = conversations.list().mapNotNull { conversations.load(it.id) }
+    val text = TranscriptHistoryStore.exportAllText(records, ::localOffset, marksUncertain, usesDecimalComma(languageCode)) ?: return null
+    val now = System.currentTimeMillis() / 1_000.0
+    val file = SharedFile.create(context.cacheDir, TranscriptHistoryStore.exportAllFileName(now, localOffset(now)))
+    file.writeText(text, Charsets.UTF_8)
+    val uri = FileProvider.getUriForFile(context, context.packageName + ".share", file)
+    val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+        .putExtra(Intent.EXTRA_SUBJECT, tr("כל השיחות מתוך אוזן", "All conversations from Ozen"))
+        .putExtra(Intent.EXTRA_STREAM, uri)
+        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    send.clipData = ClipData.newRawUri(null, uri)
+    return Intent.createChooser(send, null)
+}
 
 /** The share sheet for a conversation or the starred lines: as a message, or past [LONGEST_SHARED_TEXT] as a file. */
 internal fun textShareSheet(context: Context, subject: String, text: String): Intent {

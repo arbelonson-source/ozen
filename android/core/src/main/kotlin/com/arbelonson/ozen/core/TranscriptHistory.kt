@@ -1231,6 +1231,31 @@ class TranscriptHistoryStore(private val directory: File) {
         }
 
         /**
+         * Every saved conversation as one text, to keep or move elsewhere:
+         * a heading, then each conversation exactly as its own share text,
+         * oldest first, with a rule between neighbours and none after the
+         * last. Null when there is nothing to share.
+         */
+        fun exportAllText(
+            records: List<TranscriptSessionRecord>,
+            utcOffsetAt: (Double) -> Int,
+            marksUncertain: Boolean,
+            decimalComma: Boolean = false,
+        ): String? {
+            if (records.isEmpty()) return null
+            val body = records.sortedBy { it.startedAt }
+                .joinToString("\n\n──────────\n\n") { exportText(it, utcOffsetAt, marksUncertain, decimalComma) }
+            return "${tr("כל השיחות מתוך אוזן", "All conversations from Ozen")}\n\n$body"
+        }
+
+        /** "Conversations from Ozen 2026-11-07.txt": the date is the phone's own at [now]. */
+        fun exportAllFileName(now: Double, utcOffsetSeconds: Int): String {
+            val date = CivilDate.fromDaysSinceEpoch(CivilDate.localDay(now, utcOffsetSeconds))
+            val day = "${date.year}-${twoDigits(date.month)}-${twoDigits(date.day)}"
+            return tr("שיחות מתוך אוזן %1", "Conversations from Ozen %1", listOf(day)) + ".txt"
+        }
+
+        /**
          * A long conversation shared as text opens with the lines that had a
          * time, an amount or a phone number in them (see `NumberEmphasis`), so
          * whoever reads it in a chat finds what the doctor said without
