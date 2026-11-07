@@ -46,6 +46,74 @@ class ModelFitWatchTest {
     }
 
     @Test
+    fun `a pass in battery saver counts in the battery saver tally`() {
+        assertTrue(ModelFitWatch.countsInLowPower(1.0, DeviceHeat.Nominal, true, TranscriptionEngineKind.WhisperKit))
+        assertTrue(ModelFitWatch.countsInLowPower(1.0, DeviceHeat.Fair, true, TranscriptionEngineKind.WhisperKit))
+    }
+
+    @Test
+    fun `a pass outside battery saver does not count in the battery saver tally`() {
+        assertFalse(ModelFitWatch.countsInLowPower(1.0, DeviceHeat.Nominal, false, TranscriptionEngineKind.WhisperKit))
+    }
+
+    @Test
+    fun `a hot pass in battery saver does not count in the battery saver tally`() {
+        assertFalse(ModelFitWatch.countsInLowPower(1.0, DeviceHeat.Serious, true, TranscriptionEngineKind.WhisperKit))
+        assertFalse(ModelFitWatch.countsInLowPower(1.0, DeviceHeat.Critical, true, TranscriptionEngineKind.WhisperKit))
+    }
+
+    @Test
+    fun `a pass of another engine does not count in the battery saver tally`() {
+        for (engine in TranscriptionEngineKind.entries.filter { it != TranscriptionEngineKind.WhisperKit }) {
+            assertFalse(ModelFitWatch.countsInLowPower(1.0, DeviceHeat.Nominal, true, engine), engine.name)
+        }
+    }
+
+    @Test
+    fun `a pass with no usable time does not count in the battery saver tally`() {
+        for (seconds in listOf(0.0, -1.0, Double.NaN, Double.POSITIVE_INFINITY)) {
+            assertFalse(ModelFitWatch.countsInLowPower(seconds, DeviceHeat.Nominal, true, TranscriptionEngineKind.WhisperKit), "$seconds")
+        }
+    }
+
+    private fun normal(model: PhoneModel = turbo, device: String? = phone) =
+        ModelFitWatch.measurement(model, 20, 40.0, now = 100.0, device = device)!!
+
+    private fun saver(model: PhoneModel = turbo, device: String? = phone) =
+        ModelFitWatch.measurement(model, 20, 60.0, now = 200.0, device = device, lowPower = true)!!
+
+    @Test
+    fun `the measurement says when it was taken in battery saver`() {
+        assertTrue(saver().lowPower)
+        assertFalse(normal().lowPower)
+    }
+
+    @Test
+    fun `a normal measurement always replaces the saved one`() {
+        assertTrue(ModelFitWatch.keeps(null, normal()))
+        assertTrue(ModelFitWatch.keeps(normal(), normal()))
+        assertTrue(ModelFitWatch.keeps(saver(), normal()))
+    }
+
+    @Test
+    fun `a battery saver measurement replaces nothing or another battery saver one`() {
+        assertTrue(ModelFitWatch.keeps(null, saver()))
+        assertTrue(ModelFitWatch.keeps(saver(), saver()))
+    }
+
+    @Test
+    fun `a battery saver measurement never replaces a normal one of the same model on the same phone`() {
+        assertFalse(ModelFitWatch.keeps(normal(), saver()))
+    }
+
+    @Test
+    fun `a battery saver measurement replaces a normal one from another phone or for another model`() {
+        assertTrue(ModelFitWatch.keeps(normal(device = "Galaxy S10"), saver()))
+        assertTrue(ModelFitWatch.keeps(normal(device = null), saver()))
+        assertTrue(ModelFitWatch.keeps(normal(model = small), saver()))
+    }
+
+    @Test
     fun `a pass of another engine does not count`() {
         for (engine in TranscriptionEngineKind.entries.filter { it != TranscriptionEngineKind.WhisperKit }) {
             assertFalse(ModelFitWatch.counts(1.0, DeviceHeat.Nominal, false, engine), engine.name)

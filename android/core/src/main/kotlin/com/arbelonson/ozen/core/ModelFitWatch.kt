@@ -9,12 +9,23 @@ object ModelFitWatch {
             heat.rawValue < DeviceHeat.Serious.rawValue &&
             !lowPowerMode
 
+    fun countsInLowPower(passSeconds: Double, heat: DeviceHeat, lowPowerMode: Boolean, engine: TranscriptionEngineKind): Boolean =
+        engine == TranscriptionEngineKind.WhisperKit &&
+            passSeconds.isFinite() && passSeconds > 0 &&
+            heat.rawValue < DeviceHeat.Serious.rawValue &&
+            lowPowerMode
+
+    // A timing taken in battery saver only stands in when no normal timing of
+    // this model on this phone is saved: it must never overwrite one.
+    fun keeps(saved: LiveMeasurement?, new: LiveMeasurement): Boolean =
+        !new.lowPower || saved == null || saved.lowPower || saved.device != new.device || saved.file != new.file
+
     fun shouldSave(countedPasses: Int): Boolean = countedPasses >= PASSES_TO_SAVE
 
-    fun measurement(model: PhoneModel, countedPasses: Int, totalSeconds: Double, now: Double, device: String? = null): LiveMeasurement? {
+    fun measurement(model: PhoneModel, countedPasses: Int, totalSeconds: Double, now: Double, device: String? = null, lowPower: Boolean = false): LiveMeasurement? {
         if (!shouldSave(countedPasses) || !totalSeconds.isFinite() || totalSeconds <= 0) return null
         val average = totalSeconds / countedPasses
-        return LiveMeasurement(model.file, average, countedPasses, model.passGflop / (average * PhoneModelEstimate.REAL_PASS_SHARE), now, fitEligible = true, device = device)
+        return LiveMeasurement(model.file, average, countedPasses, model.passGflop / (average * PhoneModelEstimate.REAL_PASS_SHARE), now, fitEligible = true, device = device, lowPower = lowPower)
     }
 
     fun fitsOnPhone(installed: Boolean, shortfallMegabytes: Int?): Boolean = installed || shortfallMegabytes == null

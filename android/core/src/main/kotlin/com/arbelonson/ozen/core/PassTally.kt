@@ -21,6 +21,12 @@ class PassTally {
         private set
     var reportedPasses = 0
         private set
+    var lowPowerPasses = 0
+        private set
+    var lowPowerSeconds = 0.0
+        private set
+    var reportedLowPowerPasses = 0
+        private set
     var segmentsSeen = 0
         private set
     var segmentsRejected = 0
@@ -44,6 +50,15 @@ class PassTally {
 
     fun markReported() {
         reportedPasses = countedPasses
+    }
+
+    fun recordLowPowerPass(seconds: Double) {
+        lowPowerPasses += 1
+        lowPowerSeconds += seconds
+    }
+
+    fun markLowPowerReported() {
+        reportedLowPowerPasses = lowPowerPasses
     }
 
     fun recordFinalPass(cameBackEmpty: Boolean) {
@@ -79,6 +94,9 @@ class PassTally {
         copy.countedPasses = countedPasses
         copy.countedSeconds = countedSeconds
         copy.reportedPasses = reportedPasses
+        copy.lowPowerPasses = lowPowerPasses
+        copy.lowPowerSeconds = lowPowerSeconds
+        copy.reportedLowPowerPasses = reportedLowPowerPasses
         copy.segmentsSeen = segmentsSeen
         copy.segmentsRejected = segmentsRejected
         copy.emptyFinalPasses = emptyFinalPasses
@@ -92,11 +110,12 @@ class PassTally {
             lastLiveSeconds == other.lastLiveSeconds && countedPasses == other.countedPasses &&
             countedSeconds == other.countedSeconds && reportedPasses == other.reportedPasses && segmentsSeen == other.segmentsSeen &&
             segmentsRejected == other.segmentsRejected && emptyFinalPasses == other.emptyFinalPasses &&
-            skippedWithoutVoice == other.skippedWithoutVoice
+            skippedWithoutVoice == other.skippedWithoutVoice && lowPowerPasses == other.lowPowerPasses &&
+            lowPowerSeconds == other.lowPowerSeconds && reportedLowPowerPasses == other.reportedLowPowerPasses
 
     override fun hashCode(): Int = listOf(
         livePasses, finalPasses, liveSeconds, slowestLiveSeconds, lastLiveSeconds, countedPasses, countedSeconds, reportedPasses,
-        segmentsSeen, segmentsRejected, emptyFinalPasses, skippedWithoutVoice,
+        segmentsSeen, segmentsRejected, emptyFinalPasses, skippedWithoutVoice, lowPowerPasses, lowPowerSeconds, reportedLowPowerPasses,
     ).hashCode()
 
     private fun twoDecimals(value: Double): String =

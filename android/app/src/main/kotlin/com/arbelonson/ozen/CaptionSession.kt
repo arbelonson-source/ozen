@@ -1161,9 +1161,9 @@ class CaptionSession(
                 voiceScorerFactory = ::voiceScore,
                 heat = { heatNow },
                 lowPowerMode = { savingPower },
-                onFitMeasurement = { passes, seconds ->
-                    ModelFitWatch.measurement(ran, passes, seconds, now = System.currentTimeMillis() / 1000.0, device = Build.MODEL.orEmpty())
-                        ?.let { measured -> this.settings.change { it.phoneLiveMeasurement = measured } }
+                onFitMeasurement = { passes, seconds, lowPower ->
+                    ModelFitWatch.measurement(ran, passes, seconds, now = System.currentTimeMillis() / 1000.0, device = Build.MODEL.orEmpty(), lowPower = lowPower)
+                        ?.let { measured -> this.settings.change { if (ModelFitWatch.keeps(it.phoneLiveMeasurement, measured)) it.phoneLiveMeasurement = measured } }
                 },
             )
         }
