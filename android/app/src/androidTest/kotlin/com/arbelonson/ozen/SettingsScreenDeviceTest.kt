@@ -118,6 +118,7 @@ import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SpeakerProfile
 import androidx.compose.ui.test.assertIsEnabled
 import java.io.File
+import java.io.IOException
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
@@ -173,6 +174,7 @@ class SettingsScreenDeviceTest {
     @Before
     fun remember() {
         keyCheckHTTPBefore = app.cloudKeyCheckHTTP
+        app.cloudKeyCheckHTTP = CloudHTTP { throw IOException("device tests never reach a real service") }
         engineBefore = app.settings.current.value.engine
         serviceBefore = app.settings.current.value.cloudProvider
         addressBefore = app.settings.current.value.homeServerAddress
