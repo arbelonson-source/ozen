@@ -1657,7 +1657,10 @@ class SettingsScreenDeviceTest {
         val before = app.settings.current.value.appLanguage
         val spokenBefore = app.settings.current.value.languageCode
         try {
-            app.settings.change { it.languageCode = "en" }
+            app.settings.change {
+                it.languageCode = "en"
+                it.appLanguage = AppLanguage.System
+            }
             compose.onNodeWithText("Settings").performClick()
             compose.onNodeWithContentDescription("App language, Same as the phone").performScrollTo().assertHasClickAction()
             compose.onNodeWithText("Same as the phone").performScrollTo().performClick()
