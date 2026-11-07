@@ -3,3 +3,4 @@ websockets>=13
 numpy
 soundfile
 qrcode>=7
+cryptography>=42

@@ -1134,6 +1134,7 @@ class CaptionSession(
         connector = connector,
         client = "Ozen ${context.packageManager.getPackageInfo(context.packageName, 0).versionName}, Android ${Build.VERSION.RELEASE}",
         beam = settings.homeServerBeam,
+        certificatePin = settings.homeServerCertificatePin,
     )
 
     internal fun engine(settings: AppSettings): TranscriptionEngine = when (settings.engine) {

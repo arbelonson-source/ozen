@@ -15,8 +15,11 @@ import java.security.SecureRandom
 import java.util.Base64
 import javax.net.SocketFactory
 import javax.net.ssl.SNIHostName
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLException
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLSocketFactory
+import javax.net.ssl.TrustManager
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +44,9 @@ class PrivatePath(val sockets: SocketFactory, val resolve: (String) -> List<Inet
  * Written here rather than taken from a library because the engines need a
  * ping whose answer can be awaited (that is how a computer that stopped
  * answering is noticed), which OkHttp doesn't offer. `wss` goes through the
- * platform's TLS with the host name checked against the certificate.
+ * platform's TLS with the host name checked against the certificate; with
+ * a certificate pin (a home computer's own certificate) it accepts that
+ * one certificate and checks no name.
  */
 class WebSocketConnector(
     private val plainSockets: SocketFactory = SocketFactory.getDefault(),
@@ -52,20 +57,25 @@ class WebSocketConnector(
 ) : HomeServerConnecting, CloudSocketConnecting {
     override suspend fun open(url: URI): HomeServerSocket = open(url, emptyMap())
 
-    override suspend fun open(url: URI, headers: Map<String, String>): HomeServerSocket {
+    override suspend fun openPinned(url: URI, certificatePin: String): HomeServerSocket = open(url, emptyMap(), certificatePin)
+
+    override suspend fun open(url: URI, headers: Map<String, String>): HomeServerSocket = open(url, headers, null)
+
+    private fun open(url: URI, headers: Map<String, String>, certificatePin: String?): HomeServerSocket {
         for ((name, value) in headers) {
             require(name.none { it == '\r' || it == '\n' || it == ':' } && value.none { it == '\r' || it == '\n' }) {
                 "a header can't hold a line break"
             }
         }
-        val socket = WebSocketConnection(url, headers, this)
+        val socket = WebSocketConnection(url, headers, this, certificatePin)
         socket.start()
         return socket
     }
 
-    internal fun connect(url: URI, created: (Socket) -> Unit = {}): Socket {
+    internal fun connect(url: URI, certificatePin: String? = null, created: (Socket) -> Unit = {}): Socket {
         val scheme = url.scheme?.lowercase()
         require(scheme == "ws" || scheme == "wss") { "not a WebSocket address: $url" }
+        require(certificatePin == null || scheme == "wss") { "a certificate pin needs a wss address: $url" }
         val host = requireNotNull(url.host) { "no host in $url" }.trim('[', ']')
         val secure = scheme == "wss"
         val port = if (url.port > 0) url.port else if (secure) 443 else 80
@@ -81,18 +91,28 @@ class WebSocketConnector(
             plain.tcpNoDelay = true
             plain.soTimeout = handshakeTimeoutMillis
             if (!secure) return plain
-            val tls = tlsSockets.createSocket(plain, host, port, true) as SSLSocket
+            val tls = (if (certificatePin != null) pinnedSockets(certificatePin) else tlsSockets).createSocket(plain, host, port, true) as SSLSocket
             val parameters = tls.sslParameters
-            parameters.endpointIdentificationAlgorithm = "HTTPS"
+            parameters.endpointIdentificationAlgorithm = if (certificatePin != null) null else "HTTPS"
             if (!isAddressLiteral(host)) parameters.serverNames = listOf(SNIHostName(host))
             tls.sslParameters = parameters
-            tls.startHandshake()
+            try {
+                tls.startHandshake()
+            } catch (error: SSLException) {
+                if (generateSequence<Throwable>(error) { it.cause }.any { it.message == PinnedTrustManager.MISMATCH }) {
+                    throw IOException(PinnedTrustManager.MISMATCH, error)
+                }
+                throw error
+            }
             return tls
         } catch (error: Throwable) {
             plain.close()
             throw error
         }
     }
+
+    private fun pinnedSockets(pin: String): SSLSocketFactory =
+        SSLContext.getInstance("TLS").apply { init(null, arrayOf<TrustManager>(PinnedTrustManager(pin)), null) }.socketFactory
 
     private fun connectToAny(sockets: SocketFactory, targets: List<InetSocketAddress>, created: (Socket) -> Unit): Socket {
         var failure: IOException? = null
@@ -129,6 +149,7 @@ private class WebSocketConnection(
     private val url: URI,
     private val headers: Map<String, String>,
     private val connector: WebSocketConnector,
+    private val certificatePin: String?,
 ) : HomeServerSocket {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val connection = CompletableDeferred<Streams>()
@@ -220,7 +241,7 @@ private class WebSocketConnection(
     }
 
     private fun handshake(): Streams {
-        val socket = connector.connect(url) { created ->
+        val socket = connector.connect(url, certificatePin) { created ->
             val closed = synchronized(lock) {
                 opening = created
                 failure != null

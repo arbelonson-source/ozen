@@ -124,7 +124,10 @@ class EngineSettings(
     fun saveHomeComputerAddress(draft: String) {
         val address = draft.trim()
         if (settings.current.value.homeServerAddress == address) return
-        settings.change { it.homeServerAddress = address }
+        settings.change {
+            it.homeServerAddress = address
+            it.homeServerCertificatePin = null
+        }
         if (homeComputerIsTheEngine) restart()
     }
 

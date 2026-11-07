@@ -1,7 +1,7 @@
 import argparse
-import contextlib
 import html
 import io
+import ipaddress
 import json
 import os
 import socket
@@ -13,10 +13,18 @@ import webbrowser
 import qrcode
 import qrcode.image.svg
 
+import lan_tls
+
 TAILSCALE_PATHS = [
     "tailscale",
     os.path.join(os.environ.get("ProgramFiles", r"C:\Program Files"), "Tailscale", "tailscale.exe"),
 ]
+
+
+TLS_PORT = 8766
+DEFAULT_CERT_DIR = os.path.dirname(os.path.abspath(__file__))
+PRIVATE_NETWORKS = ["10.0.0.0/8", "127.0.0.0/8", "192.168.0.0/16", "172.16.0.0/12", "100.64.0.0/10", "169.254.0.0/16",
+                    "::1/128", "fe80::/10", "fc00::/7"]
 
 
 def tailscale_address():
@@ -49,16 +57,42 @@ def phone_address(address):
     return address
 
 
+def home_link(address, folder, port=TLS_PORT):
+    """A home-network address becomes the encrypted port with the pin of
+    this computer's certificate; anything with a real certificate stays,
+    and so does everything when the server's encrypted port is off (0)."""
+    if not port:
+        return address, None
+    scheme, separator, rest = address.partition("://")
+    if not separator:
+        scheme, rest = "ws", address
+    if scheme.lower() != "ws":
+        return address, None
+    host = urllib.parse.urlsplit("//" + rest).hostname or ""
+    if not is_private_host(host):
+        return address, None
+    cert_path, _ = lan_tls.ensure_certificate(folder)
+    shown = f"[{host}]" if ":" in host else host
+    return f"wss://{shown}:{port}", lan_tls.certificate_pin(cert_path)
+
+
+def is_private_host(host):
+    name = host.lower()
+    if name == "localhost" or name.endswith((".local", ".lan", ".home.arpa", ".ts.net")):
+        return True
+    try:
+        ip = ipaddress.ip_address(name)
+    except ValueError:
+        return "." not in name and bool(name)
+    return any(ip in ipaddress.ip_network(net) for net in PRIVATE_NETWORKS)
+
+
 def read_code(path):
     with open(path, encoding="utf-8-sig") as f:
         return f.read().strip()
 
 
-def write_private(path, text):
-    with open(path, "w", encoding="utf-8", opener=lambda name, flags: os.open(name, flags, 0o600)) as f:
-        f.write(text)
-    with contextlib.suppress(OSError):
-        os.chmod(path, 0o600)
+write_private = lan_tls.write_private
 
 
 def main():
@@ -69,6 +103,8 @@ def main():
     p.add_argument("--out", default=os.path.join(here, "pairing.html"))
     p.add_argument("--no-open", action="store_true")
     p.add_argument("--lan", action="store_true", help="use this computer's address on the home network")
+    p.add_argument("--cert-dir", default=DEFAULT_CERT_DIR, help="the server's --cert-dir, where lan-cert.pem is kept")
+    p.add_argument("--tls-port", type=int, default=TLS_PORT, help="the server's --tls-port; 0 when it is off")
     args = p.parse_args()
 
     address = args.address or (lan_address() if args.lan else tailscale_address())
@@ -80,7 +116,15 @@ def main():
         sys.exit("Couldn't work out this computer's address; pass --address wss://... or --address 192.168.1.20")
     address = phone_address(address)
     code = read_code(args.code_file)
-    link = "ozen://pair?" + urllib.parse.urlencode({"address": address, "code": code})
+    # Typed by hand, a home address can't carry the pin, and the computer's own
+    # certificate is refused without it: the page shows the plain address,
+    # which works (and the phone says it isn't encrypted).
+    typed = address
+    address, pin = home_link(address, args.cert_dir, args.tls_port)
+    fields = {"address": address, "code": code}
+    if pin:
+        fields["pin"] = pin
+    link = "ozen://pair?" + urllib.parse.urlencode(fields)
 
     svg = io.BytesIO()
     qrcode.make(link, image_factory=qrcode.image.svg.SvgPathImage, box_size=12, border=2).save(svg)
@@ -90,7 +134,7 @@ def main():
 <p>Open the iPhone's Camera, point it at the code, and tap the Ozen link. Ozen asks before connecting.</p>
 {svg.getvalue().decode()}
 <p>Or type it into Ozen's Settings: Transcription engine, Home computer:</p>
-<p>Address: <code>{html.escape(address)}</code><br>Pairing code: <code>{html.escape(code)}</code></p>
+<p>Address: <code>{html.escape(typed)}</code><br>Pairing code: <code>{html.escape(code)}</code></p>
 <p>Anyone with this code can use this computer for captions. Keep it in the family.</p>"""
     write_private(args.out, page)
     print(f"Pairing page: {args.out}")

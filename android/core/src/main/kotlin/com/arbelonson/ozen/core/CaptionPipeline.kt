@@ -2155,7 +2155,7 @@ class CaptionPipeline(
     // file kept captioning with the old language's model, or downloaded it.
     private fun engineCacheKey(settings: AppSettings): String =
         "${settings.engine.rawValue}|${settings.whisperModelVariant}|${settings.allowServerFallbackForAppleSpeech}|" +
-            "${settings.cloudProvider.rawValue}|${settings.chosenCloudModel}|${settings.homeServerAddress}|${settings.homeServerBeam}|" +
+            "${settings.cloudProvider.rawValue}|${settings.chosenCloudModel}|${settings.homeServerAddress}|${settings.homeServerCertificatePin}|${settings.homeServerBeam}|" +
             settings.phoneModel.file
 
     /**

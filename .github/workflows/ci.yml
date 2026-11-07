@@ -54,13 +54,14 @@ jobs:
       - run: swift build
       - run: swift test
       # The home server's own checks: faster-whisper and the GPU are stood
-      # in for, so numpy (and qrcode, for pairing) is all they need.
+      # in for, so they need numpy, qrcode for pairing, cryptography for the
+      # home-network certificate and websockets for the encrypted-port test.
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Home server tests
         working-directory: server
-        run: pip install numpy qrcode && python -m unittest test_ozen_server test_pairing test_try_server -v
+        run: pip install numpy qrcode cryptography websockets && python -m unittest test_ozen_server test_pairing test_try_server test_lan_tls -v
 
   # The Android app. Its shared core is plain Kotlin, so its tests run on
   # the JVM in seconds, reading the same translations and test cases as
