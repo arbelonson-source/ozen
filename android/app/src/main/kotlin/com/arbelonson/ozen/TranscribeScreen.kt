@@ -60,6 +60,7 @@ import com.arbelonson.ozen.ui.TonalButton
 
 const val TRANSCRIBE_START = "transcribe-start"
 const val TRANSCRIBE_CANCEL = "transcribe-cancel"
+const val TRANSCRIBE_RETRY = "transcribe-retry"
 const val TRANSCRIBE_LINE = "transcribe-line"
 const val TRANSCRIBE_SHARE = "transcribe-share"
 const val TRANSCRIBE_SUBTITLES = "transcribe-subtitles"
@@ -81,6 +82,9 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
             Text(state.name, style = MaterialTheme.typography.titleMedium)
             Text(state.problem.message, modifier = Modifier.testTag("transcribe-problem"))
             Text(PRIVACY_LINE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (state.problem.canTryAgain) {
+                PrimaryButton(tr("נסו שוב", "Try again"), onClick = transcriber::retry, modifier = Modifier.fillMaxWidth().testTag(TRANSCRIBE_RETRY))
+            }
         }
     }
     if (confirmingStop) {

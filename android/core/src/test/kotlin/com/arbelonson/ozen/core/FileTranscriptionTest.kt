@@ -57,4 +57,12 @@ class FileTranscriptionTest {
         assertNull(done(HistorySave.Off).recordId)
         assertNull(done(HistorySave.Failed).recordId)
     }
+
+    @Test
+    fun `every failure but an unreadable or silent file can be tried again, as on the iPhone`() {
+        val final = setOf(FileTranscriptionProblem.CouldNotRead, FileTranscriptionProblem.NoAudio)
+        for (problem in FileTranscriptionProblem.entries) {
+            assertEquals(problem !in final, problem.canTryAgain, problem.name)
+        }
+    }
 }

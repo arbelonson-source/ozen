@@ -19,6 +19,7 @@ import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.FileTranscriptionProblem
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.TranscriptFormats
+import com.arbelonson.ozen.core.UILanguage
 import java.io.File
 import java.util.UUID
 import org.junit.After
@@ -160,6 +161,23 @@ class TranscribeRecordingDeviceTest {
             waitFor(30_000, "the message") { transcriber.state.value is FileTranscription.Failed }
             assertEquals(FileTranscriptionProblem.CouldNotRead, (transcriber.state.value as FileTranscription.Failed).problem)
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("transcribe-problem").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag(TRANSCRIBE_RETRY).assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun aTranscriptionThatFoundNoSpeechIsTriedAgainFromItsPageWithTheLanguageItHad() {
+        val uri = shareable("Quiet room.wav", "audio/wav") { DeviceClips.writeWav(it, FloatArray(8 * 16_000)) }
+        share(uri, "audio/wav").use {
+            waitFor(30_000, "the ready page") { transcriber.state.value is FileTranscription.Ready }
+            transcriber.chooseLanguage(UILanguage.English)
+            compose.onNodeWithTag(TRANSCRIBE_START).performClick()
+            waitFor(300_000, "the message") { transcriber.state.value is FileTranscription.Failed }
+            assertEquals(FileTranscriptionProblem.NoSpeech, (transcriber.state.value as FileTranscription.Failed).problem)
+            compose.onNodeWithTag(TRANSCRIBE_RETRY).performClick()
+            waitFor(10_000, "the ready page again") { transcriber.state.value is FileTranscription.Ready }
+            assertEquals(UILanguage.English, (transcriber.state.value as FileTranscription.Ready).language)
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag(TRANSCRIBE_START).fetchSemanticsNodes().isNotEmpty() }
         }
     }
 
