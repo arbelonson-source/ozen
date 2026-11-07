@@ -158,8 +158,11 @@ class HistoryScreenDeviceTest {
         grandma.assertIsSelected()
 
         compose.onNodeWithText("Clear").performClick()
-        waitFor("Chip test soup recipe")
-        compose.onNodeWithText("Chip test soup recipe", substring = true).performClick()
+        // The keyboard stays up after Clear, and the settings rows above the
+        // conversations (Share all among them) leave the rows below it.
+        val soup = hasText("Chip test soup recipe", substring = true)
+        compose.waitUntil(5_000) { runCatching { compose.onNode(hasScrollToNodeAction()).performScrollToNode(soup) }.isSuccess }
+        compose.onNode(soup).performClick()
         waitFor("Share")
         compose.onNodeWithText("Back").performClick()
         waitFor("Chip test soup recipe")
