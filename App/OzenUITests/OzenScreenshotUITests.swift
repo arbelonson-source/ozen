@@ -1454,6 +1454,12 @@ final class OzenScreenshotUITests: XCTestCase {
 
         let settingsButton = app.descendants(matching: .any)["settingsButton"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "search result: the settings button never appeared")
+        // On an iPhone SE the bar had already slid below the screen's edge.
+        let revealControls = app.descendants(matching: .any)["showControlsButton"]
+        for _ in 0..<5 where !settingsButton.isHittable {
+            if revealControls.exists { revealControls.tap() }
+            Thread.sleep(forTimeInterval: 1)
+        }
         settingsButton.tap()
         let historyRow = scrollDownUntilVisible(app, identifier: "historyRow")
         XCTAssertTrue(historyRow.exists, "search result: the history row never appeared")
