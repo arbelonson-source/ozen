@@ -48,6 +48,16 @@
             </intent-filter>
         </activity>
         <service
+            android:name=".CaptionsTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_listening"
+            android:label="Ozen"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
             android:name=".ListeningService"
             android:exported="false"
             android:foregroundServiceType="microphone|mediaProjection" />

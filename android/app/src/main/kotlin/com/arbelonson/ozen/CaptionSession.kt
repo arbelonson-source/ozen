@@ -238,6 +238,10 @@ class CaptionSession(
      */
     internal var launchHandled = false
 
+    fun firstAppearancePending(): Boolean = !launchHandled
+
+    fun mayStartCaptions(): Boolean = loadCrash.mayStartCaptions()
+
     fun takeFirstAppearance(): Boolean {
         val first = !launchHandled
         launchHandled = true

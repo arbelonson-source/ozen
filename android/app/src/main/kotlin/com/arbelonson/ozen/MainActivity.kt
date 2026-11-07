@@ -10,7 +10,6 @@ import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.LocaleList
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import androidx.activity.ComponentActivity
@@ -225,8 +224,8 @@ class MainActivity : ComponentActivity() {
         settingsAtBackup.value = savedInstanceState?.getBoolean(SETTINGS_AT_BACKUP) == true
         confirmingCellular.value = savedInstanceState?.getBoolean(CONFIRMING_CELLULAR) == true
         val app = application as OzenApplication
-        val phoneLanguages = LocaleList.getDefault().let { list -> (0 until list.size()).map { list[it].toLanguageTag() } }
-        Localization.language = app.settings.current.value.appLanguage.resolved(phoneLanguages)
+        StartCaptionsRequest.applyAppLanguage(app)
+        StartCaptionsRequest.publishShortcut(this)
         enableEdgeToEdge()
         setContent { OzenApp(app, showingSettings, settingsAtBackup, confirmingCellular, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
         // Once per link: a rebuilt screen (a turn, a new language, the app
@@ -237,6 +236,23 @@ class MainActivity : ComponentActivity() {
             openLink(intent)
             if (takeSharedRecording(intent)) app.captions.takeFirstAppearance()
         }
+        startFromRequest(intent, newIntent = false, recreated = savedInstanceState != null)
+    }
+
+    private fun startFromRequest(intent: Intent?, newIntent: Boolean, recreated: Boolean) {
+        val app = application as OzenApplication
+        val start = StartCaptionsRequest.shouldStart(
+            action = intent?.action,
+            newIntent = newIntent,
+            recreated = recreated,
+            fromHistory = (intent?.flags ?: 0) and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0,
+            walkthroughShowing = !app.settings.current.value.hasCompletedOnboarding,
+            crashGuardAllows = app.captions.mayStartCaptions(),
+            firstAppearancePending = app.captions.firstAppearancePending(),
+        )
+        if (!start) return
+        app.captions.takeFirstAppearance()
+        startListening()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -266,6 +282,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         openLink(intent)
         takeSharedRecording(intent)
+        startFromRequest(intent, newIntent = true, recreated = false)
     }
 
     /** A voice note, recording or video shared to Ozen from another app is offered for transcribing. */
