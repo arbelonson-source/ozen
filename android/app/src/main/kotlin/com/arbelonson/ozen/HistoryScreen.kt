@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -119,6 +120,7 @@ import com.arbelonson.ozen.ui.SettingSwitchRow
 import com.arbelonson.ozen.ui.SettingsGroup
 import com.arbelonson.ozen.ui.TrailingValue
 import java.io.File
+import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
@@ -254,10 +256,7 @@ fun HistoryScreen(
         actions = {
             if (loaded?.summaries?.isNotEmpty() == true) {
                 TextButton(onClick = {
-                    scope.launch {
-                        val sheet = withContext(Dispatchers.IO) { allConversationsShareSheet(context, conversations, marksUncertain, languageCode) }
-                        if (sheet != null) context.startActivity(sheet)
-                    }
+                    scope.launch { shareOrSayFull(context) { allConversationsShareSheet(context, conversations, marksUncertain, languageCode) } }
                 }) {
                     Text(tr("שיתוף כל השיחות", "Share all conversations"))
                 }
@@ -724,7 +723,7 @@ internal fun ConversationScreen(
                 // down, the conversation can still be shared, named or deleted,
                 // and each jump goes on from where the last one left the list.
                 FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ActionChip(Icons.Rounded.Share, tr("שיתוף", "Share"), onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { shareSheet(context, shown.record, marksUncertain, languageCode) }) } })
+                    ActionChip(Icons.Rounded.Share, tr("שיתוף", "Share"), onClick = { scope.launch { shareOrSayFull(context) { shareSheet(context, shown.record, marksUncertain, languageCode) } } })
                     ActionChip(Icons.Rounded.Edit, tr("מתן שם לשיחה", "Name this conversation"), onClick = { naming = shown.record.title ?: "" })
                     ActionChip(Icons.Rounded.Delete, tr("מחיקה", "Delete"), onClick = { confirmingDelete = true }, colour = MaterialTheme.colorScheme.error)
                     if (shown.matches.size > 1) {
@@ -1101,6 +1100,22 @@ private val SEARCH_MATCH = Color(red = 1f, green = 0.84f, blue = 0.04f, alpha = 
  * goes as a text file instead, the last one shared replacing the one before.
  */
 private const val LONGEST_SHARED_TEXT = 50_000
+
+/**
+ * Makes the share sheet off the main thread and opens it. Writing the file
+ * can fail on a full phone, and the exception used to escape the tap's
+ * coroutine and close the app: it says the phone is full instead.
+ */
+internal suspend fun shareOrSayFull(context: Context, sheet: () -> Intent?): Boolean {
+    val made = try {
+        withContext(Dispatchers.IO) { sheet() }
+    } catch (error: IOException) {
+        Toast.makeText(context, tr("אין מספיק מקום פנוי בטלפון", "Not enough free space on the phone"), Toast.LENGTH_LONG).show()
+        return false
+    }
+    made?.let(context::startActivity)
+    return made != null
+}
 
 private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksUncertain: Boolean, languageCode: String): Intent =
     textShareSheet(context, tr("שיחה מתוך אוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain, usesDecimalComma(languageCode)))

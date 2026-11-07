@@ -54,6 +54,7 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
+import java.io.IOException
 import java.time.Instant
 import java.time.MonthDay
 import java.time.ZoneId
@@ -61,6 +62,8 @@ import java.time.ZonedDateTime
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -410,6 +413,12 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("History").performClick()
         waitFor("Delete all")
         compose.onNodeWithText("Share all conversations").assertDoesNotExist()
+    }
+
+    @Test
+    fun aShareWhoseFileCannotBeWrittenSaysThePhoneIsFullInsteadOfClosingTheApp() {
+        val shared = runBlocking(Dispatchers.Main) { shareOrSayFull(app) { throw IOException("No space left on device") } }
+        assertFalse(shared)
     }
 
     @Test
