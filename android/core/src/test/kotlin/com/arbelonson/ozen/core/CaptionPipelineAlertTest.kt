@@ -512,7 +512,7 @@ class CaptionPipelineAlertTest {
         pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
         audio.push(chunk())
         assertTrue(eventually { detector.chunksSeen == 2 })
-        assertEquals(List(YamnetSounds.SAMPLES_PER_WINDOW) { 0f }, detector.heard[0].toList())
+        assertEquals(0, detector.heard[0].size)
         assertEquals(chunk().toList(), detector.heard[1].toList())
     }
 

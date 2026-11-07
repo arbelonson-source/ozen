@@ -825,7 +825,7 @@ class CaptionPipeline(
         fanOut = fan
         val tokens = engine.stream(settings.languageCode, fan.outputs[0])
         val embedderAudio = fan.outputs[1]
-        val soundObservations = soundDetector?.let { it.observations(whileSoundAlertsAreOn(fan.outputs[2], it.windowSamples)) }
+        val soundObservations = soundDetector?.observations(whileSoundAlertsAreOn(fan.outputs[2]))
 
         statsData.sessionStartedAt = now()
         listeningStartedAt = statsData.sessionStartedAt
@@ -2617,14 +2617,15 @@ class CaptionPipeline(
      * Sound alerts switched off give the classifier nothing to hear: it ran
      * twice a second all through the captions for nothing but the near-miss
      * count, and never loads its model until they are on. The switch is read
-     * for every chunk. The classifier hears in overlapping windows, so after
-     * a gap a window of silence goes first ([SoundAlertGate]): one window
-     * would otherwise join sound from before the switch went off to sound
-     * from after it came back on, and could be heard as a sound that never
-     * happened.
+     * for every chunk. After a gap the classifier is given an empty chunk
+     * first ([SoundAlertGate]), and drops the audio it still holds
+     * ([SoundWindows]): its windows overlap, so that audio would otherwise
+     * be joined to sound from after the switch came back on and heard as a
+     * sound that never happened, or classified on its own, an alarm from
+     * before the switch went off shown as if it were ringing now.
      */
-    private fun whileSoundAlertsAreOn(audio: Flow<FloatArray>, windowSamples: Int): Flow<FloatArray> = flow {
-        val gate = SoundAlertGate(windowSamples)
+    private fun whileSoundAlertsAreOn(audio: Flow<FloatArray>): Flow<FloatArray> = flow {
+        val gate = SoundAlertGate()
         audio.collect { chunk -> gate.pass(chunk, soundPolicy.preferences.isEnabled).forEach { emit(it) } }
     }
 
@@ -2648,7 +2649,7 @@ class CaptionPipeline(
         fanOut = fan
         isListeningForSoundsOnly = true
         statsData.soundDetectionRunning = true
-        val observations = detector.observations(whileSoundAlertsAreOn(fan.outputs[0], detector.windowSamples))
+        val observations = detector.observations(whileSoundAlertsAreOn(fan.outputs[0]))
         soundTask = scope.launch {
             observations.takeWhile { runID == run }.collect { observation ->
                 handleSoundObservation(observation)

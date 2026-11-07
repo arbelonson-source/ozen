@@ -1,6 +1,6 @@
 package com.arbelonson.ozen.core
 
-class SoundAlertGate(private val windowSamples: Int) {
+class SoundAlertGate {
     private var skipped = false
 
     fun pass(chunk: FloatArray, alertsOn: Boolean): List<FloatArray> {
@@ -10,6 +10,6 @@ class SoundAlertGate(private val windowSamples: Int) {
         }
         if (!skipped) return listOf(chunk)
         skipped = false
-        return listOf(FloatArray(windowSamples), chunk)
+        return listOf(FloatArray(0), chunk)
     }
 }
