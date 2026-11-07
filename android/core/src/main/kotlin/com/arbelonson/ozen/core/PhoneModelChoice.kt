@@ -11,6 +11,8 @@ sealed class PhoneModelSwitch {
 
     data class Offline(val file: String) : PhoneModelSwitch()
 
+    data class Retrying(val file: String, val seconds: Long) : PhoneModelSwitch()
+
     data class Failed(val file: String) : PhoneModelSwitch()
 }
 

@@ -53,12 +53,19 @@ class PhoneModelChooserTest {
     private var whenReceived: () -> Unit = {}
     private var afterStopped: () -> Unit = {}
     private val roomAsked = ArrayList<Pair<Long, Int>>()
+    private var breaksLeft = 0
+    private var downloadsStarted = 0
 
     private val fetcher = object : ReleaseFileFetching {
         override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
             val model = PhoneModelCatalog.all.first { it.source.url == url }
             fetched += model.file
             starts += from
+            if (breaksLeft != 0) {
+                if (breaksLeft > 0) breaksLeft -= 1
+                RandomAccessFile(appendingTo, "rw").use { it.setLength(1_000_000) }
+                throw IOException("connection reset")
+            }
             val end = cutAt ?: model.bytes
             RandomAccessFile(appendingTo, "rw").use { it.setLength(if (corrupt) 10 else end) }
             whenReceived()
@@ -92,6 +99,7 @@ class PhoneModelChooserTest {
         captionsBusy = busy,
         io = StandardTestDispatcher(scope.testScheduler),
         device = "Pixel 7",
+        downloadStarted = { downloadsStarted += 1 },
     )
 
     @AfterTest
@@ -603,5 +611,163 @@ class PhoneModelChooserTest {
         scope.runCurrent()
         assertEquals(listOf("ggml-base-q5_1.bin"), fetched)
         assertEquals(PhoneModelSwitch.Failed("ggml-base-q5_1.bin"), chooser.switching.value)
+    }
+
+    private fun runOutTheWaits() {
+        for (seconds in listOf(15L, 30L, 60L, 120L, 300L, 600L)) {
+            scope.advanceTimeBy(seconds * 1_000)
+            scope.runCurrent()
+        }
+    }
+
+    @Test
+    fun `a download that breaks off waits, then carries on from the part already there and the model is used`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        breaksLeft = 1
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertEquals(PhoneModelSwitch.Retrying("ggml-base-q5_1.bin", 15), chooser.switching.value)
+        assertEquals(1_000_000L, File(models, "ggml-base-q5_1.bin.part").length())
+        scope.advanceTimeBy(14_999)
+        scope.runCurrent()
+        assertEquals(listOf(0L), starts)
+        assertNull(saved().phoneModelFile)
+        scope.advanceTimeBy(1)
+        scope.runCurrent()
+        assertEquals(listOf(0L, 1_000_000L), starts)
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        assertEquals(PhoneModelSwitch.Idle, chooser.switching.value)
+        assertEquals(1, applied)
+    }
+
+    @Test
+    fun `a download that always breaks off is tried six more times with growing waits, then fails and stays failed`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        breaksLeft = -1
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        for (seconds in listOf(15L, 30L, 60L, 120L, 300L, 600L)) {
+            assertEquals(PhoneModelSwitch.Retrying("ggml-base-q5_1.bin", seconds), chooser.switching.value)
+            scope.advanceTimeBy(seconds * 1_000)
+            scope.runCurrent()
+        }
+        assertEquals(PhoneModelSwitch.Failed("ggml-base-q5_1.bin"), chooser.switching.value)
+        assertEquals(7, fetched.size)
+        scope.advanceTimeBy(10_000_000)
+        scope.runCurrent()
+        assertEquals(7, fetched.size)
+        assertNull(saved().phoneModelFile)
+    }
+
+    @Test
+    fun `choosing another model during the wait cancels the retry`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        breaksLeft = 1
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertTrue(chooser.switching.value is PhoneModelSwitch.Retrying)
+        chooser.choose("ggml-small-q5_1.bin")
+        assertEquals(PhoneModelSwitch.Idle, chooser.switching.value)
+        runOutTheWaits()
+        assertEquals(listOf("ggml-base-q5_1.bin"), fetched)
+        assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
+    }
+
+    @Test
+    fun `trying again by hand during the wait replaces the pending retry instead of adding to it`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        breaksLeft = -1
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        scope.advanceTimeBy(10_000)
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertEquals(PhoneModelSwitch.Retrying("ggml-base-q5_1.bin", 15), chooser.switching.value)
+        assertEquals(2, fetched.size)
+        scope.advanceTimeBy(5_000)
+        scope.runCurrent()
+        assertEquals(2, fetched.size)
+        scope.advanceTimeBy(10_000)
+        scope.runCurrent()
+        assertEquals(3, fetched.size)
+    }
+
+    @Test
+    fun `deleting the model during the wait cancels the retry`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        breaksLeft = 1
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertTrue(chooser.switching.value is PhoneModelSwitch.Retrying)
+        scope.launch { chooser.delete("ggml-base-q5_1.bin") }
+        scope.runCurrent()
+        assertEquals(PhoneModelSwitch.Idle, chooser.switching.value)
+        runOutTheWaits()
+        assertEquals(listOf("ggml-base-q5_1.bin"), fetched)
+        assertFalse(File(models, "ggml-base-q5_1.bin.part").exists())
+    }
+
+    @Test
+    fun `a connection change during the wait starts the retry at once`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        breaksLeft = 1
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertEquals(PhoneModelSwitch.Retrying("ggml-base-q5_1.bin", 15), chooser.switching.value)
+        chooser.resumeWaiting()
+        assertEquals(PhoneModelSwitch.Downloading("ggml-base-q5_1.bin", 0.0), chooser.switching.value)
+        scope.runCurrent()
+        assertEquals(listOf(0L, 1_000_000L), starts)
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        scope.advanceTimeBy(1_000_000)
+        scope.runCurrent()
+        assertEquals(2, fetched.size)
+    }
+
+    @Test
+    fun `a connection change after the last try starts one more, and choosing again starts the count over`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        breaksLeft = -1
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        runOutTheWaits()
+        assertEquals(PhoneModelSwitch.Failed("ggml-base-q5_1.bin"), chooser.switching.value)
+        chooser.resumeWaiting()
+        scope.runCurrent()
+        assertEquals(8, fetched.size)
+        assertEquals(PhoneModelSwitch.Failed("ggml-base-q5_1.bin"), chooser.switching.value)
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertEquals(PhoneModelSwitch.Retrying("ggml-base-q5_1.bin", 15), chooser.switching.value)
+        breaksLeft = 0
+        chooser.resumeWaiting()
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+    }
+
+    @Test
+    fun `a retry that comes due while Wi-Fi is gone waits for Wi-Fi instead of retrying on a timer`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        breaksLeft = 1
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertEquals(PhoneModelSwitch.Retrying("ggml-base-q5_1.bin", 15), chooser.switching.value)
+        network = NetworkConditions.cellular
+        scope.advanceTimeBy(15_000)
+        scope.runCurrent()
+        assertEquals(PhoneModelSwitch.WaitingForWiFi("ggml-base-q5_1.bin"), chooser.switching.value)
+        assertEquals(1, fetched.size)
+    }
+
+    @Test
+    fun `the service is asked for when a download starts`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        chooser.choose("ggml-base-q5_1.bin")
+        assertEquals(1, downloadsStarted)
+        scope.runCurrent()
+        network = NetworkConditions.cellular
+        chooser.choose("ggml-small-q5_1.bin")
+        assertEquals(1, downloadsStarted)
     }
 }

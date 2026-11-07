@@ -1431,7 +1431,14 @@ class CaptionSession(
             captionsBusy = captionsBusy,
             device = Build.MODEL.orEmpty(),
             totalMemory = ::totalMemory,
+            downloadStarted = ::keepModelDownloadGoing,
         ).also { chooser -> network.alsoOnChange = { chooser.resumeWaiting() } }
+    }
+
+    /** A download chosen in Settings gets a notification, so the phone keeps the app going while it is out of sight; if it cannot, the download goes on without. */
+    private fun keepModelDownloadGoing() {
+        if (ModelDownloadService.running || ModelDownloadService.start(context)) return
+        note("The model download could not start its notification; it goes on without")
     }
 
     private val captionsBusy = MutableStateFlow(false)

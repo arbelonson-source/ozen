@@ -57,6 +57,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
@@ -240,7 +241,7 @@ internal fun SayScreen(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable(enabled = sayable, onClickLabel = play) { onSpeak(phrase) }
+                                        .clickable(enabled = sayable, onClickLabel = play, role = Role.Button) { onSpeak(phrase) }
                                         .heightIn(min = 56.dp)
                                         .padding(horizontal = 16.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
