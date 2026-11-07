@@ -127,7 +127,8 @@ struct LiveCaptionView: View {
             coverReason: viewModel.pipeline.coverReason,
             offerBackup: viewModel.phase.failure?.engineUnavailability?.kind == .homeServerUnreachable
                 && BackupModel.shouldOffer(after: .homeServerUnreachable, status: viewModel.backupModelStatus),
-            spokenLanguage: viewModel.settings.spokenLanguage
+            spokenLanguage: viewModel.settings.spokenLanguage,
+            network: viewModel.pipeline.observedNetwork
         )
     }
 

@@ -277,6 +277,9 @@ public final class CaptionPipeline {
     public var inputLevel: Float { audio.inputLevel }
     /// The connection as last reported, for diagnostics; nil when unknown.
     public var networkConditions: NetworkConditions? { network?.current }
+    /// The connection as last reported, tracked by SwiftUI so the status
+    /// line follows a change of network without a restart.
+    public var observedNetwork: NetworkConditions? { lastNetwork }
 
     private let audio: any AudioCapturing
     private let engineFactory: @MainActor (AppSettings) -> any TranscriptionEngine

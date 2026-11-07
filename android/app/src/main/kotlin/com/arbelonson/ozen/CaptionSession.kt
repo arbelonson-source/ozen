@@ -513,6 +513,7 @@ class CaptionSession(
         pipeline.onPreparationProgress = { publish() }
         pipeline.onCaptionsChanged = ::publish
         pipeline.onInputsChanged = ::publishInputs
+        pipeline.onNetworkChanged = ::publish
         pipeline.onKeywordHits = ::wordsHeard
         pipeline.onSoundAlert = ::soundHeard
         replies.onSpeaking = CaptionState::speaking
@@ -760,6 +761,7 @@ class CaptionSession(
             coveredEngine = settings.current.value.engine,
             coverReason = pipeline.coverReason,
             offerBackup = offersBackup(),
+            network = pipeline.networkConditions,
         )
         refreshSavingTrouble()
         announceNewLines(transcribing)
