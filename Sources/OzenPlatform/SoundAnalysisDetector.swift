@@ -41,8 +41,6 @@ public struct SoundAnalysisDetector: SoundEventDetecting {
     static let restartWindowSeconds: TimeInterval = 600
     static let restartSpacingSeconds: TimeInterval = 15
 
-    public var windowSamples: Int { Int(windowSeconds * 16_000) }
-
     public func observations(audio: AsyncStream<[Float]>) -> AsyncStream<SoundObservation> {
         let forwardingConfidence = forwardingConfidence
         let windowSeconds = windowSeconds
@@ -60,6 +58,15 @@ public struct SoundAnalysisDetector: SoundEventDetecting {
                 var framePosition: AVAudioFramePosition = 0
                 for await chunk in audio {
                     if Task.isCancelled { break }
+                    // A gap: sound alerts were off. A new analyzer forgets
+                    // the audio the old one held, so none of it is
+                    // classified, on its own or joined to what comes next.
+                    if chunk.isEmpty {
+                        session?.analyzer.removeAllRequests()
+                        session = Self.makeSession(format: format, continuation: continuation, forwardingConfidence: forwardingConfidence, windowSeconds: windowSeconds)
+                        framePosition = 0
+                        continue
+                    }
                     if session == nil || session?.observer.hasFailed == true {
                         guard budget.spend(at: ProcessInfo.processInfo.systemUptime) else { continue }
                         session = Self.makeSession(format: format, continuation: continuation, forwardingConfidence: forwardingConfidence, windowSeconds: windowSeconds)
