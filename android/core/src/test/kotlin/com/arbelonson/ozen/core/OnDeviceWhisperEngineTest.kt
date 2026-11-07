@@ -1,5 +1,7 @@
 package com.arbelonson.ozen.core
 
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.test.Test
@@ -8,11 +10,13 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -755,5 +759,29 @@ class OnDeviceWhisperEngineTest {
         val summary = rig.engine.diagnosticsSummary()!!
         assertTrue(summary.startsWith("fake-model: live passes ${rig.passes.live().size}"), summary)
         assertTrue(summary.contains("final passes 1 (0 empty)"), summary)
+    }
+
+    // The app collects the captions on its main thread, which also draws
+    // the screen; the voice check is a model run four times a second.
+    @Test
+    fun the_voice_check_runs_off_the_thread_that_collects_the_captions() {
+        val made = ConcurrentHashMap.newKeySet<Thread>()
+        val collector = Executors.newSingleThreadExecutor { Thread(it, "captions-collector").also(made::add) }.asCoroutineDispatcher()
+        val scoredOn = ConcurrentHashMap.newKeySet<Thread>()
+        val scorer = { _: FloatArray ->
+            scoredOn += Thread.currentThread()
+            0.9f
+        }
+        val engine = OnDeviceWhisperEngine("fake-model", FakeLoader(FakeWhisperPasses { System.currentTimeMillis() }), voiceScorerFactory = { scorer })
+        try {
+            runBlocking(collector) {
+                assertEquals(EngineAvailability.Available, engine.prepare("he") {})
+                engine.stream("he", audioOf(speech(1.0), silence(0.5))).toList()
+            }
+        } finally {
+            collector.close()
+        }
+        assertTrue(scoredOn.isNotEmpty(), "the voice check never ran")
+        assertTrue(scoredOn.none { it in made }, "the voice check ran on the captions' thread: ${scoredOn.map { it.name }}")
     }
 }
