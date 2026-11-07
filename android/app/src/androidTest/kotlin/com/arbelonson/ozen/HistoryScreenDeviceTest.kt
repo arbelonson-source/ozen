@@ -405,7 +405,8 @@ class HistoryScreenDeviceTest {
 
     @Test
     fun shareAllConversationsIsNotOfferedWhenNothingIsSaved() {
-        assumeFalse(store.listSummaries().isNotEmpty())
+        // History on the test phone is test data: the delete-all test empties it too.
+        store.listSummaries().forEach { store.delete(it.id) }
         compose.onNodeWithText("History").performClick()
         waitFor("Delete all")
         compose.onNodeWithText("Share all conversations").assertDoesNotExist()
