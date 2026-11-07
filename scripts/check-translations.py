@@ -282,10 +282,22 @@ def check_translation_table(keys):
     problems = []
     if not TRANSLATIONS_PATH.exists():
         return [f"{TRANSLATIONS_PATH}: missing"]
+    # A key written twice in one language loads without a word, and only one
+    # of its two wordings is ever shown: two pull requests that each added
+    # the phone model labels left five of them doubled, worded differently.
+    doubled = []
+
+    def keep_pairs(pairs):
+        names = [name for name, _ in pairs]
+        doubled.extend(sorted({name for name in names if names.count(name) > 1}))
+        return dict(pairs)
+
     try:
-        table = json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))
+        table = json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"), object_pairs_hook=keep_pairs)
     except json.JSONDecodeError as error:
         return [f"{TRANSLATIONS_PATH}: invalid JSON: {error}"]
+    for key in sorted(set(doubled)):
+        problems.append(f"{TRANSLATIONS_PATH}: {key[:40]!r} is written twice in {doubled.count(key)} language(s); only one wording is ever shown")
     for language in TRANSLATED_LANGUAGES:
         entries = table.get(language)
         if entries is None:
