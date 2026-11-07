@@ -86,6 +86,12 @@ jobs:
       - name: The APKs carry the speech code for every processor, and the release build is shrunk
         working-directory: android
         run: bash check-apk.sh && bash check-apk.sh app/build/outputs/apk/release/app-release-unsigned.apk
+      # Lint's errors include a call to an Android feature without a version
+      # check, which crashes only on the older phones the app still supports
+      # (minSdk 26), the ones no test runs on.
+      - name: Lint finds no errors
+        working-directory: android
+        run: ./gradlew :app:lintDebug || { cat app/build/reports/lint-results-debug.txt; exit 1; }
       - uses: actions/upload-artifact@v6
         with:
           name: ozen-android-debug
