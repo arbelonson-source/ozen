@@ -31,6 +31,7 @@ import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -187,6 +188,30 @@ class OnboardingDeviceTest {
         compose.waitForIdle()
         compose.onNodeWithText("Live captions for conversation.").assertExists()
         assertFalse("Back left the walkthrough", compose.activity.isFinishing)
+    }
+
+    @Test
+    fun turningAWalkthroughPageTellsTheScreenReaderWhichPageItLandedOnAsOnTheIPhone() {
+        val announced = CopyOnWriteArrayList<String>()
+        val readerBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        try {
+            ScreenReader.isOn = { true }
+            ScreenReader.announce = { _, text -> announced += text }
+            compose.onNodeWithText("Next").performClick()
+            compose.waitUntil(5_000) { announced.isNotEmpty() }
+            compose.onNodeWithText("Next").performClick()
+            compose.waitUntil(5_000) { announced.size >= 2 }
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { compose.activity.onBackPressedDispatcher.onBackPressed() }
+            compose.waitUntil(5_000) { announced.size >= 3 }
+            assertEquals(
+                listOf("Page 2 of 7: How it works", "Page 3 of 7: Which language do people around you speak?", "Page 2 of 7: How it works"),
+                announced.toList(),
+            )
+        } finally {
+            ScreenReader.isOn = readerBefore
+            ScreenReader.announce = announceBefore
+        }
     }
 
     @Test
