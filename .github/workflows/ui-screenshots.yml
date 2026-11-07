@@ -11,6 +11,7 @@ on:
           - iPhone
           - iPad
           - iPhone 13 mini
+          - iPhone SE (3rd generation)
           - App Store iPhone 6.9-inch
           - App Store iPad 13-inch
       test:
@@ -52,13 +53,20 @@ jobs:
         id: sim
         run: |
           FAMILY="${{ inputs.device_family || 'iPhone' }}"
-          if [ "$FAMILY" = "iPhone 13 mini" ]; then
-            # The narrowest phones iOS 26 runs on (375 points: 12 and 13
-            # mini, SE) are not among the runner's ready-made simulators.
+          # The narrowest phones iOS 26 runs on (375 points: 12 and 13 mini,
+          # SE) are not among the runner's ready-made simulators. The SE is
+          # also the shortest (667 points, 145 fewer than the mini), where
+          # the largest text runs out of room first.
+          case "$FAMILY" in
+            "iPhone 13 mini") TYPE=com.apple.CoreSimulator.SimDeviceType.iPhone-13-mini ;;
+            "iPhone SE (3rd generation)") TYPE=com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation ;;
+            *) TYPE="" ;;
+          esac
+          if [ -n "$TYPE" ]; then
             RUNTIME=$(xcrun simctl list runtimes available -j \
               | jq -r '[.runtimes[] | select(.name | startswith("iOS"))] | last | .identifier')
-            UDID=$(xcrun simctl create "iPhone 13 mini" com.apple.CoreSimulator.SimDeviceType.iPhone-13-mini "$RUNTIME")
-            echo "Using simulator: iPhone 13 mini on $RUNTIME ($UDID)"
+            UDID=$(xcrun simctl create "$FAMILY" "$TYPE" "$RUNTIME")
+            echo "Using simulator: $FAMILY on $RUNTIME ($UDID)"
             echo "udid=$UDID" >> "$GITHUB_OUTPUT"
             exit 0
           fi
