@@ -90,6 +90,7 @@ import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.neverEqualPolicy
 import androidx.core.content.IntentCompat
 import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.FileTranscription
@@ -188,6 +189,7 @@ import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.HebrewTime
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.MicrophoneAsk
 import com.arbelonson.ozen.core.MicrophoneDropNotice
 import com.arbelonson.ozen.core.RecentConversation
 import com.arbelonson.ozen.core.SavingTroubleNotice
@@ -205,8 +207,14 @@ class MainActivity : ComponentActivity() {
     private val showingSettings = mutableStateOf(false)
     private val settingsAtBackup = mutableStateOf(false)
     private val confirmingCellular = mutableStateOf(false)
-    private val microphoneAnswer = mutableStateOf<Boolean?>(null)
+    // Every answer counts, even a second "no" after the first: the walkthrough
+    // then looks again at whether the system would still ask.
+    internal val microphoneAnswer = mutableStateOf<Boolean?>(null, neverEqualPolicy())
     private val notificationsAnswer = mutableStateOf<Boolean?>(null)
+
+    /** Whether the system would still show its microphone question after a refusal; replaced by device tests. */
+    internal var canAskMicrophoneAgain: () -> Boolean = { shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) }
+
     private val approveMicrophone = registerForActivityResult(ActivityResultContracts.RequestPermission()) { microphoneAnswer.value = it }
     private val approveNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { notificationsAnswer.value = it }
 
@@ -313,7 +321,10 @@ class MainActivity : ComponentActivity() {
     private fun statusTapped() {
         when (CaptionState.screen.value.status.action) {
             PhasePresentation.Action.Pause -> ListeningService.pause(this)
-            PhasePresentation.Action.OpenSystemSettings -> if (hasMicrophone()) startListening() else openAppSettings()
+            PhasePresentation.Action.OpenSystemSettings -> when (MicrophoneAsk.next(hasMicrophone(), canAskMicrophoneAgain())) {
+                MicrophoneAsk.Granted, MicrophoneAsk.AskAgain -> startListening()
+                MicrophoneAsk.OpenSettings -> openAppSettings()
+            }
             PhasePresentation.Action.Start, PhasePresentation.Action.Resume, PhasePresentation.Action.Retry -> startListening()
             PhasePresentation.Action.OpenEngineSettings -> {
                 settingsAtBackup.value = false
@@ -332,6 +343,7 @@ class MainActivity : ComponentActivity() {
     private fun onboarding() = OnboardingHooks(
         microphone = microphoneAnswer,
         notifications = notificationsAnswer,
+        canAskMicrophoneAgain = { canAskMicrophoneAgain() },
         shown = {
             microphoneAnswer.value = if (hasMicrophone()) true else null
             notificationsAnswer.value = if (AlertNotifier.allowed(this)) true else null
@@ -406,6 +418,7 @@ class MainActivity : ComponentActivity() {
 private class OnboardingHooks(
     val microphone: State<Boolean?>,
     val notifications: State<Boolean?>,
+    val canAskMicrophoneAgain: () -> Boolean,
     val shown: () -> Unit,
     val approveMicrophone: () -> Unit,
     val approveNotifications: () -> Unit,
@@ -514,6 +527,7 @@ private fun OzenApp(
                                 settings = current,
                                 microphone = onboarding.microphone.value,
                                 notifications = onboarding.notifications.value,
+                                microphoneCanAskAgain = onboarding.canAskMicrophoneAgain(),
                                 onApproveMicrophone = onboarding.approveMicrophone,
                                 onApproveNotifications = onboarding.approveNotifications,
                                 onOpenPhoneSettings = onboarding.openPhoneSettings,

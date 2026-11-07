@@ -254,6 +254,46 @@ class OnboardingDeviceTest {
         compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
     }
 
+    private fun microphonePageAfterARefusal(systemWouldAskAgain: Boolean) {
+        repeat(4) { compose.onNodeWithText("Next").performClick() }
+        compose.onNodeWithText("✓ Microphone approved").assertExists()
+        compose.activity.canAskMicrophoneAgain = { systemWouldAskAgain }
+        compose.runOnUiThread { compose.activity.microphoneAnswer.value = false }
+        compose.waitUntil(5_000) { !shown("✓ Microphone approved") }
+    }
+
+    // Android shows its question once more after a first "Don't allow".
+    @Test
+    fun aFirstRefusalTheSystemWillAskAboutAgainShowsTheApproveButtonAgainNotBlocked() {
+        microphonePageAfterARefusal(systemWouldAskAgain = true)
+        compose.onNodeWithText("Approve the microphone").assertExists()
+        compose.onNodeWithText("Without a microphone there are no captions.").assertExists()
+        compose.onNodeWithText("Open phone settings").assertDoesNotExist()
+        compose.onNodeWithText("✕ Microphone blocked").assertDoesNotExist()
+    }
+
+    // The second "no" is the same answer as the first; the page must still
+    // move on to Settings, or its button would ask a system that no longer asks.
+    @Test
+    fun aSecondRefusalAfterAskingAgainShowsBlockedAndOpenPhoneSettings() {
+        microphonePageAfterARefusal(systemWouldAskAgain = true)
+        compose.onNodeWithText("Approve the microphone").assertExists()
+        compose.activity.canAskMicrophoneAgain = { false }
+        compose.runOnUiThread { compose.activity.microphoneAnswer.value = false }
+        compose.waitForIdle()
+        compose.onNodeWithText("✕ Microphone blocked").assertExists()
+        compose.onNodeWithText("Open phone settings").assertExists()
+        compose.onNodeWithText("Approve the microphone").assertDoesNotExist()
+    }
+
+    @Test
+    fun aRefusalTheSystemWillNotAskAboutAgainShowsBlockedAndOpenPhoneSettings() {
+        microphonePageAfterARefusal(systemWouldAskAgain = false)
+        compose.onNodeWithText("✕ Microphone blocked").assertExists()
+        compose.onNodeWithText("Open phone settings").assertExists()
+        compose.onNodeWithText("Approve the microphone").assertDoesNotExist()
+    }
+
     @Test
     fun theWalkthroughAsksWhichLanguagePeopleAroundHerSpeakHebrewUntilSheChoosesAndSkipKeepsTheChoice() {
         compose.onNodeWithText("Next").performClick()

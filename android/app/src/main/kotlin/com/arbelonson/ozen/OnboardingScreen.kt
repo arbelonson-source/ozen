@@ -89,6 +89,7 @@ import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.FirstRunNote
 import com.arbelonson.ozen.core.HebrewText
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.MicrophoneAsk
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.audioLeavesPhone
@@ -120,6 +121,7 @@ internal fun OnboardingScreen(
     settings: AppSettings,
     microphone: Boolean?,
     notifications: Boolean?,
+    microphoneCanAskAgain: Boolean,
     onApproveMicrophone: () -> Unit,
     onApproveNotifications: () -> Unit,
     onOpenPhoneSettings: () -> Unit,
@@ -180,7 +182,7 @@ internal fun OnboardingScreen(
                     }
                     2 -> LanguagePage(settings.spokenLanguage, onSpokenLanguage)
                     MODEL_PAGE -> ModelPage(settings, phoneModels)
-                    4 -> MicrophonePage(settings, microphone, notifications, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
+                    4 -> MicrophonePage(settings, microphone, notifications, microphoneCanAskAgain, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
                     NAME_PAGE -> NamePage(settings, nameDraft, addDraft, onAddAlert)
                     else -> Page(Icons.Rounded.CheckCircle, pageTitle(PAGES - 1)) {
                         if (settings.engine.firstRunNote == FirstRunNote.ModelDownload) {
@@ -208,6 +210,7 @@ private fun MicrophonePage(
     settings: AppSettings,
     microphone: Boolean?,
     notifications: Boolean?,
+    canAskAgain: Boolean,
     onApproveMicrophone: () -> Unit,
     onApproveNotifications: () -> Unit,
     onOpenPhoneSettings: () -> Unit,
@@ -217,8 +220,13 @@ private fun MicrophonePage(
         if (!settings.audioLeavesPhone) {
             Body(tr("הקול לא יוצא מהטלפון, ולא נשמר אלא אם מסמנים בעיה.", "The sound doesn’t leave the phone, and it isn’t kept unless you mark a problem."))
         }
-        when (microphone) {
-            true -> {
+        val ask = when (microphone) {
+            true -> MicrophoneAsk.Granted
+            false -> MicrophoneAsk.next(granted = false, canAskAgain = canAskAgain)
+            null -> MicrophoneAsk.AskAgain
+        }
+        when (ask) {
+            MicrophoneAsk.Granted -> {
                 Status("✓ " + tr("המיקרופון מאושר", "Microphone approved"), good = true)
                 Body(tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע לכם על צלצול בדלת, על אזעקה או כשקוראים בשמכם.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."))
                 when (notifications) {
@@ -227,12 +235,15 @@ private fun MicrophonePage(
                     null -> TonalButton(tr("לאשר התראות", "Approve notifications"), onApproveNotifications, Modifier.fillMaxWidth(), icon = Icons.Rounded.NotificationsActive)
                 }
             }
-            false -> {
+            MicrophoneAsk.OpenSettings -> {
                 Status("✕ " + tr("המיקרופון חסום", "Microphone blocked"), good = false)
                 Body(tr("בלי מיקרופון אין כתוביות. אפשר לאשר אותו בהגדרות הטלפון.", "Without a microphone there are no captions. It can be approved in the phone’s Settings."))
                 TonalButton(tr("פתיחת הגדרות הטלפון", "Open phone settings"), onOpenPhoneSettings, Modifier.fillMaxWidth(), icon = Icons.Rounded.Settings)
             }
-            null -> PrimaryButton(tr("לאשר את המיקרופון", "Approve the microphone"), onApproveMicrophone, Modifier.fillMaxWidth(), icon = Icons.Rounded.Mic)
+            MicrophoneAsk.AskAgain -> {
+                if (microphone == false) Body(tr("בלי מיקרופון אין כתוביות.", "Without a microphone there are no captions."))
+                PrimaryButton(tr("לאשר את המיקרופון", "Approve the microphone"), onApproveMicrophone, Modifier.fillMaxWidth(), icon = Icons.Rounded.Mic)
+            }
         }
     }
 }
