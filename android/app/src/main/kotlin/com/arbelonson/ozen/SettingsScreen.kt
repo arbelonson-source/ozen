@@ -37,6 +37,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Code
@@ -158,6 +161,7 @@ import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.BackupModelStatus
+import com.arbelonson.ozen.core.CloudKeyCheck
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.WordFix
 import com.arbelonson.ozen.core.CloudSpeech
@@ -483,6 +487,7 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
     val service = current.cloudProvider
     val keysHeld by engineSettings.cloudKeysHeld.collectAsStateWithLifecycle()
     val hasKey = service in keysHeld
+    val keyCheck by engineSettings.cloudKeyCheck.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var draft by keyDraft
     var saveFailed by remember(service) { mutableStateOf(false) }
@@ -541,6 +546,7 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
                 )
                 if (draft.isNotBlank()) PrimaryButton(tr("שמירת המפתח", "Save key"), onClick = save, modifier = Modifier.fillMaxWidth())
                 if (saveFailed) Warning(tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again."))
+                keyCheck?.let { KeyCheckLine(it) }
                 if (hasKey) {
                     TextButton(onClick = { confirmingDelete = true }) {
                         Text(tr("מחיקת המפתח", "Delete key"), color = MaterialTheme.colorScheme.error)
@@ -1494,6 +1500,23 @@ private fun BesideOrUnder(start: @Composable () -> Unit, end: @Composable () -> 
                 below.placeRelative(if (underAtEnd) width - below.width else 0, above.height)
             }
         }
+    }
+}
+
+@Composable
+private fun KeyCheckLine(check: CloudKeyCheck) {
+    val (icon, color) = when (check) {
+        CloudKeyCheck.Accepted -> Icons.Rounded.Check to savedGreen()
+        CloudKeyCheck.Rejected -> Icons.Rounded.Error to MaterialTheme.colorScheme.error
+        CloudKeyCheck.NoCredit, CloudKeyCheck.Unreachable -> Icons.Rounded.Warning to cautionOrange()
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Unit),
+        modifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Icon(icon, contentDescription = null, tint = color)
+        Text(check.message, color = color)
     }
 }
 

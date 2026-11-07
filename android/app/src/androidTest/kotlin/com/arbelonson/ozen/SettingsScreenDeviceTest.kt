@@ -85,6 +85,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.BackupModelStatus
+import com.arbelonson.ozen.core.CloudHTTP
+import com.arbelonson.ozen.core.CloudHTTPResponse
 import com.arbelonson.ozen.core.CloudProvider
 import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.ContrastRatio
@@ -166,9 +168,11 @@ class SettingsScreenDeviceTest {
     private var speakersBefore = emptyList<SpeakerProfile>()
     private var separationBefore = 0.45f
     private var cellularBefore = false
+    private lateinit var keyCheckHTTPBefore: CloudHTTP
 
     @Before
     fun remember() {
+        keyCheckHTTPBefore = app.cloudKeyCheckHTTP
         engineBefore = app.settings.current.value.engine
         serviceBefore = app.settings.current.value.cloudProvider
         addressBefore = app.settings.current.value.homeServerAddress
@@ -196,6 +200,7 @@ class SettingsScreenDeviceTest {
 
     @After
     fun restore() {
+        app.cloudKeyCheckHTTP = keyCheckHTTPBefore
         app.cloudKeys.remove(CloudProvider.Deepgram)
         codeBefore?.let { app.homeServerCode.save(it) } ?: app.homeServerCode.remove()
         app.settings.change {
@@ -617,6 +622,21 @@ class SettingsScreenDeviceTest {
         assertEquals("dg-device-test", app.cloudKeys.read(CloudProvider.Deepgram))
         assertEquals(TranscriptionEngineKind.Cloud, app.settings.current.value.engine)
         assertEquals(CloudProvider.Deepgram, app.settings.current.value.cloudProvider)
+    }
+
+    @Test
+    fun aCloudKeyTheServiceRejectsShowsTheRejectedMessageUnderTheKeyRow() {
+        app.cloudKeyCheckHTTP = CloudHTTP { CloudHTTPResponse(401, "{}".toByteArray()) }
+        app.settings.change { it.cloudSoundAcknowledged = it.cloudSoundAcknowledged + CloudProvider.Deepgram }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Cloud transcription").performScrollTo().performClick()
+        compose.onNodeWithText("Deepgram").performScrollTo().performClick()
+        compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-rejected-by-fake")
+        compose.onNodeWithText("Paste your Deepgram key here").performImeAction()
+        val rejected = "The service didn’t accept this key. Check that you copied all of it."
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(rejected).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(rejected).performScrollTo().assertIsDisplayed()
+        assertEquals("dg-rejected-by-fake", app.cloudKeys.read(CloudProvider.Deepgram))
     }
 
     @Test
