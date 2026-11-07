@@ -224,6 +224,15 @@ class CaptionPipeline(
     var homeServerWaitSeconds: Double = 15.0
 
     /**
+     * The cloud counterpart of [homeServerWaitSeconds]: with a cloud engine
+     * chosen, no model on the phone to take over and the quick retries used
+     * up, the cloud is asked this often and captions start once it answers.
+     * Calmer than the home computer's 15 s: the cloud is asked over the
+     * internet, and an outage there rarely ends within seconds.
+     */
+    var cloudWaitSeconds: Double = 30.0
+
+    /**
      * While the phone covers for the cloud after losing the internet, how
      * often to look whether it can be reached again. Without it, a single
      * dropped connection kept a phone that is never stopped on its own
@@ -2279,8 +2288,8 @@ class CaptionPipeline(
             if (needsDownload || engineCacheKey(onPhone) != engineCacheKey(settings)) {
                 if (retryIfNotCovered) {
                     scheduleAutoRecovery(failure)
-                } else {
-                    waitForHomeServer(failure)
+                } else if (!waitForHomeServer(failure) && waitForCloud(failure)) {
+                    listenForSoundsMeanwhile(failure)
                 }
                 return
             }
@@ -2748,6 +2757,48 @@ class CaptionPipeline(
                     continue
                 }
                 logEvent(PipelineEvent.Kind.Note("the home computer answers again, starting captions"))
+                homeServerRecheck = null
+                recovery.reset()
+                retry()
+                return@launch
+            }
+        }
+        return true
+    }
+
+    /**
+     * The cloud counterpart of [waitForHomeServer], started from the same
+     * place (a failed cover with nothing on the phone to take over): a
+     * cloud that stayed unreachable through every quick retry, on a phone
+     * with no model installed, left captions stopped until a tap. Asks the
+     * cloud every [cloudWaitSeconds] and starts captions once it answers.
+     * Only for a passing problem: a key, credit or permission problem needs
+     * a person, and `PhasePresentation` already points them to Settings.
+     */
+    private fun waitForCloud(failure: PipelineFailure): Boolean {
+        if (failure.engineUnavailability?.kind != EngineUnavailability.Kind.TemporarilyUnavailable ||
+            settingsInUse?.engine != TranscriptionEngineKind.Cloud
+        ) {
+            return false
+        }
+        homeServerRecheck?.cancel()
+        logEvent(PipelineEvent.Kind.Note("waiting for the cloud, asking it every ${formatG(cloudWaitSeconds)} s"))
+        homeServerRecheck = scope.launch {
+            while (isActive) {
+                delay(cloudWaitSeconds.seconds)
+                val current = phase
+                if (!isActive || current !is PipelinePhase.Failed || current.reason != failure) return@launch
+                val chosen = settingsInUse
+                if (chosen == null || chosen.engine != TranscriptionEngineKind.Cloud) return@launch
+                if (systemInterrupted || isRecordingVoice) continue
+                val answer = probeEngine(chosen).checkAvailability(chosen.languageCode)
+                val still = phase
+                if (answer != EngineAvailability.Available || !isActive || systemInterrupted || isRecordingVoice ||
+                    still !is PipelinePhase.Failed || still.reason != failure
+                ) {
+                    continue
+                }
+                logEvent(PipelineEvent.Kind.Note("the cloud answers again, starting captions"))
                 homeServerRecheck = null
                 recovery.reset()
                 retry()
