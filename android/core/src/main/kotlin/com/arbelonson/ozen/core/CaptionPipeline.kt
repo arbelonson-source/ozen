@@ -929,8 +929,13 @@ class CaptionPipeline(
     /** Running, starting, or a failure whose retry is lined up: any of these may load a speech model again on its own. */
     val mayLoadModels: Boolean get() = phase.isListening || phase.isTransitioning || isRecoveringByItself
 
-    /** How many engines hold a loaded model right now; zero once [releaseModels] ran. */
-    val loadedEngineCount: Int get() = engineCache.size
+    /**
+     * How many kept engines hold a loaded on-phone model right now; zero
+     * once [releaseModels] ran. A home-computer or cloud engine, kept to
+     * check whether it answers again, holds none, and neither does a phone
+     * engine that hasn't loaded its model yet.
+     */
+    val loadedModelCount: Int get() = engineCache.values.count { it.holdsModel }
 
     /** Gives the loaded speech model back while captions are not running, so a recording can be transcribed with its own copy. */
     fun releaseModels() {

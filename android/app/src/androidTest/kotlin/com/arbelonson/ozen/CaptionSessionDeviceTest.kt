@@ -1294,7 +1294,7 @@ class CaptionSessionDeviceTest {
         try {
             withContext(Dispatchers.Main) { session.listen() }
             val loaded = withTimeoutOrNull(180_000) {
-                while (!(session.pipeline.phase == PipelinePhase.Listening && session.pipeline.loadedEngineCount == 1)) delay(200)
+                while (!(session.pipeline.phase == PipelinePhase.Listening && session.pipeline.loadedModelCount == 1)) delay(200)
                 true
             }
             assertNotNull("the model never loaded: ${session.pipeline.phase}", loaded)
@@ -1310,7 +1310,7 @@ class CaptionSessionDeviceTest {
     }
 
     private suspend fun modelGivenBack(session: CaptionSession, forMillis: Long): Boolean = withTimeoutOrNull(forMillis) {
-        while (session.pipeline.loadedEngineCount != 0) delay(100)
+        while (session.pipeline.loadedModelCount != 0) delay(100)
         true
     } == true
 
@@ -1322,7 +1322,22 @@ class CaptionSessionDeviceTest {
                 session.screenStarted()
                 session.screenStopped()
             }
-            assertTrue("the model was still loaded ${session.pipeline.loadedEngineCount}", modelGivenBack(session, 8_000))
+            assertTrue("the model was still loaded ${session.pipeline.loadedModelCount}", modelGivenBack(session, 8_000))
+        }
+    }
+
+    @Test
+    fun timeThePhoneSpentAsleepCountsTowardsGivingTheSpeechModelBack(): Unit = runBlocking {
+        withLoadedModel("background-release-asleep-test", delaySeconds = 600) { session ->
+            val asleepMillis = AtomicLong(0)
+            withContext(Dispatchers.Main) {
+                session.backgroundClock = { SystemClock.elapsedRealtime() + asleepMillis.get() }
+                session.pipeline.stop()
+                session.screenStarted()
+                session.screenStopped()
+            }
+            asleepMillis.set(601_000)
+            assertTrue("the model was still loaded ${session.pipeline.loadedModelCount}", modelGivenBack(session, 40_000))
         }
     }
 
@@ -1337,7 +1352,7 @@ class CaptionSessionDeviceTest {
             delay(1_000)
             withContext(Dispatchers.Main) { session.screenStarted() }
             delay(7_000)
-            assertEquals(1, session.pipeline.loadedEngineCount)
+            assertEquals(1, session.pipeline.loadedModelCount)
         }
     }
 
@@ -1351,7 +1366,7 @@ class CaptionSessionDeviceTest {
             }
             delay(4_000)
             assertEquals(PipelinePhase.Listening, session.pipeline.phase)
-            assertEquals(1, session.pipeline.loadedEngineCount)
+            assertEquals(1, session.pipeline.loadedModelCount)
         }
     }
 
@@ -1365,7 +1380,7 @@ class CaptionSessionDeviceTest {
                 session.screenStopped()
             }
             delay(4_000)
-            assertEquals(1, session.pipeline.loadedEngineCount)
+            assertEquals(1, session.pipeline.loadedModelCount)
             ListeningService.running = false
             assertTrue("the model stayed loaded after the service ended", modelGivenBack(session, 8_000))
         }

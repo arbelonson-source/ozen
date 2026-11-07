@@ -251,8 +251,14 @@ class FakeEngine(
             hop()
             hook()
         }
+        holdsModel = loadsModel && availability.unavailability == null
         return availability
     }
+
+    /** False for an engine like the home computer's or the cloud's, which loads nothing on the phone. */
+    var loadsModel = true
+    override var holdsModel = false
+        private set
 
     var downloadCancels = 0
         private set
@@ -320,6 +326,7 @@ class FakeEngine(
         private set
 
     override fun release() {
+        holdsModel = false
         releaseCount++
     }
 
