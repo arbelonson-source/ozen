@@ -191,10 +191,13 @@ public struct HomeServerPairing: Sendable, Equatable {
     public init?(address: String, code: String, pin: String? = nil) {
         let address = address.trimmingCharacters(in: .whitespacesAndNewlines)
         let code = code.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard HomeServer.url(from: address) != nil,
+        guard let url = HomeServer.url(from: address),
               !code.isEmpty, code.count <= 200, !code.contains(where: \.isWhitespace)
         else { return nil }
         if let pin, !CertificatePin.isWellFormed(pin) { return nil }
+        // A pin is for an encrypted link: with a plain ws:// address it would
+        // protect nothing and only hide the note that the link isn't encrypted.
+        if pin != nil, url.scheme?.lowercased() != "wss" { return nil }
         self.address = address
         self.code = code
         self.pin = pin

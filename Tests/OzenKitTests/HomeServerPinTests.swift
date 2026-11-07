@@ -40,7 +40,7 @@ struct HomeServerPinTests {
         #expect(CertificatePin.encode(digest: testCertificateDigest) == testCertificatePin)
         #expect(!CertificatePin.encode(digest: testCertificateDigest).contains("="))
         #expect(CertificatePin.isWellFormed(testCertificatePin))
-        for bad in ["", "short", testCertificatePin + "=", String(testCertificatePin.dropLast()) + "+", testCertificatePin + "A"] {
+        for bad in ["", "short", testCertificatePin + "=", String(testCertificatePin.dropLast()) + "+", testCertificatePin + "A", String(testCertificatePin.dropLast()) + "l"] {
             #expect(!CertificatePin.isWellFormed(bad), "\(bad)")
         }
     }
@@ -68,6 +68,15 @@ struct HomeServerPinTests {
         #expect(!plain.url.absoluteString.contains("pin="))
         let badLink = try #require(URL(string: "ozen://pair?address=wss://192.168.1.20:8766&code=example-code-123&pin=nonsense"))
         #expect(HomeServerPairing(url: badLink) == nil)
+    }
+
+    @Test("a pin with an address that isn't encrypted refuses the whole link")
+    func pinNeedsAnEncryptedAddress() throws {
+        for address in ["192.168.1.20", "ws%3A%2F%2F192.168.1.20%3A8765", "grandma-pc"] {
+            let link = try #require(URL(string: "ozen://pair?address=\(address)&code=example-code-123&pin=\(testCertificatePin)"))
+            #expect(HomeServerPairing(url: link) == nil, "\(address)")
+        }
+        #expect(HomeServerPairing(address: "ws://192.168.1.20:8765", code: "example-code-123", pin: testCertificatePin) == nil)
     }
 
     @Test("a paired pin is saved with the address, a pairing without one clears the old pin, a typed address clears it too")

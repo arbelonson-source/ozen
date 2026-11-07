@@ -14,8 +14,12 @@ public enum CertificatePin {
             .replacingOccurrences(of: "=", with: "")
     }
 
+    /// 32 bytes leave the last character 2 bits short; they are zero in any
+    /// real fingerprint, so only these 16 characters can end one.
+    private static let lastCharacters = Set("AEIMQUYcgkosw048".utf8)
+
     public static func isWellFormed(_ pin: String) -> Bool {
-        pin.utf8.count == length && pin.utf8.allSatisfy { byte in
+        pin.utf8.count == length && pin.utf8.last.map(lastCharacters.contains) == true && pin.utf8.allSatisfy { byte in
             (UInt8(ascii: "A")...UInt8(ascii: "Z")).contains(byte)
                 || (UInt8(ascii: "a")...UInt8(ascii: "z")).contains(byte)
                 || (UInt8(ascii: "0")...UInt8(ascii: "9")).contains(byte)
