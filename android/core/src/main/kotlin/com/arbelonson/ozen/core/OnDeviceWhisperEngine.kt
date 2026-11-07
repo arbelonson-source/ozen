@@ -257,6 +257,8 @@ class OnDeviceWhisperEngine(
         held?.release()
     }
 
+    override val holdsModel: Boolean get() = synchronized(lock) { model != null }
+
     override fun stream(languageCode: String, audio: Flow<FloatArray>): Flow<TranscriptToken> =
         tokenFlow { tokens -> streamLock.withLock { runStreaming(languageCode, audio, tokens) } }
 

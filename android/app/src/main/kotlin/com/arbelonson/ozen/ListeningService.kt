@@ -37,6 +37,7 @@ class ListeningService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        running = true
         if (intent?.action == ACTION_PAUSE) {
             captions.stopFromNotification()
             finish()
@@ -73,6 +74,7 @@ class ListeningService : Service() {
     }
 
     override fun onDestroy() {
+        running = false
         captions.endPhoneSound()
         showingOnLockScreen = false
         scope.cancel()
@@ -174,6 +176,9 @@ class ListeningService : Service() {
         fun startPhoneSound(context: Context, resultCode: Int, consent: Intent) = context.startForegroundService(
             Intent(context, ListeningService::class.java).setAction(ACTION_PHONE_SOUND).putExtra(EXTRA_RESULT_CODE, resultCode).putExtra(EXTRA_CONSENT, consent),
         )
+
+        /** The service is alive, paused for speech included; the speech model is kept while it is. */
+        @Volatile internal var running = false
 
         /** Its notification is up with the captions on the lock screen, for the diagnostics report. */
         @Volatile var showingOnLockScreen = false

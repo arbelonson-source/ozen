@@ -11,6 +11,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.Debug
 import android.os.PowerManager
+import android.os.SystemClock
 import android.provider.OpenableColumns
 import androidx.annotation.RequiresApi
 import androidx.core.content.pm.PackageInfoCompat
@@ -27,6 +28,7 @@ import com.arbelonson.ozen.core.HistorySave
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.BackgroundModelRelease
 import com.arbelonson.ozen.core.BackupModel
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.BatteryAdvisor
@@ -89,10 +91,12 @@ import java.util.UUID
 import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -275,6 +279,7 @@ class CaptionSession(
     /** A caption screen came to the front; true if the app was away until now. */
     fun screenStarted(): Boolean {
         screensInFront += 1
+        cancelBackgroundRelease()
         val cameBack = !appIsActive
         appIsActive = true
         if (cameBack) {
@@ -303,7 +308,55 @@ class CaptionSession(
         screensInFront = maxOf(0, screensInFront - 1)
         if (rebuilding) return false
         appIsActive = screensInFront > 0
+        if (!appIsActive) startBackgroundRelease()
         return !appIsActive
+    }
+
+    /** How long the app stays out of sight before an idle speech model is given back; a seam for tests. */
+    internal var backgroundReleaseDelaySeconds: () -> Long = { BackgroundModelRelease.delaySeconds(totalMemory()) }
+
+    /** The clock that delay is measured on; a seam for tests. */
+    internal var backgroundClock: () -> Long = SystemClock::elapsedRealtime
+    private var backgroundRelease: Job? = null
+
+    private fun cancelBackgroundRelease() {
+        backgroundRelease?.cancel()
+        backgroundRelease = null
+    }
+
+    /**
+     * Pausing or stopping keeps the model loaded for a quick start, and a
+     * plain background process holding it is the first thing a small phone
+     * ends. Out of sight and with nothing running, the model goes back after
+     * a while; it is looked at again every half minute after that, since
+     * captions can run in the background and be paused from the notification.
+     * The wait is measured on a clock that keeps counting while the phone
+     * sleeps: a coroutine's delay stops with the processor, so a phone left
+     * asleep for an hour still held the model for the full wait once woken,
+     * just as the person's other apps started again.
+     */
+    private fun startBackgroundRelease() {
+        cancelBackgroundRelease()
+        val seconds = backgroundReleaseDelaySeconds()
+        val leftAt = backgroundClock()
+        backgroundRelease = scope.launch {
+            while (true) {
+                delay(minOf(seconds, BACKGROUND_CHECK_SECONDS) * 1_000)
+                val away = (backgroundClock() - leftAt) / 1_000
+                if (away < seconds) continue
+                val phase = pipeline.phase
+                val release = BackgroundModelRelease.shouldRelease(
+                    listening = phase.isListening,
+                    transitioning = phase.isTransitioning,
+                    mayLoadModels = pipeline.mayLoadModels,
+                    serviceRunning = ListeningService.running,
+                )
+                if (release && pipeline.loadedModelCount > 0) {
+                    pipeline.releaseModels()
+                    note("model released after $away s in the background")
+                }
+            }
+        }
     }
 
     /**
@@ -1325,6 +1378,7 @@ class CaptionSession(
         const val JOURNAL_FILE = "ozen-journal.log"
         const val PROBLEM_AUDIO_FOLDER = "problem-audio"
         private const val SAMPLE_RATE = 16_000
+        private const val BACKGROUND_CHECK_SECONDS = 30L
 
         /** The iPhone's warning buzz: two taps, the second stronger. */
         val BATTERY_BUZZ = AlertVibration(listOf(AlertVibration.Pulse(0.0, 0.1, 0.6f, 0.5f), AlertVibration.Pulse(0.2, 0.15, 1f, 0.5f)))

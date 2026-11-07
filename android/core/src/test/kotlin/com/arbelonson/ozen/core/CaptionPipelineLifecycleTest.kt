@@ -819,4 +819,34 @@ class CaptionPipelineLifecycleTest {
         delay(150.milliseconds)
         assertEquals(PipelinePhase.Listening, fast.phase)
     }
+
+    @Test
+    fun `the number of loaded engines follows the model through a stop and a release`() = runTest {
+        val pipeline = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { settings -> FakeEngine(kind = settings.engine) },
+            embedder = FakeEmbedder(),
+            recovery = AutoRecoveryPolicy.disabled(),
+        )
+        assertEquals(0, pipeline.loadedModelCount)
+        pipeline.start(AppSettings.default)
+        assertEquals(1, pipeline.loadedModelCount)
+        pipeline.stop()
+        assertEquals(1, pipeline.loadedModelCount)
+        pipeline.releaseModels()
+        assertEquals(0, pipeline.loadedModelCount)
+    }
+
+    @Test
+    fun `an engine that holds no model on the phone is not counted as a loaded model`() = runTest {
+        val pipeline = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { settings -> FakeEngine(kind = settings.engine).apply { loadsModel = false } },
+            embedder = FakeEmbedder(),
+            recovery = AutoRecoveryPolicy.disabled(),
+        )
+        pipeline.start(AppSettings.default)
+        assertEquals(PipelinePhase.Listening, pipeline.phase)
+        assertEquals(0, pipeline.loadedModelCount)
+    }
 }
