@@ -495,6 +495,26 @@ class CaptionPipelineAlertTest {
     }
 
     @Test
+    fun `with sound alerts off the detector is given no sound, and turning them on gives it the sound again`() = runTest {
+        val engine = FakeEngine()
+        val detector = FakeSoundDetector()
+        val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine), soundDetector = detector)
+        val settings = AppSettings.default
+        settings.soundAlerts = SoundAlertPreferences(isEnabled = false)
+        pipeline.start(settings)
+
+        audio.push(chunk())
+        audio.push(chunk())
+        assertTrue(eventually { engine.chunksSeen == 2 })
+        delay(50.milliseconds)
+        assertEquals(0, detector.chunksSeen)
+
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
+        audio.push(chunk())
+        assertTrue(eventually { detector.chunksSeen == 1 })
+    }
+
+    @Test
     fun `without a detector the pipeline still runs with two audio consumers`() = runTest {
         val engine = FakeEngine()
         val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))

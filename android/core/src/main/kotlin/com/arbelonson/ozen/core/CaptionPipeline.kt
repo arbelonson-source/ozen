@@ -17,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.isActive
@@ -824,7 +825,10 @@ class CaptionPipeline(
         fanOut = fan
         val tokens = engine.stream(settings.languageCode, fan.outputs[0])
         val embedderAudio = fan.outputs[1]
-        val soundObservations = soundDetector?.observations(fan.outputs[2])
+        // Sound alerts switched off give the classifier nothing to hear: it
+        // ran twice a second all through the captions for nothing but the
+        // near-miss count, and never loads its model until they are on.
+        val soundObservations = soundDetector?.observations(fan.outputs[2].filter { soundPolicy.preferences.isEnabled })
 
         statsData.sessionStartedAt = now()
         listeningStartedAt = statsData.sessionStartedAt
