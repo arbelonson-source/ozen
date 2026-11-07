@@ -806,6 +806,11 @@ private fun CaptionScreen(
     // final size is saved.
     var pinchScale by remember { mutableDoubleStateOf(1.0) }
     val pinchedSize = DisplayPreferences.fontSize(display.fontSize, pinchScale)
+    // One object until the settings or the pinch change: the settings come
+    // from the shared module, which Compose can't see into, so it compares
+    // them by identity, and a fresh copy at every word or clock tick drew
+    // every line on screen again instead of only the one that changed.
+    val linesDisplay = remember(display, pinchedSize) { display.copy(fontSize = pinchedSize) }
     val savedSize by rememberUpdatedState(display.fontSize)
     var problemMarked by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var markedWithCaptions by rememberSaveable { mutableStateOf(true) }
@@ -1060,7 +1065,7 @@ private fun CaptionScreen(
                                 if (offer != null) LighterModelOffer(offer, modelOfferWaiting, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             }
                         }
-                        CaptionLines(state.lines, state.away, state.earlier, display.copy(fontSize = pinchedSize), look, list, following, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
+                        CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
                         if (!following) {
                             JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                                 following = true
@@ -1410,6 +1415,10 @@ private fun AwayJump(count: Int, look: CaptionTheme, onTap: () -> Unit) {
  * for it, the phone asks them aloud to repeat it; "Captions not good?" keeps
  * what was running in the diagnostics journal. A screen reader has these too.
  */
+/** Told each time a caption line is composed; only device tests set it, to count the lines drawn again per new word. */
+@Volatile
+internal var onCaptionRowComposed: ((UUID) -> Unit)? = null
+
 @Composable
 private fun CaptionLineRow(
     line: CaptionLine,
@@ -1422,6 +1431,7 @@ private fun CaptionLineRow(
     onAskToRepeat: (() -> Unit)?,
     onMarkProblem: () -> Unit,
 ) {
+    onCaptionRowComposed?.invoke(line.id)
     val doubtful = if (display.markUncertainLines) line.doubtfulWords else emptyList()
     val spoken = UncertainWords.spoken(line.text, doubtful)
     val colour = if (line.isFinal) look.text else look.pendingText
@@ -1446,7 +1456,7 @@ private fun CaptionLineRow(
             spoken = spoken,
             colour = colour,
             onLayout = { layout = it },
-            layout = layout,
+            layout = { layout },
             actions = listOf(
                 CustomAccessibilityAction(star) { onStar(); true },
             ) + listOfNotNull(onAskToRepeat).map { say ->
@@ -1488,7 +1498,7 @@ private fun CaptionLineContent(
     spoken: List<String>,
     colour: Color,
     onLayout: (TextLayoutResult) -> Unit,
-    layout: TextLayoutResult?,
+    layout: () -> TextLayoutResult?,
     actions: List<CustomAccessibilityAction>,
 ) {
     val speaker = line.speaker?.takeIf { display.showSpeakerNames }
@@ -1527,7 +1537,7 @@ private fun CaptionLineWords(
     spoken: List<String>,
     colour: Color,
     onLayout: (TextLayoutResult) -> Unit,
-    layout: TextLayoutResult?,
+    layout: () -> TextLayoutResult?,
     actions: List<CustomAccessibilityAction>,
     speaker: String?,
 ) {
@@ -1553,7 +1563,9 @@ private fun CaptionLineWords(
             modifier = Modifier
                 .weight(1f, fill = false)
                 .then(if (line.important) Modifier.background(importantField(look.isLight), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp) else Modifier)
-                .drawBehind { layout?.let { drawDoubtDots(it, colour) } }
+                // Read only here, as it is drawn: read while composing, the
+                // layout each new word gives composed the line a second time.
+                .drawBehind { layout()?.let { drawDoubtDots(it, colour) } }
                 // One stop for a screen reader, as on the iPhone: the marks
                 // beside the words are heard here, not each on its own.
                 .semantics {
