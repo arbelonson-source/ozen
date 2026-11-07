@@ -116,6 +116,10 @@ def main():
         sys.exit("Couldn't work out this computer's address; pass --address wss://... or --address 192.168.1.20")
     address = phone_address(address)
     code = read_code(args.code_file)
+    # Typed by hand, a home address can't carry the pin, and the computer's own
+    # certificate is refused without it: the page shows the plain address,
+    # which works (and the phone says it isn't encrypted).
+    typed = address
     address, pin = home_link(address, args.cert_dir, args.tls_port)
     fields = {"address": address, "code": code}
     if pin:
@@ -130,7 +134,7 @@ def main():
 <p>Open the iPhone's Camera, point it at the code, and tap the Ozen link. Ozen asks before connecting.</p>
 {svg.getvalue().decode()}
 <p>Or type it into Ozen's Settings: Transcription engine, Home computer:</p>
-<p>Address: <code>{html.escape(address)}</code><br>Pairing code: <code>{html.escape(code)}</code></p>
+<p>Address: <code>{html.escape(typed)}</code><br>Pairing code: <code>{html.escape(code)}</code></p>
 <p>Anyone with this code can use this computer for captions. Keep it in the family.</p>"""
     write_private(args.out, page)
     print(f"Pairing page: {args.out}")

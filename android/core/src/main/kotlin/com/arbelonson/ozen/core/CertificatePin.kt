@@ -8,7 +8,8 @@ import java.util.Base64
 import javax.net.ssl.X509TrustManager
 
 object CertificatePin {
-    val shape = Regex("[A-Za-z0-9_-]{43}")
+    // 32 bytes leave the last character 2 bits short: they are zero in any real fingerprint.
+    val shape = Regex("[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]")
 
     fun of(der: ByteArray): String =
         Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(der))

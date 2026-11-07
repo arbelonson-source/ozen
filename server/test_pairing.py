@@ -132,6 +132,13 @@ class PairingPage(unittest.TestCase):
             pairing.main()
         return out
 
+    def test_the_address_to_type_is_the_plain_one_that_works_without_the_pin(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with open(self.make_page(folder), encoding="utf-8") as f:
+                page = f.read()
+        self.assertIn("Address: <code>192.168.1.20</code>", page)
+        self.assertNotIn("<code>wss://", page)
+
     def test_the_page_holding_the_code_is_readable_only_by_its_owner(self):
         with tempfile.TemporaryDirectory() as folder:
             out = self.make_page(folder)
