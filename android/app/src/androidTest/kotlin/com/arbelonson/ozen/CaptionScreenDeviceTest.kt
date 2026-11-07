@@ -120,6 +120,57 @@ class CaptionScreenDeviceTest {
         compose.runOnUiThread { CaptionState.clear() }
     }
 
+    private val finishedLines = (1..8).map {
+        TranscriptSegment(id = UUID.randomUUID(), text = "Line $it of a long talk", isCommitted = true, startTimestamp = it.toDouble(), lastUpdateTimestamp = it.toDouble())
+    }
+    private val growingLine = TranscriptSegment(id = UUID.randomUUID(), text = "And then", isCommitted = false, startTimestamp = 9.0, lastUpdateTimestamp = 9.0)
+
+    private fun showListening(segments: List<TranscriptSegment>, newest: String) {
+        compose.runOnUiThread {
+            CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = segments)
+        }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText(newest).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitForIdle()
+    }
+
+    // The id of each caption line composed while [during] runs, once per composition; nine lines on screen.
+    private fun linesComposed(during: () -> Unit): List<UUID> {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.display
+        val composed = CopyOnWriteArrayList<UUID>()
+        try {
+            app.settings.change { it.display = it.display.copy(autoHideControls = false) }
+            showListening(finishedLines + growingLine, "And then")
+            onCaptionRowComposed = { composed += it }
+            during()
+            return composed.toList()
+        } finally {
+            onCaptionRowComposed = null
+            app.settings.change { it.display = before }
+        }
+    }
+
+    @Test
+    fun aNewWordComposesOnlyTheNewestLine() {
+        val composedLines = linesComposed { showListening(finishedLines + growingLine.copy(text = "And then we", lastUpdateTimestamp = 9.5), "And then we") }
+        assertEquals("lines composed again for one new word", listOf(growingLine.id), composedLines.distinct())
+    }
+
+    @Test
+    fun aNewWordComposesTheNewestLineOnce() {
+        val composedLines = linesComposed { showListening(finishedLines + growingLine.copy(text = "And then we", lastUpdateTimestamp = 9.5), "And then we") }
+        assertEquals("times the newest line was composed for one new word", 1, composedLines.count { it == growingLine.id })
+    }
+
+    @Test
+    fun aQuietRoomComposesNoLineAsTheSecondsPass() {
+        val composedLines = linesComposed {
+            compose.mainClock.advanceTimeBy(2_500)
+            compose.waitForIdle()
+        }
+        assertEquals("lines composed again in a quiet room", emptyList<UUID>(), composedLines)
+    }
+
     @Test
     fun aLineThatOpensInEnglishButIsHebrewIsDrawnRightToLeft() {
         val line = TranscriptSegment(

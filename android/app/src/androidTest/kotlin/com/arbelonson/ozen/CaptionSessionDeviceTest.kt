@@ -1386,6 +1386,91 @@ class CaptionSessionDeviceTest {
         }
     }
 
+    private suspend fun withVoiceSession(name: String, body: suspend (CaptionSession) -> Unit) {
+        val work = File(context.cacheDir, name).apply { deleteRecursively(); mkdirs() }
+        val session = withContext(Dispatchers.Main) {
+            CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(FloatArray(16_000)),
+                historyFolder = File(work, "history"),
+            ).also {
+                it.appIsActive = true
+                it.backgroundReleaseDelaySeconds = { 1 }
+            }
+        }
+        try {
+            val answered = withTimeoutOrNull(10_000) {
+                while (session.voice.installed.value == null) delay(100)
+                true
+            }
+            assertNotNull("the phone's speech engine never answered", answered)
+            body(session)
+        } finally {
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+            work.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun outOfSightTheAppLetsGoOfThePhonesSpeechEngineAndConnectsAgainOnReturn(): Unit = runBlocking {
+        withVoiceSession("voice-rest-test") { session ->
+            val voices = session.voice.installed.value
+            withContext(Dispatchers.Main) {
+                session.screenStarted()
+                session.screenStopped()
+            }
+            val letGo = withTimeoutOrNull(6_000) {
+                while (!session.voice.isResting) delay(100)
+                true
+            }
+            assertNotNull("the speech engine was still held out of sight", letGo)
+            withContext(Dispatchers.Main) {
+                session.screenStarted()
+                session.refreshVoice()
+            }
+            assertFalse("still let go after coming back", session.voice.isResting)
+            assertEquals(voices, session.voice.installed.value)
+            val said = CopyOnWriteArrayList<Boolean>()
+            withContext(Dispatchers.Main) {
+                session.voice.onSpeakingChanged = { said += it }
+                session.voice.speak("Hello there", 0.5f)
+            }
+            withTimeoutOrNull(10_000) { while (said.lastOrNull() != false) delay(100) }
+            assertEquals("the reply after coming back", listOf(true, false), said.toList())
+        }
+    }
+
+    @Test
+    fun aReplyStillBeingSaidWhenTheAppLeavesIsNotCutOff(): Unit = runBlocking {
+        withVoiceSession("voice-rest-speaking-test") { session ->
+            withContext(Dispatchers.Main) { session.voice.speak("Please read this sentence aloud slowly. ".repeat(20).trim(), 0.5f) }
+            val speaking = withTimeoutOrNull(10_000) {
+                while (!session.voice.isSpeaking) delay(100)
+                true
+            }
+            assertNotNull("never spoke", speaking)
+            withContext(Dispatchers.Main) {
+                session.screenStarted()
+                session.screenStopped()
+            }
+            delay(4_000)
+            assertTrue("the reply was cut off", session.voice.isSpeaking)
+            assertFalse("let go of the speech engine in the middle of a reply", session.voice.isResting)
+            withContext(Dispatchers.Main) { session.voice.stop() }
+            val letGo = withTimeoutOrNull(6_000) {
+                while (!session.voice.isResting) delay(100)
+                true
+            }
+            assertNotNull("the speech engine was still held once the reply ended", letGo)
+        }
+    }
+
     private class ClipAudio(private val samples: FloatArray, private val after: FloatArray = FloatArray(1_600)) : AudioCapturing {
         @Volatile
         var fedAll = false
