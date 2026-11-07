@@ -251,8 +251,14 @@ class FakeEngine(
             hop()
             hook()
         }
+        holdsModel = loadsModel && availability.unavailability == null
         return availability
     }
+
+    /** Whether a successful prepare loads a model on the phone: only the phone's own engine does, not the home computer's or the cloud's. */
+    var loadsModel = kind == TranscriptionEngineKind.WhisperKit
+    override var holdsModel = false
+        private set
 
     var downloadCancels = 0
         private set
@@ -320,6 +326,7 @@ class FakeEngine(
         private set
 
     override fun release() {
+        holdsModel = false
         releaseCount++
     }
 

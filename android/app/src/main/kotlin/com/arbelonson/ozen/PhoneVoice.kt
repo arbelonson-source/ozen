@@ -18,6 +18,7 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
     private val pending = mutableSetOf<String>()
     @Volatile private var ready = false
     @Volatile private var answered = false
+    @Volatile private var resting = false
 
     private val progress = object : UtteranceProgressListener() {
         override fun onStart(utteranceId: String) {
@@ -68,6 +69,10 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
     override fun hasVoice(language: UILanguage): Boolean = installed.value?.contains(language) == true
 
     override fun refreshVoice() {
+        if (resting) {
+            reconnect()
+            return
+        }
         if (!answered) return
         // The phone's speech engine, updated or stopped while the app was
         // away, lets go of it for good and never binds again by itself, and
@@ -91,7 +96,7 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
     override fun speak(text: String, rate: Float) {
         pending.clear()
         waiting = null
-        if (answered && say(text, rate)) return
+        if (answered && !resting && say(text, rate)) return
         // Not taken because the engine let go of the app, or before it has
         // answered: said once it is connected, the reply held busy meanwhile.
         val holding = UUID.randomUUID().toString()
@@ -107,8 +112,26 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         val talking = pending.isNotEmpty()
         pending.clear()
         waiting = null
-        engine.stop()
+        if (!resting) engine.stop()
         if (talking) quiet()
+    }
+
+    /** Let go of by [rest] until it is connected again. */
+    internal val isResting: Boolean get() = resting
+
+    /**
+     * Lets go of the phone's speech engine while the app is out of sight
+     * and says nothing. Bound, the engine's own process (44 MB on the
+     * emulator) is held at the app's priority for as long as captions run
+     * in the background: memory a small phone can't take back for the
+     * person's other apps. The voices found last stay listed, and
+     * [refreshVoice] or [speak] connects again.
+     */
+    fun rest() {
+        if (resting || !answered || pending.isNotEmpty() || waiting != null) return
+        resting = true
+        ready = false
+        engine.shutdown()
     }
 
     /**
@@ -120,7 +143,7 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
         onSpeakingChanged = null
         pending.clear()
         waiting = null
-        engine.shutdown()
+        if (!resting) engine.shutdown()
     }
 
     private fun connect(): TextToSpeech {
@@ -142,7 +165,8 @@ class PhoneVoice(context: Context) : SpeechSynthesizing {
     }
 
     private fun reconnect() {
-        engine.shutdown()
+        if (!resting) engine.shutdown()
+        resting = false
         ready = false
         answered = false
         engine = connect()
