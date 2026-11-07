@@ -30,6 +30,8 @@ import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.MobileDataNote
+import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.ScheduledRetry
@@ -153,6 +155,7 @@ class PhasePresentation private constructor(
             coveredEngine: TranscriptionEngineKind? = null,
             coverReason: EngineUnavailability.Kind? = null,
             offerBackup: Boolean = false,
+            network: NetworkConditions? = null,
         ): PhasePresentation {
             // Only captions the call interrupted come back when it ends: ones
             // paused or stopped by hand stay that way, and saying they would
@@ -204,7 +207,7 @@ class PhasePresentation private constructor(
                     isBusy = true,
                 )
 
-                PipelinePhase.Listening -> listening(coveringForCloud, coveredEngine, coverReason)
+                PipelinePhase.Listening -> listening(engine, coveringForCloud, coveredEngine, coverReason, network)
 
                 PipelinePhase.Paused ->
                     if (pausedForSpeech) {
@@ -232,9 +235,11 @@ class PhasePresentation private constructor(
         }
 
         private fun listening(
+            engine: TranscriptionEngineKind?,
             coveringForCloud: Boolean,
             coveredEngine: TranscriptionEngineKind?,
             coverReason: EngineUnavailability.Kind?,
+            network: NetworkConditions?,
         ): PhasePresentation {
             fun listening(detail: String, action: Action) = PhasePresentation(
                 title = tr("מאזינה", "Listening"),
@@ -290,6 +295,9 @@ class PhasePresentation private constructor(
                         tr("התמלול בענן לא זמין, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Cloud captions aren’t available, carrying on with the phone’s own · Tap to pause"),
                         Action.Pause,
                     )
+
+                MobileDataNote.shows(engine, coveringForCloud, network) ->
+                    listening(tr("דרך חבילת הגלישה · הקישו כדי להשהות", "Over mobile data · Tap to pause"), Action.Pause)
 
                 else -> listening(tr("הקישו כדי להשהות", "Tap to pause"), Action.Pause)
             }

@@ -6,6 +6,7 @@ import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ControlBarAutoHide
 import com.arbelonson.ozen.core.EngineUnavailability
+import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.LockScreenCaptionLine
 import com.arbelonson.ozen.core.LockScreenCaptions
@@ -116,11 +117,13 @@ data class CaptionScreenState(
     val coverReason: EngineUnavailability.Kind? = null,
     /** The home computer can't be reached and the phone has no backup to carry on with. */
     val offerBackup: Boolean = false,
+    /** The connection as last reported; null when unknown. */
+    val network: NetworkConditions? = null,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(
             phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining, pausedForSpeech,
-            coveringForCloud, coveredEngine, coverReason, offerBackup,
+            coveringForCloud, coveredEngine, coverReason, offerBackup, network,
         )
 
     /** Not merely listening: a call holding captions leaves them stopped, as `captionsAreRunning` on the iPhone. */
@@ -191,6 +194,7 @@ object CaptionState {
         coveredEngine: TranscriptionEngineKind? = null,
         coverReason: EngineUnavailability.Kind? = null,
         offerBackup: Boolean = false,
+        network: NetworkConditions? = null,
     ) {
         val resumed = speechResume.noteCaptions(segments, now)
         segmentsShown = segments
@@ -218,6 +222,7 @@ object CaptionState {
             coveredEngine = coveredEngine,
             coverReason = coverReason,
             offerBackup = offerBackup,
+            network = network,
             lineCount = segments.size,
             lines = shown.mapIndexed { at, it ->
                 val shape = shaped[at]

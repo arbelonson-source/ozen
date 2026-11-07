@@ -413,6 +413,9 @@ class CaptionPipeline(
     /** The connection as last reported, for diagnostics; null when unknown. */
     val networkConditions: NetworkConditions? get() = network?.current
 
+    /** The connection changed, so the status line can follow it live. */
+    var onNetworkChanged: (() -> Unit)? = null
+
     /** The engine of the current run, so vocabulary edits reach it live. */
     private var currentEngine: TranscriptionEngine? = null
     private var keywordMatcher = KeywordAlertMatcher(emptyList())
@@ -2534,6 +2537,7 @@ class CaptionPipeline(
         val allowCellular = allowsCellularDownload
         val previous = lastNetwork
         lastNetwork = conditions
+        onNetworkChanged?.invoke()
         if (networkRetryTask != null || systemInterrupted) return
         val kind = phase.failure?.engineUnavailability?.kind ?: return
         val returned = when (kind) {

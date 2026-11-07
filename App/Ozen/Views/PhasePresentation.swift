@@ -54,7 +54,8 @@ struct PhasePresentation {
         coveredEngine: TranscriptionEngineKind? = nil,
         coverReason: EngineUnavailability.Kind? = nil,
         offerBackup: Bool = false,
-        spokenLanguage: UILanguage = .hebrew
+        spokenLanguage: UILanguage = .hebrew,
+        network: NetworkConditions? = nil
     ) {
         // Only captions the call interrupted come back when it ends: ones
         // she paused or stopped herself stay that way, and saying they
@@ -116,6 +117,9 @@ struct PhasePresentation {
             // Still captioning, so still green: the words keep coming, only
             // from the phone's own model while the cloud can't be used.
             self.init(title: tr("מאזינה", "Listening"), detail: tr("התמלול בענן לא זמין, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Cloud captions aren’t available, carrying on with the phone’s own · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
+
+        case .listening where MobileDataNote.shows(engine: engine, coveringForCloud: coveringForCloud, network: network):
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("דרך חבילת הגלישה · הקישו כדי להשהות", "Over mobile data · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
         case .listening:
             self.init(title: tr("מאזינה", "Listening"), detail: tr("הקישו כדי להשהות", "Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
