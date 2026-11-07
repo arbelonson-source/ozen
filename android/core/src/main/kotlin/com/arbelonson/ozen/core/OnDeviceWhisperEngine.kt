@@ -290,7 +290,12 @@ class OnDeviceWhisperEngine(
 
         val intake = AudioIntake(voiceScorerFactory())
         coroutineScope {
-            val intakeJob = launch {
+            // Taken in where the model runs, not on the collector's thread:
+            // the app collects the captions on its main thread, and the voice
+            // check is a small model run four times a second, 1 ms on the
+            // emulator but up to 20 ms, more than a frame, and slower on a
+            // cheap phone.
+            val intakeJob = launch(passDispatcher) {
                 try {
                     audio.collect { chunk -> intake.append(chunk) }
                 } finally {
