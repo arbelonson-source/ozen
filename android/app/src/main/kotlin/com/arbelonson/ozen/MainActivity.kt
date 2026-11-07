@@ -459,6 +459,7 @@ private fun OzenApp(
     var comebacks by remember { mutableIntStateOf(0) }
     LifecycleEventEffect(Lifecycle.Event.ON_START) { comebacks++ }
     val fitOffer = remember(current, comebacks) { app.captions.modelFitOffer() }
+    val inUseModelBytes = remember(current, comebacks) { app.captions.phoneModels.inUseBytes() }
     val loadCrash by app.captions.loadCrash.showing.collectAsStateWithLifecycle()
     // Any start, from the card or the status line, ends the question, even
     // one that waits for Wi-Fi or fails before the captions run.
@@ -641,6 +642,7 @@ private fun OzenApp(
                                 onDismissNameAlert = app.captions::dismissNameAlertOffer,
                                 modelOffer = fitOffer?.takeIf { it.file != modelSwitch.downloadingFile },
                                 modelOfferWaiting = modelSwitch.let { it is PhoneModelSwitch.WaitingForWiFi && it.file == fitOffer?.file },
+                                inUseModelBytes = inUseModelBytes,
                                 onSwitchModel = { app.captions.phoneModels.replaceWith(it.file) },
                                 onDismissModelOffer = app.captions::dismissModelFitOffer,
                                 loadCrashCard = loadCrash?.let { lighter ->
@@ -648,6 +650,7 @@ private fun OzenApp(
                                         ModelLoadCrashCard(
                                             current.phoneModel,
                                             lighter,
+                                            inUseModelBytes,
                                             onSwitch = {
                                                 app.captions.dismissLoadCrash()
                                                 app.captions.phoneModels.replaceWith(lighter.file)
@@ -804,6 +807,7 @@ private fun CaptionScreen(
     onDismissNameAlert: () -> Unit,
     modelOffer: PhoneModel?,
     modelOfferWaiting: Boolean,
+    inUseModelBytes: Long?,
     onSwitchModel: (PhoneModel) -> Unit,
     onDismissModelOffer: (PhoneModel) -> Unit,
     loadCrashCard: (@Composable () -> Unit)?,
@@ -1088,7 +1092,7 @@ private fun CaptionScreen(
                             )
                             val recent = state.recentConversation
                             loadCrashCard?.invoke()
-                            if (offer != null) LighterModelOffer(offer, modelOfferWaiting, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
+                            if (offer != null) LighterModelOffer(offer, modelOfferWaiting, inUseModelBytes, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             if (recent != null) {
                                 RecentConversationCard(recent, look, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent)
                             } else if (offer == null && offersNameAlert) {
@@ -1099,7 +1103,7 @@ private fun CaptionScreen(
                         val trailing: (@Composable () -> Unit)? = if (offer == null && loadCrashCard == null) null else {
                             {
                                 loadCrashCard?.invoke()
-                                if (offer != null) LighterModelOffer(offer, modelOfferWaiting, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
+                                if (offer != null) LighterModelOffer(offer, modelOfferWaiting, inUseModelBytes, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             }
                         }
                         CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, marks, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
@@ -1774,7 +1778,7 @@ private fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: ()
 
 /** The running model kept falling behind the speech and a lighter one fits this phone; see `ModelFitWatch`. */
 @Composable
-private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, onSwitch: () -> Unit, onDismiss: () -> Unit) {
+private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: Long?, onSwitch: () -> Unit, onDismiss: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.Top,
@@ -1792,7 +1796,7 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, onSwitch: () 
                     )
                 }
             }
-            ReplacedModelLine()
+            ReplacedModelLine(inUseBytes)
             if (waiting) Text(
                 tr("ממתינים ל־Wi‑Fi כדי להוריד. אפשר לאשר בהגדרות הורדה בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings."),
                 color = colors.onSurfaceVariant,
@@ -1811,7 +1815,7 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, onSwitch: () 
 
 /** The app was ended while it set up the chosen model, most likely for lack of memory; the captions wait for her choice instead of starting on their own. */
 @Composable
-private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, onSwitch: () -> Unit, onRetry: () -> Unit) {
+private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, inUseBytes: Long?, onSwitch: () -> Unit, onRetry: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val title = tr("אוזן נסגרה בזמן שהכינה את מודל הדיבור", "Ozen closed while setting up the speech model")
     val body = tr(
@@ -1840,7 +1844,7 @@ private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, onSwitch:
                 )
             }
         }
-        ReplacedModelLine()
+        ReplacedModelLine(inUseBytes)
         Row(horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Page, Alignment.End), modifier = Modifier.fillMaxWidth()) {
             Text(
                 tr("נסו שוב", "Try again"),
@@ -1860,9 +1864,8 @@ private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, onSwitch:
 
 /** Said before the tap of a card that switches models: the one in use now is deleted once the new one is ready. */
 @Composable
-private fun ReplacedModelLine() {
-    val app = LocalContext.current.applicationContext as OzenApplication
-    val bytes = remember { app.captions.phoneModels.inUseBytes() } ?: return
+private fun ReplacedModelLine(bytes: Long?) {
+    if (bytes == null) return
     Text(
         tr("המודל שפועל עכשיו (%1) יימחק אז מהטלפון כדי לפנות מקום.", "The model in use now (%1) is then removed from the phone to free room.", listOf(ByteSize.text(bytes))),
         color = MaterialTheme.colorScheme.onSurfaceVariant,

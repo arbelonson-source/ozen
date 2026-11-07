@@ -209,7 +209,8 @@ class PhoneModelChooser(
     private fun removeStrayParts(model: PhoneModel) {
         val keep = setOf(model.file, settings.current.value.phoneModel.file)
         for (entry in PhoneModelStorage(modelFolder, "").list()) {
-            if (entry.name.endsWith(".part") && entry.name.removeSuffix(".part") !in keep) remove(File(modelFolder, entry.name))
+            val name = entry.name.removeSuffix(".part")
+            if (name != entry.name && name !in keep && !PhoneModelDownloader.isWriting(File(modelFolder, name))) remove(File(modelFolder, entry.name))
         }
         refreshInstalled()
     }

@@ -5,6 +5,7 @@ import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelDeletion
+import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.ReleaseFileFetching
@@ -16,6 +17,9 @@ import java.io.IOException
 import java.io.RandomAccessFile
 import java.net.URI
 import java.nio.file.Files
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -888,5 +892,34 @@ class PhoneModelChooserTest {
         chooser.choose("ggml-base-q5_1.bin")
         scope.runCurrent()
         assertTrue(onPhone("ggml-large-v3-turbo-q5_0.bin.part"))
+    }
+
+    @Test
+    fun `a finished download leaves alone the unfinished download another download is still writing`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        val turbo = PhoneModelCatalog.all.first { it.file == "ggml-large-v3-turbo-q5_0.bin" }
+        val writing = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val slow = object : ReleaseFileFetching {
+            override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
+                RandomAccessFile(appendingTo, "rw").use { it.setLength(1_000_000) }
+                writing.countDown()
+                release.await(10, TimeUnit.SECONDS)
+                throw IOException("connection reset")
+            }
+
+            override fun sha256(file: File): String = ""
+        }
+        val other = thread { runCatching { PhoneModelDownloader(File(models, turbo.file), turbo.source, slow).download {} } }
+        try {
+            assertTrue(writing.await(10, TimeUnit.SECONDS))
+            chooser.choose("ggml-base-q5_1.bin")
+            scope.runCurrent()
+            assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+            assertTrue(onPhone("ggml-large-v3-turbo-q5_0.bin.part"))
+        } finally {
+            release.countDown()
+            other.join(10_000)
+        }
     }
 }
