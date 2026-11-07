@@ -1211,7 +1211,7 @@ class CaptionSession(
     private fun announce(text: String, critical: Boolean = false) {
         val now = SystemClock.elapsedRealtime()
         if (critical) heldUntil = now + CRITICAL_ANNOUNCEMENT_MILLIS
-        if (critical || now >= heldUntil) {
+        if (critical || (now >= heldUntil && held.isEmpty())) {
             ScreenReader.announce(context, text)
             return
         }
@@ -1225,7 +1225,8 @@ class CaptionSession(
             val waiting = held.joinToString(". ")
             held.clear()
             holding = null
-            ScreenReader.announce(context, waiting)
+            // Left the app meanwhile: what waited was about the screen she left.
+            if (appIsActive && ScreenReader.isOn(context)) ScreenReader.announce(context, waiting)
         }
     }
 

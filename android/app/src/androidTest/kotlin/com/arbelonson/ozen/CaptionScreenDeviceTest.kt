@@ -1579,7 +1579,29 @@ class CaptionScreenDeviceTest {
             assertEquals(listOf("Attention! Smoke detector", "Alert: Doorbell"), announced.map { it.second })
             val gap = announced[1].first - announced[0].first
             assertTrue("the doorbell was said $gap ms after the alarm", gap >= 3_000)
+
+            announced.clear()
+            compose.runOnUiThread {
+                app.captions.pipeline.onSoundAlert?.invoke(SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = heardAt + 5))
+                app.captions.pipeline.onSoundAlert?.invoke(SoundAlert(event = SoundEventCatalog.event("door_bell")!!, confidence = 0.9, timestamp = heardAt + 5))
+                // The main thread busy past the hold: the doorbell is still waiting to be said.
+                Thread.sleep(4_500)
+                app.captions.pipeline.onSoundAlert?.invoke(SoundAlert(event = SoundEventCatalog.event("baby_crying")!!, confidence = 0.9, timestamp = heardAt + 5))
+            }
+            compose.waitUntil(5_000) { announced.size >= 2 }
+            Thread.sleep(500)
+            assertEquals(listOf("Attention! Smoke detector", "Alert: Doorbell. Alert: Baby crying"), announced.map { it.second })
+
+            announced.clear()
+            compose.runOnUiThread {
+                app.captions.pipeline.onSoundAlert?.invoke(SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = heardAt + 10))
+                app.captions.pipeline.onSoundAlert?.invoke(SoundAlert(event = SoundEventCatalog.event("door_bell")!!, confidence = 0.9, timestamp = heardAt + 10))
+            }
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            Thread.sleep(6_000)
+            assertEquals("what waited was said after she left the app", listOf("Attention! Smoke detector"), announced.map { it.second })
         } finally {
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
             ScreenReader.isOn = readerBefore
             ScreenReader.announce = announceBefore
             compose.runOnUiThread { CaptionState.clear() }
