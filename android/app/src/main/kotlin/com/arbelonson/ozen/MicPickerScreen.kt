@@ -157,7 +157,8 @@ private fun Tip(icon: ImageVector, text: String) {
 }
 
 /**
- * Read every 50 ms while captions run; empty, and said so, while they don't.
+ * Read every 50 ms while active (captions running, or a voice being
+ * recorded); empty, and said so, otherwise.
  * A screen reader says every change of the meter it is on, the bar's own
  * progress included, so what it is given moves at most once a second: the
  * loudest level of that second. The iPhone reads the value only when asked.
