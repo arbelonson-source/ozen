@@ -487,6 +487,31 @@ class SavedSpeakerTest {
     }
 
     @Test
+    fun `the ready-made phrases are worded so anyone can say them`() {
+        val markers = listOf("קוראת", "поняла", "зрозуміла", "समझी", "रही हूँ", "रहे हैं", "Obrigada")
+        for (language in UILanguage.entries) {
+            for (phrase in AppSettings.defaultQuickPhrases(language)) {
+                assertFalse(markers.any { it in phrase }, "$language: $phrase")
+            }
+        }
+    }
+
+    @Test
+    fun `a list saved with the older feminine wording counts as unedited and follows the language`() {
+        val hebrew = listOf("רגע, לא הבנתי", "אפשר לחזור על זה?", "לאט יותר בבקשה", "דברו קרוב יותר לטלפון, בבקשה", "אני קוראת את הכתוביות, תנו לי רגע", "כן", "לא", "תודה", "בואו נדבר אחד אחד")
+        val russian = listOf("Подождите, я не поняла", "Можете повторить?", "Помедленнее, пожалуйста", "Говорите ближе к телефону, пожалуйста", "Я читаю субтитры, дайте мне минутку", "Да", "Нет", "Спасибо", "Давайте говорить по одному")
+        val ukrainian = listOf("Зачекайте, я не зрозуміла", "Можете повторити?", "Повільніше, будь ласка", "Говоріть ближче до телефону, будь ласка", "Я читаю субтитри, дайте мені хвилинку", "Так", "Ні", "Дякую", "Давайте говорити по одному")
+        val hindi = listOf("रुकिए, मैं समझी नहीं", "क्या आप दोबारा कह सकते हैं?", "कृपया धीरे बोलिए", "कृपया फ़ोन के पास आकर बोलिए", "मैं कैप्शन पढ़ रही हूँ, मुझे एक पल दीजिए", "हाँ", "नहीं", "धन्यवाद", "चलिए, एक-एक करके बोलें")
+        val portuguese = listOf("Espere, não percebi", "Pode repetir?", "Mais devagar, por favor", "Fale mais perto do telemóvel, por favor", "Estou a ler as legendas, dê-me um momento", "Sim", "Não", "Obrigada", "Vamos falar um de cada vez")
+        for (old in listOf(hebrew, russian, ukrainian, hindi, portuguese)) {
+            assertEquals(AppSettings.defaultQuickPhrasesEnglish, AppSettings.displayedQuickPhrases(old, UILanguage.English), old.first())
+        }
+        assertEquals(AppSettings.defaultQuickPhrases, AppSettings.displayedQuickPhrases(hebrew, UILanguage.Hebrew))
+        val edited = listOf("רגע") + hebrew.drop(1)
+        assertEquals(edited, AppSettings.displayedQuickPhrases(edited, UILanguage.English))
+    }
+
+    @Test
     fun `the untouched ready-made phrases follow the app's language, an edited list does not`() {
         val hebrew = AppSettings.defaultQuickPhrases
         val english = AppSettings.defaultQuickPhrasesEnglish
