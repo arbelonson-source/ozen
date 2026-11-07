@@ -819,4 +819,21 @@ class CaptionPipelineLifecycleTest {
         delay(150.milliseconds)
         assertEquals(PipelinePhase.Listening, fast.phase)
     }
+
+    @Test
+    fun `the number of loaded engines follows the model through a stop and a release`() = runTest {
+        val pipeline = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { settings -> FakeEngine(kind = settings.engine) },
+            embedder = FakeEmbedder(),
+            recovery = AutoRecoveryPolicy.disabled(),
+        )
+        assertEquals(0, pipeline.loadedEngineCount)
+        pipeline.start(AppSettings.default)
+        assertEquals(1, pipeline.loadedEngineCount)
+        pipeline.stop()
+        assertEquals(1, pipeline.loadedEngineCount)
+        pipeline.releaseModels()
+        assertEquals(0, pipeline.loadedEngineCount)
+    }
 }

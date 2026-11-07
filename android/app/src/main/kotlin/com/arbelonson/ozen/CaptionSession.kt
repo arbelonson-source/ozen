@@ -27,6 +27,7 @@ import com.arbelonson.ozen.core.HistorySave
 import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.AlertVibration
+import com.arbelonson.ozen.core.BackgroundModelRelease
 import com.arbelonson.ozen.core.BackupModel
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.BatteryAdvisor
@@ -89,10 +90,12 @@ import java.util.UUID
 import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -275,6 +278,7 @@ class CaptionSession(
     /** A caption screen came to the front; true if the app was away until now. */
     fun screenStarted(): Boolean {
         screensInFront += 1
+        cancelBackgroundRelease()
         val cameBack = !appIsActive
         appIsActive = true
         if (cameBack) {
@@ -303,7 +307,45 @@ class CaptionSession(
         screensInFront = maxOf(0, screensInFront - 1)
         if (rebuilding) return false
         appIsActive = screensInFront > 0
+        if (!appIsActive) startBackgroundRelease()
         return !appIsActive
+    }
+
+    /** How long the app stays out of sight before an idle speech model is given back; a seam for tests. */
+    internal var backgroundReleaseDelaySeconds: () -> Long = { BackgroundModelRelease.delaySeconds(totalMemory()) }
+    private var backgroundRelease: Job? = null
+
+    private fun cancelBackgroundRelease() {
+        backgroundRelease?.cancel()
+        backgroundRelease = null
+    }
+
+    /**
+     * Pausing or stopping keeps the model loaded for a quick start, and a
+     * plain background process holding it is the first thing a small phone
+     * ends. Out of sight and with nothing running, the model goes back after
+     * a while; it is looked at again each time that long passes, since
+     * captions can run in the background and be paused from the notification.
+     */
+    private fun startBackgroundRelease() {
+        cancelBackgroundRelease()
+        val seconds = backgroundReleaseDelaySeconds()
+        backgroundRelease = scope.launch {
+            while (true) {
+                delay(seconds * 1_000)
+                val phase = pipeline.phase
+                val release = BackgroundModelRelease.shouldRelease(
+                    listening = phase.isListening,
+                    transitioning = phase.isTransitioning,
+                    mayLoadModels = pipeline.mayLoadModels,
+                    serviceRunning = ListeningService.running,
+                )
+                if (release && pipeline.loadedEngineCount > 0) {
+                    pipeline.releaseModels()
+                    note("model released after $seconds s in the background")
+                }
+            }
+        }
     }
 
     /**

@@ -1273,6 +1273,104 @@ class CaptionSessionDeviceTest {
             .filter { chunk -> chunk.count { it != 0f } >= chunk.size / 2 }
             .minByOrNull { chunk -> chunk.sumOf { (it * it).toDouble() } } ?: FloatArray(1_600)
 
+    private suspend fun withLoadedModel(name: String, delaySeconds: Long, body: suspend (CaptionSession) -> Unit) {
+        val model = File(context.filesDir, CaptionSession.MODEL_FILE)
+        assumeTrue("put the model at ${model.path}", model.exists())
+        val work = File(context.cacheDir, name).apply { deleteRecursively(); mkdirs() }
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(
+                context,
+                SettingsHolder(SettingsStore(File(work, "settings.json"))),
+                HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()),
+                CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()),
+                ClipAudio(FloatArray(16_000 * 600)),
+                historyFolder = File(work, "history"),
+            ).also {
+                it.appIsActive = true
+                it.backgroundReleaseDelaySeconds = { delaySeconds }
+            }
+        }
+        try {
+            withContext(Dispatchers.Main) { session.listen() }
+            val loaded = withTimeoutOrNull(180_000) {
+                while (!(session.pipeline.phase == PipelinePhase.Listening && session.pipeline.loadedEngineCount == 1)) delay(200)
+                true
+            }
+            assertNotNull("the model never loaded: ${session.pipeline.phase}", loaded)
+            body(session)
+        } finally {
+            ListeningService.running = false
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
+            work.deleteRecursively()
+        }
+    }
+
+    private suspend fun modelGivenBack(session: CaptionSession, forMillis: Long): Boolean = withTimeoutOrNull(forMillis) {
+        while (session.pipeline.loadedEngineCount != 0) delay(100)
+        true
+    } == true
+
+    @Test
+    fun theSpeechModelIsGivenBackAfterTheAppHasBeenOutOfSightWithCaptionsStopped(): Unit = runBlocking {
+        withLoadedModel("background-release-test", delaySeconds = 1) { session ->
+            withContext(Dispatchers.Main) {
+                session.pipeline.stop()
+                session.screenStarted()
+                session.screenStopped()
+            }
+            assertTrue("the model was still loaded ${session.pipeline.loadedEngineCount}", modelGivenBack(session, 8_000))
+        }
+    }
+
+    @Test
+    fun comingBackBeforeTheDelayKeepsTheSpeechModelLoaded(): Unit = runBlocking {
+        withLoadedModel("background-release-back-test", delaySeconds = 4) { session ->
+            withContext(Dispatchers.Main) {
+                session.pipeline.stop()
+                session.screenStarted()
+                session.screenStopped()
+            }
+            delay(1_000)
+            withContext(Dispatchers.Main) { session.screenStarted() }
+            delay(7_000)
+            assertEquals(1, session.pipeline.loadedEngineCount)
+        }
+    }
+
+    @Test
+    fun captionsListeningWhenTheAppLeavesKeepTheSpeechModel(): Unit = runBlocking {
+        withLoadedModel("background-release-listening-test", delaySeconds = 1) { session ->
+            ListeningService.running = true
+            withContext(Dispatchers.Main) {
+                session.screenStarted()
+                session.screenStopped()
+            }
+            delay(4_000)
+            assertEquals(PipelinePhase.Listening, session.pipeline.phase)
+            assertEquals(1, session.pipeline.loadedEngineCount)
+        }
+    }
+
+    @Test
+    fun pausedCaptionsWithTheServiceStillRunningKeepTheModelUntilTheServiceEnds(): Unit = runBlocking {
+        withLoadedModel("background-release-service-test", delaySeconds = 1) { session ->
+            ListeningService.running = true
+            withContext(Dispatchers.Main) {
+                session.pipeline.pause()
+                session.screenStarted()
+                session.screenStopped()
+            }
+            delay(4_000)
+            assertEquals(1, session.pipeline.loadedEngineCount)
+            ListeningService.running = false
+            assertTrue("the model stayed loaded after the service ended", modelGivenBack(session, 8_000))
+        }
+    }
+
     private class ClipAudio(private val samples: FloatArray, private val after: FloatArray = FloatArray(1_600)) : AudioCapturing {
         @Volatile
         var fedAll = false
