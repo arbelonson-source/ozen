@@ -3009,6 +3009,27 @@ struct CaptionPipelineAlertTests {
         #expect(await eventually { pipeline.soundAlerts.count == 1 })
     }
 
+    @Test("with sound alerts off the detector is given no sound, and turning them on gives it the sound again")
+    func soundAlertsOffGiveTheDetectorNoSound() async {
+        let engine = FakeEngine()
+        let detector = FakeSoundDetector()
+        let (pipeline, audio, _) = makePipeline(engines: [.whisperKit: engine], soundDetector: detector)
+        var settings = AppSettings.default
+        settings.soundAlerts = SoundAlertPreferences(isEnabled: false)
+        await pipeline.start(settings: settings)
+
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        #expect(await eventually { engine.chunksSeen == 2 })
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(detector.chunksSeen == 0)
+
+        // A chunk still queued as the switch comes on goes through too.
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        #expect(await eventually { detector.chunksSeen >= 1 })
+    }
+
     @Test("without a detector the pipeline still runs with two audio consumers")
     func noDetector() async {
         let engine = FakeEngine()
@@ -4340,6 +4361,26 @@ struct CaptionPipelineStorageTests {
         await pipeline.start(settings: .default)
         #expect(pipeline.phase.failure?.engineUnavailability?.kind == .notEnoughStorage)
         #expect(pipeline.isListeningForSoundsOnly)
+    }
+
+    @Test("sound alerts switched off while only sounds are listened for give the classifier no more sound")
+    func soundsOnlyStopsWithTheSwitch() async {
+        let detector = FakeSoundDetector()
+        let (pipeline, _, audio) = makePipeline(storage: FakeStorage(megabytes: 300), soundDetector: detector)
+        await pipeline.start(settings: .default)
+        #expect(pipeline.isListeningForSoundsOnly)
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        #expect(await eventually { detector.chunksSeen == 1 })
+
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: false))
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(detector.chunksSeen == 1)
+
+        pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled: true))
+        audio.push([Float](repeating: 0.1, count: 1_024))
+        #expect(await eventually { detector.chunksSeen >= 2 })
     }
 
     @Test("enough room, nothing to download, an unknown size, or no way to check: it goes ahead")

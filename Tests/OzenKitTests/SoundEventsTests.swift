@@ -354,3 +354,35 @@ struct SoundEventsTests {
         #expect(policy.requiredConfidence(for: "door_bell") == 0.3)
     }
 }
+
+@Suite("SoundAlertGate")
+struct SoundAlertGateTests {
+    @Test("with alerts on every chunk goes through as it is, with no silence added")
+    func onPassesEverything() {
+        var gate = SoundAlertGate(windowSamples: 5)
+        #expect(gate.pass([0.1, 0.2], alertsOn: true) == [[0.1, 0.2]])
+        #expect(gate.pass([0.3], alertsOn: true) == [[0.3]])
+    }
+
+    @Test("with alerts off nothing goes through, and the first chunk after they come back on follows a window of silence")
+    func silenceAfterAGap() {
+        var gate = SoundAlertGate(windowSamples: 5)
+        #expect(gate.pass([0.1], alertsOn: true) == [[0.1]])
+        #expect(gate.pass([0.2], alertsOn: false).isEmpty)
+        #expect(gate.pass([0.2], alertsOn: false).isEmpty)
+        #expect(gate.pass([0.3], alertsOn: true) == [[0, 0, 0, 0, 0], [0.3]])
+        #expect(gate.pass([0.4], alertsOn: true) == [[0.4]])
+    }
+
+    @Test("alerts that start off give a window of silence before the first sound too")
+    func startsOff() {
+        var gate = SoundAlertGate(windowSamples: 3)
+        #expect(gate.pass([0.2], alertsOn: false).isEmpty)
+        #expect(gate.pass([0.3], alertsOn: true) == [[0, 0, 0], [0.3]])
+    }
+
+    @Test("the classifier's window is 1.5 seconds of 16 kHz audio unless the detector says otherwise")
+    func defaultWindow() {
+        #expect(FakeSoundDetector().windowSamples == 24_000)
+    }
+}

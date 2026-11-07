@@ -215,6 +215,36 @@ public struct SoundAlert: Sendable, Equatable, Identifiable {
 /// scripted fake.
 public protocol SoundEventDetecting: Sendable {
     func observations(audio: AsyncStream<[Float]>) -> AsyncStream<SoundObservation>
+    /// How much audio one classification hears, in 16 kHz samples.
+    var windowSamples: Int { get }
+}
+
+extension SoundEventDetecting {
+    public var windowSamples: Int { 24_000 }
+}
+
+/// Passes audio to the sound classifier only while sound alerts are on.
+/// The classifier hears in overlapping windows, so audio from before the
+/// switch went off and after it came back on would share a window and
+/// could be heard as a sound that never happened: after a gap, a window
+/// of silence goes first.
+struct SoundAlertGate {
+    let windowSamples: Int
+    private var skipped = false
+
+    init(windowSamples: Int) {
+        self.windowSamples = windowSamples
+    }
+
+    mutating func pass(_ chunk: [Float], alertsOn: Bool) -> [[Float]] {
+        guard alertsOn else {
+            skipped = true
+            return []
+        }
+        guard skipped else { return [chunk] }
+        skipped = false
+        return [[Float](repeating: 0, count: windowSamples), chunk]
+    }
 }
 
 /// The user's choices about sound alerts, persisted in `AppSettings`.
