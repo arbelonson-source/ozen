@@ -523,6 +523,11 @@ struct SettingsView: View {
                 Label(tr("הכתובת לא נראית תקינה", "That address doesn’t look right"), systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.readable(.orange))
             }
+            if HomeServer.linkIsNotEncrypted(address: viewModel.settings.homeServerAddress, pin: viewModel.settings.homeServerCertificatePin) {
+                Label(tr("החיבור למחשב לא מוצפן ברשת הביתית. כדי להצפין אותו, סורקים שוב את הקוד מהמחשב.", "The link to the computer isn't encrypted on the home Wi-Fi. To encrypt it, scan the code from the computer again."), systemImage: "lock.open.fill")
+                    .foregroundStyle(.readable(.orange))
+                    .accessibilityIdentifier("homeServerNotEncryptedNote")
+            }
             if hasHomeServerCode {
                 Label(tr("קוד צימוד שמור בטלפון", "Pairing code saved on the phone"), systemImage: "key.fill")
                     .foregroundStyle(.readable(.green))

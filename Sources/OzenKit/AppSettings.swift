@@ -180,6 +180,11 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// Where the home server is ("192.168.1.20", "pc.example:8765",
     /// "wss://…"); the pairing code is kept in the Keychain, not here.
     public var homeServerAddress: String
+    /// The fingerprint of the home computer's own certificate, from a
+    /// pairing made on the home Wi-Fi (see `CertificatePin`). Public by
+    /// nature, not a secret. Nil when the address has a real certificate
+    /// or was paired before the link could be encrypted.
+    public var homeServerCertificatePin: String?
     /// How many candidate wordings the home computer weighs for each
     /// finished line. More is slower; past 5 it measured no more accurate
     /// (accuracy/bench_beam2.py), so 5 is the default and 6-7 are there
@@ -311,6 +316,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         cloudModel: String = CloudSpeech.accurateModel,
         cloudProvider: CloudProvider = .soniox,
         homeServerAddress: String = "",
+        homeServerCertificatePin: String? = nil,
         homeServerBeam: Int = 5,
         display: DisplayPreferences = .default,
         hapticOnSpeechResume: Bool = true,
@@ -346,6 +352,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         self.cloudModel = cloudModel
         self.cloudProvider = cloudProvider
         self.homeServerAddress = homeServerAddress
+        self.homeServerCertificatePin = homeServerCertificatePin
         self.homeServerBeam = min(max(homeServerBeam, Self.homeServerBeamRange.lowerBound), Self.homeServerBeamRange.upperBound)
         self.display = display
         self.hapticOnSpeechResume = hapticOnSpeechResume
@@ -441,6 +448,19 @@ public struct AppSettings: Codable, Sendable, Equatable {
             : stored
     }
 
+    /// A confirmed pairing replaces the address and the pin together.
+    public mutating func usePairing(_ pairing: HomeServerPairing) {
+        homeServerAddress = pairing.address
+        homeServerCertificatePin = pairing.pin
+    }
+
+    /// An address typed in Settings is no longer the one the pin belongs to.
+    public mutating func typeHomeServerAddress(_ address: String) {
+        guard address != homeServerAddress else { return }
+        homeServerAddress = address
+        homeServerCertificatePin = nil
+    }
+
     public static let `default` = AppSettings(
         engine: .whisperKit,
         languageCode: "he",
@@ -451,7 +471,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case engine, languageCode, preferredInputUID, speakerProfiles, creditLine
-        case whisperModelVariant, allowServerFallbackForAppleSpeech, cloudModel, cloudProvider, homeServerAddress, homeServerBeam, display
+        case whisperModelVariant, allowServerFallbackForAppleSpeech, cloudModel, cloudProvider, homeServerAddress, homeServerCertificatePin, homeServerBeam, display
         case hapticOnSpeechResume, speakerSimilarityThreshold, speakerThresholdScale
         case keywordAlerts, soundAlerts, saveHistory
         case quickPhrases, speechRate, vocabulary, wordFixes, hasCompletedOnboarding, appLanguage
@@ -477,6 +497,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         cloudModel = container.lenient(String.self, forKey: .cloudModel).flatMap { $0.isEmpty ? nil : $0 } ?? defaults.cloudModel
         cloudProvider = container.lenient(CloudProvider.self, forKey: .cloudProvider) ?? .openRouter
         homeServerAddress = container.lenient(String.self, forKey: .homeServerAddress) ?? defaults.homeServerAddress
+        homeServerCertificatePin = container.lenient(String.self, forKey: .homeServerCertificatePin).flatMap { CertificatePin.isWellFormed($0) ? $0 : nil }
         homeServerBeam = container.lenient(Int.self, forKey: .homeServerBeam)
             .map { min(max($0, Self.homeServerBeamRange.lowerBound), Self.homeServerBeamRange.upperBound) } ?? defaults.homeServerBeam
         display = container.lenient(DisplayPreferences.self, forKey: .display) ?? defaults.display

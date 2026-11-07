@@ -71,6 +71,27 @@ struct LiveCaptionViewModelTests {
         #expect(HomeServerCodeStore.read() == "testcode123")
     }
 
+    @Test("a home-network pairing link saves the certificate pin with the address, a link without one saves none, and a typed address drops it")
+    func pairingLinkPin() async throws {
+        let pin = "EqUZTsqNgJ8Ol0fkhpLbMwToY-7X9n7_oEzJ2hZACBk"
+        let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())
+        defer { HomeServerCodeStore.remove() }
+        viewModel.openURL(try #require(URL(string: "ozen://pair?address=wss%3A%2F%2F192.168.1.20%3A8766&code=lancode&pin=\(pin)")))
+        #expect(await viewModel.acceptPendingPairing())
+        #expect(viewModel.settings.homeServerAddress == "wss://192.168.1.20:8766")
+        #expect(viewModel.settings.homeServerCertificatePin == pin)
+
+        await viewModel.setHomeServerAddress("192.168.1.21")
+        #expect(viewModel.settings.homeServerAddress == "192.168.1.21")
+        #expect(viewModel.settings.homeServerCertificatePin == nil)
+
+        viewModel.openURL(try #require(URL(string: "ozen://pair?address=wss%3A%2F%2F192.168.1.20%3A8766&code=lancode&pin=\(pin)")))
+        #expect(await viewModel.acceptPendingPairing())
+        viewModel.openURL(try #require(URL(string: "ozen://pair?address=wss://desktop.tail.ts.net&code=tailcode")))
+        #expect(await viewModel.acceptPendingPairing())
+        #expect(viewModel.settings.homeServerCertificatePin == nil)
+    }
+
     @Test("Connect pairs with the computer the alert named, even though closing the alert already cleared it, and not with one scanned since")
     func connectUsesTheShownPairing() async throws {
         let viewModel = LiveCaptionViewModel(settingsStore: temporaryStore(), pipeline: fakePipeline())

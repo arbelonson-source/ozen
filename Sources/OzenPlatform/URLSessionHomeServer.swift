@@ -9,22 +9,41 @@ public struct URLSessionHomeServerConnector: HomeServerConnecting, CloudSocketCo
     }
 
     public func open(_ url: URL, headers: [String: String]) async throws -> any HomeServerSocket {
+        try await open(url, headers: headers, pinnedTo: nil)
+    }
+
+    /// The pin makes this one connection trust the paired computer's own
+    /// certificate; no other connection is affected.
+    public func open(_ url: URL, pinnedTo pin: String?) async throws -> any HomeServerSocket {
+        try await open(url, headers: [:], pinnedTo: pin)
+    }
+
+    private func open(_ url: URL, headers: [String: String], pinnedTo pin: String?) async throws -> any HomeServerSocket {
         var request = URLRequest(url: url)
         for (name, value) in headers {
             request.setValue(value, forHTTPHeaderField: name)
         }
-        let task = URLSession.shared.webSocketTask(with: request)
+        var session = URLSession.shared
+        var delegate: PinnedTrustDelegate?
+        if let pin {
+            let pinned = PinnedTrustDelegate(pin: pin)
+            delegate = pinned
+            session = URLSession(configuration: .default, delegate: pinned, delegateQueue: nil)
+        }
+        let task = session.webSocketTask(with: request)
         task.maximumMessageSize = 1 << 20
         task.resume()
-        return URLSessionHomeServerSocket(task: task)
+        return URLSessionHomeServerSocket(task: task, pinned: delegate.map { ($0, session) })
     }
 }
 
 final class URLSessionHomeServerSocket: HomeServerSocket, @unchecked Sendable {
     private let task: URLSessionWebSocketTask
+    private let pinned: (delegate: PinnedTrustDelegate, session: URLSession)?
 
-    init(task: URLSessionWebSocketTask) {
+    init(task: URLSessionWebSocketTask, pinned: (delegate: PinnedTrustDelegate, session: URLSession)? = nil) {
         self.task = task
+        self.pinned = pinned
     }
 
     func send(text: String) async throws {
@@ -69,11 +88,16 @@ final class URLSessionHomeServerSocket: HomeServerSocket, @unchecked Sendable {
 
     func close() async {
         task.cancel(with: .normalClosure, reason: nil)
+        pinned?.session.finishTasksAndInvalidate()
     }
 
     /// A close with a code, or an HTTP answer that never became a
     /// connection, says more than the error URLSession throws for it.
     private func reason(for error: any Error) -> any Error {
+        if pinned?.delegate.sawMismatch == true {
+            pinned?.session.invalidateAndCancel()
+            return CertificateMismatch()
+        }
         if task.closeCode != .invalid {
             return SocketClosed(code: task.closeCode.rawValue, reason: String(decoding: task.closeReason ?? Data(), as: UTF8.self))
         }
