@@ -25,6 +25,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.Groups
@@ -36,6 +37,8 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -71,10 +74,13 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -90,6 +96,8 @@ import com.arbelonson.ozen.core.FirstRunNote
 import com.arbelonson.ozen.core.HebrewText
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.MicrophoneAsk
+import com.arbelonson.ozen.core.PhoneModelCatalog
+import com.arbelonson.ozen.core.StorageSpaceGate
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.audioLeavesPhone
@@ -100,8 +108,13 @@ import com.arbelonson.ozen.ui.OzenSpacing
 import com.arbelonson.ozen.ui.PrimaryButton
 import com.arbelonson.ozen.ui.SettingsGroup
 import com.arbelonson.ozen.ui.TonalButton
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
  * First launch, as on the iPhone: short pages in large type saying what the
@@ -133,6 +146,7 @@ internal fun OnboardingScreen(
 ) {
     val pager = rememberPagerState(pageCount = { PAGES })
     val turning = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
     // The iPhone's pages swipe back to the one before; Back does the same
     // here, and only on the first page leaves the app.
     BackHandler(enabled = pager.currentPage > 0) {
@@ -181,7 +195,10 @@ internal fun OnboardingScreen(
                         }
                     }
                     2 -> LanguagePage(settings.spokenLanguage, onSpokenLanguage)
-                    MODEL_PAGE -> ModelPage(settings, phoneModels)
+                    MODEL_PAGE -> ModelPage(settings, phoneModels) {
+                        focusManager.clearFocus()
+                        turning.launch { pager.animateScrollToPage(pager.currentPage + 1) }
+                    }
                     4 -> MicrophonePage(settings, microphone, notifications, microphoneCanAskAgain, onApproveMicrophone, onApproveNotifications, onOpenPhoneSettings)
                     NAME_PAGE -> NamePage(settings, nameDraft, addDraft, onAddAlert)
                     else -> Page(Icons.Rounded.CheckCircle, pageTitle(PAGES - 1)) {
@@ -329,11 +346,35 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
 
 /** The speech model for the phone's own engine: the list, the phone test and a recommended model already chosen. */
 @Composable
-private fun ModelPage(settings: AppSettings, models: PhoneModels) {
+private fun ModelPage(settings: AppSettings, models: PhoneModels, onKept: () -> Unit) {
     LaunchedEffect(Unit) { if (settings.phoneSpeed == null) models.runCheck(thenChooseBest = true) }
+    val installed by models.installed.collectAsStateWithLifecycle()
+    val partial by models.partial.collectAsStateWithLifecycle()
+    val switching by models.switching.collectAsStateWithLifecycle()
+    val chosen = PhoneModelCatalog.effective(settings.spokenLanguage, switching.fileOrNull ?: settings.phoneModel.file).file
+    var resumes by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { resumes += 1 }
+    val missing by produceState<Int?>(null, chosen, installed, partial, resumes) {
+        value = withContext(Dispatchers.IO) { models.shortfallMegabytes(chosen) }
+    }
     Page(Icons.Rounded.Speed, pageTitle(MODEL_PAGE)) {
         Body(tr("אוזן כותבת את הכתוביות בעזרת מודל שפועל בתוך הטלפון. היא בודקת כמה הטלפון הזה מהיר ובוחרת מודל שמתאים לו. אפשר לבחור מודל אחר.", "Ozen writes the captions with a model that runs inside the phone. It tests how fast this phone is and chooses a model that suits it. You can pick another."))
         PhoneModelPicker(settings, models, chooseBestAfterTest = true)
+        missing?.let {
+            Warning(
+                tr("אין מספיק מקום בטלפון למודל הזה. צריך לפנות עוד %1.", "Not enough room on the phone for this model. %1 more needs to be freed up.", listOf(ByteSize.text(it * StorageSpaceGate.BYTES_PER_MEGABYTE))),
+                Modifier.testTag("model-page-room").semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        PrimaryButton(
+            tr("להישאר עם המודל המומלץ", "Keep the recommended model"),
+            onClick = {
+                models.choose(recommendedPhoneModel(settings.spokenLanguage, settings.effectiveGflops, models.totalMemoryBytes).file, byHand = false)
+                onKept()
+            },
+            modifier = Modifier.fillMaxWidth().testTag("model-page-keep"),
+            icon = Icons.Rounded.Check,
+        )
         Body(tr("אם מדלגים, המודל שנבחר נשאר. אפשר לשנות אותו בכל רגע בהגדרות.", "Skipping keeps the chosen model. You can change it anytime in Settings."))
     }
 }

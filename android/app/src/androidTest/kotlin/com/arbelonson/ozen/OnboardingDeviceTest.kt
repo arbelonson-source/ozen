@@ -4,6 +4,8 @@ import android.Manifest
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.view.View
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -11,7 +13,9 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -42,6 +46,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import androidx.activity.compose.setContent
 
 @RunWith(AndroidJUnit4::class)
 class OnboardingDeviceTest {
@@ -415,6 +420,58 @@ class OnboardingDeviceTest {
         compose.waitUntil(10_000) { app.settings.current.value.phoneModel.file == expected.file }
         compose.onNodeWithText("Test this phone again").assertExists()
         compose.onNodeWithTag("phone-model-" + expected.file).performScrollTo().assertIsSelected()
+    }
+
+    private fun showTheWalkthroughWith(models: FakePhoneModels) {
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                val settings by app.settings.current.collectAsState()
+                OnboardingScreen(
+                    settings = settings,
+                    microphone = null,
+                    notifications = null,
+                    microphoneCanAskAgain = false,
+                    onApproveMicrophone = {},
+                    onApproveNotifications = {},
+                    onOpenPhoneSettings = {},
+                    onSpokenLanguage = {},
+                    phoneModels = models,
+                    onAddName = {},
+                    onAddAlert = {},
+                    onFinish = {},
+                )
+            }
+        }
+    }
+
+    @Test
+    fun theModelPageSaysThereIsNotEnoughRoomForTheChosenModelWithTheSizeAndStopsOnceItFits() {
+        val models = FakePhoneModels(app.settings)
+        models.missing["ggml-small-q5_1.bin"] = 1_234
+        showTheWalkthroughWith(models)
+        toTheModelPage()
+        val line = "Not enough room on the phone for this model. ${ByteSize.text(1_234_000_000L)} more needs to be freed up."
+        compose.onNodeWithTag("model-page-room").assertDoesNotExist()
+        compose.onNodeWithTag("phone-model-ggml-small-q5_1.bin").performScrollTo().performClick()
+        compose.waitUntil(5_000) { shown(line) }
+        compose.onNodeWithTag("phone-model-ggml-base-q5_1.bin").performScrollTo().performClick()
+        compose.waitUntil(5_000) { !shown(line) }
+        compose.onNodeWithTag("model-page-room").assertDoesNotExist()
+    }
+
+    @Test
+    fun keepTheRecommendedModelChoosesItAgainAndMovesToTheNextPage() {
+        val models = FakePhoneModels(app.settings)
+        showTheWalkthroughWith(models)
+        toTheModelPage()
+        val recommended = recommendedPhoneModel(UILanguage.Hebrew, app.settings.current.value.effectiveGflops, models.totalMemoryBytes).file
+        val other = PhoneModelCatalog.offered(UILanguage.Hebrew).first { it.file != recommended }.file
+        compose.onNodeWithTag("phone-model-$other").performScrollTo().performClick()
+        compose.waitUntil(5_000) { models.chosen.contains(other to true) }
+        compose.onNodeWithContentDescription("4 of 7").assertExists()
+        compose.onNodeWithTag("model-page-keep").performScrollTo().performClick()
+        compose.waitUntil(5_000) { models.chosen.last() == recommended to false }
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("5 of 7").fetchSemanticsNodes().isNotEmpty() }
     }
 
     private companion object {

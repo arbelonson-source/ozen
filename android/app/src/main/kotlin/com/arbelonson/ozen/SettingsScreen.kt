@@ -1534,8 +1534,8 @@ private fun KeyCheckLine(check: CloudKeyCheck) {
 }
 
 @Composable
-internal fun Warning(text: String) {
-    Text(text, color = MaterialTheme.colorScheme.error)
+internal fun Warning(text: String, modifier: Modifier = Modifier) {
+    Text(text, color = MaterialTheme.colorScheme.error, modifier = modifier)
 }
 
 @Composable
