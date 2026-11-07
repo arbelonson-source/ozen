@@ -12,6 +12,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import android.speech.tts.TextToSpeech
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -1551,6 +1552,34 @@ class CaptionScreenDeviceTest {
             assertEquals(listOf("Shira", "Dr. Levi"), app.settings.current.value.vocabulary)
         } finally {
             app.settings.change { it.vocabulary = before }
+        }
+    }
+
+    // TalkBack has no priority for an announcement: the next one cuts off
+    // the one being spoken, and "Attention! Smoke detector" went unheard.
+    @Test
+    fun aSafetySoundIsSaidInFullBeforeAnythingElseIsSaid() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val announced = CopyOnWriteArrayList<Pair<Long, String>>()
+        val readerBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        try {
+            ScreenReader.isOn = { true }
+            ScreenReader.announce = { _, text -> announced += SystemClock.elapsedRealtime() to text }
+            compose.waitUntil(5_000) { app.captions.appIsActive }
+            val heardAt = System.currentTimeMillis() / 1_000.0
+            compose.runOnUiThread {
+                app.captions.pipeline.onSoundAlert?.invoke(SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = heardAt))
+                app.captions.pipeline.onSoundAlert?.invoke(SoundAlert(event = SoundEventCatalog.event("door_bell")!!, confidence = 0.9, timestamp = heardAt))
+            }
+            compose.waitUntil(10_000) { announced.size >= 2 }
+            assertEquals(listOf("Attention! Smoke detector", "Alert: Doorbell"), announced.map { it.second })
+            val gap = announced[1].first - announced[0].first
+            assertTrue("the doorbell was said $gap ms after the alarm", gap >= 3_000)
+        } finally {
+            ScreenReader.isOn = readerBefore
+            ScreenReader.announce = announceBefore
+            compose.runOnUiThread { CaptionState.clear() }
         }
     }
 

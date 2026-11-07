@@ -291,7 +291,7 @@ class CaptionSession(
             awayAlerts.takePostedIdentifiers().forEach(notifier::withdraw)
             notifier.withdrawAwayAlerts()
             if (stopAnnouncer.comingBack(pipeline.phase) == CaptionsStopAnnouncer.Event.Stopped && ScreenReader.isOn(context)) {
-                ScreenReader.announce(context, stoppedText(pipeline.phase))
+                announce(stoppedText(pipeline.phase))
             }
             untold?.let { word ->
                 untold = null
@@ -779,7 +779,7 @@ class CaptionSession(
             CaptionsStopAnnouncer.Event.Back -> tr("הכתוביות חזרו", "Captions are back")
             null -> return
         }
-        if (appIsActive && ScreenReader.isOn(context)) ScreenReader.announce(context, text)
+        if (appIsActive && ScreenReader.isOn(context)) announce(text)
     }
 
     private fun stoppedText(phase: PipelinePhase): String {
@@ -829,7 +829,7 @@ class CaptionSession(
             speakerName = { if (display.showSpeakerNames && it.speakerClusterID != null) pipeline.displayName(it) else null },
             isUncertain = { display.markUncertainLines && CaptionConfidence.isUncertain(it, transcribing.engine, transcribing.whisperModelVariant) },
         ) ?: return
-        ScreenReader.announce(context, text)
+        announce(text)
     }
 
     /**
@@ -1194,7 +1194,39 @@ class CaptionSession(
 
     private fun tell(word: HeardWord) {
         buzz(AlertVibration.keyword)
-        if (ScreenReader.isOn(context)) ScreenReader.announce(context, tr("נאמר: %1", "Said: %1", listOf(word.said)))
+        if (ScreenReader.isOn(context)) announce(tr("נאמר: %1", "Said: %1", listOf(word.said)))
+    }
+
+    private var heldUntil = 0L
+    private val held = mutableListOf<String>()
+    private var holding: Job? = null
+
+    /**
+     * TalkBack has no priority for an announcement, and the next one cuts
+     * off the one being spoken: a caption line or "Said: ..." a moment after
+     * "Attention! Smoke alarm" left the alarm unheard. For a few seconds
+     * after a safety sound everything else waits, then is said together;
+     * the iPhone gives the alarm a high priority instead.
+     */
+    private fun announce(text: String, critical: Boolean = false) {
+        val now = SystemClock.elapsedRealtime()
+        if (critical) heldUntil = now + CRITICAL_ANNOUNCEMENT_MILLIS
+        if (critical || now >= heldUntil) {
+            ScreenReader.announce(context, text)
+            return
+        }
+        held += text
+        if (holding == null) holding = scope.launch {
+            while (true) {
+                val wait = heldUntil - SystemClock.elapsedRealtime()
+                if (wait <= 0) break
+                delay(wait)
+            }
+            val waiting = held.joinToString(". ")
+            held.clear()
+            holding = null
+            ScreenReader.announce(context, waiting)
+        }
     }
 
     /**
@@ -1208,7 +1240,7 @@ class CaptionSession(
             buzz(AlertVibration.pattern(alert.event.importance), alert.event.importance)
             val critical = alert.event.importance == SoundEvent.Importance.Critical
             val said = if (critical) tr("שימו לב! %1", "Attention! %1", listOf(alert.event.name)) else tr("התראה: %1", "Alert: %1", listOf(alert.event.name))
-            if (ScreenReader.isOn(context)) ScreenReader.announce(context, said)
+            if (ScreenReader.isOn(context)) announce(said, critical)
         }
         val now = System.currentTimeMillis() / 1_000.0
         val utcOffsetSeconds = TimeZone.getDefault().getOffset((now * 1_000).toLong()) / 1_000
@@ -1423,6 +1455,7 @@ class CaptionSession(
         val MODEL_FILE = WhisperModelCatalog.phoneModelFile(UILanguage.Hebrew)
         const val HISTORY_FOLDER = "ozen-history"
         const val JOURNAL_FILE = "ozen-journal.log"
+        private const val CRITICAL_ANNOUNCEMENT_MILLIS = 4_000L
         const val PROBLEM_AUDIO_FOLDER = "problem-audio"
         private const val SAMPLE_RATE = 16_000
         private const val BACKGROUND_CHECK_SECONDS = 30L
