@@ -1,8 +1,11 @@
 package com.arbelonson.ozen
 
+import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
@@ -34,8 +37,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -150,31 +156,45 @@ private fun Tip(icon: ImageVector, text: String) {
     }
 }
 
-/** Read every 50 ms while captions run; empty, and said so, while they don't. */
+/**
+ * Read every 50 ms while captions run; empty, and said so, while they don't.
+ * A screen reader says every change of the meter it is on, the bar's own
+ * progress included, so what it is given moves at most once a second: the
+ * loudest level of that second. The iPhone reads the value only when asked.
+ */
 @Composable
 internal fun LevelMeter(level: () -> Float, active: Boolean) {
     var shown by remember { mutableFloatStateOf(0f) }
+    var said by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(active) {
+        val spoken = SpokenLevel()
         while (active) {
             shown = level().coerceIn(0f, 1f)
+            said = spoken.heard(shown, SystemClock.uptimeMillis())
             delay(50)
         }
         shown = 0f
+        said = 0f
     }
     val label = tr("עוצמת קליטה", "Input level")
-    val percent = tr("%1 אחוז", "%1 percent", listOf("${(shown * 100).roundToInt()}"))
-    LinearProgressIndicator(
-        progress = { shown },
-        color = MaterialTheme.colorScheme.primary,
-        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-        strokeCap = StrokeCap.Round,
-        gapSize = 0.dp,
-        drawStopIndicator = {},
-        modifier = Modifier.fillMaxWidth().height(12.dp).semantics {
+    val percent = tr("%1 אחוז", "%1 percent", listOf("${(said * 100).roundToInt()}"))
+    Box(
+        Modifier.fillMaxWidth().height(12.dp).clearAndSetSemantics {
             contentDescription = label
             stateDescription = percent
+            progressBarRangeInfo = ProgressBarRangeInfo(said, 0f..1f)
         },
-    )
+    ) {
+        LinearProgressIndicator(
+            progress = { shown },
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            strokeCap = StrokeCap.Round,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
 }
 
 private fun inputSummary(input: AudioInputDescriptor): String =

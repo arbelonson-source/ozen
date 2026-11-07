@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.core.app.ActivityOptionsCompat
 import androidx.compose.ui.semantics.SemanticsActions
@@ -435,6 +436,30 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("New speaker").assertExists()
         compose.waitForIdle()
         assertFalse("a new screen closed on the last one's saved recording", closedAgain.isCompleted)
+    }
+
+    @Test
+    fun theInputLevelGivesAScreenReaderANewValueAtMostOnceASecondWhileTheBarMoves() {
+        var reads = 0
+        compose.runOnUiThread { compose.activity.setContent { LevelMeter(level = { if (reads++ % 2 == 0) 0.2f else 0.8f }, active = true) } }
+        val meter = compose.onNodeWithContentDescription("Input level")
+        meter.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "20 percent"))
+
+        // A screen reader says each change of the focused meter's state, so a
+        // value that moved with every read (20 a second) talked over itself.
+        val said = mutableListOf<String>()
+        val progress = mutableListOf<Float>()
+        val end = SystemClock.uptimeMillis() + 3_000
+        compose.waitUntil(6_000) {
+            val now = meter.fetchSemanticsNode().config
+            now.getOrNull(SemanticsProperties.StateDescription)?.let { if (it != said.lastOrNull()) said += it }
+            now.getOrNull(SemanticsProperties.ProgressBarRangeInfo)?.current?.let { if (it != progress.lastOrNull()) progress += it }
+            SystemClock.uptimeMillis() >= end
+        }
+        assertTrue("the bar was read $reads times", reads >= 30)
+        assertTrue("a screen reader was given $said", said.size <= 5)
+        assertTrue("a screen reader was given the progress $progress", progress.size <= 5)
+        assertEquals("80 percent", said.last())
     }
 
     @Test
