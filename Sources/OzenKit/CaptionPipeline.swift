@@ -684,7 +684,7 @@ public final class CaptionPipeline {
         let engineAudio = replay.isEmpty ? fan.outputs[0] : replaying(replay, then: fan.outputs[0])
         let tokens = engine.stream(languageCode: settings.languageCode, audio: engineAudio)
         let embedderAudio = fan.outputs[1]
-        let soundObservations = soundDetector.map { $0.observations(audio: whileSoundAlertsAreOn(fan.outputs[2], windowSamples: $0.windowSamples)) }
+        let soundObservations = soundDetector.map { $0.observations(audio: whileSoundAlertsAreOn(fan.outputs[2])) }
 
         stats.sessionStartedAt = now()
         listeningStartedAt = stats.sessionStartedAt
@@ -2578,12 +2578,12 @@ public final class CaptionPipeline {
     /// Sound alerts switched off give the classifier nothing to hear: it
     /// ran all through the captions for nothing but the near-miss count.
     /// The switch is read for every chunk, so turning alerts on in the
-    /// middle of a session gives it the sound again (after a window of
-    /// silence, see `SoundAlertGate`).
-    private func whileSoundAlertsAreOn(_ audio: AsyncStream<[Float]>, windowSamples: Int) -> AsyncStream<[Float]> {
+    /// middle of a session gives it the sound again (after a gap marker,
+    /// see `SoundAlertGate`).
+    private func whileSoundAlertsAreOn(_ audio: AsyncStream<[Float]>) -> AsyncStream<[Float]> {
         let (filtered, continuation) = AsyncStream<[Float]>.makeStream(bufferingPolicy: .bufferingNewest(AudioFanOut.defaultBufferLimit))
         let task = Task { [weak self] in
-            var gate = SoundAlertGate(windowSamples: windowSamples)
+            var gate = SoundAlertGate()
             for await chunk in audio {
                 guard let self else { break }
                 for passed in gate.pass(chunk, alertsOn: self.soundPolicy.preferences.isEnabled) {
@@ -2614,7 +2614,7 @@ public final class CaptionPipeline {
         fanOut = fan
         isListeningForSoundsOnly = true
         stats.soundDetectionRunning = true
-        let observations = soundDetector.observations(audio: whileSoundAlertsAreOn(fan.outputs[0], windowSamples: soundDetector.windowSamples))
+        let observations = soundDetector.observations(audio: whileSoundAlertsAreOn(fan.outputs[0]))
         soundTask = Task { [weak self] in
             for await observation in observations {
                 guard let self, self.runID == run else { return }

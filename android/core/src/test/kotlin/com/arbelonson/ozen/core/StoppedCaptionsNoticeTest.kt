@@ -215,6 +215,18 @@ class StoppedCaptionsNoticeTest {
         assertIs<StoppedCaptionsNotice.Update.Post>(notice.update(failed(glitch), appIsActive = false, isEnabled = true))
         assertNull(notice.update(failed(glitch), appIsActive = false, isEnabled = true))
     }
+
+    @Test
+    fun `when the phone ended the app and it cannot listen again the notice tells her to open Ozen`() {
+        val content = StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.EndedByPhone)
+        assertEquals(tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue."), content.body)
+        assertEquals(StoppedCaptionsNotice.IDENTIFIER, content.identifier)
+        assertTrue(content.isUrgent)
+        val notice = StoppedCaptionsNotice()
+        assertIs<StoppedCaptionsNotice.Update.Post>(
+            notice.update(StoppedCaptionsNotice.Cause.EndedByPhone, appIsActive = false, isEnabled = true),
+        )
+    }
 }
 
 class CaptionPipelinePhaseChangeTest {

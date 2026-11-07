@@ -78,7 +78,9 @@ class CaptionPipelineStorageTest {
 
         pipeline.setSoundAlertPreferences(SoundAlertPreferences(isEnabled = true))
         audio.push(FloatArray(1_024) { 0.1f })
-        assertTrue(eventually { detector.chunksSeen == 2 })
+        assertTrue(eventually { detector.chunksSeen == 3 })
+        assertEquals(0, detector.heard[1].size)
+        assertEquals(List(1_024) { 0.1f }, detector.heard[2].toList())
     }
 
     @Test

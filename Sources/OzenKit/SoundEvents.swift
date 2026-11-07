@@ -214,27 +214,19 @@ public struct SoundAlert: Sendable, Equatable, Identifiable {
 /// in OzenPlatform) wraps Apple's SoundAnalysis framework; tests use a
 /// scripted fake.
 public protocol SoundEventDetecting: Sendable {
+    /// An empty chunk marks a gap in the audio (sound alerts were off): the
+    /// detector forgets the audio it still holds.
     func observations(audio: AsyncStream<[Float]>) -> AsyncStream<SoundObservation>
-    /// How much audio one classification hears, in 16 kHz samples.
-    var windowSamples: Int { get }
 }
 
-extension SoundEventDetecting {
-    public var windowSamples: Int { 24_000 }
-}
-
-/// Passes audio to the sound classifier only while sound alerts are on.
-/// The classifier hears in overlapping windows, so audio from before the
-/// switch went off and after it came back on would share a window and
-/// could be heard as a sound that never happened: after a gap, a window
-/// of silence goes first.
+/// Passes audio to the sound classifier only while sound alerts are on,
+/// and marks the gap with an empty chunk when they come back on. The
+/// classifier's windows overlap, so the audio it held from before the
+/// switch went off would otherwise be joined to sound from after it and
+/// heard as a sound that never happened, or classified on its own: an
+/// alarm from before the switch went off shown as if it were ringing now.
 struct SoundAlertGate {
-    let windowSamples: Int
     private var skipped = false
-
-    init(windowSamples: Int) {
-        self.windowSamples = windowSamples
-    }
 
     mutating func pass(_ chunk: [Float], alertsOn: Bool) -> [[Float]] {
         guard alertsOn else {
@@ -243,7 +235,7 @@ struct SoundAlertGate {
         }
         guard skipped else { return [chunk] }
         skipped = false
-        return [[Float](repeating: 0, count: windowSamples), chunk]
+        return [[], chunk]
     }
 }
 
