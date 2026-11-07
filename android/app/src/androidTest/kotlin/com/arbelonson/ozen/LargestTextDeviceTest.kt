@@ -76,9 +76,8 @@ class LargestTextDeviceTest {
         assertEquals("only part of it is on screen", node.size.height.toFloat(), node.boundsInRoot.height, 1f)
     }
 
-    private fun shell(command: String) {
-        ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() }
-    }
+    private fun shell(command: String): String =
+        ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes().decodeToString() }
 
     @Test
     fun aRecordingTurnedIntoTextStillShowsItsLinesAtTheLargestTextOnASmallPhone() {
@@ -143,6 +142,8 @@ class LargestTextDeviceTest {
         val engine = app.settings.current.value.engine
         val service = app.settings.current.value.cloudProvider
         val acknowledged = app.settings.current.value.cloudSoundAcknowledged
+        val key = app.cloudKeys.read(CloudProvider.Deepgram)
+        val scale = shell("settings get system font_scale").trim().takeIf { it.toFloatOrNull() != null } ?: "1.0"
         try {
             app.cloudKeyCheckHTTP = CloudHTTP { throw IOException("device tests never reach a real service") }
             app.cloudKeys.remove(CloudProvider.Deepgram)
@@ -165,9 +166,9 @@ class LargestTextDeviceTest {
             compose.onNodeWithText("Allow and save").assertIsDisplayed()
             compose.onNodeWithText("Cancel").performClick()
         } finally {
-            shell("settings put system font_scale 1.0")
+            shell("settings put system font_scale $scale")
             app.cloudKeyCheckHTTP = keyCheck
-            app.cloudKeys.remove(CloudProvider.Deepgram)
+            key?.let { app.cloudKeys.save(it, CloudProvider.Deepgram) } ?: app.cloudKeys.remove(CloudProvider.Deepgram)
             app.settings.change {
                 it.engine = engine
                 it.cloudProvider = service

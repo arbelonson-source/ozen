@@ -284,6 +284,7 @@ class ScreenTourDeviceTest {
             val engine = app.settings.current.value.engine
             val service = app.settings.current.value.cloudProvider
             val keyCheck = app.cloudKeyCheckHTTP
+            val key = app.cloudKeys.read(CloudProvider.Deepgram)
             app.cloudKeyCheckHTTP = CloudHTTP { throw IOException("the tour never reaches a real service") }
             app.settings.change { it.cloudSoundAcknowledged = emptySet() }
             try {
@@ -298,7 +299,7 @@ class ScreenTourDeviceTest {
                 click(tr("ביטול", "Cancel"))
             } finally {
                 app.cloudKeyCheckHTTP = keyCheck
-                app.cloudKeys.remove(CloudProvider.Deepgram)
+                key?.let { app.cloudKeys.save(it, CloudProvider.Deepgram) } ?: app.cloudKeys.remove(CloudProvider.Deepgram)
                 app.settings.change {
                     it.cloudSoundAcknowledged = acknowledged
                     it.engine = engine
