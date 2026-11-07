@@ -55,6 +55,7 @@ class PhoneModelChooser(
     private val fetcher: () -> ReleaseFileFetching,
     private val network: () -> NetworkConditions?,
     private val freeSpace: () -> Long?,
+    private val makeRoom: (Long) -> Unit = {},
     private val scope: CoroutineScope,
     private val measure: suspend ((Float) -> Unit) -> PhoneSpeed?,
     private val applied: () -> Unit,
@@ -177,6 +178,7 @@ class PhoneModelChooser(
             var lostWiFi = false
             val done = withContext(io) {
                 runCatching {
+                    downloader.pendingMegabytes()?.let { makeRoom(StorageSpaceGate.requiredMegabytes(it) * StorageSpaceGate.BYTES_PER_MEGABYTE) }
                     downloader.download { fraction ->
                         if (stopped.get()) throw IOException("stopped: another model was chosen")
                         if (ModelDownloadGate.decide(network(), settings.current.value.allowCellularModelDownload) == ModelDownloadGate.Decision.WaitForWiFi) {

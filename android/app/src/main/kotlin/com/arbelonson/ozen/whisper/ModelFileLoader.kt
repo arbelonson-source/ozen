@@ -26,6 +26,7 @@ class ModelFileLoader(
     private val download: PhoneModelDownloader? = null,
     private val network: () -> NetworkConditions? = { null },
     private val freeBytes: () -> Long? = { null },
+    private val makeRoom: (Long) -> Unit = {},
     /** The model list's name for the model, which the status line shows while it downloads and is set up. */
     private val variant: String? = null,
     private val marker: ModelLoadMarker? = null,
@@ -81,6 +82,11 @@ class ModelFileLoader(
         try {
             withContext(Dispatchers.IO) {
                 val job = coroutineContext.job
+                // Room is asked for only when the download can start: asking
+                // clears other apps' caches.
+                if (ModelDownloadGate.decide(network(), cellularAllowed) == ModelDownloadGate.Decision.Proceed) {
+                    download.pendingMegabytes()?.let { makeRoom(StorageSpaceGate.requiredMegabytes(it) * StorageSpaceGate.BYTES_PER_MEGABYTE) }
+                }
                 var shown = -1.0
                 download.download { fraction ->
                     job.ensureActive()
