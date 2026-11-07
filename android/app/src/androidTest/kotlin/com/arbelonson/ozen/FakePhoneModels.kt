@@ -33,6 +33,10 @@ class FakePhoneModels(private val settings: SettingsHolder) : PhoneModels {
         settings.change { it.phoneModelFile = file }
     }
 
+    override fun replaceWith(file: String) = choose(file)
+
+    override fun inUseBytes(): Long? = null
+
     override fun resumeWaiting() {}
 
     override suspend fun delete(file: String): PhoneModelDeletion.Result = PhoneModelDeletion.Result.Refused
