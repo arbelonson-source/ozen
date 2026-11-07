@@ -150,8 +150,13 @@ class CaptionSession(
     /** The connection as the model downloads see it piece by piece; a seam for tests. */
     internal var networkNow: () -> NetworkConditions? = { network.current }
 
-    /** The phone's free space, as the model downloads see it. */
-    var freeSpace: () -> Long = { context.filesDir.usableSpace }
+    private val storage = DeviceStorage(context)
+
+    /** The phone's free space, as the model downloads see it: what is free plus the cache the system would clear. */
+    var freeSpace: () -> Long = { storage.freeBytes() }
+
+    /** Asks the system to clear cache for a download about to write that many bytes; blocks, so not for the main thread. */
+    var makeRoom: (Long) -> Unit = { storage.makeRoom(it) }
     val pipeline = CaptionPipeline(
         scope = scope,
         audio = audio,
@@ -1237,6 +1242,7 @@ class CaptionSession(
                     download = PhoneModelDownloader(model, settings.phoneModel.source, modelFetcher),
                     network = { networkNow() },
                     freeBytes = { freeSpace() },
+                    makeRoom = { makeRoom(it) },
                     variant = settings.phoneModel.variant,
                     marker = loadMarker,
                 ),
@@ -1346,6 +1352,7 @@ class CaptionSession(
             fetcher = { modelFetcher },
             network = { networkNow() },
             freeSpace = { freeSpace() },
+            makeRoom = { makeRoom(it) },
             scope = scope,
             measure = { progress -> PhoneSpeedMeter(context.applicationInfo.nativeLibraryDir).run(progress) },
             applied = ::settingsChanged,

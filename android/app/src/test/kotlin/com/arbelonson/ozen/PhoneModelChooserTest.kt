@@ -9,6 +9,7 @@ import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.ReleaseFileFetching
 import com.arbelonson.ozen.core.SettingsStore
+import com.arbelonson.ozen.core.StorageSpaceGate
 import com.arbelonson.ozen.core.UILanguage
 import java.io.File
 import java.io.IOException
@@ -51,6 +52,7 @@ class PhoneModelChooserTest {
     private var cutAt: Long? = null
     private var whenReceived: () -> Unit = {}
     private var afterStopped: () -> Unit = {}
+    private val roomAsked = ArrayList<Pair<Long, Int>>()
 
     private val fetcher = object : ReleaseFileFetching {
         override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
@@ -77,6 +79,7 @@ class PhoneModelChooserTest {
         fetcher = { fetcher },
         network = { network },
         freeSpace = { free },
+        makeRoom = { bytes -> roomAsked += bytes to fetched.size },
         scope = scope,
         measure = { progress ->
             measureCalls += 1
@@ -166,6 +169,26 @@ class PhoneModelChooserTest {
         scope.runCurrent()
         assertTrue(fetched.isEmpty())
         assertNull(saved().phoneModelFile)
+    }
+
+    @Test
+    fun `before a switch downloads, room is asked for once, for the whole model with its margin, ahead of the first byte`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        val model = PhoneModelCatalog.all.first { it.file == "ggml-base-q5_1.bin" }
+        val megabytes = (model.bytes + StorageSpaceGate.BYTES_PER_MEGABYTE - 1) / StorageSpaceGate.BYTES_PER_MEGABYTE
+        assertEquals(listOf((StorageSpaceGate.requiredMegabytes(megabytes.toInt()) * StorageSpaceGate.BYTES_PER_MEGABYTE) to 0), roomAsked)
+        assertEquals(listOf("ggml-base-q5_1.bin"), fetched)
+    }
+
+    @Test
+    fun `no room is asked for when the phone is too full to start the download`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        free = 100_000_000
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertTrue(roomAsked.isEmpty())
     }
 
     @Test

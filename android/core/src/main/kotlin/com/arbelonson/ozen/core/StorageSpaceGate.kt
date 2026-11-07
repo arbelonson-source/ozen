@@ -7,6 +7,9 @@ object StorageSpaceGate {
 
     fun requiredMegabytes(forDownloadOf: Int): Int = forDownloadOf + maxOf(forDownloadOf / 4, 250)
 
+    /** Never stricter than the space free now: the system's reserve can put what it could free below that. */
+    fun roomBytes(usable: Long, allocatable: Long?): Long = maxOf(usable, allocatable ?: usable)
+
     fun shortfallMegabytes(downloadMegabytes: Int, availableBytes: Long?): Int? {
         if (downloadMegabytes <= 0 || availableBytes == null) return null
         val required = requiredMegabytes(downloadMegabytes).toLong() * BYTES_PER_MEGABYTE
