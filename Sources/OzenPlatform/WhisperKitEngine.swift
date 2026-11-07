@@ -265,6 +265,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
     /// How the passes have gone since the engine was made, for the journal.
     private var tally = PassTally()
     private var fitTally = PassTally()
+    private var lowPowerFitTally = PassTally()
 
     public func diagnosticsSummary() async -> String? {
         "\(modelVariant): \(tally.summary)"
@@ -278,6 +279,11 @@ public actor WhisperKitEngine: TranscriptionEngine {
     public func fitPassMeasurement() async -> LivePassMeasurement? {
         guard let average = fitTally.averageLiveSeconds else { return nil }
         return LivePassMeasurement(variant: modelVariant, averageSeconds: average, passes: fitTally.livePasses, fitEligible: true)
+    }
+
+    public func lowPowerFitPassMeasurement() async -> LivePassMeasurement? {
+        guard let average = lowPowerFitTally.averageLiveSeconds else { return nil }
+        return LivePassMeasurement(variant: modelVariant, averageSeconds: average, passes: lowPowerFitTally.livePasses, fitEligible: true, lowPower: true)
     }
 
     private var isStreaming = false
@@ -440,7 +446,8 @@ public actor WhisperKitEngine: TranscriptionEngine {
             // changed nothing up close (see `SpeechGain`).
             let heard = SpeechGain.normalized(window)
             let passStarted = ContinuousClock.now
-            let fitEligibleAtStart = ModelFitWatch.counts(heat: Self.currentHeat(), lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled, onPhoneModel: true)
+            let heatAtStart = Self.currentHeat()
+            let lowPowerAtStart = ProcessInfo.processInfo.isLowPowerModeEnabled
             var retried = false
             let results: [TranscriptionResult]
             do {
@@ -463,9 +470,14 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
                 lastLivePassSeconds = seconds
                 tally.recordLivePass(seconds: seconds)
-                if fitEligibleAtStart, !retried,
-                   ModelFitWatch.counts(heat: Self.currentHeat(), lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled, onPhoneModel: true) {
-                    fitTally.recordLivePass(seconds: seconds)
+                switch ModelFitWatch.tally(
+                    heatAtStart: heatAtStart, lowPowerAtStart: lowPowerAtStart,
+                    heatAtEnd: Self.currentHeat(), lowPowerAtEnd: ProcessInfo.processInfo.isLowPowerModeEnabled,
+                    retried: retried, onPhoneModel: true
+                ) {
+                case .normal: fitTally.recordLivePass(seconds: seconds)
+                case .lowPower: lowPowerFitTally.recordLivePass(seconds: seconds)
+                case nil: break
                 }
             }
             // Only on the pass that stays: a line still being written
