@@ -41,6 +41,8 @@ public struct SoundAnalysisDetector: SoundEventDetecting {
     static let restartWindowSeconds: TimeInterval = 600
     static let restartSpacingSeconds: TimeInterval = 15
 
+    public var windowSamples: Int { Int(windowSeconds * 16_000) }
+
     public func observations(audio: AsyncStream<[Float]>) -> AsyncStream<SoundObservation> {
         let forwardingConfidence = forwardingConfidence
         let windowSeconds = windowSeconds
