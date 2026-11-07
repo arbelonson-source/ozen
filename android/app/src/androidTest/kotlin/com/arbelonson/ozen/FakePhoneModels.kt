@@ -17,6 +17,7 @@ class FakePhoneModels(private val settings: SettingsHolder) : PhoneModels {
 
     val missing = ConcurrentHashMap<String, Int>()
     val chosen = CopyOnWriteArrayList<Pair<String, Boolean>>()
+    val noRoomFor = ConcurrentHashMap<String, Int>()
 
     override fun refreshInstalled() {}
 
@@ -24,6 +25,11 @@ class FakePhoneModels(private val settings: SettingsHolder) : PhoneModels {
 
     override fun choose(file: String, byHand: Boolean) {
         chosen += file to byHand
+        val short = noRoomFor[file]
+        if (short != null) {
+            switching.value = PhoneModelSwitch.NotEnoughRoom(file, short)
+            return
+        }
         settings.change { it.phoneModelFile = file }
     }
 

@@ -97,6 +97,7 @@ import com.arbelonson.ozen.core.HebrewText
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.MicrophoneAsk
 import com.arbelonson.ozen.core.PhoneModelCatalog
+import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.StorageSpaceGate
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
@@ -369,8 +370,9 @@ private fun ModelPage(settings: AppSettings, models: PhoneModels, onKept: () -> 
         PrimaryButton(
             tr("להישאר עם המודל המומלץ", "Keep the recommended model"),
             onClick = {
-                models.choose(recommendedPhoneModel(settings.spokenLanguage, settings.effectiveGflops, models.totalMemoryBytes).file, byHand = false)
-                onKept()
+                val recommended = recommendedPhoneModel(settings.spokenLanguage, settings.effectiveGflops, models.totalMemoryBytes).file
+                models.choose(recommended, byHand = false)
+                if ((models.switching.value as? PhoneModelSwitch.NotEnoughRoom)?.file != recommended) onKept()
             },
             modifier = Modifier.fillMaxWidth().testTag("model-page-keep"),
             icon = Icons.Rounded.Check,

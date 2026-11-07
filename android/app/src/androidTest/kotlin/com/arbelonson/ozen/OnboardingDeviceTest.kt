@@ -460,6 +460,20 @@ class OnboardingDeviceTest {
     }
 
     @Test
+    fun keepTheRecommendedModelStaysOnThePageWhenThereIsNoRoomToDownloadIt() {
+        val models = FakePhoneModels(app.settings)
+        showTheWalkthroughWith(models)
+        toTheModelPage()
+        val recommended = recommendedPhoneModel(UILanguage.Hebrew, app.settings.current.value.effectiveGflops, models.totalMemoryBytes).file
+        models.noRoomFor[recommended] = 321
+        compose.onNodeWithTag("model-page-keep").performScrollTo().performClick()
+        compose.waitUntil(5_000) { shown("There is no room to download it. Free up 321 MB more.") }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("4 of 7").assertExists()
+        compose.onNodeWithContentDescription("5 of 7").assertDoesNotExist()
+    }
+
+    @Test
     fun keepTheRecommendedModelChoosesItAgainAndMovesToTheNextPage() {
         val models = FakePhoneModels(app.settings)
         showTheWalkthroughWith(models)
