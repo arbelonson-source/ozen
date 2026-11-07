@@ -17,7 +17,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -626,7 +628,8 @@ class CaptionScreenDeviceTest {
             val lapel = AudioInputDescriptor("usb:lapel", "Lapel mic", AudioPortType.Usb)
             compose.runOnUiThread { CaptionState.inputs(real + lapel, phone.uid) }
             compose.onNode(hasText("Lapel mic") and isSelectable()).performScrollTo().performClick()
-            compose.onNodeWithText("The phone did not switch to “Lapel mic”, and the marked microphone is still recording. Try unplugging and reconnecting it.").performScrollTo().assertExists()
+            compose.onNodeWithText("The phone did not switch to “Lapel mic”, and the marked microphone is still recording. Try unplugging and reconnecting it.").performScrollTo()
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
             compose.onNode(hasText(phone.portName) and isSelected()).assertExists()
 
             compose.runOnUiThread { CaptionState.inputs(emptyList(), null) }
@@ -2173,7 +2176,7 @@ class CaptionScreenDeviceTest {
         busy.assertExists()
 
         show(PipelinePhase.Listening)
-        status().assertIsEnabled()
+        status().assertIsEnabled().assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
         busy.assertDoesNotExist()
     }
 

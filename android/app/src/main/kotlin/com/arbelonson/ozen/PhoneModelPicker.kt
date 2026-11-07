@@ -108,6 +108,7 @@ private val PhoneModelSwitch.fileOrNull: String?
         is PhoneModelSwitch.NotEnoughRoom -> file
         is PhoneModelSwitch.WaitingForWiFi -> file
         is PhoneModelSwitch.Offline -> file
+        is PhoneModelSwitch.Retrying -> file
         is PhoneModelSwitch.Failed -> file
     }
 
@@ -256,6 +257,7 @@ private fun SwitchNote(switching: PhoneModelSwitch) {
         is PhoneModelSwitch.NotEnoughRoom -> tr("אין מקום להורדה. צריך לפנות עוד %1 MB.", "There is no room to download it. Free up %1 MB more.", listOf("${switching.megabytes}"))
         is PhoneModelSwitch.WaitingForWiFi -> tr("ממתינים ל־Wi‑Fi כדי להוריד. אפשר לאשר בהגדרות הורדה בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings.")
         is PhoneModelSwitch.Offline -> tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד.", "There is no internet connection to download it.")
+        is PhoneModelSwitch.Retrying -> tr("ההורדה נעצרה. ננסה שוב אוטומטית.", "The download stopped. Trying again on its own.")
         is PhoneModelSwitch.Failed -> tr("ההורדה נכשלה. כדי לנסות שוב, בחרו את המודל מחדש.", "The download failed. Choose the model again to try again.")
     }
     text?.let {

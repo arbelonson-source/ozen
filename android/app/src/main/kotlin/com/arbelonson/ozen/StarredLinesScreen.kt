@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
@@ -151,7 +152,7 @@ private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: 
             modifier = Modifier
                 .fillMaxWidth()
                 .onHold { menu = true }
-                .clickable(onClick = onOpen)
+                .clickable(role = Role.Button, onClick = onOpen)
                 .clearAndSetSemantics {
                     contentDescription = line.spoken
                     customActions = listOf(CustomAccessibilityAction(copy) { copyLine(); true })

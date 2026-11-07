@@ -158,6 +158,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -1674,7 +1675,7 @@ private fun SavingTroubleBanner(onDismiss: () -> Unit) {
         NoticeTone.Warning,
         SavingTroubleNotice.title,
         SavingTroubleNotice.detail,
-        Modifier.clickable(onClickLabel = tr("סגירה", "Close"), onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
+        Modifier.clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button, onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
     ) { Icon(Icons.Rounded.Close, contentDescription = null) }
 }
 
@@ -1686,7 +1687,7 @@ private fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
         NoticeTone.Warning,
         tr("ההאזנה לקול מהטלפון הופסקה. חזרה למיקרופון.", "Stopped listening to the phone's sound. Back to the microphone."),
         "",
-        Modifier.clickable(onClickLabel = tr("סגירה", "Close"), onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
+        Modifier.clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button, onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
     ) { Icon(Icons.Rounded.Close, contentDescription = null) }
 }
 
@@ -1703,7 +1704,7 @@ private fun BatteryBanner(warning: BatteryWarning, onDismiss: () -> Unit) {
         } else {
             tr("כדאי לחבר את הטלפון למטען.", "Consider plugging in a charger.")
         },
-        Modifier.clickable(onClickLabel = tr("סגירה", "Close"), onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
+        Modifier.clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button, onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
     ) { Icon(Icons.Rounded.Close, contentDescription = null) }
 }
 
@@ -1716,7 +1717,7 @@ private fun MicrophoneDropBanner(title: String, detail: String, onChooseMicropho
         title,
         detail,
         Modifier
-            .clickable(onClickLabel = tr("בחירת מיקרופון", "Choose microphone"), onClick = onChooseMicrophone)
+            .clickable(onClickLabel = tr("בחירת מיקרופון", "Choose microphone"), role = Role.Button, onClick = onChooseMicrophone)
             .semantics { liveRegion = LiveRegionMode.Polite },
     ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }
@@ -1729,7 +1730,7 @@ private fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: ()
         verticalAlignment = Alignment.Top,
         modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh),
     ) {
-        Column(Modifier.weight(1f).clickable(onClick = onOpen).padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Unit)) {
+        Column(Modifier.weight(1f).clickable(role = Role.Button, onClick = onOpen).padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Unit)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
                 Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
                 Text(tr("שהטלפון ירטוט כשקוראים לכם?", "Have the phone buzz when someone calls your name?"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
@@ -1785,6 +1786,18 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, onSwitch: () 
 @Composable
 private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, onSwitch: () -> Unit, onRetry: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val title = tr("אוזן נסגרה בזמן שהכינה את מודל הדיבור", "Ozen closed while setting up the speech model")
+    val body = tr(
+        "ייתכן שאין בטלפון הזה מספיק זיכרון בשביל המודל \"\u2068%1\u2069\". המודל \"\u2068%2\u2069\" (%3) קל יותר.",
+        "This phone may not have enough memory for %1. %2 (%3) is lighter.",
+        listOf(model.displayName, lighter.displayName, ByteSize.text(lighter.bytes)),
+    )
+    // Shown in place of captions that would have started by themselves, below
+    // the empty screen's text: a screen reader hears why, as on the iPhone.
+    val context = LocalContext.current
+    LaunchedEffect(model.file) {
+        if (ScreenReader.isOn(context)) ScreenReader.announce(context, "$title. $body")
+    }
     Column(
         modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh)
             .padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Page).testTag("model-load-crash"),
@@ -1792,13 +1805,9 @@ private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, onSwitch:
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
             Icon(Icons.Rounded.Speed, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(tr("אוזן נסגרה בזמן שהכינה את מודל הדיבור", "Ozen closed while setting up the speech model"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
+                Text(title, color = colors.onSurface, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
                 Text(
-                    tr(
-                        "ייתכן שאין בטלפון הזה מספיק זיכרון בשביל המודל \"\u2068%1\u2069\". המודל \"\u2068%2\u2069\" (%3) קל יותר.",
-                        "This phone may not have enough memory for %1. %2 (%3) is lighter.",
-                        listOf(model.displayName, lighter.displayName, ByteSize.text(lighter.bytes)),
-                    ),
+                    body,
                     color = colors.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -1809,13 +1818,13 @@ private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, onSwitch:
                 tr("נסו שוב", "Try again"),
                 color = colors.onSurfaceVariant,
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clickable(onClick = onRetry).testTag("model-load-crash-retry").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+                modifier = Modifier.clickable(role = Role.Button, onClick = onRetry).testTag("model-load-crash-retry").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
             )
             Text(
                 tr("החלפה", "Switch"),
                 color = colors.primary,
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clickable(onClick = onSwitch).testTag("model-load-crash-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+                modifier = Modifier.clickable(role = Role.Button, onClick = onSwitch).testTag("model-load-crash-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
             )
         }
     }
@@ -1831,7 +1840,7 @@ private fun RecentConversationCard(recent: TranscriptSessionSummary, look: Capti
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.weight(1f).clickable(onClick = onOpen).padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Page),
+            modifier = Modifier.weight(1f).clickable(role = Role.Button, onClick = onOpen).padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Page),
         ) {
             IconBadge(Icons.Rounded.ChatBubble)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1957,7 +1966,7 @@ private fun StatusLine(status: PhasePresentation, look: CaptionTheme, live: Bool
             .heightIn(min = OzenSpacing.MinTouch)
             .clip(MaterialTheme.shapes.large)
             // As on the iPhone, no button while a tap would do nothing.
-            .clickable(enabled = status.action != PhasePresentation.Action.None, onClick = onTap)
+            .clickable(enabled = status.action != PhasePresentation.Action.None, role = Role.Button, onClick = onTap)
             // A download's bar is read with the button, in one stop: the
             // bar alone is an item of its own to TalkBack.
             .semantics { status.progress?.let { progressBarRangeInfo = ProgressBarRangeInfo(it.toFloat(), 0f..1f) } }

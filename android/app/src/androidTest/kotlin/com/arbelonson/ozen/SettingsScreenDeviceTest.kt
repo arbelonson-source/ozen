@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.core.app.ActivityOptionsCompat
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -1656,8 +1657,12 @@ class SettingsScreenDeviceTest {
         val before = app.settings.current.value.appLanguage
         val spokenBefore = app.settings.current.value.languageCode
         try {
-            app.settings.change { it.languageCode = "en" }
+            app.settings.change {
+                it.languageCode = "en"
+                it.appLanguage = AppLanguage.System
+            }
             compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithContentDescription("App language, Same as the phone").performScrollTo().assertHasClickAction()
             compose.onNodeWithText("Same as the phone").performScrollTo().performClick()
             compose.onNodeWithText("العربية").assertExists()
             compose.onNodeWithText("עברית").performClick()
@@ -1685,6 +1690,7 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Settings").performClick()
             compose.onNodeWithText("Spoken language").performScrollTo().assertExists()
             compose.onNodeWithText("The language people around you speak. The captions are written in it.").performScrollTo().assertExists()
+            compose.onNodeWithContentDescription("Spoken language, ${UILanguage.Hebrew.spokenName}").performScrollTo().assertHasClickAction()
             compose.onNodeWithText(UILanguage.Hebrew.spokenName).performScrollTo().performClick()
             compose.onNodeWithText("中文").assertExists()
             compose.onNodeWithText("English").performClick()

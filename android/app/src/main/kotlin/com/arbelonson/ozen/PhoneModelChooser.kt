@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.ModelDownloadGate
+import com.arbelonson.ozen.core.ModelDownloadRetry
 import com.arbelonson.ozen.core.NetworkConditions
 import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModel
@@ -22,7 +23,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -64,6 +67,7 @@ class PhoneModelChooser(
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val remove: (File) -> Boolean = { it.delete() },
     private val device: String = "",
+    private val downloadStarted: () -> Unit = {},
 ) : PhoneModels {
     private val lock = Any()
 
@@ -85,6 +89,15 @@ class PhoneModelChooser(
 
     private var stopDownload: AtomicBoolean? = null
 
+    // A download that broke off for a reason a later try can mend (the
+    // connection dropped, not a file that arrived damaged) is tried again by
+    // itself, so the person who left Settings does not have to come back and
+    // press it. The count belongs to the file she chose: choosing starts it
+    // over, a retry timer or a connection change carries it on.
+    private var retryJob: Job? = null
+    private var failures = 0
+    private var brokeOff: String? = null
+
     private fun onDisk(): Set<String> = PhoneModelCatalog.all.filter { File(modelFolder, it.file).isFile }.map { it.file }.toSet()
 
     private fun leftovers(): Map<String, Long> = PhoneModelShelf.partials(PhoneModelStorage(modelFolder, "").list())
@@ -97,6 +110,7 @@ class PhoneModelChooser(
     override fun choose(file: String, byHand: Boolean) {
         if (byHand) rememberChoiceAgainstWarning(file)
         picks += 1
+        failures = 0
         start(file)
     }
 
@@ -113,6 +127,9 @@ class PhoneModelChooser(
         synchronized(lock) {
             refreshInstalled()
             stopDownload?.set(true)
+            retryJob?.cancel()
+            retryJob = null
+            brokeOff = null
             switchState.value = PhoneModelSwitch.Idle
             when (PhoneModelChoice.plan(model, current.phoneModel, installedState.value)) {
                 PhoneModelChoice.Plan.UseNow -> use(model)
@@ -123,7 +140,7 @@ class PhoneModelChooser(
 
     override fun resumeWaiting() {
         synchronized(lock) {
-            val file = switchState.value.waitingFile ?: return
+            val file = switchState.value.waitingFile ?: switchState.value.retryableFile(brokeOff) ?: return
             if (ModelDownloadGate.decide(network(), settings.current.value.allowCellularModelDownload) == ModelDownloadGate.Decision.Proceed) start(file)
         }
     }
@@ -137,7 +154,9 @@ class PhoneModelChooser(
                     } else {
                         PhoneModelDeletion(modelFolder, settings.current.value.phoneModel.file, remove).delete(file).also { freed ->
                             val state = switchState.value
-                            if (freed is PhoneModelDeletion.Result.Freed && (state is PhoneModelSwitch.NotEnoughRoom || state.waitingFile == file)) switchState.value = PhoneModelSwitch.Idle
+                            if (freed is PhoneModelDeletion.Result.Freed && (state is PhoneModelSwitch.NotEnoughRoom || state.waitingFile == file || state.retryingFile == file)) switchState.value = PhoneModelSwitch.Idle
+                            if (freed is PhoneModelDeletion.Result.Freed && state.retryingFile == file) retryJob?.cancel()
+                            if (freed is PhoneModelDeletion.Result.Freed && brokeOff == file) brokeOff = null
                         }
                     }
                 }
@@ -174,9 +193,10 @@ class PhoneModelChooser(
         val stopped = AtomicBoolean(false)
         stopDownload = stopped
         switchState.value = PhoneModelSwitch.Downloading(model.file, 0.0)
+        downloadStarted()
         scope.launch {
             var lostWiFi = false
-            val done = withContext(io) {
+            val outcome = withContext(io) {
                 runCatching {
                     downloader.pendingMegabytes()?.let { makeRoom(StorageSpaceGate.requiredMegabytes(it) * StorageSpaceGate.BYTES_PER_MEGABYTE) }
                     downloader.download { fraction ->
@@ -190,12 +210,12 @@ class PhoneModelChooser(
                             switchState.value = PhoneModelSwitch.Downloading(model.file, shown)
                         }
                     }
-                }.isSuccess
+                }
             }
             if (stopped.get()) return@launch
             stopDownload = null
             refreshInstalled()
-            if (done) {
+            if (outcome.isSuccess) {
                 switchState.value = PhoneModelSwitch.Idle
                 use(model)
             } else if (lostWiFi) {
@@ -204,7 +224,35 @@ class PhoneModelChooser(
             } else if (ModelDownloadGate.decide(network(), settings.current.value.allowCellularModelDownload) == ModelDownloadGate.Decision.Offline) {
                 switchState.value = PhoneModelSwitch.Offline(model.file)
             } else {
-                switchState.value = PhoneModelSwitch.Failed(model.file)
+                failed(model.file, outcome.exceptionOrNull(), stopped)
+            }
+        }
+    }
+
+    private fun failed(file: String, error: Throwable?, stopped: AtomicBoolean) {
+        synchronized(lock) {
+            if (stopped.get()) return
+            if (error is PhoneModelDownloader.ChecksumMismatch) {
+                switchState.value = PhoneModelSwitch.Failed(file)
+                return
+            }
+            brokeOff = file
+            failures += 1
+            val seconds = ModelDownloadRetry.delaySeconds(failures)
+            if (seconds == null) {
+                switchState.value = PhoneModelSwitch.Failed(file)
+                return
+            }
+            val waiting = PhoneModelSwitch.Retrying(file, seconds)
+            switchState.value = waiting
+            retryJob = scope.launch {
+                delay(seconds * 1_000)
+                synchronized(lock) {
+                    if (switchState.value == waiting) {
+                        retryJob = null
+                        start(file)
+                    }
+                }
             }
         }
     }
@@ -236,6 +284,15 @@ class PhoneModelChooser(
             if (it != null && checkState.value is PhoneCheckState.Running) checkState.value = PhoneCheckState.Idle
         }
     }
+}
+
+private val PhoneModelSwitch.retryingFile: String?
+    get() = (this as? PhoneModelSwitch.Retrying)?.file
+
+private fun PhoneModelSwitch.retryableFile(brokeOff: String?): String? = when (this) {
+    is PhoneModelSwitch.Retrying -> file
+    is PhoneModelSwitch.Failed -> file.takeIf { it == brokeOff }
+    else -> null
 }
 
 private val PhoneModelSwitch.waitingFile: String?
