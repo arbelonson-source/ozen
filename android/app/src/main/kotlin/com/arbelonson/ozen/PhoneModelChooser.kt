@@ -210,7 +210,7 @@ class PhoneModelChooser(
         val keep = setOf(model.file, settings.current.value.phoneModel.file)
         for (entry in PhoneModelStorage(modelFolder, "").list()) {
             val name = entry.name.removeSuffix(".part")
-            if (name != entry.name && name !in keep && !PhoneModelDownloader.isWriting(File(modelFolder, name))) remove(File(modelFolder, entry.name))
+            if (name != entry.name && name !in keep) PhoneModelDownloader.ifNotDownloading(File(modelFolder, name)) { remove(File(modelFolder, entry.name)) }
         }
         refreshInstalled()
     }

@@ -63,6 +63,15 @@ class PhoneModelDownloader(val file: File, val source: PhoneModelSource, private
         private const val WAIT_STEP_MILLIS = 100L
         private val locks = ConcurrentHashMap<String, ReentrantLock>()
 
-        fun isWriting(file: File): Boolean = locks[file.absolutePath]?.isLocked == true
+        fun ifNotDownloading(file: File, action: () -> Unit): Boolean {
+            val lock = locks.computeIfAbsent(file.absolutePath) { ReentrantLock() }
+            if (!lock.tryLock()) return false
+            try {
+                action()
+            } finally {
+                lock.unlock()
+            }
+            return true
+        }
     }
 }
