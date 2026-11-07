@@ -254,13 +254,6 @@ fun HistoryScreen(
         close = tr("סגירה", "Close"),
         onClose = onClose,
         actions = {
-            if (loaded?.summaries?.isNotEmpty() == true) {
-                TextButton(onClick = {
-                    scope.launch { shareOrSayFull(context) { allConversationsShareSheet(context, conversations, marksUncertain, languageCode) } }
-                }) {
-                    Text(tr("שיתוף כל השיחות", "Share all conversations"))
-                }
-            }
             TextButton(onClick = { confirmingDeleteAll = true }, enabled = loaded?.summaries?.isNotEmpty() == true) {
                 Text(tr("מחיקת הכול", "Delete all"), color = if (loaded?.summaries?.isNotEmpty() == true) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -316,6 +309,11 @@ fun HistoryScreen(
                         onSaving = conversations::switchSaving,
                         onRetention = { choice ->
                             if (choice.expiringCount(shown.summaries, System.currentTimeMillis() / 1_000.0) != 0) pendingRetentionValue = choice.rawValue else keepFor(choice)
+                        },
+                        onShareAll = if (shown.summaries.isNotEmpty()) {
+                            { scope.launch { shareOrSayFull(context) { allConversationsShareSheet(context, conversations, marksUncertain, languageCode) } } }
+                        } else {
+                            null
                         },
                     )
                 }
@@ -474,6 +472,7 @@ private fun SavingSection(
     failure: String?,
     onSaving: (Boolean) -> Unit,
     onRetention: (HistoryRetention) -> Unit,
+    onShareAll: (() -> Unit)?,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (saving && failure != null) {
@@ -509,6 +508,9 @@ private fun SavingSection(
                     }
                 }
             }
+            // Here and not beside "Delete all": at the biggest text on a small phone the top bar
+            // had no room for both, and Close was squeezed out.
+            if (onShareAll != null) item { SettingRow(tr("שיתוף כל השיחות", "Share all conversations"), onClick = onShareAll) }
         }
         GroupFootnote(HistoryTexts.savingFooter(saving, size, retention))
     }
