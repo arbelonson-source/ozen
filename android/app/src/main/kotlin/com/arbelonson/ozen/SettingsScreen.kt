@@ -56,6 +56,7 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Pin
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.PrivacyTip
 import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Spellcheck
@@ -165,6 +166,7 @@ import com.arbelonson.ozen.core.HomeServer
 import com.arbelonson.ozen.core.HomeServerCheck
 import com.arbelonson.ozen.core.KeywordAlert
 import com.arbelonson.ozen.core.KeywordHit
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.QuietHours
 import com.arbelonson.ozen.core.SoundAlertPreferences
 import com.arbelonson.ozen.core.SoundEvent
@@ -1263,7 +1265,7 @@ private fun MenuArrow() {
 private fun languageName(language: AppLanguage): String =
     if (language == AppLanguage.System) tr("כמו בטלפון", "Same as the phone") else language.resolved(emptyList()).nativeName
 
-/** Last, as on the iPhone: who made Ozen, which version this is, giving to it, and where its code is. */
+/** Last, as on the iPhone: who made Ozen, which version this is, giving to it, its privacy policy, and where its code is. */
 @Composable
 private fun AboutSection(onSupport: () -> Unit) {
     val context = LocalContext.current
@@ -1273,6 +1275,14 @@ private fun AboutSection(onSupport: () -> Unit) {
         item { AboutRow(tr("נוצר על ידי", "Made by"), "Arbel", Icons.Rounded.Person) }
         item { AboutRow(tr("גרסה", "Version"), context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "", Icons.Rounded.Info) }
         item { SettingRow(tr("תמיכה באוזן (רק אם תרצו)", "Support Ozen (only if you want to)"), icon = Icons.Rounded.Favorite, onClick = onSupport, trailing = { Chevron() }) }
+        item {
+            SettingRow(
+                tr("מדיניות הפרטיות", "Privacy policy"),
+                icon = Icons.Rounded.PrivacyTip,
+                onClick = { uris.openUri(privacyPolicyUrl(Localization.language)) },
+                trailing = { OpensOutside() },
+            )
+        }
         item {
             SettingRow(
                 tr("קוד המקור ב־GitHub", "Source code on GitHub"),
@@ -1314,6 +1324,10 @@ private fun AboutRow(label: String, value: String, icon: ImageVector) {
 }
 
 private const val SOURCE_CODE = "https://github.com/arbelonson-source/ozen"
+
+// The website's policy covers both phones; the iPhone links the same pages.
+internal fun privacyPolicyUrl(language: UILanguage): String =
+    if (language == UILanguage.Hebrew) "https://ozen.live/he/privacy.html" else "https://ozen.live/privacy.html"
 
 // The phone's own engine, as the iPhone credits WhisperKit.
 private const val WHISPER_ENGINE = "https://github.com/ggml-org/whisper.cpp"
