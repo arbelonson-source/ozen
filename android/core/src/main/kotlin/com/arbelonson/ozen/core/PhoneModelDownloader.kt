@@ -20,6 +20,8 @@ class PhoneModelDownloader(val file: File, val source: PhoneModelSource, private
         return if (left <= 0) null else ((left + 999_999) / 1_000_000).toInt()
     }
 
+    fun shortfallMegabytes(availableBytes: Long?): Int? = StorageSpaceGate.shortfallMegabytes(pendingMegabytes() ?: 0, availableBytes)
+
     fun download(checking: () -> Unit = {}, progress: (Double) -> Unit) {
         val lock = locks.computeIfAbsent(file.absolutePath) { ReentrantLock() }
         while (!lock.tryLock(WAIT_STEP_MILLIS, TimeUnit.MILLISECONDS)) progress(fraction(resumeFrom()))

@@ -42,6 +42,9 @@ interface PhoneModels {
 
     fun refreshInstalled()
 
+    /** Megabytes the phone lacks to hold [file], counting an unfinished download; null when it fits or is already there. */
+    fun shortfallMegabytes(file: String): Int?
+
     fun choose(file: String, byHand: Boolean = false)
 
     /** Like `choose`, for a model that suits the phone better: the model in use now is deleted once the new one is chosen and on the phone. */
@@ -113,6 +116,11 @@ class PhoneModelChooser(
     override fun refreshInstalled() {
         installedState.value = onDisk()
         partialState.value = leftovers()
+    }
+
+    override fun shortfallMegabytes(file: String): Int? {
+        val model = PhoneModelCatalog.byFile(file) ?: return null
+        return PhoneModelDownloader(File(modelFolder, file), model.source, fetcher()).shortfallMegabytes(freeSpace())
     }
 
     override fun choose(file: String, byHand: Boolean) {
@@ -217,7 +225,7 @@ class PhoneModelChooser(
 
     private fun download(model: PhoneModel) {
         val downloader = PhoneModelDownloader(File(modelFolder, model.file), model.source, fetcher())
-        val room = StorageSpaceGate.shortfallMegabytes(downloader.pendingMegabytes() ?: 0, freeSpace())
+        val room = downloader.shortfallMegabytes(freeSpace())
         if (room != null) {
             switchState.value = PhoneModelSwitch.NotEnoughRoom(model.file, room)
             return

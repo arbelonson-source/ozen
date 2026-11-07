@@ -140,6 +140,19 @@ class PhoneModelDownloaderTest {
     }
 
     @Test
+    fun `the room a model lacks counts what an unfinished download already holds, and is none once the model is there or the phone has room`() {
+        val big = source.copy(bytes = 2_500_001)
+        val downloader = PhoneModelDownloader(file, big, ServedModel(data))
+        assertEquals(153, downloader.shortfallMegabytes(100_000_000))
+        downloader.part.writeBytes(ByteArray(1_500_001))
+        assertEquals(151, downloader.shortfallMegabytes(100_000_000))
+        assertNull(downloader.shortfallMegabytes(1_000_000_000))
+        assertNull(downloader.shortfallMegabytes(null))
+        file.writeBytes(byteArrayOf(0))
+        assertNull(downloader.shortfallMegabytes(0))
+    }
+
+    @Test
     fun `two downloads of one model at once share it rather than writing into each other, and the one waiting hears how far it has got`() {
         val served = SlowModel(data)
         val failures = CopyOnWriteArrayList<Throwable>()

@@ -113,6 +113,14 @@ public final class CaptionPipeline {
     /// check left her without captions for most of a minute more (44 s in
     /// a drill with the real server). A check is one connection attempt.
     public var homeServerWaitSeconds: Double = 15
+    /// The cloud counterpart of `homeServerWaitSeconds`: with a cloud engine
+    /// chosen, no model on the phone to take over and the quick retries used
+    /// up, the cloud is asked this often and captions start once it answers.
+    /// Calmer than the home computer's 15 s: the cloud is asked over the
+    /// internet, and an outage there rarely ends within seconds.
+    public var cloudWaitSeconds: Double = 30
+
+    private static let cloudProblemsForAPerson: Set<EngineUnavailability.Kind> = [.cloudKeyNeeded, .cloudOutOfCredit, .cloudLanguageNotCovered]
     /// While the phone covers for the cloud after losing the internet, how
     /// often to look whether it can be reached again. Without it, a single
     /// dropped connection kept a phone that is never stopped on its own
@@ -2172,8 +2180,8 @@ public final class CaptionPipeline {
         guard !needsDownload, engineCacheKey(onPhone) == engineCacheKey(settings) else {
             if retryIfNotCovered {
                 scheduleAutoRecovery(for: failure)
-            } else {
-                waitForHomeServer(after: failure)
+            } else if !waitForHomeServer(after: failure), waitForCloud(after: failure) {
+                listenForSoundsMeanwhile(after: failure)
             }
             return
         }
@@ -2704,6 +2712,50 @@ public final class CaptionPipeline {
                     continue
                 }
                 self.logEvent(.note("the home computer answers again, starting captions"))
+                self.homeServerRecheck = nil
+                self.recovery.reset()
+                await self.retry()
+                return
+            }
+        }
+        return true
+    }
+
+    /// The cloud counterpart of `waitForHomeServer`, started from the same
+    /// place (a failed cover with nothing on the phone to take over): a
+    /// cloud that stayed unreachable through every quick retry, on a phone
+    /// with no model installed, left captions stopped until a tap. Asks the
+    /// cloud every `cloudWaitSeconds` and starts captions once it answers.
+    /// Only for a passing problem: a key, credit or permission problem needs
+    /// a person, and `PhasePresentation` already points them to Settings.
+    private func waitForCloud(after failure: PipelineFailure) -> Bool {
+        guard failure.engineUnavailability?.kind == .temporarilyUnavailable,
+              activeSettings?.engine == .cloud
+        else { return false }
+        homeServerRecheck?.cancel()
+        logEvent(.note("waiting for the cloud, asking it every \(String(format: "%g", cloudWaitSeconds)) s"))
+        homeServerRecheck = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let seconds = self?.cloudWaitSeconds else { return }
+                try? await Task.sleep(for: .seconds(seconds))
+                guard !Task.isCancelled, let self, case .failed(let current) = self.phase, current == failure else { return }
+                guard let chosen = self.activeSettings, chosen.engine == .cloud else { return }
+                guard !self.systemInterrupted, !self.isRecordingVoice else { continue }
+                let answer = await self.probeEngine(for: chosen).checkAvailability(languageCode: chosen.languageCode)
+                guard !Task.isCancelled, !self.systemInterrupted, !self.isRecordingVoice,
+                      case .failed(let still) = self.phase, still == failure
+                else { continue }
+                if answer != .available {
+                    guard let kind = answer.unavailability?.kind, Self.cloudProblemsForAPerson.contains(kind) else { continue }
+                    // A key or credit problem found while waiting is the
+                    // real reason now: a try shows it, with its way to
+                    // Settings, instead of the outage message staying up.
+                    self.logEvent(.note("the cloud answers with a problem only a person can fix, showing it"))
+                    self.homeServerRecheck = nil
+                    await self.retry()
+                    return
+                }
+                self.logEvent(.note("the cloud answers again, starting captions"))
                 self.homeServerRecheck = nil
                 self.recovery.reset()
                 await self.retry()

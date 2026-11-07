@@ -60,7 +60,6 @@ import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SpeakerProfile
-import com.arbelonson.ozen.core.StorageSpaceGate
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptHistoryWriter
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -1012,7 +1011,7 @@ class CaptionSession(
 
     private fun modelFitOfferFits(model: PhoneModel): Boolean {
         val file = File(modelFolder, model.file)
-        val shortfall = StorageSpaceGate.shortfallMegabytes(PhoneModelDownloader(file, model.source, modelFetcher).pendingMegabytes() ?: 0, freeSpace())
+        val shortfall = PhoneModelDownloader(file, model.source, modelFetcher).shortfallMegabytes(freeSpace())
         return ModelFitWatch.fitsOnPhone(installed = file.isFile, shortfallMegabytes = shortfall)
     }
 
@@ -1355,7 +1354,7 @@ class CaptionSession(
                 sizeMegabytes = ((source.bytes + 999_999) / 1_000_000).toInt(),
                 downloading = backupProgress.takeIf { backupLanguage == language },
                 failed = backupFailedLanguage == language,
-                shortfallMegabytes = StorageSpaceGate.shortfallMegabytes(PhoneModelDownloader(model, source, modelFetcher).pendingMegabytes() ?: 0, freeSpace()),
+                shortfallMegabytes = PhoneModelDownloader(model, source, modelFetcher).shortfallMegabytes(freeSpace()),
                 network = pipeline.networkConditions,
                 allowCellular = current.allowCellularModelDownload,
             )

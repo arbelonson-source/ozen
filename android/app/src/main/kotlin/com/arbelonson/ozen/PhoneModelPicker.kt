@@ -54,6 +54,9 @@ import com.arbelonson.ozen.ui.SettingsGroup
 import com.arbelonson.ozen.ui.TonalButton
 import kotlinx.coroutines.launch
 
+internal fun recommendedPhoneModel(language: UILanguage, measuredGflops: Double?, memory: Long?): PhoneModel =
+    measuredGflops?.let { PhoneModelEstimate.recommend(language, it, memory) } ?: PhoneModelCatalog.recommended(language)
+
 @Composable
 internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, chooseBestAfterTest: Boolean) {
     val installed by models.installed.collectAsStateWithLifecycle()
@@ -65,7 +68,7 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
     val language = settings.spokenLanguage
     val speed = settings.effectiveGflops
     val chosen = (switching.fileOrNull ?: settings.phoneModel.file)
-    val best = speed?.let { PhoneModelEstimate.recommend(language, it, memory) }
+    val best = recommendedPhoneModel(language, speed, memory)
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         PhoneTest(check, tested = speed != null, captionsBusy = busy) { models.runCheck(chooseBestAfterTest) }
         SettingsGroup(modifier = Modifier.selectableGroup().testTag("phone-model-list")) {
@@ -101,7 +104,7 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
     }
 }
 
-private val PhoneModelSwitch.fileOrNull: String?
+internal val PhoneModelSwitch.fileOrNull: String?
     get() = when (this) {
         PhoneModelSwitch.Idle -> null
         is PhoneModelSwitch.Downloading -> file
@@ -147,7 +150,7 @@ private fun ModelRow(
     language: UILanguage,
     speed: Double?,
     memory: Long?,
-    best: PhoneModel?,
+    best: PhoneModel,
     selected: Boolean,
     onPhone: Boolean,
     leftoverBytes: Long?,
@@ -158,9 +161,9 @@ private fun ModelRow(
     onSelect: () -> Unit,
 ) {
     val tag = when {
-        best?.file == model.file -> tr("מומלץ לטלפון הזה", "Recommended for this phone")
-        best == null && model.file == PhoneModelCatalog.recommended(language).file -> tr("מומלץ", "Recommended")
-        else -> null
+        best.file != model.file -> null
+        speed != null -> tr("מומלץ לטלפון הזה", "Recommended for this phone")
+        else -> tr("מומלץ", "Recommended")
     }
     val progress = (switching as? PhoneModelSwitch.Downloading)?.takeIf { it.file == model.file }
     var asking by rememberSaveable { mutableStateOf(false) }

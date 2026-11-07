@@ -573,6 +573,20 @@ class PhoneModelChooserTest {
     }
 
     @Test
+    fun `the room a model lacks is what the download would say, and none for a model already on the phone`() {
+        free = 100_000_000
+        val base = PhoneModelCatalog.byFile("ggml-base-q5_1.bin")!!
+        val expected = StorageSpaceGate.shortfallMegabytes(base.megabytes, free)
+        assertTrue(expected != null)
+        assertEquals(expected, chooser.shortfallMegabytes("ggml-base-q5_1.bin"))
+        assertNull(chooser.shortfallMegabytes("ggml-gone.bin"))
+        have("ggml-base-q5_1.bin")
+        assertNull(chooser.shortfallMegabytes("ggml-base-q5_1.bin"))
+        free = 100_000_000_000
+        assertNull(chooser.shortfallMegabytes("ggml-small-q5_1.bin"))
+    }
+
+    @Test
     fun `deleting a model clears the no room note`() {
         have("ggml-ozen-a3-q5_0.bin")
         have("ggml-small-q5_1.bin")
