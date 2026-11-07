@@ -134,7 +134,7 @@ class CaptionScreenDeviceTest {
     }
 
     // The id of each caption line composed while [during] runs, once per composition; nine lines on screen.
-    private fun linesRedrawn(during: () -> Unit): List<UUID> {
+    private fun linesComposed(during: () -> Unit): List<UUID> {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val before = app.settings.current.value.display
         val composed = CopyOnWriteArrayList<UUID>()
@@ -151,24 +151,24 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
-    fun aNewWordRedrawsOnlyTheNewestLine() {
-        val redrawn = linesRedrawn { showListening(finishedLines + growingLine.copy(text = "And then we", lastUpdateTimestamp = 9.5), "And then we") }
-        assertEquals("lines drawn again for one new word", listOf(growingLine.id), redrawn.distinct())
+    fun aNewWordComposesOnlyTheNewestLine() {
+        val composedLines = linesComposed { showListening(finishedLines + growingLine.copy(text = "And then we", lastUpdateTimestamp = 9.5), "And then we") }
+        assertEquals("lines composed again for one new word", listOf(growingLine.id), composedLines.distinct())
     }
 
     @Test
     fun aNewWordComposesTheNewestLineOnce() {
-        val redrawn = linesRedrawn { showListening(finishedLines + growingLine.copy(text = "And then we", lastUpdateTimestamp = 9.5), "And then we") }
-        assertEquals("times the newest line was composed for one new word", 1, redrawn.count { it == growingLine.id })
+        val composedLines = linesComposed { showListening(finishedLines + growingLine.copy(text = "And then we", lastUpdateTimestamp = 9.5), "And then we") }
+        assertEquals("times the newest line was composed for one new word", 1, composedLines.count { it == growingLine.id })
     }
 
     @Test
-    fun aQuietRoomRedrawsNoLineAsTheSecondsPass() {
-        val redrawn = linesRedrawn {
+    fun aQuietRoomComposesNoLineAsTheSecondsPass() {
+        val composedLines = linesComposed {
             compose.mainClock.advanceTimeBy(2_500)
             compose.waitForIdle()
         }
-        assertEquals("lines drawn again in a quiet room", emptyList<UUID>(), redrawn)
+        assertEquals("lines composed again in a quiet room", emptyList<UUID>(), composedLines)
     }
 
     @Test

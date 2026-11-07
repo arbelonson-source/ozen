@@ -1415,7 +1415,7 @@ private fun AwayJump(count: Int, look: CaptionTheme, onTap: () -> Unit) {
  * for it, the phone asks them aloud to repeat it; "Captions not good?" keeps
  * what was running in the diagnostics journal. A screen reader has these too.
  */
-/** Told each time a caption line is composed; only device tests set it, to count the lines drawn again per new word. */
+/** Told each time a caption line is composed; only device tests set it, to count the lines composed again per new word. */
 @Volatile
 internal var onCaptionRowComposed: ((UUID) -> Unit)? = null
 
