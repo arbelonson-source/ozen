@@ -1868,7 +1868,7 @@ private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, inUseByte
 private fun ReplacedModelLine(bytes: Long?) {
     if (bytes == null) return
     Text(
-        tr("המודל שפועל עכשיו (%1) יימחק אז מהטלפון כדי לפנות מקום.", "The model in use now (%1) is then removed from the phone to free room.", listOf(ByteSize.text(bytes))),
+        tr("אחרי ההחלפה, המודל שפועל עכשיו (%1) יימחק מהטלפון כדי לפנות מקום.", "The model in use now (%1) is then removed from the phone to free room.", listOf(ByteSize.text(bytes))),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.padding(top = 8.dp).testTag("model-replaced-line"),
