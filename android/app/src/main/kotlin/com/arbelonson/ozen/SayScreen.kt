@@ -64,6 +64,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.tr
@@ -119,6 +120,8 @@ internal fun SayScreen(
     // the phrase editor when a turn of the phone rebuilds the screen.
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (!bigLetters && !editing) focus.requestFocus() }
+    // Opened again on an earlier draft: typing goes on after it.
+    var typing by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
     if (bigLetters) {
         BigTextScreen(draft, onDraft, look, captionSize, canSpeak = canSay(draft), onSpeak = speakTyped, onClose = { bigLetters = false })
         return
@@ -132,8 +135,11 @@ internal fun SayScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedTextField(
-                    value = draft,
-                    onValueChange = onDraft,
+                    value = typingValue(draft, typing),
+                    onValueChange = {
+                        typing = it
+                        if (it.text != draft) onDraft(it.text)
+                    },
                     placeholder = { Text(tr("הקלידו מה להגיד…", "Type what to say…")) },
                     textStyle = MaterialTheme.typography.titleLarge,
                     maxLines = 4,

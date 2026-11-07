@@ -1336,6 +1336,30 @@ class CaptionScreenDeviceTest {
     // As on the iPhone, Clear can be taken back with Restore until something
     // new is typed, and a screen reader is told so each time it clears.
     @Test
+    fun typingGoesOnAfterWhatIsAlreadyWrittenWhenTheSayPadOrTheBigLettersOpen() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        assertTrue("no voice on the phone", within(15_000) { app.captions.canAskToRepeat() })
+        compose.onNodeWithContentDescription("Say something out loud").performClick()
+        compose.waitUntil(5_000) { sayFieldFocused() }
+        compose.onNode(hasSetTextAction()).performTextInput("Pharmacy")
+        compose.onNodeWithText("Close").performClick()
+
+        compose.onNodeWithContentDescription("Say something out loud").performClick()
+        compose.waitUntil(5_000) { sayFieldFocused() }
+        compose.onNode(hasSetTextAction()).performTextInput(" please")
+        compose.onNode(hasSetTextAction()).assert(hasText("Pharmacy please"))
+
+        compose.onNodeWithText("Full screen, big letters").performScrollTo().performClick()
+        compose.onNode(hasSetTextAction()).performTextInput(" now")
+        compose.onNode(hasSetTextAction()).assert(hasText("Pharmacy please now"))
+        compose.onNodeWithText("Clear").performClick()
+        compose.onNodeWithText("Restore").performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("!")
+        compose.onNode(hasSetTextAction()).assert(hasText("Pharmacy please now!"))
+        compose.onNodeWithText("Close").performClick()
+    }
+
+    @Test
     fun theBigLettersClearTurnsIntoRestoreWhichSurvivesTurningThePhoneIsDroppedByTypingAndIsSaidToAScreenReader() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val readerBefore = ScreenReader.isOn

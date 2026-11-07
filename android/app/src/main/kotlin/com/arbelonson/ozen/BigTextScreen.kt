@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -83,6 +84,9 @@ internal fun BigTextScreen(
     // Never smaller than her own captions, which can be set larger.
     val words = TextStyle(color = look.text, fontSize = maxOf(FONT_SIZE, captionSize).sp, fontWeight = FontWeight.Bold)
     val focus = remember { FocusRequester() }
+    // Opened on what the Say pad holds, or given it back by Restore: typing
+    // goes on after it, where a plain text field would put it in front.
+    var typing by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
     LaunchedEffect(flipped) { if (!flipped) focus.requestFocus() }
     Column(
         modifier = Modifier
@@ -104,8 +108,14 @@ internal fun BigTextScreen(
             }
         } else {
             BasicTextField(
-                value = text,
-                onValueChange = { cleared = BigTextClear.typed(it, cleared); onText(it) },
+                value = typingValue(text, typing),
+                onValueChange = {
+                    typing = it
+                    if (it.text != text) {
+                        cleared = BigTextClear.typed(it.text, cleared)
+                        onText(it.text)
+                    }
+                },
                 textStyle = words,
                 cursorBrush = SolidColor(look.text),
                 modifier = Modifier
