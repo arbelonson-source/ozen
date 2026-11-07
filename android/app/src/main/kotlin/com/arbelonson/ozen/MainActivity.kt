@@ -641,7 +641,7 @@ private fun OzenApp(
                                 onDismissNameAlert = app.captions::dismissNameAlertOffer,
                                 modelOffer = fitOffer?.takeIf { it.file != modelSwitch.downloadingFile },
                                 modelOfferWaiting = modelSwitch.let { it is PhoneModelSwitch.WaitingForWiFi && it.file == fitOffer?.file },
-                                onSwitchModel = { app.captions.phoneModels.choose(it.file) },
+                                onSwitchModel = { app.captions.phoneModels.replaceWith(it.file) },
                                 onDismissModelOffer = app.captions::dismissModelFitOffer,
                                 loadCrashCard = loadCrash?.let { lighter ->
                                     {
@@ -650,7 +650,7 @@ private fun OzenApp(
                                             lighter,
                                             onSwitch = {
                                                 app.captions.dismissLoadCrash()
-                                                app.captions.phoneModels.choose(lighter.file)
+                                                app.captions.phoneModels.replaceWith(lighter.file)
                                                 if (app.settings.current.value.phoneModel.file == lighter.file) onLaunch()
                                             },
                                             onRetry = {
@@ -1792,6 +1792,7 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, onSwitch: () 
                     )
                 }
             }
+            ReplacedModelLine()
             if (waiting) Text(
                 tr("ממתינים ל־Wi‑Fi כדי להוריד. אפשר לאשר בהגדרות הורדה בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings."),
                 color = colors.onSurfaceVariant,
@@ -1839,6 +1840,7 @@ private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, onSwitch:
                 )
             }
         }
+        ReplacedModelLine()
         Row(horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Page, Alignment.End), modifier = Modifier.fillMaxWidth()) {
             Text(
                 tr("נסו שוב", "Try again"),
@@ -1854,6 +1856,19 @@ private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, onSwitch:
             )
         }
     }
+}
+
+/** Said before the tap of a card that switches models: the one in use now is deleted once the new one is ready. */
+@Composable
+private fun ReplacedModelLine() {
+    val app = LocalContext.current.applicationContext as OzenApplication
+    val bytes = remember { app.captions.phoneModels.inUseBytes() } ?: return
+    Text(
+        tr("המודל שפועל עכשיו (%1) יימחק אז מהטלפון כדי לפנות מקום.", "The model in use now (%1) is then removed from the phone to free room.", listOf(ByteSize.text(bytes))),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(top = 8.dp).testTag("model-replaced-line"),
+    )
 }
 
 /** The conversation the app closed in the middle of, a tap away, as on the iPhone. */

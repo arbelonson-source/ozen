@@ -44,6 +44,12 @@ interface PhoneModels {
 
     fun choose(file: String, byHand: Boolean = false)
 
+    /** Like `choose`, for a model that suits the phone better: the model in use now is deleted once the new one is chosen and on the phone. */
+    fun replaceWith(file: String)
+
+    /** The size of the model in use on the phone, or null when its file is not there. */
+    fun inUseBytes(): Long?
+
     /** The connection or the cellular switch changed: a model waiting for Wi-Fi or a connection starts now if it can. */
     fun resumeWaiting()
 
@@ -89,6 +95,8 @@ class PhoneModelChooser(
 
     private var stopDownload: AtomicBoolean? = null
 
+    private var replaced: String? = null
+
     // A download that broke off for a reason a later try can mend (the
     // connection dropped, not a file that arrived damaged) is tried again by
     // itself, so the person who left Settings does not have to come back and
@@ -111,8 +119,18 @@ class PhoneModelChooser(
         if (byHand) rememberChoiceAgainstWarning(file)
         picks += 1
         failures = 0
+        synchronized(lock) { replaced = null }
         start(file)
     }
+
+    override fun replaceWith(file: String) {
+        picks += 1
+        failures = 0
+        synchronized(lock) { replaced = settings.current.value.phoneModel.file.takeIf { it != file } }
+        start(file)
+    }
+
+    override fun inUseBytes(): Long? = File(modelFolder, settings.current.value.phoneModel.file).takeIf { it.isFile }?.length()
 
     private fun rememberChoiceAgainstWarning(file: String) {
         val current = settings.current.value
@@ -132,7 +150,10 @@ class PhoneModelChooser(
             brokeOff = null
             switchState.value = PhoneModelSwitch.Idle
             when (PhoneModelChoice.plan(model, current.phoneModel, installedState.value)) {
-                PhoneModelChoice.Plan.UseNow -> use(model)
+                PhoneModelChoice.Plan.UseNow -> {
+                    use(model)
+                    removeReplaced(model)
+                }
                 PhoneModelChoice.Plan.DownloadFirst -> download(model)
             }
         }
@@ -175,6 +196,22 @@ class PhoneModelChooser(
             }
         }
         if (before.file != model.file) applied()
+    }
+
+    private fun removeReplaced(model: PhoneModel) {
+        val old = replaced ?: return
+        replaced = null
+        if (settings.current.value.phoneModel.file != model.file) return
+        PhoneModelDeletion(modelFolder, settings.current.value.phoneModel.file, remove).delete(old)
+        refreshInstalled()
+    }
+
+    private fun removeStrayParts(model: PhoneModel) {
+        val keep = setOf(model.file, settings.current.value.phoneModel.file)
+        for (entry in PhoneModelStorage(modelFolder, "").list()) {
+            if (entry.name.endsWith(".part") && entry.name.removeSuffix(".part") !in keep) remove(File(modelFolder, entry.name))
+        }
+        refreshInstalled()
     }
 
     private fun download(model: PhoneModel) {
@@ -220,7 +257,11 @@ class PhoneModelChooser(
             refreshInstalled()
             if (outcome.isSuccess) {
                 switchState.value = PhoneModelSwitch.Idle
-                use(model)
+                synchronized(lock) {
+                    use(model)
+                    removeReplaced(model)
+                    removeStrayParts(model)
+                }
             } else if (lostWiFi) {
                 switchState.value = PhoneModelSwitch.WaitingForWiFi(model.file)
                 resumeWaiting()

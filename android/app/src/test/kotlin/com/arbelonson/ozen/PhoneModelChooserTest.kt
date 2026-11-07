@@ -785,4 +785,108 @@ class PhoneModelChooserTest {
         chooser.choose("ggml-small-q5_1.bin")
         assertEquals(1, downloadsStarted)
     }
+
+    private fun onPhone(file: String) = File(models, file).isFile
+
+    @Test
+    fun `replacing the model in use with one that must download keeps it during the download and deletes it after`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        chooser.replaceWith("ggml-base-q5_1.bin")
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        assertFalse(onPhone("ggml-ozen-a3-q5_0.bin"))
+        assertEquals(setOf("ggml-base-q5_1.bin"), chooser.installed.value)
+    }
+
+    @Test
+    fun `replacing the model in use with one already on the phone deletes the old one at once`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        chooser.replaceWith("ggml-small-q5_1.bin")
+        assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
+        assertFalse(onPhone("ggml-ozen-a3-q5_0.bin"))
+        assertEquals(setOf("ggml-small-q5_1.bin"), chooser.installed.value)
+    }
+
+    @Test
+    fun `a replacing download that fails for good keeps the old model`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        breaksLeft = -1
+        chooser.replaceWith("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        runOutTheWaits()
+        assertEquals(PhoneModelSwitch.Failed("ggml-base-q5_1.bin"), chooser.switching.value)
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+    }
+
+    @Test
+    fun `choosing the old model back, or another one, while a replacing download waits keeps the old model`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        breaksLeft = 1
+        chooser.replaceWith("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        chooser.choose("ggml-ozen-a3-q5_0.bin")
+        runOutTheWaits()
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        breaksLeft = 1
+        chooser.replaceWith("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        chooser.choose("ggml-small-q5_1.bin")
+        runOutTheWaits()
+        assertEquals("ggml-small-q5_1.bin", saved().phoneModelFile)
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        assertTrue(onPhone("ggml-small-q5_1.bin"))
+    }
+
+    @Test
+    fun `a replacing download that waited for Wi-Fi deletes the old model once it arrives`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        network = NetworkConditions.cellular
+        chooser.replaceWith("ggml-base-q5_1.bin")
+        assertTrue(chooser.switching.value is PhoneModelSwitch.WaitingForWiFi)
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        network = NetworkConditions.wifi
+        chooser.resumeWaiting()
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        assertFalse(onPhone("ggml-ozen-a3-q5_0.bin"))
+    }
+
+    @Test
+    fun `a plain choice keeps the old model`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        chooser.choose("ggml-small-q5_1.bin")
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        assertTrue(onPhone("ggml-small-q5_1.bin"))
+    }
+
+    @Test
+    fun `a finished download deletes the unfinished downloads of other models but not whole models`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-small-q5_1.bin")
+        have("ggml-large-v3-turbo-q5_0.bin.part")
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertEquals("ggml-base-q5_1.bin", saved().phoneModelFile)
+        assertFalse(onPhone("ggml-large-v3-turbo-q5_0.bin.part"))
+        assertTrue(onPhone("ggml-ozen-a3-q5_0.bin"))
+        assertTrue(onPhone("ggml-small-q5_1.bin"))
+        assertTrue(chooser.partial.value.isEmpty())
+    }
+
+    @Test
+    fun `an unfinished download is kept while the download that finished is of another model failing`() {
+        have("ggml-ozen-a3-q5_0.bin")
+        have("ggml-large-v3-turbo-q5_0.bin.part")
+        corrupt = true
+        chooser.choose("ggml-base-q5_1.bin")
+        scope.runCurrent()
+        assertTrue(onPhone("ggml-large-v3-turbo-q5_0.bin.part"))
+    }
 }

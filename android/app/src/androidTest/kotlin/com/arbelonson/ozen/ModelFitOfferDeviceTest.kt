@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import java.io.File
 import com.arbelonson.ozen.core.Localization
@@ -86,6 +87,7 @@ class ModelFitOfferDeviceTest {
     @Test
     fun aModelThatFellBehindOffersTheLighterOneAndSwitchChoosesIt() {
         assertTrue("put ${small.file} in ${app.filesDir}: without it the switch starts a download the test runner blocks", File(app.filesDir, small.file).isFile)
+        modelFiles.hold(keep = small.file)
         fallBehindOnTurbo()
         captionsStopped()
         compose.onNodeWithText(title).assertExists()
@@ -195,5 +197,30 @@ class ModelFitOfferDeviceTest {
             app.captions.networkNow = networkBefore
             app.settings.change { it.allowCellularModelDownload = cellularBefore }
         }
+    }
+
+    @Test
+    fun theCardSaysHowMuchRoomFreeingTheModelInUseGivesBack() {
+        modelFiles.hold()
+        val running = File(app.filesDir, PhoneModelCatalog.recommended(UILanguage.English).file)
+        running.writeBytes(ByteArray(3_000_000))
+        try {
+            fallBehindOnTurbo()
+            captionsStopped()
+            compose.onNodeWithText(title).assertExists()
+            val line = "The model in use now (${ByteSize.text(3_000_000)}) is then removed from the phone to free room."
+            compose.onNodeWithText(line).assertExists()
+        } finally {
+            running.delete()
+        }
+    }
+
+    @Test
+    fun theCardSaysNothingAboutRemovalWhenTheModelInUseIsNotOnThePhone() {
+        modelFiles.hold()
+        fallBehindOnTurbo()
+        captionsStopped()
+        compose.onNodeWithText(title).assertExists()
+        compose.onNodeWithTag("model-replaced-line").assertDoesNotExist()
     }
 }
