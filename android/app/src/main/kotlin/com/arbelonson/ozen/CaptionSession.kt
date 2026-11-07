@@ -718,6 +718,10 @@ class CaptionSession(
         note("Captions restarted by the phone after the app was ended")
         if (ServiceRestart.shouldListen(systemRestart = true, mayStartCaptions = mayStartCaptions())) return true
         note("Captions not started again: the app was ended while it set up the model")
+        // Starting up took the marker. Android may end this process again
+        // before she opens Ozen, and the next start must still know the
+        // model didn't load, or it would load it again in front of her.
+        loadMarker.begin(settings.current.value.phoneModel.file)
         tellRestartRefused()
         return false
     }

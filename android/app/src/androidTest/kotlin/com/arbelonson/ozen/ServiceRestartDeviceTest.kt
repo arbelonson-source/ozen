@@ -63,6 +63,7 @@ class ServiceRestartDeviceTest {
         assertFalse(app.captions.mayStartCaptions())
         val listen = app.captions.resumeAfterRestart()
         assertFalse(listen)
+        assertEquals("the next start would not know the model didn't load", "loading $heavy", PreferencesMarkerStore(app).read())
         assertEquals(PipelinePhase.Idle, app.captions.pipeline.phase)
         val until = System.currentTimeMillis() + 5_000
         while (stoppedNotice() == null && System.currentTimeMillis() < until) Thread.sleep(100)
