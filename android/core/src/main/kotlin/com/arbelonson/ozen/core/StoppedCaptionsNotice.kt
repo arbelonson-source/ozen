@@ -6,12 +6,13 @@ package com.arbelonson.ozen.core
  * With the phone in a pocket or on the table with the screen off, the
  * doorbell and name alerts are the whole point of leaving captions on.
  * When captions stop there and nothing will bring them back by itself,
- * those alerts stop too, and nothing on a dark screen says so. Two ways
+ * those alerts stop too, and nothing on a dark screen says so. Three ways
  * that happens:
  *
  * - a failure automatic recovery won't retry, or has given up on;
  * - a phone call ends but the system never hands the microphone back, which
- *   it doesn't promise to do.
+ *   it doesn't promise to do;
+ * - the phone ended the app and it came back without being able to listen.
  *
  * The notice is withdrawn from the notification shade once captions run
  * again, or are paused or stopped on purpose, so an old "stopped" never
@@ -24,6 +25,9 @@ class StoppedCaptionsNotice {
 
         /** The call is over, but the microphone didn't come back. */
         data object CallEnded : Cause()
+
+        /** The phone ended the app and could not bring captions back by itself. */
+        data object EndedByPhone : Cause()
     }
 
     sealed class Update {
@@ -122,6 +126,7 @@ class StoppedCaptionsNotice {
         )
 
         private fun body(cause: Cause): String = when (cause) {
+            Cause.EndedByPhone -> tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
             Cause.CallEnded -> tr(
                 "אחרי השיחה הכתוביות לא חזרו לבד. פתחו את אוזן כדי להמשיך.",
                 "After the call, captions didn't come back on their own. Open Ozen to continue.",

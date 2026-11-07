@@ -380,6 +380,7 @@ class CaptionSession(
         set(active) {
             if (active != field) note(if (active) "app back on screen" else "app left the screen (phase ${if (pipeline.phase.isListening) "listening" else "not listening"})")
             val changed = active != field
+            if (active) restartRefused = false
             field = active
             checkCaptionsStillRunning()
             if (changed && active) cameBack()
@@ -578,6 +579,7 @@ class CaptionSession(
     internal fun saveRecording(record: TranscriptSessionRecord): HistorySave = conversations.saveRecording(record)
 
     fun listen() {
+        restartRefused = false
         replies.userTookControl()
         scope.launch {
             val current = settings.current.value
@@ -692,12 +694,43 @@ class CaptionSession(
      * a call that ended without giving the microphone back.
      */
     private fun checkCaptionsStillRunning() {
-        val cause = StoppedCaptionsNotice.cause(pipeline.phase, pipeline.isRecoveringByItself, interruptedBySystem, callEndedDuringInterruption = false)
+        val cause = if (restartRefused) StoppedCaptionsNotice.Cause.EndedByPhone else StoppedCaptionsNotice.cause(pipeline.phase, pipeline.isRecoveringByItself, interruptedBySystem, callEndedDuringInterruption = false)
         when (val update = stoppedCaptions.update(cause, appIsActive, settings.current.value.notifyWhenInBackground)) {
             is StoppedCaptionsNotice.Update.Post -> if (!notifier.post(update.content)) stoppedCaptions.postFailed()
             is StoppedCaptionsNotice.Update.Withdraw -> notifier.withdraw(update.identifier)
             null -> Unit
         }
+    }
+
+    /**
+     * Captions that Android ended with the app could not be started again;
+     * she is told, the journal says why. Opening the app shows her what
+     * happened, so the notice has done its job.
+     */
+    private var restartRefused = false
+
+    /**
+     * The phone started the listening service again after ending the app.
+     * Whether captions may start is [ServiceRestart]'s call; when they may
+     * not, the stopped-captions notice says so.
+     */
+    fun resumeAfterRestart(): Boolean {
+        note("Captions restarted by the phone after the app was ended")
+        if (ServiceRestart.shouldListen(systemRestart = true, mayStartCaptions = mayStartCaptions())) return true
+        note("Captions not started again: the app was ended while it set up the model")
+        tellRestartRefused()
+        return false
+    }
+
+    /** The system refused the listening service its foreground status; captions are not started. */
+    fun foregroundRefused(error: Exception) {
+        note("The phone refused the listening service a foreground start: ${error.javaClass.simpleName}")
+        tellRestartRefused()
+    }
+
+    private fun tellRestartRefused() {
+        restartRefused = true
+        checkCaptionsStillRunning()
     }
 
     private fun publish() {
