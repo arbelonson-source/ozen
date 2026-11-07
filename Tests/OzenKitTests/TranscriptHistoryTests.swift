@@ -536,6 +536,60 @@ struct TranscriptHistoryTests {
         #expect(text == "שיחה מתאריך 01.01.1970\n\n[01:01:01] סבתא: שלום\n[01:01:05] מה נשמע")
     }
 
+    private func threeConversationsNewestFirst() -> [TranscriptSessionRecord] {
+        [
+            record(startedAt: 176_400, segments: [segment(text: "טוב", startTimestamp: 176_400)]),
+            record(startedAt: 90_000, segments: [segment(text: "מה נשמע", startTimestamp: 90_000)]),
+            record(startedAt: 3_661, segments: [segment(text: "שלום", speakerName: "סבתא", startTimestamp: 3_661)]),
+        ]
+    }
+
+    @Test("sharing everything has nothing to share without conversations")
+    func exportAllTextIsNilWithoutRecords() {
+        #expect(TranscriptHistoryStore.exportAllText([], utcOffsetAt: { _ in 0 }, marksUncertain: false) == nil)
+    }
+
+    @Test("sharing everything with one conversation is the heading and that conversation's own share text")
+    func exportAllTextOfOneRecord() {
+        let only = record(startedAt: 3_661, segments: [segment(text: "שלום", speakerName: "סבתא", startTimestamp: 3_661)])
+        #expect(TranscriptHistoryStore.exportAllText([only], utcOffsetAt: { _ in 0 }, marksUncertain: false)
+            == "כל השיחות מתוך אוזן\n\nשיחה מתאריך 01.01.1970\n\n[01:01:01] סבתא: שלום")
+    }
+
+    @Test("sharing everything writes the oldest conversation first, a rule between them and none after the last")
+    func exportAllTextIsOldestFirstWithSeparators() {
+        let rule = "\n\n──────────\n\n"
+        let expected = "כל השיחות מתוך אוזן\n\n"
+            + "שיחה מתאריך 01.01.1970\n\n[01:01:01] סבתא: שלום" + rule
+            + "שיחה מתאריך 02.01.1970\n\n[01:00:00] מה נשמע" + rule
+            + "שיחה מתאריך 03.01.1970\n\n[01:00:00] טוב"
+        let records = threeConversationsNewestFirst()
+        #expect(TranscriptHistoryStore.exportAllText(records, utcOffsetAt: { _ in 0 }, marksUncertain: false) == expected)
+        #expect(TranscriptHistoryStore.exportAllText(records.reversed(), utcOffsetAt: { _ in 0 }, marksUncertain: false) == expected)
+    }
+
+    @Test("sharing everything marks the lines the screen was unsure of, unless the marks are turned off")
+    func exportAllTextPassesUncertainMarkingThrough() {
+        var unsure = segment(text: "שני כדורים בעשר וחצי", speakerName: "רופא", startTimestamp: 3_661)
+        unsure.confidence = 0.7
+        let session = record(startedAt: 3_661, segments: [unsure])
+        #expect(TranscriptHistoryStore.exportAllText([session], utcOffsetAt: { _ in 0 }, marksUncertain: true)
+            == "כל השיחות מתוך אוזן\n\nשיחה מתאריך 01.01.1970\n\n[01:01:01] ייתכן שלא נשמע נכון. רופא: שני כדורים בעשר וחצי")
+        #expect(TranscriptHistoryStore.exportAllText([session], utcOffsetAt: { _ in 0 }, marksUncertain: false)
+            == "כל השיחות מתוך אוזן\n\nשיחה מתאריך 01.01.1970\n\n[01:01:01] רופא: שני כדורים בעשר וחצי")
+    }
+
+    @Test("the file of everything is named by today's date on the phone's clock, in the app's language")
+    func exportAllFileNameUsesTheLocalDate() {
+        Localization.$override.withValue(.hebrew) {
+            #expect(TranscriptHistoryStore.exportAllFileName(now: 1_700_000_000, utcOffsetSeconds: 0) == "שיחות מתוך אוזן 2023-11-14.txt")
+        }
+        Localization.$override.withValue(.english) {
+            #expect(TranscriptHistoryStore.exportAllFileName(now: 1_700_000_000, utcOffsetSeconds: 0) == "Conversations from Ozen 2023-11-14.txt")
+            #expect(TranscriptHistoryStore.exportAllFileName(now: 1_700_000_000, utcOffsetSeconds: 10_800) == "Conversations from Ozen 2023-11-15.txt")
+        }
+    }
+
     @Test("shared text warns on a line the screen marked unsure, unless the marks are turned off")
     func exportTextWarnsOnUnsureLines() {
         var unsure = segment(text: "שני כדורים בעשר וחצי", speakerName: "רופא", startTimestamp: 3_661)

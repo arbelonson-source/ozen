@@ -1076,6 +1076,29 @@ public struct TranscriptHistoryStore: Sendable {
         )
     }
 
+    /// Every saved conversation as one text, to keep or move elsewhere:
+    /// a heading, then each conversation exactly as its own share text,
+    /// oldest first, with a rule between neighbours and none after the
+    /// last. `nil` when there is nothing to share.
+    public static func exportAllText(_ records: [TranscriptSessionRecord], utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool) -> String? {
+        guard !records.isEmpty else { return nil }
+        let oldestFirst = records.enumerated()
+            .sorted { ($0.element.startedAt, $0.offset) < ($1.element.startedAt, $1.offset) }
+            .map(\.element)
+        let body = oldestFirst
+            .map { exportText($0, utcOffsetAt: offset, marksUncertain: marksUncertain) }
+            .joined(separator: "\n\n──────────\n\n")
+        return "\(tr("כל השיחות מתוך אוזן", "All conversations from Ozen"))\n\n\(body)"
+    }
+
+    /// "Conversations from Ozen 2026-11-07.txt": the date is the phone's
+    /// own at `now`.
+    public static func exportAllFileName(now: TimeInterval, utcOffsetSeconds: Int) -> String {
+        let date = CivilDate(daysSinceEpoch: CivilDate.localDay(of: now, utcOffsetSeconds: utcOffsetSeconds))
+        let day = "\(date.year)-\(twoDigits(date.month))-\(twoDigits(date.day))"
+        return tr("שיחות מתוך אוזן %1", "Conversations from Ozen %1", args: ["\(day)"]) + ".txt"
+    }
+
     /// A long conversation shared as text opens with the lines that had a
     /// time, an amount or a phone number in them (see `NumberEmphasis`), so
     /// whoever reads it in a chat finds what the doctor said without

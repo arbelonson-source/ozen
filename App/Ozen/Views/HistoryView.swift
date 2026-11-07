@@ -306,6 +306,16 @@ struct HistoryView: View {
         .navigationTitle(tr("היסטוריה", "History"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if !sessions.isEmpty {
+                ToolbarItem(placement: .primaryAction) {
+                    ShareLink(
+                        item: AllConversationsExport(store: viewModel.historyStore, marksUncertain: viewModel.display.markUncertainLines),
+                        preview: SharePreview(tr("כל השיחות מתוך אוזן", "All conversations from Ozen"))
+                    ) {
+                        Label(tr("שיתוף כל השיחות", "Share all conversations"), systemImage: "square.and.arrow.up")
+                    }
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button(role: .destructive) {
                     confirmingDeleteAll = true

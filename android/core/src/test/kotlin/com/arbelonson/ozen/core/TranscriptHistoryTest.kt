@@ -664,6 +664,63 @@ class TranscriptHistoryTest {
         assertEquals("שיחה מתאריך 01.01.1970\n\n[01:01:01] סבתא: שלום\n[01:01:05] מה נשמע", text)
     }
 
+    private fun threeConversationsNewestFirst() = listOf(
+        record(startedAt = 176_400.0, segments = listOf(segment(text = "טוב", startTimestamp = 176_400.0))),
+        record(startedAt = 90_000.0, segments = listOf(segment(text = "מה נשמע", startTimestamp = 90_000.0))),
+        record(startedAt = 3_661.0, segments = listOf(segment(text = "שלום", speakerName = "סבתא", startTimestamp = 3_661.0))),
+    )
+
+    @Test
+    fun `sharing everything has nothing to share without conversations`() {
+        assertNull(TranscriptHistoryStore.exportAllText(emptyList(), utcOffsetAt = { 0 }, marksUncertain = false))
+    }
+
+    @Test
+    fun `sharing everything with one conversation is the heading and that conversation's own share text`() {
+        val only = record(startedAt = 3_661.0, segments = listOf(segment(text = "שלום", speakerName = "סבתא", startTimestamp = 3_661.0)))
+        assertEquals(
+            "כל השיחות מתוך אוזן\n\nשיחה מתאריך 01.01.1970\n\n[01:01:01] סבתא: שלום",
+            TranscriptHistoryStore.exportAllText(listOf(only), utcOffsetAt = { 0 }, marksUncertain = false),
+        )
+    }
+
+    @Test
+    fun `sharing everything writes the oldest conversation first, a rule between them and none after the last`() {
+        val rule = "\n\n──────────\n\n"
+        val expected = "כל השיחות מתוך אוזן\n\n" +
+            "שיחה מתאריך 01.01.1970\n\n[01:01:01] סבתא: שלום" + rule +
+            "שיחה מתאריך 02.01.1970\n\n[01:00:00] מה נשמע" + rule +
+            "שיחה מתאריך 03.01.1970\n\n[01:00:00] טוב"
+        val records = threeConversationsNewestFirst()
+        assertEquals(expected, TranscriptHistoryStore.exportAllText(records, utcOffsetAt = { 0 }, marksUncertain = false))
+        assertEquals(expected, TranscriptHistoryStore.exportAllText(records.reversed(), utcOffsetAt = { 0 }, marksUncertain = false))
+    }
+
+    @Test
+    fun `sharing everything marks the lines the screen was unsure of, unless the marks are turned off`() {
+        val unsure = segment(text = "שני כדורים בעשר וחצי", speakerName = "רופא", startTimestamp = 3_661.0).copy(confidence = 0.7f)
+        val session = record(startedAt = 3_661.0, segments = listOf(unsure))
+        assertEquals(
+            "כל השיחות מתוך אוזן\n\nשיחה מתאריך 01.01.1970\n\n[01:01:01] ייתכן שלא נשמע נכון. רופא: שני כדורים בעשר וחצי",
+            TranscriptHistoryStore.exportAllText(listOf(session), utcOffsetAt = { 0 }, marksUncertain = true),
+        )
+        assertEquals(
+            "כל השיחות מתוך אוזן\n\nשיחה מתאריך 01.01.1970\n\n[01:01:01] רופא: שני כדורים בעשר וחצי",
+            TranscriptHistoryStore.exportAllText(listOf(session), utcOffsetAt = { 0 }, marksUncertain = false),
+        )
+    }
+
+    @Test
+    fun `the file of everything is named by today's date on the phone's clock, in the app's language`() {
+        Localization.withLanguage(UILanguage.Hebrew) {
+            assertEquals("שיחות מתוך אוזן 2023-11-14.txt", TranscriptHistoryStore.exportAllFileName(now = 1_700_000_000.0, utcOffsetSeconds = 0))
+        }
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("Conversations from Ozen 2023-11-14.txt", TranscriptHistoryStore.exportAllFileName(now = 1_700_000_000.0, utcOffsetSeconds = 0))
+            assertEquals("Conversations from Ozen 2023-11-15.txt", TranscriptHistoryStore.exportAllFileName(now = 1_700_000_000.0, utcOffsetSeconds = 10_800))
+        }
+    }
+
     @Test
     fun `shared text warns on a line the screen marked unsure, unless the marks are turned off`() {
         val unsure = segment(text = "שני כדורים בעשר וחצי", speakerName = "רופא", startTimestamp = 3_661.0).copy(confidence = 0.7f)

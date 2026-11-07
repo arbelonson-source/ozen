@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -119,6 +120,7 @@ import com.arbelonson.ozen.ui.SettingSwitchRow
 import com.arbelonson.ozen.ui.SettingsGroup
 import com.arbelonson.ozen.ui.TrailingValue
 import java.io.File
+import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
@@ -225,6 +227,7 @@ fun HistoryScreen(
         speakerFilter = TranscriptSessionSummary.speakerFilter(speakerFilter, keptAfterLoading = list.summaries, everyConversation = !searching)
     }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var pendingRetentionValue by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingDeletionID by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmingDeleteAll by rememberSaveable { mutableStateOf(false) }
@@ -306,6 +309,11 @@ fun HistoryScreen(
                         onSaving = conversations::switchSaving,
                         onRetention = { choice ->
                             if (choice.expiringCount(shown.summaries, System.currentTimeMillis() / 1_000.0) != 0) pendingRetentionValue = choice.rawValue else keepFor(choice)
+                        },
+                        onShareAll = if (shown.summaries.isNotEmpty()) {
+                            { scope.launch { shareOrSayFull(context) { allConversationsShareSheet(context, conversations, marksUncertain, languageCode) } } }
+                        } else {
+                            null
                         },
                     )
                 }
@@ -464,6 +472,7 @@ private fun SavingSection(
     failure: String?,
     onSaving: (Boolean) -> Unit,
     onRetention: (HistoryRetention) -> Unit,
+    onShareAll: (() -> Unit)?,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (saving && failure != null) {
@@ -499,6 +508,9 @@ private fun SavingSection(
                     }
                 }
             }
+            // Here and not beside "Delete all": at the biggest text on a small phone the top bar
+            // had no room for both, and Close was squeezed out.
+            if (onShareAll != null) item { SettingRow(tr("שיתוף כל השיחות", "Share all conversations"), onClick = onShareAll) }
         }
         GroupFootnote(HistoryTexts.savingFooter(saving, size, retention))
     }
@@ -713,7 +725,7 @@ internal fun ConversationScreen(
                 // down, the conversation can still be shared, named or deleted,
                 // and each jump goes on from where the last one left the list.
                 FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ActionChip(Icons.Rounded.Share, tr("שיתוף", "Share"), onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { shareSheet(context, shown.record, marksUncertain, languageCode) }) } })
+                    ActionChip(Icons.Rounded.Share, tr("שיתוף", "Share"), onClick = { scope.launch { shareOrSayFull(context) { shareSheet(context, shown.record, marksUncertain, languageCode) } } })
                     ActionChip(Icons.Rounded.Edit, tr("מתן שם לשיחה", "Name this conversation"), onClick = { naming = shown.record.title ?: "" })
                     ActionChip(Icons.Rounded.Delete, tr("מחיקה", "Delete"), onClick = { confirmingDelete = true }, colour = MaterialTheme.colorScheme.error)
                     if (shown.matches.size > 1) {
@@ -1091,8 +1103,43 @@ private val SEARCH_MATCH = Color(red = 1f, green = 0.84f, blue = 0.04f, alpha = 
  */
 private const val LONGEST_SHARED_TEXT = 50_000
 
+/**
+ * Makes the share sheet off the main thread and opens it. Writing the file
+ * can fail on a full phone, and the exception used to escape the tap's
+ * coroutine and close the app: it says the phone is full instead.
+ */
+internal suspend fun shareOrSayFull(context: Context, sheet: () -> Intent?): Boolean {
+    val made = try {
+        withContext(Dispatchers.IO) { sheet() }
+    } catch (error: IOException) {
+        Toast.makeText(context, tr("אין מספיק מקום פנוי בטלפון", "Not enough free space on the phone"), Toast.LENGTH_LONG).show()
+        return false
+    }
+    made?.let(context::startActivity)
+    return made != null
+}
+
 private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksUncertain: Boolean, languageCode: String): Intent =
     textShareSheet(context, tr("שיחה מתוך אוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain, usesDecimalComma(languageCode)))
+
+/**
+ * Every saved conversation as one text file, sent through the share sheet:
+ * the way to keep them all, as cloud backup is off. Null when none is saved.
+ */
+internal fun allConversationsShareSheet(context: Context, conversations: SavedConversations, marksUncertain: Boolean, languageCode: String): Intent? {
+    val records = conversations.list().mapNotNull { conversations.load(it.id) }
+    val text = TranscriptHistoryStore.exportAllText(records, ::localOffset, marksUncertain, usesDecimalComma(languageCode)) ?: return null
+    val now = System.currentTimeMillis() / 1_000.0
+    val file = SharedFile.create(context.cacheDir, TranscriptHistoryStore.exportAllFileName(now, localOffset(now)))
+    file.writeText(text, Charsets.UTF_8)
+    val uri = FileProvider.getUriForFile(context, context.packageName + ".share", file)
+    val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+        .putExtra(Intent.EXTRA_SUBJECT, tr("כל השיחות מתוך אוזן", "All conversations from Ozen"))
+        .putExtra(Intent.EXTRA_STREAM, uri)
+        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    send.clipData = ClipData.newRawUri(null, uri)
+    return Intent.createChooser(send, null)
+}
 
 /** The share sheet for a conversation or the starred lines: as a message, or past [LONGEST_SHARED_TEXT] as a file. */
 internal fun textShareSheet(context: Context, subject: String, text: String): Intent {

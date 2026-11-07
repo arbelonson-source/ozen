@@ -54,6 +54,7 @@ import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import java.io.File
+import java.io.IOException
 import java.time.Instant
 import java.time.MonthDay
 import java.time.ZoneId
@@ -61,6 +62,8 @@ import java.time.ZonedDateTime
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -363,6 +366,59 @@ class HistoryScreenDeviceTest {
         waitFor("Share")
         compose.onNodeWithText("Share").performClick()
         compose.waitUntil(5_000) { started.isNotEmpty() }
+    }
+
+    @Test
+    fun shareAllConversationsSendsEverySavedConversationAsOneTextFileOldestFirst() {
+        val now = System.currentTimeMillis() / 1_000.0
+        seed("Share all test newer conversation" to "Dana", startedAt = now - 60)
+        seed("Share all test older conversation" to null, startedAt = now - 7_200)
+        val started = CopyOnWriteArrayList<Intent>()
+        val sheet = startsHeldBack(started)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.addMonitor(sheet)
+        try {
+            app.settings.change { it.display = it.display.copy(markUncertainLines = true) }
+            compose.onNodeWithText("History").performClick()
+            waitFor("Share all test newer conversation")
+            compose.onNodeWithText("Share all conversations").performClick()
+            compose.waitUntil(5_000) { started.isNotEmpty() }
+            val chooser = started.single()
+            assertEquals(Intent.ACTION_CHOOSER, chooser.action)
+            @Suppress("DEPRECATION")
+            val send = chooser.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+            assertEquals(Intent.ACTION_SEND, send.action)
+            assertEquals("text/plain", send.type)
+            assertNull(send.getStringExtra(Intent.EXTRA_TEXT))
+            @Suppress("DEPRECATION")
+            val file = send.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)!!
+            assertEquals("content", file.scheme)
+            assertTrue(send.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+            val everyRecord = store.listSummaries().mapNotNull { store.load(it.id) }
+            val expected = TranscriptHistoryStore.exportAllText(everyRecord, ::offsetHere, marksUncertain = true)!!
+            val bytes = app.contentResolver.openInputStream(file)!!.use { it.readBytes() }
+            assertEquals(expected, bytes.toString(Charsets.UTF_8))
+            assertTrue(expected, expected.startsWith("All conversations from Ozen\n\n"))
+            assertTrue(expected, expected.indexOf("Share all test older conversation") < expected.indexOf("Share all test newer conversation"))
+            assertTrue(expected, expected.contains("Dana: Share all test newer conversation"))
+        } finally {
+            instrumentation.removeMonitor(sheet)
+        }
+    }
+
+    @Test
+    fun shareAllConversationsIsNotOfferedWhenNothingIsSaved() {
+        // History on the test phone is test data: the delete-all test empties it too.
+        store.listSummaries().forEach { store.delete(it.id) }
+        compose.onNodeWithText("History").performClick()
+        waitFor("Delete all")
+        compose.onNodeWithText("Share all conversations").assertDoesNotExist()
+    }
+
+    @Test
+    fun aShareWhoseFileCannotBeWrittenSaysThePhoneIsFullInsteadOfClosingTheApp() {
+        val shared = runBlocking(Dispatchers.Main) { shareOrSayFull(app) { throw IOException("No space left on device") } }
+        assertFalse(shared)
     }
 
     @Test
