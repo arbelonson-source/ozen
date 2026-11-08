@@ -60,6 +60,13 @@ enum ScreenshotFixtures {
 
     @MainActor
     static func viewModel(variant: Variant) -> LiveCaptionViewModel {
+        // As an app that iOS ended while listening would have left it: the
+        // view model below finds and clears it as it is made.
+        if ProcessInfo.processInfo.arguments.contains("-uiTestListeningCut") {
+            let aliveAt = Date().timeIntervalSince1970 - 5 * 3_600
+            let record = ListeningCut.Record(startedAt: aliveAt - 3_600, aliveAt: aliveAt, version: ListeningRecords.appVersion)
+            UserDefaultsListeningStore().write(ListeningCut.encode(record))
+        }
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ozen-screenshot-\(UUID().uuidString).json")
         if variant == .homeServer || variant == .cloud || variant == .cloudEnglish {

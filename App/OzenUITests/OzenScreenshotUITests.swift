@@ -270,6 +270,36 @@ final class OzenScreenshotUITests: XCTestCase {
         try run(variant: "english", name: "english")
     }
 
+    /// iOS ended Ozen in the night while it was listening; the next launch
+    /// says so once. A killed app is simulated by a record left in the
+    /// phone's storage (see `-uiTestListeningCut` in `ScreenshotFixtures`),
+    /// five hours old. Launching again without it finds nothing to say.
+    func testListeningCutIsToldOnceAfterTheAppWasEnded() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "english", "-uiTestListeningCut"]
+        app.launch()
+
+        let text = app.staticTexts["listeningCutText"]
+        XCTAssertTrue(text.waitForExistence(timeout: 15), "no listening-cut card after launching with a leftover record")
+        XCTAssertTrue(text.label.contains("Listening stopped at about"), "card text was: \(text.label)")
+        XCTAssertTrue(text.label.contains("5 hours"), "card text was: \(text.label)")
+        XCTAssertTrue(text.label.contains("Alerts couldn't come during that time."), "card text was: \(text.label)")
+        capture(app, name: "listening-cut-card")
+
+        let ok = app.buttons["listeningCutDismiss"]
+        XCTAssertTrue(ok.exists, "the card has no OK button")
+        ok.tap()
+        XCTAssertTrue(text.waitForNonExistence(timeout: 5), "the card stayed after OK")
+
+        app.terminate()
+        let again = XCUIApplication()
+        again.launchArguments = ["-uiTestScreenshots", "english"]
+        again.launch()
+        XCTAssertTrue(again.descendants(matching: .any)["transcriptScroll"].waitForExistence(timeout: 15), "the caption screen never appeared")
+        Thread.sleep(forTimeInterval: 2)
+        XCTAssertFalse(again.staticTexts["listeningCutText"].exists, "the card came back after it was dismissed")
+    }
+
     /// Past the screen's line limit, a line she scrolled back to must hold
     /// still while new ones arrive: each new one used to take the top line
     /// away, moving everything she read up a row.

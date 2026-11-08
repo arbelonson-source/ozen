@@ -245,6 +245,7 @@ struct LiveCaptionView: View {
         // phone saving can fail before the caption screen exists.
         .announcing(savingTroubleAnnouncement, whenTurningTrue: viewModel.savingTrouble.shouldShow, alsoWhenFirstShown: true)
         .announcing(microphoneDropAnnouncement, whenTurningTrue: viewModel.microphoneDrop.title != nil, alsoWhenFirstShown: true)
+        .announcing(viewModel.listeningCut?.text() ?? "", whenTurningTrue: viewModel.listeningCut != nil, alsoWhenFirstShown: true)
         // Each new battery warning, a critical one after a low one too: the
         // banner only buzzed, and a reader who can't see it missed that the
         // phone may shut down.
@@ -315,6 +316,12 @@ struct LiveCaptionView: View {
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
+            if let cut = viewModel.listeningCut {
+                ListeningCutBanner(text: cut.text()) {
+                    withAnimation { viewModel.dismissListeningCut() }
+                }
+                .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
             if let notice = battery.notice {
                 BatteryBanner(notice: notice) {
                     withAnimation { battery.dismiss() }
@@ -331,6 +338,7 @@ struct LiveCaptionView: View {
     private var hasTopBanner: Bool {
         visibleSoundAlert != nil || visibleKeywordHit != nil || installExpiryToWarn != nil
             || viewModel.savingTrouble.shouldShow || viewModel.microphoneDrop.title != nil || battery.notice != nil
+            || viewModel.listeningCut != nil
             || (awayMark != nil && viewModel.awayCatchUp.offersJump(in: viewModel.segments))
     }
 
