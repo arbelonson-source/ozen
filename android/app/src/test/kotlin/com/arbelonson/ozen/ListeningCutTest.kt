@@ -57,6 +57,12 @@ class ListeningCutTest {
     }
 
     @Test
+    fun `the notification title says listening was off, not that captions are stopped now`() {
+        val notice = ListeningCut.Notice(stoppedAt = at(1, 10), offSeconds = 3 * 3_600.0)
+        assertEquals("Listening was off for a while", Localization.withLanguage(UILanguage.English) { notice.title() })
+    }
+
+    @Test
     fun `a gap of two minutes or less is a quick restart and says nothing`() {
         val record = ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION)
         assertNull(ListeningCut.notice(record, now = at(1, 10) + 119, version = VERSION))

@@ -11,6 +11,8 @@ object ListeningCut {
     data class Record(val startedAt: Double, val aliveAt: Double, val version: Long)
 
     data class Notice(val stoppedAt: Double, val offSeconds: Double) {
+        fun title(): String = tr("ההאזנה הייתה כבויה לזמן מה", "Listening was off for a while")
+
         fun text(zone: ZoneId = ZoneId.systemDefault()): String = tr(
             "ההאזנה נעצרה בערך ב־%1 והייתה כבויה %2. בזמן הזה לא יכלו להגיע התראות.",
             "Listening stopped at about %1 and was off for %2. Alerts couldn't come during that time.",
