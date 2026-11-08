@@ -633,8 +633,8 @@ public final class LiveCaptionViewModel {
             listeningKeepAliveTask = Task { @MainActor [weak self] in
                 while !Task.isCancelled {
                     try? await Task.sleep(for: ListeningRecorder.keepAliveInterval)
-                    guard !Task.isCancelled else { return }
-                    self?.listeningRecorder?.keepAlive()
+                    guard !Task.isCancelled, let self else { return }
+                    self.listeningRecorder?.keepAlive()
                 }
             }
         } else {
