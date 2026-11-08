@@ -1,9 +1,11 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.EnginePreparationProgress
+import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import com.arbelonson.ozen.core.UILanguage
 import java.time.ZoneOffset
 import java.util.concurrent.Executor
@@ -137,6 +139,25 @@ class ListeningCutTest {
             recorder.phaseChanged(PipelinePhase.Listening, recovering = false)
             recorder.phaseChanged(phase, recovering)
             assertNotNull(store.value, "$phase")
+        }
+    }
+
+    @Test
+    fun `a failure nobody is told about keeps the record, one the stopped-captions notice reports clears it`() {
+        val wifi = PipelinePhase.Failed(
+            PipelineFailure(
+                PipelineFailure.Kind.EngineUnavailable,
+                "the model waits for Wi-Fi",
+                EngineUnavailability(EngineUnavailability.Kind.WaitingForWiFi, "cellular", downloadMegabytes = 574),
+            ),
+        )
+        val reported = PipelinePhase.Failed(failure)
+        for ((phase, kept) in listOf(wifi to true, reported to false)) {
+            val recorder = recorder()
+            recorder.phaseChanged(PipelinePhase.Listening, stopped = null)
+            val cause = StoppedCaptionsNotice.cause(phase, retryScheduled = false, systemInterrupted = false, callEndedDuringInterruption = false)
+            recorder.phaseChanged(phase, stopped = cause)
+            assertEquals(kept, store.value != null, "$phase")
         }
     }
 

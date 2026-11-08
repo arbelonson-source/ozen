@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import android.content.Context
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
@@ -45,6 +46,8 @@ class ListeningRecorder(
             phase == PipelinePhase.Idle || phase == PipelinePhase.Paused || (phase is PipelinePhase.Failed && !recovering) -> end()
         }
     }
+
+    fun phaseChanged(phase: PipelinePhase, stopped: StoppedCaptionsNotice.Cause?) = phaseChanged(phase, recovering = stopped == null)
 
     fun keepAlive() {
         val current = record ?: return

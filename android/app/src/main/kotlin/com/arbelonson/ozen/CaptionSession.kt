@@ -739,13 +739,15 @@ class CaptionSession(
      * a call that ended without giving the microphone back.
      */
     private fun checkCaptionsStillRunning() {
-        val cause = if (restartRefused) StoppedCaptionsNotice.Cause.EndedByPhone else StoppedCaptionsNotice.cause(pipeline.phase, pipeline.isRecoveringByItself, interruptedBySystem, callEndedDuringInterruption = false)
-        when (val update = stoppedCaptions.update(cause, appIsActive, settings.current.value.notifyWhenInBackground)) {
+        when (val update = stoppedCaptions.update(stoppedCause(), appIsActive, settings.current.value.notifyWhenInBackground)) {
             is StoppedCaptionsNotice.Update.Post -> if (!notifier.post(update.content)) stoppedCaptions.postFailed()
             is StoppedCaptionsNotice.Update.Withdraw -> notifier.withdraw(update.identifier)
             null -> Unit
         }
     }
+
+    private fun stoppedCause(): StoppedCaptionsNotice.Cause? =
+        if (restartRefused) StoppedCaptionsNotice.Cause.EndedByPhone else StoppedCaptionsNotice.cause(pipeline.phase, pipeline.isRecoveringByItself, interruptedBySystem, callEndedDuringInterruption = false)
 
     /**
      * Captions that Android ended with the app could not be started again;
@@ -788,7 +790,9 @@ class CaptionSession(
     }
 
     private fun publish() {
-        listeningRecord.phaseChanged(pipeline.phase, pipeline.isRecoveringByItself)
+        // Kept through whatever comes back by itself (a retry, waiting for
+        // Wi-Fi), ended by what the stopped-captions notice reports.
+        listeningRecord.phaseChanged(pipeline.phase, stopped = stoppedCause())
         checkCaptionsStillRunning()
         val transcribing = pipeline.activeSettings.takeIf { pipeline.isCoveringForCloud } ?: settings.current.value
         CaptionState.show(
