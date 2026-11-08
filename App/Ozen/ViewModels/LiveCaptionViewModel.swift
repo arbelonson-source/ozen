@@ -2415,7 +2415,7 @@ public final class LiveCaptionViewModel {
     /// further warning: what was said since the last autosave (up to 20 s)
     /// is written now, not lost with the app.
     public func handleMemoryWarning(footprintBytes: Int64?) {
-        pipeline.handleMemoryWarning(footprintBytes: footprintBytes)
+        pipeline.handleMemoryWarning(footprintBytes: footprintBytes, pausedForSpeech: speechPause.isHoldingCaptions && !isInterruptedBySystem)
         persistHistory(ended: false)
     }
 }

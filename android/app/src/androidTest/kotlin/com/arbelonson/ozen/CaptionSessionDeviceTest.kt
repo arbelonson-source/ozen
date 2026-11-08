@@ -1327,6 +1327,18 @@ class CaptionSessionDeviceTest {
     }
 
     @Test
+    fun aMemoryWarningWhileThePhoneSaysAReplyKeepsTheSpeechModel(): Unit = runBlocking {
+        withLoadedModel("memory-warning-reply-test", delaySeconds = 600) { session ->
+            withContext(Dispatchers.Main) {
+                assertTrue("the phone could not say the reply", session.speak("Yes, thank you"))
+                assertEquals(PipelinePhase.Paused, session.pipeline.phase)
+                session.memoryShort(footprintBytes = 0)
+                assertEquals("the model was let go while the phone spoke", 1, session.pipeline.loadedModelCount)
+            }
+        }
+    }
+
+    @Test
     fun timeThePhoneSpentAsleepCountsTowardsGivingTheSpeechModelBack(): Unit = runBlocking {
         withLoadedModel("background-release-asleep-test", delaySeconds = 600) { session ->
             val asleepMillis = AtomicLong(0)

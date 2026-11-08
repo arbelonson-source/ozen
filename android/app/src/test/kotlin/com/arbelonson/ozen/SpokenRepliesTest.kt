@@ -145,6 +145,17 @@ class SpokenRepliesTest {
     }
 
     @Test
+    fun `captions count as held for a phrase while the phone talks, not through a call that cut it short`() = runTest {
+        val replies = SpokenReplies(voice, this, captions)
+        replies.speak("Hello", rate = 0.45f)
+        assertTrue(replies.holdsCaptionsForAPhrase)
+        captions.duringCall = true
+        replies.callChanged(began = true)
+        assertTrue(replies.holdsCaptions)
+        assertFalse(replies.holdsCaptionsForAPhrase)
+    }
+
+    @Test
     fun `captions that come on while the phone is talking wait until it is done, unless she turned them on`() = runTest {
         captions.isListening = false
         val replies = SpokenReplies(voice, this, captions)

@@ -945,6 +945,56 @@ struct LiveCaptionViewModelSpeechTests {
         #expect(viewModel.captionsHeldForSpeech == false)
     }
 
+    private func makeCountingViewModel() -> (LiveCaptionViewModel, FakeSynthesizer, BuiltEngines) {
+        let built = BuiltEngines()
+        let synthesizer = FakeSynthesizer()
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { settings in
+                let engine = FakeEngine(kind: settings.engine)
+                built.add(engine)
+                return engine
+            },
+            embedder: FakeEmbedder()
+        )
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-speech-memory-\(UUID())")
+        let store = SettingsStore(fileURL: folder.appendingPathComponent("settings.json"))
+        let history = TranscriptHistoryStore(directoryURL: folder.appendingPathComponent("history"))
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: pipeline, historyStore: history, synthesizer: synthesizer)
+        return (viewModel, synthesizer, built)
+    }
+
+    @Test("a low-memory warning while the phone says a reply keeps the speech model, so captions come back without loading it again")
+    func memoryWarningWhileSpeakingKeepsModel() async {
+        let (viewModel, synthesizer, built) = makeCountingViewModel()
+        await viewModel.start()
+        viewModel.speak("כן")
+        synthesizer.startNext()
+        #expect(viewModel.captionsHeldForSpeech)
+
+        viewModel.handleMemoryWarning(footprintBytes: nil)
+        synthesizer.finishCurrent()
+        await eventually { viewModel.phase.isListening }
+        #expect(viewModel.phase.isListening)
+        #expect(built.count == 1)
+    }
+
+    @Test("a low-memory warning during a call that cut a reply short lets the model go, as in any long pause")
+    func memoryWarningDuringCallAfterReplyReleasesModel() async {
+        let (viewModel, synthesizer, built) = makeCountingViewModel()
+        await viewModel.start()
+        viewModel.speak("כן")
+        synthesizer.startNext()
+        viewModel.systemInterruptionChanged(began: true)
+        #expect(viewModel.phase == .paused)
+
+        viewModel.handleMemoryWarning(footprintBytes: nil)
+        #expect(await eventually { built.aliveCount == 0 })
+        viewModel.systemInterruptionChanged(began: false)
+        #expect(await eventually { viewModel.phase.isListening })
+        #expect(built.count == 2)
+    }
+
     @Test("\"start captions\" from Siri while the phone talks waits for it, instead of captioning the phone's voice")
     func startFromSiriWhileSpeaking() async {
         let (viewModel, synthesizer) = makeViewModel()

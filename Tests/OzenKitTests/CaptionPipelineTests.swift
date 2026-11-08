@@ -1435,6 +1435,29 @@ struct CaptionPipelineLifecycleTests {
         #expect(built.aliveCount == 1)
     }
 
+    @Test("a memory warning while captions wait out the phone's own voice keeps the engine; they come back without loading the model again")
+    func memoryWarningWhileHeldForSpeechKeepsEngine() async {
+        let built = BuiltEngines()
+        let pipeline = CaptionPipeline(
+            audio: FakeAudioCapturer(),
+            engineFactory: { settings in
+                let engine = FakeEngine(kind: settings.engine)
+                built.add(engine)
+                return engine
+            },
+            embedder: FakeEmbedder(),
+            recovery: .disabled
+        )
+        await pipeline.start(settings: .default)
+        pipeline.pause()
+        pipeline.handleMemoryWarning(pausedForSpeech: true)
+
+        await pipeline.resume()
+        #expect(pipeline.phase == .listening)
+        #expect(built.count == 1)
+        #expect(built.aliveCount == 1)
+    }
+
     @Test("a memory warning after a failure lets the engine go, unless a retry is on its way")
     func memoryWarningAfterFailure() async throws {
         for retryComing in [false, true] {
