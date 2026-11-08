@@ -299,7 +299,7 @@ class CaptionSession(
     private fun tellListeningCut() {
         val cut = listeningCutNotice.value ?: return
         if (!settings.current.value.notifyWhenInBackground) return
-        val content = AlertNotificationContent(LISTENING_CUT_IDENTIFIER, tr("הכתוביות נעצרו", "Captions stopped"), cut.text(), "status", isUrgent = false)
+        val content = AlertNotificationContent(LISTENING_CUT_IDENTIFIER, cut.title(), cut.text(), "status", isUrgent = false)
         notifier.post(content)
     }
 
