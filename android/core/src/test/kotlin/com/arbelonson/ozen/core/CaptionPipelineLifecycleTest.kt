@@ -365,6 +365,29 @@ class CaptionPipelineLifecycleTest {
     }
 
     @Test
+    fun `a memory warning while captions wait out the phone's own voice keeps the engine - they come back without loading the model again`() = runTest {
+        val built = BuiltEngines()
+        val pipeline = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { settings ->
+                val engine = FakeEngine(kind = settings.engine)
+                built.add(engine)
+                engine
+            },
+            embedder = FakeEmbedder(),
+            recovery = AutoRecoveryPolicy.disabled(),
+        )
+        pipeline.start(AppSettings.default)
+        pipeline.pause()
+        pipeline.handleMemoryWarning(pausedForSpeech = true)
+
+        pipeline.resume()
+        assertEquals(PipelinePhase.Listening, pipeline.phase)
+        assertEquals(1, built.count)
+        assertEquals(1, built.aliveCount)
+    }
+
+    @Test
     fun `a memory warning after a failure lets the engine go, unless a retry is on its way`() = runTest {
         for (retryComing in listOf(false, true)) {
             val built = BuiltEngines()

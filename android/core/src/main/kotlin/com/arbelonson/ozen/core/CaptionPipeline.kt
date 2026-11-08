@@ -1014,13 +1014,16 @@ class CaptionPipeline(
      * for a quick start or resume is let go too: the next one spends a
      * few seconds loading the model again, where the system ending the app
      * instead would lose the conversation already on screen. Only while
-     * captions are running does it stay.
+     * captions are running does it stay, and while [pausedForSpeech]: the
+     * phone saying a reply holds them for a phrase, and loading the model
+     * again then would miss the first words of the answer.
      */
-    fun handleMemoryWarning(footprintBytes: Long? = null) {
+    fun handleMemoryWarning(footprintBytes: Long? = null, pausedForSpeech: Boolean = false) {
         logEvent(PipelineEvent.Kind.MemoryWarning(footprintBytes?.let { (it / StorageSpaceGate.BYTES_PER_MEGABYTE).toInt() }))
         val current = phase
         when {
-            current == PipelinePhase.Idle || current == PipelinePhase.Paused -> dropEngines()
+            current == PipelinePhase.Idle -> dropEngines()
+            current == PipelinePhase.Paused && !pausedForSpeech -> dropEngines()
             current is PipelinePhase.Failed && scheduledRetry == null -> dropEngines()
             else -> Unit
         }

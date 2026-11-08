@@ -799,11 +799,15 @@ public final class CaptionPipeline {
     /// for a quick start or resume is let go too: the next one spends a
     /// few seconds loading the model again, where iOS ending the app
     /// instead would lose the conversation already on screen. Only while
-    /// captions are running does it stay.
-    public func handleMemoryWarning(footprintBytes: Int64? = nil) {
+    /// captions are running does it stay, and while `pausedForSpeech`: the
+    /// phone saying a reply holds them for a phrase, and loading the model
+    /// again then would miss the first words of the answer.
+    public func handleMemoryWarning(footprintBytes: Int64? = nil, pausedForSpeech: Bool = false) {
         logEvent(.memoryWarning(footprintMegabytes: footprintBytes.map { Int($0 / StorageSpaceGate.bytesPerMegabyte) }))
         switch phase {
-        case .idle, .paused:
+        case .idle:
+            engineCache.removeAll()
+        case .paused where !pausedForSpeech:
             engineCache.removeAll()
         case .failed where scheduledRetry == nil:
             engineCache.removeAll()
