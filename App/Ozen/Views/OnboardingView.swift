@@ -500,7 +500,9 @@ struct OnboardingView: View {
     }
 
     private func finish() {
-        withAnimation(reduceMotion ? nil : .default) { viewModel.completeOnboarding() }
+        Task {
+            await viewModel.finishOnboarding()
+        }
     }
 
     private static var pairedNote: String {

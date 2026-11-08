@@ -828,6 +828,7 @@ public final class LiveCaptionViewModel {
     /// Ending the walkthrough, Skip included: a phone nobody checked is
     /// checked first, so captions start on the model that suits it.
     public func finishOnboarding() async {
+        await checkPhoneIfNeverChecked()
         completeOnboarding()
     }
 
