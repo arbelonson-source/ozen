@@ -20,9 +20,9 @@ object StartCaptionsRequest {
     fun launchPendingIntent(context: Context): PendingIntent =
         PendingIntent.getActivity(context, 0, launchIntent(context), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
-    fun applyAppLanguage(app: OzenApplication) {
+    fun applyAppLanguage(settings: SettingsHolder) {
         val phoneLanguages = LocaleList.getDefault().let { list -> (0 until list.size()).map { list[it].toLanguageTag() } }
-        Localization.language = app.settings.current.value.appLanguage.resolved(phoneLanguages)
+        Localization.language = settings.current.value.appLanguage.resolved(phoneLanguages)
     }
 
     fun publishShortcut(context: Context) {
