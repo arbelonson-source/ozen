@@ -56,7 +56,7 @@ struct NightAlertsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
-            await access.refresh()
+            access = await NightAlertsAccess.current()
         }
     }
 
@@ -97,7 +97,7 @@ struct NightAlertsView: View {
         Task {
             if access.authorization == .notDetermined {
                 _ = await AlertNotifier.shared.requestAuthorization()
-                await access.refresh()
+                access = await NightAlertsAccess.current()
             } else if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
                 openURL(url)
             }

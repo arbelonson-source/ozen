@@ -32,7 +32,7 @@ struct NightAlertsRow: View {
         .accessibilityIdentifier("nightAlertsRow")
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
-            await access.refresh()
+            access = await NightAlertsAccess.current()
         }
     }
 }
@@ -45,19 +45,21 @@ struct NightAlertsAccess {
         NightAlertsChecklist.summary(authorization: authorization, alerts: alerts)
     }
 
-    mutating func refresh() async {
+    static func current() async -> NightAlertsAccess {
+        var access = NightAlertsAccess()
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         switch settings.authorizationStatus {
-        case .notDetermined: authorization = .notDetermined
-        case .denied: authorization = .denied
-        case .provisional: authorization = .provisional
-        case .ephemeral: authorization = .ephemeral
-        default: authorization = .authorized
+        case .notDetermined: access.authorization = .notDetermined
+        case .denied: access.authorization = .denied
+        case .provisional: access.authorization = .provisional
+        case .ephemeral: access.authorization = .ephemeral
+        default: access.authorization = .authorized
         }
         switch settings.alertSetting {
-        case .notSupported: alerts = .notSupported
-        case .disabled: alerts = .disabled
-        default: alerts = .enabled
+        case .notSupported: access.alerts = .notSupported
+        case .disabled: access.alerts = .disabled
+        default: access.alerts = .enabled
         }
+        return access
     }
 }
