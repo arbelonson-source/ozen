@@ -828,12 +828,12 @@ public final class LiveCaptionViewModel {
     /// The walkthrough's model page checks the phone; Skip jumps past it,
     /// so ending the walkthrough checks a phone nobody checked first, and a
     /// model nobody picked then still follows the phone's own list.
-    public func checkPhoneIfNeverChecked() async {
+    public func checkPhoneIfNeverChecked(modelPicked: Bool = false) async {
         guard settings.deviceModelCheck == nil else { return }
         let before = settings.whisperModelVariant
         await testThisPhone()
         guard settings.whisperModelVariant == before, let check = settings.deviceModelCheck,
-              let fitted = DeviceModelAdvisor.variantAfterFirstCheck(current: before, language: settings.spokenLanguage, check: check)
+              let fitted = DeviceModelAdvisor.variantAfterFirstCheck(current: before, language: settings.spokenLanguage, check: check, picked: modelPicked)
         else { return }
         await setWhisperModel(fitted)
     }

@@ -109,8 +109,8 @@ public enum DeviceModelAdvisor {
         return fastest?.variant ?? WhisperModelCatalog.recommendedVariant(for: language)
     }
 
-    public static func variantAfterFirstCheck(current: String, language: UILanguage, check: DeviceModelCheck) -> String? {
-        guard current == WhisperModelCatalog.recommendedVariant(for: language) else { return nil }
+    public static func variantAfterFirstCheck(current: String, language: UILanguage, check: DeviceModelCheck, picked: Bool = false) -> String? {
+        guard !picked, current == WhisperModelCatalog.recommendedVariant(for: language) else { return nil }
         let fitted = recommendedVariant(for: language, on: check)
         return fitted == current ? nil : fitted
     }

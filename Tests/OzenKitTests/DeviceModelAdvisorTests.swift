@@ -179,6 +179,12 @@ struct DeviceModelAdvisorTests {
         #expect(DeviceModelAdvisor.variantAfterFirstCheck(current: "medium", language: .hebrew, check: Self.check(Self.a14)) == nil)
     }
 
+    @Test("the default model tapped on purpose stays after the first check, though its name never changed")
+    func firstCheckKeepsDefaultPickedOnPurpose() {
+        let untouched = WhisperModelCatalog.recommendedVariant(for: .hebrew)
+        #expect(DeviceModelAdvisor.variantAfterFirstCheck(current: untouched, language: .hebrew, check: Self.check(Self.a14), picked: true) == nil)
+    }
+
     @Test("a first check that supports the default keeps it")
     func firstCheckKeepsSupportedDefault() {
         let untouched = WhisperModelCatalog.recommendedVariant(for: .hebrew)

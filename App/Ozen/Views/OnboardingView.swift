@@ -504,7 +504,7 @@ struct OnboardingView: View {
         guard !finishing else { return }
         finishing = true
         Task {
-            await viewModel.checkPhoneIfNeverChecked()
+            await viewModel.checkPhoneIfNeverChecked(modelPicked: pickedModel)
             withAnimation(reduceMotion ? nil : .default) { viewModel.completeOnboarding() }
         }
     }
