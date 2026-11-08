@@ -880,7 +880,8 @@ struct LiveCaptionViewModelOnboardingTests {
     func skipChecksPhone() async {
         let (viewModel, _) = makeViewModel()
         #expect(viewModel.settings.deviceModelCheck == nil)
-        await viewModel.finishOnboarding()
+        await viewModel.checkPhoneIfNeverChecked()
+        viewModel.completeOnboarding()
         #expect(viewModel.hasCompletedOnboarding)
         #expect(viewModel.settings.deviceModelCheck != nil)
         #expect(viewModel.settings.whisperModelVariant == viewModel.settings.recommendedWhisperVariant)
@@ -890,7 +891,8 @@ struct LiveCaptionViewModelOnboardingTests {
     func skipKeepsPickedModel() async {
         let (viewModel, _) = makeViewModel()
         await viewModel.setWhisperModel("small")
-        await viewModel.finishOnboarding()
+        await viewModel.checkPhoneIfNeverChecked()
+        viewModel.completeOnboarding()
         #expect(viewModel.settings.deviceModelCheck != nil)
         #expect(viewModel.settings.whisperModelVariant == "small")
     }

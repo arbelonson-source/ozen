@@ -28,6 +28,7 @@ struct OnboardingView: View {
     }
 
     @State private var pickedModel = false
+    @State private var finishing = false
 
     /// UI test walkthroughs can't answer iOS's own prompts; there, Next on
     /// the microphone page answers yes for them.
@@ -500,8 +501,11 @@ struct OnboardingView: View {
     }
 
     private func finish() {
+        guard !finishing else { return }
+        finishing = true
         Task {
-            await viewModel.finishOnboarding()
+            await viewModel.checkPhoneIfNeverChecked()
+            withAnimation(reduceMotion ? nil : .default) { viewModel.completeOnboarding() }
         }
     }
 
