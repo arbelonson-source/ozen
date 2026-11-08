@@ -1135,16 +1135,30 @@ internal suspend fun shareOrSayFull(context: Context, sheet: () -> Intent?): Boo
 private fun shareSheet(context: Context, record: TranscriptSessionRecord, marksUncertain: Boolean, languageCode: String): Intent =
     textShareSheet(context, tr("שיחה מתוך אוזן", "Conversation from Ozen"), TranscriptHistoryStore.exportText(record, ::localOffset, marksUncertain, usesDecimalComma(languageCode)))
 
+/** Writes every saved conversation, oldest first, loading each one only when its turn comes. False when none could be written. */
+internal fun writeAllConversations(conversations: SavedConversations, marksUncertain: Boolean, languageCode: String, out: Appendable): Boolean {
+    val records = conversations.list().sortedBy { it.startedAt }.asSequence().mapNotNull { conversations.load(it.id) }
+    return TranscriptHistoryStore.exportAll(records, ::localOffset, marksUncertain, usesDecimalComma(languageCode), out)
+}
+
 /**
  * Every saved conversation as one text file, sent through the share sheet:
  * the way to keep them all, as cloud backup is off. Null when none is saved.
  */
 internal fun allConversationsShareSheet(context: Context, conversations: SavedConversations, marksUncertain: Boolean, languageCode: String): Intent? {
-    val records = conversations.list().mapNotNull { conversations.load(it.id) }
-    val text = TranscriptHistoryStore.exportAllText(records, ::localOffset, marksUncertain, usesDecimalComma(languageCode)) ?: return null
+    if (conversations.list().isEmpty()) return null
     val now = System.currentTimeMillis() / 1_000.0
     val file = SharedFile.create(context.cacheDir, TranscriptHistoryStore.exportAllFileName(now, localOffset(now)))
-    file.writeText(text, Charsets.UTF_8)
+    val written = try {
+        file.bufferedWriter(Charsets.UTF_8).use { writeAllConversations(conversations, marksUncertain, languageCode, it) }
+    } catch (error: IOException) {
+        file.delete()
+        throw error
+    }
+    if (!written) {
+        file.delete()
+        return null
+    }
     val uri = FileProvider.getUriForFile(context, context.packageName + ".share", file)
     val send = Intent(Intent.ACTION_SEND).setType("text/plain")
         .putExtra(Intent.EXTRA_SUBJECT, tr("כל השיחות מתוך אוזן", "All conversations from Ozen"))

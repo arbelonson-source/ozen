@@ -1242,10 +1242,32 @@ class TranscriptHistoryStore(private val directory: File) {
             marksUncertain: Boolean,
             decimalComma: Boolean = false,
         ): String? {
-            if (records.isEmpty()) return null
-            val body = records.sortedBy { it.startedAt }
-                .joinToString("\n\n──────────\n\n") { exportText(it, utcOffsetAt, marksUncertain, decimalComma) }
-            return "${tr("כל השיחות מתוך אוזן", "All conversations from Ozen")}\n\n$body"
+            val out = StringBuilder()
+            val written = exportAll(records.sortedBy { it.startedAt }.asSequence(), utcOffsetAt, marksUncertain, decimalComma, out)
+            return if (written) out.toString() else null
+        }
+
+        /**
+         * [exportAllText] written conversation by conversation into [out]:
+         * [records] must already be oldest first, and each one is taken from
+         * the sequence only after the one before it was written, so a long
+         * history never sits in memory at once. False when there was nothing
+         * to write.
+         */
+        fun exportAll(
+            records: Sequence<TranscriptSessionRecord>,
+            utcOffsetAt: (Double) -> Int,
+            marksUncertain: Boolean,
+            decimalComma: Boolean,
+            out: Appendable,
+        ): Boolean {
+            var first = true
+            for (record in records) {
+                out.append(if (first) "${tr("כל השיחות מתוך אוזן", "All conversations from Ozen")}\n\n" else "\n\n──────────\n\n")
+                first = false
+                out.append(exportText(record, utcOffsetAt, marksUncertain, decimalComma))
+            }
+            return !first
         }
 
         /** "Conversations from Ozen 2026-11-07.txt": the date is the phone's own at [now]. */
