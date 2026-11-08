@@ -497,7 +497,13 @@ data class TranscriptSessionSummary(
  * its conversation, or unreadable, the list rebuilds it from the full
  * record and writes it back.
  */
-class TranscriptHistoryStore(private val directory: File) {
+class TranscriptHistoryStore(
+    private val directory: File,
+    private val nowMillis: () -> Long = System::currentTimeMillis,
+) {
+    internal val conversationReads = AtomicInteger()
+    internal val cacheRefreshes = AtomicInteger()
+
     private val summariesDirectory: File get() = File(directory, SUMMARIES_FOLDER_NAME)
 
     private fun fileFor(id: UUID): File = File(directory, "${historyUuidText(id)}.json")
@@ -543,45 +549,106 @@ class TranscriptHistoryStore(private val directory: File) {
      * them is unaffected - a missing or stale cache is already rebuilt from
      * the record the next time anything asks for it (see [listSummaries]).
      */
-    fun save(record: TranscriptSessionRecord, updateSearchCaches: Boolean = true): Boolean {
+    fun save(
+        record: TranscriptSessionRecord,
+        updateSearchCaches: Boolean = true,
+        throttleCaches: Boolean = false,
+    ): Boolean {
         if (record.segments.isEmpty()) return false
         Files.createDirectories(directory.toPath())
         val file = fileFor(record.id)
         var toSave = record
-        if (toSave.title == null) {
-            // A save that skipped the caches leaves the summary older than
-            // the conversation, so the next save can't trust it: the name
-            // is then read from the conversation file itself.
-            val summary = cachedSummary(file)
-            if (summary != null) {
-                toSave = toSave.copy(title = summary.title)
-            } else {
-                readBytes(file)?.let { data ->
-                    toSave = toSave.copy(title = lenientHistory { savedTitle(data) })
+        val remembered = remembered(record.id, file)
+        if (remembered != null) {
+            if (toSave.title == null) toSave = toSave.copy(title = remembered.title)
+            val engine = remembered.engine
+            if (engine != null) {
+                toSave = toSave.copy(engine = engine, modelVariant = remembered.modelVariant, inputName = remembered.inputName)
+            }
+        } else {
+            val data = readConversation(file)
+            if (data != null) {
+                if (toSave.title == null) {
+                    // A save that skipped the caches leaves the summary older than
+                    // the conversation, so the next save can't trust it: the name
+                    // is then read from the conversation file itself.
+                    val title = cachedSummary(file)?.title ?: lenientHistory { savedTitle(data) }
+                    toSave = toSave.copy(title = title)
                 }
+                // What wrote a conversation is what its first save said, within
+                // seconds of its first lines. Later saves (the stop after an engine
+                // switch, a rename the next day) stamped it with whatever engine
+                // and microphone were in use by then, and History showed those,
+                // and judged its uncertain lines by them.
+                val source = lenientHistory { savedSource(data) }
+                val engine = source?.engine
+                if (source != null && engine != null) {
+                    toSave = toSave.copy(engine = engine, modelVariant = source.modelVariant, inputName = source.inputName)
+                }
+            } else if (toSave.title == null) {
+                toSave = toSave.copy(title = cachedSummary(file)?.title)
             }
         }
-        // What wrote a conversation is what its first save said, within
-        // seconds of its first lines. Later saves (the stop after an engine
-        // switch, a rename the next day) stamped it with whatever engine
-        // and microphone were in use by then, and History showed those,
-        // and judged its uncertain lines by them.
-        readBytes(file)?.let { data ->
-            val source = lenientHistory { savedSource(data) }
-            val engine = source?.engine
-            if (source != null && engine != null) {
-                toSave = toSave.copy(engine = engine, modelVariant = source.modelVariant, inputName = source.inputName)
-            }
-        }
+        forget(record.id)
         PrivateFileWrites.write(file, toSave.toJson().toByteArray(Charsets.UTF_8))
+        remember(toSave, file)
         if (!updateSearchCaches) return true
+        if (throttleCaches && !cacheRefreshDue(record.id)) return true
         // Written after the record, so a fresh summary is never older than
         // its conversation. If this write fails the conversation is still
         // saved; the list just rebuilds the summary next time.
         val written = modificationDate(file)
+        cacheRefreshes.incrementAndGet()
         writeSummary(TranscriptSessionSummary.summarizing(toSave), file, written)
         writeSearchText(searchableText(toSave), file, written)
         return true
+    }
+
+    private fun readConversation(file: File): ByteArray? {
+        conversationReads.incrementAndGet()
+        return readBytes(file)
+    }
+
+    private class Remembered(
+        val title: String?,
+        val engine: TranscriptionEngineKind?,
+        val modelVariant: String?,
+        val inputName: String?,
+        val modifiedAt: Long,
+        val size: Long,
+    )
+
+    private val memory = object : LinkedHashMap<UUID, Remembered>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<UUID, Remembered>?): Boolean = size > REMEMBERED_CONVERSATIONS
+    }
+    private val lastCacheRefresh = HashMap<UUID, Long>()
+
+    private fun remembered(id: UUID, file: File): Remembered? = synchronized(memory) {
+        val entry = memory[id] ?: return null
+        if (file.lastModified() != entry.modifiedAt || file.length() != entry.size) {
+            memory.remove(id)
+            return null
+        }
+        entry
+    }
+
+    private fun remember(saved: TranscriptSessionRecord, file: File) = synchronized(memory) {
+        val modifiedAt = file.lastModified()
+        if (modifiedAt == 0L) return@synchronized
+        memory[saved.id] = Remembered(saved.title, saved.engine, saved.modelVariant, saved.inputName, modifiedAt, file.length())
+    }
+
+    private fun forget(id: UUID) = synchronized(memory) {
+        memory.remove(id)
+    }
+
+    private fun cacheRefreshDue(id: UUID): Boolean = synchronized(memory) {
+        val now = nowMillis()
+        val last = lastCacheRefresh[id]
+        if (last != null && now - last in 0 until CACHE_REFRESH_MILLIS) return false
+        if (lastCacheRefresh.size >= REMEMBERED_CONVERSATIONS * 4) lastCacheRefresh.clear()
+        lastCacheRefresh[id] = now
+        true
     }
 
     private class SavedSource(val engine: TranscriptionEngineKind?, val modelVariant: String?, val inputName: String?)
@@ -794,6 +861,7 @@ class TranscriptHistoryStore(private val directory: File) {
             val record = decodeRecord(file) ?: continue
             if (record.segments.none { it.speakerName == from }) continue
             val renamed = record.copy(segments = record.segments.map { if (it.speakerName == from) it.copy(speakerName = to) else it })
+            forget(record.id)
             PrivateFileWrites.write(file, renamed.toJson().toByteArray(Charsets.UTF_8))
             val written = modificationDate(file)
             writeSummary(TranscriptSessionSummary.summarizing(renamed), file, written)
@@ -809,6 +877,7 @@ class TranscriptHistoryStore(private val directory: File) {
         val trimmed = historyTrimmed(title)
         val renamed = record.copy(title = trimmed.ifEmpty { null })
         val file = fileFor(id)
+        forget(id)
         PrivateFileWrites.write(file, renamed.toJson().toByteArray(Charsets.UTF_8))
         val written = modificationDate(file)
         writeSummary(TranscriptSessionSummary.summarizing(renamed), file, written)
@@ -828,6 +897,7 @@ class TranscriptHistoryStore(private val directory: File) {
         val toggled = record.segments[index].copy(isStarred = !record.segments[index].isStarred)
         val updated = record.copy(segments = record.segments.toMutableList().also { it[index] = toggled })
         val file = fileFor(inSession)
+        forget(inSession)
         PrivateFileWrites.write(file, updated.toJson().toByteArray(Charsets.UTF_8))
         writeSummary(TranscriptSessionSummary.summarizing(updated), file, modificationDate(file))
         return toggled.isStarred
@@ -851,6 +921,7 @@ class TranscriptHistoryStore(private val directory: File) {
         val segments = record.segments.toMutableList()
         segments[index] = segments[index].copy(text = change(segments[index].text))
         val updated = record.copy(segments = segments)
+        forget(inSession)
         PrivateFileWrites.write(file, updated.toJson().toByteArray(Charsets.UTF_8))
         val written = modificationDate(file)
         writeSummary(TranscriptSessionSummary.summarizing(updated), file, written)
@@ -872,6 +943,7 @@ class TranscriptHistoryStore(private val directory: File) {
 
     fun delete(id: UUID) {
         sweepStrayTemporaries()
+        forget(id)
         val file = fileFor(id)
         summaryFile(file).delete()
         searchTextFile(file).delete()
@@ -881,6 +953,7 @@ class TranscriptHistoryStore(private val directory: File) {
     }
 
     fun deleteAll() {
+        synchronized(memory) { memory.clear() }
         for (file in recordFiles()) Files.delete(file.toPath())
         // A save the system cut short (the app killed between writing the
         // copy and moving it into place) leaves that copy, her words, here.
@@ -998,6 +1071,8 @@ class TranscriptHistoryStore(private val directory: File) {
          */
         internal const val SUMMARY_FORMAT = 4
         internal const val SUMMARIES_FOLDER_NAME = "summaries"
+        internal const val REMEMBERED_CONVERSATIONS = 8
+        internal const val CACHE_REFRESH_MILLIS = 120_000L
 
         /**
          * java.nio's file times come in whole seconds on Android, which made

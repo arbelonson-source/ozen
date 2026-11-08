@@ -100,7 +100,7 @@ class TranscriptHistoryWriter(
         queue.async {
             var saved = true
             if (lastWritten.record != record) {
-                saved = failure.capture { store.save(record) }
+                saved = failure.capture { store.save(record, throttleCaches = record.endedAt == null) }
                 lastWritten.record = if (saved) record else null
                 if (saved) pendingSaves.records.remove(record.id) else pendingSaves.records[record.id] = record
             }
