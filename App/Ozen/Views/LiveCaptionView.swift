@@ -94,6 +94,10 @@ struct LiveCaptionView: View {
             }
     }
 
+    private var watchesBattery: Bool {
+        BatteryAdvisor.watches(viewModel.phase, soundsOnly: viewModel.pipeline.soundsOnlyChosen)
+    }
+
     private var keepsScreenAwake: Bool {
         // The home computer's backup downloads outside the captions, often
         // while they are stopped or failed, and like any model download it
@@ -450,7 +454,7 @@ struct LiveCaptionView: View {
         // Also while captions fail and retry, or wait to come back with the
         // microphone on for sound alerts alone: a night of that runs the
         // battery down too (see `BatteryAdvisor.watches`).
-        .onChange(of: BatteryAdvisor.watches(viewModel.phase, soundsOnly: viewModel.pipeline.soundsOnlyChosen), initial: true) { _, watching in
+        .onChange(of: watchesBattery, initial: true) { _, watching in
             battery.onWarning = { [viewModel] warning in
                 viewModel.batteryWarningRaised(warning)
             }
@@ -462,9 +466,7 @@ struct LiveCaptionView: View {
         .onChange(of: keepsScreenAwake, initial: true) { _, keep in
             UIApplication.shared.isIdleTimerDisabled = keep
         }
-        .onChange(of: viewModel.soundsOnlyStarts) { _, _ in
-            showingSettings = false
-        }
+        .modifier(ClosesSettings(trigger: viewModel.soundsOnlyStarts, isShowing: $showingSettings))
         .task(id: viewModel.isListening) {
             // Ticks whether or not captions run: the screen lock needs it
             // while listening, and the install-expiry warning must still
@@ -1674,6 +1676,15 @@ struct LiveCaptionView: View {
         case .confirmCellularDownload:
             confirmingCellularDownload = true
         }
+    }
+}
+
+private struct ClosesSettings: ViewModifier {
+    let trigger: Int
+    @Binding var isShowing: Bool
+
+    func body(content: Content) -> some View {
+        content.onChange(of: trigger) { _, _ in isShowing = false }
     }
 }
 
