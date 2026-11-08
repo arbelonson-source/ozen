@@ -3,7 +3,9 @@ package com.arbelonson.ozen
 import android.app.NotificationManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import com.arbelonson.ozen.core.TranscriptionEngineKind
@@ -76,6 +78,22 @@ class ServiceRestartDeviceTest {
         app.captions.appIsActive = false
         Thread.sleep(1_000)
         assertNull("the notice came back after the app was left", stoppedNotice())
+    }
+
+    @Test
+    fun aRestartSpeaksTheChosenAppLanguageNotTheDefaultOfAFreshProcess() {
+        val languageBefore = Localization.language
+        app.settings.change { it.appLanguage = AppLanguage.English }
+        Localization.language = UILanguage.Hebrew
+        try {
+            PreferencesMarkerStore(app).clear()
+            app.captions.checkLoadMarker()
+            assertTrue(app.captions.resumeAfterRestart())
+            assertEquals(UILanguage.English, Localization.language)
+        } finally {
+            Localization.language = languageBefore
+            app.settings.change { it.appLanguage = before.appLanguage }
+        }
     }
 
     @Test

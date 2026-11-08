@@ -134,6 +134,7 @@ class ListeningService : Service() {
         launch {
             while (true) {
                 delay(KEEP_ALIVE_MILLISECONDS)
+                captions.keepListeningRecordAlive()
                 refresh()
             }
         }

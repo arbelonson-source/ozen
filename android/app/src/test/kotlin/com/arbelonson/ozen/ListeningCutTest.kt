@@ -1,0 +1,182 @@
+package com.arbelonson.ozen
+
+import com.arbelonson.ozen.core.EnginePreparationProgress
+import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.PipelineFailure
+import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.UILanguage
+import java.time.ZoneOffset
+import java.util.concurrent.Executor
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class ListeningCutTest {
+    private class MemoryStore(var value: String? = null) : ListeningRecordStore {
+        var failWrites = false
+        var failReads = false
+
+        override fun read(): String? {
+            if (failReads) error("read failed")
+            return value
+        }
+
+        override fun write(value: String) {
+            if (failWrites) error("write failed")
+            this.value = value
+        }
+
+        override fun clear() {
+            if (failWrites) error("clear failed")
+            value = null
+        }
+    }
+
+    private val day = 1_700_000_000.0 - 1_700_000_000.0 % 86_400
+    private fun at(hours: Int, minutes: Int) = day + hours * 3_600 + minutes * 60
+
+    private val store = MemoryStore()
+    private var clock = at(0, 30)
+    private val direct = Executor { it.run() }
+    private fun recorder() = ListeningRecorder(store, VERSION, { clock }, direct)
+    private val failure = PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, "the microphone is busy")
+
+    @Test
+    fun `listening that was cut at 01_10 and seen at 04_20 gives a notice about 01_10 and the length`() {
+        val notice = ListeningCut.notice(ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION), now = at(4, 20), version = VERSION)
+        assertNotNull(notice)
+        assertEquals(at(1, 10), notice.stoppedAt, 0.001)
+        assertEquals(3 * 3_600.0 + 10 * 60, notice.offSeconds, 0.001)
+        val text = Localization.withLanguage(UILanguage.English) { notice.text(ZoneOffset.UTC) }
+        assertTrue("1:10" in text && "3 hours 10 minutes" in text, text)
+        assertTrue(text.startsWith("Listening stopped at about ") && text.endsWith("Alerts couldn't come during that time."), text)
+    }
+
+    @Test
+    fun `a gap of two minutes or less is a quick restart and says nothing`() {
+        val record = ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION)
+        assertNull(ListeningCut.notice(record, now = at(1, 10) + 119, version = VERSION))
+        assertNull(ListeningCut.notice(record, now = at(1, 10) + 120, version = VERSION))
+        assertNotNull(ListeningCut.notice(record, now = at(1, 10) + 121, version = VERSION))
+    }
+
+    @Test
+    fun `a record from before an app update says nothing`() {
+        val record = ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION)
+        assertNull(ListeningCut.notice(record, now = at(4, 20), version = VERSION + 1))
+    }
+
+    @Test
+    fun `no record says nothing`() {
+        assertNull(ListeningCut.notice(null, now = at(4, 20), version = VERSION))
+    }
+
+    @Test
+    fun `a corrupt record or a time in the future says nothing and does not crash`() {
+        for (raw in listOf("", "garbage", "listening 1", "listening 1 2", "listening a b 7", "listening NaN NaN 7", "listening -5 -5 7", "listening 9 3 7")) {
+            assertNull(ListeningCut.notice(ListeningCut.parse(raw), now = at(4, 20), version = VERSION), raw)
+        }
+        assertNull(ListeningCut.parse(null))
+        assertNull(ListeningCut.notice(ListeningCut.Record(startedAt = at(5, 0), aliveAt = at(6, 0), version = VERSION), now = at(4, 20), version = VERSION))
+    }
+
+    @Test
+    fun `a record survives being written and read back`() {
+        val record = ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION)
+        assertEquals(record, ListeningCut.parse(ListeningCut.encode(record)))
+    }
+
+    @Test
+    fun `listening starting writes a record of when it started`() {
+        recorder().phaseChanged(PipelinePhase.Listening, recovering = false)
+        assertEquals(ListeningCut.Record(at(0, 30), at(0, 30), VERSION), ListeningCut.parse(store.value))
+    }
+
+    @Test
+    fun `the keep-alive tick moves the alive time and keeps the start`() {
+        val recorder = recorder()
+        recorder.phaseChanged(PipelinePhase.Listening, recovering = false)
+        clock = at(1, 10)
+        recorder.keepAlive()
+        assertEquals(ListeningCut.Record(at(0, 30), at(1, 10), VERSION), ListeningCut.parse(store.value))
+    }
+
+    @Test
+    fun `a tick while nothing listens writes nothing`() {
+        recorder().keepAlive()
+        assertNull(store.value)
+    }
+
+    @Test
+    fun `a tick after the listening ended does not bring the record back`() {
+        val recorder = recorder()
+        recorder.phaseChanged(PipelinePhase.Listening, recovering = false)
+        recorder.phaseChanged(PipelinePhase.Idle, recovering = false)
+        recorder.keepAlive()
+        assertNull(store.value)
+    }
+
+    @Test
+    fun `stop, pause and a failure that is reported each clear the record`() {
+        for (end in listOf(PipelinePhase.Idle, PipelinePhase.Paused, PipelinePhase.Failed(failure))) {
+            val recorder = recorder()
+            recorder.phaseChanged(PipelinePhase.Listening, recovering = false)
+            assertNotNull(store.value)
+            recorder.phaseChanged(end, recovering = false)
+            assertNull(store.value, "$end")
+        }
+    }
+
+    @Test
+    fun `steps of a start and a failure that retries by itself keep the record`() {
+        val preparing = PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.5))
+        for ((phase, recovering) in listOf(preparing to false, PipelinePhase.StartingAudio to false, PipelinePhase.Failed(failure) to true)) {
+            val recorder = recorder()
+            recorder.phaseChanged(PipelinePhase.Listening, recovering = false)
+            recorder.phaseChanged(phase, recovering)
+            assertNotNull(store.value, "$phase")
+        }
+    }
+
+    @Test
+    fun `listening again after a stop starts a fresh record`() {
+        val recorder = recorder()
+        recorder.phaseChanged(PipelinePhase.Listening, recovering = false)
+        recorder.phaseChanged(PipelinePhase.Idle, recovering = false)
+        clock = at(2, 0)
+        recorder.phaseChanged(PipelinePhase.Listening, recovering = false)
+        assertEquals(ListeningCut.Record(at(2, 0), at(2, 0), VERSION), ListeningCut.parse(store.value))
+    }
+
+    @Test
+    fun `taking reads the leftover record, gives its notice and clears it`() {
+        store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION))
+        clock = at(4, 20)
+        assertEquals(at(1, 10), recorder().take()?.stoppedAt)
+        assertNull(store.value)
+    }
+
+    @Test
+    fun `taking a corrupt record gives nothing and clears it`() {
+        store.value = "garbage"
+        assertNull(recorder().take())
+        assertNull(store.value)
+    }
+
+    @Test
+    fun `a store that fails never reaches the captions`() {
+        store.failReads = true
+        store.failWrites = true
+        val recorder = recorder()
+        assertNull(recorder.take())
+        recorder.phaseChanged(PipelinePhase.Listening, recovering = false)
+        recorder.keepAlive()
+        recorder.phaseChanged(PipelinePhase.Idle, recovering = false)
+    }
+
+    private companion object {
+        const val VERSION = 7L
+    }
+}

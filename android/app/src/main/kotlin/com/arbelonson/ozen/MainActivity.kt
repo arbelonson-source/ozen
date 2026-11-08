@@ -236,7 +236,7 @@ class MainActivity : ComponentActivity() {
         settingsAtBackup.value = savedInstanceState?.getBoolean(SETTINGS_AT_BACKUP) == true
         confirmingCellular.value = savedInstanceState?.getBoolean(CONFIRMING_CELLULAR) == true
         val app = application as OzenApplication
-        StartCaptionsRequest.applyAppLanguage(app)
+        StartCaptionsRequest.applyAppLanguage(app.settings)
         StartCaptionsRequest.publishShortcut(this)
         enableEdgeToEdge()
         setContent { OzenApp(app, showingSettings, settingsAtBackup, confirmingCellular, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
@@ -462,6 +462,7 @@ private fun OzenApp(
     val fitOffer = remember(current, comebacks) { app.captions.modelFitOffer() }
     val inUseModelBytes = remember(current, comebacks) { app.captions.phoneModels.inUseBytes() }
     val loadCrash by app.captions.loadCrash.showing.collectAsStateWithLifecycle()
+    val listeningCut by app.captions.listeningCut.collectAsStateWithLifecycle()
     // Any start, from the card or the status line, ends the question, even
     // one that waits for Wi-Fi or fails before the captions run.
     val captionsStarted = state.phase != PipelinePhase.Idle
@@ -664,6 +665,7 @@ private fun OzenApp(
                                         )
                                     }
                                 },
+                                listeningCutCard = listeningCut?.let { cut -> { ListeningCutCard(cut.text(), app.captions::dismissListeningCut) } },
                                 // Not while it slides away under another screen: talk
                                 // that resumes then is heard there, not buzzed here.
                                 buzzWhenTalkResumes = current.hapticOnSpeechResume && transition.targetState == EnterExitState.Visible,
@@ -812,6 +814,7 @@ private fun CaptionScreen(
     onSwitchModel: (PhoneModel) -> Unit,
     onDismissModelOffer: (PhoneModel) -> Unit,
     loadCrashCard: (@Composable () -> Unit)?,
+    listeningCutCard: (@Composable () -> Unit)?,
     buzzWhenTalkResumes: Boolean,
     onBuzz: (AlertVibration) -> Unit,
     soundSecondsLeft: (SoundAlert) -> Double,
@@ -1093,6 +1096,7 @@ private fun CaptionScreen(
                             )
                             val recent = state.recentConversation
                             loadCrashCard?.invoke()
+                            listeningCutCard?.invoke()
                             if (offer != null) LighterModelOffer(offer, modelOfferWaiting, inUseModelBytes, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             if (recent != null) {
                                 RecentConversationCard(recent, look, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent)
@@ -1101,9 +1105,10 @@ private fun CaptionScreen(
                             }
                         }
                     } else {
-                        val trailing: (@Composable () -> Unit)? = if (offer == null && loadCrashCard == null) null else {
+                        val trailing: (@Composable () -> Unit)? = if (offer == null && loadCrashCard == null && listeningCutCard == null) null else {
                             {
                                 loadCrashCard?.invoke()
+                                listeningCutCard?.invoke()
                                 if (offer != null) LighterModelOffer(offer, modelOfferWaiting, inUseModelBytes, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             }
                         }
@@ -1860,6 +1865,31 @@ private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, inUseByte
                 modifier = Modifier.clickable(role = Role.Button, onClick = onSwitch).testTag("model-load-crash-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
             )
         }
+    }
+}
+
+/** Listening was cut off while the app was closed; she is told when and for how long, and the card goes with a tap. */
+@Composable
+private fun ListeningCutCard(text: String, onDismiss: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    LaunchedEffect(text) {
+        if (ScreenReader.isOn(context)) ScreenReader.announce(context, text)
+    }
+    Column(
+        modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh)
+            .padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Page).testTag("listening-cut"),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+            Icon(Icons.Rounded.Speed, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
+            Text(text, color = colors.onSurface, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("listening-cut-text"))
+        }
+        Text(
+            tr("אישור", "OK"),
+            color = colors.primary,
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.align(Alignment.End).clickable(role = Role.Button, onClick = onDismiss).testTag("listening-cut-dismiss").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+        )
     }
 }
 

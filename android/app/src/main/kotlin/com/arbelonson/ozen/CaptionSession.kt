@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import android.app.ActivityManager
+import android.app.ApplicationExitInfo
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -36,6 +37,7 @@ import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionsStopAnnouncer
 import com.arbelonson.ozen.core.HomeServerEngine
 import com.arbelonson.ozen.core.StoppedCaptionsNotice
+import com.arbelonson.ozen.core.AlertNotificationContent
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundAlertPreferences
@@ -114,6 +116,7 @@ class CaptionSession(
     historyFolder: File = File(context.filesDir, HISTORY_FOLDER),
     journalFile: File = File(context.filesDir, JOURNAL_FILE),
     problemAudioFolder: File = File(context.filesDir, PROBLEM_AUDIO_FOLDER),
+    listeningRecords: ListeningRecordStore = PreferencesListeningStore(context),
 ) : DiagnosticsSource, SpeakerBook, PhoneBackup {
     private val scope = MainScope()
     private val connector = WebSocketConnector(privateRoute = { host -> homeNetwork(host)?.let { network -> PrivatePath(network.socketFactory) { network.getAllByName(it).toList() } } })
@@ -268,6 +271,48 @@ class CaptionSession(
 
     init {
         checkLoadMarker()
+    }
+
+    private val listeningRecord = ListeningRecorder(listeningRecords, versionCode())
+    private val listeningCutNotice = MutableStateFlow<ListeningCut.Notice?>(null)
+
+    /** Listening that the phone ended with the app, found as Ozen came back and not yet seen. */
+    val listeningCut: StateFlow<ListeningCut.Notice?> get() = listeningCutNotice
+
+    init {
+        checkListeningRecord()
+    }
+
+    internal fun checkListeningRecord() {
+        val cut = listeningRecord.take()
+        listeningCutNotice.value = cut
+        if (cut != null) note("Listening was cut off: last alive ${Instant.ofEpochSecond(cut.stoppedAt.toLong())}, off for ${cut.offSeconds.toLong()} s; ${lastExit()}")
+    }
+
+    fun dismissListeningCut() {
+        listeningCutNotice.value = null
+        notifier.withdraw(LISTENING_CUT_IDENTIFIER)
+    }
+
+    fun keepListeningRecordAlive() = listeningRecord.keepAlive()
+
+    private fun tellListeningCut() {
+        val cut = listeningCutNotice.value ?: return
+        if (!settings.current.value.notifyWhenInBackground) return
+        val content = AlertNotificationContent(LISTENING_CUT_IDENTIFIER, tr("הכתוביות נעצרו", "Captions stopped"), cut.text(), "status", isUrgent = false)
+        notifier.post(content)
+    }
+
+    private fun versionCode(): Long = runCatching {
+        PackageInfoCompat.getLongVersionCode(context.packageManager.getPackageInfo(context.packageName, 0))
+    }.getOrDefault(0L)
+
+    private fun lastExit(): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return "exit reason not available before Android 11"
+        return runCatching {
+            val last = context.getSystemService(ActivityManager::class.java).getHistoricalProcessExitReasons(null, 0, 1).firstOrNull()
+            if (last == null) "no exit reason recorded" else "last exit: ${exitReasonName(last.reason)}"
+        }.getOrDefault("exit reason could not be read")
     }
 
     internal fun checkLoadMarker() {
@@ -715,7 +760,12 @@ class CaptionSession(
      * not, the stopped-captions notice says so.
      */
     fun resumeAfterRestart(): Boolean {
+        // No screen has opened in this process to set the app's language, and
+        // everything said from here on, notices included, would come out in
+        // the default one.
+        StartCaptionsRequest.applyAppLanguage(settings)
         note("Captions restarted by the phone after the app was ended")
+        tellListeningCut()
         if (ServiceRestart.shouldListen(systemRestart = true, mayStartCaptions = mayStartCaptions())) return true
         note("Captions not started again: the app was ended while it set up the model")
         // Starting up took the marker. Android may end this process again
@@ -738,6 +788,7 @@ class CaptionSession(
     }
 
     private fun publish() {
+        listeningRecord.phaseChanged(pipeline.phase, pipeline.isRecoveringByItself)
         checkCaptionsStillRunning()
         val transcribing = pipeline.activeSettings.takeIf { pipeline.isCoveringForCloud } ?: settings.current.value
         CaptionState.show(
@@ -1466,6 +1517,7 @@ class CaptionSession(
         const val JOURNAL_FILE = "ozen-journal.log"
         private const val CRITICAL_ANNOUNCEMENT_MILLIS = 4_000L
         const val PROBLEM_AUDIO_FOLDER = "problem-audio"
+        private const val LISTENING_CUT_IDENTIFIER = "listening-cut"
         private const val SAMPLE_RATE = 16_000
         private const val BACKGROUND_CHECK_SECONDS = 30L
 
@@ -1489,6 +1541,23 @@ private class HeatListener(private var last: Int, var changed: ((Int) -> Unit)?)
         last = status
     }
 }
+
+private fun exitReasonName(reason: Int): String =
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) "unknown" else when (reason) {
+        ApplicationExitInfo.REASON_LOW_MEMORY -> "low memory"
+        ApplicationExitInfo.REASON_CRASH, ApplicationExitInfo.REASON_CRASH_NATIVE -> "crash"
+        ApplicationExitInfo.REASON_ANR -> "not responding"
+        ApplicationExitInfo.REASON_SIGNALED -> "killed by a signal"
+        ApplicationExitInfo.REASON_USER_REQUESTED -> "stopped by the person"
+        ApplicationExitInfo.REASON_USER_STOPPED -> "force-stopped by the person"
+        ApplicationExitInfo.REASON_PERMISSION_CHANGE -> "permission change"
+        ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> "too many resources"
+        ApplicationExitInfo.REASON_DEPENDENCY_DIED -> "a dependency died"
+        ApplicationExitInfo.REASON_EXIT_SELF -> "exited by itself"
+        ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> "failed to start"
+        ApplicationExitInfo.REASON_OTHER -> "other"
+        else -> "reason $reason"
+    }
 
 /**
  * Android's seven heat levels in the iPhone's four (`ProcessInfo.ThermalState`):

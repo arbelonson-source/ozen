@@ -3,6 +3,7 @@ package com.arbelonson.ozen.core
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -74,6 +75,63 @@ class CaptionPipelineRecoveryTest {
         assertTrue(pipeline.phase.isListening)
         assertNull(pipeline.scheduledRetry)
         assertFalse(pipeline.isRecoveringByItself)
+    }
+
+    @Test
+    fun `a glitch that will be retried never reads as captions stopped to whoever hears of it`() = runTest {
+        val engine = FakeEngine()
+        val pipeline = makeRecoveringPipeline(
+            engine = engine,
+            policy = AutoRecoveryPolicy(glitchDelays = listOf(30.0), downloadDelays = emptyList()),
+            clock = TestClock(),
+        )
+        val heard = ArrayList<StoppedCaptionsNotice.Cause?>()
+        val countdowns = ArrayList<ScheduledRetry?>()
+        pipeline.onPhaseChange = { phase ->
+            if (phase is PipelinePhase.Failed) {
+                heard.add(StoppedCaptionsNotice.cause(phase, pipeline.isRecoveringByItself, systemInterrupted = false, callEndedDuringInterruption = false))
+                countdowns.add(pipeline.scheduledRetry)
+            }
+        }
+        pipeline.start(AppSettings.default)
+        engine.endStream(throwing = TestError())
+        assertTrue(eventually { pipeline.scheduledRetry != null })
+        assertEquals(listOf<StoppedCaptionsNotice.Cause?>(null), heard)
+        assertEquals(listOf(pipeline.scheduledRetry), countdowns)
+    }
+
+    @Test
+    fun `captions stopped by whoever hears of a failure leave no retry behind`() = runTest {
+        val engine = FakeEngine()
+        val pipeline = makeRecoveringPipeline(engine = engine, policy = fast())
+        val events = ArrayList<PipelineEvent.Kind>()
+        pipeline.onEvent = { events.add(it.kind) }
+        pipeline.onPhaseChange = { phase -> if (phase is PipelinePhase.Failed) pipeline.stop() }
+        pipeline.start(AppSettings.default)
+        engine.endStream(throwing = TestError())
+        assertTrue(eventually { events.any { it is PipelineEvent.Kind.Failed } })
+        delay(1.seconds)
+        assertEquals(PipelinePhase.Idle, pipeline.phase)
+        assertFalse(pipeline.isRecoveringByItself)
+        assertTrue(events.none { it is PipelineEvent.Kind.RetryScheduled }, "$events")
+    }
+
+    @Test
+    fun `a failure whose retries ran out is heard as captions stopped`() = runTest {
+        val engine = FakeEngine()
+        val pipeline = makeRecoveringPipeline(engine = engine, policy = AutoRecoveryPolicy.disabled())
+        val heard = ArrayList<StoppedCaptionsNotice.Cause?>()
+        pipeline.onPhaseChange = { phase ->
+            if (phase is PipelinePhase.Failed) {
+                heard.add(StoppedCaptionsNotice.cause(phase, pipeline.isRecoveringByItself, systemInterrupted = false, callEndedDuringInterruption = false))
+            }
+        }
+        pipeline.start(AppSettings.default)
+        engine.endStream(throwing = TestError())
+        assertTrue(eventually { pipeline.phase.failure != null })
+        assertEquals(1, heard.size)
+        assertIs<StoppedCaptionsNotice.Cause.Failed>(heard.single())
+        assertNull(pipeline.scheduledRetry)
     }
 
     @Test
