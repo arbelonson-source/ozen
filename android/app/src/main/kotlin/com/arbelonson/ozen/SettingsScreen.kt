@@ -41,6 +41,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Error
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.NightsStay
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Computer
@@ -233,6 +234,7 @@ fun SettingsScreen(
     var showingSounds by rememberSaveable { mutableStateOf(false) }
     var showingImportantWords by rememberSaveable { mutableStateOf(false) }
     var showingEnrollment by rememberSaveable { mutableStateOf(false) }
+    var showingNight by rememberSaveable { mutableStateOf(false) }
     val page = when {
         showingWords -> SettingsPage.Words
         showingDiagnostics -> SettingsPage.Diagnostics
@@ -241,6 +243,7 @@ fun SettingsScreen(
         showingSounds -> SettingsPage.Sounds
         showingImportantWords -> SettingsPage.ImportantWords
         showingEnrollment -> SettingsPage.Enrollment
+        showingNight -> SettingsPage.Night
         else -> SettingsPage.Main
     }
     // Kept out here, so back from a page of its own Settings is where it was
@@ -264,6 +267,7 @@ fun SettingsScreen(
             SettingsPage.Sounds -> SoundAlertsScreen(current.soundAlerts, onSoundAlerts, soundNearMiss, onFeel, onClose = { showingSounds = false })
             SettingsPage.ImportantWords -> ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, current.spokenLanguage, heard, onImportantWords, onClose = { showingImportantWords = false }, heardBy = heardBy)
             SettingsPage.Enrollment -> SpeakerEnrollmentScreen(speakers, onClose = { showingEnrollment = false })
+            SettingsPage.Night -> NightAlertsScreen(onClose = { showingNight = false })
             SettingsPage.Main -> {
                 BackHandler(onBack = close)
                 SettingsPageFrame(tr("הגדרות", "Settings"), scroll = scroll, onClose = close, closeLabel = tr("סגירה", "Close")) {
@@ -274,6 +278,7 @@ fun SettingsScreen(
                         onOpen = { showingImportantWords = true },
                         sounds = current.soundAlerts,
                         onSounds = { showingSounds = true },
+                        onNight = { showingNight = true },
                         notifyInBackground = current.notifyWhenInBackground,
                         onNotifyInBackground = { on -> settings.change { it.notifyWhenInBackground = on } },
                         quietHours = current.quietHours,
@@ -313,7 +318,7 @@ fun SettingsScreen(
 }
 
 /** The pages Settings opens over itself. */
-private enum class SettingsPage { Main, Words, Diagnostics, Guide, Support, Sounds, ImportantWords, Enrollment }
+private enum class SettingsPage { Main, Words, Diagnostics, Guide, Support, Sounds, ImportantWords, Enrollment, Night }
 
 /**
  * How the captions look, first as on the iPhone: the size is kept when the
@@ -985,6 +990,7 @@ private fun AlertsSection(
     onOpen: () -> Unit,
     sounds: SoundAlertPreferences,
     onSounds: () -> Unit,
+    onNight: () -> Unit,
     notifyInBackground: Boolean,
     onNotifyInBackground: (Boolean) -> Unit,
     quietHours: QuietHours,
@@ -993,8 +999,10 @@ private fun AlertsSection(
     val context = LocalContext.current
     var blocked by remember { mutableStateOf(!AlertNotifier.allowed(context)) }
     var sent by remember { mutableStateOf(false) }
+    var toCheck by remember { mutableIntStateOf(nightItemsToCheck(context)) }
     LifecycleResumeEffect(Unit) {
         blocked = !AlertNotifier.allowed(context)
+        toCheck = nightItemsToCheck(context)
         onPauseOrDispose { }
     }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { blocked = !AlertNotifier.allowed(context) }
@@ -1039,17 +1047,17 @@ private fun AlertsSection(
                         )
                         TextButton(onClick = { openNotificationSettings(context) }) { Text(tr("פתיחת הגדרות הטלפון", "Open the phone’s settings")) }
                     } else {
-                        TextButton(onClick = { AlertNotifier(context.applicationContext).postTest(); sent = true }) {
-                            Text(
-                                if (sent) {
-                                    tr("ההתראה נשלחה. נעלו את הטלפון, והיא תגיע תוך 10 שניות", "Sent. Lock the phone, and it will arrive within 10 seconds")
-                                } else {
-                                    tr("בדיקה שהתראה מגיעה כשהטלפון נעול", "Test that an alert arrives when the phone is locked")
-                                },
-                            )
-                        }
+                        TestAlertButton(sent) { sent = true }
                     }
                 }
+            }
+            item {
+                SettingRow(
+                    tr("התראות במהלך הלילה", "Alerts through the night"),
+                    icon = Icons.Rounded.NightsStay,
+                    onClick = onNight,
+                    trailing = { TrailingValue(NightAlerts.summary(toCheck)) },
+                )
             }
             item {
                 SettingSwitchRow(
@@ -1084,7 +1092,24 @@ private fun AlertsSection(
     GroupFootnote(tr("רטט והדגשה כשנאמרת מילה חשובה, והודעה בראש המסך כשנשמעים פעמון בדלת, טלפון, אזעקה ועוד. כשהטלפון בכיס או נעול, אותן התראות מגיעות כהתראות רגילות של הטלפון, ויש גם התראה אם הכתוביות נעצרו ולא חזרו לבד.", "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, and more are heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own."))
 }
 
-private fun openNotificationSettings(context: android.content.Context) {
+@Composable
+internal fun TestAlertButton(sent: Boolean, onSent: () -> Unit) {
+    val context = LocalContext.current
+    TextButton(onClick = { AlertNotifier(context.applicationContext).postTest(); onSent() }) {
+        Text(
+            if (sent) {
+                tr("ההתראה נשלחה. נעלו את הטלפון, והיא תגיע תוך 10 שניות", "Sent. Lock the phone, and it will arrive within 10 seconds")
+            } else {
+                tr("בדיקה שהתראה מגיעה כשהטלפון נעול", "Test that an alert arrives when the phone is locked")
+            },
+        )
+    }
+}
+
+private fun nightItemsToCheck(context: android.content.Context): Int =
+    NightAlerts.openItems(NightAlerts.batteryExempt(context), AlertNotifier.alarmsOverrideDoNotDisturb(context))
+
+internal fun openNotificationSettings(context: android.content.Context) {
     context.startActivity(
         Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
             .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName),
