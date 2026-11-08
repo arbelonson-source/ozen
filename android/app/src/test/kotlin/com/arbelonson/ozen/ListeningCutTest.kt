@@ -180,6 +180,35 @@ class ListeningCutTest {
     }
 
     @Test
+    fun `a quick restart keeps the record, so a later start still tells the cut from the real last-alive time`() {
+        store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION))
+        clock = at(1, 11)
+        assertNull(recorder().take())
+        assertNotNull(store.value)
+        clock = at(4, 20)
+        assertEquals(at(1, 10), recorder().take()?.stoppedAt)
+        assertNull(store.value)
+    }
+
+    @Test
+    fun `listening again after a quick restart writes a fresh record`() {
+        store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION))
+        clock = at(1, 11)
+        val recorder = recorder()
+        assertNull(recorder.take())
+        recorder.phaseChanged(PipelinePhase.Listening, recovering = false)
+        assertEquals(ListeningCut.Record(at(1, 11), at(1, 11), VERSION), ListeningCut.parse(store.value))
+    }
+
+    @Test
+    fun `a record from another version is cleared even right after it was written`() {
+        store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION - 1))
+        clock = at(1, 11)
+        assertNull(recorder().take())
+        assertNull(store.value)
+    }
+
+    @Test
     fun `taking a corrupt record gives nothing and clears it`() {
         store.value = "garbage"
         assertNull(recorder().take())

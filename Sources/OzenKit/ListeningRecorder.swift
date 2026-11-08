@@ -80,9 +80,15 @@ public final class ListeningRecorder {
 
     public func take() -> ListeningCut.Notice? {
         guard let raw = store.read() else { return nil }
+        let record = ListeningCut.parse(raw)
+        let at = now()
+        let notice = ListeningCut.notice(record, now: at, version: version)
+        if notice == nil, let record, record.version == version, (0...ListeningCut.leastGapSeconds).contains(at - record.aliveAt) {
+            return nil
+        }
         let store = store
         executor.async { store.clear() }
-        return ListeningCut.notice(ListeningCut.parse(raw), now: now(), version: version)
+        return notice
     }
 
     private func begin() {

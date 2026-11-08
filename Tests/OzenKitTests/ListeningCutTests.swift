@@ -183,6 +183,37 @@ struct ListeningCutTests {
         #expect(store.value == nil)
     }
 
+    @Test("a quick restart keeps the record, so a later start still tells the cut from the real last-alive time")
+    func quickRestartKeeps() {
+        store.value = ListeningCut.encode(record(at(1, 10)))
+        clock.time = at(1, 11)
+        #expect(recorder().take() == nil)
+        #expect(store.value != nil)
+        clock.time = at(4, 20)
+        #expect(recorder().take()?.stoppedAt == at(1, 10))
+        #expect(store.value == nil)
+    }
+
+    @Test("listening again after a quick restart writes a fresh record")
+    func quickRestartThenListening() {
+        store.value = ListeningCut.encode(record(at(1, 10)))
+        clock.time = at(1, 11)
+        let recorder = recorder()
+        #expect(recorder.take() == nil)
+        recorder.phaseChanged(.listening, recovering: false)
+        #expect(ListeningCut.parse(store.value)?.startedAt == at(1, 11))
+    }
+
+    @Test("a record from another version is cleared even right after it was written")
+    func otherVersionCleared() {
+        var old = record(at(1, 10))
+        old.version -= 1
+        store.value = ListeningCut.encode(old)
+        clock.time = at(1, 11)
+        #expect(recorder().take() == nil)
+        #expect(store.value == nil)
+    }
+
     @Test("taking a corrupt record gives nothing and clears it")
     func takeCorrupt() {
         store.value = "garbage"
