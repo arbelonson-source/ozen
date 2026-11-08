@@ -2254,13 +2254,14 @@ class CaptionPipeline(
         // Set before the phase: whoever reacts to the failure looks before
         // the cover has had a turn to start.
         pendingCover = if (onPhone == null) null else failure
+        val retryIn = if (onPhone == null) lineUpRetry(failure) else null
         phase = PipelinePhase.Failed(failure)
         logEvent(PipelineEvent.Kind.Failed(failure))
         if (onPhone != null) {
             scope.launch { coverForCloud(onPhone, failure) }
             return
         }
-        scheduleAutoRecovery(failure)
+        startRetry(failure, retryIn)
     }
 
     /**
@@ -2597,15 +2598,31 @@ class CaptionPipeline(
         }
     }
 
-    private fun scheduleAutoRecovery(failure: PipelineFailure) {
+    private fun scheduleAutoRecovery(failure: PipelineFailure) = startRetry(failure, lineUpRetry(failure))
+
+    /**
+     * Decides when [failure] is tried again and lines that retry up. [fail]
+     * does this before it sets the phase: whoever reacts to the failure must
+     * already see captions on their way back, or a glitch that fixes itself
+     * reads as captions stopped for good, with a "captions stopped" notice
+     * on a phone that was put away. Null while a call holds the microphone
+     * or once the retries ran out; [startRetry] tells the two apart.
+     */
+    private fun lineUpRetry(failure: PipelineFailure): Double? {
         val since = listeningSince
         if (since != null && now() - since >= recovery.healthyListeningSeconds) {
             recovery.reset()
         }
         listeningSince = null
         cancelScheduledRetry()
+        if (systemInterrupted) return null
+        val delaySeconds = recovery.nextDelay(failure) ?: return null
+        scheduledRetry = ScheduledRetry(now() + delaySeconds, recovery.attempts)
+        return delaySeconds
+    }
+
+    private fun startRetry(failure: PipelineFailure, delaySeconds: Double?) {
         if (systemInterrupted) return
-        val delaySeconds = recovery.nextDelay(failure)
         if (delaySeconds == null) {
             coverOnceRetriesRunOut(failure)
             if (waitForHomeServer(failure) || comesBackWithoutTimer(failure)) {
@@ -2613,10 +2630,11 @@ class CaptionPipeline(
             }
             return
         }
+        // Whoever heard of the failure may have started captions again.
+        if (scheduledRetry == null) return
 
         val token = UUID.randomUUID()
         retryToken = token
-        scheduledRetry = ScheduledRetry(now() + delaySeconds, recovery.attempts)
         logEvent(PipelineEvent.Kind.RetryScheduled(recovery.attempts, delaySeconds))
         retryTask = scope.launch {
             delay(delaySeconds.seconds)
