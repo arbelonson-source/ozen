@@ -30,6 +30,8 @@ class SpokenReplies(private val voice: SpeechSynthesizing, private val scope: Co
 
     val holdsCaptions: Boolean get() = hold.isHoldingCaptions
 
+    val holdsCaptionsForAPhrase: Boolean get() = hold.isHoldingCaptions && !captions.duringCall
+
     fun canSay(text: String): Boolean = voice.canSay(text)
 
     fun speak(text: String, rate: Float): Boolean {

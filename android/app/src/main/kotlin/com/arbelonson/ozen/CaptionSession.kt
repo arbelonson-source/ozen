@@ -703,7 +703,7 @@ class CaptionSession(
     }
 
     fun memoryShort(footprintBytes: Long) {
-        pipeline.handleMemoryWarning(footprintBytes, pausedForSpeech = replies.holdsCaptions)
+        pipeline.handleMemoryWarning(footprintBytes, pausedForSpeech = replies.holdsCaptionsForAPhrase)
         conversations.memoryShort()
     }
 
