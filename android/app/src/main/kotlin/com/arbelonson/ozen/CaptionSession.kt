@@ -830,9 +830,10 @@ class CaptionSession(
      */
     private fun announceStopOrReturn() {
         val phase = pipeline.phase
-        val text = when (stopAnnouncer.phaseChanged(phase, appIsActive)) {
+        val text = when (stopAnnouncer.phaseChanged(phase, appIsActive, SystemClock.elapsedRealtime() / 1000.0)) {
             CaptionsStopAnnouncer.Event.Stopped -> stoppedText(phase)
             CaptionsStopAnnouncer.Event.Back -> tr("הכתוביות חזרו", "Captions are back")
+            CaptionsStopAnnouncer.Event.Ready -> tr("הכתוביות מוכנות", "Captions are ready")
             null -> return
         }
         if (appIsActive && ScreenReader.isOn(context)) announce(text)
