@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AppLanguage
@@ -56,7 +57,7 @@ class ListeningCutDeviceTest {
         val shown = compose.onNodeWithTag("listening-cut-text").fetchSemanticsNode().config.toString()
         assertTrue(shown, clockTime(aliveAt) in shown && "3 hours" in shown)
         assertNull("the record is read once", records.read())
-        compose.onNodeWithTag("listening-cut-dismiss").performClick()
+        compose.onNodeWithTag("listening-cut-dismiss").performScrollTo().performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("listening-cut").fetchSemanticsNodes().isEmpty() }
         app.captions.checkListeningRecord()
         compose.activityRule.scenario.recreate()
