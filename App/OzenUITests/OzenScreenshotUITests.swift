@@ -1657,6 +1657,11 @@ final class OzenScreenshotUITests: XCTestCase {
         app.launch()
         let settingsButton = app.descendants(matching: .any)["settingsButton"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "\(name): the settings button never appeared")
+        let revealControls = app.descendants(matching: .any)["showControlsButton"]
+        for _ in 0..<5 where !settingsButton.isHittable {
+            if revealControls.exists { revealControls.tap() }
+            Thread.sleep(forTimeInterval: 1)
+        }
         settingsButton.tap()
         XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "\(name): settings never appeared")
         openSettingsRow(app, rowIdentifier: "soundAlertsRow", screenIdentifier: "soundAlertsScreen", captureName: "\(name)-sound-alerts") {
