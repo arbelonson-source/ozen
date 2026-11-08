@@ -825,6 +825,24 @@ public final class LiveCaptionViewModel {
         applyAppLanguage()
     }
 
+    /// Ending the walkthrough, Skip included: a phone nobody checked is
+    /// checked first, so captions start on the model that suits it.
+    public func finishOnboarding() async {
+        completeOnboarding()
+    }
+
+    /// The walkthrough's model page checks the phone; Skip jumps past it.
+    /// A model nobody picked then still follows the phone's own list.
+    public func checkPhoneIfNeverChecked() async {
+        guard settings.deviceModelCheck == nil else { return }
+        let before = settings.whisperModelVariant
+        await testThisPhone()
+        guard settings.whisperModelVariant == before, let check = settings.deviceModelCheck,
+              let fitted = DeviceModelAdvisor.variantAfterFirstCheck(current: before, language: settings.spokenLanguage, check: check)
+        else { return }
+        await setWhisperModel(fitted)
+    }
+
     public func completeOnboarding() {
         settings.hasCompletedOnboarding = true
         persist()

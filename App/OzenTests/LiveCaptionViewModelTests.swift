@@ -876,6 +876,25 @@ struct LiveCaptionViewModelOnboardingTests {
         #expect(SettingsStore(fileURL: file).load().hasCompletedOnboarding == false)
     }
 
+    @Test("skipping the walkthrough checks the phone and settles on the model recommended for it")
+    func skipChecksPhone() async {
+        let (viewModel, _) = makeViewModel()
+        #expect(viewModel.settings.deviceModelCheck == nil)
+        await viewModel.finishOnboarding()
+        #expect(viewModel.hasCompletedOnboarding)
+        #expect(viewModel.settings.deviceModelCheck != nil)
+        #expect(viewModel.settings.whisperModelVariant == viewModel.settings.recommendedWhisperVariant)
+    }
+
+    @Test("skipping the walkthrough keeps a model the person picked")
+    func skipKeepsPickedModel() async {
+        let (viewModel, _) = makeViewModel()
+        await viewModel.setWhisperModel("small")
+        await viewModel.finishOnboarding()
+        #expect(viewModel.settings.deviceModelCheck != nil)
+        #expect(viewModel.settings.whisperModelVariant == "small")
+    }
+
     @Test("the walkthrough shown again from Settings ends by starting captions, as it says, like the first time")
     func walkthroughAgainStartsCaptions() {
         let (viewModel, _) = makeViewModel()

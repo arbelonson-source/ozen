@@ -166,4 +166,31 @@ struct DeviceModelAdvisorTests {
         #expect(DeviceModelAdvisor.timingToKeep(from: saved, onDevice: "iPhone16,2") == nil)
         #expect(DeviceModelAdvisor.timingToKeep(from: nil, onDevice: "iPhone16,2") == nil)
     }
+
+    @Test("a first check that leaves out the default Hebrew model moves a model nobody picked to the lighter one")
+    func firstCheckLightensDefault() {
+        let untouched = WhisperModelCatalog.recommendedVariant(for: .hebrew)
+        let lighter = DeviceModelAdvisor.variantAfterFirstCheck(current: untouched, language: .hebrew, check: Self.check(Self.a14))
+        #expect(lighter == "small")
+    }
+
+    @Test("a model the person picked stays after the first check")
+    func firstCheckKeepsPick() {
+        #expect(DeviceModelAdvisor.variantAfterFirstCheck(current: "medium", language: .hebrew, check: Self.check(Self.a14)) == nil)
+    }
+
+    @Test("a first check that supports the default keeps it")
+    func firstCheckKeepsSupportedDefault() {
+        let untouched = WhisperModelCatalog.recommendedVariant(for: .hebrew)
+        #expect(DeviceModelAdvisor.variantAfterFirstCheck(current: untouched, language: .hebrew, check: Self.check(Self.a15)) == nil)
+    }
+
+    @Test("other languages are fitted from their own list")
+    func firstCheckOtherLanguage() {
+        let check = Self.check(Self.base)
+        let untouched = WhisperModelCatalog.recommendedVariant(for: .english)
+        let expected = DeviceModelAdvisor.recommendedVariant(for: .english, on: check)
+        let got = DeviceModelAdvisor.variantAfterFirstCheck(current: untouched, language: .english, check: check)
+        #expect(got == (expected == untouched ? nil : expected))
+    }
 }
