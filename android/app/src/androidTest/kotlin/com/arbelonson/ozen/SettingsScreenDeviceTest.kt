@@ -172,6 +172,9 @@ class SettingsScreenDeviceTest {
     private var separationBefore = 0.45f
     private var cellularBefore = false
     private lateinit var keyCheckHTTPBefore: CloudHTTP
+    private val batteryBefore = NightAlerts.batteryExempt
+    private val batteryListBefore = NightAlerts.openBatteryList
+    private val overrideDndBefore = AlertNotifier.alarmsOverrideDoNotDisturb
 
     @Before
     fun remember() {
@@ -204,6 +207,9 @@ class SettingsScreenDeviceTest {
 
     @After
     fun restore() {
+        NightAlerts.batteryExempt = batteryBefore
+        NightAlerts.openBatteryList = batteryListBefore
+        AlertNotifier.alarmsOverrideDoNotDisturb = overrideDndBefore
         app.cloudKeyCheckHTTP = keyCheckHTTPBefore
         app.cloudKeys.remove(CloudProvider.Deepgram)
         codeBefore?.let { app.homeServerCode.save(it) } ?: app.homeServerCode.remove()
@@ -2116,6 +2122,40 @@ class SettingsScreenDeviceTest {
             AlertNotifier.alarmsOverrideDoNotDisturb = overrideBefore
             AlertNotifier.openAlarmSettings = openBefore
         }
+    }
+
+    @Test
+    fun theAlertsThroughTheNightRowCountsWhatToCheckOpensItsPageAndSaysAllSetOnceBothAreDone() {
+        val exempt = AtomicBoolean(false)
+        val through = AtomicBoolean(false)
+        val opened = AtomicInteger(0)
+        NightAlerts.batteryExempt = { exempt.get() }
+        NightAlerts.openBatteryList = { opened.incrementAndGet() }
+        AlertNotifier.alarmsOverrideDoNotDisturb = { through.get() }
+        app.settings.change { it.notifyWhenInBackground = true }
+        compose.onNodeWithText("Settings").performClick()
+        row("Alerts through the night", "2 to check")
+        compose.onNodeWithText("Alerts through the night").performScrollTo().performClick()
+        compose.onNodeWithText("To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it.").performScrollTo().assertExists()
+        compose.onNodeWithText("Open the battery list").performScrollTo().performClick()
+        compose.waitUntil(5_000) { opened.get() == 1 }
+        compose.onNodeWithText("On silent, alerts don’t vibrate either", substring = true).performScrollTo().assertExists()
+        compose.onNodeWithText("Test that an alert arrives when the phone is locked").performScrollTo().assertExists()
+
+        exempt.set(true)
+        through.set(true)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Open the battery list").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("Android lets Ozen keep running while the phone sleeps.").performScrollTo().assertExists()
+        compose.onNodeWithText("Urgent sounds, like a smoke alarm, come through Do Not Disturb.").performScrollTo().assertExists()
+        compose.onNodeWithText("Back").performClick()
+        row("Alerts through the night", "All set")
+
+        exempt.set(false)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText("Alerts through the night") and hasText("1 to check")).fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test

@@ -177,6 +177,10 @@ struct OzenApp: App {
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
                 viewModel.handleMemoryWarning(footprintBytes: DeviceMemory.footprintBytes())
             }
+            // Closing the app on purpose is not a cut-off; see ListeningRecorder.
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
+                viewModel.appWillTerminate()
+            }
             // Right to left in Hebrew. Under this, SwiftUI's `.leading` is
             // the right edge: text and a row's icon go on `.leading`, never
             // `.trailing`, and so follow the language. Caption lines are

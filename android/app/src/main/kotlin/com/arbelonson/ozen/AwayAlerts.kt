@@ -149,8 +149,18 @@ class AlertNotifier(private val context: Context) {
         }
 
         var alarmsOverrideDoNotDisturb: (Context) -> Boolean = { context ->
-            context.getSystemService(NotificationManager::class.java).getNotificationChannel(ALARM_CHANNEL_ID)?.canBypassDnd() == true
+            val manager = context.getSystemService(NotificationManager::class.java)
+            val channel = manager.getNotificationChannel(ALARM_CHANNEL_ID)
+            alarmsGetThrough(manager.areNotificationsEnabled(), channel?.importance, channel?.canBypassDnd() == true)
         }
+
+        /**
+         * The phone keeps a channel's Do Not Disturb setting after the channel
+         * itself is turned off, and [deliver] then drops every alarm: urgent
+         * sounds come through only while the channel can show anything.
+         */
+        fun alarmsGetThrough(notificationsOn: Boolean, importance: Int?, bypassesDnd: Boolean): Boolean =
+            notificationsOn && importance != null && importance != NotificationManager.IMPORTANCE_NONE && bypassesDnd
 
         var openAlarmSettings: (Context) -> Unit = { context -> context.startActivity(alarmSettings(context)) }
 

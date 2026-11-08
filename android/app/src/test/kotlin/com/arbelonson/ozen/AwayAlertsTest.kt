@@ -97,4 +97,15 @@ class AwayAlertsTest {
         assertEquals(true, AlertNotifier.buzzMuted(false, all, true))
         assertEquals(false, AlertNotifier.buzzMuted(true, none, true))
     }
+
+    @Test
+    fun `urgent sounds count as coming through Do Not Disturb only while their channel can show them at all`() {
+        val high = android.app.NotificationManager.IMPORTANCE_HIGH
+        val off = android.app.NotificationManager.IMPORTANCE_NONE
+        assertEquals(true, AlertNotifier.alarmsGetThrough(notificationsOn = true, importance = high, bypassesDnd = true))
+        assertEquals(false, AlertNotifier.alarmsGetThrough(notificationsOn = true, importance = off, bypassesDnd = true))
+        assertEquals(false, AlertNotifier.alarmsGetThrough(notificationsOn = false, importance = high, bypassesDnd = true))
+        assertEquals(false, AlertNotifier.alarmsGetThrough(notificationsOn = true, importance = null, bypassesDnd = true))
+        assertEquals(false, AlertNotifier.alarmsGetThrough(notificationsOn = true, importance = high, bypassesDnd = false))
+    }
 }

@@ -96,6 +96,14 @@ public final class LiveCaptionViewModel {
     @ObservationIgnored private var notificationsBlocked = false
     /// Tells her when captions stop while the phone is put away.
     private var stoppedCaptions = StoppedCaptionsNotice()
+    /// Keeps a small record on disk while captions listen, so a launch
+    /// after iOS ended the app can say that listening was cut off. Nil in
+    /// tests that don't look at it.
+    @ObservationIgnored private let listeningRecorder: ListeningRecorder?
+    @ObservationIgnored private var listeningKeepAliveTask: Task<Void, Never>?
+    /// Listening that was cut off while the app was closed, found at this
+    /// launch and not yet seen; the caption screen shows it until dismissed.
+    public private(set) var listeningCut: ListeningCut.Notice?
     /// Tells her when the first-time model download pauses because the
     /// phone was put away.
     private var downloadBackgrounded = DownloadBackgroundedNotice()
@@ -204,7 +212,8 @@ public final class LiveCaptionViewModel {
             phoneCalls: PhoneCallMonitor(),
             lockScreen: LockScreenCaptionsActivity(),
             journal: SessionJournal(fileURL: support.appendingPathComponent("ozen-journal.log")),
-            problemAudio: ProblemAudioStore(directory: support.appendingPathComponent("problem-audio", isDirectory: true))
+            problemAudio: ProblemAudioStore(directory: support.appendingPathComponent("problem-audio", isDirectory: true)),
+            listeningRecorder: ListeningRecords.makeRecorder()
         )
     }
 
@@ -225,9 +234,11 @@ public final class LiveCaptionViewModel {
         reclaimAudioSession: (@MainActor () async -> Bool)? = nil,
         lockScreen: (any LockScreenCaptionsDisplaying)? = nil,
         journal: SessionJournal? = nil,
-        problemAudio: ProblemAudioStore? = nil
+        problemAudio: ProblemAudioStore? = nil,
+        listeningRecorder: ListeningRecorder? = nil
     ) {
         self.settingsStore = settingsStore
+        self.listeningRecorder = listeningRecorder
         self.pipeline = pipeline
         self.journal = journal
         self.problemAudio = problemAudio
@@ -266,6 +277,12 @@ public final class LiveCaptionViewModel {
             self?.journal?.append(event.description, at: event.at)
         }
         startJournal()
+        // Before captions can start again: this launch's own listening
+        // writes the next record.
+        if let cut = listeningRecorder?.take() {
+            listeningCut = cut
+            note("Listening was cut off: last alive \(Date(timeIntervalSince1970: cut.stoppedAt)), off for \(Int(cut.offSeconds)) s")
+        }
         pipeline.onSoundAlert = { [weak self] alert in
             self?.alertRaised(sound: alert)
         }
@@ -602,6 +619,39 @@ public final class LiveCaptionViewModel {
         case nil:
             break
         }
+        updateListeningRecord(failureIsRecovering: cause == nil)
+    }
+
+    /// Feeds the record of listening what the pipeline is doing now. A
+    /// failure that retries by itself, or waits for Wi-Fi, keeps it; one
+    /// reported with the stopped-captions notice ends it like a stop.
+    private func updateListeningRecord(failureIsRecovering: Bool) {
+        guard let listeningRecorder else { return }
+        listeningRecorder.phaseChanged(pipeline.phase, recovering: failureIsRecovering)
+        if listeningRecorder.isRecording {
+            guard listeningKeepAliveTask == nil else { return }
+            listeningKeepAliveTask = Task { @MainActor [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: ListeningRecorder.keepAliveInterval)
+                    guard !Task.isCancelled, let self else { return }
+                    self.listeningRecorder?.keepAlive()
+                }
+            }
+        } else {
+            listeningKeepAliveTask?.cancel()
+            listeningKeepAliveTask = nil
+        }
+    }
+
+    public func dismissListeningCut() {
+        listeningCut = nil
+    }
+
+    /// The app is being ended on purpose, not cut off.
+    public func appWillTerminate() {
+        listeningKeepAliveTask?.cancel()
+        listeningKeepAliveTask = nil
+        listeningRecorder?.endNow()
     }
 
     /// Posts or withdraws the "download paused" notification to match
