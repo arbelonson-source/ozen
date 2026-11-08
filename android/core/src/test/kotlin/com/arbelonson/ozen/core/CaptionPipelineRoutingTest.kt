@@ -26,6 +26,37 @@ private fun bluetoothSettings(): AppSettings {
 
 class CaptionPipelineRoutingTest {
     @Test
+    fun `a microphone nobody picked is never said to be not recording`() = runTest {
+        val audio = bluetoothAudio()
+        val (pipeline, _, _) = makePipeline(audio = audio, audioWatchdog = AudioStallWatchdog.disabled)
+        pipeline.start(AppSettings.default)
+        runCurrent()
+        val shown = pipeline.selectedInputUID
+        audio.inputInUse = listOf(builtIn, lapel).first { it.uid != shown }
+        audio.simulateRouteChange(audio.availableInputs)
+        advanceTimeBy(2_500)
+        assertNull(pipeline.routedElsewhere)
+    }
+
+    @Test
+    fun `one of the phone's own microphones standing in for another says nothing`() = runTest {
+        val bottom = AudioInputDescriptor(uid = "builtInMic:bottom", portName = "Pixel 8", portType = AudioPortType.BuiltInMic)
+        val back = AudioInputDescriptor(uid = "builtInMic:back", portName = "Pixel 8", portType = AudioPortType.BuiltInMic)
+        val audio = FakeAudioCapturer()
+        audio.availableInputs = listOf(bottom, back)
+        val (pipeline, _, _) = makePipeline(audio = audio, audioWatchdog = AudioStallWatchdog.disabled)
+        val settings = AppSettings.default
+        settings.preferredInputUID = bottom.uid
+        pipeline.start(settings)
+        runCurrent()
+        assertEquals(bottom.uid, pipeline.selectedInputUID)
+        audio.inputInUse = back
+        audio.simulateRouteChange(audio.availableInputs)
+        advanceTimeBy(2_500)
+        assertNull(pipeline.routedElsewhere)
+    }
+
+    @Test
     fun `a picked microphone the phone does not record from is named after two seconds`() = runTest {
         val audio = bluetoothAudio()
         val (pipeline, _, _) = makePipeline(audio = audio, audioWatchdog = AudioStallWatchdog.disabled)

@@ -12,7 +12,7 @@ data class RoutedElsewhere(val picked: AudioInputDescriptor, val inUse: AudioInp
             tr("המיקרופון ⁨%1⁩ לא מקליט", "%1 isn't recording", listOf(picked.portName))
 
         fun detailFor(inUse: AudioInputDescriptor): String = tr(
-            "הכתוביות מגיעות במקום זאת מ⁨%1⁩. מיקרופוני Bluetooth לא עובדים בכל טלפון; מיקרופון בחיבור כבל או USB-C כן.",
+            "הכתוביות מגיעות במקום זאת דרך ⁨%1⁩. מיקרופוני Bluetooth לא עובדים בכל הטלפונים, אבל מיקרופון עם כבל או USB-C עובד.",
             "Captions come from %1 instead. Bluetooth microphones don't work with every phone; a wired or USB-C microphone does.",
             listOf(inUse.portName),
         )

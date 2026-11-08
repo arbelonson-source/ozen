@@ -1474,8 +1474,12 @@ class CaptionPipeline(
     private fun routingNow(): RoutedElsewhere? {
         if (phase != PipelinePhase.Listening) return null
         val picked = availableInputs.firstOrNull { it.uid == selectedInputUID } ?: return null
-        if (PhoneSound.isPhoneSound(picked.uid)) return null
+        // Only her own pick: what the phone chose by itself was never promised.
+        if (PhoneSound.isPhoneSound(picked.uid) || settingsInUse?.preferredInputUID != picked.uid) return null
         val used = audio.inputInUse ?: return null
+        // Phones list their bottom and back microphones apart, under one name,
+        // and record from either.
+        if (picked.portType == AudioPortType.BuiltInMic && used.portType == AudioPortType.BuiltInMic) return null
         return if (used.uid != picked.uid) RoutedElsewhere(picked, used) else null
     }
 
