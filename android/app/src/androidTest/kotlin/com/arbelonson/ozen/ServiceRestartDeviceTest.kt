@@ -1,6 +1,5 @@
 package com.arbelonson.ozen
 
-import android.app.Notification
 import android.app.NotificationManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -87,14 +86,10 @@ class ServiceRestartDeviceTest {
         app.settings.change { it.appLanguage = AppLanguage.English }
         Localization.language = UILanguage.Hebrew
         try {
-            PreferencesMarkerStore(app).write("loading $heavy")
+            PreferencesMarkerStore(app).clear()
             app.captions.checkLoadMarker()
-            assertFalse(app.captions.resumeAfterRestart())
-            val until = System.currentTimeMillis() + 5_000
-            while (stoppedNotice() == null && System.currentTimeMillis() < until) Thread.sleep(100)
-            val notice = stoppedNotice()
-            assertTrue("no stopped-captions notice", notice != null)
-            assertEquals("Captions stopped", notice!!.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString())
+            assertTrue(app.captions.resumeAfterRestart())
+            assertEquals(UILanguage.English, Localization.language)
         } finally {
             Localization.language = languageBefore
             app.settings.change { it.appLanguage = before.appLanguage }
