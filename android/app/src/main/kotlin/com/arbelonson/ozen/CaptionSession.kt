@@ -760,6 +760,10 @@ class CaptionSession(
      * not, the stopped-captions notice says so.
      */
     fun resumeAfterRestart(): Boolean {
+        // No screen has opened in this process to set the app's language, and
+        // everything said from here on, notices included, would come out in
+        // the default one.
+        StartCaptionsRequest.applyAppLanguage(settings)
         note("Captions restarted by the phone after the app was ended")
         tellListeningCut()
         if (ServiceRestart.shouldListen(systemRestart = true, mayStartCaptions = mayStartCaptions())) return true

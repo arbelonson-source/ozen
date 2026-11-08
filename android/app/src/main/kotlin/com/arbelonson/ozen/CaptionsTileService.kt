@@ -9,7 +9,7 @@ import com.arbelonson.ozen.core.tr
 class CaptionsTileService : TileService() {
     override fun onStartListening() {
         val tile = qsTile ?: return
-        StartCaptionsRequest.applyAppLanguage(application as OzenApplication)
+        StartCaptionsRequest.applyAppLanguage((application as OzenApplication).settings)
         tile.label = tr("כתוביות אוזן", "Ozen captions")
         tile.state = if (CaptionState.screen.value.captionsRunning) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         tile.updateTile()

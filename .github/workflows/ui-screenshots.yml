@@ -132,7 +132,7 @@ jobs:
         with:
           name: ui-screenshots
           path: /tmp/ozen-screenshots
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Keep the raw test log
         if: failure()
