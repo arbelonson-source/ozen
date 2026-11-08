@@ -1189,14 +1189,16 @@ struct LiveCaptionView: View {
         UIAccessibility.post(notification: .announcement, argument: announcement)
     }
 
-    /// Captions that stopped by themselves, and their return, spoken the
-    /// same way (see `CaptionsStopAnnouncer`).
+    /// Captions that stopped by themselves, their return, and the end of a
+    /// long preparation, spoken the same way (see `CaptionsStopAnnouncer`).
     private func announceStopOrReturn(_ phase: PipelinePhase) {
-        switch stopAnnouncer.phaseChanged(to: phase) {
+        switch stopAnnouncer.phaseChanged(to: phase, at: ProcessInfo.processInfo.systemUptime) {
         case .stopped?:
             announceAlert(tr("הכתוביות נעצרו: %1", "Captions stopped: %1", args: ["\(presentation.title)"]))
         case .back?:
             announceAlert(tr("הכתוביות חזרו", "Captions are back"))
+        case .ready?:
+            announceAlert(tr("הכתוביות מוכנות", "Captions are ready"))
         case nil:
             break
         }
