@@ -46,6 +46,10 @@ struct SoundAlertsView: View {
                 }
             }
 
+            if viewModel.soundAlertPreferences.isEnabled {
+                Section { NightAlertsRow() }
+            }
+
             vibrationSamples
 
             ForEach(grouped, id: \.0) { importance, events in
