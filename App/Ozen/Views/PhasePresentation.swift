@@ -55,7 +55,8 @@ struct PhasePresentation {
         coverReason: EngineUnavailability.Kind? = nil,
         offerBackup: Bool = false,
         spokenLanguage: UILanguage = .hebrew,
-        network: NetworkConditions? = nil
+        network: NetworkConditions? = nil,
+        soundsOnly: Bool = false
     ) {
         // Only captions the call interrupted come back when it ends: ones
         // she paused or stopped herself stay that way, and saying they
@@ -77,6 +78,17 @@ struct PhasePresentation {
                 systemImage: "phone.fill",
                 tint: .orange,
                 action: .resume
+            )
+            return
+        }
+
+        if soundsOnly, !interruptedBySystem, phase == .idle || phase == .paused, !pausedForSpeech {
+            self.init(
+                title: tr("מאזינה לצלילים בלבד", "Listening for sounds only"),
+                detail: tr("הקישו כדי להחזיר כתוביות", "Tap to bring captions back"),
+                systemImage: "ear.badge.waveform",
+                tint: .green,
+                action: phase == .idle ? .start : .resume
             )
             return
         }

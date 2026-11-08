@@ -51,12 +51,18 @@ public final class ListeningRecorder {
 
     public var isRecording: Bool { record != nil }
 
-    public func phaseChanged(_ phase: PipelinePhase, recovering: Bool) {
+    /// `soundsOnly`: the microphone is on for sound alerts alone, which is
+    /// listening too: a night of it cut short is shown in the morning.
+    public func phaseChanged(_ phase: PipelinePhase, recovering: Bool, soundsOnly: Bool = false) {
         switch phase {
         case .listening:
             if record == nil { begin() }
         case .idle, .paused:
-            end()
+            if soundsOnly {
+                if record == nil { begin() }
+            } else {
+                end()
+            }
         case .failed:
             if !recovering { end() }
         case .requestingMicrophonePermission, .preparingEngine, .startingAudio:

@@ -46,6 +46,8 @@ struct SoundAlertsView: View {
                 }
             }
 
+            SoundsOnlySection(viewModel: viewModel)
+
             vibrationSamples
 
             ForEach(grouped, id: \.0) { importance, events in

@@ -604,7 +604,7 @@ public final class LiveCaptionViewModel {
     /// Posts or withdraws the "captions stopped" notification to match what
     /// the pipeline is doing now (see `StoppedCaptionsNotice`).
     private func checkCaptionsStillRunning() {
-        if !BatteryAdvisor.watches(pipeline.phase) { batteryCleared() }
+        if !BatteryAdvisor.watches(pipeline.phase, soundsOnly: pipeline.soundsOnlyChosen) { batteryCleared() }
         let cause = StoppedCaptionsNotice.cause(
             phase: pipeline.phase,
             retryScheduled: pipeline.isRecoveringByItself,
@@ -627,7 +627,7 @@ public final class LiveCaptionViewModel {
     /// reported with the stopped-captions notice ends it like a stop.
     private func updateListeningRecord(failureIsRecovering: Bool) {
         guard let listeningRecorder else { return }
-        listeningRecorder.phaseChanged(pipeline.phase, recovering: failureIsRecovering)
+        listeningRecorder.phaseChanged(pipeline.phase, recovering: failureIsRecovering, soundsOnly: pipeline.soundsOnlyChosen)
         if listeningRecorder.isRecording {
             guard listeningKeepAliveTask == nil else { return }
             listeningKeepAliveTask = Task { @MainActor [weak self] in
@@ -853,6 +853,7 @@ public final class LiveCaptionViewModel {
             speechPause.userTookControl()
             pipeline.stop()
             historySessionDidChangePhase()
+            checkCaptionsStillRunning()
         }
         settings.hasCompletedOnboarding = false
         persist()
@@ -943,6 +944,7 @@ public final class LiveCaptionViewModel {
             await saveFitMeasurementIfReady()
             pipeline.stop()
             historySessionDidChangePhase()
+            checkCaptionsStillRunning()
         case .speak(let text):
             reportSpeak(speak(text))
         case .showBigText:
@@ -979,6 +981,21 @@ public final class LiveCaptionViewModel {
     public func retry() async {
         await pipeline.retryAfterTap(settings: settings)
         historySessionDidChangePhase()
+    }
+
+    /// Counts each time sounds-only was switched on, so a screen that asked
+    /// for it can see that it took and close itself.
+    public private(set) var soundsOnlyStarts = 0
+
+    /// For the night: captions stop and the speech model is let go, while
+    /// sound alerts keep listening (see `CaptionPipeline.listenForSoundsOnly`).
+    public func listenForSoundsOnly() async {
+        speechPause.userTookControl()
+        if pipeline.phase.isListening { await saveFitMeasurementIfReady() }
+        await pipeline.listenForSoundsOnly()
+        if pipeline.isListeningForSoundsOnly { soundsOnlyStarts += 1 }
+        historySessionDidChangePhase()
+        checkCaptionsStillRunning()
     }
 
     public func togglePause() async {
