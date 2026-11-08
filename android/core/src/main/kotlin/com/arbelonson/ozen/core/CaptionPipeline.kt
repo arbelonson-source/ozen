@@ -70,6 +70,7 @@ class CaptionPipeline(
         private set(value) {
             val old = field
             field = value
+            if (reviewRouting()) onInputsChanged?.invoke()
             // Download progress moves many times a second; only a change
             // of step is news.
             noteStep(old)
@@ -149,6 +150,20 @@ class CaptionPipeline(
     var microphoneDrop = MicrophoneDropNotice()
         private set
     private var lastSelectedInput: AudioInputDescriptor? = null
+
+    /**
+     * The picked microphone is listed but the recording is routed to a
+     * different one for longer than [RoutedElsewhere.SETTLE_SECONDS]: a
+     * Bluetooth pick the phone did not honour. Said on screen, since the
+     * captions then come from the wrong place.
+     */
+    var routedElsewhere: RoutedElsewhere? = null
+        private set
+    private var routingCandidate: RoutedElsewhere? = null
+    private var routingTask: Job? = null
+
+    /** The microphone really recording, when the audio layer can tell. */
+    val inputInUse: AudioInputDescriptor? get() = audio.inputInUse
 
     /** Doorbell/siren/kettle alerts that passed [soundPolicy], newest last. */
     var soundAlerts: List<SoundAlert> = emptyList()
@@ -1447,11 +1462,48 @@ class CaptionPipeline(
             // Only stopped captions let it go unsaid: paused, starting or
             // waiting to try again, they come back on whatever microphone
             // is left, with nothing saying it changed.
-            microphoneDrop.inputChanged(lastSelectedInput, current, phase != PipelinePhase.Idle)
+            microphoneDrop.inputChanged(lastSelectedInput, current, phase != PipelinePhase.Idle, settingsInUse?.preferredInputUID)
         }
         // Remembered apart from the list: the one that just went away is
         // no longer in it.
         if (current != null) lastSelectedInput = current
+        reviewRouting()
+        onInputsChanged?.invoke()
+    }
+
+    private fun routingNow(): RoutedElsewhere? {
+        if (phase != PipelinePhase.Listening) return null
+        val picked = availableInputs.firstOrNull { it.uid == selectedInputUID } ?: return null
+        if (PhoneSound.isPhoneSound(picked.uid)) return null
+        val used = audio.inputInUse ?: return null
+        return if (used.uid != picked.uid) RoutedElsewhere(picked, used) else null
+    }
+
+    /** Arms the settle timer for a new mismatch, and takes the notice down once the mismatch is over. Returns whether the notice changed now. */
+    private fun reviewRouting(): Boolean {
+        val candidate = routingNow()
+        if (candidate == routingCandidate) return false
+        routingCandidate = candidate
+        routingTask?.cancel()
+        routingTask = null
+        val hadNotice = routedElsewhere != null
+        routedElsewhere = null
+        if (candidate != null) {
+            routingTask = scope.launch {
+                delay(RoutedElsewhere.SETTLE_SECONDS.seconds)
+                if (routingCandidate == candidate) {
+                    routedElsewhere = candidate
+                    onInputsChanged?.invoke()
+                }
+            }
+        }
+        return hadNotice
+    }
+
+    /** Hides the routing notice until the routing changes again: the same mismatch is not armed twice. */
+    fun dismissRoutedElsewhere() {
+        if (routedElsewhere == null) return
+        routedElsewhere = null
         onInputsChanged?.invoke()
     }
 

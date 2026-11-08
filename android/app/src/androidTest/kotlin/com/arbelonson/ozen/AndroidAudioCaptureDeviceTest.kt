@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
@@ -46,6 +47,21 @@ class AndroidAudioCaptureDeviceTest {
         val chunks = withTimeout(10_000) { capture.startCapture().take(5).toList() }
         assertEquals(List(5) { AndroidAudioCapture.CHUNK }, chunks.map { it.size })
         assertEquals(0f, capture.inputLevel)
+    }
+
+    @Test
+    fun theBuiltInMicrophoneIsReportedInUseWhileCaptionsRun(): Unit = runBlocking {
+        val capture = AndroidAudioCapture(context)
+        withContext(Dispatchers.Main) { capture.prepareSession(null) }
+        val recording = CompletableDeferred<Unit>()
+        val heard = async(Dispatchers.Default) { capture.startCapture().onEach { recording.complete(Unit) }.toList() }
+        withTimeout(10_000) { recording.await() }
+        val deadline = System.currentTimeMillis() + 5_000
+        while (capture.inputInUse == null && System.currentTimeMillis() < deadline) delay(100)
+        assertEquals(AudioPortType.BuiltInMic, capture.inputInUse?.portType)
+        capture.stopCapture()
+        withTimeout(3_000) { heard.await() }
+        assertEquals(null, capture.inputInUse)
     }
 
     @Test

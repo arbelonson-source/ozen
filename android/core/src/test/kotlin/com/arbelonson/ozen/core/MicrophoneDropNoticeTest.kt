@@ -31,4 +31,31 @@ class MicrophoneDropNoticeTest {
         assertFalse(MicrophoneDropNotice.detail(listening = false).contains("ממשיכות"))
         assertTrue(MicrophoneDropNotice.detail(listening = false).contains("המיקרופון של הטלפון"))
     }
+
+    @Test
+    fun `a Bluetooth microphone she picked that is lost while listening is warned about, one nobody picked is not`() {
+        val builtIn = AudioInputDescriptor("builtin", "iPhone Microphone", AudioPortType.BuiltInMic)
+        val lapel = AudioInputDescriptor("bluetooth:aa", "Lapel Pro", AudioPortType.Bluetooth)
+        val earbuds = AudioInputDescriptor("bluetooth:bb", "Earbuds", AudioPortType.Bluetooth)
+        val notice = MicrophoneDropNotice()
+        notice.inputChanged(earbuds, builtIn, isListening = true, preferredUID = lapel.uid)
+        assertNull(notice.lost)
+        notice.inputChanged(lapel, builtIn, isListening = false, preferredUID = lapel.uid)
+        assertNull(notice.lost)
+        notice.inputChanged(lapel, builtIn, isListening = true, preferredUID = lapel.uid)
+        assertEquals(lapel, notice.lost)
+    }
+
+    @Test
+    fun `wired and USB microphones are warned about whether or not they were picked`() {
+        val builtIn = AudioInputDescriptor("builtin", "iPhone Microphone", AudioPortType.BuiltInMic)
+        val wired = AudioInputDescriptor("wired:", "Headset", AudioPortType.Wired)
+        val usb = AudioInputDescriptor("usb:1", "USB Lavalier", AudioPortType.Usb)
+        val notice = MicrophoneDropNotice()
+        notice.inputChanged(wired, builtIn, isListening = true, preferredUID = "builtin")
+        assertEquals(wired, notice.lost)
+        notice.dismiss()
+        notice.inputChanged(usb, builtIn, isListening = true, preferredUID = null)
+        assertEquals(usb, notice.lost)
+    }
 }

@@ -565,7 +565,7 @@ private fun OzenApp(
                         Front.NameAlert -> NameAlertScreen(current, onAddName = app.captions::addNameAlert, onAddAlert = app.captions::addAlert, onClose = { namingAlert = false })
                         Front.Microphones -> MicPickerScreen(
                             inputs = state.inputs,
-                            selected = state.selectedInput,
+                            selected = state.inputInUse?.takeIf { state.phase.isListening } ?: state.selectedInput,
                             listening = state.phase.isListening,
                             level = { app.captions.pipeline.inputLevel },
                             onChoose = {
@@ -635,6 +635,7 @@ private fun OzenApp(
                                 onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
                                 onDismissSavingTrouble = app.captions::dismissSavingTrouble,
                                 onDismissMicrophoneDrop = app.captions::dismissMicrophoneDrop,
+                                onDismissRoutedElsewhere = app.captions::dismissRoutedElsewhere,
                                 onDismissPhoneSoundStopped = app.captions::dismissPhoneSoundStopped,
                                 onMarkProblem = app.captions::markProblem,
                                 savesConversations = current.saveHistory,
@@ -801,6 +802,7 @@ private fun CaptionScreen(
     onSay: () -> Unit,
     onDismissSavingTrouble: () -> Unit,
     onDismissMicrophoneDrop: () -> Unit,
+    onDismissRoutedElsewhere: () -> Unit = {},
     onDismissPhoneSoundStopped: () -> Unit,
     onMarkProblem: () -> Boolean,
     savesConversations: Boolean,
@@ -1039,6 +1041,17 @@ private fun CaptionScreen(
                                 onMicrophone()
                             },
                             onDismiss = onDismissMicrophoneDrop,
+                        )
+                    }
+                    ArrivingBanner(state.routedElsewhere?.takeIf { state.captionsRunning }) { routed ->
+                        MicrophoneDropBanner(
+                            title = routed.title,
+                            detail = routed.detail,
+                            onChooseMicrophone = {
+                                onDismissRoutedElsewhere()
+                                onMicrophone()
+                            },
+                            onDismiss = onDismissRoutedElsewhere,
                         )
                     }
                     ArrivingBanner(Unit.takeIf { state.phoneSoundStopped }) { PhoneSoundStoppedBanner(onDismissPhoneSoundStopped) }

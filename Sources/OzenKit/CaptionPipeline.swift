@@ -1195,7 +1195,7 @@ public final class CaptionPipeline {
             // Only stopped captions let it go unsaid: paused, starting or
             // waiting to try again, they come back on whatever microphone
             // is left, with nothing saying it changed.
-            microphoneDrop.inputChanged(from: lastSelectedInput, to: current, isListening: phase != .idle)
+            microphoneDrop.inputChanged(from: lastSelectedInput, to: current, isListening: phase != .idle, preferredUID: activeSettings?.preferredInputUID)
         }
         // Remembered apart from the list: the one that just went away is
         // no longer in it.

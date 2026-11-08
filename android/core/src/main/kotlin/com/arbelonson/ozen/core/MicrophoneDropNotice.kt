@@ -4,12 +4,17 @@ class MicrophoneDropNotice {
     var lost: AudioInputDescriptor? = null
         private set
 
-    fun inputChanged(previous: AudioInputDescriptor?, current: AudioInputDescriptor?, isListening: Boolean) {
+    fun inputChanged(
+        previous: AudioInputDescriptor?,
+        current: AudioInputDescriptor?,
+        isListening: Boolean,
+        preferredUID: String? = null,
+    ) {
         if (current == null || current.portType != AudioPortType.BuiltInMic) {
             if (current != null) lost = null
             return
         }
-        if (isListening && previous != null && previous.uid != current.uid && previous.portType in placedNearTheTalker) {
+        if (isListening && previous != null && previous.uid != current.uid && wasPlacedNearTheTalker(previous, preferredUID)) {
             lost = previous
         }
     }
@@ -17,6 +22,10 @@ class MicrophoneDropNotice {
     fun dismiss() {
         lost = null
     }
+
+    private fun wasPlacedNearTheTalker(previous: AudioInputDescriptor, preferredUID: String?): Boolean =
+        previous.portType in placedNearTheTalker ||
+            (previous.portType == AudioPortType.Bluetooth && previous.uid == preferredUID)
 
     val title: String?
         get() = lost?.let(::titleFor)

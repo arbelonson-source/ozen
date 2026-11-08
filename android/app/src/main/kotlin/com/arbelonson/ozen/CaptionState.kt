@@ -15,6 +15,7 @@ import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.PhoneNumbers
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.RoutedElsewhere
 import com.arbelonson.ozen.core.ScheduledRetry
 import com.arbelonson.ozen.core.ScreenAwakePolicy
 import com.arbelonson.ozen.core.SpeechResume
@@ -90,6 +91,10 @@ data class CaptionScreenState(
     val selectedInput: AudioInputDescriptor? = null,
     /** A microphone placed near the talker came out while captions were on; see `MicrophoneDropNotice`. */
     val dropped: AudioInputDescriptor? = null,
+    /** The microphone really recording, when the phone can tell; see `RoutedElsewhere`. */
+    val inputInUse: AudioInputDescriptor? = null,
+    /** The picked microphone is not the one recording; see `RoutedElsewhere`. */
+    val routedElsewhere: RoutedElsewhere? = null,
     /** The system ended the sharing of the phone's own sound and the microphone is back; said until she puts it away. */
     val phoneSoundStopped: Boolean = false,
     /** A conversation still going moments before the app last closed, offered on the empty screen; see `RecentConversation`. */
@@ -292,8 +297,20 @@ object CaptionState {
     }
 
     /** The microphones the phone offers, the one recording and the one that dropped, for the picker, the caption bar and its banner. */
-    fun inputs(available: List<AudioInputDescriptor>, selected: String?, dropped: AudioInputDescriptor? = null) {
-        state.value = state.value.copy(inputs = available, selectedInput = available.firstOrNull { it.uid == selected }, dropped = dropped)
+    fun inputs(
+        available: List<AudioInputDescriptor>,
+        selected: String?,
+        dropped: AudioInputDescriptor? = null,
+        inUse: AudioInputDescriptor? = null,
+        routedElsewhere: RoutedElsewhere? = null,
+    ) {
+        state.value = state.value.copy(
+            inputs = available,
+            selectedInput = available.firstOrNull { it.uid == selected },
+            dropped = dropped,
+            inputInUse = inUse,
+            routedElsewhere = routedElsewhere,
+        )
     }
 
     /** An important word was said, and should buzz and show for a moment; kept through new captions. */

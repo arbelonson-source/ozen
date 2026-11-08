@@ -975,7 +975,9 @@
   "Turbo (compressed)": "Turbo (የተጨመቀ)",
   "Medium": "መካከለኛ",
   "Large v3 (compressed)": "Large v3 (የተጨመቀ)",
-  "Large v3": "Large v3"
+  "Large v3": "Large v3",
+  "%1 isn't recording": "%1 እየቀዳ አይደለም",
+  "Captions come from %1 instead. Bluetooth microphones don't work with every phone; a wired or USB-C microphone does.": "ጽሑፎቹ በምትኩ ከ%1 እየመጡ ነው። የብሉቱዝ ማይክሮፎኖች በሁሉም ስልኮች ላይ አይሰሩም፤ በሽቦ ወይም በUSB-C የሚገናኝ ማይክሮፎን ግን ይሰራል።"
  },
  "arabic": {
   "Ozen closed while setting up the speech model": "أُغلق أوزن أثناء تجهيز نموذج الكلام",
@@ -1953,7 +1955,9 @@
   "Turbo (compressed)": "Turbo (مضغوط)",
   "Medium": "متوسط",
   "Large v3 (compressed)": "Large v3 (مضغوط)",
-  "Large v3": "Large v3"
+  "Large v3": "Large v3",
+  "%1 isn't recording": "%1 لا يسجّل",
+  "Captions come from %1 instead. Bluetooth microphones don't work with every phone; a wired or USB-C microphone does.": "تأتي الترجمة النصية من %1 بدلًا منه. ميكروفونات البلوتوث لا تعمل مع كل هاتف؛ أما الميكروفون السلكي أو عبر USB-C فيعمل."
  },
  "chineseSimplified": {
   "Ozen closed while setting up the speech model": "Ozen 在准备语音模型时关闭了",
@@ -2931,7 +2935,9 @@
   "Turbo (compressed)": "Turbo（压缩）",
   "Medium": "中型",
   "Large v3 (compressed)": "Large v3（压缩）",
-  "Large v3": "Large v3"
+  "Large v3": "Large v3",
+  "%1 isn't recording": "%1 没有在录音",
+  "Captions come from %1 instead. Bluetooth microphones don't work with every phone; a wired or USB-C microphone does.": "字幕改为来自%1。蓝牙麦克风并非适用于所有手机；有线或 USB-C 麦克风则可以。"
  },
  "french": {
   "Ozen closed while setting up the speech model": "Ozen s’est fermé pendant la préparation du modèle vocal",
@@ -3909,7 +3915,9 @@
   "Turbo (compressed)": "Turbo (compressé)",
   "Medium": "Moyen",
   "Large v3 (compressed)": "Large v3 (compressé)",
-  "Large v3": "Large v3"
+  "Large v3": "Large v3",
+  "%1 isn't recording": "%1 n’enregistre pas",
+  "Captions come from %1 instead. Bluetooth microphones don't work with every phone; a wired or USB-C microphone does.": "Les sous-titres viennent de %1 à la place. Les microphones Bluetooth ne fonctionnent pas avec tous les téléphones ; un microphone filaire ou USB-C, si."
  },
  "german": {
   "Ozen closed while setting up the speech model": "Ozen wurde beim Vorbereiten des Sprachmodells beendet",
@@ -4887,7 +4895,9 @@
   "Turbo (compressed)": "Turbo (komprimiert)",
   "Medium": "Mittel",
   "Large v3 (compressed)": "Large v3 (komprimiert)",
-  "Large v3": "Large v3"
+  "Large v3": "Large v3",
+  "%1 isn't recording": "%1 nimmt nicht auf",
+  "Captions come from %1 instead. Bluetooth microphones don't work with every phone; a wired or USB-C microphone does.": "Die Untertitel kommen stattdessen von %1. Bluetooth-Mikrofone funktionieren nicht mit jedem Telefon; ein Kabel- oder USB-C-Mikrofon schon."
  },
  "hindi": {
   "Ozen closed while setting up the speech model": "स्पीच मॉडल तैयार करते समय Ozen बंद हो गया",
@@ -5865,7 +5875,9 @@
   "Turbo (compressed)": "Turbo (संपीड़ित)",
   "Medium": "मध्यम",
   "Large v3 (compressed)": "Large v3 (संपीड़ित)",
-  "Large v3": "Large v3"
+  "Large v3": "Large v3",
+  "%1 isn't recording": "%1 रिकॉर्ड नहीं कर रहा है",
+  "Captions come from %1 instead. Bluetooth microphones don't work with every phone; a wired or USB-C microphone does.": "कैप्शन इसके बजाय %1 से आ रहे हैं। ब्लूटूथ माइक्रोफ़ोन हर फ़ोन के साथ काम नहीं करते; तार वाला या USB-C माइक्रोफ़ोन करता है।"
  },
  "portuguese": {
   "Ozen closed while setting up the speech model": "O Ozen fechou ao preparar o modelo de fala",
@@ -6843,7 +6855,9 @@
   "Turbo (compressed)": "Turbo (comprimido)",
   "Medium": "Médio",
   "Large v3 (compressed)": "Large v3 (comprimido)",
-  "Large v3": "Large v3"
+  "Large v3": "Large v3",
+  "%1 isn't recording": "%1 não está gravando",
+  "Captions come from %1 instead. Bluetooth microphones don't work with every phone; a wired or USB-C microphone does.": "As legendas vêm de %1 em vez disso. Microfones Bluetooth não funcionam com todos os telefones; um microfone com fio ou USB-C funciona."
  },
  "russian": {
   "Ozen closed while setting up the speech model": "Ozen закрылся при подготовке модели речи",
@@ -7821,7 +7835,9 @@
   "Turbo (compressed)": "Turbo (сжатая)",
   "Medium": "Средняя",
   "Large v3 (compressed)": "Large v3 (сжатая)",
-  "Large v3": "Large v3"
+  "Large v3": "Large v3",
+  "%1 isn't recording": "%1 не записывает",
+  "Captions come from %1 instead. Bluetooth microphones don't work with every phone; a wired or USB-C microphone does.": "Субтитры идут с %1. Bluetooth-микрофоны работают не на всех телефонах; проводной микрофон или микрофон USB-C работает."
  },
  "spanish": {
   "Ozen closed while setting up the speech model": "Ozen se cerró mientras preparaba el modelo de voz",
@@ -8799,7 +8815,9 @@
   "Turbo (compressed)": "Turbo (comprimido)",
   "Medium": "Mediano",
   "Large v3 (compressed)": "Large v3 (comprimido)",
-  "Large v3": "Large v3"
+  "Large v3": "Large v3",
+  "%1 isn't recording": "%1 no está grabando",
+  "Captions come from %1 instead. Bluetooth microphones don't work with every phone; a wired or USB-C microphone does.": "Los subtítulos vienen de %1 en su lugar. Los micrófonos Bluetooth no funcionan con todos los teléfonos; uno con cable o USB-C sí."
  },
  "ukrainian": {
   "Ozen closed while setting up the speech model": "Ozen закрився під час підготовки моделі мовлення",
@@ -9777,6 +9795,8 @@
   "Turbo (compressed)": "Turbo (стиснена)",
   "Medium": "Середня",
   "Large v3 (compressed)": "Large v3 (стиснена)",
-  "Large v3": "Large v3"
+  "Large v3": "Large v3",
+  "%1 isn't recording": "%1 не записує",
+  "Captions come from %1 instead. Bluetooth microphones don't work with every phone; a wired or USB-C microphone does.": "Субтитри йдуть з %1. Bluetooth-мікрофони працюють не на всіх телефонах; дротовий мікрофон або мікрофон USB-C працює."
  }
 }

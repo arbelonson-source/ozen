@@ -11,6 +11,7 @@ import com.arbelonson.ozen.core.LockScreenTextSize
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
+import com.arbelonson.ozen.core.RoutedElsewhere
 import com.arbelonson.ozen.core.SoundEventCatalog
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -214,6 +215,21 @@ class CaptionStateTest {
         assertEquals(lapel, CaptionState.screen.value.dropped)
         CaptionState.inputs(listOf(phone), selected = "builtInMic:")
         assertNull(CaptionState.screen.value.dropped)
+        CaptionState.clear()
+    }
+
+    @Test
+    fun `the microphone really recording and a routing notice stay through new captions until the pipeline lets them go`() {
+        val phone = AudioInputDescriptor("builtInMic:", "Phone microphone", AudioPortType.BuiltInMic)
+        val lapel = AudioInputDescriptor("bluetooth:aa", "Lapel Pro", AudioPortType.Bluetooth)
+        val routed = RoutedElsewhere(lapel, phone)
+        CaptionState.inputs(listOf(phone, lapel), selected = "bluetooth:aa", inUse = phone, routedElsewhere = routed)
+        show(PipelinePhase.Listening, listOf(line("Hello", committed = true)))
+        assertEquals(phone, CaptionState.screen.value.inputInUse)
+        assertEquals(routed, CaptionState.screen.value.routedElsewhere)
+        CaptionState.inputs(listOf(phone, lapel), selected = "bluetooth:aa")
+        assertNull(CaptionState.screen.value.inputInUse)
+        assertNull(CaptionState.screen.value.routedElsewhere)
         CaptionState.clear()
     }
 

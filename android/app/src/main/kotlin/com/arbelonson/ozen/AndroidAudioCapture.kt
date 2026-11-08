@@ -12,6 +12,7 @@ import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioRecordingConfiguration
+import android.media.AudioRouting
 import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.os.Build
@@ -58,6 +59,10 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     override var inputLevel: Float = 0f
         private set
 
+    /** The listed input the recording is really routed to, once it runs; null when the system can't say. */
+    override var inputInUse: AudioInputDescriptor? = null
+        private set
+
     override var onInputsChanged: (() -> Unit)? = null
     override var onCaptureLost: (() -> Unit)? = null
 
@@ -69,6 +74,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
 
     private var preferredInputUID: String? = null
     private var devices: Map<String, AudioDeviceInfo> = emptyMap()
+    private var deviceIds: List<Pair<Int, AudioInputDescriptor>> = emptyList()
     private var listening = false
     private val phoneSound = PhoneSoundListening()
     @Volatile
@@ -128,6 +134,21 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
         }
     }
 
+    private val routingListener = AudioRouting.OnRoutingChangedListener { main.post { routingChanged() } }
+
+    internal fun routingChanged() {
+        val now = if (phoneSound.active) null else routedInput(record?.routedDevice?.id, deviceIds)
+        if (now == inputInUse) return
+        inputInUse = now
+        onInputsChanged?.invoke()
+    }
+
+    private fun retire(finished: AudioRecord) {
+        runCatching { finished.removeOnRoutingChangedListener(routingListener) }
+        runCatching { finished.stop() }
+        finished.release()
+    }
+
     internal fun silencedChanged(now: Boolean) {
         if (!phoneSound.heedsMicrophoneSilence) return
         if (now == silenced) return
@@ -163,6 +184,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
         }
         val made: AudioRecord = first
         record = made
+        main.post { routingChanged() }
         running = true
         worker = thread(name = "ozen-microphone") {
             val buffer = ShortArray(CHUNK)
@@ -174,10 +196,10 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
                         seen = sourceVersion
                         val next = openSource()
                         if (next != null) {
-                            runCatching { current.stop() }
-                            current.release()
+                            retire(current)
                             current = next
                             record = next
+                            main.post { routingChanged() }
                         }
                     }
                     val read = readChunk(current, buffer)
@@ -191,8 +213,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
                     trySend(chunk)
                 }
             } finally {
-                runCatching { current.stop() }
-                current.release()
+                retire(current)
                 inputLevel = 0f
                 if (lost && running) main.post { onCaptureLost?.invoke() }
                 channel.close()
@@ -207,6 +228,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
         worker = null
         if (current != null && current != Thread.currentThread()) current.join(1_000)
         record = null
+        inputInUse = null
         if (silenced) {
             main.removeCallbacks(callEndCheck)
             main.postDelayed(callEndCheck, CALL_CHECK_MS)
@@ -229,6 +251,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
         val found = manager.getDevices(AudioManager.GET_DEVICES_INPUTS)
             .mapNotNull { device -> portType(device.type)?.let { device to descriptor(device, it) } }
         devices = found.associate { (device, descriptor) -> descriptor.uid to device }
+        deviceIds = found.map { (device, descriptor) -> device.id to descriptor }
         availableInputs = PhoneSound.inputs(found.map { it.second }, Build.VERSION.SDK_INT)
         selectedInputUID = if (phoneSound.active) {
             PhoneSound.UID
@@ -307,6 +330,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
         }
         if (!phoneSound.active) selectedInputUID?.let { uid -> devices[uid]?.let { made.setPreferredDevice(it) } }
         made.startRecording()
+        made.addOnRoutingChangedListener(routingListener, main)
         return made
     }
 
@@ -333,6 +357,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
     private fun inputsChanged() {
         refreshInputs()
         selectedInputUID?.let { uid -> devices[uid]?.let { record?.setPreferredDevice(it) } }
+        routingChanged()
         onInputsChanged?.invoke()
     }
 

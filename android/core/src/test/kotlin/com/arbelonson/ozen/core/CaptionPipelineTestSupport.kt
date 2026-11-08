@@ -60,6 +60,7 @@ class FakeAudioCapturer : AudioCapturing {
         AudioInputDescriptor(uid = "builtin", portName = "iPhone Microphone", portType = AudioPortType.BuiltInMic),
     )
     override var selectedInputUID: String? = null
+    override var inputInUse: AudioInputDescriptor? = null
     override var inputLevel: Float = 0f
     override var onInputsChanged: (() -> Unit)? = null
     override var onCaptureLost: (() -> Unit)? = null

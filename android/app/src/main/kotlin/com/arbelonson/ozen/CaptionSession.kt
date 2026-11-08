@@ -920,6 +920,8 @@ class CaptionSession(
 
     fun dismissMicrophoneDrop() = pipeline.dismissMicrophoneDrop()
 
+    fun dismissRoutedElsewhere() = pipeline.dismissRoutedElsewhere()
+
     /** The Settings switch: models may download over cellular data, and one waiting for Wi-Fi starts now. */
     fun allowCellularModelDownload(allowed: Boolean) {
         settings.change { it.allowCellularModelDownload = allowed }
@@ -932,7 +934,7 @@ class CaptionSession(
         scope.launch { pipeline.approveCellularDownload() }
     }
 
-    private fun publishInputs() = CaptionState.inputs(pipeline.availableInputs, pipeline.selectedInputUID, pipeline.microphoneDrop.lost)
+    private fun publishInputs() = CaptionState.inputs(pipeline.availableInputs, pipeline.selectedInputUID, pipeline.microphoneDrop.lost, pipeline.inputInUse, pipeline.routedElsewhere)
 
     /** What the diagnostics screen shows and its report says, as things stand now. */
     override fun readJournal() = DiagnosticsJournal(journal.reportLines(::utcOffsetAt), journal.entries().any { ProblemSnapshot.isCaptionLine(it.text) })
