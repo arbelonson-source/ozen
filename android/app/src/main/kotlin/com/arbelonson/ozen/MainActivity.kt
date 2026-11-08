@@ -236,7 +236,7 @@ class MainActivity : ComponentActivity() {
         settingsAtBackup.value = savedInstanceState?.getBoolean(SETTINGS_AT_BACKUP) == true
         confirmingCellular.value = savedInstanceState?.getBoolean(CONFIRMING_CELLULAR) == true
         val app = application as OzenApplication
-        StartCaptionsRequest.applyAppLanguage(app)
+        StartCaptionsRequest.applyAppLanguage(app.settings)
         StartCaptionsRequest.publishShortcut(this)
         enableEdgeToEdge()
         setContent { OzenApp(app, showingSettings, settingsAtBackup, confirmingCellular, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
