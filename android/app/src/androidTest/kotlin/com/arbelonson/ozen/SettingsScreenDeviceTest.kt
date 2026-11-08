@@ -2151,6 +2151,11 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Urgent sounds, like a smoke alarm, come through Do Not Disturb.").performScrollTo().assertExists()
         compose.onNodeWithText("Back").performClick()
         row("Alerts through the night", "All set")
+
+        exempt.set(false)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText("Alerts through the night") and hasText("1 to check")).fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test
