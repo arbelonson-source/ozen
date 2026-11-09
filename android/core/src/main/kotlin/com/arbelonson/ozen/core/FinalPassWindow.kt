@@ -11,9 +11,9 @@ class FinalPassWindow {
 
     val fullWindowSeconds: Double? get() = secondsPerFrame.maxOrNull()?.times(WhisperAudioContext.FULL_FRAMES)
 
-    fun usesFullWindow(heat: DeviceHeat, lowPowerMode: Boolean): Boolean {
+    fun usesFullWindow(heat: DeviceHeat, lowPowerMode: Boolean, attempts: Int): Boolean {
         val seconds = fullWindowSeconds ?: return false
-        return seconds <= BUDGET_SECONDS && !lowPowerMode && heat.rawValue < DeviceHeat.Serious.rawValue
+        return seconds * attempts.coerceAtLeast(1) <= BUDGET_SECONDS && !lowPowerMode && heat.rawValue < DeviceHeat.Serious.rawValue
     }
 
     companion object {

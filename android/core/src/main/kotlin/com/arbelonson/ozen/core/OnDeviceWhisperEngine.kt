@@ -334,7 +334,12 @@ class OnDeviceWhisperEngine(
         // with the whole window), so a phone whose live passes say the whole
         // window takes 1.5 s or less reads it: no longer than the live
         // preview may rest between passes, and the next line's first pass
-        // waits for a second of speech anyway. Remembered across lines, unlike
+        // waits for a second of speech anyway. A line that may be retried at a
+        // higher temperature counts each retry as another whole pass, so long
+        // lines and lines with nothing on screen yet keep their retries and,
+        // unless the phone is three times as fast, the margin: those retries
+        // are the line's only chance, and a long line's margin already covers
+        // most of the window. Remembered across lines, unlike
         // `lastLivePassSeconds`; empty at the start, so the first lines keep
         // the margin until a live pass has been timed.
         val finalWindow = FinalPassWindow()
@@ -447,7 +452,7 @@ class OnDeviceWhisperEngine(
             }
             if (!isFinal) {
                 options = options.copy(maxTokens = WhisperKitDecodeRoom.livePassTokens(windowSeconds))
-            } else if (finalWindow.usesFullWindow(heat(), lowPowerMode())) {
+            } else if (finalWindow.usesFullWindow(heat(), lowPowerMode(), attempts = 1 + options.temperatureFallbackCount)) {
                 options = options.copy(fullWindow = true)
             }
             // A voice across the room reaches the model quiet; brought up to

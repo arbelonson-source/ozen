@@ -11,7 +11,7 @@ class FinalPassWindowTest {
         for ((frames, seconds) in passes) recordLivePass(frames, seconds)
     }
 
-    private fun FinalPassWindow.usesFullWindow() = usesFullWindow(DeviceHeat.Nominal, lowPowerMode = false)
+    private fun FinalPassWindow.usesFullWindow(attempts: Int = 1) = usesFullWindow(DeviceHeat.Nominal, lowPowerMode = false, attempts)
 
     @Test
     fun `before any live pass is timed a finished line keeps the margin`() {
@@ -42,6 +42,17 @@ class FinalPassWindowTest {
     }
 
     @Test
+    fun `each retry at a higher temperature counts as another whole pass`() {
+        val fast = window(450 to 0.14)
+        assertEquals(0.467, fast.fullWindowSeconds!!, 0.001)
+        assertTrue(fast.usesFullWindow(attempts = 3))
+        val slower = window(450 to 0.17)
+        assertTrue(slower.usesFullWindow(attempts = 1))
+        assertFalse(slower.usesFullWindow(attempts = 3))
+        assertTrue(slower.usesFullWindow(attempts = 2))
+    }
+
+    @Test
     fun `one slow pass among the last five drops back to the margin`() {
         val window = window(450 to 0.30, 450 to 0.30, 450 to 0.90, 450 to 0.30)
         assertFalse(window.usesFullWindow())
@@ -60,15 +71,15 @@ class FinalPassWindowTest {
 
     @Test
     fun `battery saver keeps the margin on a fast phone`() {
-        assertFalse(window(450 to 0.30).usesFullWindow(DeviceHeat.Nominal, lowPowerMode = true))
+        assertFalse(window(450 to 0.30).usesFullWindow(DeviceHeat.Nominal, lowPowerMode = true, attempts = 1))
     }
 
     @Test
     fun `a hot phone keeps the margin and a warm one does not`() {
         val window = window(450 to 0.30)
-        assertTrue(window.usesFullWindow(DeviceHeat.Fair, lowPowerMode = false))
-        assertFalse(window.usesFullWindow(DeviceHeat.Serious, lowPowerMode = false))
-        assertFalse(window.usesFullWindow(DeviceHeat.Critical, lowPowerMode = false))
+        assertTrue(window.usesFullWindow(DeviceHeat.Fair, lowPowerMode = false, attempts = 1))
+        assertFalse(window.usesFullWindow(DeviceHeat.Serious, lowPowerMode = false, attempts = 1))
+        assertFalse(window.usesFullWindow(DeviceHeat.Critical, lowPowerMode = false, attempts = 1))
     }
 
     @Test

@@ -17,8 +17,9 @@ private const val CHUNK = 1_600
 private const val LOUD = 0.2f
 private const val FAST_MS_PER_FRAME = 0.5
 private const val EMULATOR_MS_PER_FRAME = 20.0
+private const val VERY_FAST_MS_PER_FRAME = 0.3
 
-private class Read(val startedAtMs: Long, val frames: Int, val isFinal: Boolean)
+private class Read(val startedAtMs: Long, val frames: Int, val isFinal: Boolean, val retries: Int)
 
 private class PhonePasses(private val now: () -> Long, var msPerFrame: Double) : WhisperPasses {
     override val specialTokenBegin = 50_000
@@ -28,7 +29,7 @@ private class PhonePasses(private val now: () -> Long, var msPerFrame: Double) :
 
     override suspend fun run(audio: FloatArray, options: WhisperPassOptions): List<WhisperSegment> {
         val frames = WhisperAudioContext.frames(audio.size, options.isFinal, options.fullWindow)
-        reads.add(Read(now(), frames, options.isFinal))
+        reads.add(Read(now(), frames, options.isFinal, options.temperatureFallbackCount))
         delay(Math.round(frames * msPerFrame))
         val tokens = listOf(WhisperToken(100, " hello", 0.9f), WhisperToken(101, " there", 0.9f))
         return listOf(WhisperSegment("hello there", 0f, tokens))
@@ -110,6 +111,21 @@ class OnDeviceWhisperEngineFinalWindowTest {
         assertEquals(2, finals.size)
         assertEquals(WhisperAudioContext.FULL_FRAMES, finals[0].frames)
         assertTrue(finals[1].frames < WhisperAudioContext.FULL_FRAMES, "the slow phone's line read ${finals[1].frames} frames")
+    }
+
+    @Test
+    fun a_long_line_that_may_be_retried_keeps_its_retries_and_reads_the_whole_window_only_when_three_passes_fit() = runTest {
+        val (engine, passes) = phone(FAST_MS_PER_FRAME)
+        engine.stream("he", sound(speech(12.0), silence(2.0))).toList()
+        val final = passes.finals().single()
+        assertEquals(2, final.retries)
+        assertTrue(final.frames < WhisperAudioContext.FULL_FRAMES, "three passes of the whole window read ${final.frames} frames")
+
+        val (fasterEngine, fasterPasses) = phone(VERY_FAST_MS_PER_FRAME)
+        fasterEngine.stream("he", sound(speech(12.0), silence(2.0))).toList()
+        val fasterFinal = fasterPasses.finals().single()
+        assertEquals(2, fasterFinal.retries)
+        assertEquals(WhisperAudioContext.FULL_FRAMES, fasterFinal.frames)
     }
 
     @Test
