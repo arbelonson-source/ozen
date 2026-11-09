@@ -237,12 +237,13 @@ object HebrewText {
      * A word typed only in another alphabet ("Sarah" or a Cyrillic name while
      * the captions come out in Hebrew letters, "Dana" or "דנה" while they are
      * in Arabic ones): its alert stays silent, so the screens that add one
-     * say so. Digits alone are left alone. Captions in Latin letters or in
+     * say so. Only letters count: "Dana١" is still in other letters. Digits
+     * alone are left alone. Captions in Latin letters or in
      * Chinese are left alone too: a name may come out there as typed.
      */
     fun isInOtherLetters(phrase: String, captionLanguage: String): Boolean {
         val letters = captionLetters.entries.firstOrNull { captionLanguage.startsWith(it.key) }?.value ?: return false
-        val hasTheirs = phrase.codePoints().anyMatch { point -> letters.any { point in it } }
+        val hasTheirs = phrase.codePoints().anyMatch { point -> Character.isAlphabetic(point) && letters.any { point in it } }
         return !hasTheirs && phrase.codePoints().anyMatch { Character.isAlphabetic(it) }
     }
 

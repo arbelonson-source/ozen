@@ -131,12 +131,13 @@ public enum HebrewText {
     /// A word typed only in another alphabet ("Sarah" or "Саша" while the
     /// captions come out in Hebrew letters, "Dana" or "דנה" while they are
     /// in Arabic ones): its alert stays silent, so the screens that add one
-    /// say so. Digits alone are left alone. Captions in Latin letters or in
+    /// say so. Only letters count: "Dana١" is still in other letters. Digits
+    /// alone are left alone. Captions in Latin letters or in
     /// Chinese are left alone too: a name may come out there as typed.
     public static func isInOtherLetters(_ phrase: String, captionLanguage: String) -> Bool {
         guard let letters = captionLetters.first(where: { captionLanguage.hasPrefix($0.language) })?.blocks else { return false }
         let scalars = phrase.unicodeScalars
-        let hasTheirs = scalars.contains { scalar in letters.contains { $0.contains(scalar.value) } }
+        let hasTheirs = scalars.contains { scalar in scalar.properties.isAlphabetic && letters.contains { $0.contains(scalar.value) } }
         return !hasTheirs && scalars.contains { $0.properties.isAlphabetic }
     }
 
