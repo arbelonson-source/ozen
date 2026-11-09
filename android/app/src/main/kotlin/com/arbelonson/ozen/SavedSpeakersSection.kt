@@ -146,7 +146,7 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
                         // never matched again, silently.
                         if (speakers.needsNewRecording(speaker)) {
                             Text(
-                                tr("נשמר בגרסה ישנה ולכן לא מזוהה. כדי לתקן, בחרו \"הוספת דובר\" ותנו אותו שם.", "Saved by an older version and not recognized. To fix: “Add speaker” with the same name."),
+                                tr("נשמר בגרסה ישנה ולכן לא מזוהה. כדי לתקן, בחרו ״הוספת דובר״ והזינו שוב את אותו השם.", "Saved by an older version and not recognized. To fix: “Add speaker” with the same name."),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = cautionOrange(),
                             )
@@ -175,8 +175,8 @@ internal fun SavedSpeakersSection(profiles: List<SpeakerProfile>, speakers: Spea
     }
     Footnote(
         tr(
-            "דובר שמור מזוהה בשמו כבר מהמשפט הראשון. אפשר גם ללחוץ לחיצה ארוכה על שורה בכתוביות, לבחור \"מי מדבר?\" ולתת שם אחרי שהאדם כבר דיבר. בהוספה מהקלטות, כל קובץ נשמר תחת השם שמופיע בשם הקובץ: \"סבתא 1\" ו־\"סבתא 2\" הן שתי הקלטות של סבתא. בכל קובץ צריך לדבר רק אדם אחד.",
-            "A saved speaker is recognized by name from the first sentence. You can also press and hold a line in the captions, choose “Who is speaking?”, and give a name after the person has already spoken. When adding from recordings, each file is saved under the name in its file name: “Savta 1” and “Savta 2” are two recordings of Savta. Only one person should speak in each file.",
+            "דובר שמור מזוהה בשמו כבר מהמשפט הראשון. אפשר גם ללחוץ לחיצה ארוכה על שורה בכתוביות, לבחור ״מי מדבר?״ ולתת שם אחרי שהאדם כבר דיבר. בהוספה מהקלטות, כל קובץ נשמר תחת השם שבשם הקובץ: ״סבתא 1״ ו״סבתא 2״ הן שתי הקלטות של סבתא. בכל קובץ צריך לדבר רק אדם אחד.",
+            "A saved speaker is recognized by name from the first sentence. You can also press and hold a line in the captions, choose “Who is speaking?”, and give a name after the person has already spoken. When adding from recordings, each file is saved under the name in its file name: “Grandma 1” and “Grandma 2” are two recordings of Grandma. Only one person should speak in each file.",
         ),
     )
     imported?.let { result ->
@@ -277,7 +277,7 @@ internal fun BehaviourSection(buzzWhenTalkResumes: Boolean, onBuzz: (Boolean) ->
     }
     Footnote(
         tr(
-            "אם האפליקציה ממציאה \"דובר 3\" לאדם שכבר דיבר, הזיזו לכיוון \"מאחד יותר\". אם היא מאחדת שני אנשים, הזיזו לכיוון \"מפריד יותר\".",
+            "אם האפליקציה ממציאה ״דובר 3״ לאדם שכבר דיבר, הזיזו לכיוון ״מאחד יותר״. אם היא מאחדת שני אנשים, הזיזו לכיוון ״מפריד יותר״.",
             "If the app invents “Speaker 3” for someone who already spoke, move toward “More merging”. If it merges two people, move toward “More separating”.",
         ),
     )

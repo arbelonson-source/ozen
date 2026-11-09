@@ -130,7 +130,7 @@ struct StoppedCaptionsNoticeTests {
         let offline = StoppedCaptionsNotice.content(for: .failed(engineFailure(.noInternet))).body
         let computer = StoppedCaptionsNotice.content(for: .failed(engineFailure(.homeServerUnreachable))).body
 
-        #expect(callEnded.contains("אחרי השיחה"))
+        #expect(callEnded.contains("אחרי שיחת הטלפון"))
         #expect(permission == speechPermission)
         #expect(permission.contains("הרשאה"))
         #expect(storage.contains("מקום"))
@@ -138,7 +138,7 @@ struct StoppedCaptionsNoticeTests {
         // Running out of credit is not a key to check: whoever helps her
         // tops up the account instead.
         #expect(cloudKey != cloudCredit)
-        #expect(cloudCredit.contains("התקציב") && !cloudCredit.contains("מפתח"))
+        #expect(cloudCredit.contains("הקרדיט") && !cloudCredit.contains("מפתח"))
         #expect(offline.contains("אינטרנט"))
         #expect(offline.contains("זיהוי הדיבור שבטלפון") && !offline.contains("Whisper"))
         // Opening the app doesn't wake the computer; captions come back by

@@ -194,7 +194,7 @@ private fun ModelRow(
             val hebrewOnly = if (model.isHebrewOnly && choosable) " · " + tr("עברית בלבד", "Hebrew only") else ""
             Text(place + hebrewOnly, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (!choosable) {
-                Text(tr("מתאים לעברית בלבד, ולכן אי אפשר לבחור בו בשפה הזו.", "For Hebrew only, so it can't be chosen in this language."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("phone-model-hebrew-only-note-" + model.file))
+                Text(tr("מתאים לעברית בלבד, ולכן אי אפשר לבחור בו בשפה הזו.", "For Hebrew only, so it can’t be chosen in this language."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("phone-model-hebrew-only-note-" + model.file))
             }
             Text(model.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (choosable) Rating(if (language == UILanguage.Hebrew) tr("עברית", "Hebrew") else tr("דיוק", "Accuracy"), model.quality(language))
@@ -203,7 +203,7 @@ private fun ModelRow(
         RadioButton(selected = selected, onClick = null, enabled = choosable, modifier = Modifier.padding(12.dp))
     }
     if (deletable) {
-        val action = tr("מחיקת המודל \"\u2068%1\u2069\"", "Delete %1", listOf(model.displayName))
+        val action = tr("מחיקת המודל ״\u2068%1\u2069״", "Delete %1", listOf(model.displayName))
         TextButton(
             onClick = { asking = true },
             modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).testTag("phone-model-delete-" + model.file).semantics { contentDescription = action },
@@ -213,7 +213,7 @@ private fun ModelRow(
     if (asking) {
         AlertDialog(
             onDismissRequest = { asking = false },
-            title = { Text(tr("למחוק את המודל \"\u2068%1\u2069\" מהטלפון?", "Delete %1 from the phone?", listOf(model.displayName))) },
+            title = { Text(tr("למחוק את המודל ״\u2068%1\u2069״ מהטלפון?", "Delete %1 from the phone?", listOf(model.displayName))) },
             text = { DialogText(tr("אפשר להוריד אותו שוב בכל עת.", "It can be downloaded again anytime.")) },
             confirmButton = {
                 TextButton(
@@ -260,9 +260,9 @@ private fun SwitchNote(switching: PhoneModelSwitch) {
         PhoneModelSwitch.Idle -> null
         is PhoneModelSwitch.Downloading -> tr("הכתוביות ממשיכות עם המודל הנוכחי עד שהחדש יהיה מוכן.", "Captions keep using the current model until the new one is ready.")
         is PhoneModelSwitch.NotEnoughRoom -> tr("אין מקום להורדה. צריך לפנות עוד %1 MB.", "There is no room to download it. Free up %1 MB more.", listOf("${switching.megabytes}"))
-        is PhoneModelSwitch.WaitingForWiFi -> tr("ממתינים ל־Wi‑Fi כדי להוריד. אפשר לאשר בהגדרות הורדה בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings.")
+        is PhoneModelSwitch.WaitingForWiFi -> tr("ממתינים ל־Wi‑Fi כדי להוריד. בהגדרות אפשר לאשר הורדה גם בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.")
         is PhoneModelSwitch.Offline -> tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד.", "There is no internet connection to download it.")
-        is PhoneModelSwitch.Retrying -> tr("ההורדה נעצרה. ננסה שוב אוטומטית.", "The download stopped. Trying again on its own.")
+        is PhoneModelSwitch.Retrying -> tr("ההורדה נעצרה. מנסים שוב אוטומטית.", "The download stopped. Trying again on its own.")
         is PhoneModelSwitch.Failed -> tr("ההורדה נכשלה. כדי לנסות שוב, בחרו את המודל מחדש.", "The download failed. Choose the model again to try again.")
     }
     text?.let {

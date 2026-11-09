@@ -10,7 +10,7 @@ object PhoneSound {
     val summary: String
         get() = tr(
             "סרטונים וכל קול אחר שמתנגן בטלפון הזה. יש אפליקציות שלא מאפשרות את זה, למשל שיחות.",
-            "Videos and other sound playing on this phone. Some apps don't allow it, such as calls.",
+            "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls.",
         )
 
     fun inputs(real: List<AudioInputDescriptor>, sdk: Int): List<AudioInputDescriptor> = if (sdk >= FIRST_API) real + entry else real

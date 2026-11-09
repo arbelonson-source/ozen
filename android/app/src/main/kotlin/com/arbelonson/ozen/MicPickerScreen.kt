@@ -105,7 +105,7 @@ internal fun MicPickerScreen(
             }
             refused?.let { name ->
                 Text(
-                    tr("הטלפון לא עבר ל\"%1\", והמיקרופון המסומן עדיין מקליט. נסו לנתק ולחבר אותו שוב.", "The phone did not switch to “%1”, and the marked microphone is still recording. Try unplugging and reconnecting it.", listOf(name)),
+                    tr("הטלפון לא עבר ל״%1״, והמיקרופון המסומן עדיין מקליט. נסו לנתק ולחבר אותו שוב.", "The phone did not switch to “%1”, and the marked microphone is still recording. Try unplugging and reconnecting it.", listOf(name)),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(horizontal = 16.dp).semantics { liveRegion = LiveRegionMode.Polite },
@@ -122,7 +122,7 @@ internal fun MicPickerScreen(
             if (listening) {
                 tr("דברו ובדקו שהפס זז. אם הוא לא זז, המיקרופון שנבחר לא קולט כלום.", "Speak and watch the bar move. If it doesn’t move, the selected microphone isn’t hearing anything.")
             } else {
-                tr("המד פועל רק בזמן ההאזנה.", "The meter is only active while listening.")
+                tr("מד העוצמה פועל רק בזמן ההאזנה.", "The meter is only active while listening.")
             },
         )
 
@@ -131,13 +131,13 @@ internal fun MicPickerScreen(
             item {
                 Tip(
                     Icons.Rounded.Usb,
-                    tr("מיקרופון USB‑C צריך להיות מסוג \"USB Audio\" (כמו רוב מיקרופוני הדש). אם הוא לא מופיע ברשימה, הטלפון עצמו לא מזהה אותו, ולא רק האפליקציה.", "A USB‑C microphone needs to be of the “USB Audio” type (like most lapel mics). If it doesn’t appear in the list, the phone isn’t recognizing it at all, not just the app."),
+                    tr("מיקרופון USB‑C צריך להיות מסוג ״USB Audio״ (כמו רוב מיקרופוני הדש). אם הוא לא מופיע ברשימה, הטלפון עצמו לא מזהה אותו, ולא רק האפליקציה.", "A USB‑C microphone needs to be of the “USB Audio” type (like most lapel mics). If it doesn’t appear in the list, the phone isn’t recognizing it at all, not just the app."),
                 )
             }
             item {
                 Tip(
                     Icons.Rounded.Bluetooth,
-                    tr("אוזניות Bluetooth מופיעות כשהן מחוברות. איכות ההקלטה דרכן נמוכה יותר מאשר במיקרופון חוטי.", "A Bluetooth headset appears once it’s connected. Recording quality through it is lower than a wired microphone."),
+                    tr("אוזניות Bluetooth מופיעות כשהן מחוברות. איכות ההקלטה דרכן נמוכה יותר מאשר במיקרופון חוטי.", "A Bluetooth headset appears once it’s connected. Recording quality through it is lower than through a wired microphone."),
                 )
             }
         }

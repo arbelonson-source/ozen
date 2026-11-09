@@ -26,7 +26,7 @@ object AlertSuggestions {
     fun vibrationNote(alerts: List<KeywordAlert>, language: UILanguage): String? {
         val phrases = alerts.filter { it.isEnabled }.map { shown(it.phrase, language) }
         if (phrases.isEmpty()) return null
-        return tr("הטלפון ירטוט על: ", "The phone will vibrate for: ", language) + phrases.joinToString(", ")
+        return tr("הטלפון ירטוט כשייאמרו: ", "The phone will vibrate for: ", language) + phrases.joinToString(", ")
     }
 
     fun said(match: KeywordMatch, language: UILanguage): String {

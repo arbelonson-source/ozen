@@ -29,7 +29,7 @@ class CaptionPipelineRoutingTest {
     fun `the Bluetooth advice is given only when the picked microphone was Bluetooth`() {
         val fromWired = RoutedElsewhere(wired, builtIn).detail
         assertTrue("Phone microphone" in fromWired, fromWired)
-        assertTrue("Bluetooth" !in fromWired && "USB-C" !in fromWired, fromWired)
+        assertTrue("Bluetooth" !in fromWired && "USB‑C" !in fromWired, fromWired)
         val fromLapel = RoutedElsewhere(lapel, builtIn).detail
         assertTrue("Phone microphone" in fromLapel && "Bluetooth" in fromLapel, fromLapel)
     }

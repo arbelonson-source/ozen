@@ -54,7 +54,7 @@ struct CaptionAnnouncerTests {
         let unsure = line("ניפגש בשלוש", speaker: 1)
         let sure = line("טוב, בסדר", speaker: 1)
         let said = announcer.announcement(for: [unsure, sure], speakerName: names, isUncertain: { $0.id == unsure.id })
-        #expect(said == "ייתכן שלא נשמע נכון. דנה: ניפגש בשלוש\nטוב, בסדר")
+        #expect(said == "ייתכן שלא נשמעה נכון. דנה: ניפגש בשלוש\nטוב, בסדר")
     }
 
     @Test("a line already read is not read again only because a dropped connection marked it cut off")

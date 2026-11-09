@@ -53,7 +53,7 @@ class ListeningCutTest {
         assertEquals(3 * 3_600.0 + 10 * 60, notice.offSeconds, 0.001)
         val text = Localization.withLanguage(UILanguage.English) { notice.text(ZoneOffset.UTC) }
         assertTrue("1:10" in text && "3 hours 10 minutes" in text, text)
-        assertTrue(text.startsWith("Listening stopped at about ") && text.endsWith("Alerts couldn't come during that time."), text)
+        assertTrue(text.startsWith("Listening stopped at about ") && text.endsWith("No alerts could come through during that time."), text)
     }
 
     @Test

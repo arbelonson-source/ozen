@@ -283,7 +283,7 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(text.waitForExistence(timeout: 15), "no listening-cut card after launching with a leftover record")
         XCTAssertTrue(text.label.contains("Listening stopped at about"), "card text was: \(text.label)")
         XCTAssertTrue(text.label.contains("5 hours"), "card text was: \(text.label)")
-        XCTAssertTrue(text.label.contains("Alerts couldn't come during that time."), "card text was: \(text.label)")
+        XCTAssertTrue(text.label.contains("No alerts could come through during that time."), "card text was: \(text.label)")
         capture(app, name: "listening-cut-card")
 
         let ok = app.buttons["listeningCutDismiss"]

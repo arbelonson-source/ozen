@@ -172,8 +172,8 @@ class PhasePresentation private constructor(
                 // actually still going, the system just refuses again and the
                 // captions stay safely paused.
                 return PhasePresentation(
-                    title = tr("הכתוביות מושהות בגלל שיחה", "Captions paused for a call"),
-                    detail = tr("הכתוביות ימשיכו לבד כשהשיחה תסתיים · הקישו כדי לנסות עכשיו", "They’ll continue on their own when the call ends · Tap to try now"),
+                    title = tr("הכתוביות מושהות בגלל שיחת טלפון", "Captions paused for a call"),
+                    detail = tr("הכתוביות ימשיכו לבד כששיחת הטלפון תסתיים · הקישו כדי לנסות עכשיו", "They’ll continue on their own when the call ends · Tap to try now"),
                     systemImage = "phone.fill",
                     tint = PhaseTint.Attention,
                     action = Action.Resume,
@@ -252,13 +252,13 @@ class PhasePresentation private constructor(
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.HomeServer &&
                     coverReason == EngineUnavailability.Kind.HomeServerRejected ->
                     listening(
-                        tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, carrying on with the phone’s own · Ask whoever set up the phone for help"),
+                        tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, so the phone carries on by itself · Ask whoever set up the phone for help"),
                         Action.OpenEngineSettings,
                     )
 
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.HomeServer ->
                     listening(
-                        tr("אין חיבור למחשב בבית, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Can’t reach the home computer, carrying on with the phone’s own · Tap to pause"),
+                        tr("אין חיבור למחשב בבית, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Can’t reach the home computer, so the phone carries on by itself · Tap to pause"),
                         Action.Pause,
                     )
 
@@ -270,21 +270,21 @@ class PhasePresentation private constructor(
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.Cloud &&
                     coverReason == EngineUnavailability.Kind.CloudKeyNeeded ->
                     listening(
-                        tr("התמלול בענן לא מוגדר, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription isn’t set up, carrying on with the phone’s own · Ask whoever set up the phone for help"),
+                        tr("התמלול בענן לא מוגדר, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription isn’t set up, so the phone carries on by itself · Ask whoever set up the phone for help"),
                         Action.OpenEngineSettings,
                     )
 
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.Cloud &&
                     coverReason == EngineUnavailability.Kind.CloudOutOfCredit ->
                     listening(
-                        tr("נגמר התקציב לתמלול בענן, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription’s budget ran out, carrying on with the phone’s own · Ask whoever set up the phone for help"),
+                        tr("נגמר הקרדיט לתמלול בענן, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription’s budget ran out, so the phone carries on by itself · Ask whoever set up the phone for help"),
                         Action.OpenEngineSettings,
                     )
 
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.Cloud &&
                     coverReason == EngineUnavailability.Kind.CloudLanguageNotCovered ->
                     listening(
-                        tr("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", "This service can’t caption this language, carrying on with the phone’s own · Choose another service in Settings"),
+                        tr("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", "This service can’t caption this language, so the phone carries on by itself · Choose another service in Settings"),
                         Action.OpenEngineSettings,
                     )
 
@@ -292,7 +292,7 @@ class PhasePresentation private constructor(
                 // from the phone's own model while the cloud can't be used.
                 coveringForCloud ->
                     listening(
-                        tr("התמלול בענן לא זמין, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Cloud captions aren’t available, carrying on with the phone’s own · Tap to pause"),
+                        tr("התמלול בענן לא זמין, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Cloud captions aren’t available, so the phone carries on by itself · Tap to pause"),
                         Action.Pause,
                     )
 
@@ -549,7 +549,7 @@ class PhasePresentation private constructor(
                 )
 
                 EngineUnavailability.Kind.CloudLanguageNotCovered -> PhasePresentation(
-                    title = tr("השירות לא מתמלל את השפה הזו", "This service can't caption this language"),
+                    title = tr("השירות לא מתמלל את השפה הזו", "This service can’t caption this language"),
                     detail = tr("בחרו שירות אחר · הקישו כדי לפתוח את ההגדרות", "Choose another service · Tap for Settings"),
                     systemImage = "globe",
                     tint = PhaseTint.Attention,
@@ -557,8 +557,8 @@ class PhasePresentation private constructor(
                 )
 
                 EngineUnavailability.Kind.CloudOutOfCredit -> PhasePresentation(
-                    title = tr("נגמר התקציב לתמלול בענן", "Cloud transcription’s budget ran out"),
-                    detail = tr("בקשו ממי שהגדיר את הטלפון להוסיף תקציב · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to add budget · Tap for Settings"),
+                    title = tr("נגמר הקרדיט לתמלול בענן", "Cloud transcription’s budget ran out"),
+                    detail = tr("בקשו ממי שהגדיר את הטלפון להוסיף קרדיט · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to add budget · Tap for Settings"),
                     systemImage = "creditcard",
                     tint = PhaseTint.Attention,
                     action = Action.OpenEngineSettings,

@@ -130,7 +130,7 @@ struct HistoryView: View {
                 StarredLinesView(viewModel: viewModel, onHistoryChanged: reload)
             } label: {
                 starredRowLayout {
-                    Label(tr("השורות המסומנות", "Starred lines"), systemImage: "star.fill")
+                    Label(tr("שורות מסומנות", "Starred lines"), systemImage: "star.fill")
                     if !dynamicTypeSize.isAccessibilitySize { Spacer() }
                     Text("\(sessions.reduce(0) { $0 + $1.starredCount })")
                         .foregroundStyle(.secondary)
@@ -170,7 +170,7 @@ struct HistoryView: View {
 
     /// With saving off, "yet" promised conversations that won't come.
     static func emptyConversationsMessage(query: String, speakerFilter: String?, saving: Bool) -> String {
-        if !query.isEmpty { return tr("לא נמצא כלום עבור \"%1\".", "Nothing found for “%1”.", args: ["\(query)"]) }
+        if !query.isEmpty { return tr("לא נמצא כלום עבור ״%1״.", "Nothing found for “%1”.", args: ["\(query)"]) }
         if let speakerFilter { return tr("אין שיחות עם %1.", "No conversations with %1.", args: ["\(speakerFilter)"]) }
         guard saving else { return tr("שמירת שיחות כבויה.", "Saving conversations is off.") }
         return tr("עדיין אין שיחות שמורות.", "No saved conversations yet.")

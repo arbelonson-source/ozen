@@ -74,8 +74,8 @@ public struct WhisperModelOption: Sendable, Equatable, Identifiable {
         case "large-v3-v20240930_626MB": return tr("טורבו (דחוס)", "Turbo (compressed)", in: language)
         case "large-v3-v20240930": return tr("טורבו", "Turbo", in: language)
         case "medium": return tr("בינוני", "Medium", in: language)
-        case "large-v3_947MB": return tr("גדול 3 (דחוס)", "Large v3 (compressed)", in: language)
-        case "large-v3": return tr("גדול 3", "Large v3", in: language)
+        case "large-v3_947MB": return tr("גדול v3 (דחוס)", "Large v3 (compressed)", in: language)
+        case "large-v3": return tr("גדול v3", "Large v3", in: language)
         default: return englishName
         }
     }

@@ -120,7 +120,7 @@ internal fun SoundAlertsScreen(
         SectionHeader(tr("הרטט של כל התראה", "How each alert feels"))
         val samples = listOf(
             Triple(tr("חירום: אזעקה, גלאי עשן", "Emergency: alarm, smoke detector"), AlertVibration.pattern(SoundEvent.Importance.Critical), Icons.Rounded.LocalFireDepartment),
-            Triple(tr("חשוב: פעמון בדלת, דפיקה בדלת, בכי של תינוק", "Important: doorbell, knock at the door, baby crying"), AlertVibration.pattern(SoundEvent.Importance.High), Icons.Rounded.DoorFront),
+            Triple(tr("חשוב: צלצול בדלת, דפיקה בדלת, בכי של תינוק", "Important: doorbell, knock at the door, baby crying"), AlertVibration.pattern(SoundEvent.Importance.High), Icons.Rounded.DoorFront),
             Triple(tr("צליל אחר בבית", "Other sound at home"), AlertVibration.pattern(SoundEvent.Importance.Medium), Icons.Rounded.Home),
             Triple(tr("מילה מהרשימה, כמו השם שלכם", "A word from the list, like your name"), AlertVibration.keyword, Icons.Rounded.NotificationsActive),
             Triple(tr("מישהו מתחיל לדבר אחרי שקט", "Someone starts speaking after silence"), AlertVibration.speechResumed, Icons.Rounded.RecordVoiceOver),
@@ -132,7 +132,7 @@ internal fun SoundAlertsScreen(
         }
         Footnote(
             tr(
-                "כשהאפליקציה פתוחה, כל סוג התראה רוטט אחרת, כך שאפשר לדעת מה קרה גם בלי להסתכל. הקישו כדי לנסות.",
+                "כשהאפליקציה פתוחה, לכל סוג התראה רטט שונה, כך שאפשר לדעת מה קרה גם בלי להסתכל. הקישו כדי לנסות.",
                 "When the app is open, each kind of alert vibrates differently, so you can tell what happened without looking. Tap to feel it.",
             ),
         )

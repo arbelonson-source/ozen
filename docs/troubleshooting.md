@@ -29,11 +29,11 @@ computer backup when that is on.
 | She reads | What it means | What to do |
 | --- | --- | --- |
 | "Listening" (makshiv) | Captions are running. | Nothing. If no words appear, check the microphone (below). |
-| "Listening · Cloud captions aren't available, carrying on with the phone's own" (makshiv · ha-ktuviyot ba-anan lo zminot, mamshich im ha-zihuy she-ba-telefon) | Cloud captions lost their key, credit or internet, and a Whisper model already on the phone took over. Captions keep coming, a little less accurate. | Nothing urgent. After a lost connection or a cloud outage, captions go back to the cloud by themselves once it answers again (checked every minute, between sentences; if it keeps dropping again soon after, less and less often, up to every 16 minutes). A key or credit problem needs fixing in Settings; the cloud is then tried again the next time captions start (after Stop, or reopening the app). A pause and resume stays on the phone's model. |
+| "Listening · Cloud captions aren't available, so the phone carries on by itself" (makshiv · ha-ktuviyot ba-anan lo zminot, mamshich im ha-zihuy she-ba-telefon) | Cloud captions lost their key, credit or internet, and a Whisper model already on the phone took over. Captions keep coming, a little less accurate. | Nothing urgent. After a lost connection or a cloud outage, captions go back to the cloud by themselves once it answers again (checked every minute, between sentences; if it keeps dropping again soon after, less and less often, up to every 16 minutes). A key or credit problem needs fixing in Settings; the cloud is then tried again the next time captions start (after Stop, or reopening the app). A pause and resume stays on the phone's model. |
 | "Paused" (mushhe) | Paused by a tap. | Tap it to continue. |
 | "The phone is talking" (ha-telefon medaber) | The phone is saying a typed reply aloud; captions pause so they don't caption it. | Nothing. They continue by themselves when it finishes. Tapping it stops the phone talking. |
 | "Captions are off" (ha-ktuviyot kvuyot) | Stopped (for example by Siri). | Tap it to start. |
-| "Captions paused for a call" (ha-ktuviyot mushhot biglal sicha) | A phone call or another app has the microphone. | Nothing. They come back after the call. If they don't, a notification "Captions stopped" (ha-ktuviyot ne'etzru) arrives; open Ozen from it. |
+| "Captions paused for a call" (ha-ktuviyot mushhot biglal sichat telefon) | A phone call or another app has the microphone. | Nothing. They come back after the call. If they don't, a notification "Captions stopped" (ha-ktuviyot ne'etzru) arrives; open Ozen from it. |
 | "Downloading the language model · N%" (morid et model ha-safa · N%) | First-time download of the speech model. | Keep the app open (the screen stays on by itself) until it finishes. |
 | "Waiting for Wi-Fi to download the language model" (mamtin le-Wi-Fi kdei lehorid et model ha-safa) | The model still has to download and the phone is on cellular data or Low Data Mode. | Connect to Wi-Fi and it starts by itself, or tap to download over cellular. |
 | "Not enough free space on the phone" (ein maspik makom panuy ba-telefon) | Not enough room for the model. It says how much to free. | Free space (Settings → General → iPhone Storage; on an iPad it is iPad Storage), then open Ozen again and it starts by itself. Or tap to pick a smaller model, or switch to Apple's engine, which needs no download. |
@@ -48,7 +48,7 @@ computer backup when that is on.
 | "No speech recognition permission" (ein ishur le-zihuy dibur) | Speech recognition permission is off (Apple's engine only). | Tap it: it opens iOS Settings. |
 | "… isn't available in … on this device" (… lo zamin be-safa … ba-machshir ha-ze) | Apple's engine has no on-device support for the language being captioned (Hebrew, for example) on this iPhone. | Tap to switch to Whisper in Settings. |
 | "Cloud transcription isn't set up" (ha-timlul ba-anan lo mugdar) | Cloud captions are chosen but there is no key for the chosen service, or the service turned it down, and no Whisper model is on the phone to take over. | Tap it: Settings opens. Paste a key from the chosen service's site and tap Save; [Cloud services](cloud-services.md#getting-a-key) says where each one keeps its keys. |
-| "Cloud transcription's budget ran out" (nigmar ha-taktziv le-timlul ba-anan) | The key used up its credit or its spending limit, and no Whisper model is on the phone to take over. | Add credit on the chosen service's site, or tap and switch back to Whisper. |
+| "Cloud transcription's budget ran out" (nigmar ha-kredit le-timlul ba-anan) | The key used up its credit or its spending limit, and no Whisper model is on the phone to take over. | Add credit on the chosen service's site, or tap and switch back to Whisper. |
 | "No internet connection" (ein chibur la-internet) | Cloud captions can't reach the internet, and no Whisper model is on the phone to take over. | Check Wi-Fi or cellular data. It retries by itself; or switch to Whisper, which works offline. |
 | "Trying again on its own · Tap to try now" (menase shuv le-vad · hakishu kedei lenasot achshav) | Something failed and a retry is already scheduled. | Wait a few seconds, or tap to retry now. |
 
@@ -209,7 +209,7 @@ the same.
   and lock the phone: a sample doorbell alert arrives within 10 seconds. If
   it doesn't, a Focus mode or Scheduled Summary in iOS is holding it back.
   If the test arrives but real alerts don't, check "Quiet hours" (sha'ot
-  shketot) just below: during those hours only urgent sounds like a siren
+  sheket) just below: during those hours only urgent sounds like a siren
   send a notification (the test ignores quiet hours).
 - **The doorbell rang and no alert came at all.** First the report's
   `alerts:` line: `sounds false` means sound alerts are off, `from critical`

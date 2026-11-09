@@ -171,7 +171,7 @@ struct OnboardingView: View {
         OnboardingPage(symbol: "text.bubble", title: tr("איך זה עובד", "How it works")) {
             OnboardingRow(symbol: "mic.fill", text: tr("מניחים את הטלפון על השולחן, והכתוביות מופיעות מעצמן.", "Set the phone on the table, and the captions run on their own."))
             OnboardingRow(symbol: "person.2.fill", text: tr("האפליקציה מבדילה בין דוברים ויכולה ללמוד את השמות שלהם.", "The app tells speakers apart and can learn their names."))
-            OnboardingRow(symbol: "bell.badge.fill", text: tr("היא מתריעה כשאומרים שמות שחשובים לכם, וגם על צלצול בדלת או על אזעקה, ברטט שונה לכל אחד מהם.", "It alerts you to names that matter to you, and to a doorbell or alarm, with a different vibration for each."))
+            OnboardingRow(symbol: "bell.badge.fill", text: tr("היא מתריעה כשאומרים שמות שחשובים לכם, כשמצלצלים בדלת או כשיש אזעקה, ברטט שונה לכל אחד מהם.", "It alerts you to names that matter to you, and to a doorbell or alarm, with a different vibration for each."))
             OnboardingRow(symbol: "keyboard", text: tr("ואפשר גם להקליד תשובה, והטלפון יקריא אותה בקול.", "And you can type a reply, and the phone will speak it aloud."))
         }
     }
@@ -294,7 +294,7 @@ struct OnboardingView: View {
                     .foregroundStyle(.readable(.green))
                     .font(.title3.weight(.semibold))
                     .accessibilityIdentifier("onboardingMicrophoneApproved")
-                Text(tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע לכם על צלצול בדלת, על אזעקה או כשקוראים בשמכם.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."))
+                Text(tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע לכם על צלצול בדלת, על אזעקה או על קריאה בשמכם.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."))
                 if let notificationsAllowed {
                     Label(notificationsAllowed ? tr("ההתראות מאושרות", "Notifications approved") : tr("ההתראות לא אושרו. אפשר לשנות את זה בהגדרות.", "No notifications. This can be changed in Settings."), systemImage: notificationsAllowed ? "checkmark.circle.fill" : "bell.slash")
                         .foregroundStyle(.readable(notificationsAllowed ? .green : .secondary))
@@ -319,7 +319,7 @@ struct OnboardingView: View {
                     Label(tr("המיקרופון חסום", "Microphone blocked"), systemImage: "xmark.circle.fill")
                         .foregroundStyle(.readable(.red))
                         .font(.title3.weight(.semibold))
-                    Text(tr("בלי מיקרופון אין כתוביות. אפשר לאשר אותו בהגדרות הטלפון.", "Without a microphone there are no captions. It can be approved in the phone’s Settings."))
+                    Text(tr("בלי מיקרופון אין כתוביות. אפשר לאשר אותו בהגדרות הטלפון.", "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings."))
                     Button {
                         if let url = URL(string: UIApplication.openSettingsURLString) {
                             openURL(url)
@@ -375,7 +375,7 @@ struct OnboardingView: View {
         OnboardingPage(symbol: "checkmark.seal", title: tr("הכול מוכן", "Ready")) {
             switch viewModel.settings.engine.firstRunNote {
             case .modelDownload:
-                Text(tr("בהפעלה הראשונה אוזן תוריד את מודל הדיבור (%1). זה לוקח כמה דקות, וההתקדמות מוצגת על המסך. בפעמים הבאות הכתוביות יתחילו מיד.", "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that — instantly.", args: ["\(modelSizeText)"]))
+                Text(tr("בהפעלה הראשונה אוזן תוריד את מודל הדיבור (%1). זה לוקח כמה דקות, וההתקדמות מוצגת על המסך. בפעמים הבאות הכתוביות יתחילו מיד.", "The first time it runs, Ozen will download the speech model (%1). This takes a few minutes and shows on the screen. After that, it starts instantly.", args: ["\(modelSizeText)"]))
             case .speechPermission:
                 Text(tr("בהפעלה הראשונה ייתכן ש־iOS יבקש אישור לזיהוי דיבור.", "The first time it runs, iOS may ask for permission to recognize speech."))
             case .homeComputer:
@@ -510,7 +510,7 @@ struct OnboardingView: View {
     }
 
     private static var pairedNote: String {
-        tr("החיבור נעשה בעזרת הקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home.")
+        tr("התחברתם בעזרת הקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home.")
     }
 
     private var modelSizeText: String {

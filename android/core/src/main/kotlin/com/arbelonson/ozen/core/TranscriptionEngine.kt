@@ -26,7 +26,7 @@ enum class TranscriptionEngineKind(val rawValue: String) {
 
     fun displayName(language: UILanguage): String = when (this) {
         WhisperKit -> tr("Whisper (במכשיר)", "Whisper (on device)", language)
-        AppleSpeech -> tr("זיהוי הדיבור של אפל", "Apple's speech recognition", language)
+        AppleSpeech -> tr("זיהוי הדיבור של אפל", "Apple’s speech recognition", language)
         Cloud -> tr("תמלול בענן", "Cloud transcription", language)
         HomeServer -> tr("המחשב בבית", "Home computer", language)
     }

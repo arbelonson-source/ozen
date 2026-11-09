@@ -150,7 +150,7 @@ struct PhasePresentationTests {
         let offline = covering(.noInternet)
         #expect(noKey.detail?.contains("OpenRouter") == false && noKey.detail?.contains("ממי שהגדיר את הטלפון") == true)
         #expect(noKey.action == .openEngineSettings && noKey.tint == .green)
-        #expect(noCredit.detail?.contains("התקציב") == true)
+        #expect(noCredit.detail?.contains("הקרדיט") == true)
         #expect(noCredit.action == .openEngineSettings && noCredit.tint == .green)
         let wrongLanguage = covering(.cloudLanguageNotCovered)
         #expect(wrongLanguage.detail?.contains("שירות אחר") == true)

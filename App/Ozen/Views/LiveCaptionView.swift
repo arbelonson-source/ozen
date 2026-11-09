@@ -570,7 +570,7 @@ struct LiveCaptionView: View {
             Button(tr("להוריד עכשיו", "Download now")) {
                 Task { await viewModel.approveCellularDownload() }
             }
-            Button(tr("לחכות ל־Wi-Fi", "Wait for Wi‑Fi"), role: .cancel) {}
+            Button(tr("לחכות ל־Wi‑Fi", "Wait for Wi‑Fi"), role: .cancel) {}
         } message: {
             Text(cellularDownloadMessage)
         }
@@ -583,8 +583,8 @@ struct LiveCaptionView: View {
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
         } message: {
             Text(viewModel.settings.saveHistory
-                 ? tr("השמירה בהיסטוריה לא עובדת כרגע, ולכן הן לא יישמרו.", "Saving to History isn't working right now, so they won't be saved.")
-                 : tr("היסטוריית השיחות כבויה, ולכן הן לא יישמרו.", "History is off, so they won't be saved."))
+                 ? tr("השמירה בהיסטוריה לא עובדת כרגע, ולכן הן לא יישמרו.", "Saving to History isn’t working right now, so they won’t be saved.")
+                 : tr("שמירת שיחות כבויה, ולכן הן לא יישמרו.", "History is off, so they won’t be saved."))
         }
     }
 
@@ -612,8 +612,8 @@ struct LiveCaptionView: View {
                 Button(tr("אישור", "OK"), role: .cancel) {}
             } message: {
                 Text(viewModel.problemKeptSound
-                    ? tr("פרטי התקלה, השורות האחרונות ו־30 השניות האחרונות של הקול נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לכם: הגדרות ← אבחון.", "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.")
-                    : tr("פרטי התקלה והשורות האחרונות נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לכם: הגדרות ← אבחון ← שליחת הדוח.", "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report."))
+                    ? tr("פרטי התקלה, השורות האחרונות ו־30 השניות האחרונות של הקול נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לכם: הגדרות ← אבחון.", "The problem’s details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.")
+                    : tr("פרטי התקלה והשורות האחרונות נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לכם: הגדרות ← אבחון ← שליחת הדוח.", "The problem’s details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report."))
             }
     }
 
@@ -1011,7 +1011,7 @@ struct LiveCaptionView: View {
                              ? tr("עברית מדויקת בהרבה עם מודל אחר", "Much more accurate Hebrew with a different model")
                              : tr("כתוביות מדויקות בהרבה עם מודל אחר", "Much more accurate captions with a different model"))
                             .font(.headline)
-                        Text(tr("הקישו כדי להוריד את המודל \"\u{2068}%1\u{2069}\", %2, פעם אחת ב־Wi-Fi", "Tap to download %1, %2, once over Wi-Fi", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
+                        Text(tr("הקישו כדי להוריד את המודל ״\u{2068}%1\u{2069}״, %2, פעם אחת ב־Wi‑Fi", "Tap to download %1, %2, once over Wi‑Fi", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
                             .font(.subheadline.weight(.semibold))
                     }
                     .multilineTextAlignment(.leading)
@@ -1045,7 +1045,7 @@ struct LiveCaptionView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone"))
                         .font(.headline)
-                    Text(tr("המודל \"\u{2068}%1\u{2069}\" (%2) קל יותר ועומד בקצב טוב יותר בטלפון הזה.", "%1 (%2) is lighter and keeps up better here.", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
+                    Text(tr("המודל ״\u{2068}%1\u{2069}״ (%2) קל יותר ועומד בקצב טוב יותר בטלפון הזה.", "%1 (%2) is lighter and keeps up better here.", args: ["\(option.displayName)", "\(option.sizeLabel)"]))
                         .font(.subheadline)
                 }
                 .multilineTextAlignment(.leading)
@@ -1638,7 +1638,7 @@ struct LiveCaptionView: View {
     private var cellularDownloadMessage: String {
         let megabytes = viewModel.phase.failure?.engineUnavailability?.downloadMegabytes ?? 0
         let size = megabytes > 0 ? "\(megabytes)\u{00A0}MB" : tr("כמה מאות MB", "A few hundred MB")
-        return tr("גודל המודל הוא בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi ההורדה תתחיל מעצמה.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", args: ["\(size)"])
+        return tr("גודל המודל הוא בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לגמור את נפח הגלישה. ב־Wi‑Fi ההורדה תתחיל מעצמה.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", args: ["\(size)"])
     }
 
     private func perform(_ action: PhasePresentation.Action) {

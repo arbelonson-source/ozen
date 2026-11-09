@@ -57,11 +57,11 @@ internal fun NightAlertsScreen(onClose: () -> Unit) {
                     done = battery,
                     title = tr("סוללה", "Battery"),
                     text = if (battery) {
-                        tr("אנדרואיד מאפשר לאוזן להמשיך לפעול בזמן שהטלפון במצב שינה.", "Android lets Ozen keep running while the phone sleeps.")
+                        tr("Android מאפשר לאוזן להמשיך לפעול בזמן שהטלפון במצב שינה.", "Android lets Ozen keep running while the phone sleeps.")
                     } else {
-                        tr("כדי לחסוך בסוללה, אנדרואיד עלול לעצור את אוזן כשהטלפון במצב שינה, וההתראות ייעצרו איתה.", "To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it.")
+                        tr("כדי לחסוך בסוללה, Android עלול לעצור את אוזן כשהטלפון במצב שינה, וההתראות ייעצרו איתה.", "To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it.")
                     },
-                    button = if (battery) null else tr("פתחו את רשימת הסוללה", "Open the battery list"),
+                    button = if (battery) null else tr("פתחו את הגדרות הסוללה", "Open the battery list"),
                     onButton = { NightAlerts.openBatteryList(context) },
                 )
             }
@@ -81,9 +81,9 @@ internal fun NightAlertsScreen(onClose: () -> Unit) {
                     done = dnd,
                     title = tr("צלילים דחופים ב״נא לא להפריע״", "Urgent sounds in Do Not Disturb"),
                     text = if (dnd) {
-                        tr("צלילים דחופים, כמו אזעקה, מגיעים גם ב״נא לא להפריע״.", "Urgent sounds, like a smoke alarm, come through Do Not Disturb.")
+                        tr("צלילים דחופים, כמו גלאי עשן, מגיעים גם ב״נא לא להפריע״.", "Urgent sounds, like a smoke alarm, come through Do Not Disturb.")
                     } else {
-                        tr("ב״נא לא להפריע״ אזעקה עלולה לא להעיר אתכם. אפשרו להתראות ״חירום״ של אוזן לעקוף אותו.", "In Do Not Disturb, a smoke alarm may not wake you. Let Ozen’s Emergency alerts override it.")
+                        tr("ב״נא לא להפריע״ ייתכן שגלאי עשן לא יעיר אתכם. אפשרו להתראות ״חירום״ של אוזן לעקוף את ״נא לא להפריע״.", "In Do Not Disturb, a smoke alarm may not wake you. Let Ozen’s Emergency alerts override it.")
                     },
                     button = if (dnd) null else tr("פתחו את הגדרות החירום", "Open the Emergency settings"),
                     onButton = { AlertNotifier.openAlarmSettings(context) },
@@ -95,7 +95,7 @@ internal fun NightAlertsScreen(onClose: () -> Unit) {
                     title = tr("מצב שקט וטעינה", "Silent mode and charging"),
                     text = tr(
                         "במצב שקט גם הרטט של ההתראות מושתק, אלא אם הן מגיעות דרך ״נא לא להפריע״. השאירו את הטלפון במצב רטט, בטעינה וקרוב אליכם.",
-                        "On silent, alerts don’t vibrate either, unless they come through Do Not Disturb. Keep the phone on vibrate, charging, near you.",
+                        "On silent, alerts don’t vibrate either, unless they come through Do Not Disturb. Keep the phone on vibrate, charging, and near you.",
                     ),
                     button = null,
                     onButton = { },

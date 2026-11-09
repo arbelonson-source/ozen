@@ -31,7 +31,7 @@ public enum AlertSuggestions {
     public static func vibrationNote(for alerts: [KeywordAlert], in language: UILanguage) -> String? {
         let phrases = alerts.filter(\.isEnabled).map { shown($0.phrase, in: language) }
         guard !phrases.isEmpty else { return nil }
-        return tr("הטלפון ירטוט על: ", "The phone will vibrate for: ", in: language) + phrases.joined(separator: ", ")
+        return tr("הטלפון ירטוט כשייאמרו: ", "The phone will vibrate for: ", in: language) + phrases.joined(separator: ", ")
     }
 
     public static func said(_ match: KeywordMatch, in language: UILanguage) -> String {

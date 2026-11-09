@@ -72,8 +72,8 @@ struct PhasePresentation {
             // if the call is actually still going, iOS just refuses again
             // and she stays safely paused.
             self.init(
-                title: tr("הכתוביות מושהות בגלל שיחה", "Captions paused for a call"),
-                detail: tr("הכתוביות ימשיכו לבד כשהשיחה תסתיים · הקישו כדי לנסות עכשיו", "They’ll continue on their own when the call ends · Tap to try now"),
+                title: tr("הכתוביות מושהות בגלל שיחת טלפון", "Captions paused for a call"),
+                detail: tr("הכתוביות ימשיכו לבד כששיחת הטלפון תסתיים · הקישו כדי לנסות עכשיו", "They’ll continue on their own when the call ends · Tap to try now"),
                 systemImage: "phone.fill",
                 tint: .orange,
                 action: .resume
@@ -95,31 +95,31 @@ struct PhasePresentation {
             self.init(title: tr("מפעילים את המיקרופון", "Starting the microphone"), detail: nil, systemImage: "mic", tint: .yellow, isBusy: true)
 
         case .listening where coveringForCloud && coveredEngine == .homeServer && coverReason == .homeServerRejected:
-            self.init(title: tr("מאזינה", "Listening"), detail: tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, carrying on with the phone’s own · Ask whoever set up the phone for help"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, so the phone carries on by itself · Ask whoever set up the phone for help"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
 
         case .listening where coveringForCloud && coveredEngine == .homeServer:
-            self.init(title: tr("מאזינה", "Listening"), detail: tr("אין חיבור למחשב בבית, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Can’t reach the home computer, carrying on with the phone’s own · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("אין חיבור למחשב בבית, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Can’t reach the home computer, so the phone carries on by itself · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
         // Cloud problems only a person can fix (no key, no credit) get their
         // own detail and a way to Settings, same as the failed-outright
         // screen for these two reasons; a generic "unavailable" here would
         // leave the family with no clue what to actually go fix.
         case .listening where coveringForCloud && coveredEngine == .cloud && coverReason == .cloudKeyNeeded:
-            self.init(title: tr("מאזינה", "Listening"), detail: tr("התמלול בענן לא מוגדר, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription isn’t set up, carrying on with the phone’s own · Ask whoever set up the phone for help"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("התמלול בענן לא מוגדר, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription isn’t set up, so the phone carries on by itself · Ask whoever set up the phone for help"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
 
         case .listening where coveringForCloud && coveredEngine == .cloud && coverReason == .cloudOutOfCredit:
-            self.init(title: tr("מאזינה", "Listening"), detail: tr("נגמר התקציב לתמלול בענן, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription’s budget ran out, carrying on with the phone’s own · Ask whoever set up the phone for help"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("נגמר הקרדיט לתמלול בענן, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription’s budget ran out, so the phone carries on by itself · Ask whoever set up the phone for help"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
 
         case .listening where coveringForCloud && coveredEngine == .cloud && coverReason == .cloudLanguageNotCovered:
-            self.init(title: tr("מאזינה", "Listening"), detail: tr("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", "This service can’t caption this language, carrying on with the phone’s own · Choose another service in Settings"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", "This service can’t caption this language, so the phone carries on by itself · Choose another service in Settings"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
 
         case .listening where coveringForCloud:
             // Still captioning, so still green: the words keep coming, only
             // from the phone's own model while the cloud can't be used.
-            self.init(title: tr("מאזינה", "Listening"), detail: tr("התמלול בענן לא זמין, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Cloud captions aren’t available, carrying on with the phone’s own · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("התמלול בענן לא זמין, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Cloud captions aren’t available, so the phone carries on by itself · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
         case .listening where MobileDataNote.shows(engine: engine, coveringForCloud: coveringForCloud, network: network):
-            self.init(title: tr("מאזינה", "Listening"), detail: tr("דרך חבילת הגלישה · הקישו כדי להשהות", "Over mobile data · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("דרך חבילת הגלישה · הקישו כדי להשהות", "Over cellular data · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
         case .listening:
             self.init(title: tr("מאזינה", "Listening"), detail: tr("הקישו כדי להשהות", "Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
@@ -304,7 +304,7 @@ struct PhasePresentation {
             )
         case .cloudLanguageNotCovered:
             self.init(
-                title: tr("השירות לא מתמלל את השפה הזו", "This service can't caption this language"),
+                title: tr("השירות לא מתמלל את השפה הזו", "This service can’t caption this language"),
                 detail: tr("בחרו שירות אחר · הקישו כדי לפתוח את ההגדרות", "Choose another service · Tap for Settings"),
                 systemImage: "globe",
                 tint: .orange,
@@ -312,8 +312,8 @@ struct PhasePresentation {
             )
         case .cloudOutOfCredit:
             self.init(
-                title: tr("נגמר התקציב לתמלול בענן", "Cloud transcription’s budget ran out"),
-                detail: tr("בקשו ממי שהגדיר את הטלפון להוסיף תקציב · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to add budget · Tap for Settings"),
+                title: tr("נגמר הקרדיט לתמלול בענן", "Cloud transcription’s budget ran out"),
+                detail: tr("בקשו ממי שהגדיר את הטלפון להוסיף קרדיט · הקישו כדי לפתוח את ההגדרות", "Ask whoever set up the phone to add budget · Tap for Settings"),
                 systemImage: "creditcard",
                 tint: .orange,
                 action: .openEngineSettings

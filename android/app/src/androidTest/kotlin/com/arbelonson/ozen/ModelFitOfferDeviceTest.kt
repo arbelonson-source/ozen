@@ -208,7 +208,7 @@ class ModelFitOfferDeviceTest {
             fallBehindOnTurbo()
             captionsStopped()
             compose.onNodeWithText(title).assertExists()
-            val line = "The model in use now (${ByteSize.text(3_000_000)}) is then removed from the phone to free room."
+            val line = "The model in use now (${ByteSize.text(3_000_000)}) is then removed from the phone to free up space."
             compose.onNodeWithText(line).assertExists()
         } finally {
             running.delete()

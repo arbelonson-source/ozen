@@ -176,8 +176,8 @@ then depends on whether the phone has its own model downloaded as a backup:
 
 - **With the backup.** The phone's own Whisper model takes over by itself.
   Captions carry on. The phone keeps checking the computer and goes back to
-  it once it answers. The status line says it is carrying on with the phone's
-  own recognition.
+  it once it answers. The status line says the phone carries on by
+  itself.
 - **Without the backup.** Captions stop and wait. The phone asks the
   computer again every 15 seconds and starts captions once it answers. The
   status line offers to add the backup. A backup that finishes downloading

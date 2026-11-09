@@ -49,7 +49,7 @@ struct StarredLinesView: View {
                                             if viewModel.display.markUncertainLines && line.isUncertain {
                                                 Image(systemName: "questionmark.circle")
                                                     .foregroundStyle(.secondary)
-                                                    .accessibilityLabel(tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. "))
+                                                    .accessibilityLabel(tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. "))
                                             }
                                             Text(
                                                 caption: CaptionLayout.displayText(line.segment.text, languageCode: viewModel.settings.languageCode),

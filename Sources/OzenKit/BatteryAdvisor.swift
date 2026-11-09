@@ -26,7 +26,7 @@ public enum BatteryWarning: Sendable, Equatable {
                 title: tr("הסוללה ב־%1%", "Battery at %1%", args: ["\(percent)"]),
                 body: tr(
                     "הכתוביות וההתראות ממשיכות, אבל כדאי לחבר את הטלפון למטען.",
-                    "Captions and alerts keep running, but it's worth plugging in."
+                    "Captions and alerts keep running, but it’s worth plugging in."
                 ),
                 threadIdentifier: "status",
                 isUrgent: false

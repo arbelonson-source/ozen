@@ -9,8 +9,8 @@ enum class FileTranscriptionProblem {
         get() = when (this) {
             CouldNotRead -> tr("לא הצלחנו לפתוח את הקובץ. ייתכן שהוא פגום או שהסוג שלו לא נתמך.", "This file couldn’t be opened. It may be damaged, or its type isn’t supported.")
             NoAudio -> tr("בקובץ הזה אין קול להמרה לטקסט.", "This file has no sound to turn into text.")
-            NoSpeech -> tr("לא נמצא דיבור בהקלטה הזאת.", "No speech was found in this recording.")
-            NeedsWiFi -> tr("הורדת המודל ממתינה ל־Wi‑Fi. אפשר להתחבר ל־Wi‑Fi או לאשר בהגדרות הורדה בחבילת הגלישה.", "The model download is waiting for Wi‑Fi. Connect to Wi‑Fi, or allow downloads over cellular data in Settings.")
+            NoSpeech -> tr("לא נמצא דיבור בהקלטה הזו.", "No speech was found in this recording.")
+            NeedsWiFi -> tr("הורדת המודל ממתינה ל־Wi‑Fi. אפשר להתחבר ל־Wi‑Fi, או לאשר בהגדרות להוריד גם בחבילת הגלישה.", "The model download is waiting for Wi‑Fi. Connect to Wi‑Fi, or allow downloads over cellular data in Settings.")
             Offline -> tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד את המודל.", "There is no internet connection, so the model can’t be downloaded.")
             NotEnoughStorage -> tr("אין מספיק מקום פנוי בטלפון להורדת המודל.", "There isn’t enough free space on the phone to download the model.")
             ModelFailed -> tr("המודל לא נטען. אפשר לנסות שוב או לבחור מודל אחר.", "The model didn’t load. Try again, or choose another model.")
@@ -81,7 +81,7 @@ sealed interface HistorySave {
     val message: String
         get() = when (this) {
             is Saved -> tr("נשמר בהיסטוריה, ואפשר לחפש אותו שם.", "Saved to History, where you can search it.")
-            Off -> tr("שמירת ההיסטוריה כבויה, ולכן ההקלטה לא נשמרה בהיסטוריה.", "History saving is off, so this wasn’t saved to History.")
+            Off -> tr("שמירת שיחות כבויה, ולכן ההקלטה לא נשמרה בהיסטוריה.", "History saving is off, so this wasn’t saved to History.")
             Failed -> tr(
                 "השמירה בהיסטוריה נכשלה. ייתכן שהטלפון מלא. כדאי לשתף את הטקסט לפני שסוגרים את המסך.",
                 "Couldn’t save to History. The phone may be full. Share the text before you close this screen.",

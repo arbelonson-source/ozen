@@ -18,7 +18,7 @@ public enum TranscriptionEngineKind: String, Codable, Sendable, CaseIterable {
     public func displayName(in language: UILanguage) -> String {
         switch self {
         case .whisperKit: return tr("Whisper (במכשיר)", "Whisper (on device)", in: language)
-        case .appleSpeech: return tr("זיהוי הדיבור של אפל", "Apple's speech recognition", in: language)
+        case .appleSpeech: return tr("זיהוי הדיבור של אפל", "Apple’s speech recognition", in: language)
         case .cloud: return tr("תמלול בענן", "Cloud transcription", in: language)
         case .homeServer: return tr("המחשב בבית", "Home computer", in: language)
         }

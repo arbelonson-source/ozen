@@ -172,12 +172,12 @@ struct DiagnosticsView: View {
                 DiagnosticsRow(tr("מצב המודל", "Model state"), Self.describe(modelState))
                 DiagnosticsRow(tr("טוקנייזר שמור", "Tokenizer cached"), store.hasCachedTokenizer() ? tr("כן", "Yes") : tr("לא (צריך אינטרנט פעם אחת)", "No (needs internet once)"))
                 DiagnosticsRow(tr("שמות ומילים", "Names and words"), "\(viewModel.vocabulary.count)")
-                DiagnosticsRow(tr("התראות מילים", "Word alerts"), "\(viewModel.settings.keywordAlerts.filter(\.isEnabled).count)")
+                DiagnosticsRow(tr("התראות על מילים", "Word alerts"), "\(viewModel.settings.keywordAlerts.filter(\.isEnabled).count)")
             }
 
             Section(tr("מכשיר", "Device")) {
                 DiagnosticsRow(tr("טמפרטורה", "Temperature"), Self.describe(ProcessInfo.processInfo.thermalState))
-                DiagnosticsRow(tr("מצב חיסכון בסוללה", "Low power mode"), ProcessInfo.processInfo.isLowPowerModeEnabled ? tr("פעיל", "On") : tr("כבוי", "Off"))
+                DiagnosticsRow(tr("מצב חיסכון בסוללה", "Low Power Mode"), ProcessInfo.processInfo.isLowPowerModeEnabled ? tr("פעיל", "On") : tr("כבוי", "Off"))
                 DiagnosticsRow(tr("סוללה", "Battery"), Self.batteryText)
                 DiagnosticsRow(tr("מקום פנוי", "Free space"), Self.freeSpaceText)
                 DiagnosticsRow(tr("זיכרון", "Memory"), Self.memoryText)

@@ -67,7 +67,7 @@ public struct CaptionAnnouncer: Sendable, Equatable {
             let name = speakerName(segment)
             // After a quiet stretch the name comes again, as on screen.
             var part: [Piece] = []
-            if isUncertain(segment) { part.append(Piece(text: tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. "), isCaption: false)) }
+            if isUncertain(segment) { part.append(Piece(text: tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. "), isCaption: false)) }
             if let name, name != lastSpeaker || CaptionLayout.startsAfterQuiet(segment, previous: lastLine) {
                 part.append(Piece(text: "\(name): ", isCaption: false))
             }

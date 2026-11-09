@@ -40,9 +40,9 @@ struct SoundAlertsView: View {
                     .disabled(!viewModel.soundAlertPreferences.isEnabled)
             } footer: {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(tr("אוזן היא כלי עזר, ולא מערכת התרעה מאושרת. אין לסמוך עליה במצבים שבהם אפשר להיפגע או בשעת חירום: השאירו את גלאי העשן במקומם, ואת ההתרעות של פיקוד העורף פעילות.", "Ozen is a helper, not a certified alarm. Don’t rely on it where you could be hurt or in an emergency: keep your smoke alarms, and keep official emergency alerts turned on."))
+                    Text(tr("אוזן היא כלי עזר, ולא מערכת התרעה מאושרת. אל תסתמכו עליה במצבים שבהם אפשר להיפגע או בשעת חירום: השאירו את גלאי העשן במקומם, ואת ההתרעות של פיקוד העורף פעילות.", "Ozen is a helper, not a certified alarm. Don’t rely on it where you could be hurt or in an emergency: keep your smoke alarms, and keep official emergency alerts turned on."))
                     Text(tr("הזיהוי נעשה בטלפון בלבד, על אותו קול שמשמש לכתוביות. אותו צליל לא יופיע שוב במשך 20 שניות.", "Detection happens only on the phone, using the same audio as the captions. The same sound won’t appear again for 20 seconds."))
-                    Text(tr("כדי שאזעקה או גלאי עשן יעירו אתכם גם במצב שינה או ב־״נא לא להפריע״: בהגדרות ה־%1 עברו אל ״מיקוד״, ובכל מצב מיקוד הוסיפו את אוזן ל״אפליקציות מותרות״.", "So an alarm or smoke detector still wakes you in Sleep or Do Not Disturb: in %1 Settings, Focus, in each Focus, Allowed Apps, add Ozen.", args: ["\(DeviceWord.brand)"]))
+                    Text(tr("כדי שאזעקה או גלאי עשן יעירו אתכם גם במצב שינה או ב״נא לא להפריע״: בהגדרות ה־%1 עברו אל ״מיקוד״, ובכל מצב מיקוד הוסיפו את אוזן ל״אפליקציות מותרות״.", "So an alarm or smoke detector still wakes you in Sleep or Do Not Disturb: in %1 Settings, Focus, in each Focus, Allowed Apps, add Ozen.", args: ["\(DeviceWord.brand)"]))
                 }
             }
 
@@ -74,7 +74,7 @@ struct SoundAlertsView: View {
 
             if viewModel.knownSoundIdentifiers == nil {
                 Section {
-                    Text(tr("לא ניתן לבדוק אילו צלילים המכשיר הזה מזהה; כל הצלילים מוצגים.", "Can’t check which sounds this device recognizes; all sounds are shown."))
+                    Text(tr("אי אפשר לבדוק אילו צלילים המכשיר הזה מזהה; כל הצלילים מוצגים.", "Can’t check which sounds this device recognizes; all sounds are shown."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -91,14 +91,14 @@ struct SoundAlertsView: View {
     private var vibrationSamples: some View {
         Section {
             sampleButton(tr("חירום: אזעקה, גלאי עשן", "Emergency: alarm, smoke detector"), vibration: .pattern(for: .critical))
-            sampleButton(tr("חשוב: פעמון בדלת, דפיקה בדלת, בכי של תינוק", "Important: doorbell, knock at the door, baby crying"), vibration: .pattern(for: .high))
+            sampleButton(tr("חשוב: צלצול בדלת, דפיקה בדלת, בכי של תינוק", "Important: doorbell, knock at the door, baby crying"), vibration: .pattern(for: .high))
             sampleButton(tr("צליל אחר בבית", "Other sound at home"), vibration: .pattern(for: .medium))
             sampleButton(tr("מילה מהרשימה, כמו השם שלכם", "A word from the list, like your name"), vibration: .keyword)
             sampleButton(tr("מישהו מתחיל לדבר אחרי שקט", "Someone starts speaking after silence"), vibration: .speechResumed)
         } header: {
             Text(tr("הרטט של כל התראה", "How each alert feels"))
         } footer: {
-            Text(tr("כשהאפליקציה פתוחה, כל סוג התראה רוטט אחרת, כך שאפשר לדעת מה קרה גם בלי להסתכל. הקישו כדי לנסות.", "When the app is open, each kind of alert vibrates differently, so you can tell what happened without looking. Tap to feel it."))
+            Text(tr("כשהאפליקציה פתוחה, לכל סוג התראה רטט שונה, כך שאפשר לדעת מה קרה גם בלי להסתכל. הקישו כדי לנסות.", "When the app is open, each kind of alert vibrates differently, so you can tell what happened without looking. Tap to feel it."))
         }
     }
 

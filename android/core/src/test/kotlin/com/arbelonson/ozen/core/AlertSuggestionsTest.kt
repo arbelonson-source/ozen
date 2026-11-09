@@ -50,7 +50,7 @@ class AlertSuggestionsTest {
     fun `the note under the name form lists only the words that will buzz, and is gone when none will`() {
         val alerts = listOf(KeywordAlert(phrase = "סבתא"), KeywordAlert(phrase = "Dani", isEnabled = false), KeywordAlert(phrase = "Ruti"))
         assertEquals("The phone will vibrate for: Grandma, Ruti", AlertSuggestions.vibrationNote(alerts, UILanguage.English))
-        assertEquals("הטלפון ירטוט על: סבתא, Ruti", AlertSuggestions.vibrationNote(alerts, UILanguage.Hebrew))
+        assertEquals("הטלפון ירטוט כשייאמרו: סבתא, Ruti", AlertSuggestions.vibrationNote(alerts, UILanguage.Hebrew))
         assertNull(AlertSuggestions.vibrationNote(listOf(KeywordAlert(phrase = "Dani", isEnabled = false)), UILanguage.English))
         assertNull(AlertSuggestions.vibrationNote(emptyList(), UILanguage.English))
     }

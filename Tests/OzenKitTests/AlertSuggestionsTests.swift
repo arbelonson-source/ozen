@@ -44,7 +44,7 @@ struct AlertSuggestionsTests {
     func vibrationNote() {
         let alerts = [KeywordAlert(phrase: "סבתא"), KeywordAlert(phrase: "Dani", isEnabled: false), KeywordAlert(phrase: "Ruti")]
         #expect(AlertSuggestions.vibrationNote(for: alerts, in: .english) == "The phone will vibrate for: Grandma, Ruti")
-        #expect(AlertSuggestions.vibrationNote(for: alerts, in: .hebrew) == "הטלפון ירטוט על: סבתא, Ruti")
+        #expect(AlertSuggestions.vibrationNote(for: alerts, in: .hebrew) == "הטלפון ירטוט כשייאמרו: סבתא, Ruti")
         #expect(AlertSuggestions.vibrationNote(for: [KeywordAlert(phrase: "Dani", isEnabled: false)], in: .english) == nil)
         #expect(AlertSuggestions.vibrationNote(for: [], in: .english) == nil)
     }

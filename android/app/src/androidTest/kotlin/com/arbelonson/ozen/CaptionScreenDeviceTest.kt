@@ -588,7 +588,7 @@ class CaptionScreenDeviceTest {
         lineText("The bus leaves at noon").performTouchInput { longClick() }
         compose.onNodeWithText(problem).performClick()
         compose.onNodeWithText("Problem marked").assertExists()
-        compose.onNodeWithText("The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.").assertExists()
+        compose.onNodeWithText("The problem’s details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.").assertExists()
         assertEquals(1, marks())
         compose.onNodeWithText("OK").performClick()
         compose.onNodeWithText("Problem marked").assertDoesNotExist()
@@ -728,9 +728,9 @@ class CaptionScreenDeviceTest {
         try {
             unplugged()
             compose.onNodeWithText("Lapel mic disconnected", substring = true).assertIsDisplayed()
-            compose.onNodeWithText("When captions start again they will use the phone's own microphone and may be less accurate. Reconnect it to go back to it.", substring = true).assertExists()
+            compose.onNodeWithText("When captions start again they will use the phone’s own microphone and may be less accurate. Reconnect the microphone to switch back.", substring = true).assertExists()
             compose.runOnUiThread { CaptionState.show(PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
-            compose.onNodeWithText("Captions carry on through the phone's own microphone and may be less accurate. Reconnect it to go back to it.", substring = true).assertExists()
+            compose.onNodeWithText("Captions carry on through the phone’s own microphone and may be less accurate. Reconnect the microphone to switch back.", substring = true).assertExists()
 
             compose.onNodeWithContentDescription("Close").performClick()
             compose.onNodeWithText("Lapel mic disconnected", substring = true).assertDoesNotExist()
@@ -1493,7 +1493,7 @@ class CaptionScreenDeviceTest {
             breakSettings()
             save()
             compose.waitUntil(5_000) { banner() }
-            compose.onNodeWithText("The phone is probably full. New conversations and settings won't be saved until space frees up. Ask whoever helps you with the phone to free some (Settings → Storage).", substring = true).assertExists()
+            compose.onNodeWithText("The phone is probably full. New conversations and settings won’t be saved until space frees up. Ask whoever helps you with the phone to free some (Settings → Storage).", substring = true).assertExists()
             compose.onNodeWithText(title, substring = true).performClick()
             compose.waitUntil(5_000) { !banner() }
             save()

@@ -117,7 +117,7 @@ public enum InstallExpiry {
     public static var warningDetail: String {
         tr(
             "בקשו ממי שהתקין את אוזן להתקין אותה מחדש לפני כן, כדי שהכתוביות לא ייעלמו.",
-            "Ask whoever installed Ozen to reinstall it before then, so captions don't disappear."
+            "Ask whoever installed Ozen to reinstall it before then, so captions don’t disappear."
         )
     }
 

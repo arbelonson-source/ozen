@@ -260,7 +260,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
         SettingsGroup {
             value(tr("מצב המודל", "Model state"), if (now.modelInstalled) tr("מותקן (לא אומת)", "Installed (unverified)") else tr("לא הורד", "Not downloaded"))
             value(tr("שמות ומילים", "Names and words"), "${now.settings.vocabulary.size}")
-            value(tr("התראות מילים", "Word alerts"), "${now.settings.keywordAlerts.count { it.isEnabled }}")
+            value(tr("התראות על מילים", "Word alerts"), "${now.settings.keywordAlerts.count { it.isEnabled }}")
         }
 
         SectionHeader(tr("מכשיר", "Device"))

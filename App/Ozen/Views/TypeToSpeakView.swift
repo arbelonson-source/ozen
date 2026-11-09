@@ -171,7 +171,7 @@ struct TypeToSpeakView: View {
                     .frame(maxWidth: .infinity)
             }
             .ozenGlassButton()
-            .accessibilityHint(tr("כדי שמישהו יוכל לכתוב לכם, או כדי להראות למי שמולכם מה כתבתם", "So someone can write to you, or to show the person you’re talking with what you wrote"))
+            .accessibilityHint(tr("כדי שמישהו יוכל לכתוב לכם, או כדי להראות למי שמולכם מה כתבתם", "Let someone write to you, or show the person you’re talking with what you wrote"))
             .accessibilityIdentifier("bigTextButton")
 
             if !viewModel.hasVoiceForAppLanguage {
