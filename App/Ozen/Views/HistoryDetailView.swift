@@ -27,6 +27,7 @@ struct HistoryDetailView: View {
     /// VoiceOver is moved onto a line jumped to; the flash alone left it
     /// reading from where the jump was made.
     @AccessibilityFocusState private var focusedLineID: UUID?
+    @State private var focusTask: Task<Void, Never>?
     @State private var confirmingDelete = false
     @State private var deleteError: String?
     @State private var renaming = false
@@ -172,8 +173,10 @@ struct HistoryDetailView: View {
     /// Waits for the scroll to bring the line on screen: a row the list
     /// hasn't drawn yet can't take VoiceOver.
     private func focusLine(_ id: UUID) {
-        Task { @MainActor in
+        focusTask?.cancel()
+        focusTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
             focusedLineID = id
         }
     }
