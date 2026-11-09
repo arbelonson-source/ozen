@@ -240,18 +240,38 @@ public struct WhisperResultFilter: Sendable, Equatable {
     }
 
     /// The filter for speech in `languageCode`. In English a lone "you" is
-    /// a real answer as often as it is Whisper's filler for silence, so
-    /// there it only goes when the model was also unsure, like "thank
-    /// you"; in any other language it can only be the filler.
+    /// a real answer as often as it is Whisper's filler for silence, and
+    /// "music", "applause" and "laughter" are words people say as well as
+    /// its sound tags, so there they only go when the model was also
+    /// unsure, like "thank you" (and in brackets, see `isBracketed`); in
+    /// any other language they can only be the filler.
+    ///
+    /// Speech in a language with its own list in
+    /// Resources/WhisperLanguageLines.json, shared with the Android app,
+    /// also drops what Whisper writes on silence in that language: the
+    /// community-subtitle credits it learned from Amara.org files and the
+    /// channel outros. A plain thank-you there is only ambiguous, since
+    /// people say it.
     public func forSpeech(in languageCode: String) -> WhisperResultFilter {
-        guard UILanguage.match(languageTag: languageCode) == .english else { return self }
+        let language = UILanguage.match(languageTag: languageCode)
         var filter = self
-        let you = Self.normalize("you")
-        if filter.knownHallucinations.remove(you) != nil {
-            filter.ambiguousHallucinations.insert(you)
+        if language == .english {
+            for word in Self.englishWordsAlsoSaid.map(Self.normalize) {
+                if filter.knownHallucinations.remove(word) != nil {
+                    filter.ambiguousHallucinations.insert(word)
+                }
+            }
+        }
+        if let lines = WhisperLanguageLines.lines(for: language) {
+            filter.knownHallucinations.formUnion(lines.known.map(Self.normalize))
+            filter.ambiguousHallucinations.formUnion(lines.ambiguous.map(Self.normalize))
+            filter.hallucinatedCreditPrefixes += lines.creditPrefixes.map(Self.normalize)
         }
         return filter
     }
+
+    /// See `forSpeech(in:)`.
+    static let englishWordsAlsoSaid = ["you", "music", "applause", "laughter"]
 
     /// The text worth showing from one decoding pass, with junk segments
     /// dropped. Empty when nothing survives — the caller should then emit

@@ -326,6 +326,59 @@ class WhisperResultFilterTest {
         assertEquals("ترجمة", WhisperResultFilter.normalize("تــرجمــة"))
         assertFalse(filter.forSpeech("ar").accepts(segment("تَرْجَمَةُ نَانْسِي قَنْقَر", logprob = -0.2f)))
     }
+
+    @Test
+    fun `in English 'music', 'applause' and 'laughter' said aloud are kept when heard clearly, as sound tags or barely heard they go`() {
+        val english = filter.forSpeech("en")
+        assertTrue(english.accepts(segment("Music.", logprob = -0.2f)))
+        assertTrue(english.accepts(segment("Applause!", logprob = -0.2f)))
+        assertTrue(english.accepts(segment("Laughter", logprob = -0.2f)))
+        assertFalse(english.accepts(segment("[Music]", logprob = -0.2f)))
+        assertFalse(english.accepts(segment("(Applause)", logprob = -0.2f)))
+        assertFalse(english.accepts(segment("(laughter)", logprob = -0.2f)))
+        assertFalse(english.accepts(segment("Music", logprob = -1.2f)))
+        assertFalse(english.accepts(segment("Music", noSpeech = 0.5f, logprob = -0.2f)))
+        assertTrue(english.isUnvoicedPhrase("Music.", voicedChunks = 1))
+        assertFalse(english.isUnvoicedPhrase("Music.", voicedChunks = 2))
+    }
+
+    @Test
+    fun `outside English a lone 'Music', 'Applause' or 'Laughter' is still Whisper's sound tag`() {
+        for (word in listOf("Music.", "Applause!", "Laughter", "[Music]")) {
+            assertFalse(filter.accepts(segment(word, logprob = -0.2f)), word)
+            assertFalse(filter.forSpeech("he").accepts(segment(word, logprob = -0.2f)), word)
+            assertFalse(filter.forSpeech("de").accepts(segment(word, logprob = -0.2f)), word)
+        }
+    }
+
+    @Test
+    fun `the Arabic thanks-for-watching outros are dropped in Arabic at a confident score`() {
+        val arabic = filter.forSpeech("ar")
+        assertFalse(arabic.accepts(segment("شكرا على المشاهدة", logprob = -0.2f)))
+        assertFalse(arabic.accepts(segment("شكرا لمشاهدتكم", logprob = -0.2f)))
+        assertTrue(arabic.accepts(segment("شكرا على الهدية الجميلة", logprob = -0.2f)))
+    }
+
+    @Test
+    fun `every spoken language beyond Hebrew and English has its own list in use`() {
+        val lines = mapOf(
+            "de" to "Untertitelung des ZDF",
+            "fr" to "Sous-titres par la communauté d'Amara.org",
+            "es" to "Subtítulos por la comunidad de Amara.org",
+            "pt" to "Legendas da comunidade Amara.org",
+            "ru" to "Субтитры сделаны сообществом Amara.org",
+            "uk" to "Субтитри зроблені спільнотою Amara.org",
+            "zh" to "由Amara.org社区提供的字幕",
+            "ar" to "لا تنسوا الاشتراك في القناة",
+        )
+        for ((language, line) in lines) {
+            assertFalse(filter.forSpeech(language).accepts(segment(line, logprob = -0.2f)), language)
+            assertTrue(filter.forSpeech("he").accepts(segment(line, logprob = -0.2f)), language)
+        }
+        assertEquals(filter, filter.forSpeech("he"))
+        assertEquals(filter, filter.forSpeech("hi"))
+        assertEquals(filter, filter.forSpeech("am"))
+    }
 }
 
 class WhisperRepeatCollapseTest {
@@ -391,6 +444,118 @@ class WhisperRepeatCollapseTest {
             )
             assertFalse(filter.accepts(loop), "$copies copies")
         }
+    }
+
+    // A phone number, a code or an amount read out one digit at a time has
+    // the same digit several times in a row. That is what was said, not a
+    // decoding loop, and a reader who sees fewer digits than were spoken
+    // has no way to know.
+    private fun repeated(word: String, count: Int): String = List(count) { word }.joinToString(" ")
+
+    private fun wordCount(text: String): Int = text.split(Regex("\\s+")).count { it.isNotEmpty() }
+
+    @Test
+    fun `a phone number said digit by digit keeps every digit, however the engine wrote it`() {
+        val kept = listOf(
+            "המספר שלי הוא אפס חמש אפס " + repeated("חמש", 6),
+            "050 5 5 5 5 5 5",
+            "0 0 0 0 0",
+            repeated("אחת", 5),
+            "5, 5, 5, 5, 5, 5.",
+            "0 5 0 5 0 5 0 5 0 5",
+            repeated("٥", 6),
+            "5-5 5-5 5-5 5-5",
+        )
+        for (said in kept) {
+            assertEquals(said, WhisperResultFilter.collapsingRepeats(said), said)
+        }
+    }
+
+    @Test
+    fun `a run of one digit is kept up to ten copies and not one more`() {
+        val shown = (1..40).map { wordCount(WhisperResultFilter.collapsingRepeats(repeated("5", it))) }
+        assertEquals((1..40).map { minOf(it, 10) }, shown)
+        assertEquals(repeated("5", 10), WhisperResultFilter.collapsingRepeats(repeated("5", 14)))
+        assertEquals(repeated("חצי", 10), WhisperResultFilter.collapsingRepeats(repeated("חצי", 12)))
+        assertEquals(repeated("אחד", 10), WhisperResultFilter.collapsingRepeats(repeated("אחד", 25)))
+    }
+
+    @Test
+    fun `other words, and a number mixed with a word, are still cut to three`() {
+        assertEquals(repeated("לבוא", 3), WhisperResultFilter.collapsingRepeats(repeated("לבוא", 12)))
+        assertEquals(repeated("5kg", 3), WhisperResultFilter.collapsingRepeats(repeated("5kg", 5)))
+        assertEquals(repeated("5 לבוא", 3), WhisperResultFilter.collapsingRepeats(repeated("5 לבוא", 5)))
+        assertEquals(repeated("5 לבוא", 3), WhisperResultFilter.collapsingRepeats(repeated("5 לבוא", 3)))
+    }
+
+    @Test
+    fun `a run is only a number when every word in it is one, a bare dash among the digits makes it an ordinary repeat`() {
+        assertEquals("5 - 5 - 5 -", WhisperResultFilter.collapsingRepeats("5 - 5 - 5 - 5 - 5 -"))
+    }
+
+    @Test
+    fun `the number allowance can be changed, and never drops below the one for other words`() {
+        assertEquals(repeated("5", 6), WhisperResultFilter.collapsingRepeats(repeated("5", 12), maxNumberRepeats = 6))
+        assertEquals(repeated("5", 3), WhisperResultFilter.collapsingRepeats(repeated("5", 12), maxNumberRepeats = 2))
+        assertEquals(repeated("לבוא", 3), WhisperResultFilter.collapsingRepeats(repeated("לבוא", 12), maxNumberRepeats = 20))
+    }
+
+    @Test
+    fun `a counting word with a prefix attached is still a number in a run`() {
+        assertEquals(repeated("בשלושה", 8), WhisperResultFilter.collapsingRepeats(repeated("בשלושה", 8)))
+        assertEquals(repeated("ובשלושה", 10), WhisperResultFilter.collapsingRepeats(repeated("ובשלושה", 12)))
+        assertEquals(repeated("בלבוא", 3), WhisperResultFilter.collapsingRepeats(repeated("בלבוא", 8)))
+    }
+
+    @Test
+    fun `asked for a single copy, a number gets a single copy too`() {
+        assertEquals("5", WhisperResultFilter.collapsingRepeats("5 5 5 5 5", maxRepeats = 1))
+        assertEquals("0", WhisperResultFilter.collapsingRepeats("0 0 0 0 0", maxRepeats = 1))
+        assertEquals("אחת", WhisperResultFilter.collapsingRepeats(repeated("אחת", 5), maxRepeats = 1))
+    }
+
+    @Test
+    fun `a number said digit by digit reaches the screen whole, from the phone and from the cloud`() {
+        val filter = WhisperResultFilter()
+        val said = "המספר שלי הוא אפס חמש אפס " + repeated("חמש", 6)
+        val segment = WhisperSegmentSummary(text = said, noSpeechProb = 0.01f, avgLogprob = -0.2f, compressionRatio = 1.5f)
+        assertEquals(said, filter.acceptedText(listOf(segment)))
+        assertEquals(listOf("050 5 5 5 5 5 5"), CloudSpeech.turns("A: 050 5 5 5 5 5 5"))
+        // The model's line break can fall in the middle of the number.
+        val merged = CloudSpeech.turns("A: 050 5 5 5\nA: 5 5 5")
+        assertEquals(listOf("050 5 5 5 5 5 5"), merged)
+        assertEquals(listOf(7), merged.map(::wordCount))
+    }
+
+    @Test
+    fun `a phone number with a repeated digit stays one the reader can tap to dial`() {
+        val filter = WhisperResultFilter()
+        val said = "052 1 1 1 1 2 3 4"
+        val segment = WhisperSegmentSummary(text = said, noSpeechProb = 0.01f, avgLogprob = -0.2f, compressionRatio = 1.5f)
+        val shown = filter.acceptedText(listOf(segment))
+        assertEquals(said, shown)
+        assertEquals(listOf("0521111234"), PhoneNumbers.matches(shown).map { it.dialable })
+    }
+
+    @Test
+    fun `a line with a number and a stuck word keeps the number whole and cuts the word`() {
+        val said = "5 5 5 5 5 5 " + repeated("לבוא", 5)
+        assertEquals("5 5 5 5 5 5 " + repeated("לבוא", 3), WhisperResultFilter.collapsingRepeats(said))
+    }
+
+    // The phone's engine scores a run of one word past the loop line (see
+    // the called-out word test above), and the run is then shown cut like
+    // any repeat.
+    @Test
+    fun `a run of one digit the phone scores past the loop line is shown to ten`() {
+        val run = WhisperSegmentSummary(text = repeated("5", 20), noSpeechProb = 0.0f, avgLogprob = -0.1f, compressionRatio = 3.0f)
+        assertEquals(10, wordCount(WhisperResultFilter().acceptedText(listOf(run))))
+    }
+
+    @Test
+    fun `a run of one word the phone scores past the loop line is still shown cut to three`() {
+        val run = WhisperSegmentSummary(text = repeated("די", 20), noSpeechProb = 0.0f, avgLogprob = -0.1f, compressionRatio = 3.0f)
+        assertEquals(3, wordCount(WhisperResultFilter().acceptedText(listOf(run))))
     }
 }
 

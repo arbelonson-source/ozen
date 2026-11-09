@@ -305,6 +305,126 @@ struct WhisperResultFilterTests {
         let sentence = "ترجمة هذا الكتاب إلى العربية استغرقت منا ثلاث سنوات كاملة"
         #expect(filter.accepts(segment(sentence)))
     }
+
+    @Test("in English 'music', 'applause' and 'laughter' said aloud are kept when heard clearly; as sound tags or barely heard they go")
+    func englishSoundWordsSaidAloud() {
+        let english = filter.forSpeech(in: "en")
+        #expect(english.accepts(segment("Music.", logprob: -0.2)))
+        #expect(english.accepts(segment("Applause!", logprob: -0.2)))
+        #expect(english.accepts(segment("Laughter", logprob: -0.2)))
+        #expect(!english.accepts(segment("[Music]", logprob: -0.2)))
+        #expect(!english.accepts(segment("(Applause)", logprob: -0.2)))
+        #expect(!english.accepts(segment("(laughter)", logprob: -0.2)))
+        #expect(!english.accepts(segment("Music", logprob: -1.2)))
+        #expect(!english.accepts(segment("Music", noSpeech: 0.5, logprob: -0.2)))
+        #expect(english.isUnvoicedPhrase("Music.", voicedChunks: 1))
+        #expect(!english.isUnvoicedPhrase("Music.", voicedChunks: 2))
+    }
+
+    @Test("outside English a lone 'Music', 'Applause' or 'Laughter' is still Whisper's sound tag")
+    func soundWordsOutsideEnglish() {
+        for word in ["Music.", "Applause!", "Laughter", "[Music]"] {
+            #expect(!filter.accepts(segment(word, logprob: -0.2)), "\(word)")
+            #expect(!filter.forSpeech(in: "he").accepts(segment(word, logprob: -0.2)), "\(word)")
+            #expect(!filter.forSpeech(in: "de").accepts(segment(word, logprob: -0.2)), "\(word)")
+        }
+    }
+
+    @Test("a native Amara credit line is dropped at a confident score")
+    func nativeCreditLinesDropped() {
+        let lines = [
+            "de": "Untertitel der Amara.org-Community",
+            "fr": "Sous-titres réalisés para la communauté d'Amara.org",
+            "es": "Subtítulos realizados por la comunidad de Amara.org",
+            "pt": "Legendas pela comunidade Amara.org",
+            "ru": "Субтитры сделаны сообществом Amara.org",
+            "uk": "Субтитри створені спільнотою Amara.org",
+            "zh": "字幕由Amara.org社群提供",
+            "ar": "ترجمة نانسي قنقر",
+        ]
+        for (language, line) in lines {
+            #expect(!filter.forSpeech(in: language).accepts(segment(line, logprob: -0.2)), "\(language)")
+        }
+    }
+
+    @Test("other stock credits and outros are dropped in their language")
+    func stockCreditsDroppedInTheirLanguage() {
+        #expect(!filter.forSpeech(in: "de").accepts(segment("Untertitel im Auftrag des ZDF für funk, 2017", logprob: -0.2)))
+        #expect(!filter.forSpeech(in: "ru").accepts(segment("Субтитры сделал DimaTorzok", logprob: -0.2)))
+        #expect(!filter.forSpeech(in: "zh").accepts(segment("请不吝点赞 订阅 转发 打赏支持明镜与点点栏目", logprob: -0.2)))
+        #expect(!filter.forSpeech(in: "ar").accepts(segment("اشتركوا في القناة", logprob: -0.2)))
+    }
+
+    @Test("a plain thank you is dropped only when the model was unsure")
+    func plainThanksInItsLanguage() {
+        let german = filter.forSpeech(in: "de")
+        #expect(german.accepts(segment("Vielen Dank", noSpeech: 0.05, logprob: -0.2)))
+        #expect(!german.accepts(segment("Vielen Dank", noSpeech: 0.05, logprob: -1.2)))
+        #expect(!german.accepts(segment("Danke", noSpeech: 0.4, logprob: -0.2)))
+        #expect(filter.forSpeech(in: "fr").accepts(segment("Merci", logprob: -0.2)))
+        #expect(!filter.forSpeech(in: "fr").accepts(segment("Merci", logprob: -1.2)))
+        #expect(filter.forSpeech(in: "es").accepts(segment("Gracias", logprob: -0.2)))
+        #expect(!filter.forSpeech(in: "es").accepts(segment("Gracias", logprob: -1.2)))
+        #expect(!filter.forSpeech(in: "ru").accepts(segment("Спасибо", logprob: -1.2)))
+        #expect(!filter.forSpeech(in: "zh").accepts(segment("谢谢", logprob: -1.2)))
+        #expect(!filter.forSpeech(in: "ar").accepts(segment("شكرا", logprob: -1.2)))
+        #expect(!filter.forSpeech(in: "pt").accepts(segment("Obrigado", logprob: -1.2)))
+    }
+
+    @Test("a German farewell and everyday subtitle talk are kept at a confident score")
+    func germanEverydayTalkKept() {
+        let german = filter.forSpeech(in: "de")
+        #expect(german.accepts(segment("Bis zum nächsten Mal", logprob: -0.2)))
+        #expect(!german.accepts(segment("Bis zum nächsten Mal", logprob: -1.2)))
+        #expect(german.accepts(segment("Untertitel der Sendung fehlen", logprob: -0.2)))
+        #expect(german.accepts(segment("Untertitel von Filmen helfen mir", logprob: -0.2)))
+        #expect(german.accepts(segment("Untertitelung ist wichtig", logprob: -0.2)))
+        #expect(!german.accepts(segment("Untertitel der Amara.org-Community 2020", logprob: -0.2)))
+        #expect(!german.accepts(segment("Untertitelung des ZDF, 2020", logprob: -0.2)))
+    }
+
+    @Test("a Spanish request for subtitles is kept at a confident score")
+    func spanishSubtitleRequestKept() {
+        let spanish = filter.forSpeech(in: "es")
+        #expect(spanish.accepts(segment("Subtítulos en español, por favor", logprob: -0.2)))
+        #expect(!spanish.accepts(segment("Subtítulos en español de España", logprob: -0.2)))
+    }
+
+    @Test("ordinary sentences with a thank you in them are kept")
+    func thanksInsideSentencesKept() {
+        #expect(filter.forSpeech(in: "de").accepts(segment("Danke, dass du gekommen bist", logprob: -1.2)))
+        #expect(filter.forSpeech(in: "fr").accepts(segment("Merci pour ton aide hier soir", logprob: -1.2)))
+        #expect(filter.forSpeech(in: "es").accepts(segment("Gracias por venir a la fiesta", logprob: -1.2)))
+    }
+
+    @Test("the Arabic thanks-for-watching outros are dropped in Arabic at a confident score")
+    func arabicOutrosDroppedInArabic() {
+        let arabic = filter.forSpeech(in: "ar")
+        #expect(!arabic.accepts(segment("شكرا على المشاهدة", logprob: -0.2)))
+        #expect(!arabic.accepts(segment("شكرا لمشاهدتكم", logprob: -0.2)))
+        #expect(arabic.accepts(segment("شكرا على الهدية الجميلة", logprob: -0.2)))
+    }
+
+    @Test("every spoken language beyond Hebrew and English has its own list in use")
+    func everyLanguageListInUse() {
+        let lines = [
+            "de": "Untertitelung des ZDF",
+            "fr": "Sous-titres par la communauté d'Amara.org",
+            "es": "Subtítulos por la comunidad de Amara.org",
+            "pt": "Legendas da comunidade Amara.org",
+            "ru": "Субтитры сделаны сообществом Amara.org",
+            "uk": "Субтитри зроблені спільнотою Amara.org",
+            "zh": "由Amara.org社区提供的字幕",
+            "ar": "لا تنسوا الاشتراك في القناة",
+        ]
+        for (language, line) in lines {
+            #expect(!filter.forSpeech(in: language).accepts(segment(line, logprob: -0.2)), "\(language)")
+            #expect(filter.forSpeech(in: "he").accepts(segment(line, logprob: -0.2)), "\(language)")
+        }
+        #expect(filter.forSpeech(in: "he") == filter)
+        #expect(filter.forSpeech(in: "hi") == filter)
+        #expect(filter.forSpeech(in: "am") == filter)
+    }
 }
 
 @Suite("Whisper repeated-word loops")

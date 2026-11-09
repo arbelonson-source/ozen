@@ -157,6 +157,9 @@ object NumberEmphasis {
 
     internal val prefixes: Set<String> = setOf("ו", "ב", "ל", "מ", "ה", "ש", "כ")
 
+    /** Whether [word] is a counting word, with or without prefixes attached. */
+    internal fun isNumberWord(word: String): Boolean = emphasisReading(word) != null
+
     /** What an amount is usually of, said right after it. */
     internal val units: Set<String> = setOf(
         "כדור", "כדורים", "טיפה", "טיפות", "כפית", "כפיות", "זריקה", "זריקות",
