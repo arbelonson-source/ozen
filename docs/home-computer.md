@@ -236,6 +236,9 @@ rm -r ~/ozen-server
 systemctl --user daemon-reload
 ```
 
+If you installed the server into another folder by setting `OZEN_HOME`,
+delete that folder instead of `~/ozen-server`.
+
 If nothing else on the computer needs to start at boot before anyone signs
 in, undo the last setup command too:
 
