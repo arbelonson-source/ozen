@@ -42,6 +42,22 @@ private suspend fun TestScope.waitingFor(kind: TranscriptionEngineKind, retryWai
     return SleepWaiting(captions, engine)
 }
 
+/** Waiting for [kind], asked every [every]: the processor stays up through three checks, and is let go once captions are back. */
+private suspend fun TestScope.keptUpThroughEveryCheck(kind: TranscriptionEngineKind, every: Duration) {
+    val asked = mutableListOf<Duration?>()
+    val waiting = waitingFor(kind, RetryWait(sinceBoot = SleepingPhone(this).sinceBoot) { asked += it })
+    val checks = waiting.engine.prepareCount
+    delay(every * 3 + 5.seconds)
+    assertTrue(waiting.engine.prepareCount - checks >= 3, "asked ${waiting.engine.prepareCount - checks} times")
+    val whileWaiting = asked.dropWhile { it != every + RetryWait.AFTERWARDS }
+    assertTrue(whileWaiting.size >= 3, "$asked")
+    assertFalse(null in whileWaiting, "let go between checks: $asked")
+    waiting.engine.availability = EngineAvailability.Available
+    assertTrue(eventually(every + 5.seconds) { waiting.captions.phase == PipelinePhase.Listening && waiting.captions.activeEngineKind == kind })
+    assertTrue(eventually { asked.last() == null }, "kept up with captions back: $asked")
+    assertEquals(1, asked.dropWhile { it != every + RetryWait.AFTERWARDS }.count { it == null }, "$asked")
+}
+
 class CaptionPipelineSleepTest {
     @Test
     fun `a retry lined up for half a minute runs at the first second the phone is awake after it came due, however long it slept`() = runTest {
@@ -112,17 +128,11 @@ class CaptionPipelineSleepTest {
 
     @Test
     fun `while captions wait for the computer the processor stays up through every check, and is let go once captions are back`() = runTest {
-        val asked = mutableListOf<Duration?>()
-        val waiting = waitingFor(homeKind, RetryWait(sinceBoot = SleepingPhone(this).sinceBoot) { asked += it })
-        val checks = waiting.engine.prepareCount
-        delay(50.seconds)
-        assertTrue(waiting.engine.prepareCount - checks >= 3, "asked ${waiting.engine.prepareCount - checks} times")
-        val whileWaiting = asked.dropWhile { it != 15.seconds + RetryWait.AFTERWARDS }
-        assertTrue(whileWaiting.size >= 3, "$asked")
-        assertFalse(null in whileWaiting, "let go between checks: $asked")
-        waiting.engine.availability = EngineAvailability.Available
-        assertTrue(eventually(20.seconds) { waiting.captions.phase == PipelinePhase.Listening && waiting.captions.activeEngineKind == homeKind })
-        assertTrue(eventually { asked.last() == null }, "kept up with captions back: $asked")
-        assertEquals(1, asked.dropWhile { it != 15.seconds + RetryWait.AFTERWARDS }.count { it == null }, "$asked")
+        keptUpThroughEveryCheck(homeKind, 15.seconds)
+    }
+
+    @Test
+    fun `while captions wait for the cloud the processor stays up through every check, and is let go once captions are back`() = runTest {
+        keptUpThroughEveryCheck(cloudKind, 30.seconds)
     }
 }
