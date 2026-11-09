@@ -787,8 +787,9 @@ private fun PairingDialogs(pairing: PairingRequests) {
         )
     }
     // Connect only closes its question: without a word here, a pairing
-    // that worked looks like nothing happened, to TalkBack too.
-    if (paired) {
+    // that worked looks like nothing happened, to TalkBack too. A newer
+    // link's question goes first, so this can't cover it.
+    if (paired && pending == null) {
         AlertDialog(
             onDismissRequest = { pairing.paired.value = false },
             text = { DialogText(tr("החיבור נעשה בעזרת הקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home.")) },
