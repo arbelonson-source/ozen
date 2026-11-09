@@ -110,4 +110,31 @@ struct SilencePhraseGuardTests {
             line("תודה, תודה", id: growing, voiced: 5, at: 1),
         ]) == [true, true])
     }
+
+    @Test("a repeated thanks first decoded with too little voice shows once a later decode of the same line hears enough")
+    func voicedRepeatWaitsForVoice() {
+        let growing = UUID()
+        #expect(admitted([
+            line("תודה, תודה", id: growing, final: false, voiced: 2, at: 0),
+            line("תודה, תודה", id: growing, voiced: 5, at: 1),
+            line("תודה", at: 4),
+        ]) == [false, true, false])
+    }
+
+    @Test("a repeated thanks hidden as coming back stays hidden on that line however much voice follows")
+    func comingBackStaysHidden() {
+        let repeatLine = UUID()
+        #expect(admitted([
+            line("תודה", at: 0),
+            line("תודה, תודה", id: repeatLine, final: false, voiced: 2, at: 5),
+            line("תודה, תודה", id: repeatLine, voiced: 5, at: 6),
+        ]) == [true, false, false])
+    }
+
+    @Test("thanks and thank-you-very-much in one clearly voiced breath shows, with too little voice it stays hidden")
+    func thanksVariantsInOneBreath() {
+        #expect(admitted([line("תודה, תודה רבה", voiced: 4, at: 0)]) == [true])
+        #expect(admitted([line("תודה רבה, תודה לכם", voiced: 4, at: 0)]) == [true])
+        #expect(admitted([line("תודה, תודה רבה", voiced: 3, at: 0)]) == [false])
+    }
 }

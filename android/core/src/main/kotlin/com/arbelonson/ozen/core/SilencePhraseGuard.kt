@@ -9,6 +9,7 @@ class SilencePhraseGuard(phrases: Set<String> = WhisperResultFilter.defaultAmbig
         .sortedByDescending { it.size }
     private var lastPhraseAt: Double? = null
     private var shownPhraseLine: UUID? = null
+    private var waitingForVoice: UUID? = null
 
     fun admits(token: TranscriptToken, time: Double): Boolean {
         val words = wordsOf(token.text)
@@ -17,6 +18,7 @@ class SilencePhraseGuard(phrases: Set<String> = WhisperResultFilter.defaultAmbig
         if (matched == null || matched.map { it in soundTags }.toSet().size != 1) {
             lastPhraseAt = null
             shownPhraseLine = null
+            waitingForVoice = null
             return true
         }
         val plausible = matched.size == 1 || isVoicedRepeat(matched, token.voicedChunks)
@@ -24,9 +26,18 @@ class SilencePhraseGuard(phrases: Set<String> = WhisperResultFilter.defaultAmbig
             lastPhraseAt = time
             return true
         }
-        val cameBack = lastPhraseAt?.let { time - it < QUIET_SECONDS } ?: false
+        val stillThisLine = token.utteranceID == waitingForVoice
+        val cameBack = !stillThisLine && (lastPhraseAt?.let { time - it < QUIET_SECONDS } ?: false)
         lastPhraseAt = time
-        if (!plausible || cameBack) return false
+        if (cameBack) {
+            waitingForVoice = null
+            return false
+        }
+        if (!plausible) {
+            waitingForVoice = token.utteranceID
+            return false
+        }
+        waitingForVoice = null
         shownPhraseLine = token.utteranceID
         return true
     }
@@ -58,7 +69,8 @@ class SilencePhraseGuard(phrases: Set<String> = WhisperResultFilter.defaultAmbig
             setOf("מוזיקה", "שירה", "צחוק").map { WhisperResultFilter.normalize(it) }.toSet()
 
         private fun isVoicedRepeat(matched: List<String>, voicedChunks: Int?): Boolean {
-            if (voicedChunks == null || matched.toSet().size != 1 || matched.first() in soundTags) return false
+            if (voicedChunks == null || matched.first() in soundTags) return false
+            if (matched.map { it.substringBefore(' ') }.toSet().size != 1) return false
             return voicedChunks >= MINIMUM_VOICED_CHUNKS_PER_PHRASE * matched.size
         }
 

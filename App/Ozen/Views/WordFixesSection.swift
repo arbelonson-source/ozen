@@ -20,8 +20,8 @@ struct WordFixesSection: View {
                 }
                 .font(.body)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(fix.heard) → \(fix.written)")
-                .accessibilityAction(named: tr("מחיקת התיקון %1", "Delete the fix %1", args: ["\(fix.heard) → \(fix.written)"])) {
+                .accessibilityLabel(WordFixes.spokenLabel(fix, in: Localization.language))
+                .accessibilityAction(named: tr("מחיקת התיקון %1", "Delete the fix %1", args: ["\(WordFixes.spokenLabel(fix, in: Localization.language))"])) {
                     if let index = viewModel.wordFixes.firstIndex(of: fix) {
                         viewModel.removeWordFixes(at: IndexSet(integer: index))
                     }
@@ -37,6 +37,7 @@ struct WordFixesSection: View {
                     viewModel.addWordFix(WordFix(heard: heard, written: written))
                     heard = ""
                     written = ""
+                    Announcement.post(tr("התיקון נוסף", "Fix added"))
                 }
                 .disabled(!canAdd)
             }

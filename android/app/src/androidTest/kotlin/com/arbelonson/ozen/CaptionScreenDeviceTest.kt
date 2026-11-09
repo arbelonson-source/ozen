@@ -627,21 +627,22 @@ class CaptionScreenDeviceTest {
             val real = app.captions.pipeline.availableInputs
             assertTrue("the picker found no microphone on the phone", real.isNotEmpty())
             val phone = real.first()
-            compose.onNode(hasText(phone.portName) and isSelectable()).performScrollTo().performClick()
-            compose.waitUntil(5_000) { compose.onAllNodes(hasText(phone.portName) and isSelected()).fetchSemanticsNodes().isNotEmpty() }
+            val shown = if (phone.portType == AudioPortType.BuiltInMic) "This phone's microphone" else phone.portName
+            compose.onNode(hasText(shown) and isSelectable()).performScrollTo().performClick()
+            compose.waitUntil(5_000) { compose.onAllNodes(hasText(shown) and isSelected()).fetchSemanticsNodes().isNotEmpty() }
             assertEquals(phone.uid, app.settings.current.value.preferredInputUID)
 
             val lapel = AudioInputDescriptor("usb:lapel", "Lapel mic", AudioPortType.Usb)
             compose.runOnUiThread { CaptionState.inputs(real + lapel, phone.uid) }
             compose.onNode(hasText("Lapel mic") and isSelectable()).performScrollTo().performClick()
-            compose.onNodeWithText("The phone did not switch to “Lapel mic”, and the marked microphone is still recording. Try unplugging and reconnecting it.").performScrollTo()
+            compose.onNodeWithText("The phone did not switch to “Lapel mic”. Try reconnecting it. The marked microphone is still the one in use.").performScrollTo()
                 .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
-            compose.onNode(hasText(phone.portName) and isSelected()).assertExists()
+            compose.onNode(hasText(shown) and isSelected()).assertExists()
 
             compose.runOnUiThread { CaptionState.inputs(emptyList(), null) }
             compose.onNodeWithText("No microphones available").assertExists()
             compose.onNodeWithText("Refresh").performClick()
-            compose.waitUntil(5_000) { compose.onAllNodes(hasText(phone.portName) and isSelectable()).fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { compose.onAllNodes(hasText(shown) and isSelectable()).fetchSemanticsNodes().isNotEmpty() }
 
             compose.onNodeWithText("Close").performClick()
             compose.onNodeWithText("Available microphones").assertDoesNotExist()

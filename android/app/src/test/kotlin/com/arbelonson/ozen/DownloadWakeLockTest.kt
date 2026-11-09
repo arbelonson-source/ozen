@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.ModelDownloadRetry
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -72,12 +73,40 @@ class DownloadWakeLockTest {
         keeping.cancel()
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `the lock is let go whenever the download is not transferring`() {
+    fun `a download waiting to try again keeps the phone awake through the whole wait, so the try comes on time with the screen off`() = runTest {
+        val longest = generateSequence(1) { it + 1 }.map { ModelDownloadRetry.delaySeconds(it) }.takeWhile { it != null }.filterNotNull().max()
+        var state: PhoneModelSwitch = PhoneModelSwitch.Retrying("m.bin", longest)
+        val keeping = launch { wake.keepUp { state } }
+        runCurrent()
+        assertTrue(wake.held, "let go while a try was due")
+        var lastAcquired = 0L
+        var longestGap = 0L
+        for (at in 1..longest) {
+            val before = raw.calls.count { it.startsWith("acquire") }
+            advanceTimeBy(1_000)
+            runCurrent()
+            if (raw.calls.count { it.startsWith("acquire") } > before) {
+                longestGap = maxOf(longestGap, at * 1_000 - lastAcquired)
+                lastAcquired = at * 1_000
+            }
+        }
+        longestGap = maxOf(longestGap, longest * 1_000 - lastAcquired)
+        assertTrue(wake.held)
+        assertTrue(longestGap < DownloadWakeLock.TIMEOUT_MILLISECONDS / 2, "the lock went $longestGap ms without being renewed")
+        state = PhoneModelSwitch.Failed("m.bin")
+        advanceTimeBy(DownloadWakeLock.RENEW_MILLISECONDS)
+        runCurrent()
+        assertFalse(wake.held, "kept after the tries ran out")
+        keeping.cancel()
+    }
+
+    @Test
+    fun `the lock is let go whenever the download is neither transferring nor about to try again`() {
         val resting = listOf(
             PhoneModelSwitch.Idle,
             PhoneModelSwitch.Failed("m.bin"),
-            PhoneModelSwitch.Retrying("m.bin", 15),
             PhoneModelSwitch.WaitingForWiFi("m.bin"),
             PhoneModelSwitch.Offline("m.bin"),
             PhoneModelSwitch.NotEnoughRoom("m.bin", 10),

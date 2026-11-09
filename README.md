@@ -14,7 +14,7 @@
 </p>
 <p align="center">
   <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white">
-  <img alt="Over 1,000 tests" src="https://img.shields.io/badge/tests-1%2C000%2B-brightgreen">
+  <img alt="Over 5,000 tests" src="https://img.shields.io/badge/tests-5%2C000%2B-brightgreen">
   <img alt="12 interface languages" src="https://img.shields.io/badge/languages-12-informational">
   <img alt="No tracking, no account" src="https://img.shields.io/badge/tracking-none-success">
   <img alt="Works with VoiceOver" src="https://img.shields.io/badge/VoiceOver-ready-8A2BE2?logo=apple">
@@ -24,7 +24,7 @@
 
 Ozen (the word means "ear") turns what the people around you say into
 large, steady captions on your phone, as they speak. It was built for one
-grandmother with hearing loss, who found every existing transcription app
+grandmother with hearing loss, who found the transcription apps she tried
 either unreliable with external microphones or too shallow to trust.
 
 <p align="center">
@@ -76,13 +76,13 @@ unsigned `Ozen.ipa` for people who would rather install it themselves; see
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="docs/gallery/captions.png" width="240" alt="The caption screen: large white captions on black, each line labelled with who said it; a line holding a phrase she asked to be told about is highlighted in yellow"><br><sub>Live captions, with who said each line. A phrase she asked to hear about lights up.</sub></td>
+    <td align="center" width="33%"><img src="docs/gallery/captions.png" width="240" alt="The caption screen: large white captions on black, each line labeled with who said it; a line holding a phrase she asked to be told about is highlighted in yellow"><br><sub>Live captions, with who said each line. A phrase she asked to hear about lights up.</sub></td>
     <td align="center" width="33%"><img src="docs/gallery/captions-light.png" width="240" alt="The same conversation in dark text on a light background"><br><sub>A light theme for daytime reading.</sub></td>
     <td align="center" width="33%"><img src="docs/gallery/reply.png" width="240" alt="The reply screen: a typed sentence with a Play button and a list of quick phrases such as Could you say that again?"><br><sub>Type a reply and the phone says it aloud. Common phrases are one tap away.</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/gallery/big-letters.png" width="240" alt="The typed reply filling the screen in very large white letters, with Clear, Flip, Speak and Close buttons"><br><sub>Or show it full screen, in letters anyone across the table can read.</sub></td>
-    <td align="center"><img src="docs/gallery/settings.png" width="240" alt="Settings: a text size slider with a live preview sentence, colours, and plain switches such as Show speaker names"><br><sub>Settings in plain words, with a live preview of the text size.</sub></td>
+    <td align="center"><img src="docs/gallery/settings.png" width="240" alt="Settings: a text size slider with a live preview sentence, colors, and plain switches such as Show speaker names"><br><sub>Settings in plain words, with a live preview of the text size.</sub></td>
     <td align="center"><img src="docs/gallery/history.png" width="240" alt="History: saved conversations listed by time with their first line, a Starred lines entry, and a switch to stop saving"><br><sub>Past conversations are saved on the phone, and can be deleted any time.</sub></td>
   </tr>
 </table>
@@ -94,8 +94,8 @@ languages instead, chosen on first launch or in Settings.</sub>
 ## Why this exists
 
 Existing apps had three concrete problems: inconsistent handling of
-external microphones (no explicit input picker, a USB-C
-lavalier mic didn't work at all, AirPods worked but not reliably), live
+external microphones (no way to choose the microphone, a USB-C clip-on
+microphone didn't work at all, AirPods worked but not reliably), live
 transcription treated as a minor feature rather than the point of the app,
 and no real speaker detection. Ozen exists to fix specifically those three
 things, for Hebrew conversation, on the phone by default.
@@ -105,7 +105,7 @@ things, for Hebrew conversation, on the phone by default.
 <table>
   <tr>
     <td width="33%" valign="top"><img src="docs/assets/icons/captions.svg" width="44" alt=""><br><b>Live, steady captions</b><br>Words appear as they're said and settle in place once they're stable.</td>
-    <td width="33%" valign="top"><img src="docs/assets/icons/text.svg" width="44" alt=""><br><b>Made for reading all evening</b><br>Text from 20 to 64 pt, three colour schemes, and numbers that stand out.</td>
+    <td width="33%" valign="top"><img src="docs/assets/icons/text.svg" width="44" alt=""><br><b>Made for reading all evening</b><br>Text from 20 to 64 points, three color schemes, and numbers that stand out.</td>
     <td width="33%" valign="top"><img src="docs/assets/icons/people.svg" width="44" alt=""><br><b>Who said what</b><br>Voices are told apart on the phone, and named once you record them.</td>
   </tr>
   <tr>
@@ -139,7 +139,7 @@ Open a section for the details.
 
 - **Live captions, not batch transcription.** Partial text updates
   continuously as speech happens; text only locks in (stops changing) once
-  it's actually stable — see `CaptionStabilizer`.
+  it's actually stable.
 - **A Whisper trained on Hebrew, then on the room.** The recommended
   model starts from
   [ivrit.ai's](https://huggingface.co/ivrit-ai/whisper-large-v3-turbo)
@@ -155,55 +155,57 @@ Open a section for the details.
   voice notes the two are within half a point (also measured before
   conversion). It is converted to WhisperKit's format and compressed to
   8 bits (819 MB); compressed the same way, ivrit.ai's model wrote the
-  same words as the full one on five clips checked on a Mac, but for
-  gigahertz run together and one verb form. Nobody publishes these in
-  WhisperKit's format, so it is downloaded from the releases of the
-  public `ozen-models` repository (`scripts/model-release/`) and compiled
-  on the phone.
+  same words as the full one on five clips checked on a Mac, apart from
+  "gigahertz" written as one word instead of two and one verb form. Nobody
+  publishes these in WhisperKit's format, so it is downloaded from the
+  releases of the public `ozen-models` repository (`scripts/model-release/`)
+  and compiled on the phone.
 - **Two swappable on-device engines, plus the cloud** — [WhisperKit](https://github.com/argmaxinc/argmax-oss-swift)
   (Whisper via CoreML) and Apple's own on-device Speech framework — picked
   in Settings, since which one is actually better for Hebrew on a given
   device is an open, testable question rather than an assumption.
 - **Whisper model manager**: eleven models from 76 MB to 3 GB with honest
   Hebrew-quality and speed ratings, download progress, disk usage, and
-  delete. "Turbo Hebrew, noise-trained (Ozen)" is the recommended pick and
-  what a fresh install gets; a phone set up when Small or OpenAI's Turbo
-  was the default is offered the switch on the caption screen, one tap
-  and one download. One on ivrit.ai's Turbo keeps it until switched in
-  the list: the step is real in noise but level up close, too small to
-  interrupt the captions for.
-- **Display built for reading all evening**: text size 20–64 pt (pinch
-  the captions to change it), white-on-black / yellow-on-black /
-  black-on-white, or following the phone's own light/dark setting, bold,
-  speaker names on/off (shown once at the start of
-  each person's turn, like a chat), a small question mark on lines the
-  engine itself was unsure of (so she knows when to ask again; with
-  ivrit.ai's models one or two lines in a hundred, and in tests 50 of
-  52 marked lines had a word wrong; Ozen's noise-trained model is a
-  little surer of itself, so its lines get the mark a little sooner: of
-  3,500 test lines, near and far, it marked 282 (ivrit.ai's, 297) and
-  278 of them had a word wrong), numbers
-  (the time of an appointment, how many pills, a phone number) in a
-  heavier weight and a second colour, whether written in digits or in
-  words ("and six" (u-ve-shesh), "three pills" (shlosha kadurim), "twice"
-  (pa'amayim), "once a day" (pa'am be-yom), "in two weeks" (be'od
-  shvu'ayim)), long
-  stretches of speech
-  broken into short paragraphs at sentence ends, screen stays awake while
-  listening (and locks as usual after a quarter hour with nothing said, while
-  captions and alerts carry on), auto-scroll that stops when you scroll up to re-read (with a
-  "To the last line" (la-shura ha-achrona) pill that turns into a count of
-  the lines said meanwhile, like "3 new lines"). The screen keeps
-  the newest 300 lines (while you read back, the lines above you stay
-  put, up to 600); above them a note opens the saved conversation at the
-  last line that scrolled away. With VoiceOver on, each finished line is read
-  out or sent to a braille display by itself, once (again only if a slow
-  engine then corrects its words), with the speaker's name when the
-  speaker changes and, on a line with the question mark, "May not have
-  been heard correctly" first. Doorbell, alarm and name alerts are
-  read out the moment they happen, and so are captions stopping because of
-  a problem and coming back after one, saving failing and a microphone
-  disconnecting.
+  delete. "Ozen Turbo Hebrew" is the recommended pick and what a fresh
+  install gets; a phone set up when Small or OpenAI's Turbo was the
+  default is offered the switch on the caption screen, one tap and one
+  download. A phone already on ivrit.ai's Turbo keeps it until someone
+  switches in the list: the new model is better only in noise and the same
+  up close, too small a gain to interrupt the captions for.
+- **Display built for reading all evening**:
+  - Text size 20 to 64 points (pinch the captions to change it),
+    white-on-black, yellow-on-black or black-on-white, or following the
+    phone's own light/dark setting, and bold.
+  - Speaker names on or off (shown once at the start of each person's
+    turn, like a chat).
+  - A small question mark on lines the engine itself was unsure of, so she
+    knows when to ask again. With ivrit.ai's models that is one or two
+    lines in a hundred, and in tests 50 of 52 marked lines had a word
+    wrong. Ozen's noise-trained model is a little surer of itself, so its
+    lines get the mark a little sooner: of 3,500 test lines, near and far,
+    it marked 282 (ivrit.ai's, 297) and 278 of them had a word wrong.
+  - Numbers (the time of an appointment, how many pills, a phone number)
+    in a heavier weight and a second color, whether written in digits or
+    in words ("and six" (u-ve-shesh), "three pills" (shlosha kadurim),
+    "twice" (pa'amayim), "once a day" (pa'am be-yom), "in two weeks"
+    (be'od shvu'ayim)).
+  - Long stretches of speech broken into short paragraphs at sentence
+    ends.
+  - The screen stays awake while listening (and locks as usual after a
+    quarter hour with nothing said, while captions and alerts carry on).
+  - Auto-scroll that stops when you scroll up to re-read, with a "To the
+    last line" (la-shura ha-achrona) pill that turns into a count of the
+    lines said meanwhile, like "3 new lines".
+  - The screen keeps the newest 300 lines (while you read back, the lines
+    above you stay put, up to 600); above them a note opens the saved
+    conversation at the last line that scrolled away.
+  - With VoiceOver on, each finished line is read out or sent to a braille
+    display by itself, once (again only if a slow engine then corrects its
+    words), with the speaker's name when the speaker changes and, on a
+    line with the question mark, "May not have been heard correctly"
+    first. Doorbell, alarm and name alerts are read out the moment they
+    happen, and so are captions stopping because of a problem and coming
+    back after one, saving failing and a microphone disconnecting.
 - **Keeps its cool.** Whisper refreshes the in-progress line less often
   when the phone runs hot or Low Power Mode is on, instead of throttling
   and falling behind; the careful end-of-sentence pass is never skipped.
@@ -233,7 +235,7 @@ Open a section for the details.
   simulated four-person table correctly 96.8% of the time, against 45.8%
   for the classic MFCC print it replaced. A conversation is harder: on 18
   put together from 16 Hebrew speakers' recordings, two to four people
-  each, the app's own speaker code labelled who said a sentence right 79%
+  each, the app's own speaker code labeled who said a sentence right 79%
   of the time up close and 64% from across a room, and up close it showed
   more voices than there were (two people came out as three to six).
 - **Saved speakers can be renamed**, and the new name follows onto lines
@@ -285,7 +287,7 @@ Open a section for the details.
   buzzes at most once every 15 seconds, while every line it's in stays
   highlighted.
 - **Sound alerts.** Doorbell, knocking, a baby crying, a smoke alarm, a
-  civil-defence siren and about 45 more, recognized on the phone by
+  civil-defense siren and about 45 more, recognized on the phone by
   Apple's sound classifier and shown as a banner, with per-sound muting.
   Sirens and alarms flash the edge of the whole screen for a few seconds,
   the doorbell and a crying baby twice, so they're caught from the corner
@@ -362,7 +364,7 @@ Open a section for the details.
 - **Type to speak.** The other half of a conversation: type a reply, or
   tap one of the ready-made phrases ("Wait, I didn't catch that" (rega, lo
   hevanti), "Could you say that again?" (efshar lachzor al ze?), "Please speak
-  closer to the phone" (dabru karov yoter la-telefon), which helps the
+  closer to the phone" (dabru karov yoter la-telefon, be-vakasha), which helps the
   captions most), and the phone
   says it aloud, in the voice of the language it is written in (Hebrew
   letters get a Hebrew voice). The last typed sentence stays under the field, to say
@@ -495,11 +497,10 @@ Open a section for the details.
   seconds while it is said; through OpenRouter the faster model costs about
   15 cents per hour of speech, the more accurate about twice that, and
   unbroken talk like the news up to three times as much; off Wi-Fi that is a
-  few hundred MB of mobile data an hour, up to about 1 GB. See `CloudSpeech`
-  and `CloudStreamEngine`. If the key
+  few hundred MB of mobile data an hour, up to about 1 GB. If the key
   stops working, the credit runs out or the internet goes, a Whisper
-  model already on the phone takes over and the status line says so
-  (`CloudCover`); captions don't stop for a billing problem.
+  model already on the phone takes over and the status line says so;
+  captions don't stop for a billing problem.
 
 </details>
 
@@ -755,14 +756,14 @@ engine hot-swap, pause/resume, automatic recovery, every failure path —
 lives in `OzenKit` as `CaptionPipeline` and is unit tested on Linux
 against fakes, along with the alert matching, history, statistics,
 vocabulary, model-download, recovery, battery, notification and layout
-logic (over 1,200 tests). The platform layer (WhisperKit/Speech engines, real
+logic (over 1,900 tests). The platform layer (WhisperKit/Speech engines, real
 audio capture, the speaker embedder) and the app's view model are built
 and tested on CI's iOS Simulator, with the view model driven end to end by
-the same fakes (about 180 more; the Simulator run, which repeats the
-portable ones, has about 1,400).
+the same fakes (about 220 more; the Simulator run repeats the portable
+ones too).
 The app has been installed and run on a real iPhone 15 Pro Max (iOS 18)
 and an iPad (iPadOS 27). Actual Hebrew
-transcription quality, external-mic behaviour and speaker separation in a
+transcription quality, external-mic behavior and speaker separation in a
 real room are being verified by hand — see the design doc's [checklist](docs/superpowers/specs/2026-09-13-ozen-live-captions-design.md#testing-strategy).
 Ozen's own version of the speech model, trained to hear across a noisy
 room, has been the recommended model since 9 October 2026; see
@@ -771,13 +772,13 @@ room, has been the recommended model since 9 October 2026; see
 The Android version, a full Kotlin rewrite started on 10 October 2026,
 ships in every release since build 119 as `Ozen.apk` (see
 [Installing on Android](#installing-on-android)). The portable core and
-the caption pipeline are ported (about 1,700 tests on the JVM), and
+the caption pipeline are ported (about 2,500 tests on the JVM), and
 whisper.cpp runs on the phone with the same Hebrew model as the iPhone,
 or with its general Turbo model for the other spoken languages, either
 downloaded the first time captions start. The walkthrough, captions,
 History, Settings, Diagnostics and typing a reply for the phone to say
-are checked by about 250 tests on an Android emulator, with sound alerts
-recognised by Google's [YAMNet](https://github.com/tensorflow/models/tree/master/research/audioset/yamnet)
+are checked by about 400 tests on an Android emulator, with sound alerts
+recognized by Google's [YAMNet](https://github.com/tensorflow/models/tree/master/research/audioset/yamnet)
 (Apache 2.0) and speaker names from the same WeSpeaker CAM++ model as the
 iPhone, both run on the phone with LiteRT. It has not been used on a real
 phone yet, so expect rough edges; a Bluetooth headset's microphone

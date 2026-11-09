@@ -140,4 +140,41 @@ class SilencePhraseGuardTest {
             ),
         )
     }
+
+    @Test
+    fun `a repeated thanks first decoded with too little voice shows once a later decode of the same line hears enough`() {
+        val growing = UUID.randomUUID()
+        assertEquals(
+            listOf(false, true, false),
+            admitted(
+                listOf(
+                    line("תודה, תודה", id = growing, final = false, voiced = 2, at = 0.0),
+                    line("תודה, תודה", id = growing, voiced = 5, at = 1.0),
+                    line("תודה", at = 4.0),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `a repeated thanks hidden as coming back stays hidden on that line however much voice follows`() {
+        val repeat = UUID.randomUUID()
+        assertEquals(
+            listOf(true, false, false),
+            admitted(
+                listOf(
+                    line("תודה", at = 0.0),
+                    line("תודה, תודה", id = repeat, final = false, voiced = 2, at = 5.0),
+                    line("תודה, תודה", id = repeat, voiced = 5, at = 6.0),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `thanks and thank-you-very-much in one clearly voiced breath shows, with too little voice it stays hidden`() {
+        assertEquals(listOf(true), admitted(listOf(line("תודה, תודה רבה", voiced = 4, at = 0.0))))
+        assertEquals(listOf(true), admitted(listOf(line("תודה רבה, תודה לכם", voiced = 4, at = 0.0))))
+        assertEquals(listOf(false), admitted(listOf(line("תודה, תודה רבה", voiced = 3, at = 0.0))))
+    }
 }
