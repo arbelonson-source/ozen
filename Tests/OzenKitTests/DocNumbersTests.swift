@@ -83,7 +83,7 @@ struct DocNumbersTests {
         #expect(readme.contains("the newest \(word(LockScreenCaptions.lineCount)) lines show on the lock screen"))
         let named = 5
         #expect((40...50).contains(SoundEventCatalog.events.count - named))
-        #expect(readme.contains("a civil-defence siren and about 45 more"))
+        #expect(readme.contains("a civil-defense siren and about 45 more"))
         for identifier in ["door_bell", "baby_crying"] {
             #expect(SoundEventCatalog.event(for: identifier)?.importance == .high, "\(identifier)")
         }
@@ -137,5 +137,30 @@ struct DocNumbersTests {
         #expect(guide.contains("about \(decibels(detector.absoluteThreshold)) dBFS"))
         #expect(guide.contains("about \(decibels(detector.steadyNoiseFloorRatio)) dB when the noise is steady"))
         #expect(guide.contains("up to \(decibels(detector.noiseFloorRatio)) dB when it swings"))
+    }
+
+    @Test("cloud services: the spoken language is a setting, and how many of its languages each service writes is the app's own check")
+    func cloudLanguages() throws {
+        let guide = try doc("docs/cloud-services.md")
+        let languages = UILanguage.allCases
+        #expect(guide.contains("chosen from \(word(languages.count)) on the first launch or later in Settings, under **Spoken language** (sfat ha-dibur)"))
+        #expect(AppSettings.default.spokenLanguage == .hebrew)
+        #expect(guide.contains("It is Hebrew unless you pick another"))
+        #expect(CloudProvider.allCases.allSatisfy { $0.covers(languageCode: UILanguage.hebrew.languageCode.identifier) })
+        #expect(guide.contains("and all \(word(CloudProvider.allCases.count)) write Hebrew"))
+        let english: [UILanguage: String] = [
+            .hebrew: "Hebrew", .english: "English", .arabic: "Arabic", .russian: "Russian", .amharic: "Amharic", .french: "French",
+            .spanish: "Spanish", .ukrainian: "Ukrainian", .german: "German", .portuguese: "Portuguese", .chineseSimplified: "Chinese", .hindi: "Hindi",
+        ]
+        let raw = try String(contentsOf: Self.root.appendingPathComponent("docs/cloud-services.md"), encoding: .utf8)
+        let section = try #require(raw.components(separatedBy: "\n## Languages\n").last?.components(separatedBy: "\n## ").first)
+        let bullets = section.components(separatedBy: "\n- ").dropFirst().map { $0.split(whereSeparator: \.isWhitespace).joined(separator: " ") }
+        for provider in CloudProvider.allCases {
+            let bullet = try #require(bullets.first { $0.contains(provider.name) }, "\(provider.name)")
+            let missing = languages.filter { !provider.covers(languageCode: $0.languageCode.identifier) }.compactMap { english[$0] }
+            let named = missing.count < 2 ? missing.joined() : missing.dropLast().joined(separator: ", ") + " and " + missing[missing.count - 1]
+            let reach = missing.isEmpty ? "all \(word(languages.count))" : "\(word(languages.count - missing.count)), all but \(named)."
+            #expect(bullet.contains(reach), "\(provider.name): \(bullet)")
+        }
     }
 }

@@ -192,6 +192,7 @@ final class OzenScreenshotUITests: XCTestCase {
         let word = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", wordButton)).firstMatch
         if !word.waitForExistence(timeout: 5) { print("TREE-DUMP", app.debugDescription) }
         XCTAssertTrue(word.exists, "\(name): the line's word \(wordButton) is not a button")
+        XCTAssertGreaterThanOrEqual(word.frame.height, 44, "\(name): the word button is \(word.frame.height) pt tall, under the 44-point touch target (\(word.frame))")
         word.tap()
         Thread.sleep(forTimeInterval: 0.5)
         capture(app, name: name)

@@ -57,8 +57,8 @@ lower is better. ivrit.ai, which runs it, also made the phone's own model.
 Each figure is the leaderboard's word-level results for that set, added
 up. Groq's are for the open Whisper large-v3 model that Groq runs (Groq
 itself is not on the leaderboard), and the phone's own model's are for
-ivrit.ai's May 2025 Turbo, the one Ozen ships. Prices are each service's list price per hour of audio in
-October 2026.
+ivrit.ai's May 2025 Turbo, the model Ozen's own Hebrew model is built on.
+Prices are each service's list price per hour of audio in October 2026.
 
 Soniox, Speechmatics and AssemblyAI get the microphone as one stream for as
 long as the captions run, so they cost their list price for every hour of
@@ -84,8 +84,8 @@ too, with no words until the sentence is finished.
 | AssemblyAI (Universal-3.6 Pro) | yes | not tested | not tested | $0.57 with speakers | $50, no card |
 | The phone's own model (ivrit.ai Turbo) | built in | 5.3% | 7.1% | free | - |
 
-Mistral's speech model has no Hebrew, and Azure and Google Cloud Speech need
-a cloud project set up around the key, so they are not planned.
+Mistral's speech model does not write Hebrew. Azure and Google Cloud Speech
+need a cloud project set up around the key, so Ozen does not offer them.
 
 ## How quickly the words appear
 
@@ -137,18 +137,23 @@ on your own recording and connection.
 
 ## Languages
 
-Ozen captions Hebrew speech: every service is asked for Hebrew, and all nine
-write it. Ozen's buttons and settings come in twelve languages, but there is
-no setting yet for the language people speak.
+Ozen captions the language the people around you speak, chosen from twelve
+on the first launch or later in Settings, under **Spoken language** (sfat
+ha-dibur). It is Hebrew unless you pick another. Every service is asked for
+that language, and all nine write Hebrew.
 
-Each service's reach in those twelve is kept in the app for the day there is
-one, and then a service that lacks the chosen language says so under its
-name:
+Not every service writes all twelve. If the one you chose lacks the spoken
+language, Settings says so under the service. A Whisper model already on the
+phone then writes the captions until you choose another service; without
+one, the status button says "This service can't caption this language"
+(ha-sherut lo metamlel et ha-safa ha-zo).
+
+How many of the twelve each service writes:
 
 - Soniox and Speechmatics write eleven, all but Amharic. Chinese goes to
   Speechmatics as Mandarin.
-- AssemblyAI writes ten, all but Ukrainian and Amharic.
-- Deepgram writes eleven, Chinese among them. Amharic it does not have.
+- AssemblyAI writes ten, all but Amharic and Ukrainian.
+- Deepgram writes eleven, all but Amharic.
 - OpenAI, Groq and ElevenLabs take all twelve, Amharic too; their
   accuracy outside Hebrew was not measured here.
 - Google Gemini takes all twelve, each as a regional tag (European
@@ -163,8 +168,10 @@ name:
 
 1. Create an account at [console.soniox.com](https://console.soniox.com/signup).
 2. In the Soniox console, open your project and create a key under API Keys.
-3. In Ozen, open Settings, choose cloud transcription as the speech engine,
-   pick Soniox as the service, paste the key and save it.
+3. In Ozen, open Settings, choose **Cloud transcription** (timlul ba-anan)
+   under **Transcription engine** (manoa timlul), pick Soniox as the service,
+   paste the key and save it. The other services below are set up the same
+   way.
 
 Soniox takes what the captions cost from a balance on the account. When it
 is used up, Ozen says the key is out of credit and the phone's own model
@@ -172,7 +179,7 @@ carries on.
 
 ### Deepgram
 
-1. Create an account at [console.deepgram.com](https://console.deepgram.com/signup)
+1. Create an account at [console.deepgram.com](https://console.deepgram.com/signup).
    No card is asked for.
 2. In the Deepgram console, create an API key.
 3. In Ozen, pick Deepgram as the service, paste the key and save it.

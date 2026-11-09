@@ -2336,6 +2336,24 @@ class DocNumbers(unittest.TestCase):
         self.assertIn(f"a sentence counts as finished after a {S.Session.pause} s pause whatever the card",
                       self.doc("..", "README.md"))
 
+    def test_the_linux_removal_steps_undo_each_step_the_linux_setup_took(self):
+        removal = self.doc("..", "docs", "home-computer.md").split("## Removing it", 1)[1]
+        readme = self.doc("README.md")
+        folder = re.search(r'home_dir="\$\{OZEN_HOME:-\$HOME/([^}]+)\}"', self.doc("setup.sh")).group(1)
+        here = os.path.dirname(os.path.abspath(S.__file__))
+        self.assertEqual(os.path.dirname(S.REPORTS_DIR), here)
+        with open(S.__file__, encoding="utf-8") as f:
+            self.assertIn('"--cert-dir", default=os.path.dirname(os.path.abspath(__file__))', f.read())
+        self.assertIn(f"rm -r ~/{folder}", removal)
+        path, name = re.search(r"Save this as `(~/\.config/systemd/user/([\w-]+)\.service)`", readme).groups()
+        self.assertIn(f"systemctl --user enable --now {name}", readme)
+        self.assertIn(f"systemctl --user disable --now {name}", removal)
+        self.assertIn(f"rm {path}", removal)
+        self.assertIn('sudo loginctl enable-linger "$USER"', readme)
+        self.assertIn('sudo loginctl disable-linger "$USER"', removal)
+        rule = re.search(r"`sudo ufw allow (from \S+ to any port \d+ proto tcp)`", readme).group(1)
+        self.assertIn(f"sudo ufw delete allow {rule}", removal)
+
 
 class EncryptedHomePort(unittest.TestCase):
     def test_a_real_tls_handshake_shows_the_certificate_whose_pin_the_pairing_link_carries(self):

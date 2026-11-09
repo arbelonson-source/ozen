@@ -56,6 +56,7 @@ struct SpeakerEnrollmentView: View {
             .navigationTitle(tr("דובר חדש", "New speaker"))
             .navigationBarTitleDisplayMode(.inline)
             .interactiveDismissDisabled(isRecording)
+            .announcing(tr("מקליטים, אפשר לדבר עכשיו", "Recording, speak now"), whenTurningTrue: isRecording)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(tr("ביטול", "Cancel")) {
@@ -75,15 +76,17 @@ struct SpeakerEnrollmentView: View {
     private func record() {
         isRecording = true
         progress = 0
+        let speaker = name.trimmingCharacters(in: .whitespaces)
         recording = Task {
             let saved = await viewModel.enroll(
-                name: name.trimmingCharacters(in: .whitespaces),
+                name: speaker,
                 seconds: targetSeconds
             ) { fraction in
                 progress = fraction
             }
             isRecording = false
             if saved {
+                Announcement.post(tr("הקול נשמר: %1", "Voice saved: %1", args: ["\(speaker)"]))
                 dismiss()
             } else if !Task.isCancelled {
                 failed = true
