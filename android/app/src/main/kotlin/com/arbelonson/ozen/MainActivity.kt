@@ -734,6 +734,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
     val pending by pairing.pending.collectAsStateWithLifecycle()
     val saveFailed by pairing.saveFailed.collectAsStateWithLifecycle()
     val linkBroken by pairing.linkBroken.collectAsStateWithLifecycle()
+    val paired by pairing.paired.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     pending?.let { shown ->
         AlertDialog(
@@ -742,8 +743,8 @@ private fun PairingDialogs(pairing: PairingRequests) {
             text = {
                 DialogText(
                     tr(
-                        "כדי ליצור כתוביות, הקול יישלח אל %1. אשרו רק אם זה המחשב של המשפחה.",
-                        "The audio will go to %1 for captions. Only connect if this is the family’s computer.",
+                        "כדי ליצור כתוביות, הקול יישלח למחשב שאת הקוד שלו סרקתם עכשיו (%1, כמו שכתוב בדף שלו). אשרו רק אם זה מחשב שלכם או של המשפחה.",
+                        "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.",
                         listOf(shown.computerName),
                     ),
                 )
@@ -776,10 +777,22 @@ private fun PairingDialogs(pairing: PairingRequests) {
                     tr(
                         "חלק מהקישור חסר או משובש. סרקו שוב מקרוב את הריבוע שעל מסך המחשב, במצלמה של הטלפון.",
                         "Part of the link is missing or garbled. Scan the square on the computer again with the phone’s camera, up close.",
+                    ) + "\n\n" + tr(
+                        "אפשר גם להקליד את הכתובת ואת הקוד שמופיעים מתחת לריבוע: בהגדרות, בוחרים ״המחשב בבית״ תחת ״מנוע תמלול״ וממלאים את שתי התיבות.",
+                        "You can also type in the address and code shown under the square: in Settings, choose “Home computer” under “Transcription engine” and fill in both boxes.",
                     ),
                 )
             },
             confirmButton = { TextButton(onClick = { pairing.linkBroken.value = false }) { Text(tr("סגירה", "Close")) } },
+        )
+    }
+    // Connect only closes its question: without a word here, a pairing
+    // that worked looks like nothing happened, to TalkBack too.
+    if (paired) {
+        AlertDialog(
+            onDismissRequest = { pairing.paired.value = false },
+            text = { DialogText(tr("החיבור נעשה בעזרת הקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home.")) },
+            confirmButton = { TextButton(onClick = { pairing.paired.value = false }) { Text(tr("סגירה", "Close")) } },
         )
     }
 }

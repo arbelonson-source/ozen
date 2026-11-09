@@ -145,6 +145,21 @@ class PairingRequestsTest {
     }
 
     @Test
+    fun `a pairing saved and switched to says it worked, and one the phone couldn't keep doesn't`() = runBlocking<Unit> {
+        val pairing = PairingRequests(settings, codes::save)
+        pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=testcode123")
+        assertFalse(pairing.paired.value, "nothing before someone confirms")
+        assertTrue(pairing.acceptPending())
+        assertTrue(pairing.paired.value)
+
+        val refused = PairingRequests(settings, { false })
+        refused.open("ozen://pair?address=wss://other.tail.ts.net&code=othercode")
+        assertFalse(refused.acceptPending())
+        assertFalse(refused.paired.value)
+        assertTrue(refused.saveFailed.value)
+    }
+
+    @Test
     fun `a pairing code the phone won't keep changes nothing and says so`() = runBlocking<Unit> {
         val pairing = PairingRequests(settings, { false })
         pairing.open("ozen://pair?address=wss://desktop.tail.ts.net&code=testcode123")

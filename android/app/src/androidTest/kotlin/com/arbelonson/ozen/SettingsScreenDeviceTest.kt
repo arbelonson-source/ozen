@@ -235,6 +235,7 @@ class SettingsScreenDeviceTest {
         compose.runOnUiThread {
             app.captions.pipeline.setSpeakerSimilarityThreshold(separationBefore)
             CaptionState.clear()
+            app.pairing.paired.value = false
         }
     }
 
@@ -785,6 +786,10 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Connect").performClick()
         compose.waitUntil(5_000) { app.homeServerCode.read() == "example-code-123" }
         assertEquals("example-code-123", app.homeServerCode.read())
+        val worked = "Connected with the code you scanned. Captions come from the computer at home."
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(worked).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNode(hasText("Close") and hasAnyAncestor(isDialog())).performClick()
+        compose.onNodeWithText(worked).assertDoesNotExist()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Pairing code saved on the phone").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Pairing code saved on the phone").performScrollTo()
         compose.onNodeWithText("Delete code").performScrollTo()
