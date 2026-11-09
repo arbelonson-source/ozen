@@ -58,6 +58,7 @@ import com.arbelonson.ozen.core.ProblemSnapshot
 import com.arbelonson.ozen.core.RecentConversation
 import com.arbelonson.ozen.core.RecordingImport
 import com.arbelonson.ozen.core.ReleaseFileFetching
+import com.arbelonson.ozen.core.RetryWait
 import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SessionJournal
@@ -159,6 +160,17 @@ class CaptionSession(
 
     /** Asks the system to clear cache for a download about to write that many bytes; blocks, so not for the main thread. */
     var makeRoom: (Long) -> Unit = { storage.makeRoom(it) }
+
+    // With the screen off and the microphone off, nothing kept the
+    // processor up while captions waited to try again, and a retry due in
+    // seconds came minutes late (see `RetryWait`). A model downloading for
+    // captions crawled the same way.
+    private val retryAwake = KeptAwake.of(context, "ozen:captions-retry")
+    private val downloadAwake = KeptAwake.of(context, "ozen:captions-download")
+
+    /** A partial wake lock is held for a retry that is due; for device tests. */
+    internal val retryKeptAwake: Boolean get() = retryAwake.held
+
     val pipeline = CaptionPipeline(
         scope = scope,
         audio = audio,
@@ -167,6 +179,7 @@ class CaptionSession(
         soundDetector = YamnetSoundDetector(context),
         availableStorageBytes = { freeSpace() },
         network = network,
+        retryWait = RetryWait(SystemClock::elapsedRealtime, retryAwake::keepAwake),
     )
     private val historyStore = TranscriptHistoryStore(historyFolder)
     private val attention = KeywordAttention()
@@ -720,6 +733,8 @@ class CaptionSession(
         network.close()
         voice.shutdown()
         scope.cancel()
+        retryAwake.keepAwake(null)
+        downloadAwake.keepAwake(null)
     }
 
     fun settingsChanged() {
@@ -1377,6 +1392,7 @@ class CaptionSession(
                     makeRoom = { makeRoom(it) },
                     variant = settings.phoneModel.variant,
                     marker = loadMarker,
+                    keepAwake = downloadAwake::keepAwake,
                 ),
                 voiceScorerFactory = ::voiceScore,
                 heat = { heatNow },

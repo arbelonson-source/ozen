@@ -65,6 +65,7 @@ class CaptionPipeline(
     private val now: () -> Double = { System.currentTimeMillis() / 1000.0 },
     private val timeSource: TimeSource = TimeSource.Monotonic,
     private val embedderContext: CoroutineContext = Dispatchers.Default,
+    private val retryWait: RetryWait = RetryWait(),
 ) {
     var phase: PipelinePhase = PipelinePhase.Idle
         private set(value) {
@@ -2696,7 +2697,11 @@ class CaptionPipeline(
         retryToken = token
         logEvent(PipelineEvent.Kind.RetryScheduled(recovery.attempts, delaySeconds))
         retryTask = scope.launch {
-            delay(delaySeconds.seconds)
+            // Counted on a clock that goes on while the phone sleeps, with
+            // the processor kept up meanwhile (see `RetryWait`): a
+            // coroutine's delay stops with the processor, and with the
+            // screen off a retry due in seconds came minutes late.
+            retryWait.wait(delaySeconds.seconds)
             if (!isActive || retryToken != token || phase !is PipelinePhase.Failed) return@launch
             // Detach from this task before retrying: `retry` cancels any
             // scheduled retry, and cancelling the task it's running on
@@ -2819,35 +2824,40 @@ class CaptionPipeline(
         // computer that never answered left no sign the phone was waiting.
         logEvent(PipelineEvent.Kind.Note("waiting for the home computer, asking it every ${formatG(homeServerWaitSeconds)} s"))
         homeServerRecheck = scope.launch {
-            while (isActive) {
-                delay(homeServerWaitSeconds.seconds)
-                val current = phase
-                if (!isActive || current !is PipelinePhase.Failed || current.reason != failure) return@launch
-                // Read again on every pass: a backup model picked, a name
-                // added or a microphone chosen during the wait reached
-                // the active settings, and a copy from the start of the wait
-                // checked the old model (never taking over) or covered
-                // with the old names.
-                val chosen = settingsInUse
-                if (chosen == null || chosen.engine != TranscriptionEngineKind.HomeServer) return@launch
-                // A voice sample recording holds the microphone: the retry
-                // would stop its capture and then not start, and this wait
-                // would be over. It waits for the recording instead.
-                if (systemInterrupted || isRecordingVoice) continue
-                val server = cachedEngine(chosen)
-                val answer = server.checkAvailability(chosen.languageCode)
-                val still = phase
-                if (answer != EngineAvailability.Available || !isActive || systemInterrupted || isRecordingVoice ||
-                    still !is PipelinePhase.Failed || still.reason != failure
-                ) {
-                    if (coverWithReadyBackup(failure)) return@launch
-                    continue
+            // The processor stays up from the first wait until captions
+            // start or the wait ends, not only through the waits: each
+            // check is a connection attempt, which sleeps just as badly.
+            retryWait.whileDue {
+                while (isActive) {
+                    retryWait.wait(homeServerWaitSeconds.seconds)
+                    val current = phase
+                    if (!isActive || current !is PipelinePhase.Failed || current.reason != failure) return@launch
+                    // Read again on every pass: a backup model picked, a name
+                    // added or a microphone chosen during the wait reached
+                    // the active settings, and a copy from the start of the wait
+                    // checked the old model (never taking over) or covered
+                    // with the old names.
+                    val chosen = settingsInUse
+                    if (chosen == null || chosen.engine != TranscriptionEngineKind.HomeServer) return@launch
+                    // A voice sample recording holds the microphone: the retry
+                    // would stop its capture and then not start, and this wait
+                    // would be over. It waits for the recording instead.
+                    if (systemInterrupted || isRecordingVoice) continue
+                    val server = cachedEngine(chosen)
+                    val answer = server.checkAvailability(chosen.languageCode)
+                    val still = phase
+                    if (answer != EngineAvailability.Available || !isActive || systemInterrupted || isRecordingVoice ||
+                        still !is PipelinePhase.Failed || still.reason != failure
+                    ) {
+                        if (coverWithReadyBackup(failure)) return@launch
+                        continue
+                    }
+                    logEvent(PipelineEvent.Kind.Note("the home computer answers again, starting captions"))
+                    homeServerRecheck = null
+                    recovery.reset()
+                    retry()
+                    return@launch
                 }
-                logEvent(PipelineEvent.Kind.Note("the home computer answers again, starting captions"))
-                homeServerRecheck = null
-                recovery.reset()
-                retry()
-                return@launch
             }
         }
         return true
@@ -2871,31 +2881,33 @@ class CaptionPipeline(
         homeServerRecheck?.cancel()
         logEvent(PipelineEvent.Kind.Note("waiting for the cloud, asking it every ${formatG(cloudWaitSeconds)} s"))
         homeServerRecheck = scope.launch {
-            while (isActive) {
-                delay(cloudWaitSeconds.seconds)
-                val current = phase
-                if (!isActive || current !is PipelinePhase.Failed || current.reason != failure) return@launch
-                val chosen = settingsInUse
-                if (chosen == null || chosen.engine != TranscriptionEngineKind.Cloud) return@launch
-                if (systemInterrupted || isRecordingVoice) continue
-                val answer = probeEngine(chosen).checkAvailability(chosen.languageCode)
-                val still = phase
-                if (!isActive || systemInterrupted || isRecordingVoice || still !is PipelinePhase.Failed || still.reason != failure) continue
-                if (answer != EngineAvailability.Available) {
-                    if (answer.unavailability?.kind !in cloudProblemsForAPerson) continue
-                    // A key or credit problem found while waiting is the
-                    // real reason now: a try shows it, with its way to
-                    // Settings, instead of the outage message staying up.
-                    logEvent(PipelineEvent.Kind.Note("the cloud answers with a problem only a person can fix, showing it"))
+            retryWait.whileDue {
+                while (isActive) {
+                    retryWait.wait(cloudWaitSeconds.seconds)
+                    val current = phase
+                    if (!isActive || current !is PipelinePhase.Failed || current.reason != failure) return@launch
+                    val chosen = settingsInUse
+                    if (chosen == null || chosen.engine != TranscriptionEngineKind.Cloud) return@launch
+                    if (systemInterrupted || isRecordingVoice) continue
+                    val answer = probeEngine(chosen).checkAvailability(chosen.languageCode)
+                    val still = phase
+                    if (!isActive || systemInterrupted || isRecordingVoice || still !is PipelinePhase.Failed || still.reason != failure) continue
+                    if (answer != EngineAvailability.Available) {
+                        if (answer.unavailability?.kind !in cloudProblemsForAPerson) continue
+                        // A key or credit problem found while waiting is the
+                        // real reason now: a try shows it, with its way to
+                        // Settings, instead of the outage message staying up.
+                        logEvent(PipelineEvent.Kind.Note("the cloud answers with a problem only a person can fix, showing it"))
+                        homeServerRecheck = null
+                        retry()
+                        return@launch
+                    }
+                    logEvent(PipelineEvent.Kind.Note("the cloud answers again, starting captions"))
                     homeServerRecheck = null
+                    recovery.reset()
                     retry()
                     return@launch
                 }
-                logEvent(PipelineEvent.Kind.Note("the cloud answers again, starting captions"))
-                homeServerRecheck = null
-                recovery.reset()
-                retry()
-                return@launch
             }
         }
         return true
