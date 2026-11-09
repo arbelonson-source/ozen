@@ -58,4 +58,20 @@ class MicrophoneDropNoticeTest {
         notice.inputChanged(usb, builtIn, isListening = true, preferredUID = null)
         assertEquals(usb, notice.lost)
     }
+
+    @Test
+    fun `a hearing aid that was picked and is lost while listening is warned about, one nobody picked is not`() {
+        val builtIn = AudioInputDescriptor("builtin", "Phone Microphone", AudioPortType.BuiltInMic)
+        val hearingAid = AudioInputDescriptor("hearing:aa", "Phonak Audeo", AudioPortType.HearingAid)
+        val otherAid = AudioInputDescriptor("hearing:bb", "Oticon More", AudioPortType.HearingAid)
+        val notice = MicrophoneDropNotice()
+        notice.inputChanged(otherAid, builtIn, isListening = true, preferredUID = hearingAid.uid)
+        assertNull(notice.lost)
+        notice.inputChanged(hearingAid, builtIn, isListening = false, preferredUID = hearingAid.uid)
+        assertNull(notice.lost)
+        notice.inputChanged(hearingAid, builtIn, isListening = true, preferredUID = null)
+        assertNull(notice.lost)
+        notice.inputChanged(hearingAid, builtIn, isListening = true, preferredUID = hearingAid.uid)
+        assertEquals(hearingAid, notice.lost)
+    }
 }
