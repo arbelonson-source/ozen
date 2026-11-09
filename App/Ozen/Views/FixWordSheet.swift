@@ -36,7 +36,7 @@ struct FixWordSheet: View {
                     Text(tr("הקישו על המילים שנכתבו לא נכון", "Tap the words that came out wrong"))
                 }
                 Section {
-                    TextField(tr("או הקלידו מה נשמע", "Or type what was heard"), text: $heard)
+                    TextField(tr("או הקלידו את המילה השגויה", "Or type the wrong word"), text: $heard)
                     TextField(tr("איך זה צריך להיכתב", "How it should be written"), text: $written)
                 }
                 Section {

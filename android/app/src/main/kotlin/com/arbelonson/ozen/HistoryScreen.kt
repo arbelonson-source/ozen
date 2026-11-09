@@ -10,6 +10,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -131,6 +132,7 @@ import java.time.ZoneId
 import java.util.UUID
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -640,6 +642,9 @@ internal fun ConversationScreen(
     var jumpedToStar by remember { mutableStateOf(false) }
     var arrived by remember { mutableStateOf<UUID?>(null) }
     val marking = rememberCoroutineScope()
+    // A new mark ends the one before it, which would otherwise take the new
+    // one away early.
+    var arrival by remember { mutableStateOf<Job?>(null) }
     // Read again, the button stays on the line it showed while that is
     // still one of them; otherwise its next tap starts from the first.
     fun show(now: OpenConversation) {
@@ -671,7 +676,8 @@ internal fun ConversationScreen(
                 }
                 withFrameNanos {}
                 list.scrollToItem(now.headerItems + held)
-                marking.launch {
+                arrival?.cancel()
+                arrival = marking.launch {
                     arrived = line
                     delay(2_000)
                     arrived = null
@@ -683,6 +689,25 @@ internal fun ConversationScreen(
     }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    // Each jump says where it landed, as one from the caption screen does:
+    // the line is read out and marked for a moment. A jump only scrolled,
+    // so a line near the end, or in a short conversation, hardly moved the
+    // list and looked like nothing had happened, and the screen reader
+    // stayed on the button or lost its place with the numbers row.
+    fun jumpTo(shown: OpenConversation, target: UUID) {
+        val index = shown.lines.indexOfFirst { it.id == target }
+        if (index < 0) return
+        scope.launch {
+            list.scrollToItem(shown.headerItems + index)
+            ScreenReader.announce(context, shown.lines[index].spoken)
+        }
+        arrival?.cancel()
+        arrival = marking.launch {
+            arrived = target
+            delay(2_000)
+            arrived = null
+        }
+    }
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
     var deleteError by rememberSaveable { mutableStateOf<String?>(null) }
     var naming by rememberSaveable { mutableStateOf<String?>(null) }
@@ -724,7 +749,6 @@ internal fun ConversationScreen(
             shown.record == null -> Text(tr("השיחה לא נמצאה", "Conversation not found"), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 24.dp))
             else -> {
                 val numbers = shown.numbers?.takeIf { it.listed.isNotEmpty() }
-                val header = shown.headerItems
                 val matched = shown.matches.toSet()
                 // At the largest text on a small phone the chips wrapped into rows
                 // that left the lines a strip: they keep at most a third of the
@@ -745,8 +769,7 @@ internal fun ConversationScreen(
                                     SearchMatches.nextTitle(current, shown.matches.size),
                                     onClick = {
                                         current = (current + 1) % shown.matches.size
-                                        val target = shown.lines.indexOfFirst { it.id == shown.matches[current] }
-                                        if (target >= 0) scope.launch { list.scrollToItem(header + target) }
+                                        jumpTo(shown, shown.matches[current])
                                     },
                                 )
                             }
@@ -757,8 +780,7 @@ internal fun ConversationScreen(
                                     onClick = {
                                         starAt = if (jumpedToStar) (starAt + 1) % shown.starred.size else 0
                                         jumpedToStar = true
-                                        val target = shown.lines.indexOfFirst { it.id == shown.starred[starAt] }
-                                        if (target >= 0) scope.launch { list.scrollToItem(header + target) }
+                                        jumpTo(shown, shown.starred[starAt])
                                     },
                                 )
                             }
@@ -781,13 +803,17 @@ internal fun ConversationScreen(
                             if (numbers != null) {
                                 item(key = "numbers") {
                                     NumbersSection(numbers, isUncertain = { marksUncertain && CaptionConfidence.isUncertain(it, shown.record.engine, shown.record.modelVariant) }) { said ->
-                                        val target = shown.lines.indexOfFirst { it.id == said.id }
-                                        if (target >= 0) scope.launch { list.scrollToItem(header + target) }
+                                        jumpTo(shown, said.id)
                                     }
                                 }
                             }
+                            // A saved line looks like plain text and a tap does nothing, so
+                            // the hold that opens its menu is said here, once, under the date.
                             item(key = "when") {
-                                SectionHeader(conversationHeading(shown.record.startedAt, now = System.currentTimeMillis() / 1_000.0))
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    SectionHeader(conversationHeading(shown.record.startedAt, now = System.currentTimeMillis() / 1_000.0))
+                                    Footnote(tr("לחיצה ארוכה על שורה מאפשרת לסמן אותה כחשובה, להעתיק אותה או לתקן מילה.", "Press and hold a line to mark it as important, copy it or fix a word."))
+                                }
                             }
                             items(shown.lines, key = { it.id.toString() }) { line ->
                                 SavedLineView(line, isMatch = line.id in matched, arrived = line.id == arrived, emphasizeNumbers = emphasizeNumbers, onFix = { fixingID = line.id.toString(); fixRejected = false }) {
@@ -1023,6 +1049,9 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
             .fillMaxWidth()
             .padding(horizontal = 10.dp)
             .background(if (isMatch || arrived) SEARCH_MATCH else Color.Transparent, RoundedCornerShape(8.dp))
+            // The line a jump landed on is ringed, so it stands out from the
+            // other matches, which share its yellow.
+            .then(if (arrived) Modifier.border(3.dp, starColour(), RoundedCornerShape(8.dp)) else Modifier)
             .padding(horizontal = 6.dp, vertical = 4.dp)
             .clearAndSetSemantics {
                 contentDescription = line.spoken

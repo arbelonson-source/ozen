@@ -19,6 +19,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
@@ -227,6 +228,91 @@ class HistoryScreenDeviceTest {
         compose.onNodeWithText("Come back at 10:30", substring = true).performClick()
         compose.waitUntil(5_000) { shownLine("Come back at 10:30 on Sunday") }
     }
+
+    // A jump only scrolled: a line near the end hardly moved the list, it
+    // was not marked, and the screen reader stayed on the button.
+    @Test
+    fun aJumpToANumberMentionedOrTheNextMatchSaysTheLineItLandedOnAndMarksIt() {
+        val lines = (1..40).map { "Landing test nice weather" to null as String? }.toMutableList()
+        lines[0] = "Landing test opening line" to null
+        lines[30] = "Landing test the dentist at 10:30 on Sunday" to null
+        lines[36] = "Landing test call the dentist back" to null
+        seed(*lines.toTypedArray())
+        app.settings.change { it.display = it.display.copy(theme = DisplayPreferences.Theme.Dark, markUncertainLines = false) }
+        val announced = CopyOnWriteArrayList<String>()
+        val announceBefore = ScreenReader.announce
+        ScreenReader.announce = { _, text -> announced += text }
+        try {
+            compose.onNodeWithText("History").performClick()
+            compose.onNodeWithText("Landing test opening line", substring = true).performClick()
+            waitFor("Numbers mentioned")
+            compose.onNode(hasText("at 10:30 on Sunday", substring = true) and hasClickAction()).performClick()
+            compose.waitUntil(5_000) { shownLine("Landing test the dentist at 10:30") }
+            compose.waitUntil(5_000) { spoken("Landing test the dentist at 10:30") in announced }
+            compose.waitUntil(5_000) { highlighted("Landing test the dentist at 10:30") }
+
+            compose.onNodeWithText("Back").performClick()
+            compose.onNodeWithText("Search what was said").performTextInput("dentist")
+            waitFor("Landing test the dentist at 10:30 on Sunday")
+            compose.onNodeWithText("Landing test the dentist at 10:30 on Sunday", substring = true).performClick()
+            compose.onNodeWithText("Next match (1 of 2)").performClick()
+            compose.waitUntil(5_000) { shownLine("Landing test call the dentist back") }
+            compose.waitUntil(5_000) { spoken("Landing test call the dentist back") in announced }
+        } finally {
+            ScreenReader.announce = announceBefore
+        }
+    }
+
+    private fun spoken(text: String) =
+        compose.onNodeWithContentDescription(text, substring = true).fetchSemanticsNode().config[SemanticsProperties.ContentDescription].single()
+
+    // A saved line looks like plain text and a tap does nothing; only a hold opens its menu.
+    @Test
+    fun anOpenedConversationSaysALineCanBeHeldToStarCopyOrFixAWord() {
+        seed("Hold hint test good morning" to null)
+        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText("Hold hint test good morning", substring = true).performClick()
+        waitFor("Press and hold a line to mark it as important, copy it or fix a word.")
+    }
+
+    // Save closed the dialog as if it had worked, and the line stayed as it was.
+    @Test
+    fun fixAWordKeepsSaveOffAndSaysSoWhenTheTypedWordIsNotInTheLine() {
+        openFixAWord("Fixing test I spoke with Shera yesterday")
+        fixField(0).performTextInput("zzzz")
+        fixField(1).performTextInput("Avi")
+        compose.onNode(hasText("Save") and hasAnyAncestor(isDialog())).assertIsNotEnabled()
+        compose.onNodeWithText("This word is not in the line").assertExists()
+        fixField(0).performTextClearance()
+        fixField(0).performTextInput("Shera")
+        compose.onNodeWithText("This word is not in the line").assertDoesNotExist()
+        compose.onNode(hasText("Save") and hasAnyAncestor(isDialog())).assertIsEnabled()
+    }
+
+    // The first box read as "type what was heard", and the right word typed
+    // there un-picked the tapped one with no word of why Save stayed off.
+    @Test
+    fun fixAWordNamesTheFirstBoxForTheWrongWordAndAsksForTheRightOneOnceAWordIsTapped() {
+        openFixAWord("Nudge test I spoke with Shera yesterday")
+        fixField(0).assert(hasText("Or type the wrong word"))
+        compose.onNodeWithText("Now type how it should be written").assertDoesNotExist()
+        compose.onNode(hasContentDescription("Shera") and hasAnyAncestor(isDialog())).performClick()
+        compose.onNodeWithText("Now type how it should be written").assertExists()
+        fixField(1).performTextInput("Shira")
+        compose.onNodeWithText("Now type how it should be written").assertDoesNotExist()
+    }
+
+    private fun openFixAWord(line: String) {
+        seed(line to null)
+        compose.onNodeWithText("History").performClick()
+        compose.onNodeWithText(line, substring = true).performClick()
+        compose.waitUntil(5_000) { shownLine(line) }
+        val fix = compose.onNodeWithContentDescription(line, substring = true).fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Fix a word" }
+        compose.runOnUiThread { fix.action() }
+        waitFor("Tap the words that came out wrong")
+    }
+
+    private fun fixField(index: Int) = compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(isDialog()))[index]
 
     @Test
     fun aNumberMentionedCopiesFromItsRowWhichSaysWhenItMayHaveBeenMisheard() {
