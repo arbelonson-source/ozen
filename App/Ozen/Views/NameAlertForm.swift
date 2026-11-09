@@ -29,7 +29,7 @@ struct NameAlertForm: View {
                     .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
                     .disabled(nameDraft.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            if HebrewText.isInOtherLetters(nameDraft, captionLanguage: viewModel.settings.languageCode) {
+            if HebrewText.isInOtherLetters(nameDraft, captionLanguage: viewModel.settings.languageCode) || viewModel.settings.keywordAlerts.contains(where: { $0.isEnabled && HebrewText.isInOtherLetters($0.phrase, captionLanguage: viewModel.settings.languageCode) }) {
                 Text(otherLettersNote)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -39,7 +39,7 @@ struct NameAlertForm: View {
                     suggestionButton(word)
                 }
             }
-            if let addedText = AlertSuggestions.vibrationNote(for: viewModel.settings.keywordAlerts, in: viewModel.uiLanguage) {
+            if let addedText = AlertSuggestions.vibrationNote(for: viewModel.settings.keywordAlerts, in: viewModel.uiLanguage, captionLanguage: viewModel.settings.languageCode) {
                 Label(addedText, systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.readable(.green))
             }
@@ -50,7 +50,7 @@ struct NameAlertForm: View {
     }
 
     private var otherLettersNote: String {
-        tr("הכתוביות נכתבות באותיות עבריות, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found.")
+        tr("הכתוביות נכתבות באותיות של שפת הדיבור, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are written in the letters of the spoken language, so a word written in other letters may never be found.")
     }
 
     private func suggestionButton(_ word: String) -> some View {

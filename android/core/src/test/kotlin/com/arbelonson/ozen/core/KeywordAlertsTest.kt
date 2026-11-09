@@ -540,7 +540,7 @@ class OtherLettersTest {
     }
 
     @Test
-    fun `Hebrew letters anywhere, no letters at all, or captions in another language are not flagged`() {
+    fun `Hebrew letters anywhere, no letters at all, or captions in a language written in Latin letters are not flagged`() {
         assertFalse(HebrewText.isInOtherLetters("שרה", "he"))
         assertFalse(HebrewText.isInOtherLetters("ד״ר Cohen", "he"))
         assertFalse(HebrewText.isInOtherLetters("שָׂרָה", "he"))
@@ -549,6 +549,31 @@ class OtherLettersTest {
         assertFalse(HebrewText.isInOtherLetters("   ", "he"))
         assertFalse(HebrewText.isInOtherLetters("112", "he"))
         assertFalse(HebrewText.isInOtherLetters("Sarah", "en"))
+    }
+
+    @Test
+    fun `a word with none of the letters Arabic, Russian, Ukrainian, Amharic or Hindi captions use is flagged`() {
+        assertTrue(HebrewText.isInOtherLetters("Dana", "ar"))
+        assertTrue(HebrewText.isInOtherLetters("דנה", "ar"))
+        assertTrue(HebrewText.isInOtherLetters("Dana", "ru"))
+        assertTrue(HebrewText.isInOtherLetters("Dana", "uk"))
+        assertTrue(HebrewText.isInOtherLetters("Dana", "am"))
+        assertTrue(HebrewText.isInOtherLetters("Dana", "hi"))
+        assertTrue(HebrewText.isInOtherLetters("Дана", "ar"))
+        assertTrue(HebrewText.isInOtherLetters("Dana١", "ar"))
+        assertTrue(HebrewText.isInOtherLetters("Dana، Ruti", "ar"))
+        assertTrue(HebrewText.isInOtherLetters("Dana।", "hi"))
+        assertFalse(HebrewText.isInOtherLetters("دانا", "ar"))
+        assertFalse(HebrewText.isInOtherLetters("Дана", "ru"))
+        assertFalse(HebrewText.isInOtherLetters("Дана", "uk"))
+        assertFalse(HebrewText.isInOtherLetters("ዳና", "am"))
+        assertFalse(HebrewText.isInOtherLetters("दाना", "hi"))
+        assertFalse(HebrewText.isInOtherLetters("Dr. دانا", "ar"))
+        assertFalse(HebrewText.isInOtherLetters("112", "ar"))
+        assertFalse(HebrewText.isInOtherLetters("١١٢", "ar"))
+        assertFalse(HebrewText.isInOtherLetters("Dana", "zh"))
+        assertFalse(HebrewText.isInOtherLetters("דנה", "zh"))
+        assertFalse(HebrewText.isInOtherLetters("Dana", "fr"))
     }
 
     private fun hits(stem: String, text: String) = KeywordAlertMatcher(listOf(KeywordAlert(phrase = stem))).matches(text).size

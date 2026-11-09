@@ -617,7 +617,7 @@ struct OtherLettersTests {
         #expect(HebrewText.isInOtherLetters("سارة", captionLanguage: "he"))
     }
 
-    @Test("Hebrew letters anywhere, no letters at all, or captions in another language are not flagged")
+    @Test("Hebrew letters anywhere, no letters at all, or captions in a language written in Latin letters are not flagged")
     func notFlagged() {
         #expect(!HebrewText.isInOtherLetters("שרה", captionLanguage: "he"))
         #expect(!HebrewText.isInOtherLetters("ד״ר Cohen", captionLanguage: "he"))
@@ -627,6 +627,31 @@ struct OtherLettersTests {
         #expect(!HebrewText.isInOtherLetters("   ", captionLanguage: "he"))
         #expect(!HebrewText.isInOtherLetters("112", captionLanguage: "he"))
         #expect(!HebrewText.isInOtherLetters("Sarah", captionLanguage: "en"))
+    }
+
+    @Test("a word with none of the letters Arabic, Russian, Ukrainian, Amharic or Hindi captions use is flagged")
+    func flaggedForOtherAlphabets() {
+        #expect(HebrewText.isInOtherLetters("Dana", captionLanguage: "ar"))
+        #expect(HebrewText.isInOtherLetters("דנה", captionLanguage: "ar"))
+        #expect(HebrewText.isInOtherLetters("Dana", captionLanguage: "ru"))
+        #expect(HebrewText.isInOtherLetters("Dana", captionLanguage: "uk"))
+        #expect(HebrewText.isInOtherLetters("Dana", captionLanguage: "am"))
+        #expect(HebrewText.isInOtherLetters("Dana", captionLanguage: "hi"))
+        #expect(HebrewText.isInOtherLetters("Дана", captionLanguage: "ar"))
+        #expect(HebrewText.isInOtherLetters("Dana١", captionLanguage: "ar"))
+        #expect(HebrewText.isInOtherLetters("Dana، Ruti", captionLanguage: "ar"))
+        #expect(HebrewText.isInOtherLetters("Dana।", captionLanguage: "hi"))
+        #expect(!HebrewText.isInOtherLetters("دانا", captionLanguage: "ar"))
+        #expect(!HebrewText.isInOtherLetters("Дана", captionLanguage: "ru"))
+        #expect(!HebrewText.isInOtherLetters("Дана", captionLanguage: "uk"))
+        #expect(!HebrewText.isInOtherLetters("ዳና", captionLanguage: "am"))
+        #expect(!HebrewText.isInOtherLetters("दाना", captionLanguage: "hi"))
+        #expect(!HebrewText.isInOtherLetters("Dr. دانا", captionLanguage: "ar"))
+        #expect(!HebrewText.isInOtherLetters("112", captionLanguage: "ar"))
+        #expect(!HebrewText.isInOtherLetters("١١٢", captionLanguage: "ar"))
+        #expect(!HebrewText.isInOtherLetters("Dana", captionLanguage: "zh"))
+        #expect(!HebrewText.isInOtherLetters("דנה", captionLanguage: "zh"))
+        #expect(!HebrewText.isInOtherLetters("Dana", captionLanguage: "fr"))
     }
 }
 

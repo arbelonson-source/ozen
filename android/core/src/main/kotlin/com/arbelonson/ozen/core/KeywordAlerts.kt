@@ -234,15 +234,30 @@ object HebrewText {
     }
 
     /**
-     * A word typed only in another alphabet ("Sarah", a Cyrillic name) while
-     * the captions come out in Hebrew letters: its alert stays silent, so the
-     * screens that add one say so. Digits alone are left alone.
+     * A word typed only in another alphabet ("Sarah" or a Cyrillic name while
+     * the captions come out in Hebrew letters, "Dana" or "דנה" while they are
+     * in Arabic ones): its alert stays silent, so the screens that add one
+     * say so. Only letters count: "Dana١" is still in other letters. Digits
+     * alone are left alone. Captions in Latin letters or in
+     * Chinese are left alone too: a name may come out there as typed.
      */
     fun isInOtherLetters(phrase: String, captionLanguage: String): Boolean {
-        if (!captionLanguage.startsWith("he")) return false
-        val hasHebrew = phrase.codePoints().anyMatch { it in 0x05D0..0x05F2 || it in 0xFB1D..0xFB4F }
-        return !hasHebrew && phrase.codePoints().anyMatch { Character.isAlphabetic(it) }
+        val letters = captionLetters.entries.firstOrNull { captionLanguage.startsWith(it.key) }?.value ?: return false
+        val hasTheirs = phrase.codePoints().anyMatch { point -> Character.isAlphabetic(point) && letters.any { point in it } }
+        return !hasTheirs && phrase.codePoints().anyMatch { Character.isAlphabetic(it) }
     }
+
+    private val cyrillic = listOf(0x0400..0x052F, 0x1C80..0x1C8F, 0x2DE0..0x2DFF, 0xA640..0xA69F)
+
+    /** The alphabet each caption language is written in, for [isInOtherLetters]; the same blocks as OzenKit's. */
+    private val captionLetters = mapOf(
+        "he" to listOf(0x05D0..0x05F2, 0xFB1D..0xFB4F),
+        "ar" to listOf(0x0600..0x06FF, 0x0750..0x077F, 0x0870..0x08FF, 0xFB50..0xFDFF, 0xFE70..0xFEFF),
+        "ru" to cyrillic,
+        "uk" to cyrillic,
+        "am" to listOf(0x1200..0x139F, 0x2D80..0x2DDF, 0xAB00..0xAB2F),
+        "hi" to listOf(0x0900..0x097F, 0xA8E0..0xA8FF),
+    )
 
     /**
      * [normalize], split into individual words. Used for a phrase, where only
