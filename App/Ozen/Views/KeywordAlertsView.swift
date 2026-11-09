@@ -163,7 +163,7 @@ struct KeywordAlertsView: View {
     }
 
     private var otherLettersNote: String {
-        tr("הכתוביות נכתבות באותיות עבריות, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found.")
+        tr("הכתוביות נכתבות באותיות של שפת הדיבור, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are written in the letters of the spoken language, so a word written in other letters may never be found.")
     }
 
     private func add() {

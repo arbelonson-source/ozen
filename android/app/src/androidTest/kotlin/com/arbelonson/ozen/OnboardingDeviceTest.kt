@@ -7,11 +7,16 @@ import android.view.View
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -240,9 +245,10 @@ class OnboardingDeviceTest {
         compose.onNodeWithText("Next").performClick()
 
         compose.onNodeWithText("When you’re called").assertExists()
-        compose.onNodeWithText("+ Grandma").performScrollTo().performClick()
+        compose.onNode(hasText("Grandma") and hasClickAction()).performScrollTo().performClick()
         compose.waitUntil(5_000) { alerts() == listOf("סבתא") }
-        compose.onNodeWithText("✓ Grandma").assertIsNotEnabled()
+        compose.onNode(hasText("Grandma") and hasClickAction()).assertIsNotEnabled()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Already on the list"))
         compose.onNodeWithText("✓ The phone will vibrate for: Grandma").performScrollTo().assertExists()
         compose.onNodeWithText("Your name").performScrollTo().performTextInput("Dana")
         compose.onNodeWithText("Next").performClick()

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +26,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Forum
@@ -50,6 +52,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -82,6 +86,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -295,44 +300,83 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
     // iPhone's form at its accessibility sizes: beside it, German's
     // "Hinzufügen" left the field a few letters wide.
     val stacked = LocalDensity.current.fontScale > LARGEST_ORDINARY_FONT_SCALE
+    val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    // The field just empties, or a suggestion turns grey: as on the iPhone,
+    // a screen reader hears that the word went in.
+    val sayAdded = { word: String -> if (ScreenReader.isOn(context)) ScreenReader.announce(context, tr("נוסף: %1", "Added: %1", listOf(word))) }
+    // The keyboard goes down with it, or at large text it covers the note
+    // below that says what the phone will vibrate for.
+    val addTyped = {
+        val name = draft.value.trim()
+        addDraft()
+        focusManager.clearFocus()
+        if (name.isNotEmpty()) sayAdded(name)
+    }
     val field = @Composable { modifier: Modifier ->
         OutlinedTextField(
             value = draft.value,
             onValueChange = { draft.value = it },
-            placeholder = { Text(tr("השם שלכם", "Your name")) },
+            label = { Text(tr("השם שלכם", "Your name")) },
             singleLine = true,
             textStyle = MaterialTheme.typography.titleMedium,
             shape = MaterialTheme.shapes.medium,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { addDraft() }),
+            keyboardActions = KeyboardActions(onDone = { addTyped() }),
             modifier = modifier,
         )
     }
     val add = @Composable { modifier: Modifier ->
-        TonalButton(tr("הוספה", "Add"), addDraft, modifier, enabled = draft.value.isNotBlank())
+        TonalButton(tr("הוספה", "Add"), addTyped, modifier, enabled = draft.value.isNotBlank())
     }
+    val captionLanguage = settings.languageCode
+    // A saved name keeps its warning once the field is cleared: the note
+    // further down leaves it out, since it can never buzz.
+    val otherLetters = HebrewText.isInOtherLetters(draft.value, captionLanguage) ||
+        settings.keywordAlerts.any { it.isEnabled && HebrewText.isInOtherLetters(it.phrase, captionLanguage) }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        if (stacked) {
-            field(Modifier.fillMaxWidth())
-            add(Modifier.fillMaxWidth())
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                field(Modifier.weight(1f))
-                add(Modifier)
+        Column {
+            if (stacked) {
+                field(Modifier.fillMaxWidth())
+                add(Modifier.fillMaxWidth().padding(top = 16.dp))
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    field(Modifier.weight(1f))
+                    add(Modifier)
+                }
             }
-        }
-        if (HebrewText.isInOtherLetters(draft.value, settings.languageCode)) {
-            Text(
-                tr("הכתוביות נכתבות באותיות עבריות, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found."),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            // There while empty, so a screen reader hears the warning the
+            // moment it appears; focus is still in the field.
+            Box(Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }) {
+                if (otherLetters) {
+                    Text(
+                        tr("הכתוביות נכתבות באותיות של שפת הדיבור, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are written in the letters of the spoken language, so a word written in other letters may never be found."),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 16.dp),
+                    )
+                }
+            }
         }
         val suggestions = @Composable { modifier: Modifier ->
             for (word in AlertSuggestions.offeredNames(settings.spokenLanguage)) {
                 val added = settings.keywordAlerts.any { it.isEnabled && HebrewText.normalize(it.phrase) == HebrewText.normalize(word) }
-                OutlinedButton(onClick = { onAddAlert(word) }, enabled = !added, shape = MaterialTheme.shapes.extraLarge, modifier = modifier.heightIn(min = 48.dp)) {
-                    Text((if (added) "✓ " else "+ ") + AlertSuggestions.label(word, Localization.language), style = MaterialTheme.typography.labelLarge)
+                val label = AlertSuggestions.label(word, Localization.language)
+                val onTheList = tr("כבר ברשימה", "Already on the list")
+                OutlinedButton(
+                    onClick = {
+                        onAddAlert(word)
+                        sayAdded(label)
+                    },
+                    enabled = !added,
+                    shape = MaterialTheme.shapes.extraLarge,
+                    modifier = modifier.heightIn(min = 48.dp).semantics { if (added) stateDescription = onTheList },
+                ) {
+                    // A symbol, not "+" or "✓" in the text, which a screen
+                    // reader spoke aloud and a braille display showed bare.
+                    Icon(if (added) Icons.Rounded.Check else Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text(label, style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
@@ -341,7 +385,7 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { suggestions(Modifier) }
         }
-        AlertSuggestions.vibrationNote(settings.keywordAlerts, Localization.language)?.let { Status("✓ $it", good = true) }
+        AlertSuggestions.vibrationNote(settings.keywordAlerts, Localization.language, captionLanguage)?.let { Status("✓ $it", good = true) }
     }
 }
 

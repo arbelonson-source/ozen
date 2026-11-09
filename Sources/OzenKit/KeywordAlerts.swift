@@ -128,15 +128,30 @@ public enum HebrewText {
             .joined(separator: " ")
     }
 
-    /// A word typed only in another alphabet ("Sarah", "Саша") while the
-    /// captions come out in Hebrew letters: its alert stays silent, so the
-    /// screens that add one say so. Digits alone are left alone.
+    /// A word typed only in another alphabet ("Sarah" or "Саша" while the
+    /// captions come out in Hebrew letters, "Dana" or "דנה" while they are
+    /// in Arabic ones): its alert stays silent, so the screens that add one
+    /// say so. Digits alone are left alone. Captions in Latin letters or in
+    /// Chinese are left alone too: a name may come out there as typed.
     public static func isInOtherLetters(_ phrase: String, captionLanguage: String) -> Bool {
-        guard captionLanguage.hasPrefix("he") else { return false }
+        guard let letters = captionLetters.first(where: { captionLanguage.hasPrefix($0.language) })?.blocks else { return false }
         let scalars = phrase.unicodeScalars
-        let hasHebrew = scalars.contains { (0x05D0...0x05F2).contains($0.value) || (0xFB1D...0xFB4F).contains($0.value) }
-        return !hasHebrew && scalars.contains { $0.properties.isAlphabetic }
+        let hasTheirs = scalars.contains { scalar in letters.contains { $0.contains(scalar.value) } }
+        return !hasTheirs && scalars.contains { $0.properties.isAlphabetic }
     }
+
+    private static let cyrillic: [ClosedRange<UInt32>] = [0x0400...0x052F, 0x1C80...0x1C8F, 0x2DE0...0x2DFF, 0xA640...0xA69F]
+
+    /// The alphabet each caption language is written in, for
+    /// `isInOtherLetters`; the same blocks as the Android core's.
+    private static let captionLetters: [(language: String, blocks: [ClosedRange<UInt32>])] = [
+        ("he", [0x05D0...0x05F2, 0xFB1D...0xFB4F]),
+        ("ar", [0x0600...0x06FF, 0x0750...0x077F, 0x0870...0x08FF, 0xFB50...0xFDFF, 0xFE70...0xFEFF]),
+        ("ru", cyrillic),
+        ("uk", cyrillic),
+        ("am", [0x1200...0x139F, 0x2D80...0x2DDF, 0xAB00...0xAB2F]),
+        ("hi", [0x0900...0x097F, 0xA8E0...0xA8FF]),
+    ]
 
     /// `normalize`, split into individual words. Used for a phrase, where
     /// only the resulting word list matters — not each word's position in
