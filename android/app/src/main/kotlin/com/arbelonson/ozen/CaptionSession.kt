@@ -561,13 +561,22 @@ class CaptionSession(
             if (!active) replies.callChanged(began = false)
             publish()
         }
-        pipeline.onPhaseChange = {
-            captionsBusy.value = it.isListening || it.isTransitioning
-            conversations.listeningChanged()
-            replies.captionsCameOn()
-            publish()
-            announceStopOrReturn()
-        }
+        // The announcer gets each phase as it comes, and before a phrase
+        // still being spoken pauses the captions. That pause lands here at
+        // once as Paused; reading the pipeline's phase afterwards meant
+        // "Captions are ready" (or "are back") was never said.
+        pipeline.onPhaseChange = CaptionPhaseChanges(
+            replies,
+            stopAnnouncer,
+            appIsActive = { appIsActive },
+            seconds = { SystemClock.elapsedRealtime() / 1000.0 },
+            changed = {
+                captionsBusy.value = it.isListening || it.isTransitioning
+                conversations.listeningChanged()
+            },
+            publish = ::publish,
+            say = ::announceStopOrReturn,
+        )::phaseChanged
         pipeline.onPreparationProgress = { publish() }
         pipeline.onCaptionsChanged = ::publish
         pipeline.onInputsChanged = ::publishInputs
@@ -843,13 +852,11 @@ class CaptionSession(
      * TalkBack as on the iPhone: a reader who can't see the status line
      * would keep waiting for words that never come.
      */
-    private fun announceStopOrReturn() {
-        val phase = pipeline.phase
-        val text = when (stopAnnouncer.phaseChanged(phase, appIsActive, SystemClock.elapsedRealtime() / 1000.0)) {
+    private fun announceStopOrReturn(event: CaptionsStopAnnouncer.Event, phase: PipelinePhase) {
+        val text = when (event) {
             CaptionsStopAnnouncer.Event.Stopped -> stoppedText(phase)
             CaptionsStopAnnouncer.Event.Back -> tr("הכתוביות חזרו", "Captions are back")
             CaptionsStopAnnouncer.Event.Ready -> tr("הכתוביות מוכנות", "Captions are ready")
-            null -> return
         }
         if (appIsActive && ScreenReader.isOn(context)) announce(text)
     }
