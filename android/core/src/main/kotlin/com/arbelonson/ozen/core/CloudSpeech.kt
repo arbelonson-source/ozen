@@ -188,7 +188,7 @@ object CloudSpeech {
             var label: String? = null
             val match = speakerLabel.matcher(line)
             if (match.find()) {
-                label = match.group(1)
+                label = match.group(1) ?: match.group(2)
                 line = line.substring(match.end())
             }
             val text = WhisperResultFilter.collapsingRepeats(withoutAnnotations(line))
@@ -211,20 +211,34 @@ object CloudSpeech {
     private val lineBreak = Pattern.compile("\r\n|[\n\r\u000B\u000C\u0085\u2028\u2029]")
 
     /**
-     * "A:", "Speaker 2:", "דובר ב:". Hebrew only as a single letter, so a
-     * sentence that opens with a short word and a colon keeps its word, and
-     * never a colon before a digit, so a time like "10:30" keeps its hour.
+     * "A:", "S1:", "2:", "Speaker 2:", "SPEAKER_00:", "דובר ב:". On its own
+     * a label is one letter, a letter and a digit, or a number, so a
+     * sentence that opens with a short word and a colon ("No:", "So:",
+     * "OK:") keeps its word, and never a colon before a digit, so a time
+     * like "10:30" keeps its hour.
      */
     private val speakerLabel: Pattern = unicodePattern(
-        "^(?:(?:speaker|דוברת|דובר)\\s*)?([A-Za-z0-9]{1,2}|[א-ת])\\s*[:：](?!\\d)\\s*",
+        "^(?:(?:speaker|דוברת|דובר)[\\s_]*([A-Za-z0-9]{1,2}|[א-ת])|([A-Za-z]\\d?|\\d{1,2}|[א-ת]))\\s*[:：](?!\\d)\\s*",
         Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE,
     )
 
-    private val annotation = Pattern.compile("[\\[(<][A-Za-z _-]*[\\])>]")
+    /**
+     * Square and angle brackets hold only notes. Parentheses can hold real
+     * words ("(HSBC)", "(a)"), so there only a known sound note goes, alone
+     * or with one more word, or a note that names the language spoken.
+     */
+    private val bracketedNote = Pattern.compile("\\[[A-Za-z _-]*\\]|<[A-Za-z _-]*>")
+    private val soundNoteInParentheses = Pattern.compile(
+        "\\((?:(?:[a-z]+[ _-])?(?:music|inaudible|unintelligible|indistinct|laughter|laughs|laughing|applause|clapping|" +
+            "noise|silence|crosstalk|cough(?:s|ing)?|sighs?|static|beep|chatter|foreign language|no speech)(?:[ _-][a-z]+)?|" +
+            "(?:speaking in|speaking|in) (?:(?:an? )?foreign language|Hebrew|English|Arabic|Russian|French|Spanish|" +
+            "Amharic|German|Italian|Portuguese|Ukrainian|Chinese|Hindi))\\)",
+        Pattern.CASE_INSENSITIVE,
+    )
     private val manySpaces = unicodePattern("\\s{2,}")
 
     private fun withoutAnnotations(text: String): String {
-        val removed = annotation.matcher(text).replaceAll("")
+        val removed = soundNoteInParentheses.matcher(bracketedNote.matcher(text).replaceAll("")).replaceAll("")
         val squeezed = manySpaces.matcher(removed).replaceAll(" ")
         return trimmingWhitespaceAndNewlines(squeezed)
     }
