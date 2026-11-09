@@ -1355,6 +1355,16 @@ final class OzenScreenshotUITests: XCTestCase {
         openSettingsRow(app, rowIdentifier: "diagnosticsRow", screenIdentifier: "diagnosticsScreen", captureName: "diagnostics-accessibility-text") {
             let label = app.staticTexts["diagnosticsWhisperModelLabel"]
             let value = app.staticTexts["diagnosticsWhisperModelValue"]
+            // "Send report" comes first, so at this size the row starts
+            // below the screen. Slow drags along the edge (no coasting)
+            // bring it up a quarter screen at a time without passing it.
+            var drags = 0
+            while !(label.exists && label.isHittable && value.exists && value.isHittable), drags < 8 {
+                let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.7))
+                from.press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.45)))
+                drags += 1
+            }
+            capture(app, name: "diagnostics-accessibility-text-status")
             XCTAssertTrue(label.waitForExistence(timeout: 10) && value.exists, "secondary screens: the Whisper model row is missing from diagnostics")
             XCTAssertGreaterThanOrEqual(value.frame.minY, label.frame.maxY, "secondary screens: diagnostics value sits beside its label at the largest text size")
             XCTAssertGreaterThanOrEqual(value.frame.width, app.windows.firstMatch.frame.width * 0.6, "secondary screens: diagnostics value is squeezed into a narrow column")
