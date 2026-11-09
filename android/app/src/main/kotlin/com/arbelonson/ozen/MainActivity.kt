@@ -220,9 +220,19 @@ class MainActivity : ComponentActivity() {
     private val approveMicrophone = registerForActivityResult(ActivityResultContracts.RequestPermission()) { microphoneAnswer.value = it }
     private val approveNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { notificationsAnswer.value = it }
 
+    // Two requests rather than one with a remembered flag: the system hands a
+    // result back to the request that asked, even to an activity rebuilt while
+    // its dialog was open, and a flag would have been lost with the old one.
     private val askForMicrophone = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        microphoneAnswered(granted, soundsOnly = false)
+    }
+    private val askForMicrophoneForSoundsOnly = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        microphoneAnswered(granted, soundsOnly = true)
+    }
+
+    private fun microphoneAnswered(granted: Map<String, Boolean>, soundsOnly: Boolean) {
         if (granted[Manifest.permission.RECORD_AUDIO] == true) {
-            ListeningService.start(this)
+            if (soundsOnly) ListeningService.startSoundsOnly(this) else ListeningService.start(this)
         } else {
             (application as OzenApplication).captions.listen()
         }
@@ -239,7 +249,7 @@ class MainActivity : ComponentActivity() {
         StartCaptionsRequest.applyAppLanguage(app.settings)
         StartCaptionsRequest.publishShortcut(this)
         enableEdgeToEdge()
-        setContent { OzenApp(app, showingSettings, settingsAtBackup, confirmingCellular, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
+        setContent { OzenApp(app, showingSettings, settingsAtBackup, confirmingCellular, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onSoundsOnly = ::startSoundsOnly, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
         // Once per link: a rebuilt screen (a turn, a new language, the app
         // back after Android ended it) and an opening from recent apps carry
         // the link the app was first opened with, and asking about it again
@@ -370,17 +380,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun startSoundsOnly() {
+        if (hasMicrophone()) {
+            ListeningService.startSoundsOnly(this)
+            askForNotificationsIfNeverAnswered()
+            return
+        }
+        askForMicrophoneForSoundsOnly.launch(ListeningPermissions.wanted(Build.VERSION.SDK_INT).toTypedArray())
+    }
+
     private fun startListening() {
         if (hasMicrophone()) {
             ListeningService.start(this)
             askForNotificationsIfNeverAnswered()
             return
         }
-        val wanted = buildList {
-            add(Manifest.permission.RECORD_AUDIO)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        askForMicrophone.launch(wanted.toTypedArray())
+        askForMicrophone.launch(ListeningPermissions.wanted(Build.VERSION.SDK_INT).toTypedArray())
     }
 
     /**
@@ -437,6 +452,7 @@ private fun OzenApp(
     onboarding: OnboardingHooks,
     onStatusTap: () -> Unit,
     onLaunch: () -> Unit,
+    onSoundsOnly: () -> Unit,
     onAppLanguage: (AppLanguage) -> Unit,
     onLightScreen: (Boolean) -> Unit,
 ) {
@@ -546,7 +562,7 @@ private fun OzenApp(
                             app.captions.showWalkthroughAgain()
                             showingSettings.value = false
                             settingsAtBackup.value = false
-                        }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value, onScrolledToBackup = { settingsAtBackup.value = false }, phoneModels = app.captions.phoneModels)
+                        }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, onSoundsOnly = { showingSettings.value = false; settingsAtBackup.value = false; onSoundsOnly() }, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value, onScrolledToBackup = { settingsAtBackup.value = false }, phoneModels = app.captions.phoneModels)
                         Front.Transcribe -> TranscribeScreen(app.transcriber, recording, onClose = app.transcriber::close)
                         Front.Conversation -> ConversationScreen(
                             app.captions.savedConversations,

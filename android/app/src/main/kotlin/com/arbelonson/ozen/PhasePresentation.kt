@@ -8,6 +8,7 @@ import androidx.compose.material.icons.rounded.CreditCard
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Hearing
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Mic
@@ -110,6 +111,7 @@ class PhasePresentation private constructor(
             "mic.badge.plus", "mic" -> Icons.Rounded.Mic
             "mic.slash" -> Icons.Rounded.MicOff
             "waveform", "waveform.badge.plus" -> Icons.Rounded.GraphicEq
+            "ear" -> Icons.Rounded.Hearing
             "speaker.wave.2.fill" -> Icons.Rounded.VolumeUp
             "arrow.clockwise" -> Icons.Rounded.Refresh
             "arrow.down.circle" -> Icons.Rounded.Download
@@ -156,6 +158,7 @@ class PhasePresentation private constructor(
             coverReason: EngineUnavailability.Kind? = null,
             offerBackup: Boolean = false,
             network: NetworkConditions? = null,
+            soundsOnly: Boolean = false,
         ): PhasePresentation {
             // Only captions the call interrupted come back when it ends: ones
             // paused or stopped by hand stay that way, and saying they would
@@ -163,6 +166,24 @@ class PhasePresentation private constructor(
             // retries (no key, no microphone permission): the call ending
             // doesn't bring those back, and their own screen says what to do.
             val failedForGood = phase is PipelinePhase.Failed && scheduledRetry == null
+            val onlySounds = soundsOnly && !pausedForSpeech && (phase == PipelinePhase.Idle || phase == PipelinePhase.Paused)
+            if (onlySounds && interruptedBySystem) {
+                return PhasePresentation(
+                    title = tr("ההתראות על צלילים מושהות בגלל שיחה", "Sound alerts paused for a call"),
+                    detail = tr("הן ימשיכו לבד כשהשיחה תסתיים", "They’ll continue on their own when the call ends"),
+                    systemImage = "phone.fill",
+                    tint = PhaseTint.Attention,
+                )
+            }
+            if (onlySounds) {
+                return PhasePresentation(
+                    title = tr("מאזינה לצלילים בלבד", "Listening for sounds only"),
+                    detail = tr("הקישו כדי להחזיר כתוביות", "Tap to bring captions back"),
+                    systemImage = "ear",
+                    tint = PhaseTint.Active,
+                    action = if (phase == PipelinePhase.Idle) Action.Start else Action.Resume,
+                )
+            }
             if (interruptedBySystem && phase != PipelinePhase.Idle &&
                 (phase != PipelinePhase.Paused || pausedForSpeech) && !failedForGood
             ) {

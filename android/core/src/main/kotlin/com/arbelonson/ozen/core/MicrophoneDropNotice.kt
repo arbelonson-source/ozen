@@ -25,7 +25,7 @@ class MicrophoneDropNotice {
 
     private fun wasPlacedNearTheTalker(previous: AudioInputDescriptor, preferredUID: String?): Boolean =
         previous.portType in placedNearTheTalker ||
-            (previous.portType == AudioPortType.Bluetooth && previous.uid == preferredUID)
+            (previous.portType.isOnTheListenersEar && previous.uid == preferredUID)
 
     val title: String?
         get() = lost?.let(::titleFor)

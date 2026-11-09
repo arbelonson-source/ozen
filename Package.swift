@@ -18,7 +18,7 @@ var products: [Product] = [
 var targets: [Target] = [
     .target(
         name: "OzenKit",
-        resources: [.copy("Resources/Translations.json")],
+        resources: [.copy("Resources/Translations.json"), .copy("Resources/WhisperLanguageLines.json")],
         swiftSettings: [.swiftLanguageMode(.v6)]
     ),
     .testTarget(

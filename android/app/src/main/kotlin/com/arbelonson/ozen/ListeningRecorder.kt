@@ -41,16 +41,17 @@ class ListeningRecorder(
     @Volatile private var record: ListeningCut.Record? = null
     @Volatile private var leftover = Leftover.None
 
-    fun phaseChanged(phase: PipelinePhase, recovering: Boolean) {
+    fun phaseChanged(phase: PipelinePhase, recovering: Boolean, soundsOnly: Boolean = false) {
         when {
             phase == PipelinePhase.Listening -> if (record == null) begin()
+            (phase == PipelinePhase.Idle || phase == PipelinePhase.Paused) && soundsOnly -> if (record == null) begin()
             phase == PipelinePhase.Idle || phase == PipelinePhase.Paused || (phase is PipelinePhase.Failed && !recovering) -> end()
             phase == PipelinePhase.RequestingMicrophonePermission || phase is PipelinePhase.PreparingEngine || phase == PipelinePhase.StartingAudio ->
                 if (leftover == Leftover.Kept) leftover = Leftover.Starting
         }
     }
 
-    fun phaseChanged(phase: PipelinePhase, stopped: StoppedCaptionsNotice.Cause?) = phaseChanged(phase, recovering = stopped == null)
+    fun phaseChanged(phase: PipelinePhase, stopped: StoppedCaptionsNotice.Cause?, soundsOnly: Boolean = false) = phaseChanged(phase, recovering = stopped == null, soundsOnly = soundsOnly)
 
     fun keepAlive() {
         val current = record ?: return

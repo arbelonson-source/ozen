@@ -297,21 +297,30 @@ class WhisperResultFilter(
 
     /**
      * The filter for speech in [languageCode]. In English a lone "you" is a
-     * real answer as often as it is Whisper's filler for silence, so there it
-     * only goes when the model was also unsure, like "thank you"; in any
-     * other language it can only be the filler.
+     * real answer as often as it is Whisper's filler for silence, and "music",
+     * "applause" and "laughter" are words people say as well as its sound
+     * tags, so there they only go when the model was also unsure, like "thank
+     * you" (and in brackets, see [isBracketed]); in any other language they
+     * can only be the filler.
+     *
+     * Speech in a language with its own list in
+     * Sources/OzenKit/Resources/WhisperLanguageLines.json, shared with the
+     * iPhone app, also drops what Whisper writes on silence in that language:
+     * the community-subtitle credits it learned from Amara.org files and the
+     * channel outros. A plain thank-you there is only ambiguous, since people
+     * say it.
      */
     fun forSpeech(languageCode: String): WhisperResultFilter {
         val language = UILanguage.match(languageCode)
-        val you = normalize("you")
         var known = knownHallucinations
         var ambiguous = ambiguousHallucinations
         var prefixes = hallucinatedCreditPrefixes
-        if (language == UILanguage.English && you in known) {
-            known = known - you
-            ambiguous = ambiguous + you
+        if (language == UILanguage.English) {
+            val said = englishWordsAlsoSaid.map { normalize(it) }.filter { it in known }
+            known = known - said
+            ambiguous = ambiguous + said
         }
-        languageLines[language]?.let { lines ->
+        WhisperLanguageLines.lines(language)?.let { lines ->
             known = known + lines.known.map { normalize(it) }
             ambiguous = ambiguous + lines.ambiguous.map { normalize(it) }
             prefixes = prefixes + lines.creditPrefixes.map { normalize(it) }
@@ -449,60 +458,8 @@ class WhisperResultFilter(
             "subtitles by", "subtitled by", "translated by", "transcribed by", "captions by",
         )
 
-        private class LanguageLines(val known: Set<String>, val ambiguous: Set<String>, val creditPrefixes: List<String>)
-
-        /**
-         * What Whisper writes on silence in each language beyond Hebrew and
-         * English: the community-subtitle credit it learned from Amara.org
-         * files and the channel outros. Plain thanks are only ambiguous, since
-         * people say them.
-         */
-        private val languageLines: Map<UILanguage, LanguageLines> = mapOf(
-            UILanguage.German to LanguageLines(
-                setOf("Untertitel der Amara.org-Community", "Untertitel im Auftrag des ZDF", "Untertitel im Auftrag des ZDF für funk, 2017", "Untertitelung des ZDF"),
-                setOf("Danke", "Danke schön", "Vielen Dank", "Dankeschön", "Bis zum nächsten Mal"),
-                listOf("untertitel der amara.org-community", "untertitel der amara.org community", "untertitel im auftrag", "untertitelung des zdf", "untertitelung im auftrag"),
-            ),
-            UILanguage.French to LanguageLines(
-                setOf("Sous-titres réalisés para la communauté d'Amara.org", "Sous-titres réalisés par la communauté d'Amara.org", "Sous-titres par la communauté d'Amara.org"),
-                setOf("Merci", "Merci beaucoup", "Merci à tous"),
-                listOf("sous-titres réalisés", "sous-titres par", "sous-titrage"),
-            ),
-            UILanguage.Spanish to LanguageLines(
-                setOf("Subtítulos realizados por la comunidad de Amara.org", "Subtítulos por la comunidad de Amara.org"),
-                setOf("Gracias", "Muchas gracias", "Gracias por ver el video"),
-                listOf("subtítulos realizados por", "subtítulos por la comunidad", "subtítulos en español de"),
-            ),
-            UILanguage.Portuguese to LanguageLines(
-                setOf("Legendas pela comunidade Amara.org", "Legendas da comunidade Amara.org"),
-                setOf("Obrigado", "Obrigada", "Muito obrigado", "Muito obrigada"),
-                listOf("legendas pela comunidade", "legendas da comunidade"),
-            ),
-            UILanguage.Russian to LanguageLines(
-                setOf("Субтитры сделаны сообществом Amara.org", "Продолжение следует"),
-                setOf("Спасибо", "Спасибо большое", "Большое спасибо"),
-                listOf("субтитры сделал", "субтитры создавал", "субтитры подогнал", "субтитры добавил", "редактор субтитров"),
-            ),
-            UILanguage.Ukrainian to LanguageLines(
-                setOf("Субтитри створені спільнотою Amara.org", "Субтитри зроблені спільнотою Amara.org"),
-                setOf("Дякую", "Дуже дякую", "Дякуємо"),
-                listOf("субтитри створені", "субтитри зроблені", "субтитри від"),
-            ),
-            UILanguage.ChineseSimplified to LanguageLines(
-                setOf(
-                    "字幕由Amara.org社群提供", "字幕由Amara.org社区提供", "由Amara.org社群提供的字幕", "由Amara.org社区提供的字幕",
-                    "请不吝点赞 订阅 转发 打赏支持明镜与点点栏目", "请不吝点赞订阅转发打赏支持明镜与点点栏目",
-                    "請不吝點贊 訂閱 轉發 打賞支持明鏡與點點欄目", "請不吝點贊訂閱轉發打賞支持明鏡與點點欄目",
-                ),
-                setOf("谢谢", "谢谢你", "谢谢大家", "謝謝", "謝謝大家", "xie xie"),
-                emptyList(),
-            ),
-            UILanguage.Arabic to LanguageLines(
-                setOf("اشتركوا في القناة", "اشترك في القناة", "لا تنسوا الاشتراك في القناة", "لا تنسى الاشتراك في القناة"),
-                setOf("شكرا", "شكرا لكم", "شكرا لك", "شكرا جزيلا", "shukran"),
-                listOf("ترجمة نانسي قنقر", "ترجمة المجتمع", "ترجمة وتدقيق", "تمت الترجمة بواسطة"),
-            ),
-        )
+        /** See [forSpeech]. */
+        internal val englishWordsAlsoSaid: List<String> = listOf("you", "music", "applause", "laughter")
 
         val defaultCreditLabels: List<String> = listOf(
             "כתוביות", "תרגום", "תמלול", "הפקה", "עריכה", "סנכרון", "subtitles", "translation", "captions",
@@ -550,12 +507,21 @@ class WhisperResultFilter(
          * more than [maxRepeats] times is cut down to that many: people do say
          * "lo, lo, lo" ("no, no, no"), but nobody says it six times. The kept
          * copies are the first ones and the last, so the sentence keeps its
-         * closing punctuation. Text with nothing to collapse comes back
-         * exactly as it was.
+         * closing punctuation.
+         *
+         * Digits and counting words may repeat up to [maxNumberRepeats] times,
+         * because phone numbers, codes and amounts are read out one digit at a
+         * time ("zero five zero five five five five five"), and a number shown
+         * shorter than it was said is wrong with no sign that it is. Every
+         * other word is still cut to [maxRepeats], and a caller asking for a
+         * single copy gets a single copy of a number as well.
+         *
+         * Text with nothing to collapse comes back exactly as it was.
          */
-        fun collapsingRepeats(text: String, maxRepeats: Int = 3, maxPhraseWords: Int = 4): String {
+        fun collapsingRepeats(text: String, maxRepeats: Int = 3, maxPhraseWords: Int = 4, maxNumberRepeats: Int = 10): String {
             var words = splitOnWhisperWhitespace(text)
             if (maxRepeats < 1 || words.size <= maxRepeats) return text
+            val numberLimit = if (maxRepeats > 1) maxOf(maxRepeats, maxNumberRepeats) else maxRepeats
             var changed = false
             for (phraseLength in 1..maxPhraseWords) {
                 val keys = words.map { normalize(it) }
@@ -575,8 +541,9 @@ class WhisperResultFilter(
                     ) {
                         repeats += 1
                     }
-                    if (repeats > maxRepeats) {
-                        result.addAll(words.subList(index, index + (maxRepeats - 1) * phraseLength))
+                    val limit = if (repeats > maxRepeats && phrase.all(::isSpokenNumber)) numberLimit else maxRepeats
+                    if (repeats > limit) {
+                        result.addAll(words.subList(index, index + (limit - 1) * phraseLength))
                         val lastStart = index + (repeats - 1) * phraseLength
                         result.addAll(words.subList(lastStart, lastStart + phraseLength))
                         index += repeats * phraseLength
@@ -589,6 +556,22 @@ class WhisperResultFilter(
                 words = result
             }
             return if (changed) words.joinToString(" ") else text
+        }
+
+        /**
+         * Whether a word, already through [normalize], is a number: written in
+         * digits (in any script; [normalize] turns the hyphen in "5-5" into a
+         * space, so spaces are allowed) or a Hebrew counting word, with or
+         * without prefixes attached.
+         */
+        private fun isSpokenNumber(key: String): Boolean {
+            if (key.isEmpty()) return false
+            return key.codePoints().allMatch { it == ' '.code || isNumberCodePoint(it) } || NumberEmphasis.isNumberWord(key)
+        }
+
+        private fun isNumberCodePoint(codePoint: Int): Boolean = when (Character.getType(codePoint).toByte()) {
+            Character.DECIMAL_DIGIT_NUMBER, Character.LETTER_NUMBER, Character.OTHER_NUMBER -> true
+            else -> false
         }
 
         /**
