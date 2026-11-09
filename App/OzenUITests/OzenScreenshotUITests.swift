@@ -1650,4 +1650,44 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(header.exists && header.isHittable, "say sheet: the quick phrases could not be scrolled into reach in landscape")
         XCTAssertTrue(app.keyboards.firstMatch.exists, "say sheet: the keyboard is not showing where the quick phrases are reached in landscape")
     }
+
+    private func nightAlerts(extraArguments: [String], name: String) {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault"] + extraArguments
+        app.launch()
+        let settingsButton = app.descendants(matching: .any)["settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "\(name): the settings button never appeared")
+        let revealControls = app.descendants(matching: .any)["showControlsButton"]
+        for _ in 0..<5 where !settingsButton.isHittable {
+            if revealControls.exists { revealControls.tap() }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        settingsButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "\(name): settings never appeared")
+        openSettingsRow(app, rowIdentifier: "soundAlertsRow", screenIdentifier: "soundAlertsScreen", captureName: "\(name)-sound-alerts") {
+            let row = self.scrollDownUntilVisible(app, identifier: "nightAlertsRow", maxSwipes: 20)
+            XCTAssertTrue(row.exists, "\(name): the alerts-through-the-night row never appeared")
+            XCTAssertTrue(row.label.contains("התראות במהלך הלילה"), "\(name): the row has the wrong name (\(row.label))")
+            self.bringOffBottomEdge(app, row)
+            row.tap()
+            let screen = app.descendants(matching: .any)["nightAlertsScreen"]
+            if !screen.waitForExistence(timeout: 3), row.exists { row.tap() }
+            XCTAssertTrue(screen.waitForExistence(timeout: 10), "\(name): the page never opened")
+            self.capture(app, name: "\(name)-top")
+            let test = self.scrollDownUntilVisible(app, identifier: "nightAlertsTest", maxSwipes: 20)
+            XCTAssertTrue(test.exists, "\(name): the test notification button never appeared")
+            self.capture(app, name: "\(name)-bottom")
+            let back = app.navigationBars.buttons["צלילים בבית"]
+            XCTAssertTrue(back.waitForExistence(timeout: 10), "\(name): no way back to sound alerts")
+            back.tap()
+        }
+    }
+
+    func testNightAlertsDefaultText() throws {
+        nightAlerts(extraArguments: [], name: "night-alerts")
+    }
+
+    func testNightAlertsAccessibilityText() throws {
+        nightAlerts(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"], name: "night-alerts-accessibility-text")
+    }
 }

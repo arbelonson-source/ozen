@@ -46,6 +46,10 @@ struct SoundAlertsView: View {
                 }
             }
 
+            if viewModel.soundAlertPreferences.isEnabled {
+                Section { NightAlertsRow(ozenAlerts: $viewModel.notifyWhenInBackground) }
+            }
+
             vibrationSamples
 
             ForEach(grouped, id: \.0) { importance, events in
