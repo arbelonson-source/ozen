@@ -56,6 +56,10 @@ from faster_whisper.utils import download_model
 from faster_whisper.vad import VadOptions, get_speech_timestamps
 
 RATE = 16_000
+# The energy detector's rates are per reading, so it reads 688 samples at a
+# time (43 ms, about what the iPhone's microphone hands over at 48 kHz, and
+# what an Android phone reads) whatever size of frames the phone sends.
+DETECTOR_BLOCK = 688
 PROTOCOL_VERSION = 1
 # Direction marks the ivrit.ai model puts at some line starts; they hide a
 # name from the phone's alerts (see HebrewText.directionMarks).
@@ -559,6 +563,8 @@ class Session:
         # (EnergyVoiceDetector.forWhisperLines, measured there).
         self.detector = EnergyVoiceDetector(ratio=2.0, steady_ratio=1.6)
         self.buf = np.zeros(0, dtype=np.float32)
+        # Received but not read by the detector yet: less than one reading.
+        self.unread = np.zeros(0, dtype=np.float32)
         self.offset = 0
         self.last_speech_end = None
         # Where speech stopped for a pause before more of it came, in case
@@ -585,17 +591,20 @@ class Session:
         chunk = np.frombuffer(pcm16, dtype="<i2").astype(np.float32) / 32768.0
         if self.enhancer is not None:
             chunk = self.enhancer.process(chunk)
-        # The phone sends whatever it has; the detector sees chunks of the
-        # size it was tuned on (about 43 ms).
-        step = 688
-        start = len(self.buf)
+        # The phone sends whatever it has (Android 100 ms frames); the
+        # detector reads DETECTOR_BLOCK samples at a time, carrying what
+        # is left of a frame over to the next one. An odd-sized reading
+        # at the end of each frame moved where speech started and stopped.
         self.buf = np.concatenate([self.buf, chunk])
-        for i in range(0, len(chunk), step):
-            piece = chunk[i:i + step]
-            if self.detector.is_speech(piece):
+        self.unread = np.concatenate([self.unread, chunk])
+        start = len(self.buf) - len(self.unread)
+        whole = len(self.unread) - len(self.unread) % DETECTOR_BLOCK
+        for i in range(0, whole, DETECTOR_BLOCK):
+            if self.detector.is_speech(self.unread[i:i + DETECTOR_BLOCK]):
                 if self.last_speech_end is not None and start + i - self.last_speech_end >= int(self.pause * RATE):
                     self.pauses.append(self.last_speech_end)
-                self.last_speech_end = start + i + len(piece)
+                self.last_speech_end = start + i + DETECTOR_BLOCK
+        self.unread = self.unread[whole:].copy()
         self.changed.set()
 
     def names(self):

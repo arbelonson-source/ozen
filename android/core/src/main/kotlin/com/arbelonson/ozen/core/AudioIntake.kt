@@ -22,6 +22,8 @@ internal class AudioIntake(voiceScorer: ((FloatArray) -> Float?)?, private val p
     private var pauses = ArrayList<Pause>()
     private var finished = false
     private val detector = EnergyVoiceDetector.forWhisperLines()
+    private val block = FloatArray(EnergyVoiceDetector.BLOCK_SAMPLES)
+    private var blockFill = 0
     private val evidence: VoiceEvidence? = voiceScorer?.let { VoiceEvidence(it) }
 
     fun append(chunk: FloatArray) {
@@ -29,20 +31,33 @@ internal class AudioIntake(voiceScorer: ((FloatArray) -> Float?)?, private val p
             if (size + chunk.size > samples.size) {
                 samples = samples.copyOf(max(samples.size * 2, size + chunk.size))
             }
-            val start = size
             chunk.copyInto(samples, size)
             size += chunk.size
-            if (detector.isSpeech(chunk)) {
-                val end = lastSpeechEnd
-                if (end == null) {
-                    firstSpeechStart = start
-                } else if (pauseSamples != null && start - end >= pauseSamples) {
-                    pauses.add(Pause(end, start))
+            var read = 0
+            while (read < chunk.size) {
+                val taken = min(block.size - blockFill, chunk.size - read)
+                chunk.copyInto(block, blockFill, read, read + taken)
+                blockFill += taken
+                read += taken
+                if (blockFill == block.size) {
+                    blockFill = 0
+                    readBlock(end = size - chunk.size + read)
                 }
-                lastSpeechEnd = size
             }
             evidence?.append(chunk)
         }
+    }
+
+    private fun readBlock(end: Int) {
+        if (!detector.isSpeech(block)) return
+        val start = max(end - block.size, 0)
+        val last = lastSpeechEnd
+        if (last == null) {
+            firstSpeechStart = start
+        } else if (pauseSamples != null && start - last >= pauseSamples) {
+            pauses.add(Pause(last, start))
+        }
+        lastSpeechEnd = end
     }
 
     fun hasVoice(upTo: Int): Boolean? = synchronized(lock) { evidence?.hasVoice(upTo) }

@@ -140,11 +140,14 @@ class OnDeviceWhisperEngineTest {
     @Test
     fun a_pause_of_seven_tenths_of_a_second_after_speech_ends_the_line_with_a_final_pass() = runTest {
         val rig = rig()
-        val tokens = rig.stream(speech(2.0), silence(0.7), speech(2.0)).toList()
+        // 4.3 s is exactly 100 of the detector's 43 ms readings, so the
+        // speech ends where a reading ends and all 0.7 s of the pause is
+        // read as silence.
+        val tokens = rig.stream(speech(4.3), silence(0.7), speech(2.0)).toList()
         val finals = rig.passes.finals()
         assertEquals(2, finals.size)
-        assertEquals(32_000 + 4_800, finals[0].samples)
-        assertTrue(finals[0].startedAtMs in 2_700..2_799, "the final pass started at ${finals[0].startedAtMs} ms")
+        assertEquals(68_800 + 4_800, finals[0].samples)
+        assertTrue(finals[0].startedAtMs in 5_000..5_099, "the final pass started at ${finals[0].startedAtMs} ms")
         assertEquals(2, tokens.count { it.isFinal })
     }
 
