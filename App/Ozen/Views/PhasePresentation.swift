@@ -225,7 +225,9 @@ struct PhasePresentation {
             )
 
         case .audioSessionFailed:
-            self.init(title: tr("המיקרופון לא מגיב", "The microphone isn’t responding"), detail: tr("הקישו כדי לנסות שוב", "Tap to try again"), systemImage: "exclamationmark.triangle", tint: .red, action: .retry)
+            let title = failure.inputName.map { tr("המיקרופון \u{2068}%1\u{2069} לא מגיב", "%1 isn’t responding", args: ["\($0)"]) }
+                ?? tr("המיקרופון לא מגיב", "The microphone isn’t responding")
+            self.init(title: title, detail: tr("הקישו כדי לנסות שוב", "Tap to try again"), systemImage: "exclamationmark.triangle", tint: .red, action: .retry)
 
         case .noAudioInputs:
             self.init(title: tr("לא נמצא מיקרופון", "No microphone found"), detail: tr("הקישו כדי לנסות שוב", "Tap to try again"), systemImage: "mic.slash", tint: .red, action: .retry)

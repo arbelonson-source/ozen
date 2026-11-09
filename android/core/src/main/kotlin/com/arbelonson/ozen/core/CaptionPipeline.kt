@@ -162,6 +162,17 @@ class CaptionPipeline(
     private var routingCandidate: RoutedElsewhere? = null
     private var routingTask: Job? = null
 
+    /**
+     * Her own pick stopped sending sound [FALLBACK_AFTER_FAILURES] times in
+     * a row, so captions listen through the phone's own microphone until she
+     * picks one, the pick comes back after going away, or captions stop. The
+     * saved pick is never changed.
+     */
+    private var fallback: RoutedElsewhere? = null
+    private var failingPick: String? = null
+    private var pickFailures = 0
+    private var pickLeftTheList = false
+
     /** The microphone really recording, when the audio layer can tell. */
     val inputInUse: AudioInputDescriptor? get() = audio.inputInUse
 
@@ -680,8 +691,9 @@ class CaptionPipeline(
         // hearing aid still connecting) left nothing to hear the aid
         // arrive, and captions stayed stopped until someone tapped Retry.
         audio.onInputsChanged = { inputsChanged() }
+        if (failingPick != null && failingPick != settings.preferredInputUID) endFallback()
         try {
-            audio.prepareSession(settings.preferredInputUID)
+            audio.prepareSession(fallback?.inUse?.uid ?: settings.preferredInputUID)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -943,6 +955,7 @@ class CaptionPipeline(
         retryAfterTranscription = null
         recovery.reset()
         listeningSince = null
+        endFallback()
         dismissMicrophoneDrop()
         saveFitMeasurements()
         tearDownSession()
@@ -1381,6 +1394,7 @@ class CaptionPipeline(
      * in use afterwards: the system can refuse it, or settle on another.
      */
     fun selectInput(uid: String): Boolean {
+        endFallback()
         // Phone sound is never the saved choice: a consent dialog at every
         // launch would be wrong, and the next start uses the microphone.
         if (!PhoneSound.isPhoneSound(uid)) {
@@ -1455,6 +1469,7 @@ class CaptionPipeline(
 
     private fun syncInputs() {
         availableInputs = audio.availableInputs
+        returnToPickIfBack()
         val previous = selectedInputUID
         selectedInputUID = audio.selectedInputUID
         val current = availableInputs.firstOrNull { it.uid == selectedInputUID }
@@ -1466,6 +1481,9 @@ class CaptionPipeline(
             // waiting to try again, they come back on whatever microphone
             // is left, with nothing saying it changed.
             microphoneDrop.inputChanged(lastSelectedInput, current, phase != PipelinePhase.Idle, settingsInUse?.preferredInputUID)
+            // Her pick fell silent and is still listed, not disconnected:
+            // the routing notice says what happened. One event, one notice.
+            if (fallback != null && microphoneDrop.lost?.uid == fallback?.picked?.uid) microphoneDrop.dismiss()
         }
         // Remembered apart from the list: the one that just went away is
         // no longer in it.
@@ -1476,6 +1494,7 @@ class CaptionPipeline(
 
     private fun routingNow(): RoutedElsewhere? {
         if (phase != PipelinePhase.Listening) return null
+        fallback?.let { held -> return if (availableInputs.any { it.uid == held.picked.uid }) held else null }
         val picked = availableInputs.firstOrNull { it.uid == selectedInputUID } ?: return null
         // Only her own pick: what the phone chose by itself was never promised.
         if (PhoneSound.isPhoneSound(picked.uid) || settingsInUse?.preferredInputUID != picked.uid) return null
@@ -1505,6 +1524,59 @@ class CaptionPipeline(
             }
         }
         return hadNotice
+    }
+
+    /** Her own pick, when it is the microphone listening and not one of the phone's own. */
+    private fun pickInUse(): AudioInputDescriptor? {
+        if (fallback != null) return null
+        val preferred = settingsInUse?.preferredInputUID ?: return null
+        if (selectedInputUID != preferred || PhoneSound.isPhoneSound(preferred)) return null
+        return availableInputs.firstOrNull { it.uid == preferred && it.portType != AudioPortType.BuiltInMic }
+    }
+
+    /**
+     * Counts a failure of the watchdog against her pick. The second in a row
+     * hands the next start to the phone's own microphone: retrying the same
+     * silent pick only failed again until the retries ran out. Returns the
+     * pick's name for the failure, or null when it was not her pick.
+     */
+    private fun countPickFailure(): String? {
+        val pick = pickInUse() ?: return null
+        val since = listeningSince
+        if (failingPick != pick.uid || (since != null && now() - since >= recovery.healthyListeningSeconds)) pickFailures = 0
+        failingPick = pick.uid
+        pickFailures += 1
+        val builtIn = availableInputs.firstOrNull { it.portType == AudioPortType.BuiltInMic }
+        if (pickFailures >= FALLBACK_AFTER_FAILURES && builtIn != null) {
+            fallback = RoutedElsewhere(pick, builtIn)
+            pickLeftTheList = false
+            logEvent(PipelineEvent.Kind.Note("the picked microphone sent no sound twice, trying the phone's own"))
+        }
+        return pick.portName
+    }
+
+    private fun endFallback() {
+        fallback = null
+        failingPick = null
+        pickFailures = 0
+        pickLeftTheList = false
+    }
+
+    /** The pick went away and came back (reconnected): it is tried again, at once while listening. */
+    private fun returnToPickIfBack() {
+        val held = fallback ?: return
+        if (availableInputs.none { it.uid == held.picked.uid }) {
+            pickLeftTheList = true
+            return
+        }
+        if (!pickLeftTheList) return
+        endFallback()
+        if (!phase.isListening) return
+        try {
+            audio.selectInput(held.picked.uid)
+        } catch (error: Exception) {
+            // Refused: captions carry on through the phone's own microphone.
+        }
     }
 
     /** Hides the routing notice until the routing changes again: the same mismatch is not armed twice. */
@@ -2266,7 +2338,7 @@ class CaptionPipeline(
         logEvent(PipelineEvent.Kind.MicrophoneStalled)
         val reason = if (stalled) "no audio from the microphone for ${audioWatchdog.stallSeconds.toInt()} s"
         else "the microphone delivered only silence for ${audioWatchdog.silenceSeconds.toInt()} s"
-        fail(PipelineFailure.Kind.AudioSessionFailed, reason)
+        fail(PipelineFailure.Kind.AudioSessionFailed, reason, inputName = countPickFailure())
     }
 
     /**
@@ -2303,12 +2375,17 @@ class CaptionPipeline(
         if (runID != run || !(phase.isListening || earlyCaptureRun == run) || systemInterrupted) return
         statsData.audioStalls += 1
         logEvent(PipelineEvent.Kind.MicrophoneStalled)
-        fail(PipelineFailure.Kind.AudioSessionFailed, "the microphone never settled after it changed")
+        fail(PipelineFailure.Kind.AudioSessionFailed, "the microphone never settled after it changed", inputName = countPickFailure())
     }
 
-    private fun fail(kind: PipelineFailure.Kind, detail: String, engineUnavailability: EngineUnavailability? = null) {
+    private fun fail(
+        kind: PipelineFailure.Kind,
+        detail: String,
+        engineUnavailability: EngineUnavailability? = null,
+        inputName: String? = null,
+    ) {
         tearDownSession()
-        val failure = PipelineFailure(kind, detail, engineUnavailability)
+        val failure = PipelineFailure(kind, detail, engineUnavailability, inputName)
         val onPhone = settingsInUse?.let { CloudCover.phoneSettings(it, failure) }
         // Set before the phase: whoever reacts to the failure looks before
         // the cover has had a turn to start.
@@ -2986,6 +3063,8 @@ class CaptionPipeline(
     }
 
     companion object {
+        /** Watchdog failures of her pick in a row before the phone's own microphone takes over. */
+        const val FALLBACK_AFTER_FAILURES = 2
         private const val EMBEDDING_WINDOW_SECONDS = 1.5
         private const val SAMPLE_RATE = 16_000.0
         private const val MAX_KEYWORD_HITS = 50

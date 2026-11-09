@@ -782,6 +782,12 @@ public final class LiveCaptionViewModel {
         pipeline.dismissMicrophoneDrop()
     }
 
+    public var routedElsewhere: RoutedElsewhere? { pipeline.routedElsewhere }
+
+    public func dismissRoutedElsewhere() {
+        pipeline.dismissRoutedElsewhere()
+    }
+
     public var selectedInput: AudioInputDescriptor? {
         availableInputs.first { $0.uid == selectedInputUID }
     }

@@ -96,8 +96,12 @@ class FakeAudioCapturer : AudioCapturing {
         heldPrepare = null
     }
 
+    /** The input each prepareSession call asked for, in order. */
+    val preparedFor = ArrayList<String?>()
+
     override suspend fun prepareSession(preferredInputUID: String?) {
         calls.add("prepareSession")
+        preparedFor.add(preferredInputUID)
         if (holdPrepare) {
             val held = CompletableDeferred<Unit>()
             heldPrepare = held

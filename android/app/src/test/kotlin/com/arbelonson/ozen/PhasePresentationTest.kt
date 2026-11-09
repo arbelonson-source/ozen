@@ -136,6 +136,27 @@ class PhasePresentationTest {
     }
 
     @Test
+    fun `a picked microphone that stopped sending sound is named, word for word`() {
+        val named = PipelinePhase.Failed(PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, "", inputName = "Lapel Pro"))
+        val unnamed = PipelinePhase.Failed(PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, ""))
+        assertEquals(Action.Retry, present(named, TranscriptionEngineKind.WhisperKit).action)
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("Lapel Pro isn’t responding", present(named, TranscriptionEngineKind.WhisperKit).title)
+            assertEquals("The microphone isn’t responding", present(unnamed, TranscriptionEngineKind.WhisperKit).title)
+        }
+        Localization.withLanguage(UILanguage.Hebrew) {
+            assertEquals("המיקרופון ⁨Lapel Pro⁩ לא מגיב", present(named, TranscriptionEngineKind.WhisperKit).title)
+        }
+        for (language in UILanguage.entries - listOf(UILanguage.English, UILanguage.Hebrew)) {
+            Localization.withLanguage(language) {
+                val title = present(named, TranscriptionEngineKind.WhisperKit).title
+                val words = TranslationTable.lookup("%1 isn’t responding", language)?.replace("%1", "")?.trim()
+                assertTrue(!words.isNullOrEmpty() && words in title && "Lapel Pro" in title, "$language: $title")
+            }
+        }
+    }
+
+    @Test
     fun `a model that will not load offers a retry and a smaller model in Settings, word for word`() {
         val state = unavailable(EngineUnavailability.Kind.ModelLoadFailed)
         val presentation = present(failure(state), TranscriptionEngineKind.WhisperKit)

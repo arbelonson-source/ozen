@@ -245,6 +245,7 @@ struct LiveCaptionView: View {
         // phone saving can fail before the caption screen exists.
         .announcing(savingTroubleAnnouncement, whenTurningTrue: viewModel.savingTrouble.shouldShow, alsoWhenFirstShown: true)
         .announcing(microphoneDropAnnouncement, whenTurningTrue: viewModel.microphoneDrop.title != nil, alsoWhenFirstShown: true)
+        .announcing(routedElsewhereAnnouncement, whenTurningTrue: viewModel.routedElsewhere != nil, alsoWhenFirstShown: true)
         .announcing(viewModel.listeningCut?.text() ?? "", whenTurningTrue: viewModel.listeningCut != nil, alsoWhenFirstShown: true)
         // Each new battery warning, a critical one after a low one too: the
         // banner only buzzed, and a reader who can't see it missed that the
@@ -316,6 +317,15 @@ struct LiveCaptionView: View {
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
+            if let routed = viewModel.routedElsewhere {
+                MicrophoneDropBanner(title: routed.title, detail: routed.detail) {
+                    withAnimation { viewModel.dismissRoutedElsewhere() }
+                    showingMicPicker = true
+                } onDismiss: {
+                    withAnimation { viewModel.dismissRoutedElsewhere() }
+                }
+                .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
             if let cut = viewModel.listeningCut {
                 ListeningCutBanner(text: cut.text()) {
                     withAnimation { viewModel.dismissListeningCut() }
@@ -338,6 +348,7 @@ struct LiveCaptionView: View {
     private var hasTopBanner: Bool {
         visibleSoundAlert != nil || visibleKeywordHit != nil || installExpiryToWarn != nil
             || viewModel.savingTrouble.shouldShow || viewModel.microphoneDrop.title != nil || battery.notice != nil
+            || viewModel.routedElsewhere != nil
             || viewModel.listeningCut != nil
             || (awayMark != nil && viewModel.awayCatchUp.offersJump(in: viewModel.segments))
     }
@@ -1588,6 +1599,10 @@ struct LiveCaptionView: View {
 
     private var microphoneDropAnnouncement: String {
         (viewModel.microphoneDrop.title ?? "") + ". " + MicrophoneDropNotice.detail(listening: viewModel.captionsAreRunning)
+    }
+
+    private var routedElsewhereAnnouncement: String {
+        viewModel.routedElsewhere.map { $0.title + ". " + $0.detail } ?? ""
     }
 
     /// A screen with its own `alertOverlay` is over the captions. The

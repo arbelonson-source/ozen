@@ -20,6 +20,10 @@ public enum AudioPermission: Sendable, Equatable {
 public protocol AudioCapturing: AnyObject {
     var availableInputs: [AudioInputDescriptor] { get }
     var selectedInputUID: String? { get }
+    /// The listed input the system records from right now, when it can
+    /// tell. Asking for an input and being told yes doesn't mean the
+    /// recording moved there.
+    var inputInUse: String? { get }
     /// Live input level in 0...1, for the meter in the mic picker so the
     /// user can see at a glance whether the mic they picked is actually
     /// hearing anything.
@@ -47,4 +51,5 @@ public protocol AudioCapturing: AnyObject {
 
 extension AudioCapturing {
     public func endSession() {}
+    public var inputInUse: String? { nil }
 }
