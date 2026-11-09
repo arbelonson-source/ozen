@@ -249,7 +249,7 @@ class LocalizationTest {
     @Test
     fun `each language calls the home computer the same thing on every screen`() {
         val words = listOf(
-            Triple(UILanguage.Spanish, "computadora", "ordenador"),
+            Triple(UILanguage.Spanish, "ordenador", "computadora"),
             Triple(UILanguage.Arabic, "كمبيوتر", "حاسوب"),
             Triple(UILanguage.Amharic, "ኮምፒዩተ", "ኮምፒውተ"),
         )

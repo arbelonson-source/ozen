@@ -273,7 +273,7 @@ struct LocalizationTests {
     @Test("each language calls the home computer the same thing on every screen")
     func computerOneWordPerLanguage() {
         let words: [(UILanguage, used: String, not: String)] = [
-            (.spanish, "computadora", "ordenador"),
+            (.spanish, "ordenador", "computadora"),
             (.arabic, "كمبيوتر", "حاسوب"),
             (.amharic, "ኮምፒዩተ", "ኮምፒውተ"),
         ]

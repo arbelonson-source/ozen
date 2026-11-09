@@ -44,7 +44,7 @@ struct SoundNearMissesTests {
                 let kettle = try #require(SoundEventCatalog.event(for: "whistling"))
                 #expect(misses.entry(for: kettle)?.bestConfidence == 0.45, "\(language)")
 
-                // In Russian a scream and a yell are both "Крик": a faint
+                // In Russian a scream and a yell were both "Крик": a faint
                 // yell must not show on the emergency row for a scream.
                 misses.record(heard("yell", 0.50, at: 102), alertConfidence: 0.6)
                 let scream = try #require(SoundEventCatalog.event(for: "screaming"))
