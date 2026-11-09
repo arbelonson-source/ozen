@@ -26,4 +26,14 @@ struct NightAlertsChecklistTests {
         #expect(!NightAlertsChecklist.notificationsAllowed(authorization: .authorized, alerts: .disabled))
         #expect(NightAlertsChecklist.summary(authorization: .authorized, alerts: .disabled) == .checkNotifications)
     }
+
+    @Test("never asked reads as not asked yet; refused or the alert style off reads as turned off")
+    func notificationsState() {
+        #expect(NightAlertsChecklist.notifications(authorization: .notDetermined, alerts: .notSupported) == .notAsked)
+        #expect(NightAlertsChecklist.notifications(authorization: .notDetermined, alerts: .enabled) == .notAsked)
+        #expect(NightAlertsChecklist.notifications(authorization: .denied, alerts: .enabled) == .off)
+        #expect(NightAlertsChecklist.notifications(authorization: .authorized, alerts: .disabled) == .off)
+        #expect(NightAlertsChecklist.notifications(authorization: .authorized, alerts: .enabled) == .allowed)
+        #expect(NightAlertsChecklist.notifications(authorization: .provisional, alerts: .notSupported) == .allowed)
+    }
 }
