@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.arbelonson.ozen.core.tr
@@ -132,10 +134,14 @@ private fun Step(done: Boolean?, title: String, text: String, button: String?, o
             false -> tr("דורש בדיקה", "Needs checking")
             null -> null
         }
-        Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-            Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // The title, its text and whether it is done are heard as one
+            // stop; the button after it stays a stop of its own.
+            Column(modifier = Modifier.semantics(mergeDescendants = true) { if (label != null) stateDescription = label }) {
+                Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if (button != null) TextButton(onClick = onButton) { Text(button) }
         }
     }

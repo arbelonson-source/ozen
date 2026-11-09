@@ -1213,9 +1213,9 @@ private fun SpeechSection(rate: Float, onRate: (Float) -> Unit, canSay: (String)
                 Slider(
                     value = shown,
                     onValueChange = { shown = it },
-                    onValueChangeFinished = { onRate((shown * 20).roundToInt() / 20f) },
-                    valueRange = 0.2f..0.7f,
-                    steps = 9,
+                    onValueChangeFinished = { onRate(SliderStops.speechRate.kept(shown)) },
+                    valueRange = SliderStops.speechRate.range,
+                    steps = SliderStops.speechRate.steps,
                     modifier = Modifier.semantics {
                         contentDescription = label
                         stateDescription = value

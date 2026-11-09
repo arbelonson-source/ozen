@@ -48,6 +48,7 @@ import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.hasImeAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.test.isHeading
@@ -373,6 +374,15 @@ class SettingsScreenDeviceTest {
         compose.waitUntil(5_000) { app.settings.current.value.speakerSimilarityThreshold == 0.45f }
         assertEquals(0.45f, compose.runOnUiThread { app.captions.pipeline.speakerSimilarityThreshold }, 0.001f)
         compose.onNodeWithText("Back to the usual setting").assertDoesNotExist()
+    }
+
+    @Test
+    fun aScreenReaderCrossesTheSpeakerSeparationSliderInFifteenSwipesOfFiveHundredths() {
+        compose.onNodeWithText("Settings").performClick()
+        val slider = compose.onNodeWithContentDescription("Speaker separation sensitivity")
+        val range = slider.performScrollTo().fetchSemanticsNode().config[SemanticsProperties.ProgressBarRangeInfo]
+        assertEquals(0.2f..0.95f, range.range)
+        assertEquals(14, range.steps)
     }
 
     @Test
@@ -2156,6 +2166,25 @@ class SettingsScreenDeviceTest {
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
         compose.waitUntil(5_000) { compose.onAllNodes(hasText("Alerts through the night") and hasText("1 to check")).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun eachStepOfAlertsThroughTheNightIsOneScreenReaderStopThatSaysItsStatusWithItsButtonApart() {
+        NightAlerts.batteryExempt = { false }
+        AlertNotifier.alarmsOverrideDoNotDisturb = { true }
+        app.settings.change { it.notifyWhenInBackground = true }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Alerts through the night").performScrollTo().performClick()
+        val battery = compose.onNode(
+            hasText("Battery") and hasText("To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it.") and hasStateDescription("Needs checking"),
+        )
+        battery.performScrollTo().assert(!hasClickAction())
+        compose.onNode(hasText("Open the battery list") and hasClickAction()).performScrollTo().assertExists()
+        compose.onNode(
+            hasText("Urgent sounds in Do Not Disturb") and hasText("Urgent sounds, like a smoke alarm, come through Do Not Disturb.") and hasStateDescription("Completed"),
+        ).performScrollTo().assertExists()
+        compose.onNodeWithContentDescription("Needs checking").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Completed").assertDoesNotExist()
     }
 
     @Test
