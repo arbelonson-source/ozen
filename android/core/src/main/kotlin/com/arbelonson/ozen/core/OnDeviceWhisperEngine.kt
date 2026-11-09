@@ -502,12 +502,14 @@ class OnDeviceWhisperEngine(
                 seconds = windowSeconds,
             )
             val echo = synchronized(lock) { echoDetector }
-            // A thank-you alone in a moment of voice is most likely
-            // household noise (see `WhisperResultFilter.isUnvoicedPhrase`).
-            // When captions stop, the last chunk may not be scored yet.
+            // A thank-you, or a one-word names list read back, alone in a
+            // moment of voice is most likely household noise (see
+            // `WhisperResultFilter.isUnvoicedPhrase`). When captions stop,
+            // the last chunk may not be scored yet.
             val dropped = ranOut || speechFilter.isUnvoicedPhrase(
                 speechFilter.acceptedText(summaries, echo),
                 if (status.finished) null else intake.voicedChunks(end),
+                echo,
             )
             // Confidence has to describe exactly the text being shown, not
             // the whole pass -- a rejected hallucination segment can have a

@@ -46,7 +46,7 @@ class FileLinePass(
             )
         }
         val text = speechFilter.acceptedText(summaries, echo)
-        return if (speechFilter.isUnvoicedPhrase(text, voicedChunks)) "" else text
+        return if (speechFilter.isUnvoicedPhrase(text, voicedChunks, echo)) "" else text
     }
 
     private suspend fun run(audio: FloatArray): List<WhisperSegment> {

@@ -280,10 +280,16 @@ class WhisperResultFilter(
      * thank-you, 5 of them with one voiced chunk; the real ones (0.35 to 0.42
      * s) had two or more in 312 of 320 placements across the chunk grid.
      * Without a count nothing is dropped.
+     *
+     * With [echo], the same goes for the whole prompt of a one-entry list
+     * ([PromptEchoDetector.isWholePrompt]), which comes back on silence and
+     * would then set off its alert. Not measured on names: the thank-you
+     * numbers above are all there is.
      */
-    fun isUnvoicedPhrase(text: String, voicedChunks: Int?): Boolean {
+    fun isUnvoicedPhrase(text: String, voicedChunks: Int?, echo: PromptEchoDetector? = null): Boolean {
         if (voicedChunks == null || voicedChunks >= minimumPhraseVoicedChunks) return false
-        return normalize(collapsingRepeats(text, maxRepeats = 1)) in ambiguousHallucinations
+        return normalize(collapsingRepeats(text, maxRepeats = 1)) in ambiguousHallucinations ||
+            echo?.isWholePrompt(text) == true
     }
 
     /**
@@ -291,9 +297,18 @@ class WhisperResultFilter(
      * that needs to derive something else (confidence, timing) from exactly
      * the content actually shown, not from segments that were rejected as
      * hallucinations or noise.
+     *
+     * The whole prompt of a one-entry list goes only when the model was unsure
+     * of it or thought the window held no speech, like an ambiguous phrase (see
+     * [PromptEchoDetector.isWholePrompt]); said with confidence it stays.
      */
     fun accepted(segments: List<WhisperSegmentSummary>, echo: PromptEchoDetector? = null): List<WhisperSegmentSummary> =
-        segments.filter { accepts(it) && !(echo?.isEcho(stripSpecialTokens(it.text)) ?: false) }
+        segments.filter { segment ->
+            val text = stripSpecialTokens(segment.text)
+            if (!accepts(segment) || echo?.isEcho(text) == true) return@filter false
+            val doubtful = segment.noSpeechProb > ambiguousNoSpeechThreshold || segment.avgLogprob < ambiguousLogprobThreshold
+            !(doubtful && echo?.isWholePrompt(text) == true)
+        }
 
     /**
      * The filter for speech in [languageCode]. In English a lone "you" is a

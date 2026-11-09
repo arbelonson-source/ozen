@@ -283,17 +283,33 @@ public struct WhisperResultFilter: Sendable, Equatable {
     /// 7 lines that came back as a thank-you, 5 of them with one voiced
     /// chunk; the real ones (0.35 to 0.42 s) had two or more in 312 of 320
     /// placements across the chunk grid. Without a count nothing is dropped.
-    public func isUnvoicedPhrase(_ text: String, voicedChunks: Int?) -> Bool {
+    ///
+    /// With `echo`, the same goes for the whole prompt of a one-entry list
+    /// (`PromptEchoDetector.isWholePrompt`), which comes back on silence
+    /// and would then set off its alert. Not measured on names: the
+    /// thank-you numbers above are all there is.
+    public func isUnvoicedPhrase(_ text: String, voicedChunks: Int?, echo: PromptEchoDetector? = nil) -> Bool {
         guard let voicedChunks, voicedChunks < minimumPhraseVoicedChunks else { return false }
         return ambiguousHallucinations.contains(Self.normalize(Self.collapsingRepeats(text, maxRepeats: 1)))
+            || echo?.isWholePrompt(text) == true
     }
 
     /// The subset of `segments` that survive into `acceptedText`, for a
     /// caller that needs to derive something else (confidence, timing)
     /// from exactly the content actually shown, not from segments that
     /// were rejected as hallucinations or noise.
+    ///
+    /// The whole prompt of a one-entry list goes only when the model was
+    /// unsure of it or thought the window held no speech, like an
+    /// ambiguous phrase (see `PromptEchoDetector.isWholePrompt`); said
+    /// with confidence it stays.
     public func accepted(from segments: [WhisperSegmentSummary], echo: PromptEchoDetector? = nil) -> [WhisperSegmentSummary] {
-        segments.filter { accepts($0) && !(echo?.isEcho(Self.stripSpecialTokens($0.text)) ?? false) }
+        segments.filter { segment in
+            let text = Self.stripSpecialTokens(segment.text)
+            guard accepts(segment), echo?.isEcho(text) != true else { return false }
+            let doubtful = segment.noSpeechProb > ambiguousNoSpeechThreshold || segment.avgLogprob < ambiguousLogprobThreshold
+            return !(doubtful && echo?.isWholePrompt(text) == true)
+        }
     }
 
     /// A decoding loop that stays short enough to pass the compression check

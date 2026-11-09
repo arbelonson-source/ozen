@@ -178,4 +178,57 @@ class PromptEchoDetectorTest {
         assertEquals("דני, בוא לאכול", filter.acceptedText(segments, detector))
         assertEquals("אבי, רותי, דני. דני, בוא לאכול", filter.acceptedText(segments))
     }
+
+    @Test
+    fun `the list read back twice over is an echo, with three names or two`() {
+        val three = PromptEchoDetector(listOf("אבי", "רותי", "דני"))
+        assertTrue(three.isEcho("אבי, רותי, דני. אבי, רותי, דני."))
+        val two = PromptEchoDetector(listOf("סבתא", "אמא"))
+        assertTrue(two.isEcho("סבתא, אמא. סבתא, אמא."))
+    }
+
+    @Test
+    fun `the whole list named from another name onwards is real speech`() {
+        val three = PromptEchoDetector(listOf("אבי", "רותי", "דני"))
+        assertFalse(three.isEcho("דני, אבי, רותי"))
+        assertFalse(three.isEcho("אבי, רותי, דני, אבי"))
+        val two = PromptEchoDetector(listOf("אבי", "רותי"))
+        assertFalse(two.isEcho("רותי, אבי"))
+        assertFalse(two.isEcho("אבי, רותי, רותי, אבי"))
+    }
+
+    @Test
+    fun `a one-word list read back as a line goes when the model was unsure of it or heard no speech, and stays when it was sure`() {
+        val single = PromptEchoDetector(listOf("סבתא"))
+        val filter = WhisperResultFilter()
+        val unsure = WhisperSegmentSummary(text = " סבתא.", noSpeechProb = 0f, avgLogprob = -1.2f, compressionRatio = 1f)
+        val quiet = WhisperSegmentSummary(text = " סבתא.", noSpeechProb = 0.3f, avgLogprob = -0.2f, compressionRatio = 1f)
+        val sure = WhisperSegmentSummary(text = " סבתא.", noSpeechProb = 0f, avgLogprob = -0.2f, compressionRatio = 1f)
+        val called = WhisperSegmentSummary(text = " סבתא!", noSpeechProb = 0f, avgLogprob = -0.2f, compressionRatio = 1f)
+        assertEquals("", filter.acceptedText(listOf(unsure), single))
+        assertEquals("", filter.acceptedText(listOf(quiet), single))
+        assertEquals("סבתא.", filter.acceptedText(listOf(sure), single))
+        assertEquals("סבתא!", filter.acceptedText(listOf(called), single))
+        assertEquals("סבתא.", filter.acceptedText(listOf(unsure)))
+    }
+
+    @Test
+    fun `an unsure line with the one word in it, or the word from a longer list, is not the prompt and stays`() {
+        val filter = WhisperResultFilter()
+        val longer = WhisperSegmentSummary(text = " סבתא, בואי.", noSpeechProb = 0f, avgLogprob = -1.2f, compressionRatio = 1f)
+        val unsure = WhisperSegmentSummary(text = " סבתא.", noSpeechProb = 0f, avgLogprob = -1.2f, compressionRatio = 1f)
+        assertEquals("סבתא, בואי.", filter.acceptedText(listOf(longer), PromptEchoDetector(listOf("סבתא"))))
+        assertEquals("סבתא.", filter.acceptedText(listOf(unsure), PromptEchoDetector(listOf("סבתא", "אמא"))))
+    }
+
+    @Test
+    fun `a one-word list read back with too little voice under it is dropped, and with enough voice it stays`() {
+        val single = PromptEchoDetector(listOf("סבתא"))
+        val filter = WhisperResultFilter()
+        assertTrue(filter.isUnvoicedPhrase("סבתא.", 1, single))
+        assertFalse(filter.isUnvoicedPhrase("סבתא.", 3, single))
+        assertFalse(filter.isUnvoicedPhrase("סבתא.", null, single))
+        assertFalse(filter.isUnvoicedPhrase("סבתא, בואי", 1, single))
+        assertFalse(filter.isUnvoicedPhrase("סבתא.", 1))
+    }
 }

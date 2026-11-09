@@ -502,12 +502,14 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     seconds: windowSeconds
                 )
             } == true
-            // A thank-you alone in a moment of voice is most likely
-            // household noise (see `WhisperResultFilter.isUnvoicedPhrase`).
-            // When captions stop, the last chunk may not be scored yet.
+            // A thank-you, or a one-word names list read back, alone in a
+            // moment of voice is most likely household noise (see
+            // `WhisperResultFilter.isUnvoicedPhrase`). When captions stop,
+            // the last chunk may not be scored yet.
             let dropped = ranOut || speechFilter.isUnvoicedPhrase(
                 speechFilter.acceptedText(from: summaries, echo: echoDetector),
-                voicedChunks: status.finished ? nil : intake.voicedChunks(upTo: end)
+                voicedChunks: status.finished ? nil : intake.voicedChunks(upTo: end),
+                echo: echoDetector
             )
             // Confidence has to describe exactly the text being shown, not
             // the whole pass -- a rejected hallucination segment can have a
