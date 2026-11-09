@@ -38,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,6 +66,7 @@ import com.arbelonson.ozen.ui.OzenSpacing
 import com.arbelonson.ozen.ui.PrimaryButton
 import com.arbelonson.ozen.ui.ProgressCard
 import com.arbelonson.ozen.ui.TonalButton
+import kotlinx.coroutines.launch
 
 const val TRANSCRIBE_START = "transcribe-start"
 const val TRANSCRIBE_CANCEL = "transcribe-cancel"
@@ -253,18 +255,19 @@ private fun WorkingPage(transcriber: FileTranscriber, working: FileTranscription
 @OptIn(ExperimentalLayoutApi::class)
 private fun DonePage(done: FileTranscription.Done, close: () -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     OzenScreen(tr("ההקלטה הומרה לטקסט", "Recording turned into text"), onClose = close, closeLabel = tr("סיום", "Done"), scrolls = false) {
         HeaderAndLines(lines = { LinesList(done.lines, done.language.languageCode, follow = false, Modifier.weight(1f)) }) {
         Text(done.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() }.testTag("transcribe-name"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AssistChip(
-                onClick = { context.startActivity(transcriptShareSheet(context, done.name, done.lines)) },
+                onClick = { scope.launch { shareOrSayFull(context) { transcriptShareSheet(context, done.name, done.lines) } } },
                 label = { Text(tr("שיתוף כטקסט", "Share as text")) },
                 leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
                 modifier = Modifier.testTag(TRANSCRIBE_SHARE),
             )
             AssistChip(
-                onClick = { context.startActivity(subtitleShareSheet(context, done.name, done.lines, SubtitleFormat.Srt)) },
+                onClick = { scope.launch { shareOrSayFull(context) { subtitleShareSheet(context, done.name, done.lines, SubtitleFormat.Srt) } } },
                 label = { Text(tr("כתוביות (SRT)", "Subtitles (SRT)")) },
                 leadingIcon = { Icon(Icons.Rounded.Subtitles, contentDescription = null) },
                 modifier = Modifier.testTag(TRANSCRIBE_SUBTITLES),

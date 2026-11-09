@@ -495,6 +495,49 @@ class HistoryScreenDeviceTest {
     }
 
     @Test
+    fun starredLinesSharedOnAFullPhoneSayItInsteadOfClosingTheApp() {
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 3_600
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 3_000,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = (0 until 800).map {
+                SavedSegment(UUID.randomUUID(), "Full phone starred line $it about the history of medicine and the pharmacy", null, null, startedAt + it * 3, true, isStarred = true)
+            },
+        )
+        store.save(record)
+        seeded += record.id
+        assertTrue(TranscriptHistoryStore.exportStarredText(store.starredLines().filter { it.sessionID == record.id }, ::offsetHere).length > 60_000)
+        val started = CopyOnWriteArrayList<Intent>()
+        val sheet = startsHeldBack(started)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        // A plain file where the shared folder goes makes the file write fail,
+        // as a full phone does.
+        val blocked = File(app.cacheDir, CaptionSession.SHARED_FOLDER)
+        try {
+            compose.onNodeWithText("History").performClick()
+            waitFor("Full phone starred line 0")
+            val total = store.listSummaries().sumOf { it.starredCount }
+            compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
+            waitFor("Share")
+            blocked.deleteRecursively()
+            assertTrue(blocked.createNewFile())
+            instrumentation.addMonitor(sheet)
+            compose.onNodeWithText("Share").performClick()
+            val until = System.currentTimeMillis() + 2_000
+            compose.waitUntil(5_000) { System.currentTimeMillis() > until }
+            assertEquals(emptyList<Intent>(), started.toList())
+            compose.onNodeWithText("Starred lines").assertIsDisplayed()
+            compose.onNodeWithText("Share").assertIsDisplayed()
+        } finally {
+            instrumentation.removeMonitor(sheet)
+            blocked.delete()
+        }
+    }
+
+    @Test
     fun deletingAConversationAlsoDeletesTheCopyLastSharedAsAFile() {
         val record = longConversation("Shared then deleted opening")
         val started = CopyOnWriteArrayList<Intent>()

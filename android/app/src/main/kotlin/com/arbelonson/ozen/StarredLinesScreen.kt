@@ -104,7 +104,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
         onClose = onClose,
         actions = {
             if (!shown.isNullOrEmpty()) {
-                TextButton(onClick = { scope.launch { context.startActivity(withContext(Dispatchers.IO) { starredShareSheet(context, shown, marksUncertain) }) } }) {
+                TextButton(onClick = { scope.launch { shareOrSayFull(context) { starredShareSheet(context, shown, marksUncertain) } } }) {
                     Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(tr("שיתוף", "Share"))

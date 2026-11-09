@@ -1,10 +1,12 @@
 package com.arbelonson.ozen
 
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -36,5 +38,11 @@ class SharedFileTest {
         val fresh = SharedFile.create(cache, "New.srt", now)
         assertFalse(old.exists())
         assertTrue(fresh.parentFile!!.exists())
+    }
+
+    @Test
+    fun aFolderThatCannotBeMadeFailsTheWriteWithTheErrorShareCatches() = withCache { cache ->
+        assertTrue(File(cache, CaptionSession.SHARED_FOLDER).createNewFile())
+        assertFailsWith<IOException> { SharedFile.create(cache, "Lecture.srt").writeText("lines") }
     }
 }
