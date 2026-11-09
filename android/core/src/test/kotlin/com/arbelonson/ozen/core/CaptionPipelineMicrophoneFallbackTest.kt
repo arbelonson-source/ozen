@@ -105,6 +105,22 @@ class CaptionPipelineMicrophoneFallbackTest {
     }
 
     @Test
+    fun `silence while the phone records from another input than the accepted pick is not the pick's, and hands nothing over`() = runTest {
+        val (pipeline, audio) = fallbackPipeline()
+        audio.inputInUse = phoneMic
+        pipeline.start(picked(lapelMic.uid))
+        repeat(40) {
+            audio.push(FloatArray(1_600))
+            delay(100.milliseconds)
+        }
+
+        assertTrue(pipeline.stats.audioStalls >= 3, "${pipeline.stats.audioStalls}")
+        assertEquals<List<String?>>(List(audio.preparedFor.size) { lapelMic.uid }, audio.preparedFor)
+        assertNull(pipeline.eventLog.events.firstNotNullOfOrNull { (it.kind as? PipelineEvent.Kind.Failed)?.failure?.inputName })
+        pipeline.stop()
+    }
+
+    @Test
     fun `picking a microphone ends the fallback`() = runTest {
         val (pipeline, audio) = fallbackPipeline()
         pipeline.start(picked(lapelMic.uid))

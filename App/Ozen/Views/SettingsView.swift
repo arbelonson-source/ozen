@@ -1050,7 +1050,7 @@ struct SettingsView: View {
         } header: {
             Text(tr("התראות", "Alerts"))
         } footer: {
-            Text(tr("רטט והדגשה כשנאמרת מילה חשובה, והודעה בראש המסך כשנשמעים פעמון בדלת, טלפון, אזעקה ועוד. כשהטלפון בכיס או נעול, אותן התראות מגיעות כהתראות רגילות של הטלפון, ויש גם התראה אם הכתוביות נעצרו ולא חזרו לבד. כדי שגם פנס המצלמה יהבהב בכל התראה: הגדרות הטלפון ← נגישות ← שמע וחזותי ← הבהוב LED להתראות.", "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, and more are heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → LED Flash for Alerts."))
+            Text(tr("רטט והדגשה כשנאמרת מילה חשובה, והודעה בראש המסך כשנשמעים פעמון בדלת, טלפון, אזעקה ועוד. כשהטלפון בכיס או נעול, אותן התראות מגיעות כהתראות רגילות של הטלפון, ויש גם התראה אם הכתוביות נעצרו ולא חזרו לבד. כדי שגם פנס המצלמה יהבהב בכל התראה: הגדרות הטלפון ← נגישות ← שמע וחזות ← התראות בהבהוב ← הבהוב LED.", "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, and more are heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → Flash for Alerts → LED Flash."))
         }
         .task(id: scenePhase) {
             // Checked on opening and again on coming back from the
@@ -1227,9 +1227,11 @@ struct SettingsView: View {
                         .monospacedDigit()
                 }
                 .accessibilityHidden(true)
-                Slider(value: $viewModel.speakerSimilarityThreshold, in: 0.2...0.95, step: 0.01)
+                // Steps of 0.05 rather than 0.01: 15 swipes from end to
+                // end instead of 75, and the usual value is one of them.
+                Slider(value: $viewModel.speakerSimilarityThreshold, in: SliderSpeech.speakerSeparationRange, step: SliderSpeech.speakerSeparationStep)
                     .accessibilityLabel(tr("רגישות הפרדת דוברים", "Speaker separation sensitivity"))
-                    .accessibilityValue(String(format: "%.2f", viewModel.speakerSimilarityThreshold))
+                    .accessibilityValue(SliderSpeech.speakerSeparation(Double(viewModel.speakerSimilarityThreshold), in: Localization.language))
                     // The "more merging / more separating" ends are hidden
                     // from VoiceOver with the rest of the row's labels.
                     .accessibilityHint(tr("ערך נמוך מאחד קולות, וערך גבוה מפריד ביניהם.", "Lower merges voices, higher keeps them apart."))

@@ -34,6 +34,32 @@ struct SliderSpeechTests {
         }
     }
 
+    @Test("speaker separation is spoken as the way it leans, then its number")
+    func speakerSeparationWords() {
+        let usual = Double(AppSettings.default.speakerSimilarityThreshold)
+        #expect(SliderSpeech.speakerSeparation(0.3, in: .english) == "More merging, 0.30")
+        #expect(SliderSpeech.speakerSeparation(usual, in: .english) == "Normal, 0.45")
+        #expect(SliderSpeech.speakerSeparation(0.8, in: .english) == "More separating, 0.80")
+        #expect(SliderSpeech.speakerSeparation(0.3, in: .hebrew) != SliderSpeech.speakerSeparation(0.3, in: .english))
+    }
+
+    @Test("a separation value saved between steps by an older version keeps its own number")
+    func speakerSeparationOldValue() {
+        #expect(SliderSpeech.speakerSeparation(0.47, in: .english) == "More separating, 0.47")
+        #expect(SliderSpeech.speakerSeparation(0.42, in: .english) == "More merging, 0.42")
+    }
+
+    @Test("the separation slider moves in few enough steps to swipe through, and the usual value is one of them")
+    func speakerSeparationSteps() {
+        let range = SliderSpeech.speakerSeparationRange
+        let step = SliderSpeech.speakerSeparationStep
+        let steps = Double((range.upperBound - range.lowerBound) / step)
+        #expect(abs(steps - steps.rounded()) < 0.001)
+        #expect(steps.rounded() <= 20, "\(Int(steps.rounded())) swipes from end to end")
+        let toUsual = Double((AppSettings.default.speakerSimilarityThreshold - range.lowerBound) / step)
+        #expect(abs(toUsual - toUsual.rounded()) < 0.001)
+    }
+
     @Test("languages that inflect the unit by number say the unit first")
     func textSizeUnitFirstWhereItInflects() {
         for language in [UILanguage.russian, .ukrainian, .arabic] {

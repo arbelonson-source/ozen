@@ -181,6 +181,21 @@ struct MicrophoneFallbackTests {
         pipeline.stop()
     }
 
+    @Test("stalls while the iPhone records from another input than the accepted pick are not the pick's, and hand nothing over", .timeLimit(.minutes(1)))
+    func stallsOnAnotherInputAreNotThePicks() async throws {
+        let (pipeline, audio) = routingPipeline(recovery: Self.quickRetries, audioWatchdog: AudioStallWatchdog(stallSeconds: 0.5))
+        audio.inputInUse = phoneMic.uid
+        await pipeline.start(settings: picked(lapelMic.uid))
+
+        #expect(await eventually { pipeline.stats.audioStalls >= 3 })
+        #expect(audio.preparedFor.allSatisfy { $0 == lapelMic.uid })
+        #expect(pipeline.eventLog.events.allSatisfy { event in
+            if case .failed(let failure) = event.kind { return failure.inputName == nil }
+            return true
+        })
+        pipeline.stop()
+    }
+
     @Test("stopping captions ends the fallback, and the next start uses the pick", .timeLimit(.minutes(1)))
     func stopEndsTheFallback() async throws {
         let (pipeline, audio) = routingPipeline(recovery: Self.quickRetries, audioWatchdog: AudioStallWatchdog(stallSeconds: 0.5))

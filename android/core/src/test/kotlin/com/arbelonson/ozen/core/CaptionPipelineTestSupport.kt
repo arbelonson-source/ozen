@@ -518,6 +518,7 @@ fun TestScope.captionPipeline(
     now: () -> Double = { virtualNow() },
     embedderContext: CoroutineContext = StandardTestDispatcher(testScheduler),
     scope: kotlinx.coroutines.CoroutineScope = backgroundScope,
+    retryWait: RetryWait = RetryWait(),
 ): CaptionPipeline = CaptionPipeline(
     scope = scope,
     audio = audio,
@@ -534,6 +535,7 @@ fun TestScope.captionPipeline(
     now = now,
     timeSource = testScheduler.timeSource,
     embedderContext = embedderContext,
+    retryWait = retryWait,
 )
 
 fun TestScope.makePipeline(
