@@ -40,17 +40,17 @@ struct NightAlertsView: View {
                 }
                 item(
                     title: tr("שינה ו״נא לא להפריע״", "Sleep and Do Not Disturb"),
-                    text: tr("בהגדרות, תחת ״מיקוד״, הוסיפו את אוזן ל״אפליקציות מותרות״ גם ב״שינה״ וגם ב״נא לא להפריע״, כדי שאזעקת עשן עדיין תעיר אתכם.", "In Settings > Focus, add Ozen to Allowed Apps in Sleep and in Do Not Disturb, so a smoke alarm still comes through."),
+                    text: tr("בהגדרות ← ריכוז, גם ב״שינה״ וגם ב״נא לא להפריע״: הקישו על ״יישומים״ והוסיפו את אוזן, כדי שאזעקת עשן עדיין תעיר אתכם.", "In Settings > Focus, in both Sleep and Do Not Disturb, tap Apps and add Ozen, so a smoke alarm still comes through."),
                     image: "bed.double"
                 )
                 item(
                     title: tr("אור", "Light"),
-                    text: tr("הפעילו בהגדרות את ״הבהוב LED להתראות״ תחת נגישות ← שמע וחזותי: פנס המצלמה מהבהב בכל התראה, גם כשהטלפון נעול.", "Turn on LED Flash for Alerts in Settings > Accessibility > Audio & Visual: the camera light flashes with every alert, even with the phone locked."),
+                    text: tr("בהגדרות ← נגישות ← שמע וחזות, הפעילו את ״התראות בהבהוב״ ובחרו ״הבהוב LED״: פנס המצלמה יהבהב בכל התראה, גם כשהטלפון נעול.", "In Settings > Accessibility > Audio & Visual, turn on Flash for Alerts and choose LED Flash: the camera light flashes with every alert, even with the phone locked."),
                     image: "flashlight.on.fill"
                 )
                 item(
                     title: tr("רטט", "Vibration"),
-                    text: tr("בהגדרות, תחת ״צלילים ומגע״, השאירו את הרטט פעיל גם במצב שקט.", "In Settings > Sounds & Haptics, keep Haptics on in Silent Mode."),
+                    text: tr("בהגדרות ← צלילים ורטט אינטראקטיבי ← רטט אינטראקטיבי, בחרו ״להשמיע במצב שקט״, כדי שיהיה רטט גם במצב שקט.", "In Settings > Sounds & Haptics > Haptics, choose Play in Silent Mode, so the phone vibrates in Silent Mode too."),
                     image: "iphone.radiowaves.left.and.right"
                 )
                 item(
