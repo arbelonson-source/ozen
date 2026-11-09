@@ -567,6 +567,7 @@ private fun OzenApp(
                             inputs = state.inputs,
                             selected = state.inputInUse?.takeIf { state.phase.isListening } ?: state.selectedInput,
                             listening = state.phase.isListening,
+                            phoneSoundStopped = state.phoneSoundStopped,
                             level = { app.captions.pipeline.inputLevel },
                             onChoose = {
                                 if (!PhoneSound.isPhoneSound(it.uid)) {
@@ -1734,7 +1735,7 @@ private fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
     NoticeBanner(
         Icons.Rounded.MicOff,
         NoticeTone.Warning,
-        tr("ההאזנה לקול מהטלפון הופסקה. חזרה למיקרופון.", "Stopped listening to the phone's sound. Back to the microphone."),
+        PhoneSound.stoppedNotice,
         "",
         Modifier.clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button, onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
     ) { Icon(Icons.Rounded.Close, contentDescription = null) }
