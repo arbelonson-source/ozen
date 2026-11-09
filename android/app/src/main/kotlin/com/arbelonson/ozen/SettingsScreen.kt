@@ -159,9 +159,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.arbelonson.ozen.core.AlertNotificationContent
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.BackgroundAlertPolicy
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.CloudKeyCheck
 import com.arbelonson.ozen.core.CloudProvider
@@ -267,7 +269,7 @@ fun SettingsScreen(
             SettingsPage.Sounds -> SoundAlertsScreen(current.soundAlerts, onSoundAlerts, soundNearMiss, onFeel, onClose = { showingSounds = false })
             SettingsPage.ImportantWords -> ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, current.spokenLanguage, heard, onImportantWords, onClose = { showingImportantWords = false }, heardBy = heardBy)
             SettingsPage.Enrollment -> SpeakerEnrollmentScreen(speakers, onClose = { showingEnrollment = false })
-            SettingsPage.Night -> NightAlertsScreen(onClose = { showingNight = false })
+            SettingsPage.Night -> NightAlertsScreen(current.soundAlerts.isEnabled, onSounds = { showingSounds = true }, onClose = { showingNight = false })
             SettingsPage.Main -> {
                 BackHandler(onBack = close)
                 SettingsPageFrame(tr("הגדרות", "Settings"), scroll = scroll, onClose = close, closeLabel = tr("סגירה", "Close")) {
@@ -999,10 +1001,10 @@ private fun AlertsSection(
     val context = LocalContext.current
     var blocked by remember { mutableStateOf(!AlertNotifier.allowed(context)) }
     var sent by remember { mutableStateOf(false) }
-    var toCheck by remember { mutableIntStateOf(nightItemsToCheck(context)) }
-    LifecycleResumeEffect(Unit) {
+    var toCheck by remember(sounds.isEnabled) { mutableIntStateOf(nightItemsToCheck(context, sounds.isEnabled)) }
+    LifecycleResumeEffect(sounds.isEnabled) {
         blocked = !AlertNotifier.allowed(context)
-        toCheck = nightItemsToCheck(context)
+        toCheck = nightItemsToCheck(context, sounds.isEnabled)
         onPauseOrDispose { }
     }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { blocked = !AlertNotifier.allowed(context) }
@@ -1093,9 +1095,9 @@ private fun AlertsSection(
 }
 
 @Composable
-internal fun TestAlertButton(sent: Boolean, onSent: () -> Unit) {
+internal fun TestAlertButton(sent: Boolean, content: AlertNotificationContent = BackgroundAlertPolicy.testNotification, onSent: () -> Unit) {
     val context = LocalContext.current
-    TextButton(onClick = { AlertNotifier(context.applicationContext).postTest(); onSent() }) {
+    TextButton(onClick = { AlertNotifier(context.applicationContext).postTest(content); onSent() }) {
         Text(
             if (sent) {
                 tr("ההתראה נשלחה. נעלו את הטלפון, והיא תגיע תוך 10 שניות", "Sent. Lock the phone, and it will arrive within 10 seconds")
@@ -1106,8 +1108,8 @@ internal fun TestAlertButton(sent: Boolean, onSent: () -> Unit) {
     }
 }
 
-private fun nightItemsToCheck(context: android.content.Context): Int =
-    NightAlerts.openItems(NightAlerts.batteryExempt(context), AlertNotifier.alarmsOverrideDoNotDisturb(context))
+private fun nightItemsToCheck(context: android.content.Context, soundsOn: Boolean): Int =
+    NightAlerts.openItems(NightAlerts.batteryExempt(context), AlertNotifier.alarmsOverrideDoNotDisturb(context), soundsOn)
 
 internal fun openNotificationSettings(context: android.content.Context) {
     context.startActivity(
