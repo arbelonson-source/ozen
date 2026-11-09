@@ -47,7 +47,12 @@ struct ProblemMarkedSheet: View {
         .presentationDetents([.medium, .large])
         .task(id: viewModel.problemMarkedAt) {
             report = nil
-            let journal = viewModel.journal?.reportLines(utcOffsetAt: DiagnosticsReport.utcOffset(at:)) ?? []
+            // The journal waits for its file: read away from the main
+            // thread, so the sheet and its waiting button show at once.
+            let kept = viewModel.journal
+            let journal = await Task.detached(priority: .userInitiated) {
+                kept?.reportLines(utcOffsetAt: { DiagnosticsReport.utcOffset(at: $0) }) ?? []
+            }.value
             let notificationsAllowed = await AlertNotifier.shared.isAllowed()
             let store = WhisperModelStore()
             report = DiagnosticsReport(
