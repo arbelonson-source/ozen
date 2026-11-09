@@ -4,9 +4,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
@@ -16,6 +19,18 @@ import kotlinx.coroutines.test.runTest
 private fun chunk() = FloatArray(1_024) { 0.1f }
 
 private fun FakeAudioCapturer.captures(): Int = calls.count { it == "startCapture" }
+
+private class SlowSoundDetector(private val perChunk: Duration) : SoundEventDetecting {
+    var chunksSeen = 0
+        private set
+
+    override fun observations(audio: Flow<FloatArray>): Flow<SoundObservation> = flow {
+        audio.collect {
+            chunksSeen += 1
+            delay(perChunk)
+        }
+    }
+}
 
 private suspend fun CaptionPipeline.assertSoundsOnlyAlerts(audio: FakeAudioCapturer, detector: FakeSoundDetector) {
     assertTrue(isListeningForSoundsOnly)
@@ -237,6 +252,34 @@ class CaptionPipelineSoundsOnlyTest {
 
         assertTrue(eventually(within = 30.seconds) { audio.captures() >= 2 })
         assertTrue(pipeline.soundsOnlyChosen)
+    }
+
+    @Test
+    fun `a classifier slower than the stall check does not get a working microphone opened again`() = runTest {
+        val detector = SlowSoundDetector(perChunk = 10.seconds)
+        val audio = FakeAudioCapturer()
+        val pipeline = captionPipeline(
+            audio = audio,
+            engineFactory = { settings -> FakeEngine(kind = settings.engine) },
+            soundDetector = detector,
+            recovery = AutoRecoveryPolicy.disabled(),
+        )
+        pipeline.listenForSoundsOnly(AppSettings.default)
+        assertEquals(1, audio.captures())
+
+        val feeding = launch {
+            repeat(60) {
+                audio.push(chunk())
+                delay(500.milliseconds)
+            }
+        }
+        delay(30.seconds)
+        feeding.cancel()
+
+        assertTrue(detector.chunksSeen >= 2)
+        assertEquals(1, audio.captures(), "the microphone was opened again while it delivered")
+        assertEquals(0, pipeline.stats.audioStalls)
+        assertTrue(pipeline.isListeningForSoundsOnly)
     }
 
     @Test

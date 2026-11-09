@@ -220,9 +220,17 @@ class MainActivity : ComponentActivity() {
     private val approveMicrophone = registerForActivityResult(ActivityResultContracts.RequestPermission()) { microphoneAnswer.value = it }
     private val approveNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { notificationsAnswer.value = it }
 
+    // Two requests rather than one with a remembered flag: the system hands a
+    // result back to the request that asked, even to an activity rebuilt while
+    // its dialog was open, and a flag would have been lost with the old one.
     private val askForMicrophone = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-        val soundsOnly = soundsOnlyAfterPermission
-        soundsOnlyAfterPermission = false
+        microphoneAnswered(granted, soundsOnly = false)
+    }
+    private val askForMicrophoneForSoundsOnly = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        microphoneAnswered(granted, soundsOnly = true)
+    }
+
+    private fun microphoneAnswered(granted: Map<String, Boolean>, soundsOnly: Boolean) {
         if (granted[Manifest.permission.RECORD_AUDIO] == true) {
             if (soundsOnly) ListeningService.startSoundsOnly(this) else ListeningService.start(this)
         } else {
@@ -372,16 +380,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private var soundsOnlyAfterPermission = false
-
     private fun startSoundsOnly() {
         if (hasMicrophone()) {
             ListeningService.startSoundsOnly(this)
             askForNotificationsIfNeverAnswered()
             return
         }
-        soundsOnlyAfterPermission = true
-        askForMicrophone.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
+        askForMicrophoneForSoundsOnly.launch(ListeningPermissions.wanted(Build.VERSION.SDK_INT).toTypedArray())
     }
 
     private fun startListening() {
@@ -390,11 +395,7 @@ class MainActivity : ComponentActivity() {
             askForNotificationsIfNeverAnswered()
             return
         }
-        val wanted = buildList {
-            add(Manifest.permission.RECORD_AUDIO)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        askForMicrophone.launch(wanted.toTypedArray())
+        askForMicrophone.launch(ListeningPermissions.wanted(Build.VERSION.SDK_INT).toTypedArray())
     }
 
     /**
@@ -1840,7 +1841,7 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: L
                 tr("החלפה", "Switch"),
                 color = colors.primary,
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.align(Alignment.End).clickable(onClick = onSwitch).testTag("model-fit-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+                modifier = Modifier.align(Alignment.End).clickable(role = Role.Button, onClick = onSwitch).testTag("model-fit-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
             )
         }
         BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, onDismiss)

@@ -2875,9 +2875,13 @@ class CaptionPipeline(
         val run = runID
         val chosen = soundsOnlyChosen
         lateinit var fan: FlowAudioFanOut
+        // Counted as the microphone hands chunks over, not as the classifier
+        // takes them: a classifier slow for a few seconds is not a
+        // microphone that stopped.
+        val counted = if (chosen) source.onEach { soundsOnlyChunks += 1 } else source
         fan = FlowAudioFanOut(
             scope,
-            source,
+            counted,
             count = 1,
             onFailure = {
                 if (chosen) {
@@ -2890,8 +2894,7 @@ class CaptionPipeline(
         fanOut = fan
         isListeningForSoundsOnly = true
         statsData.soundDetectionRunning = true
-        val heard = if (chosen) fan.outputs[0].onEach { soundsOnlyChunks += 1 } else fan.outputs[0]
-        val observations = detector.observations(whileSoundAlertsAreOn(heard))
+        val observations = detector.observations(whileSoundAlertsAreOn(fan.outputs[0]))
         soundTask = scope.launch {
             observations.takeWhile { runID == run }.collect { observation ->
                 handleSoundObservation(observation)

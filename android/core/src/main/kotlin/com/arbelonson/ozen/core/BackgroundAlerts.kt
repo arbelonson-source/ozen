@@ -119,6 +119,24 @@ class BackgroundAlertPolicy(
                 isUrgent = false,
             )
 
+        /**
+         * The night page's test: urgent, as a smoke detector is, so it goes
+         * the way the page has just set up, through the Emergency alerts
+         * that may override Do Not Disturb. The doorbell test goes the
+         * ordinary way, which Do Not Disturb silences, so it can't show that.
+         */
+        val nightTestNotification: AlertNotificationContent
+            get() = AlertNotificationContent(
+                identifier = "night-test-alert",
+                title = tr("בדיקה: גלאי עשן", "Test: smoke detector"),
+                body = tr(
+                    "כך נראית התראה של אוזן כשהטלפון בכיס או נעול.",
+                    "This is what a notification from Ozen looks like when the phone is in a pocket or locked.",
+                ),
+                threadIdentifier = "sounds",
+                isUrgent = true,
+            )
+
         private fun rightToLeft(text: String): String =
             if (CaptionLayout.opensLeftToRight(text)) CaptionLayout.RIGHT_TO_LEFT_MARK + text else text
 
