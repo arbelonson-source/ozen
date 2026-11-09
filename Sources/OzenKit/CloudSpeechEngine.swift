@@ -359,8 +359,11 @@ public actor CloudSpeechEngine: TranscriptionEngine {
 /// settled reaches `pieceSeconds`, a request carries it only up to the
 /// quietest moment of its last second, and the words it brings back stay on
 /// screen as written; later requests carry only what was said after that
-/// moment. No live request carries much more than `pieceSeconds`, so a
-/// sentence of any length costs about three times its length at most. The
+/// moment. No live request carries more than `longestPieceSeconds`, even
+/// when a slow request let speech pile up: the next request then settles
+/// the oldest part, and the rest follows in the requests after it, so no
+/// word is skipped. A sentence of any length costs about three times its
+/// length at most. The
 /// request after the pause still carries the whole sentence
 /// (`CloudSpeechEngine`), so the finished line is written exactly as before
 /// and replaces the pieces.
@@ -384,6 +387,10 @@ public struct LiveWindow: Sendable, Equatable {
     /// Short, so only a word or so waits for the next request (about two
     /// seconds later) when a piece settles.
     public static let cutLookBackSeconds = 1.0
+    /// A piece reaches `pieceSeconds` between two requests that are
+    /// `CloudSpeechEngine.livePassSeconds` apart, so this is the longest one
+    /// on a connection that keeps up.
+    public static let longestPieceSeconds = pieceSeconds + CloudSpeechEngine.livePassSeconds
     static let cutFrameSeconds = 0.05
 
     public let sampleRate: Int
@@ -405,7 +412,7 @@ public struct LiveWindow: Sendable, Equatable {
         }
         let cut = UtteranceCut.quietestPoint(
             in: heard,
-            before: heard.count,
+            before: min(heard.count, start + Int(Self.longestPieceSeconds * rate)),
             lookBack: Int(Self.cutLookBackSeconds * rate),
             frame: Int(Self.cutFrameSeconds * rate)
         )

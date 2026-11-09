@@ -83,4 +83,19 @@ class LiveWindowTest {
         assertTrue(sent.all { it <= 8 }, "$sent")
         assertTrue(sent.sum() < 60, "${sent.sum()} s: $sent")
     }
+
+    @Test
+    fun `after a slow request let 15 seconds pile up, no live request carries more than 8 seconds and none skips a stretch`() {
+        val window = LiveWindow(rate)
+        val heard = syllables(19.0)
+        var covered = 0
+        for (second in listOf(15, 17, 19)) {
+            val pass = window.pass(heard.copyOfRange(0, second * rate))
+            assertEquals(covered, pass.start, "$pass")
+            assertTrue((pass.end - pass.start).toDouble() / rate <= LiveWindow.LONGEST_PIECE_SECONDS, "$pass")
+            window.line("מילה", pass)
+            if (pass.settles) covered = pass.end
+        }
+        assertTrue(covered > 13 * rate, "$covered")
+    }
 }

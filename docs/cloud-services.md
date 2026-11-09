@@ -68,7 +68,9 @@ speaks, but each sentence is sent again every couple of seconds while it is
 being said so the words appear as they are spoken: an hour of speech costs
 about two and a half times their list price. A long sentence goes in pieces
 of about 6 seconds while it is said (see "In steps" below), so unbroken talk
-like the news or a lecture costs at most about one and a half times that.
+like the news or a lecture costs only a little more, about three times their
+list price: every 28 seconds of it goes out as about 50 seconds of live
+pieces, then once more as a whole when the sentence ends.
 Groq is the exception: it
 counts every request as at least ten seconds, so Ozen sends it each sentence
 once, when it ends, which comes to about two and a half times its list price
@@ -116,7 +118,10 @@ speech, so the line grows in jumps of a few words. Once the part of a
 sentence not yet settled reaches 6 seconds, the next request stops at the
 quietest moment of its last second, and the words it brings back stay as
 they are; later requests carry only what was said after that moment, so no
-live request carries much more than 8 seconds of audio. When the sentence
+live request carries more than 8 seconds of audio. If a slow request let
+more pile up, the next one still ends within 8 seconds of where the last
+piece did, and the rest follows in the requests after it, so the line
+catches up without skipping a word. When the sentence
 ends, it is sent once more as a whole, and that is the line that stays, as
 accurate as before. If a request takes
 longer than 2 seconds, the next one waits for that much more speech, so a

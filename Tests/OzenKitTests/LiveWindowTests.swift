@@ -79,4 +79,19 @@ struct LiveWindowTests {
         #expect(sent.allSatisfy { $0 <= 8 }, "\(sent)")
         #expect(sent.reduce(0, +) < 60, "\(sent.reduce(0, +)) s: \(sent)")
     }
+
+    @Test("after a slow request let 15 seconds pile up, no live request carries more than 8 seconds and none skips a stretch")
+    func slowRequestStillSendsShortPieces() {
+        var window = LiveWindow(sampleRate: rate)
+        let heard = syllables(seconds: 19)
+        var covered = 0
+        for second in [15, 17, 19] {
+            let pass = window.pass(over: Array(heard[0..<(second * rate)]))
+            #expect(pass.start == covered, "\(pass)")
+            #expect(Double(pass.end - pass.start) / Double(rate) <= LiveWindow.longestPieceSeconds, "\(pass)")
+            _ = window.line(after: "מילה", for: pass)
+            if pass.settles { covered = pass.end }
+        }
+        #expect(covered > 13 * rate, "\(covered)")
+    }
 }

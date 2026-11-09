@@ -379,8 +379,11 @@ class CloudSpeechEngine(
  * settled reaches [PIECE_SECONDS], a request carries it only up to the
  * quietest moment of its last second, and the words it brings back stay on
  * screen as written; later requests carry only what was said after that
- * moment. No live request carries much more than [PIECE_SECONDS], so a
- * sentence of any length costs about three times its length at most. The
+ * moment. No live request carries more than [LONGEST_PIECE_SECONDS], even
+ * when a slow request let speech pile up: the next request then settles
+ * the oldest part, and the rest follows in the requests after it, so no
+ * word is skipped. A sentence of any length costs about three times its
+ * length at most. The
  * request after the pause still carries the whole sentence
  * ([CloudSpeechEngine]), so the finished line is written exactly as before
  * and replaces the pieces.
@@ -400,7 +403,7 @@ class LiveWindow(val sampleRate: Int) {
         if (heard.size - start < (PIECE_SECONDS * rate).toInt()) return Pass(start, heard.size, settles = false)
         val cut = UtteranceCut.quietestPoint(
             samples = heard,
-            before = heard.size,
+            before = minOf(heard.size, start + (LONGEST_PIECE_SECONDS * rate).toInt()),
             lookBack = (CUT_LOOK_BACK_SECONDS * rate).toInt(),
             frame = (CUT_FRAME_SECONDS * rate).toInt(),
         )
@@ -436,6 +439,13 @@ class LiveWindow(val sampleRate: Int) {
          * seconds later) when a piece settles.
          */
         const val CUT_LOOK_BACK_SECONDS = 1.0
+
+        /**
+         * A piece reaches [PIECE_SECONDS] between two requests that are
+         * [CloudSpeechEngine.LIVE_PASS_SECONDS] apart, so this is the longest
+         * one on a connection that keeps up.
+         */
+        const val LONGEST_PIECE_SECONDS = PIECE_SECONDS + CloudSpeechEngine.LIVE_PASS_SECONDS
         private const val CUT_FRAME_SECONDS = 0.05
     }
 }
