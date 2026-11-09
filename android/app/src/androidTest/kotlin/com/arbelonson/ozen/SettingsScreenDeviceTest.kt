@@ -48,6 +48,7 @@ import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.hasImeAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.test.isHeading
@@ -373,6 +374,15 @@ class SettingsScreenDeviceTest {
         compose.waitUntil(5_000) { app.settings.current.value.speakerSimilarityThreshold == 0.45f }
         assertEquals(0.45f, compose.runOnUiThread { app.captions.pipeline.speakerSimilarityThreshold }, 0.001f)
         compose.onNodeWithText("Back to the usual setting").assertDoesNotExist()
+    }
+
+    @Test
+    fun aScreenReaderCrossesTheSpeakerSeparationSliderInFifteenSwipesOfFiveHundredths() {
+        compose.onNodeWithText("Settings").performClick()
+        val slider = compose.onNodeWithContentDescription("Speaker separation sensitivity")
+        val range = slider.performScrollTo().fetchSemanticsNode().config[SemanticsProperties.ProgressBarRangeInfo]
+        assertEquals(0.2f..0.95f, range.range)
+        assertEquals(14, range.steps)
     }
 
     @Test
@@ -2126,6 +2136,58 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun soundsAtHomeTurnedOffIsOneMoreToCheckForTheNightAndItsStepLeadsToTheSoundsPage() {
+        NightAlerts.batteryExempt = { true }
+        AlertNotifier.alarmsOverrideDoNotDisturb = { true }
+        app.settings.change {
+            it.notifyWhenInBackground = true
+            it.soundAlerts = SoundAlertPreferences.default.copy(isEnabled = false)
+        }
+        compose.onNodeWithText("Settings").performClick()
+        row("Alerts through the night", "1 to check")
+        compose.onNodeWithText("Alerts through the night").performScrollTo().performClick()
+        compose.onNodeWithText("Turn on Sounds at home, and leave Ozen listening when you go to sleep.").performScrollTo().assertExists()
+        compose.onNodeWithText("Open Sounds at home").performScrollTo().performClick()
+        compose.onNodeWithText("Sound alerts").performScrollTo().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.soundAlerts.isEnabled }
+        compose.onNodeWithText("Back").performClick()
+        compose.onNodeWithText("Leave Ozen listening when you go to sleep, so it hears sounds like a smoke alarm.").performScrollTo().assertExists()
+        compose.onNodeWithText("Open Sounds at home").assertDoesNotExist()
+        compose.onNodeWithText("Back").performClick()
+        row("Alerts through the night", "All set")
+    }
+
+    @Test
+    fun theNightPageNamesEmergencyAlertsTurnedOffAndPutsNotificationsTurnedOffAboveTheSteps() {
+        val allowedBefore = AlertNotifier.allowed
+        val alarmsBefore = AlertNotifier.alarmsAllowed
+        AlertNotifier.allowed = { false }
+        AlertNotifier.alarmsAllowed = { false }
+        AlertNotifier.alarmsOverrideDoNotDisturb = { false }
+        app.settings.change {
+            it.notifyWhenInBackground = true
+            it.soundAlerts = SoundAlertPreferences.default
+        }
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Alerts through the night").performScrollTo().performClick()
+            compose.onNodeWithText("Ozen’s Emergency alerts are turned off in the phone. Turn them on, then let them override Do Not Disturb.").performScrollTo().assertExists()
+            val warning = compose.onNodeWithText("Ozen’s notifications are turned off in the phone’s settings", substring = true).performScrollTo().fetchSemanticsNode().positionInRoot.y
+            val firstStep = compose.onNodeWithText("Leave Ozen listening when you go to sleep, so it hears sounds like a smoke alarm.").fetchSemanticsNode().positionInRoot.y
+            assertTrue("warning $warning, first step $firstStep", warning < firstStep)
+            compose.onNodeWithText("Test that an alert arrives when the phone is locked").assertDoesNotExist()
+
+            AlertNotifier.alarmsAllowed = { true }
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("In Do Not Disturb, a smoke alarm may not wake you. Let Ozen’s Emergency alerts override it.").fetchSemanticsNodes().isNotEmpty() }
+        } finally {
+            AlertNotifier.allowed = allowedBefore
+            AlertNotifier.alarmsAllowed = alarmsBefore
+        }
+    }
+
+    @Test
     fun theAlertsThroughTheNightRowCountsWhatToCheckOpensItsPageAndSaysAllSetOnceBothAreDone() {
         val exempt = AtomicBoolean(false)
         val through = AtomicBoolean(false)
@@ -2133,11 +2195,16 @@ class SettingsScreenDeviceTest {
         NightAlerts.batteryExempt = { exempt.get() }
         NightAlerts.openBatteryList = { opened.incrementAndGet() }
         AlertNotifier.alarmsOverrideDoNotDisturb = { through.get() }
-        app.settings.change { it.notifyWhenInBackground = true }
+        app.settings.change {
+            it.notifyWhenInBackground = true
+            it.soundAlerts = SoundAlertPreferences.default
+        }
         compose.onNodeWithText("Settings").performClick()
         row("Alerts through the night", "2 to check")
         compose.onNodeWithText("Alerts through the night").performScrollTo().performClick()
-        compose.onNodeWithText("To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it.").performScrollTo().assertExists()
+        compose.onNodeWithText(
+            "To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it. In the list that opens, choose All apps at the top, find Ozen and choose Don’t optimize.",
+        ).performScrollTo().assertExists()
         compose.onNodeWithText("Open the battery list").performScrollTo().performClick()
         compose.waitUntil(5_000) { opened.get() == 1 }
         compose.onNodeWithText("On silent, alerts don’t vibrate either", substring = true).performScrollTo().assertExists()
@@ -2157,6 +2224,25 @@ class SettingsScreenDeviceTest {
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
         compose.waitUntil(5_000) { compose.onAllNodes(hasText("Alerts through the night") and hasText("1 to check")).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun eachStepOfAlertsThroughTheNightIsOneScreenReaderStopThatSaysItsStatusWithItsButtonApart() {
+        NightAlerts.batteryExempt = { false }
+        AlertNotifier.alarmsOverrideDoNotDisturb = { true }
+        app.settings.change { it.notifyWhenInBackground = true }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Alerts through the night").performScrollTo().performClick()
+        val battery = compose.onNode(
+            hasText("Battery") and hasText("To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it.") and hasStateDescription("Needs checking"),
+        )
+        battery.performScrollTo().assert(!hasClickAction())
+        compose.onNode(hasText("Open the battery list") and hasClickAction()).performScrollTo().assertExists()
+        compose.onNode(
+            hasText("Urgent sounds in Do Not Disturb") and hasText("Urgent sounds, like a smoke alarm, come through Do Not Disturb.") and hasStateDescription("Completed"),
+        ).performScrollTo().assertExists()
+        compose.onNodeWithContentDescription("Needs checking").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Completed").assertDoesNotExist()
     }
 
     @Test

@@ -70,8 +70,11 @@ class DiagnosticsScreenDeviceTest {
 
     @Test
     fun aKeptSoundTellsAScreenReaderThatActivatingItSharesItAndThatHoldingItOffersDelete() {
-        val store = ProblemAudioStore(File(app.filesDir, CaptionSession.PROBLEM_AUDIO_FOLDER))
-        store.deleteAll()
+        val folder = File(app.filesDir, CaptionSession.PROBLEM_AUDIO_FOLDER)
+        val aside = File(app.filesDir, "${CaptionSession.PROBLEM_AUDIO_FOLDER}-aside")
+        moveAll(aside, folder)
+        moveAll(folder, aside)
+        val store = ProblemAudioStore(folder)
         val clip = store.save(floatArrayOf(0.1f, 0.2f), 16_000, Instant.parse("2026-03-04T05:06:07Z"))!!
         val title = DiagnosticsReport.clipTitle(clip.name)
         try {
@@ -85,6 +88,19 @@ class DiagnosticsScreenDeviceTest {
             assertFalse(clip.exists())
         } finally {
             store.deleteAll()
+            moveAll(aside, folder)
+            aside.delete()
         }
+    }
+
+    /**
+     * The phone's own kept sounds wait in an aside folder while the test
+     * runs, so running it never deletes them; a run cut short leaves them
+     * there, and the next run moves them back first.
+     */
+    private fun moveAll(from: File, to: File) {
+        val files = from.listFiles() ?: return
+        to.mkdirs()
+        for (file in files) assertTrue("couldn't move ${file.name}", file.renameTo(File(to, file.name)))
     }
 }

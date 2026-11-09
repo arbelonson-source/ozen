@@ -42,6 +42,13 @@ private actor Gate {
     }
 }
 
+private final class Checks: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored = 0
+    var count: Int { lock.withLock { stored } }
+    func add() { lock.withLock { stored += 1 } }
+}
+
 private struct Failure: Error, Equatable {}
 
 private final class Heard: @unchecked Sendable {
@@ -53,6 +60,60 @@ private final class Heard: @unchecked Sendable {
 
 @Suite("DownloadCoordinator")
 struct DownloadCoordinatorTests {
+    @Test("the check stage reaches the caller that started the download and one that joined it, and ends with the download")
+    func checkingReachesEveryone() async throws {
+        let coordinator = DownloadCoordinator()
+        let url = URL(fileURLWithPath: "/tmp/ozen-test/model-check")
+        let runs = Counter()
+        let gate = Gate()
+        let starter = Checks()
+        let joiner = Checks()
+
+        async let first: URL = coordinator.run(for: url, progress: { _ in }, checking: { starter.add() }) { _, checking in
+            checking()
+            await runs.increment()
+            await gate.wait()
+            return url
+        }
+        await runs.waitUntilAtLeast(1)
+        #expect(await coordinator.isChecking(for: url))
+        async let second: URL = coordinator.run(for: url, progress: { _ in }, checking: { joiner.add() }) { _, _ in url }
+        while await coordinator.joinCount < 1 { await Task.yield() }
+        await gate.open()
+        _ = try await (first, second)
+
+        #expect(starter.count == 1)
+        #expect(joiner.count == 1)
+        #expect(await coordinator.isChecking(for: url) == false)
+    }
+
+    @Test("the bar moving again after the check, as the model compiles, ends the check stage")
+    func progressAfterCheckingEndsIt() async throws {
+        let coordinator = DownloadCoordinator()
+        let url = URL(fileURLWithPath: "/tmp/ozen-test/model-compile")
+        let runs = Counter()
+        let checked = Gate()
+        let gate = Gate()
+
+        async let done: URL = coordinator.run(for: url, progress: { _ in }, checking: {}) { report, checking in
+            checking()
+            await runs.increment()
+            await checked.wait()
+            report(0.96)
+            await runs.increment()
+            await gate.wait()
+            return url
+        }
+        await runs.waitUntilAtLeast(1)
+        #expect(await coordinator.isChecking(for: url))
+        await checked.open()
+        await runs.waitUntilAtLeast(2)
+        #expect(await coordinator.isChecking(for: url) == false)
+        #expect(await coordinator.progress(for: url) == 0.96)
+        await gate.open()
+        _ = try await done
+    }
+
     @Test("a second call for the same URL joins the first instead of running its own operation")
     func joinsInFlight() async throws {
         let coordinator = DownloadCoordinator()

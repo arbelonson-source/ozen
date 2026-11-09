@@ -1,8 +1,10 @@
 package com.arbelonson.ozen
 
 import androidx.activity.compose.setContent
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -42,5 +44,13 @@ class TranscribeDoneDeviceTest {
     fun aSaveThePhoneRefusedIsShownOnTheDonePageAndNotCalledSavingOff() {
         assertNotEquals(HistorySave.Off.message, HistorySave.Failed.message)
         noteAfter(HistorySave.Failed)
+    }
+
+    @Test
+    fun eachLineIsOneScreenReaderStopWithItsTimeAndItsWords() {
+        val model = FileModelChoice.toDownload(UILanguage.English)
+        val done = FileTranscription.Done("Lecture.wav", UILanguage.English, model, listOf(TranscribedLine(65.0, 67.0, "Good morning")), HistorySave.Off)
+        compose.runOnUiThread { compose.activity.setContent { TranscribeScreen(app.transcriber, done, onClose = {}) } }
+        compose.onNodeWithTag(TRANSCRIBE_LINE).assert(hasText("1:05") and hasText("Good morning", substring = true))
     }
 }

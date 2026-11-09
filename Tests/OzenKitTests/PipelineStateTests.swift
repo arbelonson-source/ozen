@@ -107,6 +107,10 @@ struct PipelineStateTests {
         let loading = EnginePreparationProgress(stage: .loadingModel, detail: "small")
         #expect(loading.isNews(after: shown, shownAt: 10, now: 10.1))
         #expect(!loading.isNews(after: loading, shownAt: 10, now: 50))
+        let full = EnginePreparationProgress(stage: .downloadingModel, fraction: 0.95, detail: "small")
+        let checking = EnginePreparationProgress(stage: .checkingModel, detail: "small")
+        #expect(checking.isNews(after: full, shownAt: 10, now: 10.1))
+        #expect(!checking.isNews(after: checking, shownAt: 10, now: 50))
     }
 
     @Test("caption lag counts only while a line is still being written")
