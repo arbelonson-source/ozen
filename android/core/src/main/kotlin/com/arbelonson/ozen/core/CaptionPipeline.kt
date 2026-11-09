@@ -2700,16 +2700,21 @@ class CaptionPipeline(
             // Counted on a clock that goes on while the phone sleeps, with
             // the processor kept up meanwhile (see `RetryWait`): a
             // coroutine's delay stops with the processor, and with the
-            // screen off a retry due in seconds came minutes late.
-            retryWait.wait(delaySeconds.seconds)
-            if (!isActive || retryToken != token || phase !is PipelinePhase.Failed) return@launch
-            // Detach from this task before retrying: `retry` cancels any
-            // scheduled retry, and cancelling the task it's running on
-            // would cancel the model download it's about to start.
-            retryTask = null
-            retryToken = null
-            scheduledRetry = null
-            retry()
+            // screen off a retry due in seconds came minutes late. It stays
+            // up until the retry has started the engine too: let go when
+            // the wait ended, the processor could sleep halfway through
+            // the connection or model load the retry begins.
+            retryWait.whileDue {
+                retryWait.wait(delaySeconds.seconds)
+                if (!isActive || retryToken != token || phase !is PipelinePhase.Failed) return@launch
+                // Detach from this task before retrying: `retry` cancels any
+                // scheduled retry, and cancelling the task it's running on
+                // would cancel the model download it's about to start.
+                retryTask = null
+                retryToken = null
+                scheduledRetry = null
+                retry()
+            }
         }
         listenForSoundsMeanwhile(failure)
     }

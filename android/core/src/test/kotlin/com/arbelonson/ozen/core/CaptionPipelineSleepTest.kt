@@ -99,6 +99,28 @@ class CaptionPipelineSleepTest {
     }
 
     @Test
+    fun `the processor stays up while the retry starts the engine, not only through the wait before it`() = runTest {
+        val asked = mutableListOf<Duration?>()
+        val engine = FakeEngine()
+        val captions = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { engine },
+            recovery = AutoRecoveryPolicy(glitchDelays = listOf(30.0), downloadDelays = emptyList()),
+            retryWait = RetryWait(sinceBoot = SleepingPhone(this).sinceBoot) { asked += it },
+        )
+        captions.start(AppSettings.default)
+        engine.endStream(throwing = TestError())
+        assertTrue(eventually { captions.scheduledRetry != null })
+        val gate = PrepareGate()
+        engine.prepareGate = gate
+        assertTrue(eventually(40.seconds) { engine.heldPrepares == 1 }, "the retry never reached the engine: ${captions.phase}")
+        assertEquals(listOf<Duration?>(30.seconds + RetryWait.AFTERWARDS), asked, "let go while the engine starts")
+        gate.open()
+        assertTrue(eventually { captions.phase.isListening })
+        assertEquals(listOf(30.seconds + RetryWait.AFTERWARDS, null), asked)
+    }
+
+    @Test
     fun `a home computer that wakes while the phone sleeps is asked at the first second the phone is awake, and captions start`() = runTest {
         val phone = SleepingPhone(this)
         val waiting = waitingFor(homeKind, RetryWait(sinceBoot = phone.sinceBoot))
