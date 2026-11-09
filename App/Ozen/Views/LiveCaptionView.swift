@@ -1283,6 +1283,7 @@ struct LiveCaptionView: View {
             followingLatest: isPinnedToBottom,
             hasLines: !viewModel.segments.isEmpty,
             voiceOverRunning: UIAccessibility.isVoiceOverRunning,
+            switchControlRunning: UIAccessibility.isSwitchControlRunning,
             pausedForCall: viewModel.isInterruptedBySystem,
             covered: isCoveredBySheet,
             lastTouchAt: lastTouchAt,

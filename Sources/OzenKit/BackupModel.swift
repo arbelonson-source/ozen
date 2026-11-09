@@ -45,4 +45,12 @@ public enum BackupModel {
         default: return false
         }
     }
+
+    public static func announces(_ status: BackupModelStatus, after previous: BackupModelStatus) -> Bool {
+        switch (status, previous) {
+        case (.notNeeded, _), (.missing, _), (_, .notNeeded): return false
+        case (.downloading, .downloading), (.notEnoughRoom, .notEnoughRoom): return false
+        default: return status != previous
+        }
+    }
 }

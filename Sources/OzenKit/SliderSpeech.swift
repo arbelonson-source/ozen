@@ -26,4 +26,20 @@ public enum SliderSpeech {
     public static func textSizeHint(in language: UILanguage) -> String {
         tr("החליקו למעלה להגדלה, ולמטה להקטנה.", "Swipe up for larger, down for smaller.", in: language)
     }
+
+    public static let speakerSeparationRange: ClosedRange<Float> = 0.2...0.95
+    public static let speakerSeparationStep: Float = 0.05
+
+    public static func speakerSeparation(_ threshold: Double, in language: UILanguage) -> String {
+        let usual = Double(AppSettings.default.speakerSimilarityThreshold)
+        let word: String
+        if threshold < usual - 0.005 {
+            word = tr("מאחד יותר", "More merging", in: language)
+        } else if threshold > usual + 0.005 {
+            word = tr("מפריד יותר", "More separating", in: language)
+        } else {
+            word = tr("רגיל", "Normal", in: language)
+        }
+        return "\(word), \(String(format: "%.2f", threshold))"
+    }
 }

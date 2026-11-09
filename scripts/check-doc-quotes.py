@@ -81,10 +81,59 @@ def stale_quotes(root):
     return stale
 
 
+# A type the code declares, in its own CamelCase name: "CaptionStabilizer"
+# in the README's list of what the app does tells its readers nothing.
+TYPE_NAME = re.compile(r"\b(?:struct|enum|class|actor|protocol)\s+([A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+)\b")
+
+
+def code_names_in_features(root):
+    names = set()
+    for path in glob.glob(f"{root}/App/**/*.swift", recursive=True) + glob.glob(f"{root}/Sources/**/*.swift", recursive=True):
+        with open(path, encoding="utf-8") as source:
+            names.update(TYPE_NAME.findall(source.read()))
+    with open(f"{root}/README.md", encoding="utf-8") as doc:
+        lines = doc.read().split("\n")
+    start = next(i for i, line in enumerate(lines) if line.startswith("## What it does"))
+    end = next((i for i, line in enumerate(lines) if i > start and line.startswith("## ")), len(lines))
+    return [f"{root}/README.md:{i + 1}: {word} is a name in the code, not a word for the reader"
+            for i in range(start, end) for word in re.findall(r"\b[A-Z]\w+\b", lines[i]) if word in names]
+
+
+# The walkthrough's pages, in the order OnboardingView shows them, against
+# the numbered list in getting-started.md: a page named by its title must
+# sit at the same number, and the count must match with and without the
+# one page that is sometimes left out.
+WORDS = {6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}
+
+
+def walkthrough_problems(root):
+    with open(f"{root}/App/Ozen/Views/OnboardingView.swift", encoding="utf-8") as source:
+        view = source.read()
+    steps = [step.strip() for step in re.search(r"private enum Step\b[^{]*\{\s*case ([\w, ]+)", view).group(1).split(",")]
+    titles = {normalized(title): step for step, title in re.findall(r'case \.(\w+): return tr\("[^"]*", "([^"]*)"', view)}
+    optional = re.search(r"\$0 != \.(\w+) \|\|", view).group(1)
+    path = f"{root}/docs/getting-started.md"
+    with open(path, encoding="utf-8") as doc:
+        section = doc.read().split("## The first launch", 1)[1].split("\n## ", 1)[0]
+    problems = []
+    items = re.findall(r"^(\d+)\. \*\*([^*]+?)\.?\*\*", section, re.MULTILINE)
+    if len(items) != len(steps):
+        problems.append(f"{path}: lists {len(items)} walkthrough pages, the app has {len(steps)}")
+    for number, label in items:
+        step = titles.get(normalized(label))
+        if step is not None and steps.index(step) + 1 != int(number):
+            problems.append(f"{path}: **{label}** is page {steps.index(step) + 1} in the app, not {number}")
+    flat = " ".join(section.split())
+    for phrase in [f"{WORDS.get(len(steps))} when", f"{WORDS.get(len(steps) - 1)} when", f"page {steps.index(optional) + 1} is left out"]:
+        if phrase not in flat:
+            problems.append(f"{path}: the first launch should say \"{phrase}\"")
+    return problems
+
+
 if __name__ == "__main__":
-    problems = stale_quotes(ROOT)
+    problems = stale_quotes(ROOT) + code_names_in_features(ROOT) + walkthrough_problems(ROOT)
     for problem in problems:
         print(problem)
     if problems:
-        print(f"{len(problems)} quoted message(s) or button name(s) in docs/ and README.md no longer match the app's wording")
+        print(f"{len(problems)} place(s) in docs/ and README.md no longer match the app")
     sys.exit(1 if problems else 0)

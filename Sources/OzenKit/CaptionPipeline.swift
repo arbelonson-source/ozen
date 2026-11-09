@@ -397,6 +397,7 @@ public final class CaptionPipeline {
     /// it then instead of showing "Listening" on nothing after the load.
     private var earlyCaptureRun: UUID?
     private var lastMicrophoneChangeRetryAt: TimeInterval?
+    private var lastSoundsOnlyRestartAt: TimeInterval?
     /// Free space on the phone in bytes, or nil when it can't be read.
     private let availableStorageBytes: (@Sendable () -> Int64?)?
 
@@ -2160,6 +2161,15 @@ public final class CaptionPipeline {
         pendingCover = onPhone == nil ? nil : failure
         phase = .failed(failure)
         logEvent(.failed(failure))
+        // After a microphone failure nothing listens for sounds and no
+        // cover takes over, so the session only kept other apps' music and
+        // podcasts silent, for hours of retries. Each retry takes it again.
+        switch kind {
+        case .microphonePermissionDenied, .audioSessionFailed, .noAudioInputs:
+            releaseAudioSession()
+        case .engineUnavailable, .transcriptionStopped:
+            break
+        }
         if let onPhone {
             Task { [weak self] in await self?.coverForCloud(with: onPhone, after: failure) }
             return
@@ -2683,13 +2693,63 @@ public final class CaptionPipeline {
         let run = runID
         var source = try? audio.startCapture()
         if source == nil {
-            guard await audio.requestPermission() == .granted, runID == run else { return }
+            guard await audio.requestPermission() == .granted else {
+                soundsOnlyFailedToStart(run: run)
+                return
+            }
+            guard runID == run else { return }
             let preferredInput = activeSettings?.preferredInputUID ?? audio.selectedInputUID
-            guard (try? await audio.prepareSession(preferredInputUID: preferredInput)) != nil, runID == run else { return }
+            let prepared = (try? await audio.prepareSession(preferredInputUID: preferredInput)) != nil
+            guard runID == run else {
+                if prepared { releaseSessionOfStoppedStart() }
+                return
+            }
+            guard prepared else {
+                soundsOnlyFailedToStart(run: run)
+                return
+            }
             source = try? audio.startCapture()
+            if source == nil {
+                soundsOnlyFailedToStart(run: run)
+                if runID == run, !soundsOnlyChosen { releaseSessionOfStoppedStart() }
+                return
+            }
         }
         guard let source else { return }
+        audio.onCaptureLost = { [weak self] in self?.soundsOnlyCaptureLost(run: run) }
         beginSoundsOnly(from: source)
+    }
+
+    /// Sounds-only that could not get the microphone (no permission, a
+    /// session the phone refused) is not on: left chosen, the battery watch
+    /// and the listening record counted a silent night as listened to. Kept
+    /// chosen during a call, whose end starts it again.
+    private func soundsOnlyFailedToStart(run: UUID) {
+        guard runID == run, !systemInterrupted else { return }
+        soundsOnlyChosen = false
+        onPhaseChange?(phase)
+    }
+
+    /// A microphone the phone gave up setting up again took the sound
+    /// alerts with it, while the screen still said they were on: nothing
+    /// else was listening for the loss, since captions were not running.
+    /// Capture starts once more; a second loss within
+    /// `microphoneChangeRetrySeconds` ends sounds-only, so the screen shows
+    /// it stopped instead of a loop of failing starts.
+    private func soundsOnlyCaptureLost(run: UUID) {
+        guard runID == run, isListeningForSoundsOnly, !systemInterrupted else { return }
+        stats.audioStalls += 1
+        logEvent(.microphoneStalled)
+        stopListeningForSounds()
+        let at = now()
+        if let last = lastSoundsOnlyRestartAt, at >= last, at - last < Self.microphoneChangeRetrySeconds {
+            soundsOnlyChosen = false
+            releaseSessionOfStoppedStart()
+            onPhaseChange?(phase)
+            return
+        }
+        lastSoundsOnlyRestartAt = at
+        Task { [weak self] in await self?.listenForSoundsOnly() }
     }
 
     /// Waiting for Wi-Fi or for room on the phone has no timer, but
@@ -2874,10 +2934,12 @@ public final class CaptionPipeline {
     /// silenced until Ozen is closed. Only after `tearDownSession()`, which
     /// stops capture first: the system refuses to end a session that still
     /// has audio running. Not inside `tearDownSession()` itself, which
-    /// `fail()`, `restart()` and `retry()` use too: a failure hands the live
-    /// session on to `listenForSoundsMeanwhile`, and a restart takes it
-    /// straight back. A voice sample being recorded holds the session until
-    /// it is done: the release waits for the end of the recording.
+    /// `fail()`, `restart()` and `retry()` use too: an engine failure hands
+    /// the live session on to `listenForSoundsMeanwhile` or to the phone's
+    /// own model covering, and a restart takes it straight back. `fail()`
+    /// releases it only for a microphone failure, which uses neither. A
+    /// voice sample being recorded holds the session until it is done: the
+    /// release waits for the end of the recording.
     private func releaseAudioSession() {
         guard !isRecordingVoice else {
             releaseAfterRecording = true

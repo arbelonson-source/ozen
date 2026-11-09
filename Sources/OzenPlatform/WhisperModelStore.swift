@@ -153,6 +153,12 @@ public struct WhisperModelStore: Sendable {
         await DownloadCoordinator.shared.progress(for: folder(for: variant))
     }
 
+    /// Whether a download of `variant` has fetched its last byte and is now
+    /// checking the files.
+    public func isChecking(variant: String) async -> Bool {
+        await DownloadCoordinator.shared.isChecking(for: folder(for: variant))
+    }
+
     /// Downloads (or resumes) a model, reporting 0…1 progress, and returns
     /// the folder to load from. Routed through `DownloadCoordinator` so two
     /// calls for the same variant, from two different `WhisperModelStore`
@@ -172,16 +178,18 @@ public struct WhisperModelStore: Sendable {
     public func download(
         variant: String,
         allowCellular: Bool = true,
+        checking: @escaping @Sendable () -> Void = {},
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> URL {
-        try await DownloadCoordinator.shared.run(for: folder(for: variant), progress: progress) { [self] report in
-            try await performDownload(variant: variant, allowCellular: allowCellular, progress: report)
+        try await DownloadCoordinator.shared.run(for: folder(for: variant), progress: progress, checking: checking) { [self] report, reportChecking in
+            try await performDownload(variant: variant, allowCellular: allowCellular, checking: reportChecking, progress: report)
         }
     }
 
     private func performDownload(
         variant: String,
         allowCellular: Bool,
+        checking: @escaping @Sendable () -> Void,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> URL {
         try prepareDownloadBase()
@@ -215,7 +223,7 @@ public struct WhisperModelStore: Sendable {
             // Compiling at the end takes a moment of its own, so the
             // download's share of the bar stops just short of full.
             _ = try await ReleaseModelDownloader(fetcher: URLSessionReleaseFileFetcher(allowsCellular: allowCellular))
-                .download(tag: tag, into: folder) { progress($0 * 0.95) }
+                .download(tag: tag, into: folder, checking: checking) { progress($0 * 0.95) }
             // The compile moves the bar on, one package at a time, rather
             // than leaving it on 95% for minutes like a stuck download.
             try await Self.compilePackages(in: folder) { progress(0.95 + $0 * 0.05) }

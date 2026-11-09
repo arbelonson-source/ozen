@@ -52,7 +52,6 @@ import com.arbelonson.ozen.ui.SettingSwitchRow
 import com.arbelonson.ozen.ui.SettingsGroup
 import java.util.Locale
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -235,7 +234,8 @@ private fun RenameSpeakerDialog(name: String, onRename: (String) -> Unit, onDism
 /**
  * As on the iPhone: the buzz when talk resumes, and how readily two
  * voices count as one person. The separation is kept when the slider is
- * let go, as two decimals, the steps it moves in.
+ * let go, on the nearest of its 0.05 stops, as the speech rate slider:
+ * a screen reader crosses it in 15 swipes, not 75.
  */
 @Composable
 internal fun BehaviourSection(buzzWhenTalkResumes: Boolean, onBuzz: (Boolean) -> Unit, separation: Float, onSeparation: (Float) -> Unit) {
@@ -257,9 +257,9 @@ internal fun BehaviourSection(buzzWhenTalkResumes: Boolean, onBuzz: (Boolean) ->
                 Slider(
                     value = shown,
                     onValueChange = { shown = it },
-                    onValueChangeFinished = { onSeparation((shown * 100).roundToInt() / 100f) },
-                    valueRange = 0.2f..0.95f,
-                    steps = 74,
+                    onValueChangeFinished = { onSeparation(SliderStops.speakerSeparation.kept(shown)) },
+                    valueRange = SliderStops.speakerSeparation.range,
+                    steps = SliderStops.speakerSeparation.steps,
                     modifier = Modifier.semantics {
                         contentDescription = label
                         stateDescription = value

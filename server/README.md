@@ -56,10 +56,13 @@ the first time) keeps starting it that way without asking again. The log is
   Windows calls private. Setup asks when it sees a public one (a `-Quiet`
   re-run only prints a warning); by hand: Settings → Network & internet → Wi-Fi (or
   Ethernet) → your network → Network profile type → Private network.
-- **Models won't load.** `C:\ozen\server.log` says so in plain words ("could
-  not load or run the speech models on the graphics card") and the server tries
-  again every minute. Close games or other programs using the card, or update
-  the NVIDIA driver.
+- **Models won't load.** When another program leaves the card short of memory,
+  the server loads the models in `int8_float16` instead of `float16`, which
+  takes about a third less of the card, and the log says "the speech models
+  run in int8_float16". If even that doesn't fit, `C:\ozen\server.log` says so
+  in plain words ("could not load or run the speech models on the graphics
+  card") and the server tries again every minute. Close games or other
+  programs using the card, or update the NVIDIA driver.
 
 ### Removing it
 
@@ -122,8 +125,9 @@ a computer that also runs games or other models, `--unload-after 15` loads
 them only when a phone connects and frees the card after 15 minutes with no
 phone connected. The phone hears back at once, and the first words come a
 few seconds late while the models load. Testing the connection from the
-phone starts the loading too. If the card is too full to load them, that
-phone uses its own model for the session, and the next one tries again.
+phone starts the loading too. If the card is too full to load them even in
+`int8_float16`, that phone uses its own model for the session, and the next
+one tries again.
 
 A phone set to another spoken language than Hebrew is captioned by the
 general Whisper Turbo model (`--general-model`, `large-v3-turbo` by

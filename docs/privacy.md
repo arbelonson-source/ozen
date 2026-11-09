@@ -23,11 +23,12 @@ phone itself, and Ozen has no analytics or usage-reporting code.
 
 Ozen does go online for a few things that are not your words:
 
-- To download a speech model, once. The files come from Argmax's model
-  site or from Ozen's own page on GitHub; on Android, from Ozen's page on
-  GitHub (Hebrew) or whisper.cpp's page on Hugging Face (the other
-  languages). Like any download, the site can see the phone's internet
-  address.
+- To download a speech model, once. On the iPhone and iPad the files come
+  from Ozen's own page on GitHub (the Hebrew models, prepared by Ozen) or from
+  Argmax's page on Hugging Face (Argmax makes the speech software the app
+  uses); on Android, from Ozen's page on GitHub (Hebrew) or whisper.cpp's
+  page on Hugging Face (the other languages). Like any download, the site
+  can see the phone's internet address.
 - To fetch the model's word list the first time a model loads. After that it
   is kept on the phone.
 - To ask a cloud service whether your key still works, if you use cloud
@@ -57,7 +58,7 @@ name shown on screen), the times, which model or service wrote it, which
 microphone was used, any stars and the title you gave it. The files are
 locked by the phone after a restart until the first unlock.
 
-**Save conversations** (lishmor shichot) in **History** (historia) turns saving
+**Save conversations** (shmirat shichot) in **History** (historia) turns saving
 on or off. It is on at first. With it off, new conversations are not saved;
 those saved earlier stay until you delete them.
 
@@ -111,7 +112,7 @@ The settings file holds the home computer's address, but not the code.
 | One saved speaker's voice prints | **Settings** (hagdarot), under **Saved speakers** (dovrim shmurim): swipe the name, then **Delete** |
 | One marked-problem clip | **Settings**, **Diagnostics** (avchun): swipe the clip |
 | Caption lines in the journal | **Diagnostics**: **Delete the caption lines kept here** (mechikat shurot ha-ktuviyot she-nishmeru kan). It shows only when there are some |
-| A cloud key | **Settings**, **Cloud transcription** (ha-timlul ba-anan): **Delete key** (mechikat ha-mafteach) |
+| A cloud key | **Settings**, **Cloud transcription** (timlul ba-anan): **Delete key** (mechikat ha-mafteach) |
 | The home computer's pairing code | **Settings**, **Home computer** (ha-machshev ba-bayit): **Delete code** (mechikat ha-kod) |
 | A speech model | **Settings**, the model screen |
 

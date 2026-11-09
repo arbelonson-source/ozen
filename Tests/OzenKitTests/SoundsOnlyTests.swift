@@ -8,7 +8,8 @@ private let pushed = [Float](repeating: 0.1, count: 1_024)
 private func makeSoundsPipeline(
     built: BuiltEngines = BuiltEngines(),
     detector: FakeSoundDetector = FakeSoundDetector(),
-    audio: FakeAudioCapturer = FakeAudioCapturer()
+    audio: FakeAudioCapturer = FakeAudioCapturer(),
+    now: @escaping @Sendable () -> TimeInterval = { Date().timeIntervalSince1970 }
 ) -> CaptionPipeline {
     CaptionPipeline(
         audio: audio,
@@ -19,7 +20,8 @@ private func makeSoundsPipeline(
         },
         embedder: FakeEmbedder(),
         soundDetector: detector,
-        recovery: .disabled
+        recovery: .disabled,
+        now: now
     )
 }
 
@@ -130,6 +132,67 @@ struct SoundsOnlyTests {
         await pipeline.listenForSoundsOnly()
         #expect(pipeline.phase.isListening)
         #expect(!pipeline.isListeningForSoundsOnly)
+    }
+
+    @Test("a microphone that can't be had leaves sounds-only off, not chosen with nothing listening")
+    func failedStartIsNotChosen() async {
+        for failure in ["permission", "session", "capture"] {
+            let audio = FakeAudioCapturer()
+            audio.requiresPreparedSession = true
+            switch failure {
+            case "permission": audio.permissionAnswer = .denied
+            case "session": audio.prepareError = NSError(domain: "AVAudioSession", code: 561_017_449)
+            default: audio.startError = NSError(domain: "FakeAudio", code: 3)
+            }
+            let pipeline = makeSoundsPipeline(audio: audio)
+            await pipeline.listenForSoundsOnly()
+            #expect(!pipeline.isListeningForSoundsOnly, Comment(rawValue: failure))
+            #expect(!pipeline.soundsOnlyChosen, Comment(rawValue: failure))
+            #expect(!BatteryAdvisor.watches(pipeline.phase, soundsOnly: pipeline.soundsOnlyChosen), Comment(rawValue: failure))
+        }
+    }
+
+    @Test("a session set up for sounds-only after it was given up with Stop is handed back")
+    func stoppedDuringSetupReleasesTheSession() async {
+        let audio = FakeAudioCapturer()
+        audio.requiresPreparedSession = true
+        audio.holdPrepare = true
+        let pipeline = makeSoundsPipeline(audio: audio)
+        let starting = Task { await pipeline.listenForSoundsOnly() }
+        #expect(await eventually { audio.isHoldingPrepare })
+        pipeline.stop()
+        let releasedBefore = audio.endSessionCalls
+        audio.releasePrepare()
+        await starting.value
+        #expect(!pipeline.isListeningForSoundsOnly)
+        #expect(audio.endSessionCalls == releasedBefore + 1)
+    }
+
+    @Test("a microphone lost during sounds-only is started again, and a second loss soon after ends it", .timeLimit(.minutes(1)))
+    func captureLostRestartsOnce() async {
+        for fromCaptions in [false, true] {
+            let clock = TestClock()
+            let audio = FakeAudioCapturer()
+            let pipeline = makeSoundsPipeline(audio: audio, now: { clock.now })
+            if fromCaptions { await pipeline.start(settings: .default) }
+            await pipeline.listenForSoundsOnly()
+            #expect(pipeline.isListeningForSoundsOnly, Comment(rawValue: "from captions \(fromCaptions)"))
+            let starts = audio.calls.filter { $0 == "startCapture" }.count
+
+            audio.onCaptureLost?()
+            #expect(pipeline.stats.audioStalls == 1, Comment(rawValue: "from captions \(fromCaptions)"))
+            #expect(await eventually { audio.calls.filter { $0 == "startCapture" }.count == starts + 1 && pipeline.isListeningForSoundsOnly },
+                    Comment(rawValue: "from captions \(fromCaptions)"))
+            #expect(pipeline.stats.soundDetectionRunning)
+
+            clock.advance(5)
+            audio.onCaptureLost?()
+            try? await Task.sleep(for: .milliseconds(100))
+            #expect(!pipeline.isListeningForSoundsOnly, Comment(rawValue: "from captions \(fromCaptions)"))
+            #expect(!pipeline.soundsOnlyChosen, Comment(rawValue: "from captions \(fromCaptions)"))
+            #expect(!pipeline.stats.soundDetectionRunning)
+            #expect(audio.calls.filter { $0 == "startCapture" }.count == starts + 1)
+        }
     }
 
     @Test("sounds-only counts as listening for the battery watch")
