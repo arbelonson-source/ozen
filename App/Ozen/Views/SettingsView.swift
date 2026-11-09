@@ -1227,9 +1227,11 @@ struct SettingsView: View {
                         .monospacedDigit()
                 }
                 .accessibilityHidden(true)
-                Slider(value: $viewModel.speakerSimilarityThreshold, in: 0.2...0.95, step: 0.01)
+                // Steps of 0.05 rather than 0.01: 15 swipes from end to
+                // end instead of 75, and the usual value is one of them.
+                Slider(value: $viewModel.speakerSimilarityThreshold, in: SliderSpeech.speakerSeparationRange, step: SliderSpeech.speakerSeparationStep)
                     .accessibilityLabel(tr("רגישות הפרדת דוברים", "Speaker separation sensitivity"))
-                    .accessibilityValue(String(format: "%.2f", viewModel.speakerSimilarityThreshold))
+                    .accessibilityValue(SliderSpeech.speakerSeparation(Double(viewModel.speakerSimilarityThreshold), in: Localization.language))
                     // The "more merging / more separating" ends are hidden
                     // from VoiceOver with the rest of the row's labels.
                     .accessibilityHint(tr("ערך נמוך מאחד קולות, וערך גבוה מפריד ביניהם.", "Lower merges voices, higher keeps them apart."))

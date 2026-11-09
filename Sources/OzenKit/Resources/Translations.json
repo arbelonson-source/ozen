@@ -1,5 +1,13 @@
 {
  "amharic": {
+  "Added: %1": "ተጨምሯል፦ %1",
+  "Fix added": "ማስተካከያው ተጨምሯል",
+  "Heard %1, written %2": "የተሰማው %1፣ የሚጻፈው %2",
+  "Marks the word to fix": "የሚስተካከለውን ቃል ይመርጣል",
+  "Recording, speak now": "በመቅረጽ ላይ፣ አሁን መናገር ይቻላል",
+  "Voice saved: %1": "ድምፁ ተቀምጧል፦ %1",
+  "Downloading the backup": "ምትኬውን በማውረድ ላይ",
+  "Recording turned into text. %1": "ቅጂው ወደ ጽሑፍ ተቀይሯል። %1",
   "Ozen closed while setting up the speech model": "ኦዜን የንግግር ሞዴሉን ሲያዘጋጅ ተዘጋ",
   "This phone may not have enough memory for %1. %2 (%3) is lighter.": "ይህ ስልክ ለ%1 በቂ ማህደረ ትውስታ ላይኖረው ይችላል። %2 (%3) ቀላል ነው።",
   " Conversations with a starred line or a name are always kept.": " ኮከብ ወይም ስም ያለበት መስመር ሁልጊዜ ይቀመጣል።",
@@ -1005,6 +1013,14 @@
   "Needs checking": "መፈተሽ ያስፈልጋል"
  },
  "arabic": {
+  "Added: %1": "أُضيف: %1",
+  "Fix added": "أُضيف التصحيح",
+  "Heard %1, written %2": "المسموع %1، المكتوب %2",
+  "Marks the word to fix": "يحدّد الكلمة المراد تصحيحها",
+  "Recording, speak now": "جارٍ التسجيل، يمكن التحدث الآن",
+  "Voice saved: %1": "تم حفظ الصوت: %1",
+  "Downloading the backup": "جارٍ تنزيل النسخة الاحتياطية",
+  "Recording turned into text. %1": "تم تحويل التسجيل إلى نص. %1",
   "Ozen closed while setting up the speech model": "أُغلق أوزن أثناء تجهيز نموذج الكلام",
   "This phone may not have enough memory for %1. %2 (%3) is lighter.": "قد لا يملك هذا الهاتف ذاكرة كافية لـ%1. النموذج %2 (%3) أخف.",
   " Conversations with a starred line or a name are always kept.": " المحادثات التي فيها سطر مميز بنجمة أو اسم تبقى محفوظة دائمًا.",
@@ -2010,6 +2026,14 @@
   "Needs checking": "يحتاج إلى تحقق"
  },
  "chineseSimplified": {
+  "Added: %1": "已添加：%1",
+  "Fix added": "已添加修正",
+  "Heard %1, written %2": "听到的：%1，写成：%2",
+  "Marks the word to fix": "选中要修正的词",
+  "Recording, speak now": "正在录音，现在可以说话了",
+  "Voice saved: %1": "已保存声音：%1",
+  "Downloading the backup": "正在下载备用模型",
+  "Recording turned into text. %1": "录音已转为文字。%1",
   "Ozen closed while setting up the speech model": "Ozen 在准备语音模型时关闭了",
   "This phone may not have enough memory for %1. %2 (%3) is lighter.": "这部手机的内存可能不足以运行 %1。%2（%3）更轻量。",
   " Conversations with a starred line or a name are always kept.": " 有星标或姓名的对话会一直保留。",
@@ -3015,6 +3039,14 @@
   "Needs checking": "需要检查"
  },
  "french": {
+  "Added: %1": "Ajouté : %1",
+  "Fix added": "Correction ajoutée",
+  "Heard %1, written %2": "Entendu %1, écrit %2",
+  "Marks the word to fix": "Sélectionne le mot à corriger",
+  "Recording, speak now": "Enregistrement en cours, vous pouvez parler",
+  "Voice saved: %1": "Voix enregistrée : %1",
+  "Downloading the backup": "Téléchargement de la copie de secours",
+  "Recording turned into text. %1": "Enregistrement transcrit. %1",
   "Ozen closed while setting up the speech model": "Ozen s’est fermé pendant la préparation du modèle vocal",
   "This phone may not have enough memory for %1. %2 (%3) is lighter.": "Ce téléphone n’a peut-être pas assez de mémoire pour %1. %2 (%3) est plus léger.",
   " Conversations with a starred line or a name are always kept.": " Les conversations avec une ligne marquée d’une étoile ou un nom sont toujours conservées.",
@@ -4020,6 +4052,14 @@
   "Needs checking": "À vérifier"
  },
  "german": {
+  "Added: %1": "Hinzugefügt: %1",
+  "Fix added": "Korrektur hinzugefügt",
+  "Heard %1, written %2": "Gehört %1, geschrieben %2",
+  "Marks the word to fix": "Markiert das Wort zum Korrigieren",
+  "Recording, speak now": "Aufnahme läuft, jetzt sprechen",
+  "Voice saved: %1": "Stimme gespeichert: %1",
+  "Downloading the backup": "Reserve wird geladen",
+  "Recording turned into text. %1": "Aufnahme in Text umgewandelt. %1",
   "Ozen closed while setting up the speech model": "Ozen wurde beim Vorbereiten des Sprachmodells beendet",
   "This phone may not have enough memory for %1. %2 (%3) is lighter.": "Dieses Telefon hat vielleicht nicht genug Speicher für %1. %2 (%3) ist leichter.",
   " Conversations with a starred line or a name are always kept.": " Gespräche mit einer markierten Zeile oder einem Namen bleiben immer erhalten.",
@@ -5025,6 +5065,14 @@
   "Needs checking": "Zu prüfen"
  },
  "hindi": {
+  "Added: %1": "जोड़ा गया: %1",
+  "Fix added": "सुधार जोड़ा गया",
+  "Heard %1, written %2": "सुना गया %1, लिखा जाएगा %2",
+  "Marks the word to fix": "सुधारने के लिए शब्द चुनता है",
+  "Recording, speak now": "रिकॉर्ड हो रहा है, अब बोलिए",
+  "Voice saved: %1": "आवाज़ सहेजी गई: %1",
+  "Downloading the backup": "बैकअप डाउनलोड हो रहा है",
+  "Recording turned into text. %1": "रिकॉर्डिंग लिखित रूप में बदल गई। %1",
   "Ozen closed while setting up the speech model": "स्पीच मॉडल तैयार करते समय Ozen बंद हो गया",
   "This phone may not have enough memory for %1. %2 (%3) is lighter.": "हो सकता है इस फ़ोन में %1 के लिए पर्याप्त मेमोरी न हो। %2 (%3) हल्का है।",
   " Conversations with a starred line or a name are always kept.": " जिस बातचीत में तारांकित लाइन या नाम हो, वह हमेशा रखी जाती है।",
@@ -6030,6 +6078,14 @@
   "Needs checking": "जाँचना है"
  },
  "portuguese": {
+  "Added: %1": "Adicionado: %1",
+  "Fix added": "Correção adicionada",
+  "Heard %1, written %2": "Ouvido %1, escrito %2",
+  "Marks the word to fix": "Seleciona a palavra a corrigir",
+  "Recording, speak now": "A gravar, já pode falar",
+  "Voice saved: %1": "Voz guardada: %1",
+  "Downloading the backup": "A descarregar a cópia de segurança",
+  "Recording turned into text. %1": "Gravação convertida em texto. %1",
   "Ozen closed while setting up the speech model": "O Ozen fechou ao preparar o modelo de fala",
   "This phone may not have enough memory for %1. %2 (%3) is lighter.": "Este telefone pode não ter memória suficiente para %1. %2 (%3) é mais leve.",
   " Conversations with a starred line or a name are always kept.": " As conversas com uma linha assinalada ou um nome são sempre mantidas.",
@@ -7035,6 +7091,14 @@
   "Needs checking": "A verificar"
  },
  "russian": {
+  "Added: %1": "Добавлено: %1",
+  "Fix added": "Исправление добавлено",
+  "Heard %1, written %2": "Услышано %1, пишется %2",
+  "Marks the word to fix": "Выбирает слово для исправления",
+  "Recording, speak now": "Идёт запись, можно говорить",
+  "Voice saved: %1": "Голос сохранён: %1",
+  "Downloading the backup": "Загрузка резервной модели",
+  "Recording turned into text. %1": "Запись преобразована в текст. %1",
   "Ozen closed while setting up the speech model": "Ozen закрылся при подготовке модели речи",
   "This phone may not have enough memory for %1. %2 (%3) is lighter.": "Возможно, в этом телефоне не хватает памяти для %1. %2 (%3) легче.",
   " Conversations with a starred line or a name are always kept.": " Разговоры с отмеченной строкой или именем всегда сохраняются.",
@@ -8040,6 +8104,14 @@
   "Needs checking": "Нужно проверить"
  },
  "spanish": {
+  "Added: %1": "Añadido: %1",
+  "Fix added": "Corrección añadida",
+  "Heard %1, written %2": "Oído %1, escrito %2",
+  "Marks the word to fix": "Marca la palabra que hay que corregir",
+  "Recording, speak now": "Grabando, ya se puede hablar",
+  "Voice saved: %1": "Voz guardada: %1",
+  "Downloading the backup": "Descargando la copia de respaldo",
+  "Recording turned into text. %1": "Grabación convertida en texto. %1",
   "Ozen closed while setting up the speech model": "Ozen se cerró mientras preparaba el modelo de voz",
   "This phone may not have enough memory for %1. %2 (%3) is lighter.": "Es posible que este teléfono no tenga memoria suficiente para %1. %2 (%3) es más ligero.",
   " Conversations with a starred line or a name are always kept.": " Las conversaciones con una línea marcada o un nombre siempre se conservan.",
@@ -9045,6 +9117,14 @@
   "Needs checking": "Por revisar"
  },
  "ukrainian": {
+  "Added: %1": "Додано: %1",
+  "Fix added": "Виправлення додано",
+  "Heard %1, written %2": "Почуто %1, пишеться %2",
+  "Marks the word to fix": "Вибирає слово для виправлення",
+  "Recording, speak now": "Іде запис, можна говорити",
+  "Voice saved: %1": "Голос збережено: %1",
+  "Downloading the backup": "Завантаження резервної моделі",
+  "Recording turned into text. %1": "Запис перетворено на текст. %1",
   "Ozen closed while setting up the speech model": "Ozen закрився під час підготовки моделі мовлення",
   "This phone may not have enough memory for %1. %2 (%3) is lighter.": "Можливо, у цьому телефоні не вистачає пам’яті для %1. %2 (%3) легша.",
   " Conversations with a starred line or a name are always kept.": " Розмови з позначеним рядком або іменем завжди зберігаються.",

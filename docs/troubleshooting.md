@@ -89,6 +89,8 @@ the same.
 - **The buttons at the bottom disappeared.** While captions run and follow
   the newest line, they slide away after a few seconds so they don't cover
   it. Touch the screen, or the small arrow at the bottom, to bring them back.
+  With VoiceOver or Switch Control on, they stay. Apps can't tell when Voice
+  Control is on, so with Voice Control, turn the setting below off.
   To keep them always: Settings → Display → "Hide the buttons while
   captions are running" (lehastir et ha-kaftorim) off.
 - **The orange microphone dot stays on while captions are stopped.** When

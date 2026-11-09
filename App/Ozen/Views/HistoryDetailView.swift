@@ -24,6 +24,9 @@ struct HistoryDetailView: View {
     @State private var hasLoaded = false
     /// The line this was opened at, lit up for a moment once scrolled to.
     @State private var arrivedLineID: UUID?
+    /// VoiceOver is moved onto a line jumped to; the flash alone left it
+    /// reading from where the jump was made.
+    @AccessibilityFocusState private var focusedLineID: UUID?
     @State private var confirmingDelete = false
     @State private var deleteError: String?
     @State private var renaming = false
@@ -52,6 +55,7 @@ struct HistoryDetailView: View {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, segment in
                 Button {
                     withAnimation(reduceMotion ? nil : .default) { proxy.scrollTo(segment.id, anchor: .center) }
+                    focusLine(segment.id)
                 } label: {
                     NumberLineLabel(
                         segment: segment,
@@ -102,6 +106,7 @@ struct HistoryDetailView: View {
                             languageCode: viewModel.settings.languageCode
                         )
                         .listRowBackground(isMatch || segment.id == arrivedLineID ? Color.yellow.opacity(0.3) : nil)
+                        .accessibilityFocused($focusedLineID, equals: segment.id)
                         .id(segment.id)
                         .contextMenu {
                             starButton(segment)
@@ -126,6 +131,7 @@ struct HistoryDetailView: View {
                 guard let target = isSearch ? matches.first : initialLineID else { return }
                 try? await Task.sleep(for: .milliseconds(150))
                 withAnimation(reduceMotion ? nil : .default) { proxy.scrollTo(target, anchor: .center) }
+                focusLine(target)
                 guard !isSearch else { return }
                 withAnimation { arrivedLineID = target }
                 try? await Task.sleep(for: .seconds(2))
@@ -134,6 +140,7 @@ struct HistoryDetailView: View {
             .onChange(of: scrollRequest) { _, _ in
                 guard matches.indices.contains(currentMatch) else { return }
                 withAnimation(reduceMotion ? nil : .default) { proxy.scrollTo(matches[currentMatch], anchor: .center) }
+                focusLine(matches[currentMatch])
             }
         }
     }
@@ -159,6 +166,15 @@ struct HistoryDetailView: View {
             } else {
                 Label(tr("סימון כחשובה", "Mark as important"), systemImage: "star")
             }
+        }
+    }
+
+    /// Waits for the scroll to bring the line on screen: a row the list
+    /// hasn't drawn yet can't take VoiceOver.
+    private func focusLine(_ id: UUID) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            focusedLineID = id
         }
     }
 

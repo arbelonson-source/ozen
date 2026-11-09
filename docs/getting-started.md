@@ -142,6 +142,8 @@ button to the last:
 
 When the captions follow the newest line, the buttons slide away after a
 few seconds so they never cover it. Touch the screen to bring them back.
+With VoiceOver or Switch Control on, they stay. With Voice Control, which
+apps can't detect, turn the setting below off.
 To keep them on screen, turn off **Hide the buttons while captions are
 running** (lehastir et ha-kaftorim bi-zman ha-azana) in Settings.
 
