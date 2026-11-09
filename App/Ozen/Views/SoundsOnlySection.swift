@@ -15,7 +15,7 @@ struct SoundsOnlySection: View {
                 .disabled(viewModel.isListeningForSoundsOnly)
                 .accessibilityIdentifier("soundsOnlyButton")
             } footer: {
-                Text(tr("ללילה: הכתוביות נעצרות ומודל הדיבור משוחרר, כך ש־iOS פחות צפוי לסגור את אוזן. ההתראות על צלילים ממשיכות להאזין.", "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening."))
+                Text(tr("ללילה: הכתוביות נעצרות ומודל הדיבור משתחרר מהזיכרון, כך שפחות סביר ש־iOS יסגור את אוזן. ההתראות על צלילים ממשיכות לפעול.", "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening."))
             }
         }
     }
