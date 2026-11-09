@@ -33,6 +33,35 @@ struct WordFixesTests {
         #expect(WordFixes.apply(rotem, to: "רותם") == "רותי")
     }
 
+    @Test("a fix on a two-letter word leaves longer words that end with it alone")
+    func twoLetterWordTakesNoPrefix() {
+        let lev = [fix("לב", "ליב")]
+        #expect(WordFixes.apply(lev, to: "כלב") == "כלב")
+        #expect(WordFixes.apply(lev, to: "שלב") == "שלב")
+        #expect(WordFixes.apply(lev, to: "לב") == "ליב")
+        #expect(WordFixes.apply([fix("גל", "גיל")], to: "מגל") == "מגל")
+        #expect(WordFixes.apply([fix("דוד", "דור")], to: "לדוד") == "לדור")
+    }
+
+    @Test("a phrase that starts with a two-letter word still keeps a prefix")
+    func twoLetterPhraseKeepsPrefix() {
+        let name = [fix("דן כהן", "דן כוהן")]
+        #expect(WordFixes.apply(name, to: "לדן כהן") == "לדן כוהן")
+        #expect(WordFixes.apply(name, to: "דן כהן") == "דן כוהן")
+    }
+
+    @Test("a fix for a number leaves a decimal and a time alone, and a hyphenated word is one word")
+    func wholeWordsKeepInnerPunctuation() {
+        #expect(WordFixes.apply([fix("5", "חמש")], to: "3.5") == "3.5")
+        #expect(WordFixes.apply([fix("30", "thirty")], to: "10:30") == "10:30")
+        #expect(WordFixes.apply([fix("5", "חמש")], to: "יש 5.") == "יש חמש.")
+        #expect(WordFixes.apply([fix("5", "חמש")], to: "ב5") == "ב5")
+        let mail = [fix("e-mail", "email")]
+        #expect(WordFixes.normalized(mail) == mail)
+        #expect(WordFixes.apply(mail, to: "my E-mail.") == "my email.")
+        #expect(WordFixes.apply([fix("mail", "post")], to: "my e-mail") == "my e-mail")
+    }
+
     @Test("a Hebrew prefix kept before Latin letters or a number takes a maqaf")
     func hebrewPrefixBeforeLatinTakesMaqaf() {
         let phone = [fix("אייפון", "iPhone")]
