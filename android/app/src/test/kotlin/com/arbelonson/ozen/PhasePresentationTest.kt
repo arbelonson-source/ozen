@@ -319,6 +319,20 @@ class PhasePresentationTest {
     }
 
     @Test
+    fun `the microphone taken away says a call or another app may have it, since either one pauses captions this way`() {
+        Localization.withLanguage(UILanguage.English) {
+            val presentation = present(PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit, interruptedBySystem = true)
+            assertEquals("Captions paused for a call or another app", presentation.title)
+            assertEquals("They’ll continue on their own once the microphone is free · Tap to try now", presentation.detail)
+        }
+        Localization.withLanguage(UILanguage.Hebrew) {
+            val presentation = present(PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit, interruptedBySystem = true)
+            assertEquals("הכתוביות מושהות בגלל שיחה או אפליקציה אחרת", presentation.title)
+            assertEquals("הכתוביות ימשיכו לבד כשהמיקרופון יתפנה · הקישו כדי לנסות עכשיו", presentation.detail)
+        }
+    }
+
+    @Test
     fun `a failure with a retry on the way says so and still lets her retry now`() {
         val presentation = present(
             PipelinePhase.Failed(PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, "")),

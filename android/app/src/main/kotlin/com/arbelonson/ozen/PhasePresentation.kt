@@ -172,8 +172,8 @@ class PhasePresentation private constructor(
                 // actually still going, the system just refuses again and the
                 // captions stay safely paused.
                 return PhasePresentation(
-                    title = tr("הכתוביות מושהות בגלל שיחה", "Captions paused for a call"),
-                    detail = tr("הכתוביות ימשיכו לבד כשהשיחה תסתיים · הקישו כדי לנסות עכשיו", "They’ll continue on their own when the call ends · Tap to try now"),
+                    title = tr("הכתוביות מושהות בגלל שיחה או אפליקציה אחרת", "Captions paused for a call or another app"),
+                    detail = tr("הכתוביות ימשיכו לבד כשהמיקרופון יתפנה · הקישו כדי לנסות עכשיו", "They’ll continue on their own once the microphone is free · Tap to try now"),
                     systemImage = "phone.fill",
                     tint = PhaseTint.Attention,
                     action = Action.Resume,

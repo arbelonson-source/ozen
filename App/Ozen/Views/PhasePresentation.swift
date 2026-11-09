@@ -72,8 +72,8 @@ struct PhasePresentation {
             // if the call is actually still going, iOS just refuses again
             // and she stays safely paused.
             self.init(
-                title: tr("הכתוביות מושהות בגלל שיחה", "Captions paused for a call"),
-                detail: tr("הכתוביות ימשיכו לבד כשהשיחה תסתיים · הקישו כדי לנסות עכשיו", "They’ll continue on their own when the call ends · Tap to try now"),
+                title: tr("הכתוביות מושהות בגלל שיחה או אפליקציה אחרת", "Captions paused for a call or another app"),
+                detail: tr("הכתוביות ימשיכו לבד כשהמיקרופון יתפנה · הקישו כדי לנסות עכשיו", "They’ll continue on their own once the microphone is free · Tap to try now"),
                 systemImage: "phone.fill",
                 tint: .orange,
                 action: .resume
