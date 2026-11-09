@@ -7,7 +7,7 @@
   "french": {
     "known": ["Sous-titres réalisés para la communauté d'Amara.org", "Sous-titres réalisés par la communauté d'Amara.org", "Sous-titres par la communauté d'Amara.org"],
     "ambiguous": ["Merci", "Merci beaucoup", "Merci à tous"],
-    "creditPrefixes": ["sous-titres réalisés", "sous-titres par", "sous-titrage"]
+    "creditPrefixes": ["sous-titres réalisés", "sous-titres par", "sous-titrage société radio-canada", "sous-titrage st' 501", "sous-titrage st 501", "sous-titrage mfp", "sous-titrage fr"]
   },
   "spanish": {
     "known": ["Subtítulos realizados por la comunidad de Amara.org", "Subtítulos por la comunidad de Amara.org"],

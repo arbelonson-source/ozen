@@ -360,6 +360,17 @@ class WhisperResultFilterTest {
     }
 
     @Test
+    fun `French subtitle credits that name who made them are dropped, an ordinary sentence opening with sous-titrage is kept`() {
+        val french = filter.forSpeech("fr")
+        assertFalse(french.accepts(segment("Sous-titrage Société Radio-Canada", logprob = -0.2f)))
+        assertFalse(french.accepts(segment("Sous-titrage ST' 501", logprob = -0.2f)))
+        assertFalse(french.accepts(segment("Sous-titrage MFP.", logprob = -0.2f)))
+        assertFalse(french.accepts(segment("Sous-titrage FR 2021", logprob = -0.2f)))
+        assertTrue(french.accepts(segment("Sous-titrage accessible aux malentendants", logprob = -0.2f)))
+        assertTrue(french.accepts(segment("Sous-titrage en direct pour la réunion", logprob = -0.2f)))
+    }
+
+    @Test
     fun `every spoken language beyond Hebrew and English has its own list in use`() {
         val lines = mapOf(
             "de" to "Untertitelung des ZDF",
@@ -486,6 +497,14 @@ class WhisperRepeatCollapseTest {
         assertEquals(repeated("5kg", 3), WhisperResultFilter.collapsingRepeats(repeated("5kg", 5)))
         assertEquals(repeated("5 לבוא", 3), WhisperResultFilter.collapsingRepeats(repeated("5 לבוא", 5)))
         assertEquals(repeated("5 לבוא", 3), WhisperResultFilter.collapsingRepeats(repeated("5 לבוא", 3)))
+    }
+
+    @Test
+    fun `an ordinal that reads like a prefixed counting word is a loop when repeated, cut to three`() {
+        assertEquals(repeated("השני", 3), WhisperResultFilter.collapsingRepeats(repeated("השני", 12)))
+        assertEquals(repeated("השנייה", 3), WhisperResultFilter.collapsingRepeats(repeated("השנייה", 8)))
+        assertEquals(repeated("בשני", 3), WhisperResultFilter.collapsingRepeats(repeated("בשני", 6)))
+        assertEquals(repeated("והשתיים", 6), WhisperResultFilter.collapsingRepeats(repeated("והשתיים", 6)))
     }
 
     @Test

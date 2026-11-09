@@ -1,7 +1,6 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.Localization
-import com.arbelonson.ozen.core.SpeechSynthesizing
 import com.arbelonson.ozen.core.UILanguage
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -15,33 +14,6 @@ import kotlinx.coroutines.test.runTest
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SpokenRepliesTest {
-    private class FakeVoice : SpeechSynthesizing {
-        override var isSpeaking = false
-        override var isBusy = false
-        override var hasHebrewVoice = true
-        override var onSpeakingChanged: ((Boolean) -> Unit)? = null
-        val said = mutableListOf<String>()
-        val rates = mutableListOf<Float>()
-
-        override fun refreshVoice() = Unit
-
-        override fun speak(text: String, rate: Float) {
-            said += text
-            rates += rate
-            isBusy = true
-            isSpeaking = true
-            onSpeakingChanged?.invoke(true)
-        }
-
-        override fun stop() = finish()
-
-        fun finish() {
-            isBusy = false
-            isSpeaking = false
-            onSpeakingChanged?.invoke(false)
-        }
-    }
-
     private class FakeCaptions : SpokenReplies.Captions {
         override var isListening = true
         override var isPaused = false

@@ -405,6 +405,17 @@ struct WhisperResultFilterTests {
         #expect(arabic.accepts(segment("شكرا على الهدية الجميلة", logprob: -0.2)))
     }
 
+    @Test("French subtitle credits that name who made them are dropped, an ordinary sentence opening with sous-titrage is kept")
+    func frenchSubtitlingCredits() {
+        let french = filter.forSpeech(in: "fr")
+        #expect(!french.accepts(segment("Sous-titrage Société Radio-Canada", logprob: -0.2)))
+        #expect(!french.accepts(segment("Sous-titrage ST' 501", logprob: -0.2)))
+        #expect(!french.accepts(segment("Sous-titrage MFP.", logprob: -0.2)))
+        #expect(!french.accepts(segment("Sous-titrage FR 2021", logprob: -0.2)))
+        #expect(french.accepts(segment("Sous-titrage accessible aux malentendants", logprob: -0.2)))
+        #expect(french.accepts(segment("Sous-titrage en direct pour la réunion", logprob: -0.2)))
+    }
+
     @Test("every spoken language beyond Hebrew and English has its own list in use")
     func everyLanguageListInUse() {
         let lines = [
@@ -531,6 +542,14 @@ struct WhisperRepeatCollapseTests {
         #expect(WhisperResultFilter.collapsingRepeats(repeated("5kg", 5)) == repeated("5kg", 3))
         #expect(WhisperResultFilter.collapsingRepeats(repeated("5 לבוא", 5)) == repeated("5 לבוא", 3))
         #expect(WhisperResultFilter.collapsingRepeats(repeated("5 לבוא", 3)) == repeated("5 לבוא", 3))
+    }
+
+    @Test("an ordinal that reads like a prefixed counting word is a loop when repeated, cut to three")
+    func ordinalRepeatsCut() {
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("השני", 12)) == repeated("השני", 3))
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("השנייה", 8)) == repeated("השנייה", 3))
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("בשני", 6)) == repeated("בשני", 3))
+        #expect(WhisperResultFilter.collapsingRepeats(repeated("והשתיים", 6)) == repeated("והשתיים", 6))
     }
 
     @Test("a run is only a number when every word in it is one: a bare dash among the digits makes it an ordinary repeat")

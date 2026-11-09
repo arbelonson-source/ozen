@@ -157,8 +157,12 @@ object NumberEmphasis {
 
     internal val prefixes: Set<String> = setOf("ו", "ב", "ל", "מ", "ה", "ש", "כ")
 
-    /** Whether [word] is a counting word, with or without prefixes attached. */
-    internal fun isNumberWord(word: String): Boolean = emphasisReading(word) != null
+    /**
+     * Whether [word] is a counting word, with or without prefixes attached.
+     * "hasheni" ("the second", "the other one") reads as "sheni" with a
+     * prefix, but it is an ordinal, so it isn't one.
+     */
+    internal fun isNumberWord(word: String): Boolean = emphasisReading(word) != null && word !in otherOneWords
 
     /** What an amount is usually of, said right after it. */
     internal val units: Set<String> = setOf(

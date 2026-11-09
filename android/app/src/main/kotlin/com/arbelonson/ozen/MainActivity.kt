@@ -1825,7 +1825,7 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: L
                 tr("החלפה", "Switch"),
                 color = colors.primary,
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.align(Alignment.End).clickable(onClick = onSwitch).testTag("model-fit-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+                modifier = Modifier.align(Alignment.End).clickable(role = Role.Button, onClick = onSwitch).testTag("model-fit-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
             )
         }
         BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, onDismiss)
