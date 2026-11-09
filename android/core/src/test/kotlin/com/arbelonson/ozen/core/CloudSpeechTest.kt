@@ -78,6 +78,18 @@ class CloudSpeechTest {
     }
 
     @Test
+    fun `one speaker's label written in another case is still the same speaker`() {
+        assertEquals(listOf("כן בטח", "לא"), CloudSpeech.turns("S1: כן\ns1: בטח\nS2: לא"))
+        assertEquals(listOf("yes sure"), CloudSpeech.turns("Speaker A: yes\nspeaker a: sure"))
+    }
+
+    @Test
+    fun `a speaker numbered in the hundreds is a label too`() {
+        assertEquals(listOf("כן", "לא"), CloudSpeech.turns("Speaker 100: כן\nSpeaker 101: לא"))
+        assertEquals(listOf("yes sure"), CloudSpeech.turns("SPEAKER_100: yes\nSPEAKER_100: sure"))
+    }
+
+    @Test
     fun `real words in parentheses stay in the line`() {
         assertEquals(listOf("I bank at (HSBC) now"), CloudSpeech.turns("I bank at (HSBC) now"))
         assertEquals(listOf("option (a) is fine"), CloudSpeech.turns("option (a) is fine"))

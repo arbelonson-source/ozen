@@ -81,6 +81,8 @@ public struct EnginePreparationProgress: Sendable, Equatable {
         case checkingSupport
         case requestingPermission
         case downloadingModel
+        /// The last byte is in and the file's checksum is being verified.
+        case checkingModel
         case loadingModel
         case warmingUp
     }

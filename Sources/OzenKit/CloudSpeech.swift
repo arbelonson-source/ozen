@@ -150,12 +150,12 @@ public enum CloudSpeech {
     /// filler lines taken out.
     public static func turns(in transcript: String, filter: WhisperResultFilter = WhisperResultFilter()) -> [String] {
         var turns: [String] = []
-        var lastLabel: Substring?
+        var lastLabel: String?
         for rawLine in transcript.split(whereSeparator: \.isNewline) {
             var line = Substring(rawLine).trimmingCharacters(in: .whitespaces)[...]
-            var label: Substring?
+            var label: String?
             if let match = line.firstMatch(of: speakerLabel) {
-                label = match.output.1 ?? match.output.2
+                label = (match.output.1 ?? match.output.2).map { $0.lowercased() }
                 line = line[match.range.upperBound...]
             }
             let text = WhisperResultFilter.collapsingRepeats(withoutAnnotations(String(line)))
@@ -179,7 +179,7 @@ public enum CloudSpeech {
     /// sentence that opens with a short word and a colon ("No:", "So:",
     /// "OK:") keeps its word, and never a colon before a digit, so a time
     /// like "10:30" keeps its hour.
-    private nonisolated(unsafe) static let speakerLabel = /^(?:(?:speaker|דוברת|דובר)[\s_]*([A-Za-z0-9]{1,2}|[א-ת])|([A-Za-z]\d?|\d{1,2}|[א-ת]))\s*[:：](?!\d)\s*/.ignoresCase()
+    private nonisolated(unsafe) static let speakerLabel = /^(?:(?:speaker|דוברת|דובר)[\s_]*(\d{1,3}|[A-Za-z0-9]{1,2}|[א-ת])|([A-Za-z]\d?|\d{1,2}|[א-ת]))\s*[:：](?!\d)\s*/.ignoresCase()
 
     /// Square and angle brackets hold only notes. Parentheses can hold real
     /// words ("(HSBC)", "(a)"), so there only a known sound note goes, alone

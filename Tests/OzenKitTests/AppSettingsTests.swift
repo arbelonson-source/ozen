@@ -293,8 +293,8 @@ struct AppSettingsTests {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let readme = try String(contentsOf: root.appendingPathComponent("README.md"), encoding: .utf8)
         let low = Int(DisplayPreferences.minimumFontSize), high = Int(DisplayPreferences.maximumFontSize)
-        #expect(readme.contains("Text from \(low) to \(high) pt"))
-        #expect(readme.contains("text size \(low)–\(high) pt"))
+        #expect(readme.contains("Text from \(low) to \(high) points"))
+        #expect(readme.contains("Text size \(low) to \(high) points"))
     }
 
     @Test("a pinch lands on a whole-point size inside the readable range")

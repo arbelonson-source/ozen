@@ -188,7 +188,7 @@ object CloudSpeech {
             var label: String? = null
             val match = speakerLabel.matcher(line)
             if (match.find()) {
-                label = match.group(1) ?: match.group(2)
+                label = (match.group(1) ?: match.group(2))?.lowercase()
                 line = line.substring(match.end())
             }
             val text = WhisperResultFilter.collapsingRepeats(withoutAnnotations(line))
@@ -218,7 +218,7 @@ object CloudSpeech {
      * like "10:30" keeps its hour.
      */
     private val speakerLabel: Pattern = unicodePattern(
-        "^(?:(?:speaker|דוברת|דובר)[\\s_]*([A-Za-z0-9]{1,2}|[א-ת])|([A-Za-z]\\d?|\\d{1,2}|[א-ת]))\\s*[:：](?!\\d)\\s*",
+        "^(?:(?:speaker|דוברת|דובר)[\\s_]*(\\d{1,3}|[A-Za-z0-9]{1,2}|[א-ת])|([A-Za-z]\\d?|\\d{1,2}|[א-ת]))\\s*[:：](?!\\d)\\s*",
         Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE,
     )
 

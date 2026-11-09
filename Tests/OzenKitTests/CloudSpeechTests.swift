@@ -67,6 +67,18 @@ struct CloudSpeechTests {
         #expect(CloudSpeech.turns(in: "S1: כן\nS2: לא") == ["כן", "לא"])
     }
 
+    @Test("one speaker's label written in another case is still the same speaker")
+    func labelCaseIsTheSameSpeaker() {
+        #expect(CloudSpeech.turns(in: "S1: כן\ns1: בטח\nS2: לא") == ["כן בטח", "לא"])
+        #expect(CloudSpeech.turns(in: "Speaker A: yes\nspeaker a: sure") == ["yes sure"])
+    }
+
+    @Test("a speaker numbered in the hundreds is a label too")
+    func threeDigitSpeakerNumbers() {
+        #expect(CloudSpeech.turns(in: "Speaker 100: כן\nSpeaker 101: לא") == ["כן", "לא"])
+        #expect(CloudSpeech.turns(in: "SPEAKER_100: yes\nSPEAKER_100: sure") == ["yes sure"])
+    }
+
     @Test("real words in parentheses stay in the line")
     func realWordsInParentheses() {
         #expect(CloudSpeech.turns(in: "I bank at (HSBC) now") == ["I bank at (HSBC) now"])

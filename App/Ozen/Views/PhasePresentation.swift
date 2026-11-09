@@ -198,6 +198,9 @@ struct PhasePresentation {
                 .compactMap { $0 }
                 .joined(separator: " · ")
             self.init(title: title, detail: detail, systemImage: "arrow.down.circle", tint: .yellow, progress: preparation.fraction, isBusy: true)
+        case .checkingModel:
+            let detail = [modelName, tr("השאירו את האפליקציה פתוחה", "Leave the app open")].compactMap { $0 }.joined(separator: " · ")
+            self.init(title: tr("בודקים את הקובץ…", "Checking the file…"), detail: detail, systemImage: "gearshape.2", tint: .yellow, isBusy: true)
         case .loadingModel where preparation.isFirstTime:
             self.init(title: tr("מתאימים את המודל לטלפון הזה", "Setting the model up for this phone"), detail: tr("זה עשוי לקחת כמה דקות", "It can take a few minutes") + " · " + tr("השאירו את האפליקציה פתוחה", "Leave the app open"), systemImage: "cpu", tint: .yellow, isBusy: true)
         case .loadingModel where preparation.isTakingLong:

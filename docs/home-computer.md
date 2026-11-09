@@ -1,7 +1,7 @@
 # Captions from a computer at home
 
 Ozen can use a computer at home to write the captions. The phone sends the
-sound there and gets the words back. It is optional. The phone works fine
+sound there and gets the words back. It is optional: the phone works fine
 on its own.
 
 ## What the home computer does
@@ -64,8 +64,8 @@ computer** (eich mechinim et ha-machshev ba-bayit).
    at the square, tap the Ozen link, and confirm. To see the square again
    later, open the Start menu and choose "Ozen - pair a phone".
 
-The first start downloads the speech model. Give it about 10 minutes
-before the first captions.
+The first time the server starts, it downloads the speech model, so allow
+about 10 more minutes before the first captions appear.
 
 The setup also makes a pairing code (a secret password, kept in
 `C:\ozen\pairing-code`), lets the phone through the Windows firewall on
@@ -85,7 +85,8 @@ bash setup.sh
 
 `setup.sh` installs everything into `~/ozen-server`, makes a pairing code
 once, prints it, and makes the QR page `pairing.html`. Scan it as in step 4.
-To start the server with the computer, the server README gives a small
+To start the server with the computer, the
+[server README](../server/README.md#starting-with-the-computer) gives a small
 service file and these commands (the last line makes it start at boot,
 before anyone signs in):
 
@@ -95,7 +96,8 @@ systemctl --user enable --now ozen-server
 sudo loginctl enable-linger "$USER"
 ```
 
-If the computer has a firewall switched on, the server README shows the rule
+If the computer has a firewall switched on, the
+[server README](../server/README.md#reaching-it-from-the-phone) shows the rule
 that lets the phone in.
 
 ## How the phone finds the computer
@@ -208,7 +210,7 @@ to be paired again. On Linux, restart the service afterwards.
 
 The speech models are not replaced by themselves. A newer version of a model
 is fetched only if you delete its folder (`models--...`) and restart the
-server. The server README says where the folders are.
+server. The [server README](../server/README.md) says where the folders are.
 
 ## Removing it
 
@@ -217,15 +219,37 @@ On the phone, in the **Home computer** (ha-machshev ba-bayit) section, tap
 phone's own speech recognition until the QR code is scanned again. You can
 also pick another engine under **Transcription engine** (manoa timlul).
 
-On a Windows computer, the server README lists the commands that remove
-the startup task, the firewall rule and the `C:\ozen` folder (run in
-PowerShell as administrator). Then delete "Ozen - pair a phone" from the
-Start menu, and uninstall Tailscale from Windows Settings, under Apps, if
-it was only there for Ozen.
+On a Windows computer, the [server README](../server/README.md#removing-it)
+lists the commands that remove the startup task, the firewall rule and the
+`C:\ozen` folder (run in PowerShell as administrator). Then delete "Ozen -
+pair a phone" from the Start menu, and uninstall Tailscale from Windows
+Settings, under Apps, if it was only there for Ozen.
 
-On Linux, stop and disable the service, then delete the `~/ozen-server`
-folder and the service file:
+On Linux, stop and disable the service, delete its service file and the
+`~/ozen-server` folder (the server, its pairing code, its certificate and any
+reports a phone sent), then let systemd forget the service:
 
 ```
 systemctl --user disable --now ozen-server
+rm ~/.config/systemd/user/ozen-server.service
+rm -r ~/ozen-server
+systemctl --user daemon-reload
 ```
+
+If you installed the server into another folder by setting `OZEN_HOME`,
+delete that folder instead of `~/ozen-server`.
+
+If nothing else on the computer needs to start at boot before anyone signs
+in, undo the last setup command too:
+
+```
+sudo loginctl disable-linger "$USER"
+```
+
+The speech models stay in `~/.cache/huggingface/hub`, in folders whose names
+start with `models--`. Delete the ones Ozen used, if nothing else uses them:
+`models--ivrit-ai--...` for the Hebrew models, and the general Whisper Turbo
+if a phone was set to another language. If you added a firewall rule for the
+phone, remove it as well, for example
+`sudo ufw delete allow from 192.168.1.0/24 to any port 8765 proto tcp` (and
+the same for port 8766).

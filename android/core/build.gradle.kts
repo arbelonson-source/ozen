@@ -32,4 +32,9 @@ tasks.test {
     useJUnitPlatform()
     systemProperty("ozen.fixtures", rootProject.file("../Tests/Fixtures").absolutePath)
     inputs.dir("../../Tests/Fixtures")
+    inputs.files(
+        "../../README.md",
+        fileTree("../../docs") { include("*.md") },
+        fileTree("../../server") { include("README.md", "*.py", "*.ps1", "*.cmd") },
+    )
 }

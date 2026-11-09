@@ -936,4 +936,15 @@ class PhoneModelChooserTest {
             other.join(10_000)
         }
     }
+
+    @Test
+    fun `opening the model page removes an unfinished download untouched for over a week and keeps a recent one`() {
+        have("ggml-large-v3-turbo-q5_0.bin.part")
+        have("ggml-small-q5_1.bin.part")
+        File(models, "ggml-large-v3-turbo-q5_0.bin.part").setLastModified(System.currentTimeMillis() - 8L * 24 * 60 * 60 * 1000)
+        chooser.refreshInstalled()
+        assertFalse(onPhone("ggml-large-v3-turbo-q5_0.bin.part"))
+        assertTrue(onPhone("ggml-small-q5_1.bin.part"))
+        assertEquals(setOf("ggml-small-q5_1.bin"), chooser.partial.value.keys)
+    }
 }
