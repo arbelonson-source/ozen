@@ -1943,6 +1943,7 @@ class CaptionPipeline(
                 confidence = incoming.confidence,
                 startsNewSpeakerTurn = incoming.startsNewSpeakerTurn,
                 uncertainWords = WordFixes.applyToUncertain(fixes, heardText, incoming.uncertainWords.map { HebrewText.removingDirectionMarks(it) }),
+                voicedChunks = incoming.voicedChunks,
             )
         }
         statsData.lastTokenAt = now()

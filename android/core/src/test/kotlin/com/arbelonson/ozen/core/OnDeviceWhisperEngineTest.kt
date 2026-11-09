@@ -190,6 +190,25 @@ class OnDeviceWhisperEngineTest {
     }
 
     @Test
+    fun a_line_carries_the_voiced_chunks_its_own_pass_heard_and_a_final_that_falls_back_to_the_shown_text_carries_none() = runTest {
+        val voiced = rig(scorer = { 0.9f })
+        val heard = voiced.stream(speech(2.0), silence(1.0), speech(1.0)).toList()
+        val firstLine = heard.filter { it.utteranceID == heard.first().utteranceID }
+        assertTrue(firstLine.all { (it.voicedChunks ?: 0) >= 2 }, firstLine.map { it.voicedChunks }.toString())
+        assertTrue(firstLine.last().isFinal)
+
+        val fallingBack = rig(scorer = { 0.9f })
+        var finals = 0
+        fallingBack.passes.reply = { call -> if (call.isFinal && finals++ == 0) emptyList() else hello }
+        val shown = fallingBack.stream(speech(2.0), silence(1.0), speech(1.0)).toList()
+        val first = shown.filter { it.utteranceID == shown.first().utteranceID }
+        assertEquals("hello there friend", first.last().text)
+        assertTrue(first.last().isFinal)
+        assertEquals(null, first.last().voicedChunks)
+        assertTrue(first.dropLast(1).all { (it.voicedChunks ?: 0) >= 2 }, first.map { it.voicedChunks }.toString())
+    }
+
+    @Test
     fun a_stretch_with_no_voice_is_still_finished_when_captions_are_stopping() = runTest {
         val rig = rig(scorer = { 0f })
         val tokens = rig.stream(speech(1.0)).toList()

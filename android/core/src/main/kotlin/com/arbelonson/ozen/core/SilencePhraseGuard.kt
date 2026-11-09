@@ -19,14 +19,14 @@ class SilencePhraseGuard(phrases: Set<String> = WhisperResultFilter.defaultAmbig
             shownPhraseLine = null
             return true
         }
-        val count = matched.size
-        if (token.utteranceID == shownPhraseLine && count == 1) {
+        val plausible = matched.size == 1 || isVoicedRepeat(matched, token.voicedChunks)
+        if (token.utteranceID == shownPhraseLine && plausible) {
             lastPhraseAt = time
             return true
         }
         val cameBack = lastPhraseAt?.let { time - it < QUIET_SECONDS } ?: false
         lastPhraseAt = time
-        if (count != 1 || cameBack) return false
+        if (!plausible || cameBack) return false
         shownPhraseLine = token.utteranceID
         return true
     }
@@ -52,9 +52,15 @@ class SilencePhraseGuard(phrases: Set<String> = WhisperResultFilter.defaultAmbig
 
     companion object {
         const val QUIET_SECONDS: Double = 15.0
+        const val MINIMUM_VOICED_CHUNKS_PER_PHRASE: Int = 2
 
         private val soundTags: Set<String> =
             setOf("מוזיקה", "שירה", "צחוק").map { WhisperResultFilter.normalize(it) }.toSet()
+
+        private fun isVoicedRepeat(matched: List<String>, voicedChunks: Int?): Boolean {
+            if (voicedChunks == null || matched.toSet().size != 1 || matched.first() in soundTags) return false
+            return voicedChunks >= MINIMUM_VOICED_CHUNKS_PER_PHRASE * matched.size
+        }
 
         private fun wordsOf(text: String): List<String> =
             WhisperResultFilter.normalize(text).split(" ").filter { it.isNotEmpty() }

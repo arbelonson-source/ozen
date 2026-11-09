@@ -2,6 +2,7 @@ import Foundation
 
 public struct SilencePhraseGuard: Sendable {
     public static let quietSeconds: TimeInterval = 15
+    static let minimumVoicedChunksPerPhrase = 2
 
     static let soundTags: Set<String> = Set(["מוזיקה", "שירה", "צחוק"].map(WhisperResultFilter.normalize))
 
@@ -24,16 +25,21 @@ public struct SilencePhraseGuard: Sendable {
             shownPhraseLine = nil
             return true
         }
-        let count = matched.count
-        if token.utteranceID == shownPhraseLine, count == 1 {
+        let plausible = matched.count == 1 || Self.isVoicedRepeat(matched, voicedChunks: token.voicedChunks)
+        if token.utteranceID == shownPhraseLine, plausible {
             lastPhraseAt = time
             return true
         }
         let cameBack = lastPhraseAt.map { time - $0 < Self.quietSeconds } ?? false
         lastPhraseAt = time
-        guard count == 1, !cameBack else { return false }
+        guard plausible, !cameBack else { return false }
         shownPhraseLine = token.utteranceID
         return true
+    }
+
+    private static func isVoicedRepeat(_ matched: [String], voicedChunks: Int?) -> Bool {
+        guard let voicedChunks, Set(matched).count == 1, let phrase = matched.first, !soundTags.contains(phrase) else { return false }
+        return voicedChunks >= minimumVoicedChunksPerPhrase * matched.count
     }
 
     private func phrases(in words: [Substring]) -> [String]? {

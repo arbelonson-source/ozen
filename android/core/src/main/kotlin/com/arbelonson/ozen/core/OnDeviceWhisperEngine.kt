@@ -505,10 +505,8 @@ class OnDeviceWhisperEngine(
             // A thank-you alone in a moment of voice is most likely
             // household noise (see `WhisperResultFilter.isUnvoicedPhrase`).
             // When captions stop, the last chunk may not be scored yet.
-            val dropped = ranOut || speechFilter.isUnvoicedPhrase(
-                speechFilter.acceptedText(summaries, echo),
-                if (status.finished) null else intake.voicedChunks(end),
-            )
+            val voicedChunks = if (status.finished) null else intake.voicedChunks(end)
+            val dropped = ranOut || speechFilter.isUnvoicedPhrase(speechFilter.acceptedText(summaries, echo), voicedChunks)
             // Confidence has to describe exactly the text being shown, not
             // the whole pass -- a rejected hallucination segment can have a
             // confident logprob of its own and skew the mean either way for
@@ -536,6 +534,7 @@ class OnDeviceWhisperEngine(
                         timestamp = wallClockSeconds(),
                         confidence = shownConfidence,
                         uncertainWords = if (text.isEmpty()) emptyList() else acceptedSegments.flatMap { it.uncertainWords },
+                        voicedChunks = if (text.isEmpty()) null else voicedChunks,
                     ),
                 )
                 lastShownText = shown
