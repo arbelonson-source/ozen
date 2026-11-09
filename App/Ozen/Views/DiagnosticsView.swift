@@ -38,14 +38,14 @@ struct DiagnosticsView: View {
     }
 
     private func reloadJournal() {
-        journalLines = viewModel.journal?.reportLines(utcOffsetAt: Self.utcOffset(at:)) ?? []
+        journalLines = viewModel.journal?.reportLines(utcOffsetAt: DiagnosticsReport.utcOffset(at:)) ?? []
         hasMarkedLines = viewModel.hasMarkedCaptionLines
     }
 
     var body: some View {
         Form {
             Section(tr("מצב", "Status")) {
-                DiagnosticsRow(tr("שלב", "Stage"), Self.describe(viewModel.phase))
+                DiagnosticsRow(tr("שלב", "Stage"), DiagnosticsReport.describe(viewModel.phase))
                 DiagnosticsRow(tr("מנוע פעיל", "Active engine"), viewModel.pipeline.activeEngineKind?.displayName ?? "—")
                 DiagnosticsRow(tr("מודל Whisper", "Whisper model"), identifier: "diagnosticsWhisperModel", viewModel.settings.whisperModelVariant)
                 DiagnosticsRow(tr("שפה", "Language"), viewModel.settings.languageCode)
@@ -98,11 +98,11 @@ struct DiagnosticsView: View {
                 DiagnosticsRow(tr("שמירת שיחות", "Conversation history save"), viewModel.historySaveFailure == nil ? tr("תקינה", "OK") : tr("נכשלה", "Failed"))
                 DiagnosticsRow(tr("התראות בטלפון", "Phone notifications"), notificationsText)
                 DiagnosticsRow(tr("רטט להתראות", "Alert vibration"), Self.vibrationText)
-                DiagnosticsRow(tr("חיבור לאינטרנט", "Internet connection"), Self.describe(viewModel.pipeline.networkConditions))
+                DiagnosticsRow(tr("חיבור לאינטרנט", "Internet connection"), DiagnosticsReport.describe(viewModel.pipeline.networkConditions))
             }
 
             Section {
-                let lines = viewModel.pipeline.eventLog.reportLines(utcOffsetAt: Self.utcOffset(at:))
+                let lines = viewModel.pipeline.eventLog.reportLines(utcOffsetAt: DiagnosticsReport.utcOffset(at:))
                 if lines.isEmpty {
                     Text(tr("עוד לא קרה כלום", "Nothing has happened yet"))
                         .foregroundStyle(.secondary)
@@ -178,8 +178,8 @@ struct DiagnosticsView: View {
             Section(tr("מכשיר", "Device")) {
                 DiagnosticsRow(tr("טמפרטורה", "Temperature"), Self.describe(ProcessInfo.processInfo.thermalState))
                 DiagnosticsRow(tr("מצב חיסכון בסוללה", "Low power mode"), ProcessInfo.processInfo.isLowPowerModeEnabled ? tr("פעיל", "On") : tr("כבוי", "Off"))
-                DiagnosticsRow(tr("סוללה", "Battery"), Self.batteryText)
-                DiagnosticsRow(tr("מקום פנוי", "Free space"), Self.freeSpaceText)
+                DiagnosticsRow(tr("סוללה", "Battery"), DiagnosticsReport.batteryText)
+                DiagnosticsRow(tr("מקום פנוי", "Free space"), DiagnosticsReport.freeSpaceText)
                 DiagnosticsRow(tr("זיכרון", "Memory"), Self.memoryText)
                 DiagnosticsRow(tr("דגם", "Model"), UIDevice.current.model)
                 DiagnosticsRow("iOS", UIDevice.current.systemVersion)
@@ -276,46 +276,13 @@ struct DiagnosticsView: View {
         return player.lastFailure == nil ? tr("תקין", "OK") : tr("נכשל, ולכן משתמשים ברטט רגיל", "Failed, using standard vibration instead")
     }
 
-    private static var batteryText: String {
-        let device = UIDevice.current
-        guard device.isBatteryMonitoringEnabled, device.batteryLevel >= 0 else { return "—" }
-        let plugged = device.batteryState == .charging || device.batteryState == .full
-        return "\(Int((device.batteryLevel * 100).rounded()))%\(plugged ? tr(" · בטעינה", " · charging") : "")"
-    }
-
-    private static func format(bytes: Int64) -> String {
-        ModelManagerView.format(bytes: bytes)
-    }
-
-    private var eventLines: String {
-        let lines = viewModel.pipeline.eventLog.reportLines(utcOffsetAt: Self.utcOffset(at:))
-        return lines.isEmpty ? "-" : lines.joined(separator: "\n")
-    }
-
-    private var journalText: String {
-        journalLines.isEmpty ? "-" : journalLines.joined(separator: "\n")
-    }
-
-    private static var utcOffsetSeconds: Int {
-        TimeZone.current.secondsFromGMT(for: Date())
-    }
-
-    private static func utcOffset(at time: TimeInterval) -> Int {
-        TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: time))
-    }
-
     /// "812 MB in use · 1.9 GB more": what the app uses, and how much more
     /// iOS lets it have before ending it.
     private static var memoryText: String {
         var parts: [String] = []
-        if let used = DeviceMemory.footprintBytes() { parts.append(tr("%1 בשימוש", "%1 in use", args: ["\(format(bytes: used))"])) }
-        if let left = DeviceMemory.availableBytes() { parts.append(tr("עוד %1", "%1 more", args: ["\(format(bytes: left))"])) }
+        if let used = DeviceMemory.footprintBytes() { parts.append(tr("%1 בשימוש", "%1 in use", args: ["\(DiagnosticsReport.format(bytes: used))"])) }
+        if let left = DeviceMemory.availableBytes() { parts.append(tr("עוד %1", "%1 more", args: ["\(DiagnosticsReport.format(bytes: left))"])) }
         return parts.isEmpty ? "—" : parts.joined(separator: " · ")
-    }
-
-    private static var freeSpaceText: String {
-        guard let bytes = DeviceStorage.availableBytes() else { return "—" }
-        return format(bytes: bytes)
     }
 
     static func describe(_ state: ModelFolderState) -> String {
@@ -337,42 +304,8 @@ struct DiagnosticsView: View {
         }
     }
 
-    /// The address only: the pairing code never goes into a report, just
-    /// whether one is saved.
-    private var appAndHomeServerLine: String {
-        let address = viewModel.settings.homeServerAddress
-        let homeServer = address.isEmpty ? "-" : "\(address) code saved: \(HomeServerCodeStore.hasKey)"
-        return "app language: \(viewModel.settings.appLanguage) showing: \(viewModel.uiLanguage) home server: \(homeServer)"
-    }
-
     private var report: String {
-        let stats = viewModel.stats
-        return """
-        Ozen diagnostics
-        phase: \(Self.describe(viewModel.phase))
-        failure: \(viewModel.phase.failure?.detail ?? "-")
-        engine: \(viewModel.pipeline.activeEngineKind?.rawValue ?? "-") chosen: \(viewModel.settings.engine.rawValue) covering for cloud: \(viewModel.pipeline.isCoveringForCloud) model: \(viewModel.settings.whisperModelVariant) lang: \(viewModel.settings.languageCode)
-        \(appAndHomeServerLine)
-        input: \(viewModel.selectedInput?.portName ?? "-") chosen: \(Self.chosenInputText(viewModel)) of \(viewModel.availableInputs.map { "\($0.portName) [\($0.portType.rawValue)]" }.joined(separator: ", "))
-        audio chunks: \(stats.audioChunksReceived) seconds: \(String(format: "%.1f", stats.audioSecondsReceived)) input changes: \(stats.inputChanges) stalls: \(stats.audioStalls) damaged: \(stats.glitchedAudioChunks)
-        levels: \(stats.inputLevels.summary ?? "-") speech: \(stats.speechShare.map { String(format: "%.1f%%", $0 * 100) } ?? "-") floor: \(stats.noiseFloorDecibels.map { String(format: "%.1f", $0) } ?? "-") margin: \(stats.noiseMarginDecibels.map { String(format: "%.1f dB", $0) } ?? "-")
-        tokens: \(stats.tokensReceived) committed: \(stats.segmentsCommitted) on screen: \(viewModel.segments.count) lag: \(stats.captionLagSeconds.map { String(format: "%.2f", $0) } ?? "-")
-        restarts: \(stats.engineRestarts) clusters: \(viewModel.pipeline.speakerClusters.count) opened: \(stats.speakerClustersOpened)
-        retry: \(viewModel.pipeline.scheduledRetry.map { "attempt \($0.attempt)" } ?? "-") interrupted: \(viewModel.isInterruptedBySystem) sound detection: \(viewModel.stats.soundDetectionRunning)
-        sounds heard below the alert level: \(viewModel.pipeline.soundNearMisses.reportLine(utcOffsetSeconds: Self.utcOffsetSeconds) ?? "-")
-        alerts: sounds \(viewModel.settings.soundAlerts.isEnabled) from \(viewModel.settings.soundAlerts.minimumImportance) muted \(viewModel.settings.soundAlerts.mutedIdentifiers.count) fainter \(viewModel.settings.soundAlerts.sensitiveIdentifiers.count) words on \(viewModel.settings.keywordAlerts.filter(\.isEnabled).count) of \(viewModel.settings.keywordAlerts.count) when away: \(viewModel.settings.notifyWhenInBackground) buzz on speech: \(viewModel.settings.hapticOnSpeechResume)
-        history: saving \(viewModel.settings.saveHistory) keep \(viewModel.settings.historyRetention) speakers saved \(viewModel.settings.speakerProfiles.count) separation \(String(format: "%.2f", viewModel.settings.speakerSimilarityThreshold)) display: size \(Int(viewModel.display.fontSize)) theme \(viewModel.display.theme.rawValue) awake \(viewModel.display.keepScreenAwake)
-        lock screen: setting \(viewModel.display.lockScreenCaptions) allowed by iOS: \(viewModel.lockScreenCaptionsAllowedBySystem) showing: \(viewModel.lockScreenCaptionsShowing) last refused: \(viewModel.lockScreenCaptionsLastStartFailure ?? "-")
-        settings save error: \(viewModel.settingsSaveError ?? "-") history save error: \(viewModel.historySaveFailure ?? "-") notifications allowed: \(notificationsAllowed.map { $0 ? "yes" : "no" } ?? "not asked") notification error: \(AlertNotifier.shared.lastFailure ?? "-") haptics: \(AlertHapticPlayer.shared.supportsHaptics ? (AlertHapticPlayer.shared.lastFailure ?? "ok") : "unsupported") network: \(Self.describe(viewModel.pipeline.networkConditions)) cellular downloads: \(viewModel.allowCellularModelDownload)
-        model state: \(String(describing: modelState)) tokenizer cached: \(store.hasCachedTokenizer()) vocabulary: \(viewModel.vocabulary.count)
-        thermal: \(ProcessInfo.processInfo.thermalState.rawValue) low power: \(ProcessInfo.processInfo.isLowPowerModeEnabled) battery: \(Self.batteryText) free space: \(Self.freeSpaceText)
-        memory: used \(DeviceMemory.footprintBytes().map(Self.format(bytes:)) ?? "-") left \(DeviceMemory.availableBytes().map(Self.format(bytes:)) ?? "-")
-        device: \(UIDevice.current.model) iOS \(UIDevice.current.systemVersion) app \(SettingsView.versionString) install expires: \(InstallExpiryStatus.shared.expiresAt.map { $0.formatted(inAppLanguage: .abbreviated, time: .shortened) } ?? "-")
-        events (oldest first):
-        \(eventLines)
-        journal, previous runs included (oldest first):
-        \(journalText)
-        """
+        DiagnosticsReport(viewModel: viewModel, journalLines: journalLines, notificationsAllowed: notificationsAllowed, modelState: modelState, tokenizerCached: store.hasCachedTokenizer()).text
     }
 
     /// Alert sounds the classifier heard, but not surely enough to alert:
@@ -398,43 +331,12 @@ struct DiagnosticsView: View {
 
     /// The quiet, middle and loud ends of what the microphone heard, in
     /// Hebrew reading order: quiet first.
-    /// Whether the microphone she picked is the one recording: "-" when
-    /// she never picked one, "away" when it is not connected.
-    @MainActor
-    static func chosenInputText(_ viewModel: LiveCaptionViewModel) -> String {
-        guard let chosen = viewModel.settings.preferredInputUID else { return "-" }
-        guard let input = viewModel.availableInputs.first(where: { $0.uid == chosen }) else { return "away" }
-        return input.uid == viewModel.selectedInputUID ? "\(input.portName) (recording)" : "\(input.portName) (here, not recording)"
-    }
-
     static func levelsText(_ levels: AudioLevelHistogram) -> String {
         guard let quiet = levels.decibels(atFraction: 0.1),
               let middle = levels.decibels(atFraction: 0.5),
               let loud = levels.decibels(atFraction: 0.9)
         else { return "—" }
         return tr("שקט %1 · בינוני %2 · חזק %3", "quiet %1 · mid %2 · loud %3", args: ["\(quiet)", "\(middle)", "\(loud)"])
-    }
-
-    static func describe(_ network: NetworkConditions?) -> String {
-        guard let network else { return "—" }
-        guard network.isConnected else { return tr("אין חיבור", "No connection") }
-        var parts = [network.isExpensive ? tr("סלולרי", "Cellular") : "Wi-Fi"]
-        if network.isConstrained { parts.append(tr("חיסכון בנתונים", "Data saving")) }
-        return parts.joined(separator: " · ")
-    }
-
-    static func describe(_ phase: PipelinePhase) -> String {
-        switch phase {
-        case .idle: return "idle"
-        case .requestingMicrophonePermission: return "requesting mic permission"
-        case .preparingEngine(let progress):
-            let fraction = progress.fraction.map { String(format: " %.0f%%", $0 * 100) } ?? ""
-            return "preparing engine: \(progress.stage.rawValue)\(fraction) \(progress.detail ?? "")"
-        case .startingAudio: return "starting audio"
-        case .listening: return "listening"
-        case .paused: return "paused"
-        case .failed(let failure): return "failed: \(failure.kind.rawValue)"
-        }
     }
 }
 

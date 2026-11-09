@@ -608,12 +608,12 @@ struct LiveCaptionView: View {
                     .alertOverlay(for: viewModel)
                     .pageSized()
             }
-            .alert(tr("הבעיה סומנה", "Problem marked"), isPresented: $showingProblemMarked) {
-                Button(tr("אישור", "OK"), role: .cancel) {}
-            } message: {
-                Text(viewModel.problemKeptSound
-                    ? tr("פרטי התקלה, השורות האחרונות ו־30 השניות האחרונות של הקול נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לכם: הגדרות ← אבחון.", "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.")
-                    : tr("פרטי התקלה והשורות האחרונות נשמרו בטלפון בלבד. כדי לשלוח אותם למי שעוזר לכם: הגדרות ← אבחון ← שליחת הדוח.", "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report."))
+            // A sheet rather than an alert: an alert can't hold the share
+            // button that sends the report to whoever helps her.
+            .sheet(isPresented: $showingProblemMarked) {
+                ProblemMarkedSheet(viewModel: viewModel)
+                    .alertOverlay(for: viewModel)
+                    .pageSized()
             }
     }
 

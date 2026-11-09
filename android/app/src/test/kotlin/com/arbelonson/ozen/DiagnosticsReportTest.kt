@@ -98,6 +98,15 @@ class DiagnosticsReportTest {
     }
 
     @Test
+    fun `the report sent from the caption screen is its own line on top of the diagnostics report, which stays as it was`() {
+        val line = "Ozen on this phone: a captions problem was marked at 14:02."
+        val journal = listOf("10-10 21:40:03 PROBLEM MARKED: engine whisperKit")
+        val report = helperReport(line, facts(journal = journal))
+        assertEquals(line, report.lines().first())
+        assertEquals(DiagnosticsReport.text(facts(journal = journal)), report.substringAfter("\n"))
+    }
+
+    @Test
     fun `the report says what runs, what failed and what happened, oldest first`() {
         val settings = AppSettings.default.copy().apply {
             engine = TranscriptionEngineKind.WhisperKit

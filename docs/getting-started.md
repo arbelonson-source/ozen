@@ -192,7 +192,10 @@ Press and hold a line to open its menu:
 - **Copy** (ha'atakah) copies the line.
 - **Captions not good? Mark a problem** (ha-ktuviyot lo tovot? lesamen
   be'aya) saves the details on the phone, so that whoever helps you can see
-  them. See [Troubleshooting](troubleshooting.md).
+  them. Its message has a **Send to whoever helps you** (shlicha le-mi
+  she-ozer lachem) button that opens the share sheet with the diagnostics
+  report; nothing is sent until you pick a contact or an app there. See
+  [Troubleshooting](troubleshooting.md).
 
 Speaker names can be turned on or off with **Show speaker names** (lehatzig
 shemot dovrim) in Settings.

@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -588,7 +589,8 @@ class CaptionScreenDeviceTest {
         lineText("The bus leaves at noon").performTouchInput { longClick() }
         compose.onNodeWithText(problem).performClick()
         compose.onNodeWithText("Problem marked").assertExists()
-        compose.onNodeWithText("The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.").assertExists()
+        compose.onNodeWithText("The problem's details and the last few lines were saved, on the phone only.").assertExists()
+        compose.onNodeWithText("Send to whoever helps you").assertHasClickAction()
         assertEquals(1, marks())
         compose.onNodeWithText("OK").performClick()
         compose.onNodeWithText("Problem marked").assertDoesNotExist()
@@ -611,6 +613,7 @@ class CaptionScreenDeviceTest {
         compose.waitUntil(5_000) { first.isDestroyed }
         compose.waitForIdle()
         compose.onNodeWithText("Problem marked").assertExists()
+        compose.onNodeWithText("Send to whoever helps you").assertHasClickAction()
         compose.onNodeWithText("OK").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Problem marked").fetchSemanticsNodes().isEmpty() }
         compose.onNodeWithText("Problem marked").assertDoesNotExist()
