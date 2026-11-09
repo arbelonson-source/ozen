@@ -90,6 +90,29 @@ class PhoneModelEstimateTest {
     }
 
     @Test
+    fun `without a speed figure a phone whose memory is known is recommended the best model that memory holds`() {
+        assertEquals("ggml-small-q5_1.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, null, 1_500_000_000).file)
+        assertEquals("ggml-small-q5_1.bin", PhoneModelEstimate.recommend(UILanguage.English, null, 1_500_000_000).file)
+        assertEquals("ggml-small-q5_1.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, Double.NaN, 1_500_000_000).file)
+        assertEquals("ggml-small-q5_1.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, 0.0, 1_500_000_000).file)
+    }
+
+    @Test
+    fun `without a speed figure a phone whose memory holds not even Base is recommended Base, the lightest`() {
+        val base = model("base")
+        assertEquals(base.file, PhoneModelEstimate.recommend(UILanguage.Hebrew, null, base.comfortableRamBytes - 1).file)
+        assertEquals(base.file, PhoneModelEstimate.recommend(UILanguage.English, null, 100_000_000).file)
+    }
+
+    @Test
+    fun `without a speed figure a 2 GB phone keeps the best model, as the 2 GB test emulator runs it, and a roomy phone is not sent the bigger file of the same quality`() {
+        assertEquals("ggml-ozen-a3-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, null, 1_900_000_000).file)
+        assertEquals("ggml-large-v3-turbo-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.English, null, 1_900_000_000).file)
+        assertEquals("ggml-ozen-a3-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.Hebrew, null, 8_000_000_000).file)
+        assertEquals("ggml-large-v3-turbo-q5_0.bin", PhoneModelEstimate.recommend(UILanguage.English, null, 8_000_000_000).file)
+    }
+
+    @Test
     fun `on the test emulator, measured at 77 GFLOPS, the estimate agrees within a tenth with the real pass of each model`() {
         val measured = mapOf("ggml-ozen-a3-q5_0.bin" to 6.23, "ggml-large-v3-turbo-q5_0.bin" to 6.20, "ggml-small-q5_1.bin" to 1.01, "ggml-base-q5_1.bin" to 0.26)
         for ((file, seconds) in measured) {

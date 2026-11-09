@@ -56,7 +56,7 @@ import com.arbelonson.ozen.ui.TonalButton
 import kotlinx.coroutines.launch
 
 internal fun recommendedPhoneModel(language: UILanguage, measuredGflops: Double?, memory: Long?): PhoneModel =
-    measuredGflops?.let { PhoneModelEstimate.recommend(language, it, memory) } ?: PhoneModelCatalog.recommended(language)
+    PhoneModelEstimate.recommend(language, measuredGflops, memory)
 
 @Composable
 internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, chooseBestAfterTest: Boolean) {

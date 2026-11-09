@@ -139,9 +139,14 @@ object PhoneModelEstimate {
      * never answered, with the Turbo-sized model. A phone at half the speed
      * of a Snapdragon 8 Gen 3 (about 125 GFLOPS here) must therefore land
      * on Small or Base, not on Turbo.
+     *
+     * Without a speed figure (the phone test failed or never ran) a phone
+     * whose memory is known still gets a model that memory holds: the most
+     * accurate one, ties going to the smaller file, or the smallest file
+     * when none fits. With neither figure the catalog's choice stands.
      */
     fun recommend(language: UILanguage, measuredGflops: Double?, totalMemoryBytes: Long? = null): PhoneModel {
-        if (measuredGflops == null || !(measuredGflops > 0)) return PhoneModelCatalog.recommended(language)
+        if (measuredGflops == null || !(measuredGflops > 0)) return heldBy(language, totalMemoryBytes)
         val offered = PhoneModelCatalog.offered(language)
         for (wanted in listOf(PhoneModelFit.KeepsUp, PhoneModelFit.ALittleBehind)) {
             offered.filter { fit(it, measuredGflops, totalMemoryBytes) == wanted }
@@ -149,6 +154,14 @@ object PhoneModelEstimate {
                 ?.let { return it }
         }
         return offered.minBy { it.passGflop }
+    }
+
+    private fun heldBy(language: UILanguage, totalMemoryBytes: Long?): PhoneModel {
+        if (totalMemoryBytes == null) return PhoneModelCatalog.recommended(language)
+        val offered = PhoneModelCatalog.offered(language)
+        return offered.filter { it.comfortableRamBytes <= totalMemoryBytes }
+            .maxWithOrNull(compareBy<PhoneModel> { it.quality(language) }.thenBy { -it.bytes })
+            ?: offered.minBy { it.bytes }
     }
 
     /** At or below this quality a model makes many mistakes in the language ("Small" and "Base" in Hebrew, "Base" in others). */
