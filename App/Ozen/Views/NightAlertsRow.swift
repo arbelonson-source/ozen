@@ -5,15 +5,16 @@ import OzenKit
 struct NightAlertsRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
+    @Binding var ozenAlerts: Bool
     @State private var access = NightAlertsAccess()
 
     private var value: String {
-        access.summary == .allSet ? tr("הכול מוכן", "All set") : tr("בדקו את ההתראות", "Check notifications")
+        access.summary(ozenAlerts: ozenAlerts) == .allSet ? tr("הכול מוכן", "All set") : tr("בדקו את ההתראות", "Check notifications")
     }
 
     var body: some View {
         NavigationLink {
-            NightAlertsView(access: $access)
+            NightAlertsView(access: $access, ozenAlerts: $ozenAlerts)
         } label: {
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 4) {
@@ -40,9 +41,10 @@ struct NightAlertsRow: View {
 struct NightAlertsAccess {
     var authorization = NightAlertsChecklist.Authorization.notDetermined
     var alerts = NightAlertsChecklist.Setting.enabled
+    var lockScreen = NightAlertsChecklist.Setting.enabled
 
-    var summary: NightAlertsChecklist.Summary {
-        NightAlertsChecklist.summary(authorization: authorization, alerts: alerts)
+    func summary(ozenAlerts: Bool) -> NightAlertsChecklist.Summary {
+        NightAlertsChecklist.summary(authorization: authorization, alerts: alerts, lockScreen: lockScreen, ozenAlerts: ozenAlerts)
     }
 
     static func current() async -> NightAlertsAccess {
@@ -59,6 +61,11 @@ struct NightAlertsAccess {
         case .notSupported: access.alerts = .notSupported
         case .disabled: access.alerts = .disabled
         default: access.alerts = .enabled
+        }
+        switch settings.lockScreenSetting {
+        case .notSupported: access.lockScreen = .notSupported
+        case .disabled: access.lockScreen = .disabled
+        default: access.lockScreen = .enabled
         }
         return access
     }

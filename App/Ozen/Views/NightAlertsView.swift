@@ -3,16 +3,25 @@ import OzenKit
 
 struct NightAlertsView: View {
     @Binding var access: NightAlertsAccess
+    @Binding var ozenAlerts: Bool
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var testSent = false
 
     private var notifications: NightAlertsChecklist.Notifications {
-        NightAlertsChecklist.notifications(authorization: access.authorization, alerts: access.alerts)
+        NightAlertsChecklist.notifications(authorization: access.authorization, alerts: access.alerts, lockScreen: access.lockScreen, ozenAlerts: ozenAlerts)
     }
 
     private var notificationsDone: Bool { notifications == .allowed }
+
+    private var notificationsButton: String {
+        switch notifications {
+        case .notAsked: tr("לאשר התראות", "Approve notifications")
+        case .offInOzen: tr("הפעלה", "Turn on")
+        default: tr("פתיחת הגדרות הטלפון", "Open the phone’s settings")
+        }
+    }
 
     private var notificationsText: String {
         switch notifications {
@@ -22,6 +31,10 @@ struct NightAlertsView: View {
             tr("אוזן עוד לא קיבלה אישור להציג התראות, ולכן כשהמסך כבוי לא תגיע שום התראה.", "Ozen hasn’t been allowed to show notifications yet, so no alert will arrive when the screen is off.")
         case .off:
             tr("ההתראות של אוזן כבויות בהגדרות הטלפון, ולכן כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off.")
+        case .hiddenWhenLocked:
+            tr("בהגדרות הטלפון, ההתראות של אוזן לא מוצגות במסך הנעילה, ולכן כשהטלפון נעול לא תראו אותן.", "In the phone’s settings, Ozen’s notifications are hidden on the Lock Screen, so you won’t see them while the phone is locked.")
+        case .offInOzen:
+            tr("האפשרות ״התראה בטלפון כשהמסך כבוי״ כבויה בהגדרות של אוזן, ולכן כשהמסך כבוי לא תגיע שום התראה.", "“Alert on phone when the screen is off” is turned off in Ozen’s settings, so no alert will arrive when the screen is off.")
         }
     }
 
@@ -35,7 +48,7 @@ struct NightAlertsView: View {
                     done: notificationsDone
                 )
                 if !notificationsDone {
-                    Button(notifications == .notAsked ? tr("לאשר התראות", "Approve notifications") : tr("פתיחת הגדרות הטלפון", "Open the phone’s settings"), action: allowNotifications)
+                    Button(notificationsButton, action: allowNotifications)
                         .accessibilityIdentifier("nightAlertsOpenSettings")
                 }
                 item(
@@ -115,7 +128,13 @@ struct NightAlertsView: View {
 
     private func allowNotifications() {
         Task {
-            if access.authorization == .notDetermined {
+            if notifications == .offInOzen {
+                ozenAlerts = true
+                if access.authorization == .notDetermined {
+                    _ = await AlertNotifier.shared.requestAuthorization()
+                }
+                access = await NightAlertsAccess.current()
+            } else if access.authorization == .notDetermined {
                 _ = await AlertNotifier.shared.requestAuthorization()
                 access = await NightAlertsAccess.current()
             } else if let url = URL(string: UIApplication.openNotificationSettingsURLString) {

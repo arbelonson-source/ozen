@@ -36,4 +36,21 @@ struct NightAlertsChecklistTests {
         #expect(NightAlertsChecklist.notifications(authorization: .authorized, alerts: .enabled) == .allowed)
         #expect(NightAlertsChecklist.notifications(authorization: .provisional, alerts: .notSupported) == .allowed)
     }
+
+    @Test("notifications hidden on the lock screen cannot reach a locked phone, and say so apart from turned off")
+    func lockScreenOff() {
+        #expect(!NightAlertsChecklist.notificationsAllowed(authorization: .authorized, alerts: .enabled, lockScreen: .disabled))
+        #expect(NightAlertsChecklist.summary(authorization: .authorized, alerts: .enabled, lockScreen: .disabled) == .checkNotifications)
+        #expect(NightAlertsChecklist.notifications(authorization: .authorized, alerts: .enabled, lockScreen: .disabled) == .hiddenWhenLocked)
+        #expect(NightAlertsChecklist.notifications(authorization: .denied, alerts: .enabled, lockScreen: .disabled) == .off)
+        #expect(NightAlertsChecklist.notifications(authorization: .authorized, alerts: .enabled, lockScreen: .notSupported) == .allowed)
+    }
+
+    @Test("Ozen's own alert on the phone turned off is not All set, even with every phone setting allowed")
+    func ozenAlertsOff() {
+        #expect(NightAlertsChecklist.notifications(authorization: .authorized, alerts: .enabled, ozenAlerts: false) == .offInOzen)
+        #expect(NightAlertsChecklist.notifications(authorization: .notDetermined, alerts: .enabled, ozenAlerts: false) == .offInOzen)
+        #expect(NightAlertsChecklist.summary(authorization: .authorized, alerts: .enabled, ozenAlerts: false) == .checkNotifications)
+        #expect(NightAlertsChecklist.summary(authorization: .authorized, alerts: .enabled, ozenAlerts: true) == .allSet)
+    }
 }
