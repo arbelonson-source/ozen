@@ -44,6 +44,39 @@ struct DiagnosticsView: View {
 
     var body: some View {
         Form {
+            Section {
+                ShareLink(item: reportText, subject: Text(tr("דוח אבחון של אוזן", "Ozen diagnostics report"))) {
+                    Label(tr("שליחת הדוח", "Send report"), systemImage: "square.and.arrow.up")
+                }
+                Button {
+                    reportText = report
+                    UIPasteboard.general.string = reportText
+                    copied = true
+                } label: {
+                    Label(copied ? tr("הועתק", "Copied") : tr("העתקת הדוח", "Copy report"), systemImage: copied ? "checkmark" : "doc.on.doc")
+                }
+                if viewModel.canSendReportToHomeServer {
+                    Button {
+                        reportText = report
+                        sendingHome = true
+                        Task {
+                            reportSentHome = await viewModel.sendReportToHomeServer(reportText)
+                            sendingHome = false
+                        }
+                    } label: {
+                        switch reportSentHome {
+                        case true?:
+                            Label(tr("הדוח נשמר במחשב בבית", "Saved on the home computer"), systemImage: "checkmark")
+                        case false?:
+                            Label(tr("המחשב בבית לא קיבל את הדוח. נסו שוב", "The home computer didn’t get it. Try again"), systemImage: "exclamationmark.triangle")
+                        case nil:
+                            Label(tr("שליחת הדוח למחשב בבית", "Send the report to the home computer"), systemImage: "desktopcomputer")
+                        }
+                    }
+                    .disabled(sendingHome)
+                }
+            }
+
             Section(tr("מצב", "Status")) {
                 DiagnosticsRow(tr("שלב", "Stage"), Self.describe(viewModel.phase))
                 DiagnosticsRow(tr("מנוע פעיל", "Active engine"), viewModel.pipeline.activeEngineKind?.displayName ?? "—")
@@ -185,39 +218,6 @@ struct DiagnosticsView: View {
                 DiagnosticsRow("iOS", UIDevice.current.systemVersion)
                 DiagnosticsRow(tr("אפליקציה", "App"), SettingsView.versionString)
                 DiagnosticsRow(tr("ההתקנה תקפה עד", "Install valid until"), Self.installExpiryText)
-            }
-
-            Section {
-                ShareLink(item: reportText, subject: Text(tr("דוח אבחון של אוזן", "Ozen diagnostics report"))) {
-                    Label(tr("שליחת הדוח", "Send report"), systemImage: "square.and.arrow.up")
-                }
-                Button {
-                    reportText = report
-                    UIPasteboard.general.string = reportText
-                    copied = true
-                } label: {
-                    Label(copied ? tr("הועתק", "Copied") : tr("העתקת הדוח", "Copy report"), systemImage: copied ? "checkmark" : "doc.on.doc")
-                }
-                if viewModel.canSendReportToHomeServer {
-                    Button {
-                        reportText = report
-                        sendingHome = true
-                        Task {
-                            reportSentHome = await viewModel.sendReportToHomeServer(reportText)
-                            sendingHome = false
-                        }
-                    } label: {
-                        switch reportSentHome {
-                        case true?:
-                            Label(tr("הדוח נשמר במחשב בבית", "Saved on the home computer"), systemImage: "checkmark")
-                        case false?:
-                            Label(tr("המחשב בבית לא קיבל את הדוח. נסו שוב", "The home computer didn’t get it. Try again"), systemImage: "exclamationmark.triangle")
-                        case nil:
-                            Label(tr("שליחת הדוח למחשב בבית", "Send the report to the home computer"), systemImage: "desktopcomputer")
-                        }
-                    }
-                    .disabled(sendingHome)
-                }
             }
         }
         .task {

@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +45,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.LayoutDirection
@@ -109,10 +112,45 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
     var copied by remember { mutableStateOf(false) }
     var sendingHome by remember { mutableStateOf(false) }
     var sentHome by remember { mutableStateOf<Boolean?>(null) }
+    var marked by rememberSaveable { mutableStateOf<Boolean?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val stats = now.stats
     SettingsPageFrame(tr("אבחון", "Diagnostics"), onClose = onClose, closeLabel = tr("חזרה", "Back")) {
+        Spacer(Modifier.height(OzenSpacing.Unit))
+        PrimaryButton(tr("שליחת הדוח", "Send report"), onClick = { context.startActivity(reportSheet(DiagnosticsReport.text(facts()))) }, icon = Icons.Rounded.Share, modifier = Modifier.fillMaxWidth())
+        TonalButton(
+            if (copied) tr("הועתק", "Copied") else tr("העתקת הדוח", "Copy report"),
+            onClick = {
+                copyReport(context, DiagnosticsReport.text(facts()))
+                copied = true
+            },
+            icon = if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (HomeServer.url(now.settings.homeServerAddress) != null && now.homeServerCodeSaved) {
+            TonalButton(
+                when (sentHome) {
+                    true -> tr("הדוח נשמר במחשב בבית", "Saved on the home computer")
+                    false -> tr("המחשב בבית לא קיבל את הדוח. נסו שוב", "The home computer didn’t get it. Try again")
+                    null -> tr("שליחת הדוח למחשב בבית", "Send the report to the home computer")
+                },
+                onClick = {
+                    sendingHome = true
+                    val report = DiagnosticsReport.text(facts())
+                    scope.launch {
+                        try {
+                            sentHome = source.sendReportHome(report)
+                        } finally {
+                            sendingHome = false
+                        }
+                    }
+                },
+                icon = Icons.Rounded.Computer,
+                enabled = !sendingHome,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         SectionHeader(tr("מצב", "Status"))
         SettingsGroup {
             value(tr("שלב", "Stage"), DiagnosticsReport.stage(now.phase))
@@ -202,12 +240,13 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
         TonalButton(
             tr("לסמן בעיה עכשיו", "Mark a problem now"),
             onClick = {
-                source.markProblem()
+                marked = source.markProblem()
                 refresh()
             },
             icon = Icons.Rounded.Flag,
             modifier = Modifier.align(Alignment.Start),
         )
+        marked?.let { keptSound -> ProblemMarkedDialog(keptSound, now.settings.saveHistory, onDismiss = { marked = null }) }
         SectionHeader(tr("יומן, כולל הפעלות קודמות", "Journal, previous runs included"))
         SettingsGroup {
             item {
@@ -274,41 +313,6 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             value("Android", Build.VERSION.RELEASE)
             value(tr("אפליקציה", "App"), now.appVersion)
         }
-
-        Spacer(Modifier.height(OzenSpacing.Unit))
-        PrimaryButton(tr("שליחת הדוח", "Send report"), onClick = { context.startActivity(reportSheet(DiagnosticsReport.text(facts()))) }, icon = Icons.Rounded.Share, modifier = Modifier.fillMaxWidth())
-        TonalButton(
-            if (copied) tr("הועתק", "Copied") else tr("העתקת הדוח", "Copy report"),
-            onClick = {
-                copyReport(context, DiagnosticsReport.text(facts()))
-                copied = true
-            },
-            icon = if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (HomeServer.url(now.settings.homeServerAddress) != null && now.homeServerCodeSaved) {
-            TonalButton(
-                when (sentHome) {
-                    true -> tr("הדוח נשמר במחשב בבית", "Saved on the home computer")
-                    false -> tr("המחשב בבית לא קיבל את הדוח. נסו שוב", "The home computer didn’t get it. Try again")
-                    null -> tr("שליחת הדוח למחשב בבית", "Send the report to the home computer")
-                },
-                onClick = {
-                    sendingHome = true
-                    val report = DiagnosticsReport.text(facts())
-                    scope.launch {
-                        try {
-                            sentHome = source.sendReportHome(report)
-                        } finally {
-                            sendingHome = false
-                        }
-                    }
-                },
-                icon = Icons.Rounded.Computer,
-                enabled = !sendingHome,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
     }
 }
 
@@ -351,7 +355,11 @@ private fun ClipRow(title: String, onSend: () -> Unit, onDelete: () -> Unit) {
             title,
             modifier = Modifier
                 .onHold { menu = true }
-                .semantics { customActions = listOf(CustomAccessibilityAction(delete) { onDelete(); true }) },
+                .semantics {
+                    onClick(label = tr("שיתוף", "Share")) { onSend(); true }
+                    onLongClick(label = delete) { menu = true; true }
+                    customActions = listOf(CustomAccessibilityAction(delete) { onDelete(); true })
+                },
             icon = Icons.Rounded.AudioFile,
             onClick = onSend,
             trailing = { Icon(Icons.Rounded.Share, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
