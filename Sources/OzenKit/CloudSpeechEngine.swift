@@ -5,14 +5,15 @@ import Foundation
 /// line never runs past 28 seconds.
 ///
 /// While someone is still talking, the sentence so far goes out again
-/// every couple of seconds so words appear as they are said; the request
-/// after the pause is the one that stays. A live request that fails on a
-/// weak connection is simply skipped. A final one gets a second try at
-/// once, then the same audio (with whatever was said since) is sent again
-/// after a growing pause, up to `failuresBeforeStopping` rounds: up to
-/// eight uploads of one sentence. What was already on screen is kept
-/// rather than lost. A key problem, or that many failed rounds in a row,
-/// end the stream so the screen can say why.
+/// every couple of seconds so words appear as they are said, a long one in
+/// pieces of a few seconds (`LiveWindow`); the request after the pause
+/// carries the whole sentence and is the one that stays. A live request
+/// that fails on a weak connection is simply skipped. A final one gets a
+/// second try at once, then the same audio (with whatever was said since)
+/// is sent again after a growing pause, up to `failuresBeforeStopping`
+/// rounds: up to eight uploads of one sentence. What was already on
+/// screen is kept rather than lost. A key problem, or that many failed
+/// rounds in a row, end the stream so the screen can say why.
 public actor CloudSpeechEngine: TranscriptionEngine {
     public nonisolated let kind: TranscriptionEngineKind = .cloud
 
@@ -159,6 +160,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
         var lastShownText = ""
         var lastLivePassSeconds = 0.0
         var failuresInARow = 0
+        var live = LiveWindow(sampleRate: Self.sampleRate)
 
         while true {
             try Task.checkCancellation()
@@ -198,6 +200,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
             }
 
             let window: [Float]
+            var livePass: LiveWindow.Pass?
             let line = UtteranceCut.finishedLine(
                 total: total,
                 speechEnd: speechEnd,
@@ -206,7 +209,10 @@ public actor CloudSpeechEngine: TranscriptionEngine {
                 stillTalkingAtCap: tooLong && !pauseReached && !status.finished
             )
             if !isFinal {
-                window = intake.copySamples(upTo: total)
+                let heard = intake.copySamples(upTo: total)
+                let pass = live.pass(over: heard)
+                livePass = pass
+                window = Array(heard[pass.start..<pass.end])
             } else if line.cut {
                 let heard = intake.copySamples(upTo: line.end)
                 let cut = UtteranceCut.quietestPoint(
@@ -275,9 +281,9 @@ public actor CloudSpeechEngine: TranscriptionEngine {
             let timestamp = Date().timeIntervalSince1970
             if !isFinal {
                 let text = (turns ?? []).joined(separator: " ")
-                if !text.isEmpty {
-                    continuation.yield(TranscriptToken(utteranceID: utteranceID, text: text, isFinal: false, timestamp: timestamp))
-                    lastShownText = text
+                if let livePass, let shown = live.line(after: text, for: livePass) {
+                    continuation.yield(TranscriptToken(utteranceID: utteranceID, text: shown, isFinal: false, timestamp: timestamp))
+                    lastShownText = shown
                 }
             } else {
                 // A final request that came back empty must not take away
@@ -309,6 +315,7 @@ public actor CloudSpeechEngine: TranscriptionEngine {
                 samplesAtLastPass = 0
                 lastShownText = ""
                 lastLivePassSeconds = 0
+                live = LiveWindow(sampleRate: Self.sampleRate)
                 if status.finished && total - end == 0 { break }
             }
         }
@@ -339,5 +346,84 @@ public actor CloudSpeechEngine: TranscriptionEngine {
         let echo = self.echo
         return CloudSpeech.turns(in: try provider.transcript(from: response), filter: filter)
             .filter { !(echo?.isEcho($0) ?? false) }
+    }
+}
+
+/// Which part of a sentence still being said a live request carries.
+///
+/// Every live request used to carry the whole sentence so far, so a
+/// sentence cost the square of its length: 28 seconds of unbroken talk
+/// uploaded about 210 seconds of audio, the last requests 26 seconds (over
+/// 800 KB) each, paid for in mobile data and in the key's credit, and slow
+/// to upload just when the sentence was long. Now, once the part not yet
+/// settled reaches `pieceSeconds`, a request carries it only up to the
+/// quietest moment of its last second, and the words it brings back stay on
+/// screen as written; later requests carry only what was said after that
+/// moment. No live request carries much more than `pieceSeconds`, so a
+/// sentence of any length costs about three times its length at most. The
+/// request after the pause still carries the whole sentence
+/// (`CloudSpeechEngine`), so the finished line is written exactly as before
+/// and replaces the pieces.
+public struct LiveWindow: Sendable, Equatable {
+    public struct Pass: Sendable, Equatable {
+        public let start: Int
+        public let end: Int
+        /// Whether the words that come back for it stay as they are.
+        public let settles: Bool
+
+        public init(start: Int, end: Int, settles: Bool) {
+            self.start = start
+            self.end = end
+            self.settles = settles
+        }
+    }
+
+    /// As long as the short sentences these services get all the time, so
+    /// a piece still gives the model a sentence's worth of speech to go on.
+    public static let pieceSeconds = 6.0
+    /// Short, so only a word or so waits for the next request (about two
+    /// seconds later) when a piece settles.
+    public static let cutLookBackSeconds = 1.0
+    static let cutFrameSeconds = 0.05
+
+    public let sampleRate: Int
+    /// Where the part not yet settled starts, in samples from the
+    /// sentence's first.
+    public private(set) var start = 0
+    private var settled: [String] = []
+
+    public init(sampleRate: Int) {
+        self.sampleRate = sampleRate
+    }
+
+    /// The stretch of `heard`, the sentence so far from its first sample,
+    /// that the next live request carries.
+    public func pass(over heard: [Float]) -> Pass {
+        let rate = Double(sampleRate)
+        guard heard.count - start >= Int(Self.pieceSeconds * rate) else {
+            return Pass(start: start, end: heard.count, settles: false)
+        }
+        let cut = UtteranceCut.quietestPoint(
+            in: heard,
+            before: heard.count,
+            lookBack: Int(Self.cutLookBackSeconds * rate),
+            frame: Int(Self.cutFrameSeconds * rate)
+        )
+        return Pass(start: start, end: cut, settles: true)
+    }
+
+    /// The live line once `pass` came back with `text`: the settled pieces'
+    /// words, then these. Nil when it heard no words, so the screen keeps
+    /// what it shows. A piece settles only with words in it, or noise a
+    /// model hears as nothing would be settled as nothing; the next request
+    /// tries again with more audio, as every request did before.
+    public mutating func line(after text: String, for pass: Pass) -> String? {
+        guard !text.isEmpty else { return nil }
+        let shown = (settled + [text]).joined(separator: " ")
+        if pass.settles {
+            settled.append(text)
+            start = pass.end
+        }
+        return shown
     }
 }

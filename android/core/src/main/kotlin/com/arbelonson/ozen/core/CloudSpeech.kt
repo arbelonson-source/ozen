@@ -46,7 +46,8 @@ import kotlinx.serialization.json.put
  * gemini-3.1-flash-lite also put four alternating speakers on four lines,
  * labelled A B A B, and costs about six cents per hour of speech sent once.
  * The live re-sends make it two to three times that for sentences of a few
- * seconds, and about seven times for unbroken speech cut at 28 seconds.
+ * seconds, and about three times for longer ones, which go in pieces of a
+ * few seconds while they are said ([LiveWindow]).
  *
  * Who is talking is still the phone's job. Given a short recording of each
  * of four people and asked whose voice a new recording was, these models

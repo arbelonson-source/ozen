@@ -244,6 +244,37 @@ class CloudSpeechEngineTest {
     }
 
     @Test
+    fun `a 30 second sentence, live requests carry only its newest seconds, the finished line still carries all of it`() = runTest(timeout = 1.minutes) {
+        val http = http(listOf(FakeCloudHTTP.Answer.Text("מילה")))
+        val feed = AudioFeed()
+        val collected = collecting(engine(http).stream("he", feed.flow))
+        val talk = List(30 * 16_000 / chunk) { index ->
+            val level = if (index % 6 == 5) 0.001f else 0.05f
+            FloatArray(chunk) { level * sin(it.toFloat() * 0.3f) }
+        }
+        // 32 chunks are 2.048 s, a live pass each; the 14th crosses 28 s.
+        for (step in 1..14) {
+            feed.add(talk.subList((step - 1) * 32, step * 32))
+            assertTrue(eventually { http.transcriptionRequests.size >= step }, "step $step")
+        }
+        feed.add(talk.subList(14 * 32, talk.size) + silence(1.0))
+        feed.finish()
+        collected.job.join()
+        assertNull(collected.error)
+        val received = collected.tokens
+        val sent = http.transcriptionRequests.map { secondsSent(it) }
+        val total = sent.sum()
+        assertEquals(1, sent.count { it >= 26 }, "$sent")
+        assertTrue(sent.filter { it < 26 }.all { it <= 8.2 }, "$sent")
+        assertTrue(total < 100, "$total s sent: $sent")
+        val firstFinal = received.indexOfFirst { it.isFinal }
+        assertTrue(firstFinal > 0, "$received")
+        val lastLive = received[firstFinal - 1]
+        assertEquals(5, lastLive.text.split(" ").size, lastLive.text)
+        assertEquals(2, received.count { it.isFinal })
+    }
+
+    @Test
     fun `while two people are still talking their words show as one live line, a space apart, finished, they become two`() = runTest {
         val http = http(
             listOf(FakeCloudHTTP.Answer.Text("A: מה שלומך?\nB: טוב"), FakeCloudHTTP.Answer.Text("A: מה שלומך?\nB: טוב, תודה")),

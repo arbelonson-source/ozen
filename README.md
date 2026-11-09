@@ -494,8 +494,10 @@ Open a section for the details.
   (Soniox, Speechmatics, AssemblyAI), a sentence is sent again every few
   seconds while it is said; through OpenRouter the faster model costs about
   15 cents per hour of speech, the more accurate about twice that, and
-  unbroken talk like the news up to three times as much; off Wi-Fi that is a
-  few hundred MB of mobile data an hour, up to about 1 GB. See `CloudSpeech`
+  unbroken talk like the news up to about one and a half times as much (a
+  long sentence goes in pieces of a few seconds, see `LiveWindow`); off
+  Wi-Fi that is a few hundred MB of mobile data an hour, up to about
+  500 MB. See `CloudSpeech`
   and `CloudStreamEngine`. If the key
   stops working, the credit runs out or the internet goes, a Whisper
   model already on the phone takes over and the status line says so
