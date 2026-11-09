@@ -34,4 +34,40 @@ struct CaptionsStopAnnouncerTests {
         #expect(announcer.phaseChanged(to: .listening) == nil)
         #expect(announcer.phaseChanged(to: stalled) == .stopped)
     }
+
+    @Test("a stop while away is told once on return, and not when it healed or happened in front")
+    func stopWhileAway() {
+        var away = CaptionsStopAnnouncer()
+        #expect(away.phaseChanged(to: stalled, active: false) == .stopped)
+        #expect(away.comingBack(to: stalled) == .stopped)
+        #expect(away.comingBack(to: stalled) == nil)
+
+        var healed = CaptionsStopAnnouncer()
+        _ = healed.phaseChanged(to: stalled, active: false)
+        _ = healed.phaseChanged(to: .listening, active: false)
+        #expect(healed.comingBack(to: .listening) == nil)
+
+        var front = CaptionsStopAnnouncer()
+        _ = front.phaseChanged(to: stalled, active: true)
+        #expect(front.comingBack(to: stalled) == nil)
+    }
+
+    @Test("back in front while captions restart, a second failure there is still told")
+    func failingAgainInFront() {
+        var announcer = CaptionsStopAnnouncer()
+        #expect(announcer.phaseChanged(to: stalled, active: false) == .stopped)
+        #expect(announcer.phaseChanged(to: preparing, active: false) == nil)
+        #expect(announcer.comingBack(to: preparing) == nil)
+        #expect(announcer.phaseChanged(to: stalled, active: true) == .stopped)
+        #expect(announcer.phaseChanged(to: stalled, active: true) == nil)
+    }
+
+    @Test("leaving again while captions restart and fail keeps the stop owed for the return")
+    func failingAgainAway() {
+        var announcer = CaptionsStopAnnouncer()
+        _ = announcer.phaseChanged(to: stalled, active: false)
+        _ = announcer.phaseChanged(to: preparing, active: false)
+        #expect(announcer.phaseChanged(to: stalled, active: false) == nil)
+        #expect(announcer.comingBack(to: stalled) == .stopped)
+    }
 }

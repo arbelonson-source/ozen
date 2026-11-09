@@ -491,6 +491,9 @@ struct LiveCaptionView: View {
                 // expiry warning comes back each time the app is opened.
                 awakeClock = Date().timeIntervalSince1970
                 installExpiryDismissed = false
+                // Before the retry below changes the phase: a stop seen
+                // on the way back is said as it was.
+                sayStopOrReturn(stopAnnouncer.comingBack(to: viewModel.phase.step))
             }
             if phase == .active, case .failed(let failure) = viewModel.phase,
                failure.engineUnavailability?.kind != .notEnoughStorage {
@@ -1191,8 +1194,18 @@ struct LiveCaptionView: View {
 
     /// Captions that stopped by themselves, their return, and the end of a
     /// long preparation, spoken the same way (see `CaptionsStopAnnouncer`).
+    /// VoiceOver reads only the app in front: posted while Ozen was in the
+    /// background, "Captions are ready" after a first download of several
+    /// minutes was never heard, and she came back to silence. A stop or a
+    /// "ready" that happens away is said when Ozen comes back instead.
     private func announceStopOrReturn(_ phase: PipelinePhase) {
-        switch stopAnnouncer.phaseChanged(to: phase, at: ProcessInfo.processInfo.systemUptime) {
+        let active = scenePhase == .active
+        let event = stopAnnouncer.phaseChanged(to: phase, active: active, at: ProcessInfo.processInfo.systemUptime)
+        if active { sayStopOrReturn(event) }
+    }
+
+    private func sayStopOrReturn(_ event: CaptionsStopAnnouncer.Event?) {
+        switch event {
         case .stopped?:
             announceAlert(tr("הכתוביות נעצרו: %1", "Captions stopped: %1", args: ["\(presentation.title)"]))
         case .back?:

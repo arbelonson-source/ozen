@@ -348,9 +348,7 @@ class CaptionSession(
         if (cameBack) {
             awayAlerts.takePostedIdentifiers().forEach(notifier::withdraw)
             notifier.withdrawAwayAlerts()
-            if (stopAnnouncer.comingBack(pipeline.phase) == CaptionsStopAnnouncer.Event.Stopped && ScreenReader.isOn(context)) {
-                announce(stoppedText(pipeline.phase))
-            }
+            stopAnnouncer.comingBack(pipeline.phase)?.let { announceStopOrReturn(it, pipeline.phase) }
             untold?.let { word ->
                 untold = null
                 tell(word)
@@ -863,9 +861,11 @@ class CaptionSession(
     }
 
     /**
-     * Captions that stopped by themselves, and their return, said to
-     * TalkBack as on the iPhone: a reader who can't see the status line
-     * would keep waiting for words that never come.
+     * Captions that stopped by themselves, their return, and the end of a
+     * long preparation, said to TalkBack as on the iPhone: a reader who
+     * can't see the status line would keep waiting for words that never
+     * come. Said only with a caption screen in front; a stop or a "ready"
+     * that happened away is said on the way back (see [screenStarted]).
      */
     private fun announceStopOrReturn(event: CaptionsStopAnnouncer.Event, phase: PipelinePhase) {
         val text = when (event) {

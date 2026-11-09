@@ -6,6 +6,7 @@ class CaptionsStopAnnouncer {
     private var stoppedByFailure = false
     private var startBegan: Double? = null
     private var pendingStop = false
+    private var pendingReady = false
 
     fun phaseChanged(phase: PipelinePhase, active: Boolean = true, seconds: Double = 0.0): Event? = when (phase) {
         is PipelinePhase.Failed -> {
@@ -27,7 +28,7 @@ class CaptionsStopAnnouncer {
             pendingStop = false
             val began = startBegan
             startBegan = null
-            if (stoppedByFailure) {
+            val event = if (stoppedByFailure) {
                 stoppedByFailure = false
                 Event.Back
             } else if (began != null && seconds - began >= LONG_PREPARATION_SECONDS) {
@@ -35,10 +36,13 @@ class CaptionsStopAnnouncer {
             } else {
                 null
             }
+            if (active) pendingReady = false else if (event == Event.Ready) pendingReady = true
+            event
         }
         PipelinePhase.Idle, PipelinePhase.Paused -> {
             stoppedByFailure = false
             pendingStop = false
+            pendingReady = false
             startBegan = null
             null
         }
@@ -48,10 +52,17 @@ class CaptionsStopAnnouncer {
         }
     }
 
-    fun comingBack(phase: PipelinePhase): Event? {
-        val owed = pendingStop && phase is PipelinePhase.Failed
-        if (phase is PipelinePhase.Failed) pendingStop = false
-        return if (owed) Event.Stopped else null
+    fun comingBack(phase: PipelinePhase): Event? = when {
+        phase is PipelinePhase.Failed -> {
+            val owed = pendingStop
+            pendingStop = false
+            if (owed) Event.Stopped else null
+        }
+        phase == PipelinePhase.Listening && pendingReady -> {
+            pendingReady = false
+            Event.Ready
+        }
+        else -> null
     }
 
     companion object {

@@ -58,4 +58,46 @@ struct CaptionsReadyAnnouncerTests {
         #expect(announcer.phaseChanged(to: .startingAudio, at: 50) == nil)
         #expect(announcer.phaseChanged(to: .listening, at: 52) == nil)
     }
+
+    @Test("ready reached while away is told once on return, and not after a pause there or when said in front")
+    func readyWhileAway() {
+        var away = CaptionsStopAnnouncer()
+        _ = away.phaseChanged(to: preparing, active: false, at: 0)
+        _ = away.phaseChanged(to: .listening, active: false, at: 60)
+        #expect(away.comingBack(to: .listening) == .ready)
+        #expect(away.comingBack(to: .listening) == nil)
+
+        var paused = CaptionsStopAnnouncer()
+        _ = paused.phaseChanged(to: preparing, active: false, at: 0)
+        _ = paused.phaseChanged(to: .listening, active: false, at: 60)
+        _ = paused.phaseChanged(to: .paused, active: false, at: 70)
+        _ = paused.phaseChanged(to: .startingAudio, active: false, at: 80)
+        _ = paused.phaseChanged(to: .listening, active: false, at: 81)
+        #expect(paused.comingBack(to: .listening) == nil)
+
+        var front = CaptionsStopAnnouncer()
+        _ = front.phaseChanged(to: preparing, active: true, at: 0)
+        #expect(front.phaseChanged(to: .listening, active: true, at: 12) == .ready)
+        #expect(front.comingBack(to: .listening) == nil)
+    }
+
+    @Test("a ready owed through a failure that healed away is told on return, but not once captions were heard coming back")
+    func readyOwedThroughFailure() {
+        var healedAway = CaptionsStopAnnouncer()
+        _ = healedAway.phaseChanged(to: preparing, active: false, at: 0)
+        _ = healedAway.phaseChanged(to: .listening, active: false, at: 60)
+        _ = healedAway.phaseChanged(to: stalled, active: false, at: 70)
+        _ = healedAway.phaseChanged(to: preparing, active: false, at: 71)
+        #expect(healedAway.phaseChanged(to: .listening, active: false, at: 72) == .back)
+        #expect(healedAway.comingBack(to: .listening) == .ready)
+
+        var backInFront = CaptionsStopAnnouncer()
+        _ = backInFront.phaseChanged(to: preparing, active: false, at: 0)
+        _ = backInFront.phaseChanged(to: .listening, active: false, at: 60)
+        _ = backInFront.phaseChanged(to: stalled, active: false, at: 70)
+        _ = backInFront.phaseChanged(to: preparing, active: false, at: 71)
+        #expect(backInFront.comingBack(to: preparing) == nil)
+        #expect(backInFront.phaseChanged(to: .listening, active: true, at: 72) == .back)
+        #expect(backInFront.comingBack(to: .listening) == nil)
+    }
 }
