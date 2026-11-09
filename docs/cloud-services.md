@@ -66,7 +66,12 @@ captions, quiet moments included.
 The other services get a request per sentence, sent only while someone
 speaks, but each sentence is sent again every couple of seconds while it is
 being said so the words appear as they are spoken: an hour of speech costs
-about two and a half times their list price. Groq is the exception: it
+about two and a half times their list price. A long sentence goes in pieces
+of about 6 seconds while it is said (see "In steps" below), so unbroken talk
+like the news or a lecture costs only a little more, about three times their
+list price: every 28 seconds of it goes out as about 50 seconds of live
+pieces, then once more as a whole when the sentence ends.
+Groq is the exception: it
 counts every request as at least ten seconds, so Ozen sends it each sentence
 once, when it ends, which comes to about two and a half times its list price
 too, with no words until the sentence is finished.
@@ -109,7 +114,16 @@ itself recommends for most uses (its fastest is 0.7 s, less accurate).
 
 **In steps** (Deepgram, OpenAI, ElevenLabs, Google Gemini, OpenRouter). These
 get a recording of the sentence so far, sent again after every 2 seconds of
-speech, so the line grows in jumps of a few words. If a request takes
+speech, so the line grows in jumps of a few words. Once the part of a
+sentence not yet settled reaches 6 seconds, the next request stops at the
+quietest moment of its last second, and the words it brings back stay as
+they are; later requests carry only what was said after that moment, so no
+live request carries more than 8 seconds of audio. If a slow request let
+more pile up, the next one still ends within 8 seconds of where the last
+piece did, and the rest follows in the requests after it, so the line
+catches up without skipping a word. When the sentence
+ends, it is sent once more as a whole, and that is the line that stays, as
+accurate as before. If a request takes
 longer than 2 seconds, the next one waits for that much more speech, so a
 slow connection makes the jumps further apart rather than piling up
 requests. Deepgram and ElevenLabs also sell separate live services that are
@@ -275,5 +289,5 @@ key again.
   and passed on to Google; OpenRouter's and Google's terms apply.
 
 Off Wi-Fi, Deepgram, OpenAI, ElevenLabs, Google Gemini and OpenRouter use a
-few hundred MB of mobile data an hour of speech, up to about 1 GB, because
-each sentence is sent several times.
+few hundred MB of mobile data an hour of speech, up to about 500 MB, because
+each sentence is sent several times (a long one in pieces of a few seconds).

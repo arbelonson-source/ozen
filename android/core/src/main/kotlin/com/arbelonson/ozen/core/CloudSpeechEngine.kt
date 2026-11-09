@@ -23,14 +23,15 @@ import java.util.UUID
  * line never runs past 28 seconds.
  *
  * While someone is still talking, the sentence so far goes out again
- * every couple of seconds so words appear as they are said; the request
- * after the pause is the one that stays. A live request that fails on a
- * weak connection is simply skipped. A final one gets a second try at
- * once, then the same audio (with whatever was said since) is sent again
- * after a growing pause, up to [FAILURES_BEFORE_STOPPING] rounds: up to
- * eight uploads of one sentence. What was already on screen is kept
- * rather than lost. A key problem, or that many failed rounds in a row,
- * end the stream so the screen can say why.
+ * every couple of seconds so words appear as they are said, a long one in
+ * pieces of a few seconds ([LiveWindow]); the request after the pause
+ * carries the whole sentence and is the one that stays. A live request
+ * that fails on a weak connection is simply skipped. A final one gets a
+ * second try at once, then the same audio (with whatever was said since)
+ * is sent again after a growing pause, up to [FAILURES_BEFORE_STOPPING]
+ * rounds: up to eight uploads of one sentence. What was already on
+ * screen is kept rather than lost. A key problem, or that many failed
+ * rounds in a row, end the stream so the screen can say why.
  *
  * The state a Swift actor would guard is behind one lock that is never
  * held across a suspension. [timeSource] measures the approval and the
@@ -149,6 +150,7 @@ class CloudSpeechEngine(
             var lastShownText = ""
             var lastLivePassSeconds = 0.0
             var failuresInARow = 0
+            var live = LiveWindow(SAMPLE_RATE)
 
             while (true) {
                 ensureActive()
@@ -196,8 +198,12 @@ class CloudSpeechEngine(
                     maxSamples = maxSamples,
                     stillTalkingAtCap = tooLong && !pauseReached && !status.finished,
                 )
+                var livePass: LiveWindow.Pass? = null
                 val window: FloatArray = if (!isFinal) {
-                    intake.copySamples(total)
+                    val heard = intake.copySamples(total)
+                    val pass = live.pass(heard)
+                    livePass = pass
+                    heard.copyOfRange(pass.start, pass.end)
                 } else if (line.cut) {
                     val heard = intake.copySamples(line.end)
                     val cut = UtteranceCut.quietestPoint(
@@ -267,9 +273,10 @@ class CloudSpeechEngine(
                 val timestamp = nowSeconds()
                 if (!isFinal) {
                     val text = (turns ?: emptyList()).joinToString(" ")
-                    if (text.isNotEmpty()) {
-                        tokens.trySend(TranscriptToken(utteranceID = utteranceID, text = text, isFinal = false, timestamp = timestamp))
-                        lastShownText = text
+                    val shown = livePass?.let { live.line(text, it) }
+                    if (shown != null) {
+                        tokens.trySend(TranscriptToken(utteranceID = utteranceID, text = shown, isFinal = false, timestamp = timestamp))
+                        lastShownText = shown
                     }
                 } else {
                     // A final request that came back empty must not take away
@@ -304,6 +311,7 @@ class CloudSpeechEngine(
                     samplesAtLastPass = 0
                     lastShownText = ""
                     lastLivePassSeconds = 0.0
+                    live = LiveWindow(SAMPLE_RATE)
                     if (status.finished && total - end == 0) break
                 }
             }
@@ -357,6 +365,88 @@ class CloudSpeechEngine(
         private const val LEADING_KEEP_SECONDS = 0.5
         private const val LONG_CUT_LOOK_BACK_SECONDS = 2.0
         private const val LONG_CUT_FRAME_SECONDS = 0.05
+    }
+}
+
+/**
+ * Which part of a sentence still being said a live request carries.
+ *
+ * Every live request used to carry the whole sentence so far, so a
+ * sentence cost the square of its length: 28 seconds of unbroken talk
+ * uploaded about 210 seconds of audio, the last requests 26 seconds (over
+ * 800 KB) each, paid for in mobile data and in the key's credit, and slow
+ * to upload just when the sentence was long. Now, once the part not yet
+ * settled reaches [PIECE_SECONDS], a request carries it only up to the
+ * quietest moment of its last second, and the words it brings back stay on
+ * screen as written; later requests carry only what was said after that
+ * moment. No live request carries more than [LONGEST_PIECE_SECONDS], even
+ * when a slow request let speech pile up: the next request then settles
+ * the oldest part, and the rest follows in the requests after it, so no
+ * word is skipped. A sentence of any length costs about three times its
+ * length at most. The
+ * request after the pause still carries the whole sentence
+ * ([CloudSpeechEngine]), so the finished line is written exactly as before
+ * and replaces the pieces.
+ */
+class LiveWindow(val sampleRate: Int) {
+    /** [settles]: whether the words that come back for it stay as they are. */
+    data class Pass(val start: Int, val end: Int, val settles: Boolean)
+
+    /** Where the part not yet settled starts, in samples from the sentence's first. */
+    var start: Int = 0
+        private set
+    private val settled = ArrayList<String>()
+
+    /** The stretch of [heard], the sentence so far from its first sample, that the next live request carries. */
+    fun pass(heard: FloatArray): Pass {
+        val rate = sampleRate.toDouble()
+        if (heard.size - start < (PIECE_SECONDS * rate).toInt()) return Pass(start, heard.size, settles = false)
+        val cut = UtteranceCut.quietestPoint(
+            samples = heard,
+            before = minOf(heard.size, start + (LONGEST_PIECE_SECONDS * rate).toInt()),
+            lookBack = (CUT_LOOK_BACK_SECONDS * rate).toInt(),
+            frame = (CUT_FRAME_SECONDS * rate).toInt(),
+        )
+        return Pass(start, cut, settles = true)
+    }
+
+    /**
+     * The live line once [pass] came back with [text]: the settled pieces'
+     * words, then these. Null when it heard no words, so the screen keeps
+     * what it shows. A piece settles only with words in it, or noise a
+     * model hears as nothing would be settled as nothing; the next request
+     * tries again with more audio, as every request did before.
+     */
+    fun line(text: String, pass: Pass): String? {
+        if (text.isEmpty()) return null
+        val shown = (settled + text).joinToString(" ")
+        if (pass.settles) {
+            settled.add(text)
+            start = pass.end
+        }
+        return shown
+    }
+
+    companion object {
+        /**
+         * As long as the short sentences these services get all the time, so
+         * a piece still gives the model a sentence's worth of speech to go on.
+         */
+        const val PIECE_SECONDS = 6.0
+
+        /**
+         * Short, so only a word or so waits for the next request (about two
+         * seconds later) when a piece settles.
+         */
+        const val CUT_LOOK_BACK_SECONDS = 1.0
+
+        /**
+         * A piece reaches [PIECE_SECONDS] between two requests that are
+         * [CloudSpeechEngine.LIVE_PASS_SECONDS] apart, so this is the longest
+         * one on a connection that keeps up.
+         */
+        const val LONGEST_PIECE_SECONDS = PIECE_SECONDS + CloudSpeechEngine.LIVE_PASS_SECONDS
+        private const val CUT_FRAME_SECONDS = 0.05
     }
 }
 
