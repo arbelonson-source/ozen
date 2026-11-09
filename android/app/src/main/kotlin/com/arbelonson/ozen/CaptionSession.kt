@@ -58,6 +58,7 @@ import com.arbelonson.ozen.core.ProblemSnapshot
 import com.arbelonson.ozen.core.RecentConversation
 import com.arbelonson.ozen.core.RecordingImport
 import com.arbelonson.ozen.core.ReleaseFileFetching
+import com.arbelonson.ozen.core.RetryWait
 import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SessionJournal
@@ -117,6 +118,7 @@ class CaptionSession(
     journalFile: File = File(context.filesDir, JOURNAL_FILE),
     problemAudioFolder: File = File(context.filesDir, PROBLEM_AUDIO_FOLDER),
     listeningRecords: ListeningRecordStore = PreferencesListeningStore(context),
+    private val soundsOnlyChoice: SoundsOnlyStore = PreferencesSoundsOnlyStore(context),
 ) : DiagnosticsSource, SpeakerBook, PhoneBackup {
     private val scope = MainScope()
     private val connector = WebSocketConnector(privateRoute = { host -> homeNetwork(host)?.let { network -> PrivatePath(network.socketFactory) { network.getAllByName(it).toList() } } })
@@ -159,6 +161,17 @@ class CaptionSession(
 
     /** Asks the system to clear cache for a download about to write that many bytes; blocks, so not for the main thread. */
     var makeRoom: (Long) -> Unit = { storage.makeRoom(it) }
+
+    // With the screen off and the microphone off, nothing kept the
+    // processor up while captions waited to try again, and a retry due in
+    // seconds came minutes late (see `RetryWait`). A model downloading for
+    // captions crawled the same way.
+    private val retryAwake = KeptAwake.of(context, "ozen:captions-retry")
+    private val downloadAwake = KeptAwake.of(context, "ozen:captions-download")
+
+    /** A partial wake lock is held for a retry that is due; for device tests. */
+    internal val retryKeptAwake: Boolean get() = retryAwake.held
+
     val pipeline = CaptionPipeline(
         scope = scope,
         audio = audio,
@@ -167,6 +180,7 @@ class CaptionSession(
         soundDetector = YamnetSoundDetector(context),
         availableStorageBytes = { freeSpace() },
         network = network,
+        retryWait = RetryWait(SystemClock::elapsedRealtime, retryAwake::keepAwake),
     )
     private val historyStore = TranscriptHistoryStore(historyFolder)
     private val attention = KeywordAttention()
@@ -559,6 +573,7 @@ class CaptionSession(
             seconds = { SystemClock.elapsedRealtime() / 1000.0 },
             changed = {
                 captionsBusy.value = it.isListening || it.isTransitioning
+                if (soundsOnlyChoice.chosen != pipeline.soundsOnlyChosen) soundsOnlyChoice.chosen = pipeline.soundsOnlyChosen
                 conversations.listeningChanged()
             },
             publish = ::publish,
@@ -632,9 +647,21 @@ class CaptionSession(
     /** A transcribed recording goes into History like a conversation, unless the reader has turned saving off. */
     internal fun saveRecording(record: TranscriptSessionRecord): HistorySave = conversations.saveRecording(record)
 
-    fun listen() {
+    /** For the night: captions stop and the speech model is let go, while sound alerts keep listening. */
+    fun listenForSoundsOnly() {
         restartRefused = false
         replies.userTookControl()
+        scope.launch { pipeline.listenForSoundsOnly(settings.current.value) }
+    }
+
+    /** [afterRestart]: the phone started the service again after ending the app; a night of sounds only comes back as that. */
+    fun listen(afterRestart: Boolean = false) {
+        restartRefused = false
+        replies.userTookControl()
+        if (ServiceRestart.soundsOnlyAfterRestart(afterRestart, soundsOnlyChoice.chosen)) {
+            scope.launch { pipeline.listenForSoundsOnly(settings.current.value) }
+            return
+        }
         scope.launch {
             val current = settings.current.value
             when (pipeline.phase) {
@@ -670,7 +697,7 @@ class CaptionSession(
      * walkthrough's end starts them again, as on the first run.
      */
     fun showWalkthroughAgain() {
-        if (pipeline.phase != PipelinePhase.Idle) {
+        if (!pipeline.isOff) {
             replies.userTookControl()
             pipeline.stop()
         }
@@ -729,6 +756,8 @@ class CaptionSession(
         network.close()
         voice.shutdown()
         scope.cancel()
+        retryAwake.keepAwake(null)
+        downloadAwake.keepAwake(null)
     }
 
     fun settingsChanged() {
@@ -756,7 +785,7 @@ class CaptionSession(
     }
 
     private fun stoppedCause(): StoppedCaptionsNotice.Cause? =
-        if (restartRefused) StoppedCaptionsNotice.Cause.EndedByPhone else StoppedCaptionsNotice.cause(pipeline.phase, pipeline.isRecoveringByItself, interruptedBySystem, callEndedDuringInterruption = false)
+        if (restartRefused) StoppedCaptionsNotice.Cause.EndedByPhone else StoppedCaptionsNotice.cause(pipeline.phase, pipeline.isRecoveringByItself, interruptedBySystem, callEndedDuringInterruption = false, soundsOnlyStopped = pipeline.soundsOnlyStoppedByItself)
 
     /**
      * Captions that Android ended with the app could not be started again;
@@ -777,7 +806,7 @@ class CaptionSession(
         StartCaptionsRequest.applyAppLanguage(settings)
         note("Captions restarted by the phone after the app was ended")
         tellListeningCut()
-        if (ServiceRestart.shouldListen(systemRestart = true, mayStartCaptions = mayStartCaptions())) return true
+        if (ServiceRestart.shouldListen(systemRestart = true, mayStartCaptions = mayStartCaptions(), soundsOnly = soundsOnlyChoice.chosen)) return true
         note("Captions not started again: the app was ended while it set up the model")
         // Starting up took the marker. Android may end this process again
         // before she opens Ozen, and the next start must still know the
@@ -801,7 +830,7 @@ class CaptionSession(
     private fun publish() {
         // Kept through whatever comes back by itself (a retry, waiting for
         // Wi-Fi), ended by what the stopped-captions notice reports.
-        listeningRecord.phaseChanged(pipeline.phase, stopped = stoppedCause())
+        listeningRecord.phaseChanged(pipeline.phase, stopped = stoppedCause(), soundsOnly = pipeline.soundsOnlyChosen)
         checkCaptionsStillRunning()
         val transcribing = pipeline.activeSettings.takeIf { pipeline.isCoveringForCloud } ?: settings.current.value
         CaptionState.show(
@@ -826,6 +855,7 @@ class CaptionSession(
             coverReason = pipeline.coverReason,
             offerBackup = offersBackup(),
             network = pipeline.networkConditions,
+            soundsOnly = pipeline.soundsOnlyChosen,
         )
         refreshSavingTrouble()
         announceNewLines(transcribing)
@@ -851,7 +881,7 @@ class CaptionSession(
         return tr("הכתוביות נעצרו: %1", "Captions stopped: %1", listOf(status.title))
     }
 
-    private val microphoneOn: Boolean get() = BatteryAdvisor.watches(pipeline.phase)
+    private val microphoneOn: Boolean get() = BatteryAdvisor.watches(pipeline.phase, pipeline.soundsOnlyChosen)
 
     private fun readBattery(intent: Intent) {
         val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
@@ -1263,7 +1293,6 @@ class CaptionSession(
         if (ScreenReader.isOn(context)) announce(tr("נאמר: %1", "Said: %1", listOf(word.said)))
     }
 
-    private var heldUntil = 0L
     private val held = mutableListOf<String>()
     private var holding: Job? = null
 
@@ -1275,19 +1304,14 @@ class CaptionSession(
      * the iPhone gives the alarm a high priority instead.
      */
     private fun announce(text: String, critical: Boolean = false) {
-        val now = SystemClock.elapsedRealtime()
-        if (critical) heldUntil = now + CRITICAL_ANNOUNCEMENT_MILLIS
-        if (critical || (now >= heldUntil && held.isEmpty())) {
+        if (critical) AnnouncementHold.holdFor(CRITICAL_ANNOUNCEMENT_MILLIS)
+        if (critical || (AnnouncementHold.remaining() == 0L && held.isEmpty())) {
             ScreenReader.announce(context, text)
             return
         }
         held += text
         if (holding == null) holding = scope.launch {
-            while (true) {
-                val wait = heldUntil - SystemClock.elapsedRealtime()
-                if (wait <= 0) break
-                delay(wait)
-            }
+            AnnouncementHold.waitOut()
             val waiting = held.joinToString(". ")
             held.clear()
             holding = null
@@ -1384,6 +1408,7 @@ class CaptionSession(
                     makeRoom = { makeRoom(it) },
                     variant = settings.phoneModel.variant,
                     marker = loadMarker,
+                    keepAwake = downloadAwake::keepAwake,
                 ),
                 voiceScorerFactory = ::voiceScore,
                 heat = { heatNow },

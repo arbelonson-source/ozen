@@ -10,6 +10,7 @@ struct ControlBarAutoHideTests {
         followingLatest: Bool = true,
         hasLines: Bool = true,
         voiceOverRunning: Bool = false,
+        switchControlRunning: Bool = false,
         pausedForCall: Bool = false,
         covered: Bool = false,
         idle: TimeInterval = 10
@@ -20,6 +21,7 @@ struct ControlBarAutoHideTests {
             followingLatest: followingLatest,
             hasLines: hasLines,
             voiceOverRunning: voiceOverRunning,
+            switchControlRunning: switchControlRunning,
             pausedForCall: pausedForCall,
             covered: covered,
             lastTouchAt: 1_000,
@@ -54,6 +56,13 @@ struct ControlBarAutoHideTests {
             hides(enabled: false),
         ]
         #expect(kept == [false, false, false, false, false])
+    }
+
+    @Test("Switch Control keeps the bar: scanning to Stop or Clear takes longer than the idle window")
+    func keptForSwitchControl() {
+        #expect(!hides(switchControlRunning: true))
+        #expect(!hides(switchControlRunning: true, idle: 60))
+        #expect(hides(switchControlRunning: false, idle: 60))
     }
 
     @Test("a sheet over the captions keeps the bar, so it is there when the sheet closes")

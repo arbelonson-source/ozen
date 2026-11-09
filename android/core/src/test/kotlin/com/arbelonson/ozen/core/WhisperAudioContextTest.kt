@@ -35,4 +35,12 @@ class WhisperAudioContextTest {
         assertEquals(1_500, WhisperAudioContext.frames(25 * 16_000, isFinal = true))
         assertEquals(1_500, WhisperAudioContext.frames(28 * 16_000, isFinal = true))
     }
+
+    @Test
+    fun `a finished line on a phone that can afford it gets the full window however short`() {
+        assertEquals(1_500, WhisperAudioContext.frames(321, isFinal = true, fullWindow = true))
+        assertEquals(1_500, WhisperAudioContext.frames(3 * 16_000, isFinal = true, fullWindow = true))
+        assertEquals(1_500, WhisperAudioContext.frames(8 * 16_000, isFinal = true, fullWindow = true))
+        assertEquals(650, WhisperAudioContext.frames(8 * 16_000, isFinal = true, fullWindow = false))
+    }
 }

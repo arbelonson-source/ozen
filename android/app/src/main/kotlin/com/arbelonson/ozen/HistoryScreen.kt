@@ -699,6 +699,9 @@ internal fun ConversationScreen(
         if (index < 0) return
         scope.launch {
             list.scrollToItem(shown.headerItems + index)
+            // A safety alert said a moment ago is not cut off: the line waits
+            // out its hold, as the caption screen's announcements do.
+            AnnouncementHold.waitOut()
             ScreenReader.announce(context, shown.lines[index].spoken)
         }
         arrival?.cancel()

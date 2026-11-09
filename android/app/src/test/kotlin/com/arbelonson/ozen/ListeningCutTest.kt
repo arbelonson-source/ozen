@@ -207,6 +207,38 @@ class ListeningCutTest {
     }
 
     @Test
+    fun `a stop right after a quick restart clears the old record, so no false notice comes later`() {
+        store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION))
+        clock = at(1, 11)
+        val recorder = recorder()
+        assertNull(recorder.take())
+        recorder.phaseChanged(PipelinePhase.Idle, recovering = false)
+        assertNotNull(store.value, "the idle report every start sends keeps the record")
+        recorder.phaseChanged(PipelinePhase.StartingAudio, recovering = false)
+        recorder.phaseChanged(PipelinePhase.Idle, recovering = false)
+        clock = at(9, 0)
+        assertNull(recorder().take())
+    }
+
+    @Test
+    fun `after a quick restart each start step then a stop, pause or reported failure clears the old record, a retry keeps it`() {
+        val preparing = PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.5))
+        for (start in listOf(PipelinePhase.RequestingMicrophonePermission, preparing, PipelinePhase.StartingAudio)) {
+            for (end in listOf(PipelinePhase.Idle, PipelinePhase.Paused, PipelinePhase.Failed(failure))) {
+                store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION))
+                clock = at(1, 11)
+                val recorder = recorder()
+                assertNull(recorder.take())
+                recorder.phaseChanged(start, recovering = false)
+                recorder.phaseChanged(PipelinePhase.Failed(failure), recovering = true)
+                assertNotNull(store.value, "$start, then a failure that retries by itself")
+                recorder.phaseChanged(end, recovering = false)
+                assertNull(store.value, "$start, then $end")
+            }
+        }
+    }
+
+    @Test
     fun `a record from another version is cleared even right after it was written`() {
         store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION - 1))
         clock = at(1, 11)
@@ -234,5 +266,27 @@ class ListeningCutTest {
 
     private companion object {
         const val VERSION = 7L
+    }
+
+    @Test
+    fun `sounds only counts as listening - the record begins, is kept alive, and ends when it is stopped`() {
+        val recorder = recorder()
+        recorder.phaseChanged(PipelinePhase.Paused, recovering = false, soundsOnly = true)
+        assertEquals(ListeningCut.Record(at(0, 30), at(0, 30), VERSION), ListeningCut.parse(store.value))
+        clock = at(2, 0)
+        recorder.keepAlive()
+        assertEquals(ListeningCut.Record(at(0, 30), at(2, 0), VERSION), ListeningCut.parse(store.value))
+        recorder.phaseChanged(PipelinePhase.Idle, recovering = false, soundsOnly = true)
+        assertEquals(ListeningCut.Record(at(0, 30), at(2, 0), VERSION), ListeningCut.parse(store.value))
+        recorder.phaseChanged(PipelinePhase.Idle, recovering = false)
+        assertNull(store.value)
+    }
+
+    @Test
+    fun `paused or idle without sounds-only ends the record as before`() {
+        val recorder = recorder()
+        recorder.phaseChanged(PipelinePhase.Listening, recovering = false)
+        recorder.phaseChanged(PipelinePhase.Paused, recovering = false)
+        assertNull(store.value)
     }
 }

@@ -140,11 +140,14 @@ class OnDeviceWhisperEngineTest {
     @Test
     fun a_pause_of_seven_tenths_of_a_second_after_speech_ends_the_line_with_a_final_pass() = runTest {
         val rig = rig()
-        val tokens = rig.stream(speech(2.0), silence(0.7), speech(2.0)).toList()
+        // 4.3 s is exactly 100 of the detector's 43 ms readings, so the
+        // speech ends where a reading ends and all 0.7 s of the pause is
+        // read as silence.
+        val tokens = rig.stream(speech(4.3), silence(0.7), speech(2.0)).toList()
         val finals = rig.passes.finals()
         assertEquals(2, finals.size)
-        assertEquals(32_000 + 4_800, finals[0].samples)
-        assertTrue(finals[0].startedAtMs in 2_700..2_799, "the final pass started at ${finals[0].startedAtMs} ms")
+        assertEquals(68_800 + 4_800, finals[0].samples)
+        assertTrue(finals[0].startedAtMs in 5_000..5_099, "the final pass started at ${finals[0].startedAtMs} ms")
         assertEquals(2, tokens.count { it.isFinal })
     }
 
@@ -155,6 +158,31 @@ class OnDeviceWhisperEngineTest {
         val finals = rig.passes.finals()
         assertEquals(1, finals.size)
         assertEquals(73_600, finals[0].samples)
+    }
+
+    @Test
+    fun three_sentences_said_while_slow_passes_run_come_back_as_three_lines() = runTest {
+        val rig = rig()
+        rig.passes.passMillis = { 2_000L }
+        val tokens = rig.stream(
+            silence(0.6), speech(1.0), silence(1.0), speech(1.0), silence(1.0), speech(1.0), silence(1.6),
+        ).toList()
+        val finals = rig.passes.finals()
+        assertEquals(3, finals.size, "final passes over ${finals.map { it.seconds }} s")
+        assertTrue(finals.all { it.seconds <= 2.5 }, "a final line ran into the next sentence: ${finals.map { it.seconds }} s")
+        assertEquals(3, tokens.filter { it.isFinal }.map { it.utteranceID }.toSet().size)
+    }
+
+    @Test
+    fun more_than_two_finished_sentences_waiting_on_a_slow_phone_share_one_line() = runTest {
+        val rig = rig()
+        rig.passes.passMillis = { 4_000L }
+        val sentences = Array(5) { listOf(speech(1.0), silence(0.8)) }.flatMap { it }
+        rig.stream(silence(0.6), *sentences.toTypedArray(), silence(1.0)).toList()
+        val finals = rig.passes.finals()
+        assertEquals(2, finals.size, "final passes over ${finals.map { it.seconds }} s")
+        assertTrue(finals[0].seconds <= 2.0, "the first line, waiting alone with one more, ran ${finals[0].seconds} s")
+        assertTrue(finals[1].seconds >= 4 * 1.8 - 0.8, "the four sentences left waiting got ${finals[1].seconds} s")
     }
 
     @Test

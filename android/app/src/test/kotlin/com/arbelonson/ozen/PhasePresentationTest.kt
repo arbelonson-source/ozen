@@ -40,9 +40,10 @@ class PhasePresentationTest {
         coveredEngine: TranscriptionEngineKind? = null,
         coverReason: EngineUnavailability.Kind? = null,
         offerBackup: Boolean = false,
+        soundsOnly: Boolean = false,
     ) = PhasePresentation(
         phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining,
-        pausedForSpeech, coveringForCloud, coveredEngine, coverReason, offerBackup,
+        pausedForSpeech, coveringForCloud, coveredEngine, coverReason, offerBackup, soundsOnly = soundsOnly,
     )
 
     @Test
@@ -445,5 +446,31 @@ class PhasePresentationTest {
         assertEquals("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", covering.detail)
         assertEquals(Action.OpenEngineSettings, covering.action)
         assertEquals(PhaseTint.Active, covering.tint)
+    }
+
+    @Test
+    fun `only sounds listened for say so, and a tap brings the captions back`() = Localization.withLanguage(UILanguage.English) {
+        val idle = present(PipelinePhase.Idle, null, soundsOnly = true)
+        assertEquals("Listening for sounds only", idle.title)
+        assertEquals("Tap to bring captions back", idle.detail)
+        assertEquals(Action.Start, idle.action)
+        val paused = present(PipelinePhase.Paused, null, soundsOnly = true)
+        assertEquals("Listening for sounds only", paused.title)
+        assertEquals(Action.Resume, paused.action)
+        assertEquals("Paused", present(PipelinePhase.Paused, null).title)
+        assertEquals("Captions are off", present(PipelinePhase.Idle, null).title)
+    }
+
+    @Test
+    fun `a call over sounds-only says sound alerts are paused and offers no tap`() = Localization.withLanguage(UILanguage.English) {
+        val call = present(PipelinePhase.Paused, null, interruptedBySystem = true, soundsOnly = true)
+        assertEquals("Sound alerts paused for a call", call.title)
+        assertEquals("They’ll continue on their own when the call ends", call.detail)
+        assertEquals(Action.None, call.action)
+    }
+
+    @Test
+    fun `the phone talking over sounds-only still says so`() = Localization.withLanguage(UILanguage.English) {
+        assertEquals("The phone is talking", present(PipelinePhase.Paused, null, pausedForSpeech = true, soundsOnly = true).title)
     }
 }

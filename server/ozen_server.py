@@ -56,6 +56,10 @@ from faster_whisper.utils import download_model
 from faster_whisper.vad import VadOptions, get_speech_timestamps
 
 RATE = 16_000
+# The energy detector's rates are per reading, so it reads 688 samples at a
+# time (43 ms, about what the iPhone's microphone hands over at 48 kHz, and
+# what an Android phone reads) whatever size of frames the phone sends.
+DETECTOR_BLOCK = 688
 PROTOCOL_VERSION = 1
 # Direction marks the ivrit.ai model puts at some line starts; they hide a
 # name from the phone's alerts (see HebrewText.directionMarks).
@@ -147,6 +151,10 @@ SPEECH_OPTIONS = VadOptions(min_silence_duration_ms=100, speech_pad_ms=0)
 
 MIN_VOICE_SECONDS = 0.2
 LOAD_RETRY_SECONDS = 60
+# What the models load in when the card is short of memory for the
+# --compute-type asked: int8 weights, float16 sums, about a third less of
+# the card than float16.
+SMALLER_COMPUTE_TYPE = "int8_float16"
 IDLE_CHECK_SECONDS = 30
 # How long the general model stays on the card after the last phone that
 # needed it, when --unload-after doesn't say: most phones speak Hebrew.
@@ -256,6 +264,7 @@ class Transcriber:
 
     def __init__(self, model, device, compute_type, beam, context, final_model=None, speech_gate=0.0):
         self.speech_gate = speech_gate
+        self.compute_type = compute_type
         self.name = model if not final_model else f"{model} + {final_model}"
         self.model = WhisperModel(model_path(model), device=device, compute_type=compute_type)
         self.final_model = WhisperModel(model_path(final_model), device=device, compute_type=compute_type) if final_model else self.model
@@ -342,15 +351,68 @@ class Transcriber:
         return text, confidence, pieces
 
 
+def smaller_compute_type(error, device, compute_type):
+    """What to load the models in again after `error` failed them in
+    `compute_type`, or None. A card another program held part of ran out
+    of memory for the float16 models, at load or on their first pass, and
+    every phone fell back to its own, weaker model. Any other failure, or
+    models already in int8 or on the processor, would fail the same way
+    again."""
+    text = str(error)
+    if device == "cpu" or compute_type.startswith("int8"):
+        return None
+    if "out of memory" not in text.lower() and "ALLOC_FAILED" not in text:
+        return None
+    log.warning("the graphics card is short of memory for the speech models in %s (%s); loading them in %s, "
+                "which takes about a third less of it", compute_type, text, SMALLER_COMPUTE_TYPE)
+    return SMALLER_COMPUTE_TYPE
+
+
+def in_use(transcriber, compute_type):
+    log.info("the speech models run in %s", compute_type)
+    return transcriber
+
+
+def load_fitting(load, device, compute_type):
+    """`load(compute_type)`, which builds and warms the models, once more
+    in SMALLER_COMPUTE_TYPE if the card was short of memory for them."""
+    try:
+        return in_use(load(compute_type), compute_type)
+    except Exception as error:
+        smaller = smaller_compute_type(error, device, compute_type)
+        if smaller is None:
+            raise
+    # Out here the failed load's traceback is gone, and with it the models
+    # it built before the card filled up; the sweep frees any caught in a
+    # cycle, so the smaller ones get the whole room.
+    gc.collect()
+    return in_use(load(smaller), smaller)
+
+
+async def load_fitting_async(load, device, compute_type):
+    """load_fitting for a `load` that is a coroutine function."""
+    try:
+        return in_use(await load(compute_type), compute_type)
+    except Exception as error:
+        smaller = smaller_compute_type(error, device, compute_type)
+        if smaller is None:
+            raise
+    gc.collect()
+    return in_use(await load(smaller), smaller)
+
+
 def load_models(args):
     """Builds the Transcriber the command line asks for and warms both
     models past the voice gate, as startup does, so the first sentence a
     phone sends isn't the slow one. Runs in a worker thread."""
-    transcriber = Transcriber(args.model, args.device, args.compute_type, args.beam, args.context,
-                              args.final_model or None, args.speech_gate)
-    for final in (False, True):
-        transcriber._run(np.zeros(RATE, dtype=np.float32), "he", None, final, gate=False)
-    return transcriber
+    def load(compute_type):
+        transcriber = Transcriber(args.model, args.device, compute_type, args.beam, args.context,
+                                  args.final_model or None, args.speech_gate)
+        for final in (False, True):
+            transcriber._run(np.zeros(RATE, dtype=np.float32), "he", None, final, gate=False)
+        return transcriber
+
+    return load_fitting(load, args.device, args.compute_type)
 
 
 def load_general(args):
@@ -358,11 +420,14 @@ def load_general(args):
     Hebrew: the Hebrew models are trained for Hebrew alone. Finished lines
     use it too, as the stronger --final-model is Hebrew's. Runs in a worker
     thread, like load_models."""
-    transcriber = Transcriber(args.general_model, args.device, args.compute_type, args.beam, args.context,
-                              None, args.speech_gate)
-    for final in (False, True):
-        transcriber._run(np.zeros(RATE, dtype=np.float32), "en", None, final, gate=False)
-    return transcriber
+    def load(compute_type):
+        transcriber = Transcriber(args.general_model, args.device, compute_type, args.beam, args.context,
+                                  None, args.speech_gate)
+        for final in (False, True):
+            transcriber._run(np.zeros(RATE, dtype=np.float32), "en", None, final, gate=False)
+        return transcriber
+
+    return load_fitting(load, args.device, args.compute_type)
 
 
 def speaks_hebrew(language):
@@ -378,8 +443,9 @@ class OnDemandTranscriber:
     `unload_after` seconds with no phone connected and no pass running,
     the models leave the graphics card, so a computer that also runs
     other things only gives the card to Ozen while it captions. A load
-    that fails (the card is full) fails that session, which the phone
-    answers by using its own model, and the next phone tries again."""
+    that fails even in SMALLER_COMPUTE_TYPE (the card is full) fails that
+    session, which the phone answers by using its own model, and the next
+    phone tries again."""
 
     def __init__(self, load, name, beam, unload_after, context=False, clock=time.monotonic):
         self._load = load
@@ -497,6 +563,8 @@ class Session:
         # (EnergyVoiceDetector.forWhisperLines, measured there).
         self.detector = EnergyVoiceDetector(ratio=2.0, steady_ratio=1.6)
         self.buf = np.zeros(0, dtype=np.float32)
+        # Received but not read by the detector yet: less than one reading.
+        self.unread = np.zeros(0, dtype=np.float32)
         self.offset = 0
         self.last_speech_end = None
         # Where speech stopped for a pause before more of it came, in case
@@ -523,17 +591,20 @@ class Session:
         chunk = np.frombuffer(pcm16, dtype="<i2").astype(np.float32) / 32768.0
         if self.enhancer is not None:
             chunk = self.enhancer.process(chunk)
-        # The phone sends whatever it has; the detector sees chunks of the
-        # size it was tuned on (about 43 ms).
-        step = 688
-        start = len(self.buf)
+        # The phone sends whatever it has (Android 100 ms frames); the
+        # detector reads DETECTOR_BLOCK samples at a time, carrying what
+        # is left of a frame over to the next one. An odd-sized reading
+        # at the end of each frame moved where speech started and stopped.
         self.buf = np.concatenate([self.buf, chunk])
-        for i in range(0, len(chunk), step):
-            piece = chunk[i:i + step]
-            if self.detector.is_speech(piece):
+        self.unread = np.concatenate([self.unread, chunk])
+        start = len(self.buf) - len(self.unread)
+        whole = len(self.unread) - len(self.unread) % DETECTOR_BLOCK
+        for i in range(0, whole, DETECTOR_BLOCK):
+            if self.detector.is_speech(self.unread[i:i + DETECTOR_BLOCK]):
                 if self.last_speech_end is not None and start + i - self.last_speech_end >= int(self.pause * RATE):
                     self.pauses.append(self.last_speech_end)
-                self.last_speech_end = start + i + len(piece)
+                self.last_speech_end = start + i + DETECTOR_BLOCK
+        self.unread = self.unread[whole:].copy()
         self.changed.set()
 
     def names(self):
@@ -866,16 +937,21 @@ async def main():
                                      f"{args.model} + {args.final_model}", args.beam, args.unload_after * 60, args.context)
         await serve(args, models, token, audio_cleaner(args), general)
         return
-    try:
-        transcriber = Transcriber(args.model, args.device, args.compute_type, args.beam, args.context, args.final_model or None,
+
+    async def load(compute_type):
+        transcriber = Transcriber(args.model, args.device, compute_type, args.beam, args.context, args.final_model or None,
                                   args.speech_gate)
         # Warm the models so the first sentence isn't slow. Past the voice
         # gate: silence would stop there and never reach the GPU. A broken
         # CUDA library often shows only here, on the first pass; outside
-        # this try it ended the server with 1, which run.sh never restarts.
-        started = time.monotonic()
+        # the try below it ended the server with 1, which run.sh never restarts.
         await transcriber.transcribe(np.zeros(RATE, dtype=np.float32), "he", None, False, gate=False)
         await transcriber.transcribe(np.zeros(RATE, dtype=np.float32), "he", None, True, gate=False)
+        return transcriber
+
+    started = time.monotonic()
+    try:
+        transcriber = await load_fitting_async(load, args.device, args.compute_type)
     except Exception as error:
         # run.cmd starts the server again at once: without the wait a card
         # that can't take the models would fill the log every few seconds,
@@ -885,7 +961,7 @@ async def main():
         logging.shutdown()
         time.sleep(LOAD_RETRY_SECONDS)
         raise SystemExit(4)
-    log.info("models warmed in %.1f s", time.monotonic() - started)
+    log.info("models loaded and warmed in %.1f s", time.monotonic() - started)
     await serve(args, transcriber, token, audio_cleaner(args), general)
 
 

@@ -11,7 +11,7 @@ struct HomeServerBackupRow: View {
             case .notNeeded:
                 EmptyView()
             case .ready:
-                Label(tr("הגיבוי בטלפון מוכן: כשאין חיבור למחשב, הטלפון ממשיך לבד.", "Backup on the phone is ready: when the computer can’t be reached, the phone carries on by itself."), systemImage: "checkmark.circle.fill")
+                Label(Self.message(status) ?? "", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.readable(.green))
             case .missing(let megabytes):
                 downloadButton(megabytes: megabytes)
@@ -20,20 +20,42 @@ struct HomeServerBackupRow: View {
                 ProgressView(value: fraction) {
                     Text(tr("מורידים את הגיבוי · %1%", "Downloading the backup · %1%", args: ["\(Int((fraction * 100).rounded()))"]))
                 }
-            case .waitingForWiFi:
-                note(tr("הגיבוי יורד רק ב־Wi‑Fi. התחברו ל־Wi‑Fi כדי להוריד אותו.", "The backup downloads only on Wi‑Fi. Connect to Wi‑Fi to download it."))
-            case .offline:
-                note(tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד את הגיבוי עכשיו.", "There’s no internet, so the backup can’t be downloaded now."))
-            case .notEnoughRoom(let megabytes):
-                Label(tr("אין מספיק מקום בטלפון לגיבוי. צריך לפנות עוד %1.", "Not enough room on the phone for the backup. %1 more needs to be freed up.", args: ["\(PhasePresentation.sizeText(megabytes: megabytes))"]), systemImage: "externaldrive.badge.exclamationmark")
+                .accessibilityLabel(Text(Self.message(status) ?? ""))
+            case .waitingForWiFi, .offline:
+                note(Self.message(status) ?? "")
+            case .notEnoughRoom:
+                Label(Self.message(status) ?? "", systemImage: "externaldrive.badge.exclamationmark")
                     .foregroundStyle(.readable(.red))
             case .failed:
                 downloadButton(megabytes: nil)
-                Label(tr("הורדת הגיבוי נעצרה. נסו שוב.", "The backup download stopped. Try again."), systemImage: "exclamationmark.triangle.fill")
+                Label(Self.message(status) ?? "", systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.readable(.orange))
             }
         }
         .accessibilityIdentifier("homeServerBackupRow")
+        .onChange(of: status) { previous, now in
+            guard BackupModel.announces(now, after: previous), let text = Self.message(now) else { return }
+            Announcement.post(text)
+        }
+    }
+
+    private static func message(_ status: BackupModelStatus) -> String? {
+        switch status {
+        case .notNeeded, .missing:
+            return nil
+        case .downloading:
+            return tr("מורידים את הגיבוי", "Downloading the backup")
+        case .ready:
+            return tr("הגיבוי בטלפון מוכן: כשאין חיבור למחשב, הטלפון ממשיך לבד.", "Backup on the phone is ready: when the computer can’t be reached, the phone carries on by itself.")
+        case .waitingForWiFi:
+            return tr("הגיבוי יורד רק ב־Wi‑Fi. התחברו ל־Wi‑Fi כדי להוריד אותו.", "The backup downloads only on Wi‑Fi. Connect to Wi‑Fi to download it.")
+        case .offline:
+            return tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד את הגיבוי עכשיו.", "There’s no internet, so the backup can’t be downloaded now.")
+        case .notEnoughRoom(let megabytes):
+            return tr("אין מספיק מקום בטלפון לגיבוי. צריך לפנות עוד %1.", "Not enough room on the phone for the backup. %1 more needs to be freed up.", args: ["\(PhasePresentation.sizeText(megabytes: megabytes))"])
+        case .failed:
+            return tr("הורדת הגיבוי נעצרה. נסו שוב.", "The backup download stopped. Try again.")
+        }
     }
 
     private func downloadButton(megabytes: Int?) -> some View {

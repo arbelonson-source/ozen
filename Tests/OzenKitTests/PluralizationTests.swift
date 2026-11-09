@@ -335,7 +335,7 @@ struct PluralizationTests {
             .english: "The conversation from 5 minutes ago was saved",
             .french: "La conversation d’il y a 5 minutes a été enregistrée",
             .german: "Das Gespräch von vor 5 Minuten wurde gespeichert",
-            .spanish: "Se guardó la conversación de hace 5 minutos",
+            .spanish: "Se ha guardado la conversación de hace 5 minutos",
             .amharic: "ውይይቱ ከ5 ደቂቃ በፊት ተቀምጧል",
         ]
         for (language, text) in expected {
@@ -349,8 +349,8 @@ struct PluralizationTests {
         #expect(tr("%1 אחוז", "%1 percent", args: ["21"], in: .russian) == "21%")
         #expect(tr("%1 אחוז", "%1 percent", args: ["2"], in: .ukrainian) == "2%")
         #expect(tr("הסוללה ב־%1 אחוז", "Battery at %1 percent", args: ["21"], in: .russian) == "Батарея на 21%")
-        #expect(tr("הסוללה ב־%1 אחוז", "Battery at %1 percent", args: ["2"], in: .ukrainian) == "Батарея на 2%")
-        #expect(tr("הקלטה ושמירה (%1 שניות)", "Record and save (%1 seconds)", args: ["30"], in: .arabic) == "تسجيل وحفظ (30 ثانية)")
+        #expect(tr("הסוללה ב־%1 אחוז", "Battery at %1 percent", args: ["2"], in: .ukrainian) == "Заряд батареї: 2%")
+        #expect(tr("הקלטה ושמירה (%1 שניות)", "Record and save (%1 seconds)", args: ["30"], in: .arabic) == "تسجيل وحفظ (30 ث)")
         let twoRecordings = RecordingImport.Result(added: ["Savta": 2])
         #expect(Localization.$override.withValue(.russian) { twoRecordings.summary }.contains("Savta (записей: 2)"))
         #expect(Localization.$override.withValue(.ukrainian) { twoRecordings.summary }.contains("Savta (записів: 2)"))

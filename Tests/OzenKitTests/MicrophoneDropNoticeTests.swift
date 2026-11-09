@@ -29,4 +29,19 @@ struct MicrophoneDropNoticeTests {
         notice.inputChanged(from: usb, to: builtIn, isListening: true, preferredUID: nil)
         #expect(notice.lost == usb)
     }
+
+    @Test("a hearing aid that was picked and is lost while listening is warned about, one nobody picked is not")
+    func pickedHearingAidIsWarnedAbout() {
+        let hearingAid = AudioInputDescriptor(uid: "hearing:aa", portName: "Phonak Audeo", portType: .hearingAid)
+        let otherAid = AudioInputDescriptor(uid: "hearing:bb", portName: "Oticon More", portType: .hearingAid)
+        var notice = MicrophoneDropNotice()
+        notice.inputChanged(from: otherAid, to: builtIn, isListening: true, preferredUID: hearingAid.uid)
+        #expect(notice.lost == nil)
+        notice.inputChanged(from: hearingAid, to: builtIn, isListening: false, preferredUID: hearingAid.uid)
+        #expect(notice.lost == nil)
+        notice.inputChanged(from: hearingAid, to: builtIn, isListening: true, preferredUID: nil)
+        #expect(notice.lost == nil)
+        notice.inputChanged(from: hearingAid, to: builtIn, isListening: true, preferredUID: hearingAid.uid)
+        #expect(notice.lost == hearingAid)
+    }
 }

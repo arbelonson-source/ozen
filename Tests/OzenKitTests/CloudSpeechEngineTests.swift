@@ -264,6 +264,39 @@ struct CloudSpeechEngineTests {
         #expect(Set(received.map(\.utteranceID)).count == 1)
     }
 
+    @Test("a 30 second sentence: live requests carry only its newest seconds, the finished line still carries all of it", .timeLimit(.minutes(1)))
+    func longSentenceSendsLess() async throws {
+        let http = FakeCloudHTTP(answers: [.text("מילה")])
+        let (audio, input) = AsyncStream<[Float]>.makeStream()
+        let tokens = engine(http).stream(languageCode: "he", audio: audio)
+        let collected = Task {
+            var received: [TranscriptToken] = []
+            for try await token in tokens { received.append(token) }
+            return received
+        }
+        let talk: [[Float]] = (0..<Int(30 * 16_000) / chunk).map { index in
+            let level: Float = index % 6 == 5 ? 0.001 : 0.05
+            return (0..<chunk).map { level * sin(Float($0) * 0.3) }
+        }
+        // 32 chunks are 2.048 s, a live pass each; the 14th crosses 28 s.
+        for step in 1...14 {
+            for chunk in talk[((step - 1) * 32)..<(step * 32)] { input.yield(chunk) }
+            #expect(await eventually { http.transcriptionRequests.count >= step }, "step \(step)")
+        }
+        for chunk in talk[(14 * 32)...] + silence(seconds: 1) { input.yield(chunk) }
+        input.finish()
+        let received = try await collected.value
+        let sent = try http.transcriptionRequests.map(secondsSent)
+        let total = sent.reduce(0, +)
+        #expect(sent.filter { $0 >= 26 }.count == 1, "\(sent)")
+        #expect(sent.filter { $0 < 26 }.allSatisfy { $0 <= 8.2 }, "\(sent)")
+        #expect(total < 100, "\(total) s sent: \(sent)")
+        let firstFinal = try #require(received.firstIndex { $0.isFinal })
+        let lastLive = try #require(received[..<firstFinal].last)
+        #expect(lastLive.text.split(separator: " ").count == 5, "\(lastLive.text)")
+        #expect(received.filter(\.isFinal).count == 2)
+    }
+
     @Test("while two people are still talking their words show as one live line, a space apart; finished, they become two")
     func livePreviewOfTwoVoices() async throws {
         let http = FakeCloudHTTP(answers: [.text("A: מה שלומך?\nB: טוב"), .text("A: מה שלומך?\nB: טוב, תודה")])

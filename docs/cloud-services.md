@@ -57,8 +57,8 @@ lower is better. ivrit.ai, which runs it, also made the phone's own model.
 Each figure is the leaderboard's word-level results for that set, added
 up. Groq's are for the open Whisper large-v3 model that Groq runs (Groq
 itself is not on the leaderboard), and the phone's own model's are for
-ivrit.ai's May 2025 Turbo, the one Ozen ships. Prices are each service's list price per hour of audio in
-October 2026.
+ivrit.ai's May 2025 Turbo, the model Ozen's own Hebrew model is built on.
+Prices are each service's list price per hour of audio in October 2026.
 
 Soniox, Speechmatics and AssemblyAI get the microphone as one stream for as
 long as the captions run, so they cost their list price for every hour of
@@ -66,7 +66,12 @@ captions, quiet moments included.
 The other services get a request per sentence, sent only while someone
 speaks, but each sentence is sent again every couple of seconds while it is
 being said so the words appear as they are spoken: an hour of speech costs
-about two and a half times their list price. Groq is the exception: it
+about two and a half times their list price. A long sentence goes in pieces
+of about 6 seconds while it is said (see "In steps" below), so unbroken talk
+like the news or a lecture costs only a little more, about three times their
+list price: every 28 seconds of it goes out as about 50 seconds of live
+pieces, then once more as a whole when the sentence ends.
+Groq is the exception: it
 counts every request as at least ten seconds, so Ozen sends it each sentence
 once, when it ends, which comes to about two and a half times its list price
 too, with no words until the sentence is finished.
@@ -84,8 +89,8 @@ too, with no words until the sentence is finished.
 | AssemblyAI (Universal-3.6 Pro) | yes | not tested | not tested | $0.57 with speakers | $50, no card |
 | The phone's own model (ivrit.ai Turbo) | built in | 5.3% | 7.1% | free | - |
 
-Mistral's speech model has no Hebrew, and Azure and Google Cloud Speech need
-a cloud project set up around the key, so they are not planned.
+Mistral's speech model does not write Hebrew. Azure and Google Cloud Speech
+need a cloud project set up around the key, so Ozen does not offer them.
 
 ## How quickly the words appear
 
@@ -109,7 +114,16 @@ itself recommends for most uses (its fastest is 0.7 s, less accurate).
 
 **In steps** (Deepgram, OpenAI, ElevenLabs, Google Gemini, OpenRouter). These
 get a recording of the sentence so far, sent again after every 2 seconds of
-speech, so the line grows in jumps of a few words. If a request takes
+speech, so the line grows in jumps of a few words. Once the part of a
+sentence not yet settled reaches 6 seconds, the next request stops at the
+quietest moment of its last second, and the words it brings back stay as
+they are; later requests carry only what was said after that moment, so no
+live request carries more than 8 seconds of audio. If a slow request let
+more pile up, the next one still ends within 8 seconds of where the last
+piece did, and the rest follows in the requests after it, so the line
+catches up without skipping a word. When the sentence
+ends, it is sent once more as a whole, and that is the line that stays, as
+accurate as before. If a request takes
 longer than 2 seconds, the next one waits for that much more speech, so a
 slow connection makes the jumps further apart rather than piling up
 requests. Deepgram and ElevenLabs also sell separate live services that are
@@ -137,18 +151,23 @@ on your own recording and connection.
 
 ## Languages
 
-Ozen captions Hebrew speech: every service is asked for Hebrew, and all nine
-write it. Ozen's buttons and settings come in twelve languages, but there is
-no setting yet for the language people speak.
+Ozen captions the language the people around you speak, chosen from twelve
+on the first launch or later in Settings, under **Spoken language** (sfat
+ha-dibur). It is Hebrew unless you pick another. Every service is asked for
+that language, and all nine write Hebrew.
 
-Each service's reach in those twelve is kept in the app for the day there is
-one, and then a service that lacks the chosen language says so under its
-name:
+Not every service writes all twelve. If the one you chose lacks the spoken
+language, Settings says so under the service. A Whisper model already on the
+phone then writes the captions until you choose another service; without
+one, the status button says "This service can't caption this language"
+(ha-sherut lo metamlel et ha-safa ha-zo).
+
+How many of the twelve each service writes:
 
 - Soniox and Speechmatics write eleven, all but Amharic. Chinese goes to
   Speechmatics as Mandarin.
-- AssemblyAI writes ten, all but Ukrainian and Amharic.
-- Deepgram writes eleven, Chinese among them. Amharic it does not have.
+- AssemblyAI writes ten, all but Amharic and Ukrainian.
+- Deepgram writes eleven, all but Amharic.
 - OpenAI, Groq and ElevenLabs take all twelve, Amharic too; their
   accuracy outside Hebrew was not measured here.
 - Google Gemini takes all twelve, each as a regional tag (European
@@ -163,8 +182,10 @@ name:
 
 1. Create an account at [console.soniox.com](https://console.soniox.com/signup).
 2. In the Soniox console, open your project and create a key under API Keys.
-3. In Ozen, open Settings, choose cloud transcription as the speech engine,
-   pick Soniox as the service, paste the key and save it.
+3. In Ozen, open Settings, choose **Cloud transcription** (timlul ba-anan)
+   under **Transcription engine** (manoa timlul), pick Soniox as the service,
+   paste the key and save it. The other services below are set up the same
+   way.
 
 Soniox takes what the captions cost from a balance on the account. When it
 is used up, Ozen says the key is out of credit and the phone's own model
@@ -172,7 +193,7 @@ carries on.
 
 ### Deepgram
 
-1. Create an account at [console.deepgram.com](https://console.deepgram.com/signup)
+1. Create an account at [console.deepgram.com](https://console.deepgram.com/signup).
    No card is asked for.
 2. In the Deepgram console, create an API key.
 3. In Ozen, pick Deepgram as the service, paste the key and save it.
@@ -268,5 +289,5 @@ key again.
   and passed on to Google; OpenRouter's and Google's terms apply.
 
 Off Wi-Fi, Deepgram, OpenAI, ElevenLabs, Google Gemini and OpenRouter use a
-few hundred MB of mobile data an hour of speech, up to about 1 GB, because
-each sentence is sent several times.
+few hundred MB of mobile data an hour of speech, up to about 500 MB, because
+each sentence is sent several times (a long one in pieces of a few seconds).

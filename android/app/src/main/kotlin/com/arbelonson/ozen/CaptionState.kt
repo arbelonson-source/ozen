@@ -124,11 +124,13 @@ data class CaptionScreenState(
     val offerBackup: Boolean = false,
     /** The connection as last reported; null when unknown. */
     val network: NetworkConditions? = null,
+    /** Captions are off and only sounds are listened for, to spare the phone's memory through the night. */
+    val soundsOnly: Boolean = false,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(
             phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining, pausedForSpeech,
-            coveringForCloud, coveredEngine, coverReason, offerBackup, network,
+            coveringForCloud, coveredEngine, coverReason, offerBackup, network, soundsOnly,
         )
 
     /** Not merely listening: a call holding captions leaves them stopped, as `captionsAreRunning` on the iPhone. */
@@ -200,6 +202,7 @@ object CaptionState {
         coverReason: EngineUnavailability.Kind? = null,
         offerBackup: Boolean = false,
         network: NetworkConditions? = null,
+        soundsOnly: Boolean = false,
     ) {
         val resumed = speechResume.noteCaptions(segments, now)
         segmentsShown = segments
@@ -228,6 +231,7 @@ object CaptionState {
             coverReason = coverReason,
             offerBackup = offerBackup,
             network = network,
+            soundsOnly = soundsOnly,
             lineCount = segments.size,
             lines = shown.mapIndexed { at, it ->
                 val shape = shaped[at]

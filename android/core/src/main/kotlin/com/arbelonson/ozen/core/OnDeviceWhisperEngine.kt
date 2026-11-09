@@ -140,6 +140,25 @@ class OnDeviceWhisperEngine(
      */
     private val longCutLookBackSeconds = 2.0
     private val longCutFrameSeconds = 0.05
+
+    /**
+     * The most finished sentences left waiting for a final pass of their
+     * own. A pass slower than the pause used to find the next sentence
+     * already started, and the pause was never seen: two sentences, often
+     * two people, came out as one line. The intake remembers each pause
+     * now and every sentence gets its own line; but a phone slower than the
+     * talking would then fall further behind with every sentence, so past
+     * this many waiting they all share the next line. Replayed on 368
+     * sentences of Hebrew lectures: with 1 s live and 1.5 s final passes it
+     * was 238 lines and with 2 s / 3 s 155, against 356 with an instant
+     * model; remembering the pauses gives 356 up to 3 s / 4.5 s passes,
+     * where this never comes into play. With 8 s / 12 s passes it keeps 269
+     * lines (125 before) and the longest wait for a line at 43 s, where
+     * remembering every pause without it let the wait grow to 139 s. One
+     * waiting already merged lines at 4.5 s passes; three or four kept 9-23
+     * more lines but let the wait reach 52-67 s.
+     */
+    private val mostLinesWaiting = 2
     private val sampleRate = 16_000.0
 
     // MARK: - TranscriptionEngine
@@ -288,7 +307,7 @@ class OnDeviceWhisperEngine(
         val pipe = synchronized(lock) { passes } ?: throw NotPrepared()
         val specialTokenBegin = pipe.specialTokenBegin
 
-        val intake = AudioIntake(voiceScorerFactory())
+        val intake = AudioIntake(voiceScorerFactory(), (pauseSeconds * sampleRate).toInt())
         coroutineScope {
             // Taken in where the model runs, not on the collector's thread:
             // the app collects the captions on its main thread, and the voice
@@ -327,6 +346,22 @@ class OnDeviceWhisperEngine(
         val longCutLookBack = (longCutLookBackSeconds * sampleRate).toInt()
         val longCutFrame = (longCutFrameSeconds * sampleRate).toInt()
         var lastLivePassSeconds: Double? = null
+        // A finished line reads its own length plus 5 s, not the whole 30 s
+        // window: the pass holds up the next line's first words, and on the
+        // emulator a whole window took about 30 s. That margin cost accuracy
+        // (164 voice-message pieces of 8 s: 13.5% of words wrong against 11.2%
+        // with the whole window), so a phone whose live passes say the whole
+        // window takes 1.5 s or less reads it: no longer than the live
+        // preview may rest between passes, and the next line's first pass
+        // waits for a second of speech anyway. A line that may be retried at a
+        // higher temperature counts each retry as another whole pass, so long
+        // lines and lines with nothing on screen yet keep their retries and,
+        // unless the phone is three times as fast, the margin: those retries
+        // are the line's only chance, and a long line's margin already covers
+        // most of the window. Remembered across lines, unlike
+        // `lastLivePassSeconds`; empty at the start, so the first lines keep
+        // the margin until a live pass has been timed.
+        val finalWindow = FinalPassWindow()
 
         var utteranceID = UUID.randomUUID()
         var samplesAtLastPass = 0
@@ -358,7 +393,19 @@ class OnDeviceWhisperEngine(
             // line's own words (`WhisperKitDecodeRoom`).
             val prompt = promptTokens(pipe)
             val maxSamples = (WhisperKitDecodeRoom.longestLineSeconds(prompt?.size ?: 0, maxUtteranceSeconds) * sampleRate).toInt()
-            val pauseReached = total - speechEnd >= pauseSamples
+            // A pause the intake heard while a pass ran ends the line there,
+            // though the next sentence has begun (see `mostLinesWaiting`).
+            val lineEndAtPause = UtteranceCut.lineEndAtPause(
+                pauses = status.pauses,
+                speechEnd = speechEnd,
+                total = total,
+                pause = pauseSamples,
+                pad = padSamples,
+                maxSamples = maxSamples,
+                mostWaiting = mostLinesWaiting,
+                finished = status.finished,
+            )
+            val pauseReached = lineEndAtPause != null
             val tooLong = total >= maxSamples
             val isFinal = pauseReached || tooLong || status.finished
             val interval = secondsBetweenLivePasses(lastLivePassSeconds)
@@ -375,7 +422,7 @@ class OnDeviceWhisperEngine(
             val window: FloatArray
             val line = UtteranceCut.finishedLine(
                 total = total,
-                speechEnd = speechEnd,
+                speechEnd = lineEndAtPause ?: speechEnd,
                 pad = padSamples,
                 maxSamples = maxSamples,
                 stillTalkingAtCap = tooLong && !pauseReached && !status.finished,
@@ -436,6 +483,8 @@ class OnDeviceWhisperEngine(
             }
             if (!isFinal) {
                 options = options.copy(maxTokens = WhisperKitDecodeRoom.livePassTokens(windowSeconds))
+            } else if (finalWindow.usesFullWindow(heat(), lowPowerMode(), attempts = 1 + options.temperatureFallbackCount)) {
+                options = options.copy(fullWindow = true)
             }
             // A voice across the room reaches the model quiet; brought up to
             // a common level it made fewer mistakes (speaker across the room
@@ -464,6 +513,7 @@ class OnDeviceWhisperEngine(
                 // temperatures and would overstate how slow the phone is.
                 val seconds = passStarted.elapsedNow().toDouble(DurationUnit.SECONDS)
                 lastLivePassSeconds = seconds
+                finalWindow.recordLivePass(WhisperAudioContext.frames(heard.size, isFinal = false), seconds)
                 val reports = synchronized(lock) {
                     tally.recordLivePass(seconds)
                     if (coolAtStart && !retried && ModelFitWatch.counts(seconds, heat(), lowPowerMode(), kind)) tally.recordCountedPass(seconds)

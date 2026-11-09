@@ -263,6 +263,33 @@ class HistoryScreenDeviceTest {
         }
     }
 
+    // TalkBack cuts off what it is saying for the next announcement, so
+    // the line a jump landed on must not talk over a smoke alarm just said.
+    @Test
+    fun aJumpRightAfterASafetyAlertWaitsForTheAlertsHoldBeforeSayingTheLine() {
+        val lines = (1..40).map { "Hold test nice weather" to null as String? }.toMutableList()
+        lines[0] = "Hold test opening line" to null
+        lines[30] = "Hold test the dentist at 10:30 on Sunday" to null
+        seed(*lines.toTypedArray())
+        val announced = CopyOnWriteArrayList<Pair<String, Long>>()
+        val announceBefore = ScreenReader.announce
+        ScreenReader.announce = { _, text -> announced += text to android.os.SystemClock.elapsedRealtime() }
+        try {
+            compose.onNodeWithText("History").performClick()
+            compose.onNodeWithText("Hold test opening line", substring = true).performClick()
+            waitFor("Numbers mentioned")
+            AnnouncementHold.holdFor(3_000)
+            val holdEnds = AnnouncementHold.heldUntil
+            compose.onNode(hasText("at 10:30 on Sunday", substring = true) and hasClickAction()).performClick()
+            compose.waitUntil(8_000) { announced.any { it.first.contains("Hold test the dentist at 10:30") } }
+            val saidAt = announced.first { it.first.contains("Hold test the dentist at 10:30") }.second
+            assertTrue("said ${holdEnds - saidAt} ms before the safety alert's hold ended", saidAt >= holdEnds)
+        } finally {
+            ScreenReader.announce = announceBefore
+            AnnouncementHold.heldUntil = 0L
+        }
+    }
+
     private fun spoken(text: String) =
         compose.onNodeWithContentDescription(text, substring = true).fetchSemanticsNode().config[SemanticsProperties.ContentDescription].single()
 

@@ -88,6 +88,7 @@ struct KeywordAlertsView: View {
                 ForEach(unusedSuggestions, id: \.self) { word in
                     Button {
                         viewModel.addKeywordAlert(phrase: word)
+                        Announcement.added(AlertSuggestions.label(for: word, in: viewModel.uiLanguage))
                     } label: {
                         Label(tr("הוספה: %1", "Add: %1", args: ["\(AlertSuggestions.label(for: word, in: viewModel.uiLanguage))"]), systemImage: "plus.circle")
                     }
@@ -163,13 +164,17 @@ struct KeywordAlertsView: View {
     }
 
     private var otherLettersNote: String {
-        tr("הכתוביות נכתבות באותיות עבריות, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found.")
+        tr("הכתוביות נכתבות באותיות של שפת הדיבור, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are written in the letters of the spoken language, so a word written in other letters may never be found.")
     }
 
     private func add() {
         guard !typedWordIsOn else { return }
+        let phrase = newPhrase.trimmingCharacters(in: .whitespacesAndNewlines)
         viewModel.addKeywordAlert(phrase: newPhrase)
         newPhrase = ""
         isEditing = true
+        // The word lands in the list further down, out of VoiceOver's
+        // reach from the text field; say that it went in.
+        if !phrase.isEmpty { Announcement.added(shown(phrase)) }
     }
 }

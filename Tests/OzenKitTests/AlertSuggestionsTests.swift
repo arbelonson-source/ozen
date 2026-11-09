@@ -43,10 +43,19 @@ struct AlertSuggestionsTests {
     @Test("the note under the name form lists only the words that will buzz, and is gone when none will")
     func vibrationNote() {
         let alerts = [KeywordAlert(phrase: "סבתא"), KeywordAlert(phrase: "Dani", isEnabled: false), KeywordAlert(phrase: "Ruti")]
-        #expect(AlertSuggestions.vibrationNote(for: alerts, in: .english) == "The phone will vibrate for: Grandma, Ruti")
-        #expect(AlertSuggestions.vibrationNote(for: alerts, in: .hebrew) == "הטלפון ירטוט על: סבתא, Ruti")
-        #expect(AlertSuggestions.vibrationNote(for: [KeywordAlert(phrase: "Dani", isEnabled: false)], in: .english) == nil)
-        #expect(AlertSuggestions.vibrationNote(for: [], in: .english) == nil)
+        #expect(AlertSuggestions.vibrationNote(for: alerts, in: .english, captionLanguage: "en") == "The phone will vibrate for: Grandma, Ruti")
+        #expect(AlertSuggestions.vibrationNote(for: alerts, in: .hebrew, captionLanguage: "en") == "הטלפון ירטוט על: סבתא, Ruti")
+        #expect(AlertSuggestions.vibrationNote(for: [KeywordAlert(phrase: "Dani", isEnabled: false)], in: .english, captionLanguage: "en") == nil)
+        #expect(AlertSuggestions.vibrationNote(for: [], in: .english, captionLanguage: "en") == nil)
+    }
+
+    @Test("the note leaves out a word in other letters than the captions, which can never buzz")
+    func vibrationNoteLeavesOutOtherLetters() {
+        let alerts = [KeywordAlert(phrase: "Dana"), KeywordAlert(phrase: "סבתא")]
+        #expect(AlertSuggestions.vibrationNote(for: alerts, in: .english, captionLanguage: "he") == "The phone will vibrate for: Grandma")
+        #expect(AlertSuggestions.vibrationNote(for: [KeywordAlert(phrase: "Dana")], in: .english, captionLanguage: "he") == nil)
+        #expect(AlertSuggestions.vibrationNote(for: [KeywordAlert(phrase: "Dana")], in: .english, captionLanguage: "en") == "The phone will vibrate for: Dana")
+        #expect(AlertSuggestions.vibrationNote(for: [KeywordAlert(phrase: "سارة"), KeywordAlert(phrase: "סבתא")], in: .english, captionLanguage: "he") == "The phone will vibrate for: Grandma")
     }
 
     private static func hasHebrew(_ text: String) -> Bool {

@@ -49,9 +49,18 @@ class AlertSuggestionsTest {
     @Test
     fun `the note under the name form lists only the words that will buzz, and is gone when none will`() {
         val alerts = listOf(KeywordAlert(phrase = "סבתא"), KeywordAlert(phrase = "Dani", isEnabled = false), KeywordAlert(phrase = "Ruti"))
-        assertEquals("The phone will vibrate for: Grandma, Ruti", AlertSuggestions.vibrationNote(alerts, UILanguage.English))
-        assertEquals("הטלפון ירטוט על: סבתא, Ruti", AlertSuggestions.vibrationNote(alerts, UILanguage.Hebrew))
-        assertNull(AlertSuggestions.vibrationNote(listOf(KeywordAlert(phrase = "Dani", isEnabled = false)), UILanguage.English))
-        assertNull(AlertSuggestions.vibrationNote(emptyList(), UILanguage.English))
+        assertEquals("The phone will vibrate for: Grandma, Ruti", AlertSuggestions.vibrationNote(alerts, UILanguage.English, captionLanguage = "en"))
+        assertEquals("הטלפון ירטוט על: סבתא, Ruti", AlertSuggestions.vibrationNote(alerts, UILanguage.Hebrew, captionLanguage = "en"))
+        assertNull(AlertSuggestions.vibrationNote(listOf(KeywordAlert(phrase = "Dani", isEnabled = false)), UILanguage.English, captionLanguage = "en"))
+        assertNull(AlertSuggestions.vibrationNote(emptyList(), UILanguage.English, captionLanguage = "en"))
+    }
+
+    @Test
+    fun `the note leaves out a word in other letters than the captions, which can never buzz`() {
+        val alerts = listOf(KeywordAlert(phrase = "Dana"), KeywordAlert(phrase = "סבתא"))
+        assertEquals("The phone will vibrate for: Grandma", AlertSuggestions.vibrationNote(alerts, UILanguage.English, captionLanguage = "he"))
+        assertNull(AlertSuggestions.vibrationNote(listOf(KeywordAlert(phrase = "Dana")), UILanguage.English, captionLanguage = "he"))
+        assertEquals("The phone will vibrate for: Dana", AlertSuggestions.vibrationNote(listOf(KeywordAlert(phrase = "Dana")), UILanguage.English, captionLanguage = "en"))
+        assertEquals("The phone will vibrate for: Grandma", AlertSuggestions.vibrationNote(listOf(KeywordAlert(phrase = "سارة"), KeywordAlert(phrase = "סבתא")), UILanguage.English, captionLanguage = "he"))
     }
 }

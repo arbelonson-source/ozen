@@ -26,7 +26,7 @@ private class CostedPasses(private val now: () -> Long) : WhisperPasses {
     override fun tokenize(text: String): List<Int> = text.map { it.code } + 50_300
 
     override suspend fun run(audio: FloatArray, options: WhisperPassOptions): List<WhisperSegment> {
-        val frames = WhisperAudioContext.frames(audio.size, options.isFinal)
+        val frames = WhisperAudioContext.frames(audio.size, options.isFinal, options.fullWindow)
         val started = now()
         delay(frames * MS_PER_FRAME)
         passes.add(Pass(started, now(), audio.size, frames, options.isFinal, options.temperatureFallbackCount))

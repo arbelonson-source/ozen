@@ -559,4 +559,18 @@ class CaptionStateTest {
         assertFalse(CaptionState.screen.value.lines[0].starred)
         CaptionState.clear()
     }
+
+    @Test
+    fun `sounds-only shows on the status, is not running captions, and keeps no screen awake`() = Localization.withLanguage(UILanguage.English) {
+        CaptionState.clear()
+        CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), soundsOnly = true)
+        val screen = CaptionState.screen.value
+        assertEquals("Listening for sounds only", screen.status.title)
+        assertTrue(screen.soundsOnly)
+        assertFalse(screen.captionsRunning)
+        assertFalse(screen.keepsScreenOn(true, 1_000.0))
+        CaptionState.show(PipelinePhase.Idle, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList())
+        assertFalse(CaptionState.screen.value.soundsOnly)
+        CaptionState.clear()
+    }
 }

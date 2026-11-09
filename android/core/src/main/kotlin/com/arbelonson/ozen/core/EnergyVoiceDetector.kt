@@ -191,6 +191,16 @@ class EnergyVoiceDetector(
         internal const val DIGITAL_SILENCE: Float = 1e-6f
 
         /**
+         * How many samples the line cutting reads at a time: 43 ms at
+         * 16 kHz, about what the iPhone's microphone hands over (2048
+         * samples at 48 kHz), and what the home computer reads. The rates
+         * above are per reading, so pieces of another size move where
+         * speech starts and stops. This phone's microphone hands over
+         * 100 ms at a time; readings span the pieces it hands over.
+         */
+        internal const val BLOCK_SAMPLES = 688
+
+        /**
          * The line for cutting what goes to Whisper, a fifth lower than the
          * default (6.0 dB over the noise floor, 4.1 dB when it holds still).
          * Measured on the owner's desktop with the voice check on: a speaker

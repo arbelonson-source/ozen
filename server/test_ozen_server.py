@@ -538,6 +538,33 @@ class OneBigChunk(unittest.TestCase):
         self.assertTrue(3 * S.RATE <= session.last_speech_end <= 3 * S.RATE + 688, session.last_speech_end)
 
 
+class SameReadingsWhateverTheFrames(unittest.TestCase):
+    """The detector's rates are per reading: an odd-sized reading at the end
+    of each frame moved where speech started and stopped."""
+
+    @staticmethod
+    def frames(size):
+        i = np.arange(24_000)
+        speaking = ((i >= 1_600) & (i < 5_000)) | ((i >= 18_000) & (i < 21_000))
+        wave = np.where(speaking, 0.05 * np.sin(2 * np.pi * 220 * i / S.RATE), 0.0003 * np.sin(2 * np.pi * 50 * i / S.RATE))
+        audio = (wave * 32767).astype("<i2").tobytes()
+        return [audio[at:at + size * 2] for at in range(0, len(audio), size * 2)]
+
+    def heard(self, size):
+        session = S.Session(Socket(), SlowGPU(live_seconds=0.01), "he", [], live_interval=0.3)
+        for frame in self.frames(size):
+            session.add_audio(frame)
+        return session.last_speech_end, session.pauses
+
+    def test_the_detector_hears_the_same_speech_whatever_size_of_frames_the_phone_sends(self):
+        expected = self.heard(688)
+        for size in (1_600, 441, 24_000):
+            self.assertEqual(self.heard(size), expected, f"{size} samples a frame")
+
+    def test_the_detector_reads_688_samples_at_a_time_the_43_ms_it_was_tuned_on(self):
+        self.assertEqual(self.heard(1_600), (31 * 688, [8 * 688]))
+
+
 class FullScale(unittest.TestCase):
     def test_the_phones_16_bit_samples_become_floats_from_minus_one_to_one(self):
         session = S.Session(Socket(), SlowGPU(live_seconds=0.01), "he", [], live_interval=0.3)
@@ -1200,6 +1227,182 @@ class ModelsThatWontLoad(unittest.TestCase):
         self.assertEqual(stopped.exception.code, 4)
         sleep.assert_called_once_with(S.LOAD_RETRY_SECONDS)
         self.assertIn("CUBLAS_STATUS_NOT_SUPPORTED", logged.output[0])
+
+
+class CardShortOfMemory(unittest.TestCase):
+    """A graphics card another program holds part of failed the float16
+    load, and every phone used its own, weaker model instead."""
+
+    def setUp(self):
+        self.built = []
+        self.passes = []
+        patcher = mock.patch.object(S, "download_model", lambda name, local_files_only=False: name)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def card(self, room_for=("int8_float16",), full_at="load", only=None, error="CUDA failed with error out of memory"):
+        """A WhisperModel on a card with room only for `room_for`; any other
+        compute type runs out of memory at `full_at` ("load" or the first
+        "pass"), for the model `only` names or for every model."""
+        built, passes = self.built, self.passes
+
+        def short(path, compute_type):
+            return compute_type not in room_for and only in (None, path)
+
+        class Whisper(Model):
+            def __init__(self, path, device, compute_type):
+                super().__init__()
+                built.append((path, compute_type))
+                self.path, self.compute_type = path, compute_type
+                if full_at == "load" and short(path, compute_type):
+                    raise RuntimeError(error)
+
+            def transcribe(self, audio, **kw):
+                passes.append((self.path, self.compute_type))
+                if full_at == "pass" and short(self.path, self.compute_type):
+                    raise RuntimeError(error)
+                return super().transcribe(audio, **kw)
+
+        return Whisper
+
+    def args(self, **changes):
+        values = dict(model="turbo", device="cuda", compute_type="float16", beam=5, context=False,
+                      final_model="large", speech_gate=0.05, general_model="large-v3-turbo")
+        values.update(changes)
+        return types.SimpleNamespace(**values)
+
+    def test_a_card_too_full_for_the_float16_models_gets_them_in_int8_float16(self):
+        with mock.patch.object(S, "WhisperModel", self.card(only="large")), \
+                self.assertLogs(S.log, "INFO") as logged:
+            transcriber = S.load_models(self.args())
+        self.assertEqual(transcriber.compute_type, "int8_float16")
+        self.assertEqual(self.built, [("turbo", "float16"), ("large", "float16"),
+                                      ("turbo", "int8_float16"), ("large", "int8_float16")])
+        self.assertEqual((transcriber.model.compute_type, transcriber.final_model.compute_type),
+                         ("int8_float16", "int8_float16"))
+        self.assertEqual(self.passes, [("turbo", "int8_float16"), ("large", "int8_float16")])
+        warning = [line for line in logged.output if line.startswith("WARNING")]
+        self.assertEqual(len(warning), 1, logged.output)
+        self.assertIn("out of memory", warning[0])
+        self.assertIn("int8_float16", warning[0])
+        self.assertIn("the speech models run in int8_float16", logged.output[-1])
+
+    def test_models_that_run_out_of_memory_on_their_first_pass_are_loaded_again_smaller(self):
+        with mock.patch.object(S, "WhisperModel", self.card(full_at="pass", only="large")), \
+                self.assertLogs(S.log, "INFO"):
+            transcriber = S.load_models(self.args())
+        self.assertEqual(transcriber.compute_type, "int8_float16")
+        self.assertEqual(self.passes, [("turbo", "float16"), ("large", "float16"),
+                                       ("turbo", "int8_float16"), ("large", "int8_float16")])
+
+    def test_the_float16_model_loaded_before_the_card_filled_is_gone_before_the_smaller_ones_load(self):
+        Short = self.card(only="large")
+        first, alive_at_retry = [], []
+
+        class Whisper(Short):
+            def __init__(self, path, device, compute_type):
+                if compute_type == "int8_float16" and not alive_at_retry:
+                    alive_at_retry.append(first[0]() is not None)
+                self.held_in_a_cycle = self
+                super().__init__(path, device, compute_type)
+                if not first:
+                    first.append(weakref.ref(self))
+
+        gc.disable()
+        self.addCleanup(gc.enable)
+        with mock.patch.object(S, "WhisperModel", Whisper), self.assertLogs(S.log, "INFO"):
+            S.load_models(self.args())
+        self.assertEqual(alive_at_retry, [False], "the float16 model would keep its share of the card from the smaller load")
+
+    def test_at_startup_too_the_float16_models_are_gone_before_the_smaller_ones_load(self):
+        first, alive_at_retry = [], []
+
+        class Models:
+            def __init__(self):
+                self.held_in_a_cycle = self
+
+        async def load(compute_type):
+            if compute_type == "int8_float16":
+                alive_at_retry.append(first[0]() is not None)
+                return "smaller"
+            models = Models()
+            first.append(weakref.ref(models))
+            raise RuntimeError("CUDA failed with error out of memory")
+
+        gc.disable()
+        self.addCleanup(gc.enable)
+        with self.assertLogs(S.log, "INFO"):
+            self.assertEqual(asyncio.run(S.load_fitting_async(load, "cuda", "float16")), "smaller")
+        self.assertEqual(alive_at_retry, [False])
+
+    def test_a_failure_that_is_not_memory_is_not_loaded_again(self):
+        with mock.patch.object(S, "WhisperModel", self.card(only="large", error="CUBLAS_STATUS_NOT_SUPPORTED")):
+            with self.assertRaises(RuntimeError):
+                S.load_models(self.args())
+        self.assertEqual(self.built, [("turbo", "float16"), ("large", "float16")])
+
+    def test_the_smaller_load_is_tried_once_and_its_failure_stands(self):
+        with mock.patch.object(S, "WhisperModel", self.card(room_for=())), self.assertLogs(S.log, "WARNING"):
+            with self.assertRaises(RuntimeError) as failed:
+                S.load_models(self.args())
+        self.assertIn("out of memory", str(failed.exception))
+        self.assertEqual(self.built, [("turbo", "float16"), ("turbo", "int8_float16")])
+
+    def test_models_already_in_int8_or_on_the_processor_are_not_switched(self):
+        for device, compute_type in (("cuda", "int8_float16"), ("cuda", "int8"), ("cpu", "int8"), ("cpu", "float32")):
+            self.built.clear()
+            with mock.patch.object(S, "WhisperModel", self.card(room_for=())):
+                with self.assertRaises(RuntimeError):
+                    S.load_models(self.args(device=device, compute_type=compute_type))
+            self.assertEqual(self.built, [("turbo", compute_type)], (device, compute_type))
+
+    def test_a_card_with_room_keeps_float16_and_the_log_says_so(self):
+        with mock.patch.object(S, "WhisperModel", self.card(room_for=("float16", "int8_float16"))), \
+                self.assertLogs(S.log, "INFO") as logged:
+            transcriber = S.load_models(self.args())
+        self.assertEqual(transcriber.compute_type, "float16")
+        self.assertEqual(self.built, [("turbo", "float16"), ("large", "float16")])
+        self.assertEqual([line for line in logged.output if "float16" in line],
+                         ["INFO:ozen:the speech models run in float16"])
+
+    def test_the_readme_quotes_the_line_the_log_shows_for_the_smaller_models(self):
+        with mock.patch.object(S, "WhisperModel", self.card()), self.assertLogs(S.log, "INFO") as logged:
+            S.load_models(self.args(final_model=""))
+        line = logged.output[-1].split(":", 2)[2]
+        with open(os.path.join(os.path.dirname(os.path.abspath(S.__file__)), "README.md"), encoding="utf-8") as f:
+            readme = " ".join(f.read().split())
+        self.assertIn(f'the log says "{line}"', readme)
+
+    def test_the_general_model_for_other_languages_gets_the_smaller_type_too(self):
+        with mock.patch.object(S, "WhisperModel", self.card()), self.assertLogs(S.log, "INFO"):
+            transcriber = S.load_general(self.args())
+        self.assertEqual(transcriber.compute_type, "int8_float16")
+        self.assertEqual(self.built, [("large-v3-turbo", "float16"), ("large-v3-turbo", "int8_float16")])
+
+    def test_at_startup_a_card_too_full_for_float16_serves_the_models_in_int8_float16(self):
+        for full_at in ("load", "pass"):
+            self.built.clear()
+            self.passes.clear()
+            served = []
+
+            async def serve(args, transcriber, *rest):
+                served.append(transcriber)
+
+            with mock.patch.object(S, "WhisperModel", self.card(full_at=full_at, only="large")), \
+                    mock.patch.object(S, "serve", serve), \
+                    mock.patch.object(S, "setup_logging", lambda: None), \
+                    mock.patch.object(S.time, "sleep") as sleep, \
+                    mock.patch.object(sys, "argv", ["ozen_server.py", "--final-model", "large"]), \
+                    mock.patch.dict("os.environ", {"OZEN_TOKEN": "x"}), \
+                    self.assertLogs(S.log, "INFO") as logged:
+                asyncio.run(S.main())
+            sleep.assert_not_called()
+            self.assertEqual(len(served), 1, full_at)
+            self.assertEqual(served[0].compute_type, "int8_float16", full_at)
+            self.assertEqual(self.built[0], ("ivrit-ai/whisper-large-v3-turbo-ct2", "float16"), full_at)
+            self.assertEqual(self.passes[-2:], [("ivrit-ai/whisper-large-v3-turbo-ct2", "int8_float16"),
+                                                ("large", "int8_float16")], full_at)
+            self.assertTrue(any("the speech models run in int8_float16" in line for line in logged.output), logged.output)
 
 
 class Listening(Exception):
@@ -2159,6 +2362,24 @@ class DocNumbers(unittest.TestCase):
     def test_the_main_readme_gives_the_pause_that_finishes_a_line(self):
         self.assertIn(f"a sentence counts as finished after a {S.Session.pause} s pause whatever the card",
                       self.doc("..", "README.md"))
+
+    def test_the_linux_removal_steps_undo_each_step_the_linux_setup_took(self):
+        removal = self.doc("..", "docs", "home-computer.md").split("## Removing it", 1)[1]
+        readme = self.doc("README.md")
+        folder = re.search(r'home_dir="\$\{OZEN_HOME:-\$HOME/([^}]+)\}"', self.doc("setup.sh")).group(1)
+        here = os.path.dirname(os.path.abspath(S.__file__))
+        self.assertEqual(os.path.dirname(S.REPORTS_DIR), here)
+        with open(S.__file__, encoding="utf-8") as f:
+            self.assertIn('"--cert-dir", default=os.path.dirname(os.path.abspath(__file__))', f.read())
+        self.assertIn(f"rm -r ~/{folder}", removal)
+        path, name = re.search(r"Save this as `(~/\.config/systemd/user/([\w-]+)\.service)`", readme).groups()
+        self.assertIn(f"systemctl --user enable --now {name}", readme)
+        self.assertIn(f"systemctl --user disable --now {name}", removal)
+        self.assertIn(f"rm {path}", removal)
+        self.assertIn('sudo loginctl enable-linger "$USER"', readme)
+        self.assertIn('sudo loginctl disable-linger "$USER"', removal)
+        rule = re.search(r"`sudo ufw allow (from \S+ to any port \d+ proto tcp)`", readme).group(1)
+        self.assertIn(f"sudo ufw delete allow {rule}", removal)
 
 
 class EncryptedHomePort(unittest.TestCase):

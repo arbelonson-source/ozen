@@ -69,8 +69,8 @@ class BatteryAdvisor(
          * the battery down, and the moment between two attempts took the
          * warning down, never to come back once given.
          */
-        fun watches(phase: PipelinePhase): Boolean = when (phase) {
-            PipelinePhase.Idle, PipelinePhase.Paused -> false
+        fun watches(phase: PipelinePhase, soundsOnly: Boolean = false): Boolean = when (phase) {
+            PipelinePhase.Idle, PipelinePhase.Paused -> soundsOnly
             PipelinePhase.RequestingMicrophonePermission, is PipelinePhase.PreparingEngine, PipelinePhase.StartingAudio, PipelinePhase.Listening, is PipelinePhase.Failed -> true
         }
     }

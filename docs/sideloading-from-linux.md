@@ -1,5 +1,9 @@
 # Installing Ozen on an iPhone from a Linux machine (no Mac, free Apple ID)
 
+This page is for people who install Ozen themselves from a Linux computer.
+Most people should get it from the
+[App Store](https://apps.apple.com/app/id6821325968) instead.
+
 This is the exact path that worked on 2026-09-13 with an iPhone 15 Pro Max on
 iOS 18.7.3 and an Arch Linux desktop. It is written down because three separate
 things were broken along the way, none of them in Ozen itself.
@@ -29,7 +33,8 @@ things were broken along the way, none of them in Ozen itself.
 2. **Apple returns HTTP 503 during sign-in** (since September 2026) whenever the
    `X-MMe-Client-Info` header contains `com.apple.dt.Xcode`, which
    `anisette_server` hardcodes. The fix in AltServer-Linux is an unmerged PR with
-   no binary, so a 50-line local proxy rewrites the one substring instead:
+   no binary, so a 50-line local proxy (written for that install; it is not in
+   this repository) rewrites the one substring instead:
    `anisette_proxy.py` listens on `:6970`, forwards to `:6969`, and replaces
    `com.apple.dt.Xcode` with `com.apple.akd` in the response body. Point
    AltServer at the proxy with `ALTSERVER_ANISETTE_SERVER=http://127.0.0.1:6970`.
@@ -67,7 +72,9 @@ fix the same way: leave `idevicesyslog` running, open the app, and search the
 output for `AMFI` — no "code signature validation failed" means the signature
 was accepted.
 
-### The earlier report (2026-09-19)
+### History: the first report (2026-09-19)
+
+Kept for the record: the section above replaced it.
 
 Seen on 2026-09-19 with an iPhone 13 mini on iOS 26.5.2 (Developer Mode on):
 AltServer signs and installs Ozen without an error, but tapping the icon does
@@ -79,18 +86,16 @@ crash report, because the process never starts. Nothing in the app or its build
 settings changed between the builds that opened and the ones that did not.
 
 AltServer also prints `Error parsing entitlements` for the app and the widget
-while signing. That is the most likely place to look, but it is not proven to
-be the cause.
+while signing. That looked like the most likely cause at the time; the real
+one turned out to be AltServer's signature itself (see above).
 
 To see it for yourself, leave `idevicesyslog` running, open the app, and search
 the output for `Ozen`, `amfid` and `TXM`.
 
-What to try instead, not yet confirmed to fix it: sign and install with
-[Impactor](https://github.com/claration/Impactor) (its Linux AppImage),
-which uses Apple's newer signing flow. Open the AppImage, drop `Ozen.ipa` on it,
-choose the phone, sign in with the same Apple ID (an app-specific password), and
-install. Keep the same Apple ID so settings and the downloaded model survive.
-This section will say so here once someone has confirmed it opens.
+What was suggested then, signing and installing with
+[Impactor](https://github.com/claration/Impactor) instead, was confirmed on
+2026-09-27: a copy signed with Impactor opens. Use Impactor, as described
+above.
 
 ## Getting the build
 
@@ -114,10 +119,14 @@ Center button), which AltServer signs as a second App ID, `…Ozen.Captions`. A
 free Apple ID allows ten new App IDs a week, so this only matters when
 installing many different apps with it.
 
-Then on the phone: Settings → General → VPN & Device Management → trust the
-developer certificate; Settings → Privacy & Security → Developer Mode → on
-(the phone restarts). The app expires after 7 days on a free Apple ID; see Refreshing below (a
-paid developer account removes the limit).
+Then on the phone:
+
+1. Settings → General → VPN & Device Management → trust the developer
+   certificate.
+2. Settings → Privacy & Security → Developer Mode → on. The phone restarts.
+
+On a free Apple ID the app stops opening after 7 days; see Refreshing below.
+A paid developer account removes the limit.
 
 ## Refreshing
 
@@ -127,7 +136,8 @@ under "Install valid until" (ha-hatkana tkefa ad). Settings shows the installed 
 the release's build number.
 
 Refresh with the **same Apple ID** as last time, with Impactor (AltServer only
-on iOS/iPadOS 25 or earlier, see above): it then installs over the existing app, and her settings, enrolled voices, saved conversations and
-the downloaded speech model (hundreds of MB) all stay. A different Apple ID
+on iOS/iPadOS 18 or earlier, see above): it then installs over the existing
+app, and the settings, enrolled voices, saved conversations and the
+downloaded speech model (hundreds of MB) all stay. A different Apple ID
 gives the app a different bundle identifier, so it installs as a second, empty
 copy.

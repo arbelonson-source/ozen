@@ -22,7 +22,7 @@ public struct MicrophoneDropNotice: Sendable, Equatable {
     private static let placedNearTheTalker: Set<AudioPortType> = [.wired, .usb, .remoteMic]
 
     private static func wasPlacedNearTheTalker(_ previous: AudioInputDescriptor, preferredUID: String?) -> Bool {
-        placedNearTheTalker.contains(previous.portType) || (previous.portType == .bluetooth && previous.uid == preferredUID)
+        placedNearTheTalker.contains(previous.portType) || (previous.portType.isOnTheListenersEar && previous.uid == preferredUID)
     }
 
     public var title: String? {

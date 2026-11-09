@@ -65,7 +65,7 @@ struct InstallExpiryTests {
         let now = monday(9)
         Localization.$override.withValue(.russian) {
             #expect(InstallExpiry.whenText(expiresAt: monday(22, 5), now: now, utcOffsetSeconds: israel) == "сегодня в 22:05")
-            #expect(InstallExpiry.whenText(expiresAt: monday(7, 24, plusDays: 2), now: now, utcOffsetSeconds: israel) == "среда, 07:24")
+            #expect(InstallExpiry.whenText(expiresAt: monday(7, 24, plusDays: 2), now: now, utcOffsetSeconds: israel) == "среда в 07:24")
         }
         Localization.$override.withValue(.french) {
             #expect(InstallExpiry.whenText(expiresAt: monday(0, 30, plusDays: 1), now: now, utcOffsetSeconds: israel) == "demain à 00:30")

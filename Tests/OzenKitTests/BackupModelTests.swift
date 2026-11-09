@@ -57,4 +57,32 @@ struct BackupModelTests {
         #expect(!BackupModel.shouldOffer(after: .homeServerRejected, status: .missing(megabytes: 626)))
         #expect(!BackupModel.shouldOffer(after: nil, status: .missing(megabytes: 626)))
     }
+
+    @Test("VoiceOver hears the backup start, finish or stop, once each, not every percent")
+    func announcedChanges() {
+        #expect(BackupModel.announces(.downloading(fraction: 0), after: .missing(megabytes: 626)))
+        #expect(BackupModel.announces(.downloading(fraction: 0), after: .failed))
+        #expect(!BackupModel.announces(.downloading(fraction: 0.4), after: .downloading(fraction: 0.3)))
+        #expect(BackupModel.announces(.ready, after: .downloading(fraction: 0.99)))
+        #expect(BackupModel.announces(.failed, after: .downloading(fraction: 0.5)))
+        #expect(BackupModel.announces(.waitingForWiFi, after: .downloading(fraction: 0.5)))
+        #expect(BackupModel.announces(.offline, after: .missing(megabytes: 626)))
+        #expect(BackupModel.announces(.notEnoughRoom(megabytes: 120), after: .downloading(fraction: 0.1)))
+    }
+
+    @Test("nothing is said when nothing new happened or there is nothing to report")
+    func quietChanges() {
+        #expect(!BackupModel.announces(.notEnoughRoom(megabytes: 80), after: .notEnoughRoom(megabytes: 120)))
+        #expect(!BackupModel.announces(.ready, after: .ready))
+        #expect(!BackupModel.announces(.missing(megabytes: 626), after: .failed))
+        #expect(!BackupModel.announces(.missing(megabytes: 626), after: .offline))
+        #expect(!BackupModel.announces(.notNeeded, after: .ready))
+    }
+
+    @Test("the row turning up after picking the home computer is read in place, not called out over the picker")
+    func quietWhenTheRowAppears() {
+        #expect(!BackupModel.announces(.ready, after: .notNeeded))
+        #expect(!BackupModel.announces(.offline, after: .notNeeded))
+        #expect(!BackupModel.announces(.notEnoughRoom(megabytes: 120), after: .notNeeded))
+    }
 }

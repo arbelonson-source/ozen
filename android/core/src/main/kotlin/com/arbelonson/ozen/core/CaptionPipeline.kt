@@ -18,6 +18,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.isActive
@@ -65,6 +66,7 @@ class CaptionPipeline(
     private val now: () -> Double = { System.currentTimeMillis() / 1000.0 },
     private val timeSource: TimeSource = TimeSource.Monotonic,
     private val embedderContext: CoroutineContext = Dispatchers.Default,
+    private val retryWait: RetryWait = RetryWait(),
 ) {
     var phase: PipelinePhase = PipelinePhase.Idle
         private set(value) {
@@ -466,6 +468,31 @@ class CaptionPipeline(
      */
     var isListeningForSoundsOnly = false
         private set
+    /**
+     * Sounds alone were asked for (see [listenForSoundsOnly]), as against
+     * being the fallback of a failure. A call or a voice sample takes the
+     * microphone for a while; this brings the sounds back after.
+     */
+    var soundsOnlyChosen = false
+        private set
+
+    /**
+     * Sounds alone were chosen, and the microphone stopped and would not
+     * open again however often it was tried: the status no longer says it
+     * listens, and the phone put away is told. Cleared by the next start,
+     * stop or choice of sounds alone.
+     */
+    var soundsOnlyStoppedByItself = false
+        private set
+
+    private var soundsOnlyAttempts = 0
+    private var soundsOnlySince: Double? = null
+    private var soundsOnlyRetryTask: Job? = null
+    private var soundsOnlyWatch: Job? = null
+
+    @Volatile
+    private var soundsOnlyChunks = 0
+
     private var staleCommitTask: Job? = null
     private var utteranceClusterAssignments = HashMap<UUID, Int>()
     private var correctedUtterances = HashSet<UUID>()
@@ -639,6 +666,9 @@ class CaptionPipeline(
         }
         cancelScheduledRetry()
         stopListeningForSounds()
+        soundsOnlyChosen = false
+        soundsOnlyStoppedByItself = false
+        cancelSoundsOnlyRetry()
         val run = UUID.randomUUID()
         runID = run
         settingsInUse = settings.copy()
@@ -943,11 +973,15 @@ class CaptionPipeline(
         retryAfterTranscription = null
         recovery.reset()
         listeningSince = null
+        soundsOnlyStoppedByItself = false
         dismissMicrophoneDrop()
         saveFitMeasurements()
         tearDownSession()
         phase = PipelinePhase.Idle
     }
+
+    /** Nothing to stop: captions are off and no sounds are listened for alone. */
+    val isOff: Boolean get() = phase == PipelinePhase.Idle && !soundsOnlyChosen
 
     /**
      * For a pipeline that is being thrown away: [stop] keeps the engine
@@ -1037,7 +1071,7 @@ class CaptionPipeline(
      */
     fun stopFromNotification() {
         when (phase) {
-            PipelinePhase.Idle, PipelinePhase.Paused -> Unit
+            PipelinePhase.Idle, PipelinePhase.Paused -> if (soundsOnlyChosen) stop()
             PipelinePhase.Listening -> pause()
             else -> stop()
         }
@@ -1720,6 +1754,8 @@ class CaptionPipeline(
             } else if (held != null) {
                 retryAfterRecording = null
                 retry(held.settings)
+            } else if (soundsOnlyChosen) {
+                resumeSoundsOnly()
             } else {
                 val current = phase
                 if (current is PipelinePhase.Failed &&
@@ -1857,6 +1893,7 @@ class CaptionPipeline(
         soundPolicy.preferences = preferences
         settingsInUse?.soundAlerts = preferences
         coveredSettings?.soundAlerts = preferences
+        if (soundsOnlyChosen && !preferences.isEnabled) stop()
     }
 
     // endregion
@@ -2640,8 +2677,14 @@ class CaptionPipeline(
         systemInterrupted = active
         if (active) {
             cancelScheduledRetry()
+            cancelSoundsOnlyRetry()
             stopListeningForSounds()
         } else {
+            if (soundsOnlyChosen) {
+                soundsOnlyAttempts = 0
+                scope.launch { resumeSoundsOnly() }
+                return
+            }
             val failure = phase.failure ?: return
             recovery.reset()
             scheduleAutoRecovery(failure)
@@ -2696,15 +2739,24 @@ class CaptionPipeline(
         retryToken = token
         logEvent(PipelineEvent.Kind.RetryScheduled(recovery.attempts, delaySeconds))
         retryTask = scope.launch {
-            delay(delaySeconds.seconds)
-            if (!isActive || retryToken != token || phase !is PipelinePhase.Failed) return@launch
-            // Detach from this task before retrying: `retry` cancels any
-            // scheduled retry, and cancelling the task it's running on
-            // would cancel the model download it's about to start.
-            retryTask = null
-            retryToken = null
-            scheduledRetry = null
-            retry()
+            // Counted on a clock that goes on while the phone sleeps, with
+            // the processor kept up meanwhile (see `RetryWait`): a
+            // coroutine's delay stops with the processor, and with the
+            // screen off a retry due in seconds came minutes late. It stays
+            // up until the retry has started the engine too: let go when
+            // the wait ended, the processor could sleep halfway through
+            // the connection or model load the retry begins.
+            retryWait.whileDue {
+                retryWait.wait(delaySeconds.seconds)
+                if (!isActive || retryToken != token || phase !is PipelinePhase.Failed) return@launch
+                // Detach from this task before retrying: `retry` cancels any
+                // scheduled retry, and cancelling the task it's running on
+                // would cancel the model download it's about to start.
+                retryTask = null
+                retryToken = null
+                scheduledRetry = null
+                retry()
+            }
         }
         listenForSoundsMeanwhile(failure)
     }
@@ -2737,11 +2789,118 @@ class CaptionPipeline(
     private fun listenForSoundsMeanwhile(failure: PipelineFailure) {
         stopListeningForSounds()
         if (failure.kind != PipelineFailure.Kind.EngineUnavailable || systemInterrupted || isRecordingVoice) return
-        val detector = soundDetector ?: return
-        if (!soundPolicy.preferences.isEnabled) return
+        if (soundDetector == null || !soundPolicy.preferences.isEnabled) return
         val source = startCaptureOrNull() ?: return
+        beginSoundsOnly(source)
+    }
+
+    /**
+     * For the night: captions stop and the speech model is let go, while
+     * the microphone and the sound classifier go on, so a smoke alarm is
+     * still heard and the phone has a smaller app to end when memory runs
+     * short. Not during a call or a voice sample. A start still loading,
+     * or a failure, is stopped for it: the button did nothing there before.
+     * Starting captions again (or stopping) ends it. [settings] are the
+     * live ones, for a pipeline that never started.
+     */
+    suspend fun listenForSoundsOnly(settings: AppSettings? = null) {
+        if (settings != null) {
+            settingsInUse = settings.copy()
+            soundPolicy.preferences = settings.soundAlerts
+        }
+        if (systemInterrupted || isRecordingVoice || soundDetector == null || !soundPolicy.preferences.isEnabled) return
+        val loading = phase.isTransitioning
+        if (loading || phase is PipelinePhase.Failed) stop()
+        val wasListening = phase.isListening
+        stopListeningForSounds()
+        cancelScheduledRetry()
+        saveFitMeasurements()
+        tearDownSession()
+        if (!loading) dropEngines()
+        soundsOnlyChosen = true
+        soundsOnlyStoppedByItself = false
+        soundsOnlyAttempts = 0
+        if (wasListening) {
+            listeningSince = null
+            phase = PipelinePhase.Paused
+        } else {
+            onPhaseChange?.invoke(phase)
+        }
+        if (loading) {
+            scope.launch {
+                waitOutAbandonedLoad()
+                if (soundsOnlyChosen) dropEngines()
+            }
+        }
+        openSoundsOnly(retrying = false)
+    }
+
+    /**
+     * Sounds alone come back by themselves after a call, a voice sample or
+     * a microphone that stopped, as long as they are still chosen.
+     */
+    private suspend fun resumeSoundsOnly() {
+        if (!soundsOnlyChosen || isListeningForSoundsOnly || systemInterrupted || isRecordingVoice) return
+        openSoundsOnly(retrying = true)
+    }
+
+    /**
+     * A tap that cannot open the microphone leaves nothing chosen. Coming
+     * back by itself, it is tried again a few times first: the phone app
+     * can hold the microphone a moment after a call.
+     */
+    private suspend fun openSoundsOnly(retrying: Boolean) {
         val run = runID
-        val fan = FlowAudioFanOut(scope, source, count = 1, onFailure = { if (runID == run) stopListeningForSounds() })
+        audio.onInputsChanged = { inputsChanged() }
+        val permission = audio.requestPermission()
+        if (runID != run || !soundsOnlyChosen || isListeningForSoundsOnly) return
+        val opened = permission == AudioPermission.Granted && try {
+            audio.prepareSession(settingsInUse?.preferredInputUID ?: audio.selectedInputUID)
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            false
+        }
+        if (runID != run || !soundsOnlyChosen || isListeningForSoundsOnly) return
+        if (systemInterrupted || isRecordingVoice) return
+        val source = if (opened) startCaptureOrNull() else null
+        if (source == null) {
+            if (retrying && permission == AudioPermission.Granted) {
+                retrySoundsOnly()
+            } else {
+                soundsOnlyChosen = false
+                soundsOnlyStoppedByItself = retrying
+                onPhaseChange?.invoke(phase)
+            }
+            return
+        }
+        syncInputs()
+        beginSoundsOnly(source)
+        onPhaseChange?.invoke(phase)
+    }
+
+    private fun beginSoundsOnly(source: Flow<FloatArray>) {
+        val detector = soundDetector ?: return
+        val run = runID
+        val chosen = soundsOnlyChosen
+        lateinit var fan: FlowAudioFanOut
+        // Counted as the microphone hands chunks over, not as the classifier
+        // takes them: a classifier slow for a few seconds is not a
+        // microphone that stopped.
+        val counted = if (chosen) source.onEach { soundsOnlyChunks += 1 } else source
+        fan = FlowAudioFanOut(
+            scope,
+            counted,
+            count = 1,
+            onFailure = {
+                if (chosen) {
+                    soundsOnlyLost(fan, "the microphone failed")
+                } else if (runID == run) {
+                    stopListeningForSounds()
+                }
+            },
+        )
         fanOut = fan
         isListeningForSoundsOnly = true
         statsData.soundDetectionRunning = true
@@ -2756,6 +2915,73 @@ class CaptionPipeline(
             if (runID != run || !isActive) return@launch
             statsData.soundDetectionRunning = false
         }
+        if (chosen) watchSoundsOnly(fan)
+    }
+
+    /**
+     * A microphone that stops in the night (a route change, another app,
+     * nothing arriving) is opened again; the screen said it listened while
+     * nothing did.
+     */
+    private fun watchSoundsOnly(fan: FlowAudioFanOut) {
+        soundsOnlySince = now()
+        audio.onCaptureLost = { soundsOnlyLost(fan, "the microphone never settled after it changed") }
+        soundsOnlyWatch?.cancel()
+        soundsOnlyWatch = scope.launch {
+            var seen = soundsOnlyChunks
+            var quiet = 0
+            while (isActive) {
+                delay(SOUNDS_ONLY_STALL_CHECK_SECONDS.seconds)
+                if (fanOut !== fan) return@launch
+                val count = soundsOnlyChunks
+                if (count != seen || systemInterrupted) {
+                    seen = count
+                    quiet = 0
+                    continue
+                }
+                quiet += 1
+                if (quiet >= SOUNDS_ONLY_STALL_CHECKS) {
+                    soundsOnlyLost(fan, "no audio from the microphone")
+                    return@launch
+                }
+            }
+        }
+    }
+
+    private fun soundsOnlyLost(fan: FlowAudioFanOut, reason: String) {
+        if (fanOut !== fan || !soundsOnlyChosen) return
+        statsData.audioStalls += 1
+        logEvent(PipelineEvent.Kind.Note("sounds only: $reason"))
+        stopListeningForSounds()
+        retrySoundsOnly()
+    }
+
+    /** See [SOUNDS_ONLY_RETRY_SECONDS]; a call holds the retries, and its end brings the sounds back. */
+    private fun retrySoundsOnly() {
+        if (!soundsOnlyChosen || systemInterrupted) return
+        val since = soundsOnlySince
+        if (since != null && now() - since >= SOUNDS_ONLY_HEALTHY_SECONDS) soundsOnlyAttempts = 0
+        soundsOnlySince = null
+        val wait = SOUNDS_ONLY_RETRY_SECONDS.getOrNull(soundsOnlyAttempts)
+        if (wait == null) {
+            logEvent(PipelineEvent.Kind.Note("sounds only: the microphone did not come back, sound alerts stopped"))
+            soundsOnlyChosen = false
+            soundsOnlyStoppedByItself = true
+            onPhaseChange?.invoke(phase)
+            return
+        }
+        soundsOnlyAttempts += 1
+        soundsOnlyRetryTask?.cancel()
+        soundsOnlyRetryTask = scope.launch {
+            delay(wait.seconds)
+            soundsOnlyRetryTask = null
+            resumeSoundsOnly()
+        }
+    }
+
+    private fun cancelSoundsOnlyRetry() {
+        soundsOnlyRetryTask?.cancel()
+        soundsOnlyRetryTask = null
     }
 
     /**
@@ -2772,6 +2998,8 @@ class CaptionPipeline(
     private fun stopListeningForSounds() {
         if (!isListeningForSoundsOnly) return
         isListeningForSoundsOnly = false
+        soundsOnlyWatch?.cancel()
+        soundsOnlyWatch = null
         soundTask?.cancel()
         soundTask = null
         fanOut?.cancel()
@@ -2819,35 +3047,40 @@ class CaptionPipeline(
         // computer that never answered left no sign the phone was waiting.
         logEvent(PipelineEvent.Kind.Note("waiting for the home computer, asking it every ${formatG(homeServerWaitSeconds)} s"))
         homeServerRecheck = scope.launch {
-            while (isActive) {
-                delay(homeServerWaitSeconds.seconds)
-                val current = phase
-                if (!isActive || current !is PipelinePhase.Failed || current.reason != failure) return@launch
-                // Read again on every pass: a backup model picked, a name
-                // added or a microphone chosen during the wait reached
-                // the active settings, and a copy from the start of the wait
-                // checked the old model (never taking over) or covered
-                // with the old names.
-                val chosen = settingsInUse
-                if (chosen == null || chosen.engine != TranscriptionEngineKind.HomeServer) return@launch
-                // A voice sample recording holds the microphone: the retry
-                // would stop its capture and then not start, and this wait
-                // would be over. It waits for the recording instead.
-                if (systemInterrupted || isRecordingVoice) continue
-                val server = cachedEngine(chosen)
-                val answer = server.checkAvailability(chosen.languageCode)
-                val still = phase
-                if (answer != EngineAvailability.Available || !isActive || systemInterrupted || isRecordingVoice ||
-                    still !is PipelinePhase.Failed || still.reason != failure
-                ) {
-                    if (coverWithReadyBackup(failure)) return@launch
-                    continue
+            // The processor stays up from the first wait until captions
+            // start or the wait ends, not only through the waits: each
+            // check is a connection attempt, which sleeps just as badly.
+            retryWait.whileDue {
+                while (isActive) {
+                    retryWait.wait(homeServerWaitSeconds.seconds)
+                    val current = phase
+                    if (!isActive || current !is PipelinePhase.Failed || current.reason != failure) return@launch
+                    // Read again on every pass: a backup model picked, a name
+                    // added or a microphone chosen during the wait reached
+                    // the active settings, and a copy from the start of the wait
+                    // checked the old model (never taking over) or covered
+                    // with the old names.
+                    val chosen = settingsInUse
+                    if (chosen == null || chosen.engine != TranscriptionEngineKind.HomeServer) return@launch
+                    // A voice sample recording holds the microphone: the retry
+                    // would stop its capture and then not start, and this wait
+                    // would be over. It waits for the recording instead.
+                    if (systemInterrupted || isRecordingVoice) continue
+                    val server = cachedEngine(chosen)
+                    val answer = server.checkAvailability(chosen.languageCode)
+                    val still = phase
+                    if (answer != EngineAvailability.Available || !isActive || systemInterrupted || isRecordingVoice ||
+                        still !is PipelinePhase.Failed || still.reason != failure
+                    ) {
+                        if (coverWithReadyBackup(failure)) return@launch
+                        continue
+                    }
+                    logEvent(PipelineEvent.Kind.Note("the home computer answers again, starting captions"))
+                    homeServerRecheck = null
+                    recovery.reset()
+                    retry()
+                    return@launch
                 }
-                logEvent(PipelineEvent.Kind.Note("the home computer answers again, starting captions"))
-                homeServerRecheck = null
-                recovery.reset()
-                retry()
-                return@launch
             }
         }
         return true
@@ -2871,31 +3104,33 @@ class CaptionPipeline(
         homeServerRecheck?.cancel()
         logEvent(PipelineEvent.Kind.Note("waiting for the cloud, asking it every ${formatG(cloudWaitSeconds)} s"))
         homeServerRecheck = scope.launch {
-            while (isActive) {
-                delay(cloudWaitSeconds.seconds)
-                val current = phase
-                if (!isActive || current !is PipelinePhase.Failed || current.reason != failure) return@launch
-                val chosen = settingsInUse
-                if (chosen == null || chosen.engine != TranscriptionEngineKind.Cloud) return@launch
-                if (systemInterrupted || isRecordingVoice) continue
-                val answer = probeEngine(chosen).checkAvailability(chosen.languageCode)
-                val still = phase
-                if (!isActive || systemInterrupted || isRecordingVoice || still !is PipelinePhase.Failed || still.reason != failure) continue
-                if (answer != EngineAvailability.Available) {
-                    if (answer.unavailability?.kind !in cloudProblemsForAPerson) continue
-                    // A key or credit problem found while waiting is the
-                    // real reason now: a try shows it, with its way to
-                    // Settings, instead of the outage message staying up.
-                    logEvent(PipelineEvent.Kind.Note("the cloud answers with a problem only a person can fix, showing it"))
+            retryWait.whileDue {
+                while (isActive) {
+                    retryWait.wait(cloudWaitSeconds.seconds)
+                    val current = phase
+                    if (!isActive || current !is PipelinePhase.Failed || current.reason != failure) return@launch
+                    val chosen = settingsInUse
+                    if (chosen == null || chosen.engine != TranscriptionEngineKind.Cloud) return@launch
+                    if (systemInterrupted || isRecordingVoice) continue
+                    val answer = probeEngine(chosen).checkAvailability(chosen.languageCode)
+                    val still = phase
+                    if (!isActive || systemInterrupted || isRecordingVoice || still !is PipelinePhase.Failed || still.reason != failure) continue
+                    if (answer != EngineAvailability.Available) {
+                        if (answer.unavailability?.kind !in cloudProblemsForAPerson) continue
+                        // A key or credit problem found while waiting is the
+                        // real reason now: a try shows it, with its way to
+                        // Settings, instead of the outage message staying up.
+                        logEvent(PipelineEvent.Kind.Note("the cloud answers with a problem only a person can fix, showing it"))
+                        homeServerRecheck = null
+                        retry()
+                        return@launch
+                    }
+                    logEvent(PipelineEvent.Kind.Note("the cloud answers again, starting captions"))
                     homeServerRecheck = null
+                    recovery.reset()
                     retry()
                     return@launch
                 }
-                logEvent(PipelineEvent.Kind.Note("the cloud answers again, starting captions"))
-                homeServerRecheck = null
-                recovery.reset()
-                retry()
-                return@launch
             }
         }
         return true
@@ -2944,6 +3179,10 @@ class CaptionPipeline(
         soundTask?.cancel()
         soundTask = null
         isListeningForSoundsOnly = false
+        soundsOnlyChosen = false
+        soundsOnlyWatch?.cancel()
+        soundsOnlyWatch = null
+        cancelSoundsOnlyRetry()
         staleCommitTask?.cancel()
         staleCommitTask = null
         fanOut?.cancel()
@@ -3000,6 +3239,16 @@ class CaptionPipeline(
         internal const val SOUND_REPORT_DELAY_SECONDS: Double = 1.5
 
         internal const val MICROPHONE_CHANGE_RETRY_SECONDS: Double = 30.0
+
+        /**
+         * Sounds alone whose microphone stopped are tried again after each
+         * of these waits, about ten minutes in all, then stop and say so.
+         * A night of a minute or more of listening starts the count again.
+         */
+        internal val SOUNDS_ONLY_RETRY_SECONDS = listOf(1.0, 3.0, 10.0, 30.0, 60.0, 120.0, 300.0)
+        internal const val SOUNDS_ONLY_HEALTHY_SECONDS = 60.0
+        internal const val SOUNDS_ONLY_STALL_CHECK_SECONDS = 2.0
+        internal const val SOUNDS_ONLY_STALL_CHECKS = 3
 
         /**
          * Below this likeness to the recording's own average, a window is

@@ -21,15 +21,15 @@ struct NameAlertForm: View {
                 TextField(tr("השם שלכם", "Your name"), text: $nameDraft)
                     .textFieldStyle(.roundedBorder)
                     .submitLabel(.done)
-                    .onSubmit(addName)
+                    .onSubmit { addName() }
                     .announcing(otherLettersNote, whenTurningTrue: HebrewText.isInOtherLetters(nameDraft, captionLanguage: viewModel.settings.languageCode))
-                Button(tr("הוספה", "Add"), action: addName)
+                Button(tr("הוספה", "Add")) { addName() }
                     .buttonStyle(.bordered)
                     .controlSize(.large)
                     .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
                     .disabled(nameDraft.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            if HebrewText.isInOtherLetters(nameDraft, captionLanguage: viewModel.settings.languageCode) {
+            if HebrewText.isInOtherLetters(nameDraft, captionLanguage: viewModel.settings.languageCode) || viewModel.settings.keywordAlerts.contains(where: { $0.isEnabled && HebrewText.isInOtherLetters($0.phrase, captionLanguage: viewModel.settings.languageCode) }) {
                 Text(otherLettersNote)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -39,18 +39,18 @@ struct NameAlertForm: View {
                     suggestionButton(word)
                 }
             }
-            if let addedText = AlertSuggestions.vibrationNote(for: viewModel.settings.keywordAlerts, in: viewModel.uiLanguage) {
+            if let addedText = AlertSuggestions.vibrationNote(for: viewModel.settings.keywordAlerts, in: viewModel.uiLanguage, captionLanguage: viewModel.settings.languageCode) {
                 Label(addedText, systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.readable(.green))
             }
         }
         // A name typed and then "Next" or "Done" instead of "Add" was
         // dropped, and the name alert never came.
-        .onDisappear(perform: addName)
+        .onDisappear { addName(announcing: false) }
     }
 
     private var otherLettersNote: String {
-        tr("הכתוביות נכתבות באותיות עבריות, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are in Hebrew letters, so a word written in other letters may never be found.")
+        tr("הכתוביות נכתבות באותיות של שפת הדיבור, ולכן ייתכן שמילה שנכתבה באותיות אחרות לא תימצא אף פעם.", "Captions are written in the letters of the spoken language, so a word written in other letters may never be found.")
     }
 
     private func suggestionButton(_ word: String) -> some View {
@@ -59,6 +59,7 @@ struct NameAlertForm: View {
         }
         return Button {
             viewModel.addKeywordAlert(phrase: word)
+            Announcement.added(AlertSuggestions.label(for: word, in: viewModel.uiLanguage))
         } label: {
             Label(AlertSuggestions.label(for: word, in: viewModel.uiLanguage), systemImage: added ? "checkmark" : "plus")
         }
@@ -68,14 +69,18 @@ struct NameAlertForm: View {
         .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
     }
 
-    private func addName() {
+    /// Said aloud only when the person added it here: on the way out of the
+    /// page, the next page is what VoiceOver should be reading.
+    private func addName(announcing: Bool = true) {
         let name = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
+        let wasOn = viewModel.listedKeywordAlert(matching: name)?.isEnabled == true
         viewModel.addKeywordAlert(phrase: name)
         // A name the engine has never heard is spelled some other way, and
         // then never matches; on the names list, every engine expects it.
         viewModel.addVocabularyTerm(name)
         nameDraft = ""
+        if announcing, !wasOn { Announcement.added(name) }
     }
 }
 

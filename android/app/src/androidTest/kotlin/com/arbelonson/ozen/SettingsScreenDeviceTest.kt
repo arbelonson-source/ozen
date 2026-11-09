@@ -1056,7 +1056,7 @@ class SettingsScreenDeviceTest {
         assertTrue(compose.onAllNodesWithText("Add: Grandma").fetchSemanticsNodes().isEmpty())
 
         val field = compose.onNode(hasSetTextAction())
-        val otherLetters = "Captions are in Hebrew letters, so a word written in other letters may never be found."
+        val otherLetters = "Captions are written in the letters of the spoken language, so a word written in other letters may never be found."
         field.performTextInput("Shira")
         compose.onNodeWithText(otherLetters).assertExists()
         compose.onNodeWithContentDescription("Add").performClick()

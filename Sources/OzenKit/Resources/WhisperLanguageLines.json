@@ -1,0 +1,46 @@
+{
+  "german": {
+    "known": ["Untertitel der Amara.org-Community", "Untertitel im Auftrag des ZDF", "Untertitel im Auftrag des ZDF für funk, 2017", "Untertitelung des ZDF"],
+    "ambiguous": ["Danke", "Danke schön", "Vielen Dank", "Dankeschön", "Bis zum nächsten Mal"],
+    "creditPrefixes": ["untertitel der amara.org-community", "untertitel der amara.org community", "untertitel im auftrag", "untertitelung des zdf", "untertitelung im auftrag"]
+  },
+  "french": {
+    "known": ["Sous-titres réalisés para la communauté d'Amara.org", "Sous-titres réalisés par la communauté d'Amara.org", "Sous-titres par la communauté d'Amara.org"],
+    "ambiguous": ["Merci", "Merci beaucoup", "Merci à tous"],
+    "creditPrefixes": ["sous-titres réalisés", "sous-titres par", "sous-titrage société radio-canada", "sous-titrage st' 501", "sous-titrage st 501", "sous-titrage mfp", "sous-titrage fr"]
+  },
+  "spanish": {
+    "known": ["Subtítulos realizados por la comunidad de Amara.org", "Subtítulos por la comunidad de Amara.org"],
+    "ambiguous": ["Gracias", "Muchas gracias", "Gracias por ver el video"],
+    "creditPrefixes": ["subtítulos realizados por", "subtítulos por la comunidad", "subtítulos en español de"]
+  },
+  "portuguese": {
+    "known": ["Legendas pela comunidade Amara.org", "Legendas da comunidade Amara.org"],
+    "ambiguous": ["Obrigado", "Obrigada", "Muito obrigado", "Muito obrigada"],
+    "creditPrefixes": ["legendas pela comunidade", "legendas da comunidade"]
+  },
+  "russian": {
+    "known": ["Субтитры сделаны сообществом Amara.org", "Продолжение следует"],
+    "ambiguous": ["Спасибо", "Спасибо большое", "Большое спасибо"],
+    "creditPrefixes": ["субтитры сделал", "субтитры создавал", "субтитры подогнал", "субтитры добавил", "редактор субтитров"]
+  },
+  "ukrainian": {
+    "known": ["Субтитри створені спільнотою Amara.org", "Субтитри зроблені спільнотою Amara.org"],
+    "ambiguous": ["Дякую", "Дуже дякую", "Дякуємо"],
+    "creditPrefixes": ["субтитри створені", "субтитри зроблені", "субтитри від"]
+  },
+  "chineseSimplified": {
+    "known": [
+      "字幕由Amara.org社群提供", "字幕由Amara.org社区提供", "由Amara.org社群提供的字幕", "由Amara.org社区提供的字幕",
+      "请不吝点赞 订阅 转发 打赏支持明镜与点点栏目", "请不吝点赞订阅转发打赏支持明镜与点点栏目",
+      "請不吝點贊 訂閱 轉發 打賞支持明鏡與點點欄目", "請不吝點贊訂閱轉發打賞支持明鏡與點點欄目"
+    ],
+    "ambiguous": ["谢谢", "谢谢你", "谢谢大家", "謝謝", "謝謝大家", "xie xie"],
+    "creditPrefixes": []
+  },
+  "arabic": {
+    "known": ["اشتركوا في القناة", "اشترك في القناة", "لا تنسوا الاشتراك في القناة", "لا تنسى الاشتراك في القناة", "شكرا على المشاهدة", "شكرا لمشاهدتكم"],
+    "ambiguous": ["شكرا", "شكرا لكم", "شكرا لك", "شكرا جزيلا", "shukran"],
+    "creditPrefixes": ["ترجمة نانسي قنقر", "ترجمة المجتمع", "ترجمة وتدقيق", "تمت الترجمة بواسطة"]
+  }
+}

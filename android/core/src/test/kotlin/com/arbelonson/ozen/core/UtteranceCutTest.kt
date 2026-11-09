@@ -51,4 +51,32 @@ class UtteranceCutTest {
         assertEquals(FinishedLine(265, true), UtteranceCut.finishedLine(total = 270, speechEnd = 260, pad = 5, maxSamples = 280, stillTalkingAtCap = true))
         assertEquals(FinishedLine(280, true), UtteranceCut.finishedLine(total = 400, speechEnd = 390, pad = 5, maxSamples = 280, stillTalkingAtCap = false))
     }
+
+    private fun lineEnd(pauses: List<Int>, speechEnd: Int, total: Int, maxSamples: Int = 280, finished: Boolean = false): Int? =
+        UtteranceCut.lineEndAtPause(pauses, speechEnd, total, pause = 7, pad = 3, maxSamples = maxSamples, mostWaiting = 2, finished = finished)
+
+    @Test
+    fun `a line ends at the first pause heard, even one a slow pass hid while the next sentence began`() {
+        assertEquals(null, lineEnd(emptyList(), speechEnd = 60, total = 66))
+        assertEquals(60, lineEnd(emptyList(), speechEnd = 60, total = 67))
+        assertEquals(40, lineEnd(listOf(40), speechEnd = 60, total = 62))
+        assertEquals(40, lineEnd(listOf(40), speechEnd = 60, total = 70))
+        assertEquals(20, lineEnd(listOf(20, 40), speechEnd = 60, total = 62))
+    }
+
+    @Test
+    fun `more than two finished sentences waiting share one line, as far as the longest line reaches`() {
+        assertEquals(60, lineEnd(listOf(20, 40), speechEnd = 60, total = 70))
+        assertEquals(50, lineEnd(listOf(20, 40, 50), speechEnd = 60, total = 62))
+        assertEquals(40, lineEnd(listOf(20, 40, 50), speechEnd = 60, total = 62, maxSamples = 45))
+        assertEquals(20, lineEnd(listOf(20, 40, 50), speechEnd = 60, total = 62, maxSamples = 22))
+    }
+
+    @Test
+    fun `when the captions stop before the last pause, the last sentence counts as waiting too`() {
+        assertEquals(60, lineEnd(emptyList(), speechEnd = 60, total = 62, finished = true))
+        assertEquals(40, lineEnd(listOf(40), speechEnd = 60, total = 62, finished = true))
+        assertEquals(60, lineEnd(listOf(20, 40), speechEnd = 60, total = 62, finished = true))
+        assertEquals(40, lineEnd(listOf(20, 40), speechEnd = 60, total = 62, maxSamples = 45, finished = true))
+    }
 }
