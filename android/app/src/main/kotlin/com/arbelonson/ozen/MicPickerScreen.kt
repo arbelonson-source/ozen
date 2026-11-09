@@ -58,7 +58,10 @@ import kotlinx.coroutines.delay
  * The iPhone's microphone picker: the microphones the phone offers, the
  * one recording marked, and a meter to see that it hears. A choice is kept
  * for next time even when the phone refuses to switch, and the refusal is
- * said, since the marked microphone keeps recording. The tips are the
+ * said, since the marked microphone keeps recording. The phone's own
+ * bottom and back microphones are one row, named for the phone rather than
+ * its model code. The phone's sound ending is said here too: the picker
+ * covers the captions screen, where its banner is. The tips are the
  * iPhone's, for Android: a USB-C microphone the phone doesn't list is the
  * phone's doing, and a Bluetooth headset records worse than a wire.
  */
@@ -67,6 +70,7 @@ internal fun MicPickerScreen(
     inputs: List<AudioInputDescriptor>,
     selected: AudioInputDescriptor?,
     listening: Boolean,
+    phoneSoundStopped: Boolean,
     level: () -> Float,
     onChoose: (AudioInputDescriptor) -> Boolean,
     onRefresh: () -> Unit,
@@ -74,6 +78,7 @@ internal fun MicPickerScreen(
 ) {
     BackHandler(onBack = onClose)
     var refused by rememberSaveable { mutableStateOf<String?>(null) }
+    val phoneSound = PhoneSound.isPhoneSound(selected?.uid)
     LaunchedEffect(Unit) { onRefresh() }
     SettingsPageFrame(
         tr("בחירת מיקרופון", "Choose microphone"),
@@ -95,36 +100,31 @@ internal fun MicPickerScreen(
         } else {
             SectionHeader(tr("מיקרופונים זמינים", "Available microphones"))
             SettingsGroup(modifier = Modifier.selectableGroup(), dividerInset = 56.dp) {
-                for (input in inputs) {
+                for (input in MicPickerText.rows(inputs, selected)) {
                     item {
-                        ChoiceRow(input.portName, inputSummary(input), selected = input.uid == selected?.uid, icon = inputIcon(input)) {
-                            refused = if (onChoose(input)) null else input.portName
+                        val title = MicPickerText.title(input)
+                        ChoiceRow(title, inputSummary(input), selected = input.uid == selected?.uid, icon = inputIcon(input)) {
+                            refused = if (onChoose(input)) null else title
                         }
                     }
                 }
             }
-            refused?.let { name ->
+            for (notice in MicPickerText.notices(refused, phoneSoundStopped)) {
                 Text(
-                    tr("הטלפון לא עבר ל\"%1\", והמיקרופון המסומן עדיין מקליט. נסו לנתק ולחבר אותו שוב.", "The phone did not switch to “%1”, and the marked microphone is still recording. Try unplugging and reconnecting it.", listOf(name)),
+                    notice,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(horizontal = 16.dp).semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }
-            Footnote(tr("המיקרופון המסומן הוא זה שמקליט עכשיו. אוזניות או מיקרופון שיתחברו יופיעו כאן אוטומטית.", "The marked microphone is the one recording now. Headphones or a microphone that connect will appear here automatically."))
+            Footnote(MicPickerText.listNote(listening, phoneSound))
         }
 
         SectionHeader(tr("עוצמת קליטה", "Input level"))
         SettingsGroup {
             item { Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) { LevelMeter(level, listening) } }
         }
-        Footnote(
-            if (listening) {
-                tr("דברו ובדקו שהפס זז. אם הוא לא זז, המיקרופון שנבחר לא קולט כלום.", "Speak and watch the bar move. If it doesn’t move, the selected microphone isn’t hearing anything.")
-            } else {
-                tr("המד פועל רק בזמן ההאזנה.", "The meter is only active while listening.")
-            },
-        )
+        Footnote(MicPickerText.meterNote(listening, phoneSound))
 
         SectionHeader(tr("טיפים", "Tips"))
         SettingsGroup {
