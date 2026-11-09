@@ -48,5 +48,10 @@ public struct VoiceEvidence {
     public mutating func drop(prefix count: Int) {
         start += count
         chunks.removeAll { $0.end <= start }
+        let stale = min(pending.count, start - (received - pending.count))
+        if stale > 0 {
+            context = Array((context + pending.prefix(stale)).suffix(Self.contextSamples))
+            pending.removeFirst(stale)
+        }
     }
 }

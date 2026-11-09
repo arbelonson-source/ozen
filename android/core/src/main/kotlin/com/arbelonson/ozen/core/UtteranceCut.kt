@@ -12,6 +12,22 @@ object UtteranceCut {
         return FinishedLine(min(end, maxSamples), true)
     }
 
+    fun lineEndAtPause(
+        pauses: List<Int>,
+        speechEnd: Int,
+        total: Int,
+        pause: Int,
+        pad: Int,
+        maxSamples: Int,
+        mostWaiting: Int,
+        finished: Boolean = false,
+    ): Int? {
+        val ends = if (finished || total - speechEnd >= pause) pauses + speechEnd else pauses
+        val first = ends.firstOrNull() ?: return null
+        if (ends.size <= mostWaiting) return first
+        return ends.lastOrNull { it + pad <= maxSamples } ?: first
+    }
+
     fun quietestPoint(samples: FloatArray, before: Int, lookBack: Int, frame: Int): Int {
         val end = min(max(before, 0), samples.size)
         val start = max(0, end - max(lookBack, 0))
