@@ -91,6 +91,34 @@ class VoiceEvidenceTest {
     }
 
     @Test
+    fun `a short line just after a drop is judged on its own audio, not on the pause dropped with the line before`() {
+        val evidence = VoiceEvidence { input ->
+            (VoiceEvidence.CONTEXT_SAMPLES until input.size).count { input[it] > 0.5f }.toFloat() / VoiceEvidence.CHUNK_SAMPLES
+        }
+        fun loud(count: Int) = FloatArray(count) { 1f }
+        fun silent(count: Int) = FloatArray(count)
+        evidence.append(loud(chunk * 2) + silent(1808))
+        evidence.drop(chunk * 2 + 1808)
+        evidence.append(silent(1000) + loud(2200) + silent(4992))
+        assertEquals(true, evidence.hasVoice(chunk * 2))
+    }
+
+    @Test
+    fun `after a drop inside a chunk, the scorer sees only audio from the drop on, with the samples just before it as context`() {
+        val recorder = Recorder(emptyList())
+        val evidence = evidence(recorder)
+        val samples = FloatArray(chunk * 3) { it.toFloat() }
+        val cut = chunk + 600
+        evidence.append(samples.copyOfRange(0, chunk + 1000))
+        evidence.drop(cut)
+        evidence.append(samples.copyOfRange(chunk + 1000, samples.size))
+        assertEquals(2, recorder.inputs.size)
+        val input = recorder.inputs[1]
+        assertContentEquals(samples.copyOfRange(cut, cut + chunk), input.copyOfRange(input.size - chunk, input.size))
+        assertContentEquals(samples.copyOfRange(cut - VoiceEvidence.CONTEXT_SAMPLES, cut), input.copyOfRange(0, VoiceEvidence.CONTEXT_SAMPLES))
+    }
+
+    @Test
     fun `the scorer sees each chunk after the end of the one before, in arrival pieces of any size`() {
         val recorder = Recorder(emptyList())
         val evidence = evidence(recorder)

@@ -12,8 +12,17 @@ object UtteranceCut {
         return FinishedLine(min(end, maxSamples), true)
     }
 
-    fun lineEndAtPause(pauses: List<Int>, speechEnd: Int, total: Int, pause: Int, pad: Int, maxSamples: Int, mostWaiting: Int): Int? {
-        val ends = if (total - speechEnd >= pause) pauses + speechEnd else pauses
+    fun lineEndAtPause(
+        pauses: List<Int>,
+        speechEnd: Int,
+        total: Int,
+        pause: Int,
+        pad: Int,
+        maxSamples: Int,
+        mostWaiting: Int,
+        finished: Boolean = false,
+    ): Int? {
+        val ends = if (finished || total - speechEnd >= pause) pauses + speechEnd else pauses
         val first = ends.firstOrNull() ?: return null
         if (ends.size <= mostWaiting) return first
         return ends.lastOrNull { it + pad <= maxSamples } ?: first

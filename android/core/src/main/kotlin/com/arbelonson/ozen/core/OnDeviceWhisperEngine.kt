@@ -387,6 +387,7 @@ class OnDeviceWhisperEngine(
                 pad = padSamples,
                 maxSamples = maxSamples,
                 mostWaiting = mostLinesWaiting,
+                finished = status.finished,
             )
             val pauseReached = lineEndAtPause != null
             val tooLong = total >= maxSamples

@@ -86,6 +86,34 @@ struct VoiceEvidenceTests {
         #expect(evidence.hasVoice(inFirst: chunk * 2) == false)
     }
 
+    @Test("a short line just after a drop is judged on its own audio, not on the pause dropped with the line before")
+    func shortLineAfterADropInsideAChunk() {
+        let loudShare: VoiceEvidence.Scorer = { input in
+            Float(input.dropFirst(VoiceEvidence.contextSamples).filter { $0 > 0.5 }.count) / Float(VoiceEvidence.chunkSamples)
+        }
+        var evidence = VoiceEvidence(score: loudShare)
+        let loud = { (count: Int) in [Float](repeating: 1, count: count) }
+        let quiet = { (count: Int) in [Float](repeating: 0, count: count) }
+        evidence.append(loud(chunk * 2) + quiet(1808))
+        evidence.drop(prefix: chunk * 2 + 1808)
+        evidence.append(quiet(1000) + loud(2200) + quiet(4992))
+        #expect(evidence.hasVoice(inFirst: chunk * 2) == true)
+    }
+
+    @Test("after a drop inside a chunk, the scorer sees only audio from the drop on, with the samples just before it as context")
+    func dropInsideAChunk() {
+        let recorder = Recorder([])
+        var evidence = VoiceEvidence(score: recorder.score)
+        let samples = (0..<(chunk * 3)).map { Float($0) }
+        let cut = chunk + 600
+        evidence.append(Array(samples[0..<(chunk + 1000)]))
+        evidence.drop(prefix: cut)
+        evidence.append(Array(samples[(chunk + 1000)...]))
+        #expect(recorder.inputs.count == 2)
+        #expect(Array(recorder.inputs[1].suffix(chunk)) == Array(samples[cut..<(cut + chunk)]))
+        #expect(Array(recorder.inputs[1].prefix(VoiceEvidence.contextSamples)) == Array(samples[(cut - VoiceEvidence.contextSamples)..<cut]))
+    }
+
     @Test("the scorer sees each chunk after the end of the one before, in arrival pieces of any size")
     func context() {
         let recorder = Recorder([])

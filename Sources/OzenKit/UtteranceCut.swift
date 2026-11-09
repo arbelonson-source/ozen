@@ -21,8 +21,8 @@ public enum UtteranceCut {
         return (min(end, maxSamples), true)
     }
 
-    public static func lineEndAtPause(pauses: [Int], speechEnd: Int, total: Int, pause: Int, pad: Int, maxSamples: Int, mostWaiting: Int) -> Int? {
-        let stopped = total - speechEnd >= pause
+    public static func lineEndAtPause(pauses: [Int], speechEnd: Int, total: Int, pause: Int, pad: Int, maxSamples: Int, mostWaiting: Int, finished: Bool = false) -> Int? {
+        let stopped = finished || total - speechEnd >= pause
         let ends = pauses + (stopped ? [speechEnd] : [])
         guard let first = ends.first else { return nil }
         guard ends.count > mostWaiting else { return first }

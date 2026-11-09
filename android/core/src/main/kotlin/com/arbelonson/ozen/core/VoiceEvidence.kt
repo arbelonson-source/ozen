@@ -42,6 +42,12 @@ class VoiceEvidence(private val score: (FloatArray) -> Float?) {
     fun drop(prefix: Int) {
         start += prefix
         chunks.removeAll { it.end <= start }
+        val stale = minOf(pending.size, start - (received - pending.size))
+        if (stale > 0) {
+            val before = context + pending.copyOfRange(0, stale)
+            context = before.copyOfRange(before.size - CONTEXT_SAMPLES, before.size)
+            pending = pending.copyOfRange(stale, pending.size)
+        }
     }
 
     companion object {
