@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import android.app.Application
 import android.os.Debug
 import com.arbelonson.ozen.core.CloudHTTP
+import com.arbelonson.ozen.core.PhoneModelPartialCleanup
 import com.arbelonson.ozen.core.SettingsStore
 import com.arbelonson.ozen.core.UrlConnectionCloudHTTP
 import java.io.File
@@ -21,6 +22,11 @@ class OzenApplication : Application() {
     private val session = lazy { CaptionSession(this, settings, homeServerCode, cloudKeys) }
     val captions by session
     val transcriber by lazy { FileTranscriber(this, settings, captions) }
+
+    override fun onCreate() {
+        super.onCreate()
+        Thread({ PhoneModelPartialCleanup.removeStale(filesDir, System.currentTimeMillis()) }, "ozen-part-cleanup").start()
+    }
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
