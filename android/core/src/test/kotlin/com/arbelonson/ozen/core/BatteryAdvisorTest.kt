@@ -97,4 +97,12 @@ class BatteryAdvisorTest {
             assertFalse(BatteryAdvisor.watches(phase), "$phase")
         }
     }
+
+    @Test
+    fun `the battery is watched while only sounds are listened for, paused or idle, as the microphone is on`() {
+        for (phase in listOf(PipelinePhase.Idle, PipelinePhase.Paused)) {
+            assertTrue(BatteryAdvisor.watches(phase, soundsOnly = true), "$phase")
+            assertFalse(BatteryAdvisor.watches(phase, soundsOnly = false), "$phase")
+        }
+    }
 }

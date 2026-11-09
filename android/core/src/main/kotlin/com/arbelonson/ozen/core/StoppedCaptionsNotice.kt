@@ -28,6 +28,9 @@ class StoppedCaptionsNotice {
 
         /** The phone ended the app and could not bring captions back by itself. */
         data object EndedByPhone : Cause()
+
+        /** Sounds alone were listened for, and the microphone stopped and did not come back. */
+        data object SoundAlertsStopped : Cause()
     }
 
     sealed class Update {
@@ -103,6 +106,7 @@ class StoppedCaptionsNotice {
             retryScheduled: Boolean,
             systemInterrupted: Boolean,
             callEndedDuringInterruption: Boolean,
+            soundsOnlyStopped: Boolean = false,
         ): Cause? {
             if (systemInterrupted) {
                 // A failure during the call is retried once the call gives the
@@ -110,6 +114,7 @@ class StoppedCaptionsNotice {
                 if (!callEndedDuringInterruption || !(phase.isListening || phase.failure != null)) return null
                 return Cause.CallEnded
             }
+            if (soundsOnlyStopped) return Cause.SoundAlertsStopped
             val failure = phase.failure
             if (failure == null || retryScheduled) return null
             // Starts by itself as soon as the phone is on Wi-Fi.
@@ -119,7 +124,7 @@ class StoppedCaptionsNotice {
 
         internal fun content(cause: Cause): AlertNotificationContent = AlertNotificationContent(
             identifier = IDENTIFIER,
-            title = tr("הכתוביות נעצרו", "Captions stopped"),
+            title = if (cause == Cause.SoundAlertsStopped) tr("ההתראות על צלילים נעצרו", "Sound alerts stopped") else tr("הכתוביות נעצרו", "Captions stopped"),
             body = body(cause),
             threadIdentifier = "status",
             isUrgent = true,
@@ -127,6 +132,10 @@ class StoppedCaptionsNotice {
 
         private fun body(cause: Cause): String = when (cause) {
             Cause.EndedByPhone -> tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
+            Cause.SoundAlertsStopped -> tr(
+                "המיקרופון הפסיק לפעול ולא חזר. פתחו את אוזן כדי להפעיל שוב את ההתראות על צלילים.",
+                "The microphone stopped and didn't come back. Open Ozen to turn sound alerts on again.",
+            )
             Cause.CallEnded -> tr(
                 "אחרי השיחה הכתוביות לא חזרו לבד. פתחו את אוזן כדי להמשיך.",
                 "After the call, captions didn't come back on their own. Open Ozen to continue.",

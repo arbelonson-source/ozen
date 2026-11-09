@@ -235,4 +235,26 @@ class ListeningCutTest {
     private companion object {
         const val VERSION = 7L
     }
+
+    @Test
+    fun `sounds only counts as listening - the record begins, is kept alive, and ends when it is stopped`() {
+        val recorder = recorder()
+        recorder.phaseChanged(PipelinePhase.Paused, recovering = false, soundsOnly = true)
+        assertEquals(ListeningCut.Record(at(0, 30), at(0, 30), VERSION), ListeningCut.parse(store.value))
+        clock = at(2, 0)
+        recorder.keepAlive()
+        assertEquals(ListeningCut.Record(at(0, 30), at(2, 0), VERSION), ListeningCut.parse(store.value))
+        recorder.phaseChanged(PipelinePhase.Idle, recovering = false, soundsOnly = true)
+        assertEquals(ListeningCut.Record(at(0, 30), at(2, 0), VERSION), ListeningCut.parse(store.value))
+        recorder.phaseChanged(PipelinePhase.Idle, recovering = false)
+        assertNull(store.value)
+    }
+
+    @Test
+    fun `paused or idle without sounds-only ends the record as before`() {
+        val recorder = recorder()
+        recorder.phaseChanged(PipelinePhase.Listening, recovering = false)
+        recorder.phaseChanged(PipelinePhase.Paused, recovering = false)
+        assertNull(store.value)
+    }
 }

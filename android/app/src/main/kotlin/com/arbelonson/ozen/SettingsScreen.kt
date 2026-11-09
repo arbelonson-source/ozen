@@ -204,6 +204,7 @@ fun SettingsScreen(
     historySaveFailing: () -> Boolean = { false },
     voiceNotice: String? = null,
     onSoundAlerts: (SoundAlertPreferences) -> Unit = {},
+    onSoundsOnly: () -> Unit = {},
     soundNearMiss: (SoundEvent) -> SoundNearMisses.Entry? = { null },
     onFeel: (AlertVibration) -> Unit = {},
     speakers: SpeakerBook,
@@ -264,7 +265,7 @@ fun SettingsScreen(
             SettingsPage.Diagnostics -> DiagnosticsScreen(diagnostics, onClose = { showingDiagnostics = false })
             SettingsPage.Guide -> HomeServerGuideScreen(current.spokenLanguage, onClose = { showingGuide = false })
             SettingsPage.Support -> SupportScreen(onClose = { showingSupport = false })
-            SettingsPage.Sounds -> SoundAlertsScreen(current.soundAlerts, onSoundAlerts, soundNearMiss, onFeel, onClose = { showingSounds = false })
+            SettingsPage.Sounds -> SoundAlertsScreen(current.soundAlerts, onSoundAlerts, soundNearMiss, onFeel, onSoundsOnly, onClose = { showingSounds = false })
             SettingsPage.ImportantWords -> ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, current.spokenLanguage, heard, onImportantWords, onClose = { showingImportantWords = false }, heardBy = heardBy)
             SettingsPage.Enrollment -> SpeakerEnrollmentScreen(speakers, onClose = { showingEnrollment = false })
             SettingsPage.Night -> NightAlertsScreen(onClose = { showingNight = false })

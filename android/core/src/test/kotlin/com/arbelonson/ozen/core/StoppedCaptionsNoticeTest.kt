@@ -38,6 +38,17 @@ class StoppedCaptionsNoticeTest {
     }
 
     @Test
+    fun `sounds alone whose microphone never came back are a stop, told as sound alerts stopped`() = Localization.withLanguage(UILanguage.English) {
+        val stopped = StoppedCaptionsNotice.cause(PipelinePhase.Paused, retryScheduled = false, systemInterrupted = false, callEndedDuringInterruption = false, soundsOnlyStopped = true)
+        assertEquals(StoppedCaptionsNotice.Cause.SoundAlertsStopped, stopped)
+        assertEquals(StoppedCaptionsNotice.Cause.SoundAlertsStopped, StoppedCaptionsNotice.cause(PipelinePhase.Idle, false, false, false, soundsOnlyStopped = true))
+        val content = StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.SoundAlertsStopped)
+        assertEquals("Sound alerts stopped", content.title)
+        assertEquals("The microphone stopped and didn't come back. Open Ozen to turn sound alerts on again.", content.body)
+        assertEquals("Captions stopped", StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.EndedByPhone).title)
+    }
+
+    @Test
     fun `running, starting, paused or stopped on purpose is not a stop`() {
         assertNull(cause(PipelinePhase.Listening))
         assertNull(cause(PipelinePhase.StartingAudio))

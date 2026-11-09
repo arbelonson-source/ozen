@@ -49,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -78,6 +79,7 @@ internal fun SoundAlertsScreen(
     onChange: (SoundAlertPreferences) -> Unit,
     nearMiss: (SoundEvent) -> SoundNearMisses.Entry?,
     onFeel: (AlertVibration) -> Unit,
+    onSoundsOnly: () -> Unit,
     onClose: () -> Unit,
 ) {
     BackHandler(onBack = onClose)
@@ -95,6 +97,24 @@ internal fun SoundAlertsScreen(
             item {
                 SettingSwitchRow(tr("התראות על צלילים", "Sound alerts"), preferences.isEnabled, { on -> onChange(preferences.copy(isEnabled = on)) }, icon = Icons.Rounded.NotificationsActive)
             }
+        }
+        if (preferences.isEnabled) {
+            SettingsGroup(dividerInset = 56.dp) {
+                item {
+                    SettingRow(
+                        tr("התראות על צלילים בלבד, בלי כתוביות", "Sound alerts only, without captions"),
+                        modifier = Modifier.testTag("soundsOnlyButton"),
+                        icon = Icons.Rounded.Hearing,
+                        onClick = onSoundsOnly,
+                    )
+                }
+            }
+            Footnote(
+                tr(
+                    "ללילה: הכתוביות נעצרות ומודל הדיבור משתחרר מהזיכרון, כך שפחות סביר שהטלפון יסגור את אוזן. ההתראות על צלילים ממשיכות לפעול.",
+                    "For the night: captions stop and the speech model is let go, so the phone is less likely to close Ozen. Sound alerts keep listening.",
+                ),
+            )
         }
         SectionHeader(tr("להתריע על", "Alert for"))
         SettingsGroup(modifier = Modifier.selectableGroup()) {

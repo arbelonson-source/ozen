@@ -50,6 +50,7 @@ class ListeningService : Service() {
         val content = content()
         val public = onLockScreen()
         val sharing = intent?.action == ACTION_PHONE_SOUND
+        val soundsOnly = intent?.action == ACTION_SOUNDS_ONLY
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 // The sharing type goes up first: Android 14 refuses to hand out
@@ -66,7 +67,7 @@ class ListeningService : Service() {
         }
         if (sharing) takePhoneSound(intent)
         drawn(content, public)
-        captions.listen()
+        if (soundsOnly) captions.listenForSoundsOnly() else captions.listen(afterRestart = intent == null)
         if (watching == null) watching = scope.launch { watch() }
         return START_STICKY
     }
@@ -95,7 +96,7 @@ class ListeningService : Service() {
         showingOnLockScreen = false
         scope.cancel()
         val phase = captions.pipeline.phase
-        if (phase != PipelinePhase.Idle && phase != PipelinePhase.Paused) captions.stopFromNotification()
+        if ((phase != PipelinePhase.Idle && phase != PipelinePhase.Paused) || captions.pipeline.soundsOnlyChosen) captions.stopFromNotification()
         super.onDestroy()
     }
 
@@ -149,7 +150,7 @@ class ListeningService : Service() {
      */
     private fun refresh() {
         val screen = CaptionState.screen.value
-        if (screen.phase == PipelinePhase.Idle || (screen.phase == PipelinePhase.Paused && !screen.pausedForSpeech)) {
+        if (ServiceKeepAlive.ends(screen.phase, screen.pausedForSpeech, screen.soundsOnly)) {
             finish()
             return
         }
@@ -182,12 +183,16 @@ class ListeningService : Service() {
         private const val NOTIFICATION_ID = 1
         internal const val ACTION_PAUSE = "com.arbelonson.ozen.PAUSE"
         internal const val ACTION_PHONE_SOUND = "com.arbelonson.ozen.PHONE_SOUND"
+        internal const val ACTION_SOUNDS_ONLY = "com.arbelonson.ozen.SOUNDS_ONLY"
         private const val EXTRA_RESULT_CODE = "resultCode"
         private const val EXTRA_CONSENT = "consent"
         private const val MICROPHONE_AND_SHARING = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
         private const val KEEP_ALIVE_MILLISECONDS = 30_000L
 
         fun start(context: Context) = context.startForegroundService(Intent(context, ListeningService::class.java))
+
+        /** Captions off for the night: the service stays up for the microphone, listening for sounds alone. */
+        fun startSoundsOnly(context: Context) = context.startForegroundService(Intent(context, ListeningService::class.java).setAction(ACTION_SOUNDS_ONLY))
 
         /** She agreed in the system's sharing dialog: [consent] is its answer, used once to hear the phone's own sound. */
         fun startPhoneSound(context: Context, resultCode: Int, consent: Intent) = context.startForegroundService(
