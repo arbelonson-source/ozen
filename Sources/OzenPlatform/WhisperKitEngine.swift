@@ -67,6 +67,22 @@ public actor WhisperKitEngine: TranscriptionEngine {
     /// measures at a time.
     private let longCutLookBackSeconds = 2.0
     private let longCutFrameSeconds = 0.05
+    /// The most finished sentences left waiting for a final pass of their
+    /// own. A pass slower than the pause used to find the next sentence
+    /// already started, and the pause was never seen: two sentences, often
+    /// two people, came out as one line. The intake remembers each pause
+    /// now and every sentence gets its own line; but a phone slower than
+    /// the talking would then fall further behind with every sentence, so
+    /// past this many waiting they all share the next line. Replayed on 368
+    /// sentences of Hebrew lectures: with 1 s live and 1.5 s final passes
+    /// it was 238 lines and with 2 s / 3 s 155, against 356 with an instant
+    /// model; remembering the pauses gives 356 up to 3 s / 4.5 s passes,
+    /// where this never comes into play. With 8 s / 12 s passes it keeps
+    /// 269 lines (125 before) and the longest wait for a line at 43 s,
+    /// where remembering every pause without it let the wait grow to 139 s.
+    /// One waiting already merged lines at 4.5 s passes; three or four kept
+    /// 9-23 more lines but let the wait reach 52-67 s.
+    private let mostLinesWaiting = 2
     private let sampleRate = 16_000.0
 
     public init(
@@ -315,7 +331,16 @@ public actor WhisperKitEngine: TranscriptionEngine {
     ) async throws {
         guard let pipe else { throw EngineError.notPrepared }
 
-        let intake = AudioIntake(voiceScorer: SileroVoiceScorer())
+        let pauseSamples = Int(pauseSeconds * sampleRate)
+        // Locked rather than actor-isolated, so the audio loop never waits
+        // for the actor while a long pass runs. Without the voice model
+        // (missing or failed to load) every line goes to Whisper, as before
+        // (see `VoiceEvidence`).
+        let intake = SpeechIntake(
+            detector: .forWhisperLines(),
+            pauseSamples: pauseSamples,
+            voiceScorer: SileroVoiceScorer().map { scorer in scorer.score }
+        )
         let intakeTask = Task {
             for await chunk in audio {
                 if Task.isCancelled { break }
@@ -328,7 +353,6 @@ public actor WhisperKitEngine: TranscriptionEngine {
         let livePass = liveOptions(languageCode: languageCode)
         let finalPass = finalOptions(languageCode: languageCode)
         let speechFilter = filter.forSpeech(in: languageCode)
-        let pauseSamples = Int(pauseSeconds * sampleRate)
         let padSamples = Int(trailingPadSeconds * sampleRate)
         let keepSamples = Int(leadingKeepSeconds * sampleRate)
         let longCutLookBack = Int(longCutLookBackSeconds * sampleRate)
@@ -364,7 +388,18 @@ public actor WhisperKitEngine: TranscriptionEngine {
             // line's own words (`WhisperKitDecodeRoom`).
             let prompt = promptTokens(using: pipe)
             let maxSamples = Int(WhisperKitDecodeRoom.longestLineSeconds(promptTokens: prompt?.count ?? 0, upTo: maxUtteranceSeconds) * sampleRate)
-            let pauseReached = total - speechEnd >= pauseSamples
+            // A pause the intake heard while a pass ran ends the line there,
+            // though the next sentence has begun (see `mostLinesWaiting`).
+            let lineEndAtPause = UtteranceCut.lineEndAtPause(
+                pauses: status.pauses,
+                speechEnd: speechEnd,
+                total: total,
+                pause: pauseSamples,
+                pad: padSamples,
+                maxSamples: maxSamples,
+                mostWaiting: mostLinesWaiting
+            )
+            let pauseReached = lineEndAtPause != nil
             let tooLong = total >= maxSamples
             let isFinal = pauseReached || tooLong || status.finished
             let interval = InferenceCadence.secondsBetweenLivePasses(
@@ -383,7 +418,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
             let window: [Float]
             let line = UtteranceCut.finishedLine(
                 total: total,
-                speechEnd: speechEnd,
+                speechEnd: lineEndAtPause ?? speechEnd,
                 pad: padSamples,
                 maxSamples: maxSamples,
                 stillTalkingAtCap: tooLong && !pauseReached && !status.finished
@@ -654,80 +689,5 @@ public actor WhisperKitEngine: TranscriptionEngine {
 
     enum EngineError: Error {
         case notPrepared
-    }
-}
-
-/// The intake buffer shared between the audio loop and the inference loop.
-/// Locked rather than actor-isolated so the audio loop never has to wait
-/// for the actor while a long inference pass is in flight.
-private final class AudioIntake: @unchecked Sendable {
-    struct Status {
-        var count: Int
-        /// Index just past the last chunk classified as speech, if any.
-        var lastSpeechEnd: Int?
-        var finished: Bool
-    }
-
-    private let lock = NSLock()
-    private var samples: [Float] = []
-    private var lastSpeechEnd: Int?
-    private var finished = false
-    private var detector = EnergyVoiceDetector.forWhisperLines()
-    /// Nil when the voice model isn't there or didn't load: then every
-    /// line goes to Whisper, as before (see `VoiceEvidence`).
-    private var evidence: VoiceEvidence?
-
-    init(voiceScorer: SileroVoiceScorer?) {
-        evidence = voiceScorer.map { scorer in VoiceEvidence(score: scorer.score) }
-    }
-
-    func append(_ chunk: [Float]) {
-        lock.withLock {
-            samples.append(contentsOf: chunk)
-            if detector.isSpeech(chunk) {
-                lastSpeechEnd = samples.count
-            }
-            evidence?.append(chunk)
-        }
-    }
-
-    /// Whether the first `end` samples had a voice in them; nil when
-    /// that isn't known.
-    func hasVoice(upTo end: Int) -> Bool? {
-        lock.withLock { evidence?.hasVoice(inFirst: end) }
-    }
-
-    /// How many of the first `end` samples' chunks had a voice in them;
-    /// nil when that isn't known.
-    func voicedChunks(upTo end: Int) -> Int? {
-        lock.withLock { evidence?.voicedChunks(inFirst: end) }
-    }
-
-    func markFinished() {
-        lock.withLock { finished = true }
-    }
-
-    func status() -> Status {
-        lock.withLock {
-            Status(count: samples.count, lastSpeechEnd: lastSpeechEnd, finished: finished)
-        }
-    }
-
-    /// A copy of the first `end` samples.
-    func copySamples(upTo end: Int) -> [Float] {
-        lock.withLock {
-            Array(samples[0..<min(max(end, 0), samples.count)])
-        }
-    }
-
-    func drop(prefix count: Int) {
-        lock.withLock {
-            let dropped = min(count, samples.count)
-            samples.removeFirst(dropped)
-            evidence?.drop(prefix: dropped)
-            if let end = lastSpeechEnd {
-                lastSpeechEnd = end > dropped ? end - dropped : nil
-            }
-        }
     }
 }

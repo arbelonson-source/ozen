@@ -158,6 +158,31 @@ class OnDeviceWhisperEngineTest {
     }
 
     @Test
+    fun three_sentences_said_while_slow_passes_run_come_back_as_three_lines() = runTest {
+        val rig = rig()
+        rig.passes.passMillis = { 2_000L }
+        val tokens = rig.stream(
+            silence(0.6), speech(1.0), silence(1.0), speech(1.0), silence(1.0), speech(1.0), silence(1.6),
+        ).toList()
+        val finals = rig.passes.finals()
+        assertEquals(3, finals.size, "final passes over ${finals.map { it.seconds }} s")
+        assertTrue(finals.all { it.seconds <= 2.5 }, "a final line ran into the next sentence: ${finals.map { it.seconds }} s")
+        assertEquals(3, tokens.filter { it.isFinal }.map { it.utteranceID }.toSet().size)
+    }
+
+    @Test
+    fun more_than_two_finished_sentences_waiting_on_a_slow_phone_share_one_line() = runTest {
+        val rig = rig()
+        rig.passes.passMillis = { 4_000L }
+        val sentences = Array(5) { listOf(speech(1.0), silence(0.8)) }.flatMap { it }
+        rig.stream(silence(0.6), *sentences.toTypedArray(), silence(1.0)).toList()
+        val finals = rig.passes.finals()
+        assertEquals(2, finals.size, "final passes over ${finals.map { it.seconds }} s")
+        assertTrue(finals[0].seconds <= 2.0, "the first line, waiting alone with one more, ran ${finals[0].seconds} s")
+        assertTrue(finals[1].seconds >= 4 * 1.8 - 0.8, "the four sentences left waiting got ${finals[1].seconds} s")
+    }
+
+    @Test
     fun a_line_still_being_spoken_at_the_length_cap_is_cut_at_the_quietest_point_and_the_rest_starts_the_next_line() = runTest {
         val rig = rig()
         val dip = 245

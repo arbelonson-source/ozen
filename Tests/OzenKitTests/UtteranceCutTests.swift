@@ -50,4 +50,25 @@ struct UtteranceCutTests {
         #expect(UtteranceCut.finishedLine(total: 270, speechEnd: 260, pad: 5, maxSamples: 280, stillTalkingAtCap: true) == (265, true))
         #expect(UtteranceCut.finishedLine(total: 400, speechEnd: 390, pad: 5, maxSamples: 280, stillTalkingAtCap: false) == (280, true))
     }
+
+    private func lineEnd(_ pauses: [Int], speechEnd: Int, total: Int, maxSamples: Int = 280) -> Int? {
+        UtteranceCut.lineEndAtPause(pauses: pauses, speechEnd: speechEnd, total: total, pause: 7, pad: 3, maxSamples: maxSamples, mostWaiting: 2)
+    }
+
+    @Test("a line ends at the first pause heard, even one a slow pass hid while the next sentence began")
+    func endsAtTheFirstPause() {
+        #expect(lineEnd([], speechEnd: 60, total: 66) == nil)
+        #expect(lineEnd([], speechEnd: 60, total: 67) == 60)
+        #expect(lineEnd([40], speechEnd: 60, total: 62) == 40)
+        #expect(lineEnd([40], speechEnd: 60, total: 70) == 40)
+        #expect(lineEnd([20, 40], speechEnd: 60, total: 62) == 20)
+    }
+
+    @Test("more than two finished sentences waiting share one line, as far as the longest line reaches")
+    func backlogSharesALine() {
+        #expect(lineEnd([20, 40], speechEnd: 60, total: 70) == 60)
+        #expect(lineEnd([20, 40, 50], speechEnd: 60, total: 62) == 50)
+        #expect(lineEnd([20, 40, 50], speechEnd: 60, total: 62, maxSamples: 45) == 40)
+        #expect(lineEnd([20, 40, 50], speechEnd: 60, total: 62, maxSamples: 22) == 20)
+    }
 }
