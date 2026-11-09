@@ -145,10 +145,12 @@ public struct ReleaseModelDownloader: Sendable {
 
     /// Fetches (or resumes) every file of the release at `tag` into
     /// `folder`, reporting 0…1 progress by bytes, and returns the manifest.
-    /// Every file is checked against its checksum before this returns.
+    /// Every file is checked against its checksum before this returns;
+    /// `checking` is called once, as the last byte lands and the checks begin.
     public func download(
         tag: String,
         into folder: URL,
+        checking: @escaping @Sendable () -> Void = {},
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> ReleaseModelManifest {
         let fileManager = FileManager.default
@@ -185,6 +187,7 @@ public struct ReleaseModelDownloader: Sendable {
 
         // Every bad file goes, not just the first: one left behind would be
         // resumed on the next attempt, its real tail stacked on the bad head.
+        checking()
         var mismatched: [String] = []
         for file in manifest.files {
             let url = folder.appendingPathComponent(file.path)
