@@ -29,7 +29,7 @@ struct NightAlertsView: View {
         List {
             Section {
                 item(
-                    title: tr("התראות מותרות", "Notifications allowed"),
+                    title: tr("התראות", "Notifications"),
                     text: notificationsText,
                     image: "bell.badge",
                     done: notificationsDone
