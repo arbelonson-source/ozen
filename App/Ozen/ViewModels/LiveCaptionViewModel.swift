@@ -149,6 +149,9 @@ public final class LiveCaptionViewModel {
     private var lastRetentionCheck: TimeInterval = 0
     /// The clock the retention check reads; a test moves it on hours.
     @ObservationIgnored var retentionNow: () -> TimeInterval = { Date().timeIntervalSince1970 }
+    /// Whether Apple's recognizer captions a spoken language on this phone
+    /// alone (see `BuiltInWhileWaiting`); a test says yes or no itself.
+    @ObservationIgnored var builtInWorksOnDevice: (String) -> Bool = { _ in false }
     private var launchHousekeeping: Task<Void, Never>?
     private var soundIdentifiersLoad: Task<Void, Never>?
     @ObservationIgnored private var announcer = CaptionAnnouncer()
@@ -215,6 +218,7 @@ public final class LiveCaptionViewModel {
             problemAudio: ProblemAudioStore(directory: support.appendingPathComponent("problem-audio", isDirectory: true)),
             listeningRecorder: ListeningRecords.makeRecorder()
         )
+        builtInWorksOnDevice = { AppleSpeechEngine.worksOnDevice(languageCode: $0) }
     }
 
     /// Test wiring: any pipeline (typically one built on fakes).
@@ -685,6 +689,18 @@ public final class LiveCaptionViewModel {
     /// "Download now" while the model waits for Wi-Fi.
     public func approveCellularDownload() async {
         await pipeline.approveCellularDownload()
+    }
+
+    /// What the wait for Wi-Fi offers besides a cellular download.
+    public var builtInWhileWaitingOffer: BuiltInWhileWaiting.Offer {
+        BuiltInWhileWaiting.offer(phase: pipeline.phase, chosen: settings, network: pipeline.networkConditions, worksOnDevice: builtInWorksOnDevice)
+    }
+
+    /// "Captions now with the phone's built-in recognition" while the
+    /// model waits for Wi-Fi; her chosen model stays chosen.
+    public func captionWithBuiltInWhileWaiting() async {
+        await pipeline.captionWithBuiltInWhileWaiting(settings: settings)
+        historySessionDidChangePhase()
     }
 
     public var notifyWhenInBackground: Bool {
