@@ -289,7 +289,7 @@ class PluralizationTest {
             UILanguage.English to "The conversation from 5 minutes ago was saved",
             UILanguage.French to "La conversation d’il y a 5 minutes a été enregistrée",
             UILanguage.German to "Das Gespräch von vor 5 Minuten wurde gespeichert",
-            UILanguage.Spanish to "Se guardó la conversación de hace 5 minutos",
+            UILanguage.Spanish to "Se ha guardado la conversación de hace 5 minutos",
             UILanguage.Amharic to "ውይይቱ ከ5 ደቂቃ በፊት ተቀምጧል",
         )
         for ((language, text) in expected) {
@@ -303,8 +303,8 @@ class PluralizationTest {
         assertEquals("21%", tr("%1 אחוז", "%1 percent", listOf("21"), UILanguage.Russian))
         assertEquals("2%", tr("%1 אחוז", "%1 percent", listOf("2"), UILanguage.Ukrainian))
         assertEquals("Батарея на 21%", tr("הסוללה ב־%1 אחוז", "Battery at %1 percent", listOf("21"), UILanguage.Russian))
-        assertEquals("Батарея на 2%", tr("הסוללה ב־%1 אחוז", "Battery at %1 percent", listOf("2"), UILanguage.Ukrainian))
-        assertEquals("تسجيل وحفظ (30 ثانية)", tr("הקלטה ושמירה (%1 שניות)", "Record and save (%1 seconds)", listOf("30"), UILanguage.Arabic))
+        assertEquals("Заряд батареї: 2%", tr("הסוללה ב־%1 אחוז", "Battery at %1 percent", listOf("2"), UILanguage.Ukrainian))
+        assertEquals("تسجيل وحفظ (30 ث)", tr("הקלטה ושמירה (%1 שניות)", "Record and save (%1 seconds)", listOf("30"), UILanguage.Arabic))
         val twoRecordings = RecordingImport.Result(added = mapOf("Savta" to 2))
         assertTrue("Savta (записей: 2)" in Localization.withLanguage(UILanguage.Russian) { twoRecordings.summary })
         assertTrue("Savta (записів: 2)" in Localization.withLanguage(UILanguage.Ukrainian) { twoRecordings.summary })
