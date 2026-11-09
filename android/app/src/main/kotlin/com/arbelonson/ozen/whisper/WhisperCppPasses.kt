@@ -28,7 +28,7 @@ class WhisperCppPasses(private val model: WhisperModel, private val threads: Int
             val count = WhisperCpp.pass(
                 handle, audio, options.language, options.promptTokens?.toIntArray(), options.maxTokens ?: 0,
                 temperature, threads, options.suppressBlank, options.withoutTimestamps,
-                WhisperAudioContext.frames(audio.size, options.isFinal), sameAudioAsLastAttempt,
+                WhisperAudioContext.frames(audio.size, options.isFinal, options.fullWindow), sameAudioAsLastAttempt,
             )
             check(count >= 0) { "whisper.cpp could not run the pass" }
             (0 until count).map { segment -> segment(handle, segment, temperature) }

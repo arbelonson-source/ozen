@@ -6,7 +6,8 @@ object WhisperAudioContext {
     const val MARGIN_FRAMES = 50
     const val FINAL_MARGIN_FRAMES = 250
 
-    fun frames(sampleCount: Int, isFinal: Boolean): Int {
+    fun frames(sampleCount: Int, isFinal: Boolean, fullWindow: Boolean = false): Int {
+        if (fullWindow) return FULL_FRAMES
         val margin = if (isFinal) FINAL_MARGIN_FRAMES else MARGIN_FRAMES
         return minOf(FULL_FRAMES, (sampleCount + SAMPLES_PER_FRAME - 1) / SAMPLES_PER_FRAME + margin)
     }

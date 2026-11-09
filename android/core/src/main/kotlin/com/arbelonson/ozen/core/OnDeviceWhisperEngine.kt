@@ -327,6 +327,17 @@ class OnDeviceWhisperEngine(
         val longCutLookBack = (longCutLookBackSeconds * sampleRate).toInt()
         val longCutFrame = (longCutFrameSeconds * sampleRate).toInt()
         var lastLivePassSeconds: Double? = null
+        // A finished line reads its own length plus 5 s, not the whole 30 s
+        // window: the pass holds up the next line's first words, and on the
+        // emulator a whole window took about 30 s. That margin cost accuracy
+        // (164 voice-message pieces of 8 s: 13.5% of words wrong against 11.2%
+        // with the whole window), so a phone whose live passes say the whole
+        // window takes 1.5 s or less reads it: no longer than the live
+        // preview may rest between passes, and the next line's first pass
+        // waits for a second of speech anyway. Remembered across lines, unlike
+        // `lastLivePassSeconds`; empty at the start, so the first lines keep
+        // the margin until a live pass has been timed.
+        val finalWindow = FinalPassWindow()
 
         var utteranceID = UUID.randomUUID()
         var samplesAtLastPass = 0
@@ -436,6 +447,8 @@ class OnDeviceWhisperEngine(
             }
             if (!isFinal) {
                 options = options.copy(maxTokens = WhisperKitDecodeRoom.livePassTokens(windowSeconds))
+            } else if (finalWindow.usesFullWindow(heat(), lowPowerMode())) {
+                options = options.copy(fullWindow = true)
             }
             // A voice across the room reaches the model quiet; brought up to
             // a common level it made fewer mistakes (speaker across the room
@@ -464,6 +477,7 @@ class OnDeviceWhisperEngine(
                 // temperatures and would overstate how slow the phone is.
                 val seconds = passStarted.elapsedNow().toDouble(DurationUnit.SECONDS)
                 lastLivePassSeconds = seconds
+                finalWindow.recordLivePass(WhisperAudioContext.frames(heard.size, isFinal = false), seconds)
                 val reports = synchronized(lock) {
                     tally.recordLivePass(seconds)
                     if (coolAtStart && !retried && ModelFitWatch.counts(seconds, heat(), lowPowerMode(), kind)) tally.recordCountedPass(seconds)

@@ -30,6 +30,7 @@ data class WhisperPassOptions(
     val logProbThreshold: Float = -1.0f,
     val firstTokenLogProbThreshold: Float = -1.5f,
     val noSpeechThreshold: Float = 0.6f,
+    val fullWindow: Boolean = false,
 ) {
     companion object {
         fun live(language: String) = WhisperPassOptions(language = language, isFinal = false)
