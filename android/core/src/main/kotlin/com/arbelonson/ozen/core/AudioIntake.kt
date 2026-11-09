@@ -13,6 +13,8 @@ internal class AudioIntake(voiceScorer: ((FloatArray) -> Float?)?) {
     private var firstSpeechStart: Int? = null
     private var finished = false
     private val detector = EnergyVoiceDetector.forWhisperLines()
+    private val block = FloatArray(EnergyVoiceDetector.BLOCK_SAMPLES)
+    private var blockFill = 0
     private val evidence: VoiceEvidence? = voiceScorer?.let { VoiceEvidence(it) }
 
     fun append(chunk: FloatArray) {
@@ -22,12 +24,25 @@ internal class AudioIntake(voiceScorer: ((FloatArray) -> Float?)?) {
             }
             chunk.copyInto(samples, size)
             size += chunk.size
-            if (detector.isSpeech(chunk)) {
-                if (lastSpeechEnd == null) firstSpeechStart = size - chunk.size
-                lastSpeechEnd = size
+            var read = 0
+            while (read < chunk.size) {
+                val taken = min(block.size - blockFill, chunk.size - read)
+                chunk.copyInto(block, blockFill, read, read + taken)
+                blockFill += taken
+                read += taken
+                if (blockFill == block.size) {
+                    blockFill = 0
+                    readBlock(end = size - chunk.size + read)
+                }
             }
             evidence?.append(chunk)
         }
+    }
+
+    private fun readBlock(end: Int) {
+        if (!detector.isSpeech(block)) return
+        if (lastSpeechEnd == null) firstSpeechStart = max(end - block.size, 0)
+        lastSpeechEnd = end
     }
 
     fun hasVoice(upTo: Int): Boolean? = synchronized(lock) { evidence?.hasVoice(upTo) }

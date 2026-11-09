@@ -538,6 +538,33 @@ class OneBigChunk(unittest.TestCase):
         self.assertTrue(3 * S.RATE <= session.last_speech_end <= 3 * S.RATE + 688, session.last_speech_end)
 
 
+class SameReadingsWhateverTheFrames(unittest.TestCase):
+    """The detector's rates are per reading: an odd-sized reading at the end
+    of each frame moved where speech started and stopped."""
+
+    @staticmethod
+    def frames(size):
+        i = np.arange(24_000)
+        speaking = ((i >= 1_600) & (i < 5_000)) | ((i >= 18_000) & (i < 21_000))
+        wave = np.where(speaking, 0.05 * np.sin(2 * np.pi * 220 * i / S.RATE), 0.0003 * np.sin(2 * np.pi * 50 * i / S.RATE))
+        audio = (wave * 32767).astype("<i2").tobytes()
+        return [audio[at:at + size * 2] for at in range(0, len(audio), size * 2)]
+
+    def heard(self, size):
+        session = S.Session(Socket(), SlowGPU(live_seconds=0.01), "he", [], live_interval=0.3)
+        for frame in self.frames(size):
+            session.add_audio(frame)
+        return session.last_speech_end, session.pauses
+
+    def test_the_detector_hears_the_same_speech_whatever_size_of_frames_the_phone_sends(self):
+        expected = self.heard(688)
+        for size in (1_600, 441, 24_000):
+            self.assertEqual(self.heard(size), expected, f"{size} samples a frame")
+
+    def test_the_detector_reads_688_samples_at_a_time_the_43_ms_it_was_tuned_on(self):
+        self.assertEqual(self.heard(1_600), (31 * 688, [8 * 688]))
+
+
 class FullScale(unittest.TestCase):
     def test_the_phones_16_bit_samples_become_floats_from_minus_one_to_one(self):
         session = S.Session(Socket(), SlowGPU(live_seconds=0.01), "he", [], live_interval=0.3)
