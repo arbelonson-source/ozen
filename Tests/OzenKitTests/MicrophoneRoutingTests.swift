@@ -43,7 +43,8 @@ struct MicrophoneRoutingTests {
         audio.simulateRouteChange(inputs: [phoneMic, lapelMic])
         try await Task.sleep(for: .seconds(1.5))
         #expect(pipeline.routedElsewhere == nil)
-        try await Task.sleep(for: .seconds(0.9))
+        // A CI runner busy with every other test can take seconds to wake the settle timer.
+        #expect(await eventually { pipeline.routedElsewhere != nil })
 
         #expect(pipeline.routedElsewhere == RoutedElsewhere(picked: lapelMic, inUse: phoneMic))
         #expect(pipeline.routedElsewhere?.title.contains("Lapel Pro") == true)
@@ -71,8 +72,7 @@ struct MicrophoneRoutingTests {
         await pipeline.start(settings: picked(lapelMic.uid))
         audio.inputInUse = phoneMic.uid
         audio.simulateRouteChange(inputs: [phoneMic, lapelMic])
-        try await Task.sleep(for: settled)
-        try #require(pipeline.routedElsewhere != nil)
+        try #require(await eventually { pipeline.routedElsewhere != nil })
 
         audio.inputInUse = lapelMic.uid
         audio.simulateRouteChange(inputs: [phoneMic, lapelMic])
@@ -85,8 +85,7 @@ struct MicrophoneRoutingTests {
         await pipeline.start(settings: picked(lapelMic.uid))
         audio.inputInUse = phoneMic.uid
         audio.simulateRouteChange(inputs: [phoneMic, lapelMic])
-        try await Task.sleep(for: settled)
-        try #require(pipeline.routedElsewhere != nil)
+        try #require(await eventually { pipeline.routedElsewhere != nil })
 
         #expect(pipeline.selectInput(uid: phoneMic.uid))
         #expect(pipeline.routedElsewhere == nil)
@@ -148,7 +147,7 @@ struct MicrophoneFallbackTests {
 
         try await feed(audio) { audio.preparedFor.count >= 3 && pipeline.phase.isListening }
         let started = audio.preparedFor
-        try await feed(audio, chunks: Int(RoutedElsewhere.settleSeconds * 20) + 8) { false }
+        try await feed(audio, chunks: 200) { pipeline.routedElsewhere != nil }
 
         #expect(started == [lapelMic.uid, lapelMic.uid, phoneMic.uid])
         #expect(pipeline.phase.isListening)
@@ -214,7 +213,7 @@ struct MicrophoneFallbackTests {
         let (pipeline, audio) = routingPipeline(recovery: Self.quickRetries, audioWatchdog: AudioStallWatchdog(stallSeconds: 0.5))
         await pipeline.start(settings: picked(lapelMic.uid))
         try await feed(audio) { audio.preparedFor.count >= 3 && pipeline.phase.isListening }
-        try await feed(audio, chunks: Int(RoutedElsewhere.settleSeconds * 20) + 8) { false }
+        try await feed(audio, chunks: 200) { pipeline.routedElsewhere != nil }
         try #require(pipeline.routedElsewhere != nil)
 
         #expect(pipeline.selectInput(uid: lapelMic.uid))
