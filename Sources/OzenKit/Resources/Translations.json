@@ -1,6 +1,9 @@
 {
  "amharic": {
   "Added: %1": "ተጨምሯል፦ %1",
+  "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "ካፕሽን የቋንቋ ሞዴሉን ይፈልጋል። አንድ ጊዜ ብቻ ይወርዳል፣ መጠኑም ገደማ %1 ነው። በሞባይል ዳታ ይህ ገንዘብ ሊያስወጣ ወይም የዳታ ጥቅልዎን ሊጨርስ ይችላል። የዳታ ገደብ በሌለው Wi‑Fi (የስልክ ሆትስፖት ባልሆነ) ውርዱ ራሱን ችሎ ይጀምራል።",
+  "Download the language model over mobile data?": "የቋንቋ ሞዴሉ በሞባይል ዳታ ይውረድ?",
+  "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "የዳታ ገደብ በሌለው Wi‑Fi ራሱን ችሎ ያወርዳል · አሁን ለማውረድ ይንኩ",
   "Fix added": "ማስተካከያው ተጨምሯል",
   "Heard %1, written %2": "የተሰማው %1፣ የሚጻፈው %2",
   "Marks the word to fix": "የሚስተካከለውን ቃል ይመርጣል",
@@ -1042,6 +1045,9 @@
  },
  "arabic": {
   "Added: %1": "أُضيف: %1",
+  "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "الترجمة النصية تحتاج إلى نموذج اللغة. يُنزَّل مرة واحدة فقط وحجمه نحو %1. عبر بيانات الجوال قد يكلف هذا مالًا أو يستهلك باقة البيانات. عبر Wi‑Fi بلا حد للبيانات (لا نقطة اتصال من هاتف) سيبدأ التنزيل من تلقاء نفسه.",
+  "Download the language model over mobile data?": "تنزيل نموذج اللغة عبر بيانات الجوال؟",
+  "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "يُنزَّل من تلقاء نفسه عبر Wi‑Fi بلا حد للبيانات · المسوا للتنزيل الآن",
   "Fix added": "أُضيف التصحيح",
   "Heard %1, written %2": "المسموع %1، المكتوب %2",
   "Marks the word to fix": "يحدّد الكلمة المراد تصحيحها",
@@ -2083,6 +2089,9 @@
  },
  "chineseSimplified": {
   "Added: %1": "已添加：%1",
+  "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "字幕需要语言模型。它只需下载一次，大约 %1。使用移动数据下载可能会花钱或消耗流量套餐。连接没有流量限制的 Wi‑Fi（不是手机热点）时，下载会自动开始。",
+  "Download the language model over mobile data?": "要用移动数据下载语言模型吗？",
+  "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "连接没有流量限制的 Wi‑Fi 时会自动下载 · 点一下立即下载",
   "Fix added": "已添加修正",
   "Heard %1, written %2": "听到的：%1，写成：%2",
   "Marks the word to fix": "选中要修正的词",
@@ -3124,6 +3133,9 @@
  },
  "french": {
   "Added: %1": "Ajouté : %1",
+  "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Les sous-titres ont besoin du modèle de langue. Il se télécharge une seule fois et pèse environ %1. Via les données mobiles, cela peut coûter de l’argent ou utiliser votre forfait. Sur un Wi‑Fi sans limite de données (pas le partage de connexion d’un téléphone), le téléchargement démarrera tout seul.",
+  "Download the language model over mobile data?": "Télécharger le modèle de langue via les données mobiles ?",
+  "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "Se télécharge seul sur un Wi‑Fi sans limite de données · Touchez pour télécharger maintenant",
   "Fix added": "Correction ajoutée",
   "Heard %1, written %2": "Entendu %1, écrit %2",
   "Marks the word to fix": "Sélectionne le mot à corriger",
@@ -4165,6 +4177,9 @@
  },
  "german": {
   "Added: %1": "Hinzugefügt: %1",
+  "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Für Untertitel wird das Sprachmodell gebraucht. Es wird einmal heruntergeladen und ist etwa %1 groß. Über mobile Daten kann das Geld kosten oder Ihr Datenvolumen aufbrauchen. Über Wi‑Fi ohne Datenlimit (kein Hotspot eines Handys) startet der Download von allein.",
+  "Download the language model over mobile data?": "Das Sprachmodell über mobile Daten herunterladen?",
+  "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "Lädt über Wi‑Fi ohne Datenlimit von allein herunter · Zum sofortigen Download tippen",
   "Fix added": "Korrektur hinzugefügt",
   "Heard %1, written %2": "Gehört %1, geschrieben %2",
   "Marks the word to fix": "Markiert das Wort zum Korrigieren",
@@ -5206,6 +5221,9 @@
  },
  "hindi": {
   "Added: %1": "जोड़ा गया: %1",
+  "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "कैप्शन के लिए भाषा का मॉडल ज़रूरी है। यह एक बार डाउनलोड होता है और लगभग %1 का है। मोबाइल डेटा पर इसमें पैसे लग सकते हैं या आपका डेटा प्लान ख़त्म हो सकता है। बिना डेटा सीमा वाले Wi‑Fi पर (फ़ोन का हॉटस्पॉट नहीं) डाउनलोड खुद शुरू हो जाएगा।",
+  "Download the language model over mobile data?": "भाषा का मॉडल मोबाइल डेटा पर डाउनलोड करें?",
+  "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "बिना डेटा सीमा वाले Wi‑Fi पर खुद डाउनलोड होता है · अभी डाउनलोड करने के लिए छुएं",
   "Fix added": "सुधार जोड़ा गया",
   "Heard %1, written %2": "सुना गया %1, लिखा जाएगा %2",
   "Marks the word to fix": "सुधारने के लिए शब्द चुनता है",
@@ -6247,6 +6265,9 @@
  },
  "portuguese": {
   "Added: %1": "Adicionado: %1",
+  "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "As legendas precisam do modelo de idioma. É transferido uma só vez e tem cerca de %1. Com dados móveis isto pode custar dinheiro ou gastar o seu plano de dados. Numa rede Wi‑Fi sem limite de dados (que não seja o hotspot de um telemóvel) a transferência começa sozinha.",
+  "Download the language model over mobile data?": "Transferir o modelo de idioma com dados móveis?",
+  "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "Transfere sozinho numa rede Wi‑Fi sem limite de dados · Toque para transferir agora",
   "Fix added": "Correção adicionada",
   "Heard %1, written %2": "Ouvido %1, escrito %2",
   "Marks the word to fix": "Seleciona a palavra a corrigir",
@@ -7288,6 +7309,9 @@
  },
  "russian": {
   "Added: %1": "Добавлено: %1",
+  "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Для субтитров нужна языковая модель. Она загружается один раз, её размер около %1. Через мобильный интернет это может стоить денег или израсходовать ваш пакет данных. По Wi‑Fi без ограничения трафика (не точка доступа с телефона) загрузка начнётся сама.",
+  "Download the language model over mobile data?": "Загрузить языковую модель через мобильный интернет?",
+  "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "Загрузится сама по Wi‑Fi без ограничения трафика · Нажмите, чтобы загрузить сейчас",
   "Fix added": "Исправление добавлено",
   "Heard %1, written %2": "Услышано %1, пишется %2",
   "Marks the word to fix": "Выбирает слово для исправления",
@@ -8329,6 +8353,9 @@
  },
  "spanish": {
   "Added: %1": "Añadido: %1",
+  "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Los subtítulos necesitan el modelo de idioma. Se descarga una sola vez y pesa unos %1. Con datos móviles esto puede costar dinero o agotar tu plan de datos. Con un Wi‑Fi sin límite de datos (no el punto de acceso de un móvil), la descarga empezará sola.",
+  "Download the language model over mobile data?": "¿Descargar el modelo de idioma con datos móviles?",
+  "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "Se descarga solo con un Wi‑Fi sin límite de datos · Toca para descargar ahora",
   "Fix added": "Corrección añadida",
   "Heard %1, written %2": "Oído %1, escrito %2",
   "Marks the word to fix": "Marca la palabra que hay que corregir",
@@ -9370,6 +9397,9 @@
  },
  "ukrainian": {
   "Added: %1": "Додано: %1",
+  "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Для субтитрів потрібна мовна модель. Вона завантажується один раз і важить близько %1. Через мобільний інтернет це може коштувати грошей або витратити ваш пакет даних. Через Wi‑Fi без обмеження трафіку (не точка доступу з телефона) завантаження почнеться само.",
+  "Download the language model over mobile data?": "Завантажити мовну модель через мобільний інтернет?",
+  "Downloads on its own on Wi‑Fi without a data limit · Tap to download now": "Завантажиться сама через Wi‑Fi без обмеження трафіку · Натисніть, щоб завантажити зараз",
   "Fix added": "Виправлення додано",
   "Heard %1, written %2": "Почуто %1, пишеться %2",
   "Marks the word to fix": "Вибирає слово для виправлення",

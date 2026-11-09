@@ -564,8 +564,10 @@ class CaptionSession(
         // The announcer gets each phase as it comes, and before a phrase
         // still being spoken pauses the captions. That pause lands here at
         // once as Paused; reading the pipeline's phase afterwards meant
-        // "Captions are ready" (or "are back") was never said.
-        pipeline.onPhaseChange = CaptionPhaseChanges(
+        // "Captions are ready" (or "are back") was never said. Progress
+        // goes to it too: a download that waited for Wi-Fi begins as a
+        // step of the preparation, which the pipeline reports only there.
+        val phaseChanges = CaptionPhaseChanges(
             replies,
             stopAnnouncer,
             appIsActive = { appIsActive },
@@ -576,8 +578,9 @@ class CaptionSession(
             },
             publish = ::publish,
             say = ::announceStopOrReturn,
-        )::phaseChanged
-        pipeline.onPreparationProgress = { publish() }
+        )
+        pipeline.onPhaseChange = phaseChanges::phaseChanged
+        pipeline.onPreparationProgress = phaseChanges::preparationProgressed
         pipeline.onCaptionsChanged = ::publish
         pipeline.onInputsChanged = ::publishInputs
         pipeline.onNetworkChanged = ::publish
@@ -857,6 +860,7 @@ class CaptionSession(
             CaptionsStopAnnouncer.Event.Stopped -> stoppedText(phase)
             CaptionsStopAnnouncer.Event.Back -> tr("הכתוביות חזרו", "Captions are back")
             CaptionsStopAnnouncer.Event.Ready -> tr("הכתוביות מוכנות", "Captions are ready")
+            CaptionsStopAnnouncer.Event.DownloadStarted -> tr("מורידים את מודל הדיבור", "Downloading the language model")
         }
         if (appIsActive && ScreenReader.isOn(context)) announce(text)
     }

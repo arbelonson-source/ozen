@@ -98,6 +98,29 @@ class PhasePresentationTest {
     }
 
     @Test
+    fun `waiting for Wi-Fi promises the download only on Wi-Fi that will take it, not a hotspot or a limited one`() {
+        Localization.withLanguage(UILanguage.English) {
+            val detail = present(
+                failure(unavailable(EngineUnavailability.Kind.WaitingForWiFi, downloadMegabytes = 626)),
+                TranscriptionEngineKind.WhisperKit,
+            ).detail.orEmpty()
+            assertTrue("data limit" in detail || "hotspot" in detail, detail)
+        }
+    }
+
+    @Test
+    fun `the mobile data question says captions need the model, and when Wi-Fi starts it on its own`() {
+        Localization.withLanguage(UILanguage.English) {
+            val body = CellularDownloadTexts.body(626)
+            assertTrue("Captions need" in body && "language model" in body, body)
+            assertTrue("626\u00A0MB" in body, body)
+            assertTrue("hotspot" in body && "data limit" in body, body)
+            assertTrue("language model" in CellularDownloadTexts.title && "mobile data" in CellularDownloadTexts.title, CellularDownloadTexts.title)
+            assertTrue("A few hundred MB" in CellularDownloadTexts.body(null))
+        }
+    }
+
+    @Test
     fun `an unknown model size is left out rather than shown as 0 MB`() {
         val presentation = present(
             failure(unavailable(EngineUnavailability.Kind.WaitingForWiFi, downloadMegabytes = 0)),

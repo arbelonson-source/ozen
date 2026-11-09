@@ -399,16 +399,16 @@ class CaptionScreenDeviceTest {
         )
         compose.runOnUiThread { CaptionState.show(waiting, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
         compose.onNodeWithText("Waiting for Wi", substring = true).performClick()
-        compose.onNodeWithText("Download the model over cellular data?").assertExists()
+        compose.onNodeWithText("Download the language model over mobile data?").assertExists()
 
         val first = compose.activity
         compose.activityRule.scenario.recreate()
         compose.waitUntil(5_000) { first.isDestroyed }
         compose.waitForIdle()
 
-        compose.onNodeWithText("Download the model over cellular data?").assertExists()
+        compose.onNodeWithText("Download the language model over mobile data?").assertExists()
         compose.onNodeWithText("Wait for Wi", substring = true).performClick()
-        compose.onNodeWithText("Download the model over cellular data?").assertDoesNotExist()
+        compose.onNodeWithText("Download the language model over mobile data?").assertDoesNotExist()
     }
 
     @Test
@@ -420,7 +420,7 @@ class CaptionScreenDeviceTest {
                 EngineUnavailability(EngineUnavailability.Kind.WaitingForWiFi, "test", downloadMegabytes = 550),
             ),
         )
-        val question = "Download the model over cellular data?"
+        val question = "Download the language model over mobile data?"
         val showWaiting = { compose.runOnUiThread { CaptionState.show(waiting, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) } }
         val clearWaiting = { compose.runOnUiThread { CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) } }
         try {
@@ -1724,16 +1724,17 @@ class CaptionScreenDeviceTest {
             compose.runOnUiThread { CaptionState.show(waiting, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
             val status = compose.onNodeWithText("Waiting for Wi", substring = true)
             status.performClick()
-            compose.onNodeWithText("Download the model over cellular data?").assertExists()
-            compose.onNodeWithText("The model is about 550", substring = true).assertExists()
-            compose.onNodeWithText("Over cellular data this can cost money", substring = true).assertExists()
+            compose.onNodeWithText("Download the language model over mobile data?").assertExists()
+            compose.onNodeWithText("Captions need the language model", substring = true).assertExists()
+            compose.onNodeWithText("is about 550", substring = true).assertExists()
+            compose.onNodeWithText("Over mobile data this can cost money", substring = true).assertExists()
             compose.onNodeWithText("Wait for Wi", substring = true).performClick()
-            compose.onNodeWithText("Download the model over cellular data?").assertDoesNotExist()
+            compose.onNodeWithText("Download the language model over mobile data?").assertDoesNotExist()
             assertFalse(compose.runOnUiThread { app.captions.pipeline.cellularDownloadApproved })
 
             status.performClick()
             compose.onNodeWithText("Download now").performClick()
-            compose.onNodeWithText("Download the model over cellular data?").assertDoesNotExist()
+            compose.onNodeWithText("Download the language model over mobile data?").assertDoesNotExist()
             compose.waitUntil(5_000) { compose.runOnUiThread { app.captions.pipeline.cellularDownloadApproved } }
         } finally {
             compose.runOnUiThread { CaptionState.clear() }
