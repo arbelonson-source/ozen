@@ -208,6 +208,7 @@ fun SettingsScreen(
     onSoundAlerts: (SoundAlertPreferences) -> Unit = {},
     soundNearMiss: (SoundEvent) -> SoundNearMisses.Entry? = { null },
     onFeel: (AlertVibration) -> Unit = {},
+    onTryLight: (refused: () -> Unit) -> Unit = {},
     speakers: SpeakerBook,
     onCellularDownloads: (Boolean) -> Unit,
     backup: PhoneBackup? = null,
@@ -266,7 +267,16 @@ fun SettingsScreen(
             SettingsPage.Diagnostics -> DiagnosticsScreen(diagnostics, onClose = { showingDiagnostics = false })
             SettingsPage.Guide -> HomeServerGuideScreen(current.spokenLanguage, onClose = { showingGuide = false })
             SettingsPage.Support -> SupportScreen(onClose = { showingSupport = false })
-            SettingsPage.Sounds -> SoundAlertsScreen(current.soundAlerts, onSoundAlerts, soundNearMiss, onFeel, onClose = { showingSounds = false })
+            SettingsPage.Sounds -> SoundAlertsScreen(
+                current.soundAlerts,
+                onSoundAlerts,
+                soundNearMiss,
+                onFeel,
+                onClose = { showingSounds = false },
+                flashLight = current.flashCameraLight,
+                onFlashLight = { on -> settings.change { it.flashCameraLight = on } },
+                onTryLight = onTryLight,
+            )
             SettingsPage.ImportantWords -> ImportantWordsScreen(current.keywordAlerts, current.vocabulary, current.languageCode, current.spokenLanguage, heard, onImportantWords, onClose = { showingImportantWords = false }, heardBy = heardBy)
             SettingsPage.Enrollment -> SpeakerEnrollmentScreen(speakers, onClose = { showingEnrollment = false })
             SettingsPage.Night -> NightAlertsScreen(current.soundAlerts.isEnabled, onSounds = { showingSounds = true }, onClose = { showingNight = false })

@@ -38,6 +38,8 @@ import com.arbelonson.ozen.core.CaptionsStopAnnouncer
 import com.arbelonson.ozen.core.HomeServerEngine
 import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import com.arbelonson.ozen.core.AlertNotificationContent
+import com.arbelonson.ozen.core.TorchFlash
+import com.arbelonson.ozen.core.TorchRunner
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundAlertPreferences
@@ -92,16 +94,20 @@ import java.util.TimeZone
 import java.util.UUID
 import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -120,6 +126,8 @@ class CaptionSession(
     listeningRecords: ListeningRecordStore = PreferencesListeningStore(context),
 ) : DiagnosticsSource, SpeakerBook, PhoneBackup {
     private val scope = MainScope()
+    private val lightScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val light = TorchRunner(CameraLight(context.applicationContext), lightScope)
     private val connector = WebSocketConnector(privateRoute = { host -> homeNetwork(host)?.let { network -> PrivatePath(network.socketFactory) { network.getAllByName(it).toList() } } })
     private fun homeNetwork(host: String): Network? {
         if (!HomeServer.isPrivate(host)) return null
@@ -440,7 +448,10 @@ class CaptionSession(
             if (active) restartRefused = false
             field = active
             checkCaptionsStillRunning()
-            if (changed && active) cameBack()
+            if (changed && active) {
+                light.stop()
+                cameBack()
+            }
             // Android may end an app that is out of sight before the next autosave.
             if (changed && !active) conversations.save(ended = false)
         }
@@ -589,6 +600,12 @@ class CaptionSession(
         started.speakerProfiles.forEach(pipeline::enroll)
         note("APP STARTED: ${appVersion()} Android ${Build.VERSION.RELEASE} engine ${started.engine.rawValue} model ${started.modelDescription(started.engine) ?: "-"} ${deviceState()}")
         scope.launch { combine(settings.current, settings.saveFailed) { _, _ -> }.collect { refreshSavingTrouble() } }
+        scope.launch {
+            settings.current.map { it.flashCameraLight }.distinctUntilChanged().collect { on ->
+                CameraLight.watch(context.applicationContext, on) { light.stop() }
+                if (!on) light.stop()
+            }
+        }
         context.registerReceiver(batteryReadings, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         context.registerReceiver(batterySaving, IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) watchHeat()
@@ -660,14 +677,28 @@ class CaptionSession(
     }
 
     fun pause() {
+        light.stop()
         replies.userTookControl()
         pipeline.pause()
     }
 
     fun stopFromNotification() {
+        light.stop()
         replies.userTookControl()
         pipeline.stopFromNotification()
     }
+
+    /**
+     * Settings' "Try it" for the camera light: a few seconds of the door's
+     * rhythm, whether or not captions are running. [refused] runs on the
+     * main thread when the light could not be turned on.
+     */
+    fun tryCameraLight(refused: () -> Unit) {
+        light.run(TorchFlash.sample(ReducedMotion.isOn()), SoundEvent.Importance.High) { scope.launch { refused() } }
+    }
+
+    /** The listening service ended: a blinking light goes dark with it. */
+    fun stopCameraLight() = light.stop()
 
     /** Settings' "Clear captions from the screen": the conversation so far is saved first. */
     fun clearCaptions() {
@@ -742,6 +773,8 @@ class CaptionSession(
         network.close()
         voice.shutdown()
         scope.cancel()
+        CameraLight.watch(context.applicationContext, false) {}
+        lightScope.cancel()
         retryAwake.keepAwake(null)
         downloadAwake.keepAwake(null)
     }
@@ -1328,6 +1361,14 @@ class CaptionSession(
         val utcOffsetSeconds = TimeZone.getDefault().getOffset((now * 1_000).toLong()) / 1_000
         awayAlerts.forSound(alert, appIsActive, settings.current.value, now, utcOffsetSeconds)?.let { content ->
             notifier.deliver(content).buzz?.let { pipeline.ignoreSounds(it) }
+        }
+        // The camera light follows Ozen's own choices, not the phone's
+        // notification switches: turning notifications off must not
+        // silently turn the light off too.
+        val current = settings.current.value
+        val importance = alert.event.importance
+        if (TorchFlash.shouldFlash(current.flashCameraLight, importance, appIsActive, current.quietHours, now, utcOffsetSeconds)) {
+            TorchFlash.pattern(importance, ReducedMotion.isOn())?.let { light.run(it, importance) }
         }
     }
 

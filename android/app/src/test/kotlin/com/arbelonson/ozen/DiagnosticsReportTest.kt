@@ -111,6 +111,7 @@ class DiagnosticsReportTest {
             speakerProfiles = listOf(SpeakerProfile(name = "Dana", embedding = floatArrayOf(0.1f)), SpeakerProfile(name = "Avi", embedding = floatArrayOf(0.2f)))
             speakerSimilarityThreshold = 0.7f
             allowCellularModelDownload = true
+            flashCameraLight = true
         }
         val journal = listOf("10-10 21:02:11 APP STARTED: 0.2.40 Android 16", "10-10 21:40:03 PROBLEM MARKED: engine whisperKit")
         val lines = DiagnosticsReport.text(facts(settings, journal = journal)).lines()
@@ -125,7 +126,7 @@ class DiagnosticsReportTest {
         assertEquals("tokens: 340 committed: 12 on screen: 14 lag: -", lines[8])
         assertEquals("restarts: 1 clusters: 3 opened: 4 retry: attempt 2 interrupted: false sound detection: true", lines[9])
         assertEquals("sounds heard below the alert level: -", lines[10])
-        assertEquals("alerts: sounds true from high muted 1 fainter 2 words on 1 of 2 when away: true buzz on speech: false", lines[11])
+        assertEquals("alerts: sounds true from high muted 1 fainter 2 words on 1 of 2 when away: true buzz on speech: false light on", lines[11])
         assertEquals("history: saving true keep year speakers saved 2 separation 0.70 display: size ${settings.display.fontSize.toInt()} theme ${settings.display.theme.rawValue} awake ${settings.display.keepScreenAwake}", lines[12])
         assertEquals("lock screen: setting ${settings.display.lockScreenCaptions} allowed by Android: true showing: false", lines[13])
         assertEquals("settings save error: failed history save error: - notifications allowed: no haptics: ok network: Cellular · Data saving cellular downloads: true", lines[14])

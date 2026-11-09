@@ -141,7 +141,7 @@ object DiagnosticsReport {
                 "retry: ${facts.scheduledRetry?.let { "attempt ${it.attempt}" } ?: "-"} interrupted: ${facts.interruptedBySystem} sound detection: ${stats.soundDetectionRunning}",
             "sounds heard below the alert level: ${facts.soundNearMisses.reportLine(utcOffsetSeconds) ?: "-"}",
             "alerts: sounds ${sounds.isEnabled} from ${sounds.minimumImportance.name.lowercase()} muted ${sounds.mutedIdentifiers.size} fainter ${sounds.sensitiveIdentifiers.size} " +
-                "words on ${alerts.count { it.isEnabled }} of ${alerts.size} when away: ${settings.notifyWhenInBackground} buzz on speech: ${settings.hapticOnSpeechResume}",
+                "words on ${alerts.count { it.isEnabled }} of ${alerts.size} when away: ${settings.notifyWhenInBackground} buzz on speech: ${settings.hapticOnSpeechResume} light ${if (settings.flashCameraLight) "on" else "off"}",
             "history: saving ${settings.saveHistory} keep ${settings.historyRetention.rawValue} " +
                 "speakers saved ${settings.speakerProfiles.size} separation ${format("%.2f", settings.speakerSimilarityThreshold.toDouble())} display: size ${display.fontSize.toInt()} theme ${display.theme.rawValue} awake ${display.keepScreenAwake}",
             "lock screen: setting ${display.lockScreenCaptions} allowed by Android: ${facts.lockScreenAllowed} showing: ${facts.lockScreenShowing}",

@@ -546,7 +546,7 @@ private fun OzenApp(
                             app.captions.showWalkthroughAgain()
                             showingSettings.value = false
                             settingsAtBackup.value = false
-                        }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value, onScrolledToBackup = { settingsAtBackup.value = false }, phoneModels = app.captions.phoneModels)
+                        }, onClearCaptions = app.captions::clearCaptions, historySaveFailing = { app.captions.savedConversations.lastSaveFailure != null }, voiceNotice = VoiceNotice.forSettings(Localization.language, voices), onSoundAlerts = app.captions::setSoundAlerts, soundNearMiss = app.captions::soundNearMiss, onFeel = app.captions::buzz, onTryLight = app.captions::tryCameraLight, speakers = app.captions, onCellularDownloads = app.captions::allowCellularModelDownload, backup = app.captions, scrollToBackup = settingsAtBackup.value, onScrolledToBackup = { settingsAtBackup.value = false }, phoneModels = app.captions.phoneModels)
                         Front.Transcribe -> TranscribeScreen(app.transcriber, recording, onClose = app.transcriber::close)
                         Front.Conversation -> ConversationScreen(
                             app.captions.savedConversations,

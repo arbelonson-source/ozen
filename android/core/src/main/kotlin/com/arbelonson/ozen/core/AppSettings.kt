@@ -382,6 +382,11 @@ class AppSettings(
      * An address typed by hand clears it.
      */
     var homeServerCertificatePin: String? = null,
+    /**
+     * Android: the camera light blinks for an emergency or the door while
+     * Ozen is listening away from the screen; see `TorchFlash`. Off by default.
+     */
+    var flashCameraLight: Boolean = false,
 ) {
     var homeServerBeam: Int = minOf(maxOf(homeServerBeam, homeServerBeamRange.first), homeServerBeamRange.last)
 
@@ -549,6 +554,7 @@ class AppSettings(
             phoneLiveMeasurement = phoneLiveMeasurement,
             modelFitDismissed = modelFitDismissed,
             homeServerCertificatePin = homeServerCertificatePin,
+            flashCameraLight = flashCameraLight,
         )
         other.homeServerBeam = homeServerBeam
         other.vocabulary = vocabulary
@@ -563,7 +569,7 @@ class AppSettings(
         speechRate, vocabulary, wordFixes, hasCompletedOnboarding, appLanguage, notifyWhenInBackground,
         allowCellularModelDownload, historyRetention, quietHours, nameAlertOfferDismissed, betterModelOfferDeclines,
         betterModelOfferSnoozedUntil, phoneModelFile, phoneSpeed, phoneLiveMeasurement, modelFitDismissed,
-        homeServerCertificatePin,
+        homeServerCertificatePin, flashCameraLight,
     )
 
     override fun equals(other: Any?): Boolean = other is AppSettings && fields() == other.fields()
@@ -618,6 +624,7 @@ class AppSettings(
         phoneLiveMeasurement?.let { put("phoneLiveMeasurement", it.toJsonObject()) }
         put("modelFitDismissed", JsonArray(modelFitDismissed.map { JsonPrimitive(it) }))
         homeServerCertificatePin?.let { put("homeServerCertificatePin", it) }
+        put("flashCameraLight", flashCameraLight)
     }.toString()
 
     companion object {
@@ -792,6 +799,7 @@ class AppSettings(
                 phoneLiveMeasurement = container.lenientObject("phoneLiveMeasurement") { LiveMeasurement.fromJsonObject(it as JsonObject) ?: error("not a usable measurement") },
                 modelFitDismissed = container.lenientStrings("modelFitDismissed") ?: emptyList(),
                 homeServerCertificatePin = container.lenientString("homeServerCertificatePin")?.takeIf { CertificatePin.shape.matches(it) },
+                flashCameraLight = container.lenientBoolean("flashCameraLight") ?: defaults.flashCameraLight,
             )
             var threshold = container.lenientFloat("speakerSimilarityThreshold") ?: defaults.speakerSimilarityThreshold
             // The Settings slider's range; a file saying otherwise gets the nearest edge.
