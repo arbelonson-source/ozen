@@ -62,6 +62,12 @@ struct WordFixesTests {
         #expect(WordFixes.apply([fix("mail", "post")], to: "my e-mail") == "my e-mail")
     }
 
+    @Test("a Greek fix finds its word in capitals or small letters, final sigma and all")
+    func greekFinalSigmaMatchesCapitals() {
+        #expect(WordFixes.apply([fix("ΛΟΓΟΣ", "Logos")], to: "ο λογος μας") == "ο Logos μας")
+        #expect(WordFixes.apply([fix("λογος", "Logos")], to: "Ο ΛΟΓΟΣ") == "Ο Logos")
+    }
+
     @Test("a Hebrew prefix kept before Latin letters or a number takes a maqaf")
     func hebrewPrefixBeforeLatinTakesMaqaf() {
         let phone = [fix("אייפון", "iPhone")]
@@ -133,5 +139,15 @@ struct WordFixesTests {
         #expect(WordFixes.canJoin("bat", "sheva"))
         #expect(!WordFixes.canJoin("bat,", "sheva"))
         #expect(!WordFixes.canJoin("bat", "(sheva"))
+    }
+
+    @Test("VoiceOver hears a fix as what was heard and what is written, not as an arrow")
+    func spokenLabel() {
+        let one = fix("aval", "Avi")
+        #expect(WordFixes.spokenLabel(one, in: .english) == "Heard aval, written Avi")
+        #expect(WordFixes.spokenLabel(one, in: .hebrew) == "נשמע aval, ייכתב Avi")
+        for language in UILanguage.allCases {
+            #expect(!WordFixes.spokenLabel(one, in: language).contains("→"), "\(language)")
+        }
     }
 }

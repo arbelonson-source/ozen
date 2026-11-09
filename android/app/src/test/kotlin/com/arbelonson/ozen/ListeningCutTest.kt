@@ -207,6 +207,38 @@ class ListeningCutTest {
     }
 
     @Test
+    fun `a stop right after a quick restart clears the old record, so no false notice comes later`() {
+        store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION))
+        clock = at(1, 11)
+        val recorder = recorder()
+        assertNull(recorder.take())
+        recorder.phaseChanged(PipelinePhase.Idle, recovering = false)
+        assertNotNull(store.value, "the idle report every start sends keeps the record")
+        recorder.phaseChanged(PipelinePhase.StartingAudio, recovering = false)
+        recorder.phaseChanged(PipelinePhase.Idle, recovering = false)
+        clock = at(9, 0)
+        assertNull(recorder().take())
+    }
+
+    @Test
+    fun `after a quick restart each start step then a stop, pause or reported failure clears the old record, a retry keeps it`() {
+        val preparing = PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.5))
+        for (start in listOf(PipelinePhase.RequestingMicrophonePermission, preparing, PipelinePhase.StartingAudio)) {
+            for (end in listOf(PipelinePhase.Idle, PipelinePhase.Paused, PipelinePhase.Failed(failure))) {
+                store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION))
+                clock = at(1, 11)
+                val recorder = recorder()
+                assertNull(recorder.take())
+                recorder.phaseChanged(start, recovering = false)
+                recorder.phaseChanged(PipelinePhase.Failed(failure), recovering = true)
+                assertNotNull(store.value, "$start, then a failure that retries by itself")
+                recorder.phaseChanged(end, recovering = false)
+                assertNull(store.value, "$start, then $end")
+            }
+        }
+    }
+
+    @Test
     fun `a record from another version is cleared even right after it was written`() {
         store.value = ListeningCut.encode(ListeningCut.Record(at(0, 30), at(1, 10), VERSION - 1))
         clock = at(1, 11)

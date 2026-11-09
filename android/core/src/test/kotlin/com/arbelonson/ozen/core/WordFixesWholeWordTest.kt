@@ -15,6 +15,12 @@ class WordFixesWholeWordTest {
     }
 
     @Test
+    fun `a Greek fix finds its word in capitals or small letters, final sigma and all`() {
+        assertEquals("ο Logos μας", run("ο λογος μας", fix("ΛΟΓΟΣ", "Logos")))
+        assertEquals("Ο Logos", run("Ο ΛΟΓΟΣ", fix("λογος", "Logos")))
+    }
+
+    @Test
     fun `a heard word with a hyphen is one word, kept and applied`() {
         val mail = fix("e-mail", "email")
         assertEquals(listOf(mail), WordFixes.normalized(listOf(mail)))

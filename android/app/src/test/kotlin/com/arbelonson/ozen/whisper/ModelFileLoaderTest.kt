@@ -14,6 +14,7 @@ import java.io.IOException
 import java.net.URI
 import java.nio.file.Files
 import java.security.MessageDigest
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -22,6 +23,8 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -132,6 +135,40 @@ class ModelFileLoaderTest {
             stages,
         )
         assertEquals(file.name, steps.first { it.stage == EnginePreparationProgress.Stage.CheckingModel }.detail)
+    }
+
+    @Test
+    fun `the processor is kept up while the model downloads and is checked, and let go after, so a download with the screen off does not crawl`() = runBlocking {
+        val asked = CopyOnWriteArrayList<Duration?>()
+        var keptWhileDownloading = false
+        var keptWhileChecking = false
+        val served = ChunkedModel(data)
+        val watched = object : ReleaseFileFetching {
+            override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
+                keptWhileDownloading = asked.lastOrNull() != null
+                served.fetch(url, from, appendingTo, received)
+            }
+
+            override fun sha256(file: File): String {
+                keptWhileChecking = asked.lastOrNull() != null
+                return served.sha256(file)
+            }
+        }
+        val loader = ModelFileLoader(file, "/lib", download = PhoneModelDownloader(file, source, watched), keepAwake = { asked += it }) { _, _ -> null }
+        assertFailsWith<EngineUnavailability> { loader.load("en", cellularDownloadAllowed = true) {} }
+        assertTrue(keptWhileDownloading, "$asked")
+        assertTrue(keptWhileChecking, "$asked")
+        assertTrue(asked.first()!! >= 5.minutes, "$asked")
+        assertNull(asked.last(), "kept up after the download: $asked")
+    }
+
+    @Test
+    fun `a download that fails lets the processor sleep again`() = runBlocking {
+        val asked = CopyOnWriteArrayList<Duration?>()
+        val loader = ModelFileLoader(file, "/lib", download = PhoneModelDownloader(file, source, Unreachable()), keepAwake = { asked += it }) { _, _ -> null }
+        assertFailsWith<EngineUnavailability> { loader.load("en", cellularDownloadAllowed = true) {} }
+        assertTrue(asked.isNotEmpty() && asked.first() != null, "never kept up: $asked")
+        assertNull(asked.last(), "kept up after the failure: $asked")
     }
 
     @Test

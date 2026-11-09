@@ -1966,6 +1966,67 @@ struct CaptionPipelineAudioSessionTests {
         #expect(audio.endSessionCalls == 0)
     }
 
+    @Test("a microphone that fails to start hands the session back while captions wait to try again")
+    func microphoneFailureHandsItBack() async {
+        let audio = FakeAudioCapturer()
+        audio.startError = TestError()
+        let (pipeline, _, _) = makePipeline(
+            audio: audio,
+            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [], microphoneTailDelays: [])
+        )
+        await pipeline.start(settings: .default)
+
+        #expect(pipeline.phase.failure?.kind == .audioSessionFailed)
+        #expect(pipeline.scheduledRetry != nil)
+        #expect(audio.endSessionCalls == 1)
+        #expect(audio.endSessionWhileCapturing == 0)
+    }
+
+    @Test("no microphone at all hands the session back while captions wait for one")
+    func noMicrophoneHandsItBack() async {
+        let audio = FakeAudioCapturer()
+        audio.availableInputs = []
+        let (pipeline, _, _) = makePipeline(
+            audio: audio,
+            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [], microphoneTailDelays: [])
+        )
+        await pipeline.start(settings: .default)
+
+        #expect(pipeline.phase.failure?.kind == .noAudioInputs)
+        #expect(pipeline.scheduledRetry != nil)
+        #expect(audio.endSessionCalls == 1)
+    }
+
+    @Test("a microphone permission turned off hands back the session captions held")
+    func deniedPermissionHandsItBack() async {
+        let (pipeline, audio, _) = makePipeline()
+        await pipeline.start(settings: .default)
+        #expect(pipeline.phase == .listening)
+
+        audio.permissionAnswer = .denied
+        await pipeline.restart(settings: .default)
+        #expect(pipeline.phase.failure?.kind == .microphonePermissionDenied)
+        #expect(audio.endSessionCalls == 1)
+        #expect(audio.endSessionWhileCapturing == 0)
+    }
+
+    @Test("captions trying again after a microphone failure take the session back")
+    func retryAfterMicrophoneFailureTakesItBack() async {
+        let audio = FakeAudioCapturer()
+        audio.requiresPreparedSession = true
+        audio.startError = TestError()
+        let (pipeline, _, _) = makePipeline(
+            audio: audio,
+            recovery: AutoRecoveryPolicy(glitchDelays: [1000], downloadDelays: [], microphoneTailDelays: [])
+        )
+        await pipeline.start(settings: .default)
+        #expect(pipeline.phase.failure?.kind == .audioSessionFailed)
+
+        audio.startError = nil
+        await pipeline.retry()
+        #expect(pipeline.phase == .listening)
+    }
+
     @Test("stopping while a voice sample is recording hands the session back once the recording is over", .timeLimit(.minutes(1)))
     func stopDuringVoiceSample() async {
         let (pipeline, audio, _) = makePipeline()

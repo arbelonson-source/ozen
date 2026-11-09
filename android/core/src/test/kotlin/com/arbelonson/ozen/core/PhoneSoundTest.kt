@@ -3,6 +3,7 @@ package com.arbelonson.ozen.core
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
@@ -19,6 +20,31 @@ class PhoneSoundTest {
             assertEquals(AudioPortType.Other, listed.last().portType)
             assertEquals("Sound playing on this phone", listed.last().portName)
             assertEquals(listed, PhoneSound.inputs(listOf(mic, lapel), sdk = 34))
+        }
+    }
+
+    @Test
+    fun `its row says the phone will ask to share the screen, that only the sound is taken, and that it lasts until captions stop`() {
+        Localization.withLanguage(UILanguage.English) {
+            val summary = PhoneSound.summary
+            assertTrue(summary.startsWith("Videos and other sound playing on this phone."), summary)
+            assertTrue(summary.contains("share the screen"), summary)
+            assertTrue(summary.contains("only the sound"), summary)
+            assertTrue(summary.contains("until captions stop"), summary)
+        }
+    }
+
+    @Test
+    fun `that warning is translated in every language`() {
+        val english = Localization.withLanguage(UILanguage.English) { PhoneSound.summary }
+        val hebrew = Localization.withLanguage(UILanguage.Hebrew) { PhoneSound.summary }
+        assertTrue(hebrew.contains("שיתוף המסך"), hebrew)
+        assertTrue(hebrew.contains("עד שהכתוביות נעצרות"), hebrew)
+        for (language in UILanguage.entries) {
+            if (language == UILanguage.Hebrew || language == UILanguage.English) continue
+            val shown = Localization.withLanguage(language) { PhoneSound.summary }.trimStart('\u200E', '\u200F')
+            assertNotEquals(english, shown, "$language has no translation")
+            assertTrue(shown.contains("Ozen"), "$language does not name Ozen: $shown")
         }
     }
 

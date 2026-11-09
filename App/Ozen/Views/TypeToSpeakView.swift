@@ -204,6 +204,7 @@ struct TypeToSpeakView: View {
             if !viewModel.quickPhrases.contains(phrase) {
                 Button {
                     viewModel.addQuickPhrase(phrase)
+                    Announcement.added(phrase)
                 } label: {
                     Image(systemName: "plus.bubble")
                         .frame(minWidth: 44, minHeight: 44)
@@ -270,7 +271,10 @@ private struct QuickPhrasesEditor: View {
     }
 
     private func add() {
+        let phrase = newPhrase.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isNew = !phrase.isEmpty && !viewModel.quickPhrases.contains(phrase)
         viewModel.addQuickPhrase(newPhrase)
         newPhrase = ""
+        if isNew { Announcement.added(phrase) }
     }
 }

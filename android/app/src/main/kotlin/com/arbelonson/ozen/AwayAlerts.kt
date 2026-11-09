@@ -56,7 +56,7 @@ class AlertNotifier(private val context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
         val alarm = content.isUrgent && content.threadIdentifier == SOUNDS_THREAD
         val vibration = AwayAlerts.vibrationFor(content)
-        val shown = if (alarm) manager.areNotificationsEnabled() && manager.getNotificationChannel(ALARM_CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE else allowed(context)
+        val shown = if (alarm) alarmsAllowed(context) else allowed(context)
         if (!shown) return Delivery(false)
         val channel = if (alarm) {
             alarmChannel()
@@ -99,8 +99,8 @@ class AlertNotifier(private val context: Context) {
             .forEach { manager.cancel(it.tag, it.id) }
     }
 
-    fun postTest() {
-        Handler(Looper.getMainLooper()).postDelayed({ post(BackgroundAlertPolicy.testNotification) }, TEST_DELAY_MILLIS)
+    fun postTest(content: AlertNotificationContent = BackgroundAlertPolicy.testNotification) {
+        Handler(Looper.getMainLooper()).postDelayed({ post(content) }, TEST_DELAY_MILLIS)
     }
 
     companion object {
@@ -163,6 +163,18 @@ class AlertNotifier(private val context: Context) {
             notificationsOn && importance != null && importance != NotificationManager.IMPORTANCE_NONE && bypassesDnd
 
         var openAlarmSettings: (Context) -> Unit = { context -> context.startActivity(alarmSettings(context)) }
+
+        /**
+         * Whether the phone shows Ozen's Emergency alerts at all. A channel
+         * not made yet counts as on: [alarmSettings] makes it on.
+         */
+        fun alarmsOn(notificationsOn: Boolean, importance: Int?): Boolean =
+            notificationsOn && importance != NotificationManager.IMPORTANCE_NONE
+
+        var alarmsAllowed: (Context) -> Boolean = { context ->
+            val manager = context.getSystemService(NotificationManager::class.java)
+            alarmsOn(manager.areNotificationsEnabled(), manager.getNotificationChannel(ALARM_CHANNEL_ID)?.importance)
+        }
 
         var allowed: (Context) -> Boolean = { context ->
             val manager = context.getSystemService(NotificationManager::class.java)

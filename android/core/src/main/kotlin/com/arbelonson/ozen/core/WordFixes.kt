@@ -9,6 +9,8 @@ object WordFixes {
     private const val PREFIX_LETTERS = "והבלמשכ"
     private const val MINIMUM_PREFIXED_LETTERS = 3
     private const val MAQAF = 0x05BE
+    private const val FINAL_SIGMA = 0x03C2
+    private const val SIGMA = 0x03C3
 
     /** A run of text between spaces (or a maqaf): [start] to [end] is its part from the first letter or digit to the last. */
     private class Word(val tokenStart: Int, val tokenEnd: Int, val start: Int, val end: Int, val key: String, val bases: List<Pair<Int, Int>>)
@@ -23,12 +25,15 @@ object WordFixes {
         else -> false
     }
 
+    /** Lowercase, with the Greek final sigma made a plain sigma, so a Greek fix typed in capitals finds the word ending in a final sigma. */
+    private fun folded(c: Int) = Character.toLowerCase(c).let { if (it == FINAL_SIGMA) SIGMA else it }
+
     private fun isSpace(c: Int) = Character.isWhitespace(c) || Character.isSpaceChar(c)
 
     /** The iPhone's key: words split at spaces only, so two words and the same two joined by a maqaf stay different keys. */
     private fun keyOf(text: String): String {
         val core = words(text, bare = true, atMaqaf = false).joinToString(" ") { it.key }
-        return if (core.isBlank()) text.filterNot { isMark(it.code) }.trim().lowercase() else core
+        return if (core.isBlank()) text.filterNot { isMark(it.code) }.trim().lowercase().replace(FINAL_SIGMA.toChar(), SIGMA.toChar()) else core
     }
 
     /**
@@ -61,7 +66,7 @@ object WordFixes {
             var k = start
             while (k < end) {
                 val c = text.codePointAt(k)
-                if (!isMark(c)) bases.add(Character.toLowerCase(c) to k)
+                if (!isMark(c)) bases.add(folded(c) to k)
                 k += Character.charCount(c)
             }
             val key = StringBuilder()
