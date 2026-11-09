@@ -2171,6 +2171,15 @@ public final class CaptionPipeline {
         pendingCover = onPhone == nil ? nil : failure
         phase = .failed(failure)
         logEvent(.failed(failure))
+        // After a microphone failure nothing listens for sounds and no
+        // cover takes over, so the session only kept other apps' music and
+        // podcasts silent, for hours of retries. Each retry takes it again.
+        switch kind {
+        case .microphonePermissionDenied, .audioSessionFailed, .noAudioInputs:
+            releaseAudioSession()
+        case .engineUnavailable, .transcriptionStopped:
+            break
+        }
         if let onPhone {
             Task { [weak self] in await self?.coverForCloud(with: onPhone, after: failure) }
             return
@@ -2489,6 +2498,7 @@ public final class CaptionPipeline {
     private var waitingModelTask: Task<Void, Never>?
     private var waitingModelRetry: Task<Void, Never>?
     private var waitingModelReady = false
+    private var waitingModelLacksRoom = false
 
     /// "Captions now with the phone's built-in recognition": while her
     /// model waits for Wi-Fi, Apple's recognizer captions on the phone
@@ -2541,6 +2551,17 @@ public final class CaptionPipeline {
             Task { @MainActor [weak self] in _ = self?.showToWaitingStart(progress) }
         }
         waitingModelTask = Task { [weak self] in
+            // The room it needs, checked as a start checks it: a phone too
+            // full for the model doesn't begin a download that can't finish.
+            if let megabytes = await engine.pendingDownloadMegabytes() {
+                let needed = await engine.pendingInstallMegabytes() ?? megabytes
+                if let missing = self?.storageShortfall(forDownloadOf: needed) {
+                    self?.storageNeededMegabytes = needed
+                    let why = EngineUnavailability(kind: .notEnoughStorage, detail: "checked before download", downloadMegabytes: megabytes, missingMegabytes: missing)
+                    await self?.waitingModelPrepared(.unavailable(why), engine: engine, key: key)
+                    return
+                }
+            }
             await engine.setCellularDownloadAllowed(allowCellular)
             let availability = await engine.prepare(languageCode: chosen.languageCode, progress: report)
             await self?.waitingModelPrepared(availability, engine: engine, key: key)
@@ -2562,7 +2583,10 @@ public final class CaptionPipeline {
         if let why = availability.unavailability {
             waitingModelTask = nil
             logEvent(.note("the waiting model didn't get ready, the built-in recognition carries on: \(why.detail)"))
-            retryWaitingModelLater()
+            // Retrying on a timer can't free up space: a return to the app
+            // tries again once there is room (`appDidBecomeActive`).
+            waitingModelLacksRoom = why.kind == .notEnoughStorage
+            if !waitingModelLacksRoom { retryWaitingModelLater() }
             return
         }
         waitingModelReady = true
@@ -2613,6 +2637,7 @@ public final class CaptionPipeline {
         waitingModelRetry?.cancel()
         waitingModelRetry = nil
         waitingModelReady = false
+        waitingModelLacksRoom = false
     }
 
     /// "Download now anyway": this session's model may use cellular data.
@@ -2636,6 +2661,12 @@ public final class CaptionPipeline {
     /// phone and there is room now (she freed some up in the Settings
     /// app), the download starts without anyone having to tap.
     public func appDidBecomeActive() async {
+        if waitingModelLacksRoom, isCoveringForCloud, coverReason == .waitingForWiFi {
+            if let megabytes = storageNeededMegabytes, storageShortfall(forDownloadOf: megabytes) != nil { return }
+            waitingModelLacksRoom = false
+            getWaitingModelReadyIfAllowed()
+            return
+        }
         guard let why = phase.failure?.engineUnavailability,
               why.kind == .notEnoughStorage,
               !phase.isTransitioning
@@ -2986,10 +3017,12 @@ public final class CaptionPipeline {
     /// silenced until Ozen is closed. Only after `tearDownSession()`, which
     /// stops capture first: the system refuses to end a session that still
     /// has audio running. Not inside `tearDownSession()` itself, which
-    /// `fail()`, `restart()` and `retry()` use too: a failure hands the live
-    /// session on to `listenForSoundsMeanwhile`, and a restart takes it
-    /// straight back. A voice sample being recorded holds the session until
-    /// it is done: the release waits for the end of the recording.
+    /// `fail()`, `restart()` and `retry()` use too: an engine failure hands
+    /// the live session on to `listenForSoundsMeanwhile` or to the phone's
+    /// own model covering, and a restart takes it straight back. `fail()`
+    /// releases it only for a microphone failure, which uses neither. A
+    /// voice sample being recorded holds the session until it is done: the
+    /// release waits for the end of the recording.
     private func releaseAudioSession() {
         guard !isRecordingVoice else {
             releaseAfterRecording = true

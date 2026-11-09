@@ -3,11 +3,13 @@
 For the person who will use Ozen, and anyone helping to set up the phone.
 
 Ozen for iPhone and iPad is free in the [App Store](https://apps.apple.com/app/id6821325968)
-(iOS 17 or newer). This guide follows the iPhone and iPad. The Android app (see
-[Installing on Android](../README.md#installing-on-android)) asks the same
-things in nearly the same words, without the setup page: it always starts
-with the phone's own speech model. Its microphone page has its own buttons
-to approve the microphone and notifications.
+(iOS 17 or newer). This guide follows the iPhone and iPad.
+
+On Android (see [Installing on Android](../README.md#installing-on-android)),
+the app asks the same things in nearly the same words. It has no setup page,
+because it always starts with the phone's own speech model, and its
+microphone page has its own buttons to approve the microphone and
+notifications.
 
 ## What Ozen does
 
@@ -20,13 +22,13 @@ phone, the captions are written on the phone itself, with no internet.
 
 ## The first launch
 
-The first time Ozen opens, it shows short pages in large type: seven when the captions use no
-downloaded speech model, eight when they do (the extra page is **Choose the
-speech model**, described under "The speech model" below). Swipe, or
-tap **Next** (ha-ba) at the bottom. Tap **Skip** (dilug) to leave the
-pages; on the microphone page it shows only once iOS's questions there have
-been answered. On the last page the button changes to **Start**
-(lehatchil).
+The first time Ozen opens, it shows short pages in large type: eight when
+the captions use a downloaded speech model (the usual choice), seven when
+they don't, because then page 5 is left out and the pages after it move up
+one. Swipe, or tap **Next** (ha-ba) at the bottom. Tap **Skip** (dilug) to
+leave the pages; on the microphone page it shows only once iOS's questions
+there have been answered. On the last page the button changes to **Start**
+(hatchala).
 
 1. **Welcome.** Says what the app is. On a phone that keeps everything
    inside, it says that nothing is sent to the internet.
@@ -38,12 +40,14 @@ been answered. On the last page the button changes to **Start**
    Settings can change it at any time.
 4. **One-time setup.** You choose how the captions are written. See the
    next section.
-5. **The microphone.** The first permission. See below.
-6. **When you're called.** You type the name, and the phone then vibrates
+5. **Choose the speech model.** Only when the captions use a downloaded
+   model. See "The speech model" below.
+6. **The microphone.** The first permission. See below.
+7. **When you're called.** You type the name, and the phone then vibrates
    and marks the line whenever someone says it. See below. An iPad can't
    vibrate: there the edge of the screen flashes yellow instead, and it
    does the same when someone starts talking after a long quiet stretch.
-7. **Ready.** Tells you what to expect on the first run. The button then
+8. **Ready.** Tells you what to expect on the first run. The button then
    starts the captions.
 
 If a family member scanned the home computer's code first, the setup page
@@ -52,7 +56,9 @@ already shows the home computer as chosen. You can leave it that way.
 ### The speech model
 
 On the setup page, **Accurate Hebrew (recommended)** (ivrit meduyeket,
-mumlatz) is the usual choice. It downloads one file of about 819 MB, once.
+mumlatz) is the usual choice; for another language it is called **Accurate
+(recommended)** (meduyak, mumlatz). It downloads one file, once: about
+819 MB for Hebrew.
 Do this over Wi-Fi, because on mobile data a file this size can cost money or
 use up the data plan. The page says it then takes a few minutes to set the
 model up for the phone. After that it works without the internet.
@@ -72,9 +78,9 @@ model up for the phone. After that it works without the internet.
 You can change your mind at any time in Settings.
 After you tap Start, the status button at the bottom of the caption screen
 shows the download, for example "Downloading the language model · N%"
-(morid et model ha-safa · N%). Keep the app open until it finishes. If the
+(moridim et model ha-dibur · N%). Keep the app open until it finishes. If the
 phone is not on Wi-Fi, the button says "Waiting for Wi‑Fi to download the
-language model" (mamtin le-Wi-Fi kdei lehorid et model ha-safa). The
+language model" (mamtinim le-Wi-Fi kdei lehorid et model ha-dibur). The
 download then starts by itself when Wi-Fi comes back. You can also tap the
 button, and Ozen asks whether to download over mobile data now or to wait
 for Wi-Fi. Where the phone's built-in recognition works on the phone alone
@@ -119,11 +125,12 @@ open iOS Settings.
 
 ### Your name
 
-The fifth page has a box, **Your name** (ha-shem shelcha), and a button,
-**Add** (hosafa). Type the name as people say it, in the letters the captions
-use. Hebrew letters are best, because captions are written in Hebrew and a
-word in other letters may never be found. Later, Settings → Alerts →
-Important words lets you add or remove words.
+The page called "When you're called" has a box, **Your name** (ha-shem
+shelachem), and a button, **Add** (hosafa). Type the name as people say it,
+in the letters the captions use. When the captions are in Hebrew, use Hebrew
+letters: a word written in other letters may never be found, and the page
+says so. Later, Settings → Alerts → Important words lets you add or remove
+words.
 
 ## The caption screen
 
@@ -134,7 +141,7 @@ button to the last:
 - **Microphone** (mikrofon). Shows which microphone is in use, such as
   the phone's own, AirPods or a wired one. Tap it to choose another.
 - The status button, in the middle. It says what Ozen is doing. While it says
-  "Listening" (makshiv) and "Tap to pause" (hakishu kedei lehashhot), a tap
+  "Listening" (me'azina) and "Tap to pause" (hakishu kedei lehashhot), a tap
   pauses. When it says "Paused" (mushhe) and "Tap to continue" (hakishu kedei
   lehamshich), a tap goes on. When it says "Captions are off" (ha-ktuviyot
   kvuyot), a tap starts them. When the phone is saying a typed reply, a tap
@@ -147,8 +154,11 @@ button to the last:
 
 When the captions follow the newest line, the buttons slide away after a
 few seconds so they never cover it. Touch the screen to bring them back.
+With VoiceOver or Switch Control on, they stay. With Voice Control, which
+apps can't detect, turn the setting below off.
 To keep them on screen, turn off **Hide the buttons while captions are
-running** (lehastir et ha-kaftorim bi-zman ha-azana) in Settings.
+running** (hastarat ha-kaftorim bi-zman ha-ha'azana) in Settings, under
+Display.
 
 There is no separate stop button. To switch the captions off completely, use
 Siri or a shortcut (see the lock screen section below).
@@ -163,7 +173,7 @@ go back to the usual size.
 ### Typing a reply
 
 Tap **Say**. Type what you want to say in the box, then tap **Play**
-(lehashmia). The phone says it aloud. While it talks, the captions pause, so
+(hashma'a). The phone says it aloud. While it talks, the captions pause, so
 the phone does not caption itself, and they come back by themselves. Tap
 **Stop** (atzira) to cut it off.
 
@@ -175,14 +185,14 @@ says where to add one.
 **Full screen, big letters** (masach male be-otiyot gdolot) opens a pad that
 fills the whole screen with huge letters. Hand the phone to the other
 person so they can write to you. It has **Clear** (nikuy), **Flip**
-(lehafoch), which turns the text upside down for the person facing you,
-**Speak** (lehashmia) and **Close** (sgira).
+(hipuch), which turns the text upside down for the person facing you,
+**Speak** (hashma'a) and **Close** (sgira).
 
 ### Starring lines and naming speakers
 
 Press and hold a line to open its menu:
 
-- **Mark as important** (simun ke-chashuv) stars the line. Tap the same
+- **Mark as important** (simun ke-chashuva) stars the line. Tap the same
   item again (it then says **Remove mark**, bitul ha-simun) to take the
   star off.
 - **Ask them to repeat that** (levakesh she-yachzeru al ze) has the phone
@@ -199,21 +209,21 @@ Press and hold a line to open its menu:
   be'aya) saves the details on the phone, so that whoever helps you can see
   them. See [Troubleshooting](troubleshooting.md).
 
-Speaker names can be turned on or off with **Show speaker names** (lehatzig
-shemot dovrim) in Settings.
+Speaker names can be turned on or off with **Show speaker names** (hatzagat
+shemot ha-dovrim) in Settings, under Display.
 
 ### History
 
-Settings → **Previous conversations** (shichot kodmot) opens the saved
-conversations. You can search what was said, and delete one or all of them.
-The list has a **Starred lines** (shurot mesumanot) entry that gathers
-every line you starred. A switch there, **Save conversations** (lishmor
+Settings → **Previous conversations** (shichot kodmot) opens History, the
+saved conversations. You can search what was said, and delete one or all of
+them. The list has a **Starred lines** (shurot mesumanot) entry that gathers
+every line you starred. A switch there, **Save conversations** (shmirat
 shichot), turns saving off, and an automatic deletion setting removes old
 conversations. Conversations with a starred line or a name are always kept.
 They stay on the phone, and in its own backup when the backup is on.
 
 Near the bottom of Settings, **Show the initial walkthrough again**
-(lehatzig shuv et ha-hesber ha-rishoni) brings back the seven pages from the
+(lehatzig shuv et ha-hesber ha-rishoni) brings back the pages from the
 first launch.
 
 ## The lock screen, Siri and the Action button

@@ -137,7 +137,11 @@ public actor WhisperKitEngine: TranscriptionEngine {
         let allowCellular = cellularDownloadAllowed
         let downloadAndReport: @Sendable () async throws -> URL = { [store] in
             progress(EnginePreparationProgress(stage: .downloadingModel, fraction: 0, detail: variant))
-            return try await store.download(variant: variant, allowCellular: allowCellular) { fraction in
+            return try await store.download(
+                variant: variant,
+                allowCellular: allowCellular,
+                checking: { progress(EnginePreparationProgress(stage: .checkingModel, detail: variant)) }
+            ) { fraction in
                 progress(EnginePreparationProgress(stage: .downloadingModel, fraction: fraction, detail: variant))
             }
         }

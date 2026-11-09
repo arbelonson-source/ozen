@@ -8,6 +8,10 @@ struct TranscribeRecordingView: View {
     @Bindable var model: TranscribeRecordingModel
     var onClose: (() -> Void)?
     @State private var confirmingStop = false
+    /// The Start button vanishes with the form it sits in; VoiceOver is
+    /// moved to the progress that replaces it instead of being left on
+    /// nothing.
+    @AccessibilityFocusState private var progressFocused: Bool
 
     var body: some View {
         content
@@ -26,6 +30,16 @@ struct TranscribeRecordingView: View {
                 }
             }
             .task { await model.load() }
+            .onChange(of: model.state) { previous, state in
+                if case .working = state, case .ready = previous {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        progressFocused = true
+                    }
+                } else if let text = state.announcement(after: previous) {
+                    Announcement.post(text)
+                }
+            }
             .onDisappear { Task { await model.close() } }
             .confirmationDialog(
                 tr("לעצור את ההמרה לטקסט?", "Stop turning the recording into text?"),
@@ -125,7 +139,7 @@ struct TranscribeRecordingView: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(Self.stageTitle(working.stage))
+                    Text(working.stage.title)
                         .font(.headline)
                     if let fraction = working.fraction {
                         ProgressView(value: fraction)
@@ -142,6 +156,8 @@ struct TranscribeRecordingView: View {
                         .foregroundStyle(.secondary)
                 }
                 .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.updatesFrequently)
+                .accessibilityFocused($progressFocused)
                 .accessibilityIdentifier("transcribeProgress")
             }
             if !working.lines.isEmpty {
@@ -166,7 +182,7 @@ struct TranscribeRecordingView: View {
                         .foregroundStyle(.secondary)
                 }
                 if done.endMissing {
-                    Text(tr("לא היה אפשר לקרוא את סוף ההקלטה, ולכן הטקסט נקטע לפני הסוף.", "The end of this recording couldn’t be read, so the text stops early."))
+                    Text(FileTranscription.Done.endMissingMessage)
                         .foregroundStyle(.readable(.orange))
                 }
             }
@@ -216,14 +232,6 @@ struct TranscribeRecordingView: View {
                 Text(CaptionLayout.directed(line.text, languageCode: code))
             }
             .accessibilityElement(children: .combine)
-        }
-    }
-
-    private static func stageTitle(_ stage: FileTranscription.Working.Stage) -> String {
-        switch stage {
-        case .downloading: return tr("מורידים את המודל", "Downloading the model")
-        case .loading: return tr("מכינים את המודל", "Getting the model ready")
-        case .transcribing: return tr("ממירים את ההקלטה לטקסט", "Turning the recording into text")
         }
     }
 }

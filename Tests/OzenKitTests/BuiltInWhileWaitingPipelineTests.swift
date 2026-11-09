@@ -14,8 +14,13 @@ struct BuiltInWhileWaitingPipelineTests {
         model: FakeEngine,
         builtIn: FakeEngine,
         built: Built = Built(),
-        soundDetector: FakeSoundDetector? = nil
+        soundDetector: FakeSoundDetector? = nil,
+        storage: FakeStorage? = nil
     ) -> CaptionPipeline {
+        var freeSpace: (@Sendable () -> Int64?)?
+        if let storage {
+            freeSpace = { storage.available() }
+        }
         let pipeline = CaptionPipeline(
             audio: FakeAudioCapturer(),
             engineFactory: { settings in
@@ -26,7 +31,8 @@ struct BuiltInWhileWaitingPipelineTests {
             soundDetector: soundDetector,
             recovery: .disabled,
             audioWatchdog: .disabled,
-            network: network
+            network: network,
+            availableStorageBytes: freeSpace
         )
         pipeline.networkFirstReportWaitSeconds = 0.3
         pipeline.handOverCheckSeconds = 0.02
@@ -180,6 +186,28 @@ struct BuiltInWhileWaitingPipelineTests {
         model.duringPrepare = { model.pendingDownload = nil }
         #expect(await eventually { pipeline.activeEngineKind == .whisperKit && pipeline.phase == .listening })
         #expect(model.prepareCount >= 3)
+    }
+
+    @Test("a phone too full for the model keeps the built-in captioning and starts no download, and a return to the app with room gets it ready", .timeLimit(.minutes(1)))
+    func waitingModelWithoutRoom() async {
+        let network = FakeNetworkMonitor(.cellular)
+        let model = waitingModel()
+        let storage = FakeStorage(megabytes: 300)
+        let pipeline = makePipeline(network: network, model: model, builtIn: FakeEngine(kind: .appleSpeech), storage: storage)
+        pipeline.waitingModelRetrySeconds = 0.1
+        await onBuiltIn(pipeline)
+
+        network.change(to: .wifi)
+        #expect(await eventually { model.pendingDownloadChecks >= 2 && !pipeline.waitingModelGettingReady })
+        try? await Task.sleep(for: .milliseconds(400))
+        #expect(model.prepareCount == 0)
+        #expect(pipeline.activeEngineKind == .appleSpeech)
+        #expect(pipeline.phase == .listening)
+
+        storage.set(megabytes: 20_000)
+        await pipeline.appDidBecomeActive()
+        #expect(await eventually { pipeline.activeEngineKind == .whisperKit && pipeline.phase == .listening })
+        #expect(pipeline.builtInHandOvers == 1)
     }
 
     @Test("stopping captions ends the built-in, and Wi-Fi afterwards gets nothing ready", .timeLimit(.minutes(1)))

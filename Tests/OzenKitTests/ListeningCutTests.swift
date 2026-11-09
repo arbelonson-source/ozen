@@ -204,6 +204,38 @@ struct ListeningCutTests {
         #expect(ListeningCut.parse(store.value)?.startedAt == at(1, 11))
     }
 
+    @Test("a stop right after a quick restart clears the old record, so no false notice comes later")
+    func stopAfterQuickRestartClears() {
+        store.value = ListeningCut.encode(record(at(1, 10)))
+        clock.time = at(1, 11)
+        let recorder = recorder()
+        #expect(recorder.take() == nil)
+        recorder.phaseChanged(.idle, recovering: false)
+        #expect(store.value != nil, "the idle report every start sends keeps the record")
+        recorder.phaseChanged(.startingAudio, recovering: false)
+        recorder.phaseChanged(.idle, recovering: false)
+        clock.time = at(9, 0)
+        #expect(self.recorder().take() == nil)
+    }
+
+    @Test("after a quick restart each start step then a stop, pause or reported failure clears the old record, a retry keeps it")
+    func startThenStopAfterQuickRestartClears() {
+        let starts: [PipelinePhase] = [.requestingMicrophonePermission, .preparingEngine(EnginePreparationProgress(stage: .downloadingModel)), .startingAudio]
+        for start in starts {
+            for end in [PipelinePhase.idle, .paused, .failed(failure)] {
+                store.value = ListeningCut.encode(record(at(1, 10)))
+                clock.time = at(1, 11)
+                let recorder = recorder()
+                #expect(recorder.take() == nil)
+                recorder.phaseChanged(start, recovering: false)
+                recorder.phaseChanged(.failed(failure), recovering: true)
+                #expect(store.value != nil, Comment(rawValue: "\(start), then a failure that retries by itself"))
+                recorder.phaseChanged(end, recovering: false)
+                #expect(store.value == nil, Comment(rawValue: "\(start), then \(end)"))
+            }
+        }
+    }
+
     @Test("a record from another version is cleared even right after it was written")
     func otherVersionCleared() {
         var old = record(at(1, 10))

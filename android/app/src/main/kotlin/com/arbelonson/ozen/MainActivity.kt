@@ -567,6 +567,7 @@ private fun OzenApp(
                             inputs = state.inputs,
                             selected = state.inputInUse?.takeIf { state.phase.isListening } ?: state.selectedInput,
                             listening = state.phase.isListening,
+                            phoneSoundStopped = state.phoneSoundStopped,
                             level = { app.captions.pipeline.inputLevel },
                             onChoose = {
                                 if (!PhoneSound.isPhoneSound(it.uid)) {
@@ -1734,7 +1735,7 @@ private fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
     NoticeBanner(
         Icons.Rounded.MicOff,
         NoticeTone.Warning,
-        tr("ההאזנה לקול מהטלפון הופסקה. חזרה למיקרופון.", "Stopped listening to the phone's sound. Back to the microphone."),
+        PhoneSound.stoppedNotice,
         "",
         Modifier.clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button, onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
     ) { Icon(Icons.Rounded.Close, contentDescription = null) }
@@ -1825,7 +1826,7 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: L
                 tr("החלפה", "Switch"),
                 color = colors.primary,
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.align(Alignment.End).clickable(onClick = onSwitch).testTag("model-fit-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
+                modifier = Modifier.align(Alignment.End).clickable(role = Role.Button, onClick = onSwitch).testTag("model-fit-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
             )
         }
         BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, onDismiss)

@@ -105,4 +105,14 @@ struct WordFixesTests {
         #expect(!WordFixes.canJoin("bat,", "sheva"))
         #expect(!WordFixes.canJoin("bat", "(sheva"))
     }
+
+    @Test("VoiceOver hears a fix as what was heard and what is written, not as an arrow")
+    func spokenLabel() {
+        let one = fix("aval", "Avi")
+        #expect(WordFixes.spokenLabel(one, in: .english) == "Heard aval, written Avi")
+        #expect(WordFixes.spokenLabel(one, in: .hebrew) == "נשמע aval, ייכתב Avi")
+        for language in UILanguage.allCases {
+            #expect(!WordFixes.spokenLabel(one, in: language).contains("→"), "\(language)")
+        }
+    }
 }
