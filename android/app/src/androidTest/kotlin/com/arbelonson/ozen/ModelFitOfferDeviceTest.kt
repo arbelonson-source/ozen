@@ -1,6 +1,10 @@
 package com.arbelonson.ozen
 
 import android.os.Build
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -95,6 +99,13 @@ class ModelFitOfferDeviceTest {
         compose.onNodeWithTag("model-fit-switch").performClick()
         compose.waitUntil(5_000) { app.settings.current.value.phoneModelFile == "ggml-small-q5_1.bin" }
         compose.onNodeWithText(title).assertDoesNotExist()
+    }
+
+    @Test
+    fun aScreenReaderHearsSwitchAsAButton() {
+        fallBehindOnTurbo()
+        captionsStopped()
+        compose.onNodeWithTag("model-fit-switch").assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
     }
 
     @Test

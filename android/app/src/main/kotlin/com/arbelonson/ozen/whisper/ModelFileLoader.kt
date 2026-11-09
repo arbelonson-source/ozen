@@ -14,9 +14,13 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class ModelFileLoader(
@@ -30,6 +34,7 @@ class ModelFileLoader(
     /** The model list's name for the model, which the status line shows while it downloads and is set up. */
     private val variant: String? = null,
     private val marker: ModelLoadMarker? = null,
+    private val keepAwake: (Duration?) -> Unit = {},
     private val open: (path: String, libraryDir: String) -> WhisperModel? = { path, libraryDir -> WhisperModel.load(path, libraryDir) },
 ) : WhisperModelLoader {
     override suspend fun pendingDownloadMegabytes(): Int? = if (file.isFile) null else download?.pendingMegabytes()
@@ -79,29 +84,44 @@ class ModelFileLoader(
     private suspend fun fetch(download: PhoneModelDownloader, cellularAllowed: Boolean, progress: (EnginePreparationProgress) -> Unit) {
         val stopped = AtomicBoolean(false)
         downloading = stopped
+        // The listening service keeps the app up, but with the screen off the
+        // processor slept between packets and hundreds of megabytes crawled.
+        // It is kept up for the download and the check of the file, renewed
+        // every minute against a ten-minute limit, and let go at the end.
+        keepAwake(AWAKE_FOR)
         try {
             withContext(Dispatchers.IO) {
                 val job = coroutineContext.job
-                // Room is asked for only when the download can start: asking
-                // clears other apps' caches.
-                if (ModelDownloadGate.decide(network(), cellularAllowed) == ModelDownloadGate.Decision.Proceed) {
-                    download.pendingMegabytes()?.let { makeRoom(StorageSpaceGate.requiredMegabytes(it) * StorageSpaceGate.BYTES_PER_MEGABYTE) }
+                val renewing = launch {
+                    while (true) {
+                        delay(RENEW_EVERY)
+                        keepAwake(AWAKE_FOR)
+                    }
                 }
-                var shown = -1.0
-                download.download(checking = {
-                    job.ensureActive()
-                    if (stopped.get()) throw IOException("stopped: another model was chosen")
-                    progress(EnginePreparationProgress(EnginePreparationProgress.Stage.CheckingModel, detail = variant ?: file.name))
-                }) { fraction ->
-                    job.ensureActive()
-                    if (stopped.get()) throw IOException("stopped: another model was chosen")
-                    if (ModelDownloadGate.decide(network(), cellularAllowed) == ModelDownloadGate.Decision.WaitForWiFi) {
-                        throw IOException("Wi-Fi went, and downloads on cellular data are off")
+                try {
+                    // Room is asked for only when the download can start: asking
+                    // clears other apps' caches.
+                    if (ModelDownloadGate.decide(network(), cellularAllowed) == ModelDownloadGate.Decision.Proceed) {
+                        download.pendingMegabytes()?.let { makeRoom(StorageSpaceGate.requiredMegabytes(it) * StorageSpaceGate.BYTES_PER_MEGABYTE) }
                     }
-                    if (fraction - shown >= 0.001 || (fraction == 1.0 && shown < 1.0)) {
-                        shown = fraction
-                        progress(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = fraction, detail = variant ?: file.name))
+                    var shown = -1.0
+                    download.download(checking = {
+                        job.ensureActive()
+                        if (stopped.get()) throw IOException("stopped: another model was chosen")
+                        progress(EnginePreparationProgress(EnginePreparationProgress.Stage.CheckingModel, detail = variant ?: file.name))
+                    }) { fraction ->
+                        job.ensureActive()
+                        if (stopped.get()) throw IOException("stopped: another model was chosen")
+                        if (ModelDownloadGate.decide(network(), cellularAllowed) == ModelDownloadGate.Decision.WaitForWiFi) {
+                            throw IOException("Wi-Fi went, and downloads on cellular data are off")
+                        }
+                        if (fraction - shown >= 0.001 || (fraction == 1.0 && shown < 1.0)) {
+                            shown = fraction
+                            progress(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = fraction, detail = variant ?: file.name))
+                        }
                     }
+                } finally {
+                    renewing.cancel()
                 }
             }
         } catch (stopped: CancellationException) {
@@ -113,6 +133,12 @@ class ModelFileLoader(
             throw EngineUnavailability(EngineUnavailability.Kind.NotEnoughStorage, "${file.name}: disk full: $error", left, missing)
         } finally {
             downloading = null
+            keepAwake(null)
         }
+    }
+
+    companion object {
+        val AWAKE_FOR = 10.minutes
+        val RENEW_EVERY = 1.minutes
     }
 }

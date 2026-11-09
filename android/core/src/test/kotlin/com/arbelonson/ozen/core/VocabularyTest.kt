@@ -222,6 +222,17 @@ class PromptEchoDetectorTest {
     }
 
     @Test
+    fun `an unsure one-word list the model wrote as its own piece of a longer line stays with the rest of the line`() {
+        val single = PromptEchoDetector(listOf("סבתא"))
+        val filter = WhisperResultFilter()
+        val name = WhisperSegmentSummary(text = " סבתא.", noSpeechProb = 0f, avgLogprob = -1.2f, compressionRatio = 1f)
+        val rest = WhisperSegmentSummary(text = " בואי לאכול.", noSpeechProb = 0f, avgLogprob = -0.2f, compressionRatio = 1f)
+        assertEquals("סבתא. בואי לאכול.", filter.acceptedText(listOf(name, rest), single))
+        assertEquals("בואי לאכול. סבתא.", filter.acceptedText(listOf(rest, name), single))
+        assertEquals("", filter.acceptedText(listOf(name, name), single))
+    }
+
+    @Test
     fun `a one-word list read back with too little voice under it is dropped, and with enough voice it stays`() {
         val single = PromptEchoDetector(listOf("סבתא"))
         val filter = WhisperResultFilter()

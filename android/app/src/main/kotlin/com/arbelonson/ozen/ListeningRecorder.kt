@@ -39,11 +39,14 @@ class ListeningRecorder(
     private val background: Executor = Executors.newSingleThreadExecutor { Thread(it, "listening-record").apply { isDaemon = true } },
 ) {
     @Volatile private var record: ListeningCut.Record? = null
+    @Volatile private var leftover = Leftover.None
 
     fun phaseChanged(phase: PipelinePhase, recovering: Boolean) {
         when {
             phase == PipelinePhase.Listening -> if (record == null) begin()
             phase == PipelinePhase.Idle || phase == PipelinePhase.Paused || (phase is PipelinePhase.Failed && !recovering) -> end()
+            phase == PipelinePhase.RequestingMicrophonePermission || phase is PipelinePhase.PreparingEngine || phase == PipelinePhase.StartingAudio ->
+                if (leftover == Leftover.Kept) leftover = Leftover.Starting
         }
     }
 
@@ -59,7 +62,10 @@ class ListeningRecorder(
         val record = ListeningCut.parse(raw)
         val at = now()
         val notice = ListeningCut.notice(record, at, version)
-        if (notice == null && record != null && record.version == version && at - record.aliveAt in 0.0..ListeningCut.LEAST_GAP_SECONDS) return null
+        if (notice == null && record != null && record.version == version && at - record.aliveAt in 0.0..ListeningCut.LEAST_GAP_SECONDS) {
+            leftover = Leftover.Kept
+            return null
+        }
         runCatching { background.execute { runCatching { store.clear() } } }
         return notice
     }
@@ -70,8 +76,9 @@ class ListeningRecorder(
     }
 
     private fun end() {
-        if (record == null) return
+        if (record == null && leftover != Leftover.Starting) return
         record = null
+        leftover = Leftover.None
         runCatching { background.execute { runCatching { store.clear() } } }
     }
 
@@ -79,4 +86,6 @@ class ListeningRecorder(
         record = next
         runCatching { background.execute { runCatching { store.write(ListeningCut.encode(next)) } } }
     }
+
+    private enum class Leftover { None, Kept, Starting }
 }

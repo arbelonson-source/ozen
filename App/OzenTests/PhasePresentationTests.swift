@@ -233,6 +233,18 @@ struct PhasePresentationTests {
         #expect(timed.detail?.hasPrefix("עוד כ־3 דקות · ") == true)
     }
 
+    @Test("after the last byte the screen says the file is being checked, with no bar")
+    func checkingTheFile() {
+        let checking = PhasePresentation(
+            phase: .preparingEngine(EnginePreparationProgress(stage: .checkingModel, detail: "small")),
+            engine: .whisperKit,
+            interruptedBySystem: false
+        )
+        #expect(checking.title == "בודקים את הקובץ…")
+        #expect(checking.progress == nil)
+        #expect(checking.isBusy)
+    }
+
     @Test("the first load of a model says it is a wait of minutes, without promising it is the only one; later loads don't")
     func firstLoad() {
         let first = PhasePresentation(

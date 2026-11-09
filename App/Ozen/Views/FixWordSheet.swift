@@ -70,10 +70,15 @@ struct FixWordSheet: View {
                 .font(.body)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
+                // 44 points: the smallest target a shaky finger hits
+                // reliably; the padding alone left about 34.
+                .frame(minWidth: 44, minHeight: 44)
                 .background(selected ? Color.accentColor.opacity(0.25) : Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                .contentShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(word)
+        .accessibilityHint(tr("סימון המילה לתיקון", "Marks the word to fix"))
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 

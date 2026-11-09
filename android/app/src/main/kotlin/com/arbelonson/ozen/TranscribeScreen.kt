@@ -325,7 +325,8 @@ private fun LinesList(
     LazyColumn(modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (lead != null) item { lead() }
         items(lines) { line ->
-            Row(Modifier.fillMaxWidth().testTag(TRANSCRIBE_LINE), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // One stop for a screen reader, the time with its words, as on the iPhone.
+            Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.testTag(TRANSCRIBE_LINE), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(TranscriptFormats.clock(line.startSeconds), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
                 Text(
                     captionText(CaptionLayout.directed(line.text, languageCode), emphasizeNumbers = true, numberColor = null),

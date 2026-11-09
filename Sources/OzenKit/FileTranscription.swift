@@ -127,3 +127,45 @@ public enum FileTranscription: Sendable, Equatable {
         }
     }
 }
+
+extension FileTranscription.Working.Stage {
+    public var title: String {
+        switch self {
+        case .downloading: return tr("מורידים את המודל", "Downloading the model")
+        case .loading: return tr("מכינים את המודל", "Getting the model ready")
+        case .transcribing: return tr("ממירים את ההקלטה לטקסט", "Turning the recording into text")
+        }
+    }
+}
+
+extension FileTranscription.Done {
+    public static var endMissingMessage: String {
+        tr("לא היה אפשר לקרוא את סוף ההקלטה, ולכן הטקסט נקטע לפני הסוף.", "The end of this recording couldn’t be read, so the text stops early.")
+    }
+}
+
+extension FileTranscription {
+    /// What VoiceOver hears when the screen moves from `previous` to this
+    /// state: a new stage, the result or the problem. The whole screen is
+    /// replaced each time, so without this a blind reader heard nothing
+    /// start, finish or fail. Progress within one stage stays quiet.
+    public func announcement(after previous: FileTranscription) -> String? {
+        switch (self, previous) {
+        case let (.working(now), .working(before)) where now.stage == before.stage:
+            return nil
+        case let (.working(now), _):
+            return now.stage.title
+        case (.done, .done):
+            return nil
+        case let (.done(done), _):
+            let details = ([done.history.message] + (done.endMissing ? [Done.endMissingMessage] : [])).joined(separator: " ")
+            return tr("ההקלטה הומרה לטקסט. %1", "Recording turned into text. %1", args: ["\(details)"])
+        case let (.failed(_, problem), .failed(_, before)) where problem == before:
+            return nil
+        case let (.failed(_, problem), _):
+            return problem.message
+        case (.idle, _), (.ready, _):
+            return nil
+        }
+    }
+}

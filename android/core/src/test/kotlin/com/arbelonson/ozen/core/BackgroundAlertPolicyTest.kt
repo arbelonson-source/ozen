@@ -41,6 +41,20 @@ class BackgroundAlertPolicyTest {
     }
 
     @Test
+    fun `the night test goes through the emergency channel, the way a siren does`() {
+        val siren = BackgroundAlertPolicy().notification(sound("civil_defense_siren"), appIsActive = false, now = 0.0)
+        val night = BackgroundAlertPolicy.nightTestNotification
+        assertTrue(night.isUrgent)
+        assertEquals(siren?.threadIdentifier, night.threadIdentifier)
+        assertEquals("sounds", night.threadIdentifier)
+        assertFalse(BackgroundAlertPolicy.isAwayAlertTag(night.identifier))
+        assertTrue(night.identifier != BackgroundAlertPolicy.testNotification.identifier)
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("Test: smoke detector", BackgroundAlertPolicy.nightTestNotification.title)
+        }
+    }
+
+    @Test
     fun `the same sound or word notifies once per cooldown, different ones independently`() {
         val policy = BackgroundAlertPolicy(cooldownSeconds = 30.0)
         val alertID = UUID.randomUUID()

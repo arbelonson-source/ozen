@@ -355,8 +355,11 @@ class OnDeviceWhisperEngine(
             }
 
             // The longer the names list, the less room is left for the
-            // line's own words (`WhisperKitDecodeRoom`).
-            val prompt = promptTokens(pipe)
+            // line's own words (`WhisperKitDecodeRoom`). The echo check is
+            // read with the list that prompts this pass: a list edited while
+            // the pass runs didn't prompt what it brings back.
+            val (terms, echo) = synchronized(lock) { vocabulary to echoDetector }
+            val prompt = promptTokens(pipe, terms)
             val maxSamples = (WhisperKitDecodeRoom.longestLineSeconds(prompt?.size ?: 0, maxUtteranceSeconds) * sampleRate).toInt()
             val pauseReached = total - speechEnd >= pauseSamples
             val tooLong = total >= maxSamples
@@ -501,7 +504,6 @@ class OnDeviceWhisperEngine(
                 wordTokens = results.sumOf { segment -> segment.tokens.count { it.id < specialTokenBegin } },
                 seconds = windowSeconds,
             )
-            val echo = synchronized(lock) { echoDetector }
             // A thank-you, or a one-word names list read back, alone in a
             // moment of voice is most likely household noise (see
             // `WhisperResultFilter.isUnvoicedPhrase`). When captions stop,
@@ -567,8 +569,7 @@ class OnDeviceWhisperEngine(
      * whole names from the top of the list (ordered most-important-first)
      * that fit the budget.
      */
-    private fun promptTokens(pipe: WhisperPasses): List<Int>? {
-        val terms = synchronized(lock) { vocabulary }
+    private fun promptTokens(pipe: WhisperPasses, terms: List<String>): List<Int>? {
         if (terms.isEmpty()) return null
         synchronized(lock) { promptCache }?.let { cached ->
             if (cached.first == terms) return cached.second

@@ -302,13 +302,15 @@ public struct WhisperResultFilter: Sendable, Equatable {
     /// The whole prompt of a one-entry list goes only when the model was
     /// unsure of it or thought the window held no speech, like an
     /// ambiguous phrase (see `PromptEchoDetector.isWholePrompt`); said
-    /// with confidence it stays.
+    /// with confidence it stays. With other speech in the same pass it
+    /// stays too: the name was most likely said, as part of the line.
     public func accepted(from segments: [WhisperSegmentSummary], echo: PromptEchoDetector? = nil) -> [WhisperSegmentSummary] {
-        segments.filter { segment in
-            let text = Self.stripSpecialTokens(segment.text)
-            guard accepts(segment), echo?.isEcho(text) != true else { return false }
-            let doubtful = segment.noSpeechProb > ambiguousNoSpeechThreshold || segment.avgLogprob < ambiguousLogprobThreshold
-            return !(doubtful && echo?.isWholePrompt(text) == true)
+        let candidates = segments.filter { segment in
+            accepts(segment) && echo?.isEcho(Self.stripSpecialTokens(segment.text)) != true
+        }
+        guard let echo, candidates.allSatisfy({ echo.isWholePrompt(Self.stripSpecialTokens($0.text)) }) else { return candidates }
+        return candidates.filter { segment in
+            segment.noSpeechProb <= ambiguousNoSpeechThreshold && segment.avgLogprob >= ambiguousLogprobThreshold
         }
     }
 

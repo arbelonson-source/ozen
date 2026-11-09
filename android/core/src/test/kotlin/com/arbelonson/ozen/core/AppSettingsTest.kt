@@ -322,8 +322,8 @@ class AppSettingsTest {
         val readme = File(root, "README.md").readText(Charsets.UTF_8)
         val low = DisplayPreferences.minimumFontSize.toInt()
         val high = DisplayPreferences.maximumFontSize.toInt()
-        assertTrue(readme.contains("Text from $low to $high pt"))
-        assertTrue(readme.contains("text size $low–$high pt"))
+        assertTrue(readme.contains("Text from $low to $high points"))
+        assertTrue(readme.contains("Text size $low to $high points"))
     }
 
     @Test

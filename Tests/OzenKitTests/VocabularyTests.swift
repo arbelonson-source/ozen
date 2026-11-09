@@ -208,6 +208,17 @@ struct PromptEchoDetectorTests {
         #expect(filter.acceptedText(from: [unsure], echo: PromptEchoDetector(terms: ["סבתא", "אמא"])) == "סבתא.")
     }
 
+    @Test("an unsure one-word list the model wrote as its own piece of a longer line stays with the rest of the line")
+    func oneWordPromptBesideOtherSpeech() {
+        let single = PromptEchoDetector(terms: ["סבתא"])
+        let filter = WhisperResultFilter()
+        let name = WhisperSegmentSummary(text: " סבתא.", noSpeechProb: 0, avgLogprob: -1.2, compressionRatio: 1)
+        let rest = WhisperSegmentSummary(text: " בואי לאכול.", noSpeechProb: 0, avgLogprob: -0.2, compressionRatio: 1)
+        #expect(filter.acceptedText(from: [name, rest], echo: single) == "סבתא. בואי לאכול.")
+        #expect(filter.acceptedText(from: [rest, name], echo: single) == "בואי לאכול. סבתא.")
+        #expect(filter.acceptedText(from: [name, name], echo: single) == "")
+    }
+
     @Test("a one-word list read back with too little voice under it is dropped, and with enough voice it stays")
     func oneWordPromptUnvoiced() {
         let single = PromptEchoDetector(terms: ["סבתא"])

@@ -88,6 +88,7 @@ struct KeywordAlertsView: View {
                 ForEach(unusedSuggestions, id: \.self) { word in
                     Button {
                         viewModel.addKeywordAlert(phrase: word)
+                        Announcement.added(AlertSuggestions.label(for: word, in: viewModel.uiLanguage))
                     } label: {
                         Label(tr("הוספה: %1", "Add: %1", args: ["\(AlertSuggestions.label(for: word, in: viewModel.uiLanguage))"]), systemImage: "plus.circle")
                     }
@@ -168,8 +169,12 @@ struct KeywordAlertsView: View {
 
     private func add() {
         guard !typedWordIsOn else { return }
+        let phrase = newPhrase.trimmingCharacters(in: .whitespacesAndNewlines)
         viewModel.addKeywordAlert(phrase: newPhrase)
         newPhrase = ""
         isEditing = true
+        // The word lands in the list further down, out of VoiceOver's
+        // reach from the text field; say that it went in.
+        if !phrase.isEmpty { Announcement.added(shown(phrase)) }
     }
 }

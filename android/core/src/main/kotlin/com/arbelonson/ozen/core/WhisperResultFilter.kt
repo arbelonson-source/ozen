@@ -300,15 +300,19 @@ class WhisperResultFilter(
      *
      * The whole prompt of a one-entry list goes only when the model was unsure
      * of it or thought the window held no speech, like an ambiguous phrase (see
-     * [PromptEchoDetector.isWholePrompt]); said with confidence it stays.
+     * [PromptEchoDetector.isWholePrompt]); said with confidence it stays. With
+     * other speech in the same pass it stays too: the name was most likely
+     * said, as part of the line.
      */
-    fun accepted(segments: List<WhisperSegmentSummary>, echo: PromptEchoDetector? = null): List<WhisperSegmentSummary> =
-        segments.filter { segment ->
-            val text = stripSpecialTokens(segment.text)
-            if (!accepts(segment) || echo?.isEcho(text) == true) return@filter false
-            val doubtful = segment.noSpeechProb > ambiguousNoSpeechThreshold || segment.avgLogprob < ambiguousLogprobThreshold
-            !(doubtful && echo?.isWholePrompt(text) == true)
+    fun accepted(segments: List<WhisperSegmentSummary>, echo: PromptEchoDetector? = null): List<WhisperSegmentSummary> {
+        val candidates = segments.filter { segment ->
+            accepts(segment) && echo?.isEcho(stripSpecialTokens(segment.text)) != true
         }
+        if (echo == null || !candidates.all { echo.isWholePrompt(stripSpecialTokens(it.text)) }) return candidates
+        return candidates.filter { segment ->
+            segment.noSpeechProb <= ambiguousNoSpeechThreshold && segment.avgLogprob >= ambiguousLogprobThreshold
+        }
+    }
 
     /**
      * The filter for speech in [languageCode]. In English a lone "you" is a

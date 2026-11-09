@@ -11,6 +11,7 @@ final class FakeReleaseFetcher: ReleaseFileFetching, @unchecked Sendable {
     private(set) var fetches: [(asset: String, offset: Int64)] = []
     var refusesResume = false
     var chunk = 5
+    var onHash: @Sendable () -> Void = {}
 
     init(assets: [String: Data]) {
         self.assets = assets
@@ -48,8 +49,16 @@ final class FakeReleaseFetcher: ReleaseFileFetching, @unchecked Sendable {
     }
 
     func sha256(of file: URL) throws -> String {
-        Self.checksum(try Data(contentsOf: file))
+        onHash()
+        return Self.checksum(try Data(contentsOf: file))
     }
+}
+
+final class EventLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [String] = []
+    var events: [String] { lock.withLock { stored } }
+    func add(_ event: String) { lock.withLock { stored.append(event) } }
 }
 
 private func temporaryFolder() -> URL {
@@ -176,6 +185,49 @@ struct ReleaseModelDownloaderTests {
         #expect(values.last == 1)
         #expect(values == values.sorted())
         #expect(fetcher.fetches.map(\.asset) == ["manifest.json", "AudioEncoder.mlpackage__weights__weight.bin", "config.json"])
+    }
+
+    @Test("the check is announced once, after the last byte and before any file is hashed")
+    func announcesChecking() async throws {
+        let (_, assets) = release()
+        let log = EventLog()
+        let fetcher = FakeReleaseFetcher(assets: assets)
+        fetcher.onHash = { log.add("hash") }
+        let folder = temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        _ = try await ReleaseModelDownloader(fetcher: fetcher).download(
+            tag: "m1",
+            into: folder,
+            checking: { log.add("checking") },
+            progress: { log.add($0 >= 1 ? "full" : "bytes") }
+        )
+
+        let events = log.events
+        #expect(events.filter { $0 == "checking" }.count == 1, "\(events)")
+        let at = events.firstIndex(of: "checking") ?? -1
+        #expect(events.lastIndex(of: "bytes") ?? Int.max < at, "\(events)")
+        #expect(events.firstIndex(of: "hash") ?? -1 > at, "\(events)")
+    }
+
+    @Test("a download that fails before the last byte never announces a check")
+    func noCheckingWhenFetchFails() async throws {
+        let (_, assets) = release()
+        var missing = assets
+        missing["config.json"] = nil
+        let log = EventLog()
+        let folder = temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        await #expect(throws: (any Error).self) {
+            _ = try await ReleaseModelDownloader(fetcher: FakeReleaseFetcher(assets: missing)).download(
+                tag: "m1",
+                into: folder,
+                checking: { log.add("checking") },
+                progress: { _ in }
+            )
+        }
+        #expect(log.events.isEmpty)
     }
 
     @Test("a first download makes its own folder, and the bar moves while the files come in")

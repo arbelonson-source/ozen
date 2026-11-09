@@ -26,8 +26,12 @@ public final class SerialListeningExecutor: ListeningExecutor {
 }
 
 /// Keeps a small record on disk while captions listen, so the next launch can
-/// tell whether iOS ended the app while it was listening. Call it from one
-/// thread (the main actor); the store is touched on the executor.
+/// tell whether iOS ended the app while it was listening. A record a quick
+/// restart left in place stays until this run listens again, or until
+/// captions this run started end before listening (a stop, a pause or a
+/// reported failure): the person saw captions stop, so the old cut is no
+/// longer news. Call it from one thread (the main actor); the store is
+/// touched on the executor.
 public final class ListeningRecorder {
     public static let keepAliveInterval: Duration = .seconds(30)
 
@@ -36,6 +40,9 @@ public final class ListeningRecorder {
     private let now: () -> Double
     private let executor: any ListeningExecutor
     private var record: ListeningCut.Record?
+    private var leftover = Leftover.none
+
+    private enum Leftover { case none, kept, starting }
 
     public init(
         store: any ListeningRecordStore,
@@ -60,7 +67,7 @@ public final class ListeningRecorder {
         case .failed:
             if !recovering { end() }
         case .requestingMicrophonePermission, .preparingEngine, .startingAudio:
-            break
+            if leftover == .kept { leftover = .starting }
         }
     }
 
@@ -74,6 +81,7 @@ public final class ListeningRecorder {
     /// ended and a queued job might never run.
     public func endNow() {
         record = nil
+        leftover = .none
         let store = store
         executor.sync { store.clear() }
     }
@@ -84,6 +92,7 @@ public final class ListeningRecorder {
         let at = now()
         let notice = ListeningCut.notice(record, now: at, version: version)
         if notice == nil, let record, record.version == version, (0...ListeningCut.leastGapSeconds).contains(at - record.aliveAt) {
+            leftover = .kept
             return nil
         }
         let store = store
@@ -97,8 +106,9 @@ public final class ListeningRecorder {
     }
 
     private func end() {
-        guard record != nil else { return }
+        guard record != nil || leftover == .starting else { return }
         record = nil
+        leftover = .none
         let store = store
         executor.async { store.clear() }
     }

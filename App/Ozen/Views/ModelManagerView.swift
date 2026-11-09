@@ -23,6 +23,7 @@ struct ModelManagerView: View {
     @State private var deleteError: String?
     /// Downloads going on with no captions running, by variant.
     @State private var backgroundProgress: [String: Double] = [:]
+    @State private var backgroundChecking: Set<String> = []
 
     private let store = WhisperModelStore()
 
@@ -159,6 +160,7 @@ struct ModelManagerView: View {
         let isInstalled = installed.contains(option.variant)
         let isPartial = partial.contains(option.variant)
         let downloadProgress = downloadProgress(for: option)
+        let isChecking = isChecking(option)
         // Picking it would stop captions that work for a download with no
         // room to land; the row says why instead.
         let wontFit = !isInstalled && !isPartial && !isSelected
@@ -206,7 +208,9 @@ struct ModelManagerView: View {
 
                 statusLayout {
                     Text(option.sizeLabel)
-                    if let progress = downloadProgress {
+                    if isChecking {
+                        Text("· " + tr("בודקים את הקובץ…", "Checking the file…"))
+                    } else if let progress = downloadProgress {
                         Text(tr("· בהורדה %1%", "· downloading %1%", args: ["\(Int((progress * 100).rounded()))"]))
                     } else if isInstalled {
                         Image(systemName: "checkmark")
@@ -235,7 +239,9 @@ struct ModelManagerView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-                if let progress = downloadProgress {
+                if isChecking {
+                    ProgressView()
+                } else if let progress = downloadProgress {
                     ProgressView(value: progress)
                     if viewModel.phase.preparationProgress?.detail == option.variant, let seconds = viewModel.pipeline.downloadSecondsRemaining {
                         Text(PhasePresentation.remainingText(seconds: seconds))
@@ -249,7 +255,7 @@ struct ModelManagerView: View {
         .foregroundStyle(.primary)
         .disabled(wontFit)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            if (isInstalled || isPartial) && downloadProgress == nil && !(isSelected && (viewModel.isListening || viewModel.phase == .paused || viewModel.phase.isTransitioning)) {
+            if (isInstalled || isPartial) && downloadProgress == nil && !isChecking && !(isSelected && (viewModel.isListening || viewModel.phase == .paused || viewModel.phase.isTransitioning)) {
                 Button(role: .destructive) {
                     pendingDelete = option
                 } label: {
@@ -259,6 +265,13 @@ struct ModelManagerView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func isChecking(_ option: WhisperModelOption) -> Bool {
+        if let progress = viewModel.phase.preparationProgress, progress.stage == .checkingModel, progress.detail == option.variant {
+            return true
+        }
+        return backgroundChecking.contains(option.variant)
     }
 
     private func downloadProgress(for option: WhisperModelOption) -> Double? {
@@ -283,7 +296,7 @@ struct ModelManagerView: View {
         installed = Set(store.installedVariants())
         // Skip the variant being downloaded right now: mid-download is
         // expected to be incomplete and already shows its progress.
-        let downloading = viewModel.phase.preparationProgress.flatMap { $0.stage == .downloadingModel ? $0.detail : nil }
+        let downloading = viewModel.phase.preparationProgress.flatMap { $0.stage == .downloadingModel || $0.stage == .checkingModel ? $0.detail : nil }
         partial = Set(WhisperModelCatalog.options.map(\.variant).filter { variant in
             variant != downloading && backgroundProgress[variant] == nil && store.state(of: variant) == .partial
         })
@@ -298,11 +311,14 @@ struct ModelManagerView: View {
     private func followBackgroundDownloads() async {
         while !Task.isCancelled {
             var running: [String: Double] = [:]
+            var checking: Set<String> = []
             for option in WhisperModelCatalog.options {
                 if let fraction = await store.downloadProgress(variant: option.variant) {
                     running[option.variant] = fraction
+                    if await store.isChecking(variant: option.variant) { checking.insert(option.variant) }
                 }
             }
+            if checking != backgroundChecking { backgroundChecking = checking }
             if running != backgroundProgress {
                 let changed = Set(running.keys) != Set(backgroundProgress.keys)
                 backgroundProgress = running

@@ -11,6 +11,7 @@ import com.arbelonson.ozen.core.PhoneModelDeletion
 import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.PhoneModelEstimate
 import com.arbelonson.ozen.core.PhoneModelFit
+import com.arbelonson.ozen.core.PhoneModelPartialCleanup
 import com.arbelonson.ozen.core.PhoneModelShelf
 import com.arbelonson.ozen.core.PhoneModelStorage
 import com.arbelonson.ozen.core.PhoneModelSwitch
@@ -114,6 +115,7 @@ class PhoneModelChooser(
     private fun leftovers(): Map<String, Long> = PhoneModelShelf.partials(PhoneModelStorage(modelFolder, "").list())
 
     override fun refreshInstalled() {
+        PhoneModelPartialCleanup.removeStale(modelFolder, System.currentTimeMillis())
         installedState.value = onDisk()
         partialState.value = leftovers()
     }
