@@ -202,7 +202,7 @@ fun SettingsScreen(
     heardBy: (KeywordHit) -> String? = { null },
     onAppLanguage: (AppLanguage) -> Unit = {},
     onShowWalkthrough: () -> Unit = {},
-    onClearCaptions: () -> Boolean = { true },
+    onClearCaptions: (keepingHistory: Boolean) -> Boolean = { true },
     historySaveFailing: () -> Boolean = { false },
     voiceNotice: String? = null,
     onSoundAlerts: (SoundAlertPreferences) -> Unit = {},
@@ -1457,7 +1457,7 @@ internal fun privacyPolicyUrl(language: UILanguage): String =
 private const val WHISPER_ENGINE = "https://github.com/ggml-org/whisper.cpp"
 
 @Composable
-private fun MaintenanceSection(onDiagnostics: () -> Unit, onWalkthrough: () -> Unit, saving: Boolean, saveFailing: () -> Boolean, onClear: () -> Boolean) {
+private fun MaintenanceSection(onDiagnostics: () -> Unit, onWalkthrough: () -> Unit, saving: Boolean, saveFailing: () -> Boolean, onClear: (keepingHistory: Boolean) -> Boolean) {
     SectionHeader(tr("תחזוקה", "Maintenance"))
     SettingsGroup(dividerInset = 56.dp) {
         item { SettingRow(tr("אבחון", "Diagnostics"), icon = Icons.Rounded.BugReport, onClick = onDiagnostics, trailing = { Chevron() }) }
@@ -1489,7 +1489,7 @@ private fun WalkthroughAgainRow(onShow: () -> Unit) {
 }
 
 @Composable
-internal fun ClearCaptionsRow(saving: Boolean, saveFailing: () -> Boolean, onClear: () -> Boolean) {
+internal fun ClearCaptionsRow(saving: Boolean, saveFailing: () -> Boolean, onClear: (keepingHistory: Boolean) -> Boolean) {
     var asking by rememberSaveable { mutableStateOf(false) }
     var tries by remember { mutableIntStateOf(0) }
     val error = MaterialTheme.colorScheme.error
@@ -1506,16 +1506,16 @@ internal fun ClearCaptionsRow(saving: Boolean, saveFailing: () -> Boolean, onCle
         Text(tr("ניקוי הכתוביות מהמסך", "Clear captions from the screen"), style = MaterialTheme.typography.bodyLarge, color = error, modifier = Modifier.weight(1f))
     }
     if (asking) {
-        val warning = remember(tries) { HistoryTexts.clearWarning(saving, saveFailing()) }
+        val question = remember(tries) { HistoryTexts.clearQuestion(saving, saveFailing()) }
         AlertDialog(
             onDismissRequest = { asking = false },
             title = { Text(tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?")) },
-            text = { Text(warning) },
+            text = { Text(question.text) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         // A save that fails now asks again, saying the lines won't be kept.
-                        asking = !onClear()
+                        asking = !onClear(question.keepsHistory)
                         if (asking) tries += 1
                     },
                 ) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }

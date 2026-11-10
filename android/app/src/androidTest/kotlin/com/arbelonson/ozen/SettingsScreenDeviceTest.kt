@@ -2266,14 +2266,14 @@ class SettingsScreenDeviceTest {
     @Test
     fun aClearWhoseSaveFailsKeepsTheLinesAndAsksAgainSayingTheyWontBeSaved() {
         var failing = false
-        var clears = 0
+        val promised = mutableListOf<Boolean>()
         compose.runOnUiThread {
             compose.activity.setContent {
                 Column {
-                    ClearCaptionsRow(saving = true, saveFailing = { failing }, onClear = {
-                        clears += 1
+                    ClearCaptionsRow(saving = true, saveFailing = { failing }, onClear = { keepingHistory ->
+                        promised += keepingHistory
                         failing = true
-                        clears > 1
+                        promised.size > 1
                     })
                 }
             }
@@ -2287,7 +2287,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Delete").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Delete all captions from the screen?").assertDoesNotExist()
-        assertEquals(2, clears)
+        assertEquals(listOf(true, false), promised)
     }
 
     @Test

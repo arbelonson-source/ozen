@@ -717,13 +717,14 @@ class CaptionSession(
 
     /** Settings' "Clear captions from the screen": the conversation so far is saved first. */
     /**
-     * The question before this said the lines stay in History when saving
-     * was on and working; if saving them fails now, they stay on screen and
-     * false comes back, as on the iPhone.
+     * When the question before this promised the lines stay in History
+     * ([keepingHistory]) and saving them fails now, they stay on screen and
+     * false comes back, as on the iPhone. What the question said counts, not
+     * how saving stands now: an autosave failing while it was open otherwise
+     * let the lines go unsaved under the promise.
      */
-    fun clearCaptions(): Boolean {
-        val promised = settings.current.value.saveHistory && conversations.lastSaveFailure == null
-        if (!conversations.clear(keepingHistory = promised, pipeline::clearTranscript)) {
+    fun clearCaptions(keepingHistory: Boolean = false): Boolean {
+        if (!conversations.clear(keepingHistory, pipeline::clearTranscript)) {
             publish()
             return false
         }

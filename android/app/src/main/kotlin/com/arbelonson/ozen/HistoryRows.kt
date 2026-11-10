@@ -173,6 +173,13 @@ object HistoryTexts {
         else -> tr("הן נשארות שמורות בהיסטוריה.", "They stay saved in History.")
     }
 
+    /**
+     * The clear question as asked: its words, and whether they promised
+     * the lines a place in History, which the clear then keeps to even if
+     * a save failed between the question and Delete.
+     */
+    fun clearQuestion(saving: Boolean, failing: Boolean) = ClearQuestion(clearWarning(saving, failing), saving && !failing)
+
     fun emptyMessage(query: String, saving: Boolean, speakerFilter: String? = null): String = when {
         query.isNotBlank() -> tr("לא נמצא כלום עבור ״%1״.", "Nothing found for “%1”.", listOf(query.trim()))
         speakerFilter != null -> tr("אין שיחות עם %1.", "No conversations with %1.", listOf(speakerFilter))
@@ -227,3 +234,5 @@ class NumbersMentioned(val listed: List<SavedSegment>, val moreText: String?) {
         }
     }
 }
+
+data class ClearQuestion(val text: String, val keepsHistory: Boolean)

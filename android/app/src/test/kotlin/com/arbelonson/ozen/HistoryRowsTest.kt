@@ -125,6 +125,9 @@ class HistoryRowsTest {
         assertEquals("History is off, so they won’t be saved.", HistoryTexts.clearWarning(saving = false, failing = true))
         assertEquals("Saving to History isn’t working right now, so they won’t be saved.", HistoryTexts.clearWarning(saving = true, failing = true))
         assertEquals("They stay saved in History.", HistoryTexts.clearWarning(saving = true, failing = false))
+        assertEquals(ClearQuestion("They stay saved in History.", keepsHistory = true), HistoryTexts.clearQuestion(saving = true, failing = false))
+        assertFalse(HistoryTexts.clearQuestion(saving = true, failing = true).keepsHistory)
+        assertFalse(HistoryTexts.clearQuestion(saving = false, failing = false).keepsHistory)
     }
 
     @Test

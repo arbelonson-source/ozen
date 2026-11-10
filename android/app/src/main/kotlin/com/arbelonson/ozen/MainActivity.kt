@@ -731,7 +731,7 @@ private fun OzenApp(
                                 onDismissRecent = app.captions::dismissRecentConversation,
                                 onDismissBattery = app.captions::dismissBatteryWarning,
                                 onClear = app.captions::clearCaptions,
-                                clearWarning = { HistoryTexts.clearWarning(current.saveHistory, app.captions.savedConversations.lastSaveFailure != null) },
+                                clearQuestion = { HistoryTexts.clearQuestion(current.saveHistory, app.captions.savedConversations.lastSaveFailure != null) },
                             )
                         }
                     }
@@ -912,8 +912,8 @@ private fun CaptionScreen(
     onOpenConversation: (UUID) -> Unit,
     onDismissRecent: () -> Unit,
     onDismissBattery: () -> Unit,
-    onClear: () -> Boolean,
-    clearWarning: () -> String,
+    onClear: (keepingHistory: Boolean) -> Boolean,
+    clearQuestion: () -> ClearQuestion,
 ) {
     val list = rememberLazyListState()
     // As on the iPhone: the text grows under the fingers and only the
@@ -1295,16 +1295,16 @@ private fun CaptionScreen(
             }
         }
         if (askingToClear) {
-            val warning = remember(clearTries) { clearWarning() }
+            val question = remember(clearTries) { clearQuestion() }
             AlertDialog(
                 onDismissRequest = { askingToClear = false },
                 title = { Text(tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?")) },
-                text = { Text(warning) },
+                text = { Text(question.text) },
                 confirmButton = {
                     // A save that fails now asks again, saying the lines won't be kept.
                     TextButton(
                         onClick = {
-                            askingToClear = !onClear()
+                            askingToClear = !onClear(question.keepsHistory)
                             if (askingToClear) clearTries += 1
                         },
                     ) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
