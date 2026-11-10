@@ -23,6 +23,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.WordFix
 import com.arbelonson.ozen.core.WordFixes
@@ -49,6 +52,9 @@ internal fun WordFixesSection(fixes: List<WordFix>, onChange: (List<WordFix>) ->
         OutlinedTextField(written, { written = it }, label = { Text(tr("מה שייכתב", "Written")) }, singleLine = true, modifier = Modifier.weight(1f))
     }
     TonalButton(tr("הוספת תיקון", "Add fix"), onClick = { onChange(added); heard = ""; written = "" }, enabled = canAdd)
+    WordFixes.refusalNote(WordFixes.refusal(WordFix(heard, written), fixes))?.let {
+        Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp).semantics { liveRegion = LiveRegionMode.Polite })
+    }
     if (fixes.isNotEmpty()) {
         Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
             LazyColumn(Modifier.heightIn(max = 240.dp)) {
