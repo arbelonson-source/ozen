@@ -1198,6 +1198,35 @@ final class OzenScreenshotUITests: XCTestCase {
         }
     }
 
+    /// A cloud key pasted but never saved with Return or the button was
+    /// dropped without a word as Settings closed, and she believed the
+    /// cloud was set up. Close now asks the question Save asks, with the
+    /// key field still on screen or not, and Cancel closes without it.
+    func testCloudKeyLeftInTheFieldIsAskedAboutOnClose() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "cloudEnglish"]
+        app.launch()
+        let settingsButton = app.descendants(matching: .any)["settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "the settings button never appeared")
+        settingsButton.tap()
+        let settings = app.descendants(matching: .any)["settingsScreen"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 10), "settings never appeared")
+        let field = scrollDownUntilVisible(app, identifier: "cloudKeyField", maxSwipes: 40)
+        XCTAssertTrue(field.exists, "the cloud key field never appeared")
+        bringOffBottomEdge(app, field)
+        field.tap()
+        field.typeText("example-code-123")
+        app.buttons["Close"].firstMatch.tap()
+        let question = app.alerts.element(matching: NSPredicate(format: "label BEGINSWITH 'Send the audio to'"))
+        let asked = question.waitForExistence(timeout: 5)
+        capture(app, name: "cloud-key-asked-on-close")
+        XCTAssertTrue(asked, "Close dropped the pasted key without asking")
+        XCTAssertTrue(settings.exists, "Settings closed under the question")
+        question.buttons["Cancel"].tap()
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: settings)
+        XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 5), .completed, "Cancel left Settings open")
+    }
+
     /// "Edit" on the quick phrases must show real delete and move handles.
     /// Before, it only listed the phrases: moving one needed a hidden
     /// long-press drag and VoiceOver could not move them at all.

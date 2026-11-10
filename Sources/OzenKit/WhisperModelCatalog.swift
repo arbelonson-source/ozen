@@ -245,6 +245,15 @@ public enum WhisperModelCatalog {
         return options.filter { $0.variant == recommended } + rest.filter { !$0.isHebrewOnly } + rest.filter(\.isHebrewOnly)
     }
 
+    /// Whether `option` can't be picked for `language`: a model trained for
+    /// Hebrew alone, for any other language. It stays listed, last and
+    /// greyed with the reason, as on Android; picking it cost an 819 MB
+    /// download and gave wrong captions, and only then did Settings say so.
+    /// The one in use stays tappable, so nothing is locked in.
+    public static func isOffLimits(_ option: WhisperModelOption, for language: UILanguage, isSelected: Bool) -> Bool {
+        option.isHebrewOnly && language != .hebrew && !isSelected
+    }
+
     public static func recommendedVariant(for language: UILanguage) -> String {
         language == .hebrew ? recommendedVariant : generalVariant
     }

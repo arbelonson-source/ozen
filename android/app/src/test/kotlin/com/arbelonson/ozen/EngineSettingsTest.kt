@@ -148,6 +148,19 @@ class EngineSettingsTest {
     }
 
     @Test
+    fun `closing settings reports a typed key the phone could not store, and nothing to store is no failure`() = runBlocking<Unit> {
+        engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        engineSettings.acknowledgeCloud(CloudProvider.Deepgram)
+        val keyFile = File(File(folder, "cloud-keys"), CloudProvider.Deepgram.keychainService)
+        File(keyFile, "in-the-way").apply { parentFile?.mkdirs() }.writeText("blocks the key file")
+        assertFalse(engineSettings.saveUnsavedEntries(cloudKeyDraft = "dg-typed", addressDraft = "", pairingCodeDraft = ""))
+        assertTrue(engineSettings.saveUnsavedEntries(cloudKeyDraft = " ", addressDraft = "", pairingCodeDraft = ""))
+        keyFile.deleteRecursively()
+        assertTrue(engineSettings.saveUnsavedEntries(cloudKeyDraft = "dg-typed", addressDraft = "", pairingCodeDraft = ""))
+        assertEquals("dg-typed", keys.read(CloudProvider.Deepgram))
+    }
+
+    @Test
     fun `agreeing is remembered for that service only, survives a restart, and a key saved earlier keeps working`() = runBlocking<Unit> {
         keys.save("sx-old-key", CloudProvider.Soniox)
         engineSettings.loadKeyState()
