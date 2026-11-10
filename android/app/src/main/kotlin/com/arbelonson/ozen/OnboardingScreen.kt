@@ -278,7 +278,7 @@ private fun MicrophonePage(
             }
             MicrophoneAsk.OpenSettings -> {
                 Status("✕ " + tr("המיקרופון חסום", "Microphone blocked"), good = false)
-                Body(tr("בלי מיקרופון אין כתוביות. אפשר לאשר אותו בהגדרות הטלפון.", "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings."))
+                Body(tr("בלי מיקרופון אין כתוביות. אפשר לאשר גישה למיקרופון בהגדרות הטלפון.", "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings."))
                 TonalButton(tr("פתיחת הגדרות הטלפון", "Open phone settings"), onOpenPhoneSettings, Modifier.fillMaxWidth(), icon = Icons.Rounded.Settings)
             }
             MicrophoneAsk.AskAgain -> {

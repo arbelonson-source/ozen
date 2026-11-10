@@ -347,7 +347,7 @@ struct OnboardingView: View {
                     Label(tr("המיקרופון חסום", "Microphone blocked"), systemImage: "xmark.circle.fill")
                         .foregroundStyle(.readable(.red))
                         .font(.title3.weight(.semibold))
-                    Text(tr("בלי מיקרופון אין כתוביות. אפשר לאשר אותו בהגדרות הטלפון.", "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings."))
+                    Text(tr("בלי מיקרופון אין כתוביות. אפשר לאשר גישה למיקרופון בהגדרות הטלפון.", "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings."))
                     Button {
                         if let url = URL(string: UIApplication.openSettingsURLString) {
                             openURL(url)
@@ -367,7 +367,7 @@ struct OnboardingView: View {
         // Said aloud too: with VoiceOver the answers appeared in silence,
         // and the reason for the notification question was never heard.
         .announcing(tr("המיקרופון מאושר", "Microphone approved") + ". " + tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע לכם על צלצול בדלת, על אזעקה או על קריאה בשמכם.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."), whenTurningTrue: microphone == .granted)
-        .announcing(tr("המיקרופון חסום", "Microphone blocked") + ". " + tr("בלי מיקרופון אין כתוביות. אפשר לאשר אותו בהגדרות הטלפון.", "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings."), whenTurningTrue: microphone == .denied)
+        .announcing(tr("המיקרופון חסום", "Microphone blocked") + ". " + tr("בלי מיקרופון אין כתוביות. אפשר לאשר גישה למיקרופון בהגדרות הטלפון.", "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings."), whenTurningTrue: microphone == .denied)
         .announcing(tr("ההתראות מאושרות", "Notifications approved"), whenTurningTrue: notificationsAllowed == true)
         .announcing(tr("ההתראות לא אושרו. אפשר לשנות את זה בהגדרות.", "No notifications. This can be changed in Settings."), whenTurningTrue: notificationsAllowed == false)
         // Coming back from "Open phone settings" below: re-check rather
