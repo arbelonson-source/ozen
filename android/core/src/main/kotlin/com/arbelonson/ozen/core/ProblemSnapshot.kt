@@ -17,6 +17,7 @@ object ProblemSnapshot {
         device: String,
         utcOffsetSeconds: Int,
         includeCaptions: Boolean = true,
+        held: TranscriptSegment? = null,
     ): List<String> {
         val engine = activeEngine ?: settings.engine
         val microphone = input?.let { "${it.portName} [${it.portType.rawValue}]" } ?: "-"
@@ -26,12 +27,19 @@ object ProblemSnapshot {
             "  $device",
         )
         if (!includeCaptions) lines.add("  caption lines not kept (saving conversations is off)")
-        for (segment in if (includeCaptions) segments.takeLast(lineCount) else emptyList()) {
-            val sureness = segment.confidence?.let { String.format(Locale.ROOT, "%.2f", it) } ?: "-"
-            val time = TranscriptHistoryStore.formattedClockTime(segment.lastUpdateTimestamp, utcOffsetSeconds)
-            lines.add("$CAPTION_LINE_PREFIX${if (segment.isCommitted) "final" else "live"}, sure $sureness, $time): ${segment.text}")
-        }
+        if (!includeCaptions) return lines
+        // The line held to mark the problem is the one she found wrong: it
+        // goes in, marked, even when it is older than the newest few.
+        val newest = segments.takeLast(lineCount)
+        for (segment in newest) lines.add(line(segment, segment.id == held?.id, utcOffsetSeconds))
+        if (held != null && newest.none { it.id == held.id }) lines.add(line(held, true, utcOffsetSeconds))
         return lines
+    }
+
+    private fun line(segment: TranscriptSegment, held: Boolean, utcOffsetSeconds: Int): String {
+        val sureness = segment.confidence?.let { String.format(Locale.ROOT, "%.2f", it) } ?: "-"
+        val time = TranscriptHistoryStore.formattedClockTime(segment.lastUpdateTimestamp, utcOffsetSeconds)
+        return "$CAPTION_LINE_PREFIX${if (held) "held, " else ""}${if (segment.isCommitted) "final" else "live"}, sure $sureness, $time): ${segment.text}"
     }
 
     private fun number(value: Double?, format: String): String =

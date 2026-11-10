@@ -883,7 +883,7 @@ private fun CaptionScreen(
     onDismissMicrophoneDrop: () -> Unit,
     onDismissRoutedElsewhere: () -> Unit = {},
     onDismissPhoneSoundStopped: () -> Unit,
-    onMarkProblem: () -> Boolean,
+    onMarkProblem: (heldLine: UUID?) -> Boolean,
     onSendReport: suspend (markedAt: Double) -> String,
     savesConversations: Boolean,
     onMicrophone: () -> Unit,
@@ -1209,7 +1209,7 @@ private fun CaptionScreen(
                                 if (offer != null) LighterModelOffer(offer, modelOfferWaiting, inUseModelBytes, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             }
                         }
-                        CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, marks, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarkedAt = secondsNow(); problemMarked = onMarkProblem() })
+                        CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, marks, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { line -> markedWithCaptions = savesConversations; problemMarkedAt = secondsNow(); problemMarked = onMarkProblem(line) })
                         if (!following) {
                             JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                                 following = true
@@ -1396,7 +1396,7 @@ private fun CaptionLines(
     onFix: (CaptionLine) -> Unit,
     onName: (CaptionLine) -> Unit,
     onAskToRepeat: (() -> Unit)?,
-    onMarkProblem: () -> Unit,
+    onMarkProblem: (line: UUID) -> Unit,
 ) {
     val lastIndex = if (trailing != null) lines.size else lines.lastIndex
     LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize, trailing != null) {
@@ -1424,7 +1424,7 @@ private fun CaptionLines(
                     onFix = { onFix(line) },
                     onName = { onName(line) },
                     onAskToRepeat = onAskToRepeat,
-                    onMarkProblem = onMarkProblem,
+                    onMarkProblem = { onMarkProblem(line.id) },
                 )
             }
             val gap = line.afterQuiet

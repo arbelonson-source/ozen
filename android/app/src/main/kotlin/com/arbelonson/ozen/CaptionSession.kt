@@ -1065,7 +1065,10 @@ class CaptionSession(
         )
     }
 
-    override fun markProblem(): Boolean {
+    override fun markProblem(): Boolean = markProblem(heldLine = null)
+
+    /** From a line's hold menu: that line goes in the report too, marked as the one held. */
+    fun markProblem(heldLine: UUID?): Boolean {
         val now = System.currentTimeMillis() / 1_000.0
         val lines = ProblemSnapshot.lines(
             settings = settings.current.value,
@@ -1076,6 +1079,7 @@ class CaptionSession(
             device = deviceState(),
             utcOffsetSeconds = utcOffsetAt(now),
             includeCaptions = settings.current.value.saveHistory,
+            held = heldLine?.let { id -> pipeline.segments.firstOrNull { it.id == id } },
         )
         lines.forEach { journal.append(it, now) }
         // With saving conversations off, the room's sound isn't kept either.
