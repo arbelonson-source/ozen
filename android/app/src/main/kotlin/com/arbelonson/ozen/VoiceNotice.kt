@@ -2,13 +2,24 @@ package com.arbelonson.ozen
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
+import kotlinx.coroutines.delay
 
 object VoiceNotice {
     fun forSettings(language: UILanguage, installed: Set<UILanguage>?): String? =
@@ -19,6 +30,10 @@ object VoiceNotice {
         else listOfNotNull(missingFor(language, installed), missingHebrew(installed))
 
     fun openSettings(): String = tr("פתיחת הגדרות הטלפון", "Open phone settings")
+
+    fun silentMedia(mediaVolume: Int): String? = if (mediaVolume > 0) null else tr("עוצמת המדיה בטלפון על אפס, ולכן אף אחד לא ישמע את המשפטים.", "The phone’s media volume is at zero, so nobody will hear these phrases.")
+
+    fun turnUp(): String = tr("הגברת הקול", "Turn the volume up")
 
     private fun missingFor(language: UILanguage, installed: Set<UILanguage>?): String? {
         if (installed == null) return null
@@ -46,6 +61,24 @@ internal fun VoiceNotices(notices: List<String>) {
     val context = LocalContext.current
     notices.forEach { Text(it, color = cautionOrange()) }
     TextButton(onClick = { openVoiceSettings(context) }) { Text(VoiceNotice.openSettings()) }
+}
+
+@Composable
+internal fun MediaVolumeNotice() {
+    val audio = LocalContext.current.getSystemService(AudioManager::class.java) ?: return
+    var volume by remember { mutableIntStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC)) }
+    LaunchedEffect(audio) {
+        while (true) {
+            volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+            delay(1_000)
+        }
+    }
+    val notice = VoiceNotice.silentMedia(volume) ?: return
+    Text(notice, color = cautionOrange(), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+    TextButton(onClick = {
+        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
+        volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+    }) { Text(VoiceNotice.turnUp()) }
 }
 
 internal fun openVoiceSettings(context: Context) {

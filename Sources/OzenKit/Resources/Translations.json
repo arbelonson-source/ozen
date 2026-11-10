@@ -1093,7 +1093,9 @@
   "Up to %1 letters and spaces in each box.": "በእያንዳንዱ ሳጥን እስከ %1 ፊደላትና ክፍተቶች።",
   "“Heard” and “Written” are the same. A fix can’t change only capital letters.": "“የተሰማው” እና “የተጻፈው” አንድ ናቸው። ማስተካከያ ትላልቅ ፊደላትን ብቻ መቀየር አይችልም።",
   "In “Heard”: up to %1 words, with only spaces between them.": "በ“የተሰማው” ውስጥ፦ እስከ %1 ቃላት፣ በመካከላቸው ክፍተት ብቻ።",
-  "The list is full. Delete a fix to add another.": "ዝርዝሩ ሞልቷል። ሌላ ለመጨመር አንድ ማስተካከያ ይሰርዙ።"
+  "The list is full. Delete a fix to add another.": "ዝርዝሩ ሞልቷል። ሌላ ለመጨመር አንድ ማስተካከያ ይሰርዙ።",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "የስልኩ የሚዲያ ድምጽ ዜሮ ላይ ነው፤ ስለዚህ እነዚህን ሐረጎች ማንም አይሰማም።",
+  "Turn the volume up": "ድምጹን ይጨምሩ"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2189,7 +2191,9 @@
   "Up to %1 letters and spaces in each box.": "حتى %1 من الأحرف والمسافات في كل خانة.",
   "“Heard” and “Written” are the same. A fix can’t change only capital letters.": "“المسموع” و“المكتوب” متطابقان. لا يمكن للتصحيح أن يغيّر الأحرف الكبيرة فقط.",
   "In “Heard”: up to %1 words, with only spaces between them.": "في “المسموع”: حتى %1 كلمات، بينها مسافات فقط.",
-  "The list is full. Delete a fix to add another.": "القائمة ممتلئة. احذفوا تصحيحًا لإضافة آخر."
+  "The list is full. Delete a fix to add another.": "القائمة ممتلئة. احذفوا تصحيحًا لإضافة آخر.",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "مستوى صوت الوسائط في الهاتف على الصفر، لذلك لن يسمع أحد هذه العبارات.",
+  "Turn the volume up": "رفع الصوت"
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3285,7 +3289,9 @@
   "Up to %1 letters and spaces in each box.": "每个框最多 %1 个字（含空格）。",
   "“Heard” and “Written” are the same. A fix can’t change only capital letters.": "“听到的”和“写成的”相同。修正不能只改变大小写。",
   "In “Heard”: up to %1 words, with only spaces between them.": "“听到的”中：最多 %1 个词，词之间只能有空格。",
-  "The list is full. Delete a fix to add another.": "列表已满。删除一条修正才能再添加。"
+  "The list is full. Delete a fix to add another.": "列表已满。删除一条修正才能再添加。",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "手机的媒体音量为零，所以没人能听到这些话。",
+  "Turn the volume up": "调高音量"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4381,7 +4387,9 @@
   "Up to %1 letters and spaces in each box.": "Jusqu’à %1 lettres et espaces dans chaque case.",
   "“Heard” and “Written” are the same. A fix can’t change only capital letters.": "« Entendu » et « Écrit » sont identiques. Une correction ne peut pas changer seulement les majuscules.",
   "In “Heard”: up to %1 words, with only spaces between them.": "Dans « Entendu » : jusqu’à %1 mots, séparés seulement par des espaces.",
-  "The list is full. Delete a fix to add another.": "La liste est pleine. Supprimez une correction pour en ajouter une autre."
+  "The list is full. Delete a fix to add another.": "La liste est pleine. Supprimez une correction pour en ajouter une autre.",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "Le volume multimédia du téléphone est à zéro, donc personne n’entendra ces phrases.",
+  "Turn the volume up": "Monter le volume"
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5477,7 +5485,9 @@
   "Up to %1 letters and spaces in each box.": "Bis zu %1 Buchstaben und Leerzeichen pro Feld.",
   "“Heard” and “Written” are the same. A fix can’t change only capital letters.": "„Gehört“ und „Geschrieben“ sind gleich. Eine Korrektur kann nicht nur die Groß- und Kleinschreibung ändern.",
   "In “Heard”: up to %1 words, with only spaces between them.": "In „Gehört“: bis zu %1 Wörter, nur durch Leerzeichen getrennt.",
-  "The list is full. Delete a fix to add another.": "Die Liste ist voll. Löschen Sie eine Korrektur, um eine andere hinzuzufügen."
+  "The list is full. Delete a fix to add another.": "Die Liste ist voll. Löschen Sie eine Korrektur, um eine andere hinzuzufügen.",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "Die Medienlautstärke des Telefons steht auf null, daher hört niemand diese Sätze.",
+  "Turn the volume up": "Lauter stellen"
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6573,7 +6583,9 @@
   "Up to %1 letters and spaces in each box.": "हर खाने में ज़्यादा से ज़्यादा %1 अक्षर और खाली जगहें।",
   "“Heard” and “Written” are the same. A fix can’t change only capital letters.": "“सुना गया” और “लिखा गया” एक जैसे हैं। सुधार सिर्फ़ बड़े-छोटे अक्षर नहीं बदल सकता।",
   "In “Heard”: up to %1 words, with only spaces between them.": "“सुना गया” में: ज़्यादा से ज़्यादा %1 शब्द, बीच में सिर्फ़ खाली जगह।",
-  "The list is full. Delete a fix to add another.": "सूची भर चुकी है। दूसरा जोड़ने के लिए एक सुधार मिटाएं।"
+  "The list is full. Delete a fix to add another.": "सूची भर चुकी है। दूसरा जोड़ने के लिए एक सुधार मिटाएं।",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "फ़ोन की मीडिया आवाज़ शून्य पर है, इसलिए ये वाक्य कोई नहीं सुनेगा।",
+  "Turn the volume up": "आवाज़ बढ़ाएं"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7669,7 +7681,9 @@
   "Up to %1 letters and spaces in each box.": "Até %1 letras e espaços em cada caixa.",
   "“Heard” and “Written” are the same. A fix can’t change only capital letters.": "“Ouvido” e “Escrito” são iguais. Uma correção não pode mudar só as maiúsculas.",
   "In “Heard”: up to %1 words, with only spaces between them.": "Em “Ouvido”: até %1 palavras, separadas só por espaços.",
-  "The list is full. Delete a fix to add another.": "A lista está cheia. Elimine uma correção para adicionar outra."
+  "The list is full. Delete a fix to add another.": "A lista está cheia. Elimine uma correção para adicionar outra.",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "O volume de multimédia do telemóvel está a zero, por isso ninguém vai ouvir estas frases.",
+  "Turn the volume up": "Aumentar o volume"
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8765,7 +8779,9 @@
   "Up to %1 letters and spaces in each box.": "Не больше %1 букв и пробелов в каждом поле.",
   "“Heard” and “Written” are the same. A fix can’t change only capital letters.": "«Услышано» и «Написано» совпадают. Исправление не может менять только заглавные буквы.",
   "In “Heard”: up to %1 words, with only spaces between them.": "В поле «Услышано»: не больше %1 слов, только с пробелами между ними.",
-  "The list is full. Delete a fix to add another.": "Список заполнен. Удалите исправление, чтобы добавить другое."
+  "The list is full. Delete a fix to add another.": "Список заполнен. Удалите исправление, чтобы добавить другое.",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "Громкость мультимедиа на телефоне на нуле, поэтому эти фразы никто не услышит.",
+  "Turn the volume up": "Сделать громче"
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -9861,7 +9877,9 @@
   "Up to %1 letters and spaces in each box.": "Hasta %1 letras y espacios en cada casilla.",
   "“Heard” and “Written” are the same. A fix can’t change only capital letters.": "“Oído” y “Escrito” son iguales. Una corrección no puede cambiar solo las mayúsculas.",
   "In “Heard”: up to %1 words, with only spaces between them.": "En “Oído”: hasta %1 palabras, separadas solo por espacios.",
-  "The list is full. Delete a fix to add another.": "La lista está llena. Elimina una corrección para añadir otra."
+  "The list is full. Delete a fix to add another.": "La lista está llena. Elimina una corrección para añadir otra.",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "El volumen multimedia del teléfono está a cero, así que nadie oirá estas frases.",
+  "Turn the volume up": "Subir el volumen"
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -10957,6 +10975,8 @@
   "Up to %1 letters and spaces in each box.": "Не більше %1 літер і пробілів у кожному полі.",
   "“Heard” and “Written” are the same. A fix can’t change only capital letters.": "«Почуто» і «Записано» однакові. Виправлення не може змінювати лише великі літери.",
   "In “Heard”: up to %1 words, with only spaces between them.": "У полі «Почуто»: не більше %1 слів, лише з пробілами між ними.",
-  "The list is full. Delete a fix to add another.": "Список заповнений. Видаліть виправлення, щоб додати інше."
+  "The list is full. Delete a fix to add another.": "Список заповнений. Видаліть виправлення, щоб додати інше.",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "Гучність медіа на телефоні на нулі, тож ці фрази ніхто не почує.",
+  "Turn the volume up": "Зробити гучніше"
  }
 }

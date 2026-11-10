@@ -13,6 +13,13 @@ class VoiceNoticeTest {
     private val noFrench = "No voice for Français is installed on this phone, so these phrases can’t be read aloud."
 
     @Test
+    fun `with the media volume at zero it says nobody will hear the phrases, and nothing once there is any volume`() = Localization.withLanguage(UILanguage.English) {
+        assertEquals("The phone’s media volume is at zero, so nobody will hear these phrases.", VoiceNotice.silentMedia(0))
+        assertNull(VoiceNotice.silentMedia(1))
+        assertEquals("Turn the volume up", VoiceNotice.turnUp())
+    }
+
+    @Test
     fun `nothing is said before the phone has answered which voices it has`() = Localization.withLanguage(UILanguage.English) {
         assertNull(VoiceNotice.forSettings(UILanguage.Hebrew, installed = null))
         assertEquals(emptyList(), VoiceNotice.forSay(UILanguage.French, installed = null))

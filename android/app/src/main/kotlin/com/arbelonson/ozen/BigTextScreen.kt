@@ -167,6 +167,7 @@ internal fun BigTextScreen(
             if (canSpeak) add(BigAction(Icons.AutoMirrored.Rounded.VolumeUp, tr("השמעה", "Speak"), null, onSpeak.takeUnless { empty }))
             add(BigAction(Icons.Rounded.Close, tr("סגירה", "Close"), null, onClose))
         }
+        if (canSpeak) Column(Modifier.padding(horizontal = 16.dp)) { MediaVolumeNotice() }
         HorizontalDivider(color = look.chrome.copy(alpha = 0.2f))
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
