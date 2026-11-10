@@ -167,6 +167,37 @@ public enum HebrewText {
         return String(folded).precomposedStringWithCanonicalMapping
     }
 
+    /// "على" ("on"), among the commonest words in Arabic, folds to "علي",
+    /// the name Ali, so an alert for Ali buzzed on nearly every sentence.
+    /// Captions write the word with its alef maqsura and the name with ya,
+    /// so a caption word spelled exactly like this keeps its alef maqsura
+    /// and never matches a saved word, however the name was typed.
+    static let wordsKeptApartFromNames: Set<String> = ["على", "وعلى", "فعلى"]
+
+    /// `normalize` for one caption word, except the words in
+    /// `wordsKeptApartFromNames`, which keep their alef maqsura.
+    static func normalizeCaptionWord(_ word: String) -> String {
+        let normalized = normalize(word)
+        guard normalized.hasSuffix("ي") else { return normalized }
+        let unfolded = String(String.UnicodeScalarView(normalizeKeepingAccents(word).unicodeScalars.filter {
+            !(0x064B...0x065F).contains($0.value) && $0.value != 0x0670 && $0.value != 0x0640
+        }))
+        return wordsKeptApartFromNames.contains(unfolded) ? unfolded : normalized
+    }
+
+    /// A saved phrase's words. In a phrase of several words "على" keeps its
+    /// alef maqsura, as `normalizeCaptionWord` keeps it in a caption, so
+    /// "على الباب" ("at the door") still finds itself; a lone "على" is the
+    /// name Ali typed with alef maqsura and folds as before.
+    static func phraseWords(_ phrase: String) -> [String] {
+        let folded = words(phrase)
+        guard folded.count > 1 else { return folded }
+        let kept = separatingJoiners(phrase).split(whereSeparator: { $0.isWhitespace })
+            .map { normalizeCaptionWord(String($0)) }
+            .filter { !$0.isEmpty }
+        return kept.count == folded.count ? kept : folded
+    }
+
     /// A word typed only in another alphabet ("Sarah" or "Саша" while the
     /// captions come out in Hebrew letters, "Dana" or "דנה" while they are
     /// in Arabic ones): its alert stays silent, so the screens that add one
@@ -339,12 +370,14 @@ public enum HebrewText {
     /// A doctor's title is also said and written both in full and as the
     /// abbreviation ("ד״ר", which normalizes to "דר"), so an alert on
     /// "Dr. Cohen" saved one way stayed silent when the caption used the
-    /// other.
+    /// other. "على" inside a saved phrase may be the name Ali typed with
+    /// alef maqsura, so it also finds "علي".
     public static let otherForms: [String: Set<String>] = [
         "תרופה": ["תרופות", "תרופת"],
         "רופא": ["רופאה", "רופאים", "רופאות", "רופאת"],
         "דר": ["דוקטור"],
         "דוקטור": ["דר"],
+        "على": ["علي"],
     ]
 
     static func containsHan(_ text: String) -> Bool {
@@ -474,14 +507,14 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
         // `rawWords`, so a word's index always means the same thing on
         // both sides even when a word is pure punctuation and normalizes
         // to the empty string.
-        let normalizedWords = rawWords.map(HebrewText.normalize)
+        let normalizedWords = rawWords.map(HebrewText.normalizeCaptionWord)
         let trimmedWords = rawWords.map(Self.trimmingEdgePunctuation)
 
         var unordered: [(match: KeywordMatch, sequence: Int)] = []
         var repeatedInOneWord = Set<Int>()
         var sequence = 0
         for alert in alerts where alert.isEnabled {
-            let phraseWords = HebrewText.words(alert.phrase)
+            let phraseWords = HebrewText.phraseWords(alert.phrase)
             // No skipping a line with fewer words than the phrase: a name
             // saved as two words can be the whole line written as one.
             guard !phraseWords.isEmpty else { continue }

@@ -761,6 +761,20 @@ struct KeywordMatchingRound2Tests {
         #expect(count("محمد", "قال مُحَمَّد") == 1)
     }
 
+    @Test("the Arabic word for 'on' is not the name Ali, however the name was typed")
+    func arabicOnIsNotAli() {
+        #expect(count("علي", "ضعه على الطاولة") == 0)
+        #expect(count("على", "ضعه على الطاولة") == 0)
+        #expect(count("علي", "ضعه عَلَى الطاولة") == 0)
+        #expect(count("علي", "وعلى الطاولة") == 0)
+        #expect(count("علي", "قال علي") == 1)
+        #expect(count("على", "قال علي") == 1)
+        #expect(count("علي", "قال علي، على الطاولة") == 1)
+        #expect(count("على الباب", "أحد على الباب") == 1)
+        #expect(count("على حسن", "قال علي حسن") == 1)
+        #expect(count("علي حسن", "قال على حسن") == 0)
+    }
+
     @Test("folding does not merge different words")
     func foldingKeepsDifferentWords() {
         #expect(count("Dan", "Dana") == 0)

@@ -617,6 +617,20 @@ class OtherLettersTest {
     }
 
     @Test
+    fun `the Arabic word for 'on' is not the name Ali, however the name was typed`() {
+        assertEquals(0, hits("علي", "ضعه على الطاولة"))
+        assertEquals(0, hits("على", "ضعه على الطاولة"))
+        assertEquals(0, hits("علي", "ضعه عَلَى الطاولة"))
+        assertEquals(0, hits("علي", "وعلى الطاولة"))
+        assertEquals(1, hits("علي", "قال علي"))
+        assertEquals(1, hits("على", "قال علي"))
+        assertEquals(1, hits("علي", "قال علي، على الطاولة"))
+        assertEquals(1, hits("على الباب", "أحد على الباب"))
+        assertEquals(1, hits("على حسن", "قال علي حسن"))
+        assertEquals(0, hits("علي حسن", "قال على حسن"))
+    }
+
+    @Test
     fun `hamza on waw and ya is folded like the one on alef, and a longer word stays apart`() {
         assertEquals(1, hits("مومن", "قال مؤمن"))
         assertEquals(1, hits("رايد", "قال رائد"))
