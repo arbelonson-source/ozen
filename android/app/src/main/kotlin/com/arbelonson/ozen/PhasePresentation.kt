@@ -277,7 +277,7 @@ class PhasePresentation private constructor(
                     coverReason == EngineUnavailability.Kind.HomeServerRejected ->
                     listening(
                         tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, so the phone carries on by itself · Ask whoever set up the phone for help"),
-                        Action.OpenEngineSettings,
+                        Action.Pause,
                     )
 
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.HomeServer ->
@@ -287,29 +287,31 @@ class PhasePresentation private constructor(
                     )
 
                 // Cloud problems only a person can fix (no key, no credit) get
-                // their own detail and a way to Settings, same as the
-                // failed-outright screen for these two reasons; a generic
-                // "unavailable" here would leave the family with no clue what to
-                // actually go fix.
+                // their own detail; a generic "unavailable" here would leave the
+                // family with no clue what to actually go fix. While the phone
+                // covers, the button still pauses, as on the iPhone: it opened
+                // Settings in these four cases, which can last days until
+                // someone fixes them, and nothing else on the caption screen
+                // pauses. Settings is one tap away on its own button.
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.Cloud &&
                     coverReason == EngineUnavailability.Kind.CloudKeyNeeded ->
                     listening(
                         tr("התמלול בענן לא מוגדר, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription isn’t set up, so the phone carries on by itself · Ask whoever set up the phone for help"),
-                        Action.OpenEngineSettings,
+                        Action.Pause,
                     )
 
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.Cloud &&
                     coverReason == EngineUnavailability.Kind.CloudOutOfCredit ->
                     listening(
                         tr("נגמר הקרדיט לתמלול בענן, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription’s budget ran out, so the phone carries on by itself · Ask whoever set up the phone for help"),
-                        Action.OpenEngineSettings,
+                        Action.Pause,
                     )
 
                 coveringForCloud && coveredEngine == TranscriptionEngineKind.Cloud &&
                     coverReason == EngineUnavailability.Kind.CloudLanguageNotCovered ->
                     listening(
                         tr("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", "This service can’t caption this language, so the phone carries on by itself · Choose another service in Settings"),
-                        Action.OpenEngineSettings,
+                        Action.Pause,
                     )
 
                 // Still captioning, so still active: the words keep coming, only
