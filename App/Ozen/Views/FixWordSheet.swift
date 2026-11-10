@@ -4,7 +4,8 @@ import OzenKit
 struct FixWordSheet: View {
     let text: String
     let languageCode: String
-    let onSave: (WordFix, Bool) -> Void
+    /// Returns whether the line changed.
+    let onSave: (WordFix, Bool) -> Bool
     @State private var picked: ClosedRange<Int>?
     @State private var heard = ""
     @State private var written = ""
@@ -65,8 +66,9 @@ struct FixWordSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(tr("שמירה", "Save")) {
-                        onSave(fix, always)
-                        Announcement.post(tr("השורה תוקנה", "Line fixed"))
+                        if onSave(fix, always) {
+                            Announcement.post(tr("השורה תוקנה", "Line fixed"))
+                        }
                         dismiss()
                     }
                     .disabled(!canSave)

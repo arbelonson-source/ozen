@@ -1852,12 +1852,17 @@ public final class LiveCaptionViewModel {
 
     /// One tap of "Fix a word": the line changes now, the written form
     /// joins the names list, and with `always` the fix is kept for later.
-    public func applyWordFix(_ fix: WordFix, always: Bool, toLine segment: TranscriptSegment) {
+    /// Returns whether the line changed: one cleared from the screen while
+    /// the sheet was open is no longer there to fix, and the sheet must not
+    /// tell VoiceOver it was.
+    @discardableResult
+    public func applyWordFix(_ fix: WordFix, always: Bool, toLine segment: TranscriptSegment) -> Bool {
         applyWordFix(fix, always: always, lineID: segment.id, text: segment.text, sessionID: nil)
     }
 
-    public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, text current: String, sessionID: UUID?) {
-        guard let fixed = WordFixes.normalized([fix]).first else { return }
+    @discardableResult
+    public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, text current: String, sessionID: UUID?) -> Bool {
+        guard let fixed = WordFixes.normalized([fix]).first else { return false }
         addVocabularyTerm(fixed.written)
         if always { addWordFix(fixed) }
         let before = pipeline.segments.last { $0.id == lineID }?.text
@@ -1868,6 +1873,7 @@ public final class LiveCaptionViewModel {
             historyWriter.replaceTextNow(sessionID: sessionID, segmentID: lineID, text: text)
         }
         refreshSavingTrouble()
+        return (live.map { $0 != before } ?? false) || (sessionID != nil && text != current)
     }
 
     private func correctedLine(_ id: UUID, text: String) {
