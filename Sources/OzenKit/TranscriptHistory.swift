@@ -237,6 +237,34 @@ public struct StarredLine: Sendable, Equatable, Identifiable {
     }
 }
 
+/// The starred lines of one saved conversation, under one heading in the
+/// starred list: its name, when it was given one, over its day and time.
+/// Without the name, two conversations of the same morning looked alike.
+public struct StarredConversation: Sendable, Equatable, Identifiable {
+    public let sessionID: UUID
+    public let startedAt: TimeInterval
+    public let title: String?
+    public var lines: [StarredLine]
+    public var id: UUID { sessionID }
+
+    /// In the order the lines come, each conversation once, with its lines
+    /// in their order. A name of only spaces counts as none.
+    public static func grouping(_ lines: [StarredLine]) -> [StarredConversation] {
+        var result: [StarredConversation] = []
+        var index: [UUID: Int] = [:]
+        for line in lines {
+            if let at = index[line.sessionID] {
+                result[at].lines.append(line)
+                continue
+            }
+            let title = line.sessionTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+            index[line.sessionID] = result.count
+            result.append(StarredConversation(sessionID: line.sessionID, startedAt: line.sessionStartedAt, title: title?.isEmpty == false ? title : nil, lines: [line]))
+        }
+        return result
+    }
+}
+
 /// A lightweight stand-in for a `TranscriptSessionRecord` used for listing
 /// and searching, so browsing years of history never has to decode every
 /// segment of every session just to show a list of dates and previews.

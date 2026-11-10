@@ -1351,6 +1351,46 @@ final class OzenScreenshotUITests: XCTestCase {
     /// size before. The `hebrewDefault` fixture also seeds one saved
     /// conversation, with a starred line, so History and Starred lines
     /// show real content instead of their empty states.
+    /// Starred lines offered only Copy on a held line: the star could come
+    /// off only from inside its conversation.
+    func testStarRemovedFromStarredLines() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault"]
+        app.launch()
+
+        let settingsButton = app.descendants(matching: .any)["settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "unstar: the settings button never appeared")
+        let reveal = app.descendants(matching: .any)["showControlsButton"]
+        for _ in 0..<20 where !settingsButton.isHittable {
+            if reveal.exists, reveal.isHittable { reveal.tap() }
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        settingsButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "unstar: settings never appeared")
+        let historyRow = scrollDownUntilVisible(app, identifier: "historyRow")
+        XCTAssertTrue(historyRow.exists, "unstar: the history row never appeared")
+        bringOffBottomEdge(app, historyRow)
+        historyRow.tap()
+        let starredRow = scrollDownUntilVisible(app, identifier: "starredLinesRow")
+        XCTAssertTrue(starredRow.exists, "unstar: the seeded star never reached history")
+        bringOffBottomEdge(app, starredRow)
+        starredRow.tap()
+        let starredScreen = app.descendants(matching: .any)["starredLinesScreen"]
+        XCTAssertTrue(starredScreen.waitForExistence(timeout: 10), "unstar: starred lines never appeared")
+
+        let saidFirst = NSPredicate(format: "label CONTAINS %@", "בוקר טוב")
+        var line = starredScreen.buttons.matching(saidFirst).firstMatch
+        if !line.waitForExistence(timeout: 5) { line = starredScreen.descendants(matching: .any).matching(saidFirst).firstMatch }
+        XCTAssertTrue(line.waitForExistence(timeout: 10), "unstar: the starred line isn't listed")
+        line.press(forDuration: 1.2)
+        let remove = app.buttons["הסרת הסימון"]
+        XCTAssertTrue(remove.waitForExistence(timeout: 5), "unstar: holding the line offers no 'Remove the star'")
+        capture(app, name: "starred-line-menu")
+        remove.tap()
+        XCTAssertTrue(app.staticTexts["אין שורות מסומנות"].waitForExistence(timeout: 10), "unstar: the line stayed in Starred lines")
+        capture(app, name: "starred-lines-after-unstar")
+    }
+
     func testSecondaryScreensAccessibilityText() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestScreenshots", "hebrewDefault", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]

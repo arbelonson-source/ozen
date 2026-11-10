@@ -1098,6 +1098,29 @@ class HistoryScreenDeviceTest {
         assertTrue(compose.onAllNodesWithContentDescription("Starred list test two pills", substring = true).fetchSemanticsNodes().isEmpty())
     }
 
+    // A screen reader's action fired twice before the list was read back
+    // took the star off and then put it back on.
+    @Test
+    fun aStarAskedOffTwiceFromStarredLinesStaysOff() {
+        val id = starredConversation("Starred list test the bus at seven", System.currentTimeMillis() / 1_000.0 - 60)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Opening line of the bus at seven")
+        val total = store.listSummaries().sumOf { it.starredCount }
+        compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
+        compose.waitUntil(5_000) { shownLine("Starred list test the bus at seven") }
+        val line = compose.onNodeWithContentDescription("Starred list test the bus at seven", substring = true).fetchSemanticsNode()
+        val remove = line.config[SemanticsActions.CustomActions].single { it.label == "Remove the star" }
+        compose.runOnUiThread {
+            remove.action()
+            remove.action()
+        }
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Starred list test the bus at seven", substring = true).fetchSemanticsNodes().isEmpty() }
+        compose.waitUntil(5_000) { store.load(id)!!.segments.none { it.isStarred } }
+        compose.waitForIdle()
+        assertTrue(store.load(id)!!.segments.none { it.isStarred })
+        assertTrue(compose.onAllNodesWithContentDescription("Starred list test the bus at seven", substring = true).fetchSemanticsNodes().isEmpty())
+    }
+
     @Test
     fun aConversationOpenedAtAStarredLineMarksItForAMomentAndNextStarredGoesOnFromIt() {
         val startedAt = System.currentTimeMillis() / 1_000.0 - 300

@@ -1427,6 +1427,25 @@ struct TranscriptHistoryAllStarredTests {
 
 @Suite("Transcript history sharing starred lines")
 struct TranscriptHistoryStarredExportTests {
+    // Two conversations of the same morning looked alike in Starred lines:
+    // the heading never said the name either had been given.
+    @Test("starred lines are grouped by conversation in the order they come, each with its name when it has one")
+    func groupedWithNames() {
+        let doctor = UUID()
+        let shop = UUID()
+        let unnamed = UUID()
+        func line(_ session: UUID, _ at: TimeInterval, _ title: String?) -> StarredLine {
+            StarredLine(sessionID: session, sessionStartedAt: at, segment: SavedSegment(id: UUID(), text: "שורה", speakerName: nil, speakerClusterID: nil, startTimestamp: at, isCommitted: true, isStarred: true), sessionTitle: title)
+        }
+        let lines = [line(doctor, 300, "אצל הרופא"), line(doctor, 300, "אצל הרופא"), line(shop, 200, "   "), line(unnamed, 100, nil), line(doctor, 300, "אצל הרופא")]
+        let groups = StarredConversation.grouping(lines)
+        #expect(groups.map(\.sessionID) == [doctor, shop, unnamed])
+        #expect(groups.map(\.title) == ["אצל הרופא", nil, nil])
+        #expect(groups.map(\.startedAt) == [300, 200, 100])
+        #expect(groups[0].lines.map(\.id) == [lines[0].id, lines[1].id, lines[4].id])
+        #expect(StarredConversation.grouping([]).isEmpty)
+    }
+
     @Test("starred lines share as dated blocks with times and real names only")
     func exportFormat() {
         let first = UUID()

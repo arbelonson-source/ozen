@@ -11,6 +11,9 @@ struct StarredLinesView: View {
     let onHistoryChanged: () -> Void
     @State private var lines: [StarredLine] = []
     @State private var hasLoaded = false
+    /// Reads can finish out of order: only the newest is shown, or an older
+    /// read would bring back a line whose star had just come off.
+    @State private var reads = 0
     @ScaledMetric(relativeTo: .body) private var bodySize: Double = 17
 
     private var lineSize: Double { DisplayPreferences.savedLineSize(captionSize: viewModel.display.fontSize, bodySize: bodySize) }
@@ -23,7 +26,7 @@ struct StarredLinesView: View {
                 ContentUnavailableView(tr("אין שורות מסומנות", "No starred lines"), systemImage: "star", description: Text(tr("לחיצה ארוכה על שורה בזמן השיחה מסמנת אותה כחשובה.", "Press and hold a line during the conversation to mark it as important.")))
             } else {
                 List {
-                    ForEach(groups) { group in
+                    ForEach(StarredConversation.grouping(lines)) { group in
                         Section {
                             let slots = SpeakerColorSlots(group.lines.map { (clusterID: $0.segment.speakerClusterID, name: $0.segment.speakerName) })
                             ForEach(group.lines) { line in
@@ -73,11 +76,17 @@ struct StarredLinesView: View {
                                         languageCode: viewModel.settings.languageCode
                                     )))
                                 }
-                                .contextMenu { copyButton(line.segment.text) }
-                                .accessibilityActions { copyButton(line.segment.text) }
+                                .contextMenu {
+                                    copyButton(line.segment.text)
+                                    unstarButton(line)
+                                }
+                                .accessibilityActions {
+                                    copyButton(line.segment.text)
+                                    unstarButton(line)
+                                }
                             }
                         } header: {
-                            Text(HistoryDays.heading(startedAt: group.startedAt))
+                            heading(group)
                         }
                     }
                 }
@@ -113,28 +122,45 @@ struct StarredLinesView: View {
         }
     }
 
-    private func load() async {
-        let store = viewModel.historyStore
-        lines = await Task.detached(priority: .userInitiated) { store.starredLines() }.value
-        hasLoaded = true
-    }
-
-    private struct ConversationStars: Identifiable {
-        let sessionID: UUID
-        let startedAt: TimeInterval
-        var lines: [StarredLine]
-        var id: UUID { sessionID }
-    }
-
-    private var groups: [ConversationStars] {
-        var result: [ConversationStars] = []
-        for line in lines {
-            if let last = result.indices.last, result[last].sessionID == line.sessionID {
-                result[last].lines.append(line)
-            } else {
-                result.append(ConversationStars(sessionID: line.sessionID, startedAt: line.sessionStartedAt, lines: [line]))
+    /// A named conversation's heading says its name over its day and time,
+    /// read as one heading.
+    @ViewBuilder
+    private func heading(_ group: StarredConversation) -> some View {
+        if let title = group.title {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .fontWeight(.semibold)
+                Text(HistoryDays.heading(startedAt: group.startedAt))
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+        } else {
+            Text(HistoryDays.heading(startedAt: group.startedAt))
         }
-        return result
+    }
+
+    /// The star can come off from here too: only Copy was offered, and
+    /// taking a star away meant finding the line inside its conversation.
+    private func unstarButton(_ line: StarredLine) -> some View {
+        Button {
+            // Off the list at once, so it can't be asked again (which would put
+            // the star back); the read after brings it back if the star stayed.
+            lines.removeAll { $0.id == line.id }
+            viewModel.toggleStarInHistory(sessionID: line.sessionID, segmentID: line.id)
+            onHistoryChanged()
+            Task { await load() }
+        } label: {
+            Label(tr("הסרת הסימון", "Remove the star"), systemImage: "star.slash")
+        }
+    }
+
+    private func load() async {
+        reads += 1
+        let read = reads
+        let store = viewModel.historyStore
+        let found = await Task.detached(priority: .userInitiated) { store.starredLines() }.value
+        guard read == reads else { return }
+        lines = found
+        hasLoaded = true
     }
 }

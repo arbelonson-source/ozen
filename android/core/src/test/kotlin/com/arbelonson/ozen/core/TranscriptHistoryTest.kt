@@ -1428,6 +1428,24 @@ class TranscriptHistoryAllStarredTest {
 }
 
 class TranscriptHistoryStarredExportTest {
+    // Two conversations of the same morning looked alike in Starred lines:
+    // the heading never said the name either had been given.
+    @Test
+    fun `starred lines are grouped by conversation in the order they come, each with its name when it has one`() {
+        val doctor = UUID.randomUUID()
+        val shop = UUID.randomUUID()
+        val unnamed = UUID.randomUUID()
+        fun line(session: UUID, at: Double, title: String?) =
+            StarredLine(session, at, SavedSegment(id = UUID.randomUUID(), text = "שורה", speakerName = null, speakerClusterID = null, startTimestamp = at, isCommitted = true, isStarred = true), sessionTitle = title)
+        val lines = listOf(line(doctor, 300.0, "אצל הרופא"), line(doctor, 300.0, "אצל הרופא"), line(shop, 200.0, "   "), line(unnamed, 100.0, null), line(doctor, 300.0, "אצל הרופא"))
+        val groups = StarredConversation.grouping(lines)
+        assertEquals(listOf(doctor, shop, unnamed), groups.map { it.sessionID })
+        assertEquals(listOf("אצל הרופא", null, null), groups.map { it.title })
+        assertEquals(listOf(300.0, 200.0, 100.0), groups.map { it.startedAt })
+        assertEquals(listOf(lines[0].id, lines[1].id, lines[4].id), groups[0].lines.map { it.id })
+        assertTrue(StarredConversation.grouping(emptyList()).isEmpty())
+    }
+
     @Test
     fun `starred lines share as dated blocks with times and real names only`() {
         val first = UUID.randomUUID()
