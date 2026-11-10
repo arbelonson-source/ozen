@@ -437,6 +437,29 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun atThirtyOfThirtyTheScreenSaysItIsSavingOffersNoStopAndCancelKeepsTheVoiceprint() {
+        val book = RecordingBook()
+        val closed = CompletableDeferred<Unit>()
+        compose.runOnUiThread { compose.activity.setContent { SpeakerEnrollmentScreen(book, onClose = { closed.complete(Unit) }) } }
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.EditableText)).performTextInput("Grandma")
+        keyboardAway()
+        compose.onNodeWithText("Record and save (30 seconds)").performClick()
+        compose.waitUntil(5_000) { book.asked.size == 1 }
+        compose.runOnUiThread { book.progress(1.0) }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Saving the voiceprint…").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Recording… 30/30 seconds").assertDoesNotExist()
+        compose.onNodeWithText("Stop without saving").assertDoesNotExist()
+
+        compose.onNodeWithText("Cancel").performClick()
+        compose.waitUntil(5_000) { closed.isCompleted }
+        compose.waitForIdle()
+        assertFalse("closing at 30/30 threw the finished recording away", book.stopped)
+        book.finish(true)
+        compose.waitUntil(5_000) { SpeakerRecordings.progress.value == null }
+        assertFalse(book.stopped)
+    }
+
+    @Test
     fun turningThePhoneWhileAVoiceIsRecordingKeepsRecordingShowsHowFarItIsAndSavesIt() {
         val book = RecordingBook()
         val closed = CompletableDeferred<Unit>()
