@@ -1,13 +1,29 @@
 package com.arbelonson.ozen.core
 
+import java.io.File
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 
 class CloudKeyCheckTest {
+    @Test
+    fun `only a key the service turned down, or one without credit, counts as refused`() {
+        assertEquals(setOf(CloudKeyCheck.Rejected, CloudKeyCheck.NoCredit), CloudKeyCheck.entries.filter { it.refusesKey }.toSet())
+    }
+
+    @Test
+    fun `each service's key page is the one the cloud services guide gives`() {
+        val root = File(System.getProperty("ozen.fixtures")).parentFile.parentFile
+        val guide = File(root, "docs/cloud-services.md").readText(Charsets.UTF_8)
+        for (service in CloudProvider.entries) {
+            assertTrue(service.keyPage.startsWith("https://") && service.keyPage in guide, "${service.displayName}: ${service.keyPage}")
+        }
+    }
+
     private fun check(provider: CloudProvider, answer: FakeCloudHTTP.Answer): CloudKeyCheck =
         runBlocking { CloudKeyCheck.result(provider, "fake-key", FakeCloudHTTP(keyChecks = listOf(answer))) }
 

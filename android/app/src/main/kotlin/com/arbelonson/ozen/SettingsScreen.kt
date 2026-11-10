@@ -575,6 +575,9 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
     var saveFailed by remember(service) { mutableStateOf(false) }
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
     var askingConsent by rememberSaveable { mutableStateOf(false) }
+    val refused = keyCheck?.refusesKey == true
+    val links = LocalUriHandler.current
+    LaunchedEffect(service) { engineSettings.checkSavedKeyIfUnchecked() }
     val saveNow = {
         if (draft.isNotBlank()) {
             val typed = draft
@@ -604,7 +607,21 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
     SettingsGroup {
         item {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
-                if (hasKey) Text(tr("מפתח שמור בטלפון", "Key saved on the phone"), color = savedGreen())
+                // A refused key isn't shown as a green "saved" with the
+                // refusal further down: the refusal takes the green line's place.
+                if (hasKey) {
+                    keyCheck?.takeIf { refused }?.let { KeyCheckLine(it) } ?: Text(tr("מפתח שמור בטלפון", "Key saved on the phone"), color = savedGreen())
+                } else {
+                    Text(
+                        tr("המפתח הוא קוד ארוך שמקבלים באתר של %1 אחרי שפותחים שם חשבון.", "A key is a long code you get from the %1 website after opening an account there.", listOf(service.displayName)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = { runCatching { links.openUri(service.keyPage) } }) {
+                        Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.padding(end = OzenSpacing.Unit))
+                        Text(tr("פתיחת האתר של %1", "Open the %1 website", listOf(service.displayName)))
+                    }
+                }
                 OutlinedTextField(
                     value = draft,
                     onValueChange = {
@@ -628,7 +645,7 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
                 )
                 if (draft.isNotBlank()) PrimaryButton(tr("שמירת המפתח", "Save key"), onClick = save, modifier = Modifier.fillMaxWidth())
                 if (saveFailed) Warning(tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again."))
-                keyCheck?.let { KeyCheckLine(it) }
+                keyCheck?.takeIf { !refused }?.let { KeyCheckLine(it) }
                 if (hasKey) {
                     TextButton(onClick = { confirmingDelete = true }) {
                         Text(tr("מחיקת המפתח", "Delete key"), color = MaterialTheme.colorScheme.error)

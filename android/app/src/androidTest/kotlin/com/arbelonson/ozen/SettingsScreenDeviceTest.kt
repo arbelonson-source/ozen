@@ -728,6 +728,34 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun aSavedKeyTheServiceRefusesIsCheckedWhenTheSectionShowsAndReplacesTheGreenSavedLine() {
+        app.cloudKeyCheckHTTP = CloudHTTP { CloudHTTPResponse(401, "{}".toByteArray()) }
+        app.settings.change { it.cloudSoundAcknowledged = it.cloudSoundAcknowledged + CloudProvider.Deepgram }
+        app.engineSettings.chooseCloudService(CloudProvider.Soniox)
+        app.engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        assertTrue(app.cloudKeys.save("dg-refused-since-saved", CloudProvider.Deepgram))
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Cloud transcription").performScrollTo().performClick()
+        val rejected = "The service didn’t accept this key. Check that you copied all of it."
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(rejected).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(rejected).performScrollTo().assertIsDisplayed()
+        assertEquals(1, compose.onAllNodesWithText(rejected).fetchSemanticsNodes().size)
+        compose.onNodeWithText("Key saved on the phone").assertDoesNotExist()
+    }
+
+    @Test
+    fun withoutAKeyTheCloudSectionSaysWhatAKeyIsAndOffersTheServicesWebsite() {
+        app.engineSettings.chooseCloudService(CloudProvider.Soniox)
+        app.engineSettings.chooseCloudService(CloudProvider.Deepgram)
+        app.cloudKeys.remove(CloudProvider.Deepgram)
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Cloud transcription").performScrollTo().performClick()
+        compose.onNodeWithText("A key is a long code you get from the Deepgram website after opening an account there.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Open the Deepgram website").performScrollTo().assertHasClickAction()
+        compose.onNodeWithText("Key saved on the phone").assertDoesNotExist()
+    }
+
+    @Test
     fun aComputerAddressAndPairingCodeTypedInSettingsAreSavedWithHintsForAddressesThatWillNotWork() {
         compose.onNodeWithText("Settings").performClick()
         compose.onAllNodesWithText("Home computer").onFirst().performScrollTo().performClick()
