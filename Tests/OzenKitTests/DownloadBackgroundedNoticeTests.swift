@@ -13,6 +13,14 @@ struct DownloadBackgroundedNoticeTests {
         #expect(!DownloadBackgroundedNotice.isDownloading(.idle))
     }
 
+    @Test("a model from Ozen's own releases keeps downloading while she is away; a hub model, or one not in the list, pauses")
+    func pausesWhenAway() {
+        #expect(!DownloadBackgroundedNotice.pausesWhenAway(variant: "ozen-turbo-hebrew-a3-8bit"))
+        #expect(!DownloadBackgroundedNotice.pausesWhenAway(variant: "ivrit-large-v3-turbo-8bit"))
+        #expect(DownloadBackgroundedNotice.pausesWhenAway(variant: "large-v3-v20240930_626MB"))
+        #expect(DownloadBackgroundedNotice.pausesWhenAway(variant: "some-model-not-listed"))
+    }
+
     @Test("posted once while the phone is put away mid-download, never while the app is on screen or switched off")
     func postsOnce() {
         var notice = DownloadBackgroundedNotice()

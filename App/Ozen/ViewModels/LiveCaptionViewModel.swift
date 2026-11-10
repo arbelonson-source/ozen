@@ -669,7 +669,8 @@ public final class LiveCaptionViewModel {
     /// `DownloadBackgroundedNotice`).
     private func checkDownloadBackgrounded() {
         switch downloadBackgrounded.update(
-            isDownloading: DownloadBackgroundedNotice.isDownloading(pipeline.phase),
+            isDownloading: DownloadBackgroundedNotice.isDownloading(pipeline.phase)
+                && DownloadBackgroundedNotice.pausesWhenAway(variant: settings.whisperModelVariant),
             appIsActive: isAppActive,
             isEnabled: settings.notifyWhenInBackground
         ) {

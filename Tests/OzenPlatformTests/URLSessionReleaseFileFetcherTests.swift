@@ -13,12 +13,18 @@ struct URLSessionReleaseFileFetcherTests {
         return url
     }
 
+    private func downloads() -> ReleaseDownloadSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [StubReleaseServer.self]
+        return ReleaseDownloadSession(configuration: configuration)
+    }
+
     private func fetcher() -> URLSessionReleaseFileFetcher {
-        URLSessionReleaseFileFetcher(allowsCellular: true) {
-            let configuration = URLSessionConfiguration.ephemeral
-            configuration.protocolClasses = [StubReleaseServer.self]
-            return configuration
-        }
+        URLSessionReleaseFileFetcher(allowsCellular: true, session: downloads())
+    }
+
+    private func placement(_ destination: URL, from offset: Int64) -> ReleaseDownloadSession.Placement {
+        ReleaseDownloadSession.Placement(source: "https://release.invalid/model.bin", destination: destination.path, offset: offset)
     }
 
     @Test("a cut-off file continues from where it stopped when the server sends the rest")
@@ -52,17 +58,16 @@ struct URLSessionReleaseFileFetcherTests {
         #expect(String(decoding: try Data(contentsOf: destination), as: UTF8.self) == "abc")
     }
 
-    @Test("a large file arrives whole and is written a megabyte at a time")
-    func largeFileInBatches() async throws {
+    @Test("the rest of a large file lands after its start, a megabyte at a time")
+    func largeRangeAppends() async throws {
+        let whole = Data((0..<(3 * URLSessionReleaseFileFetcher.writeBatch + 123)).map { UInt8(truncatingIfNeeded: $0 &* 31) })
         let destination = try file("weights.bin")
-        let body = Data((0..<(3 * URLSessionReleaseFileFetcher.writeBatch + 123)).map { UInt8(truncatingIfNeeded: $0 &* 31) })
-        let url = StubReleaseServer.serve(status: 200, body: body)
+        try whole.prefix(1000).write(to: destination)
+        let url = StubReleaseServer.serve(status: 206, body: Data(whole.dropFirst(1000)))
         let tally = Tally()
-        try await fetcher().fetch(url, from: 0, appendingTo: destination) { tally.add($0) }
-        #expect(try Data(contentsOf: destination) == body)
-        #expect(tally.total == Int64(body.count))
-        #expect(tally.values.count <= 4)
-        #expect(tally.values.dropLast().allSatisfy { $0 >= Int64(URLSessionReleaseFileFetcher.writeBatch) })
+        try await fetcher().fetch(url, from: 1000, appendingTo: destination) { tally.add($0) }
+        #expect(try Data(contentsOf: destination) == whole)
+        #expect(tally.total == Int64(whole.count - 1000))
     }
 
     @Test("a download cancelled as it starts throws a cancellation instead of waiting forever", .timeLimit(.minutes(1)))
@@ -86,14 +91,58 @@ struct URLSessionReleaseFileFetcherTests {
 
     @Test("an end that comes before the download is waited on is kept, not lost", .timeLimit(.minutes(1)))
     func endBeforeWaiting() async throws {
-        let writer = ReleaseFileWriter(offset: 0, destination: try file("model.bin")) { _ in }
+        let downloads = downloads()
         let session = URLSession(configuration: .ephemeral)
         defer { session.invalidateAndCancel() }
-        let task = session.dataTask(with: StubReleaseServer.serve(status: 200, body: Data()))
-        writer.urlSession(session, task: task, didCompleteWithError: URLError(.cancelled))
+        let task = session.downloadTask(with: StubReleaseServer.serve(status: 200, body: Data()))
+        downloads.track(task, placement: placement(try file("model.bin"), from: 0))
+        downloads.urlSession(session, task: task, didCompleteWithError: URLError(.cancelled))
         await #expect(throws: URLError.self) {
-            try await writer.run(task)
+            try await downloads.wait(for: task)
         }
+    }
+
+    @Test("the rest of a file is added only onto a start of the size it was asked from")
+    func restLandsOnlyOnTheRightStart() throws {
+        let destination = try file("model.bin", holding: "abcd")
+        let rest = try file("rest.bin", holding: "defgh")
+        #expect(throws: ReleaseDownloadSession.Failure.misplaced) {
+            try ReleaseDownloadSession.place(rest, status: 206, at: placement(destination, from: 3))
+        }
+        #expect(String(decoding: try Data(contentsOf: destination), as: UTF8.self) == "abcd")
+        try ReleaseDownloadSession.place(rest, status: 206, at: placement(destination, from: 4))
+        #expect(String(decoding: try Data(contentsOf: destination), as: UTF8.self) == "abcddefgh")
+    }
+
+    @Test("a file that arrived while the app was away lands in place, a whole file replacing what was there")
+    func wholeFileReplaces() throws {
+        let destination = try file("model.bin", holding: "old start")
+        let arrived = try file("arrived.bin", holding: "abcdefgh")
+        try ReleaseDownloadSession.place(arrived, status: 200, at: placement(destination, from: 9))
+        #expect(String(decoding: try Data(contentsOf: destination), as: UTF8.self) == "abcdefgh")
+        let refused = try file("refused.bin", holding: "Not Found")
+        #expect(throws: URLSessionReleaseFileFetcher.Failure.status(404)) {
+            try ReleaseDownloadSession.place(refused, status: 404, at: placement(destination, from: 0))
+        }
+        #expect(String(decoding: try Data(contentsOf: destination), as: UTF8.self) == "abcdefgh")
+    }
+
+    @Test("opening the app again joins the download of the same file instead of starting a second, and stops others into that file")
+    func joinsTheSameDownload() throws {
+        let wanted = placement(try file("model.bin"), from: 0)
+        var elsewhere = wanted
+        elsewhere.destination += ".other"
+        var olderStart = wanted
+        olderStart.offset = 5
+        let sorted = ReleaseDownloadSession.sort([
+            (placement: elsewhere, running: true),
+            (placement: olderStart, running: true),
+            (placement: wanted, running: false),
+            (placement: wanted, running: true),
+            (placement: nil, running: true),
+        ], for: wanted)
+        #expect(sorted.join == 3)
+        #expect(sorted.cancel == [1])
     }
 
     @Test("the checksum is the file's SHA-256")
