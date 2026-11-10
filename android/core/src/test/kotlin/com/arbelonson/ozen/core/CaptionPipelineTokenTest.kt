@@ -88,6 +88,18 @@ class CaptionPipelineTokenTest {
     }
 
     @Test
+    fun `a saved fix that rewrites a clearly voiced repeated thanks keeps its voice count, so the line still shows`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine))
+        val settings = AppSettings.default
+        settings.wordFixes = listOf(WordFix("תודה", "Thanks"))
+        pipeline.start(settings)
+        engine.emit(TranscriptToken(utteranceID = UUID.randomUUID(), text = "תודה, תודה!", isFinal = true, timestamp = 1.0, voicedChunks = 5))
+        engine.emit(TranscriptToken(utteranceID = UUID.randomUUID(), text = "מה שלומך היום?", isFinal = true, timestamp = 2.0))
+        assertTrue(eventually { pipeline.segments.map { it.text } == listOf("Thanks, Thanks!", "מה שלומך היום?") })
+    }
+
+    @Test
     fun `a hand correction reads the line as it is now, survives the engine's later text, and moves the keyword highlight`() = runTest {
         val engine = FakeEngine()
         val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine), now = { 1_001.0 })

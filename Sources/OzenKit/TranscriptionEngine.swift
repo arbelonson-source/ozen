@@ -47,6 +47,10 @@ public struct TranscriptToken: Sendable, Equatable {
     /// The words the engine was least sure of, when it can tell one word
     /// from another (see `UncertainWords`). Empty means nothing to mark.
     public var uncertainWords: [String]
+    /// How many of the voice model's 0.256 s chunks heard a voice in the
+    /// audio behind this text, when the phone's own Whisper scored it (see
+    /// `WhisperResultFilter.isUnvoicedPhrase`). Nil means nothing counted.
+    public var voicedChunks: Int?
     /// Set by the pipeline, which knows which engine and model are running.
     public var scoredBy: CaptionConfidence.Scorer? = nil
 
@@ -58,7 +62,8 @@ public struct TranscriptToken: Sendable, Equatable {
         speakerClusterID: Int? = nil,
         confidence: Float? = nil,
         startsNewSpeakerTurn: Bool = false,
-        uncertainWords: [String] = []
+        uncertainWords: [String] = [],
+        voicedChunks: Int? = nil
     ) {
         self.utteranceID = utteranceID
         self.text = text
@@ -68,6 +73,7 @@ public struct TranscriptToken: Sendable, Equatable {
         self.confidence = confidence
         self.startsNewSpeakerTurn = startsNewSpeakerTurn
         self.uncertainWords = uncertainWords
+        self.voicedChunks = voicedChunks
     }
 }
 

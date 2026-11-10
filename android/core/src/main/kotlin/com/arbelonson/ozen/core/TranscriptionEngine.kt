@@ -68,6 +68,12 @@ data class TranscriptToken(
     val uncertainWords: List<String> = emptyList(),
     /** Set by the pipeline, which knows which engine and model are running. */
     val scoredBy: CaptionConfidence.Scorer? = null,
+    /**
+     * How many of the voice model's 0.256 s chunks heard a voice in the
+     * audio behind this text, when the phone's own Whisper scored it (see
+     * `WhisperResultFilter.isUnvoicedPhrase`). Null means nothing counted.
+     */
+    val voicedChunks: Int? = null,
 )
 
 /**

@@ -5,8 +5,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SilencePhraseGuardTest {
-    private fun line(text: String, id: UUID = UUID.randomUUID(), final: Boolean = true, at: Double): Pair<TranscriptToken, Double> =
-        TranscriptToken(utteranceID = id, text = text, isFinal = final, timestamp = at) to at
+    private fun line(text: String, id: UUID = UUID.randomUUID(), final: Boolean = true, voiced: Int? = null, at: Double): Pair<TranscriptToken, Double> =
+        TranscriptToken(utteranceID = id, text = text, isFinal = final, timestamp = at, voicedChunks = voiced) to at
 
     private fun admitted(lines: List<Pair<TranscriptToken, Double>>): List<Boolean> {
         val guardian = SilencePhraseGuard()
@@ -85,5 +85,96 @@ class SilencePhraseGuardTest {
                 ),
             ),
         )
+    }
+
+    @Test
+    fun `the same thanks said twice or three times in one clearly voiced breath shows`() {
+        assertEquals(listOf(true), admitted(listOf(line("תודה, תודה", voiced = 5, at = 0.0))))
+        assertEquals(listOf(true), admitted(listOf(line("Thank you, thank you", voiced = 5, at = 0.0))))
+        assertEquals(listOf(true), admitted(listOf(line("תודה. תודה. תודה.", voiced = 6, at = 0.0))))
+    }
+
+    @Test
+    fun `a repeated thanks with no voice count, or under two voiced chunks per thanks, stays hidden`() {
+        assertEquals(listOf(false), admitted(listOf(line("תודה, תודה", at = 0.0))))
+        assertEquals(listOf(false), admitted(listOf(line("תודה, תודה", voiced = 3, at = 0.0))))
+        assertEquals(listOf(false), admitted(listOf(line("תודה. תודה. תודה.", voiced = 5, at = 0.0))))
+    }
+
+    @Test
+    fun `sound tags and mixed sign-offs stay hidden however much voice was heard`() {
+        assertEquals(
+            listOf(false, false, false),
+            admitted(
+                listOf(
+                    line("שירה, שירה", voiced = 10, at = 0.0),
+                    line("מוזיקה. מוזיקה.", voiced = 10, at = 100.0),
+                    line("תודה רבה, צפייה מהנה", voiced = 10, at = 200.0),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `a voiced repeat seconds after a shown thanks, or a lone thanks seconds after a shown repeat, is still a thanks coming back`() {
+        assertEquals(
+            listOf(true, false),
+            admitted(listOf(line("תודה", at = 0.0), line("תודה, תודה", voiced = 5, at = 5.0))),
+        )
+        assertEquals(
+            listOf(true, false),
+            admitted(listOf(line("תודה, תודה", voiced = 5, at = 0.0), line("תודה", at = 5.0))),
+        )
+    }
+
+    @Test
+    fun `a shown thanks that grows into a clearly voiced repeat on the same line keeps showing`() {
+        val growing = UUID.randomUUID()
+        assertEquals(
+            listOf(true, true),
+            admitted(
+                listOf(
+                    line("תודה", id = growing, final = false, voiced = 2, at = 0.0),
+                    line("תודה, תודה", id = growing, voiced = 5, at = 1.0),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `a repeated thanks first decoded with too little voice shows once a later decode of the same line hears enough`() {
+        val growing = UUID.randomUUID()
+        assertEquals(
+            listOf(false, true, false),
+            admitted(
+                listOf(
+                    line("תודה, תודה", id = growing, final = false, voiced = 2, at = 0.0),
+                    line("תודה, תודה", id = growing, voiced = 5, at = 1.0),
+                    line("תודה", at = 4.0),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `a repeated thanks hidden as coming back stays hidden on that line however much voice follows`() {
+        val repeat = UUID.randomUUID()
+        assertEquals(
+            listOf(true, false, false),
+            admitted(
+                listOf(
+                    line("תודה", at = 0.0),
+                    line("תודה, תודה", id = repeat, final = false, voiced = 2, at = 5.0),
+                    line("תודה, תודה", id = repeat, voiced = 5, at = 6.0),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `thanks and thank-you-very-much in one clearly voiced breath shows, with too little voice it stays hidden`() {
+        assertEquals(listOf(true), admitted(listOf(line("תודה, תודה רבה", voiced = 4, at = 0.0))))
+        assertEquals(listOf(true), admitted(listOf(line("תודה רבה, תודה לכם", voiced = 4, at = 0.0))))
+        assertEquals(listOf(false), admitted(listOf(line("תודה, תודה רבה", voiced = 3, at = 0.0))))
     }
 }

@@ -54,6 +54,18 @@ struct WordFixesReviewTests {
         #expect(await eventually { pipeline.segments.map(\.text) == ["Thanks.", "מה שלומך היום?"] })
     }
 
+    @Test("a saved fix that rewrites a clearly voiced repeated thanks keeps its voice count, so the line still shows")
+    func fixKeepsTheVoiceCount() async {
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder(), recovery: .disabled, now: { 1 })
+        var settings = AppSettings.default
+        settings.wordFixes = [fix("תודה", "Thanks")]
+        await pipeline.start(settings: settings)
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "תודה, תודה!", isFinal: true, timestamp: 1, voicedChunks: 5))
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "מה שלומך היום?", isFinal: true, timestamp: 2))
+        #expect(await eventually { pipeline.segments.map(\.text) == ["Thanks, Thanks!", "מה שלומך היום?"] })
+    }
+
     @Test("a hand correction reads the line as it is now, survives the engine's later text, and moves the keyword highlight")
     func handCorrection() async {
         let engine = FakeEngine()

@@ -549,9 +549,10 @@ public actor WhisperKitEngine: TranscriptionEngine {
             // moment of voice is most likely household noise (see
             // `WhisperResultFilter.isUnvoicedPhrase`). When captions stop,
             // the last chunk may not be scored yet.
+            let voicedChunks = status.finished ? nil : intake.voicedChunks(upTo: end)
             let dropped = ranOut || speechFilter.isUnvoicedPhrase(
                 speechFilter.acceptedText(from: summaries, echo: echo),
-                voicedChunks: status.finished ? nil : intake.voicedChunks(upTo: end),
+                voicedChunks: voicedChunks,
                 echo: echo
             )
             // Confidence has to describe exactly the text being shown, not
@@ -577,7 +578,8 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     isFinal: isFinal,
                     timestamp: Date().timeIntervalSince1970,
                     confidence: shownConfidence,
-                    uncertainWords: text.isEmpty ? [] : acceptedSegments.flatMap(\.uncertainWords)
+                    uncertainWords: text.isEmpty ? [] : acceptedSegments.flatMap(\.uncertainWords),
+                    voicedChunks: text.isEmpty ? nil : voicedChunks
                 ))
                 lastShownText = shown
                 lastShownConfidence = shownConfidence
