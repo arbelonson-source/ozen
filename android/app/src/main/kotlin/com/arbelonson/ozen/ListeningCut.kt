@@ -1,6 +1,7 @@
 package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.ConversationStats
+import com.arbelonson.ozen.core.TimeArticle
 import com.arbelonson.ozen.core.tr
 import java.time.ZoneId
 
@@ -13,11 +14,15 @@ object ListeningCut {
     data class Notice(val stoppedAt: Double, val offSeconds: Double) {
         fun title(): String = tr("ההאזנה הייתה כבויה לזמן מה", "Listening was off for a while")
 
-        fun text(zone: ZoneId = ZoneId.systemDefault()): String = tr(
-            "ההאזנה נעצרה בערך ב־%1 והייתה כבויה במשך %2. בזמן הזה לא יכלו להגיע התראות.",
-            "Listening stopped at about %1 and was off for %2. No alerts could come through during that time.",
-            listOf(clockTime(stoppedAt, zone), ConversationStats.minutesText(offSeconds)),
-        )
+        fun text(zone: ZoneId = ZoneId.systemDefault()): String {
+            val time = clockTime(stoppedAt, zone)
+            val text = tr(
+                "ההאזנה נעצרה בערך ב־%1 והייתה כבויה במשך %2. בזמן הזה לא יכלו להגיע התראות.",
+                "Listening stopped at about %1 and was off for %2. No alerts could come through during that time.",
+                listOf(time, ConversationStats.minutesText(offSeconds)),
+            )
+            return TimeArticle.agreeing(text, time)
+        }
     }
 
     fun encode(record: Record): String = "$TAG ${record.startedAt} ${record.aliveAt} ${record.version}"

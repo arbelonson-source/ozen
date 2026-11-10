@@ -126,6 +126,18 @@ struct InstallExpiryTests {
         #expect(dayBefore.title == "אוזן תפסיק להיפתח מחר בשעה 07:24")
     }
 
+    @Test("Spanish and Portuguese say one o'clock with the singular article")
+    func oneOClock() {
+        let now = monday(0, 10)
+        Localization.$override.withValue(.spanish) {
+            #expect(InstallExpiry.whenText(expiresAt: monday(1, 5), now: now, utcOffsetSeconds: israel) == "hoy a la 01:05")
+            #expect(InstallExpiry.whenText(expiresAt: monday(13, 5), now: now, utcOffsetSeconds: israel) == "hoy a las 13:05")
+        }
+        Localization.$override.withValue(.portuguese) {
+            #expect(InstallExpiry.whenText(expiresAt: monday(1, 5, plusDays: 1), now: now, utcOffsetSeconds: israel) == "amanhã à 01:05")
+        }
+    }
+
     @Test("English wording: today, tomorrow, or the day of the week")
     func englishWording() {
         Localization.$override.withValue(.english) {

@@ -46,6 +46,20 @@ class ListeningCutTest {
     private val failure = PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, "the microphone is busy")
 
     @Test
+    fun `in Portuguese and Spanish listening cut at 01_10 is said with the singular article`() {
+        val oneOClock = ListeningCut.Notice(stoppedAt = at(1, 10), offSeconds = 600.0)
+        val tenOClock = ListeningCut.Notice(stoppedAt = at(10, 10), offSeconds = 600.0)
+        Localization.withLanguage(UILanguage.Portuguese) {
+            assertTrue("por volta da " in oneOClock.text(ZoneOffset.UTC), oneOClock.text(ZoneOffset.UTC))
+            assertTrue("por volta das " in tenOClock.text(ZoneOffset.UTC), tenOClock.text(ZoneOffset.UTC))
+        }
+        Localization.withLanguage(UILanguage.Spanish) {
+            assertTrue("hacia la " in oneOClock.text(ZoneOffset.UTC), oneOClock.text(ZoneOffset.UTC))
+            assertTrue("hacia las " in tenOClock.text(ZoneOffset.UTC), tenOClock.text(ZoneOffset.UTC))
+        }
+    }
+
+    @Test
     fun `listening that was cut at 01_10 and seen at 04_20 gives a notice about 01_10 and the length`() {
         val notice = ListeningCut.notice(ListeningCut.Record(startedAt = at(0, 30), aliveAt = at(1, 10), version = VERSION), now = at(4, 20), version = VERSION)
         assertNotNull(notice)

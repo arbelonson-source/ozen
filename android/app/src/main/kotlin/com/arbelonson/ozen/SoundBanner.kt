@@ -15,6 +15,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.style.TextOverflow
+import com.arbelonson.ozen.core.TimeArticle
 import com.arbelonson.ozen.ui.OzenColors
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -101,7 +102,7 @@ internal fun SoundAlertBanner(alert: SoundAlert, onDismiss: () -> Unit) {
 }
 
 internal fun missedSoundNote(at: String) =
-    tr("נשמע ב־%1, כשהאפליקציה לא הייתה על המסך", "Heard at %1, while the app wasn’t on the screen", listOf(at))
+    TimeArticle.agreeing(tr("נשמע ב־%1, כשהאפליקציה לא הייתה על המסך", "Heard at %1, while the app wasn’t on the screen", listOf(at)), at)
 
 @Composable
 internal fun MissedSoundBanner(missed: MissedSound, onDismiss: () -> Unit) {
