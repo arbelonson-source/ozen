@@ -13,6 +13,7 @@ struct SpeakerEnrollmentView: View {
     @State private var progress: Double = 0
     @State private var failed = false
     @State private var noMicrophone = false
+    @State private var askingForMicrophone = false
     @State private var recording: Task<Void, Never>?
 
     private let targetSeconds = 30.0
@@ -45,7 +46,7 @@ struct SpeakerEnrollmentView: View {
                         } label: {
                             Label(tr("הקלטה ושמירה (%1 שניות)", "Record and save (%1 seconds)", args: ["\(Int(targetSeconds))"]), systemImage: "record.circle")
                         }
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || askingForMicrophone)
                     }
                 } header: {
                     Text(tr("הקלטה", "Recording"))
@@ -85,9 +86,18 @@ struct SpeakerEnrollmentView: View {
         }
     }
 
+    /// The Record button stays off while the phone asks for the microphone,
+    /// so a second tap can't start a second recording over the first, and
+    /// Cancel during the question stops the recording from starting after
+    /// the screen has closed.
     private func record() {
-        Task {
-            if await AVAudioApplication.requestRecordPermission() {
+        guard !askingForMicrophone, !isRecording else { return }
+        askingForMicrophone = true
+        recording = Task {
+            let allowed = await AVAudioApplication.requestRecordPermission()
+            askingForMicrophone = false
+            guard !Task.isCancelled else { return }
+            if allowed {
                 startRecording()
             } else {
                 noMicrophone = true
