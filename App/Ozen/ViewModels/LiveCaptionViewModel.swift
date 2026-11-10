@@ -408,14 +408,20 @@ public final class LiveCaptionViewModel {
     /// "Something went wrong" on the caption screen: what was running and
     /// what the captions last said goes into the journal, where the next
     /// diagnostics report finds it even if the app is closed first.
-    public func markProblem() {
+    ///
+    /// From a line's hold menu the held line goes in too: she held the line
+    /// she had scrolled back to as wrong, and only the newest four went in,
+    /// so whoever read the report couldn't find it.
+    public func markProblem(heldLine: TranscriptSegment? = nil) {
         let now = Date().timeIntervalSince1970
+        let held = heldLine.map { line in pipeline.segments.last { $0.id == line.id } ?? line }
         let lines = ProblemSnapshot.lines(
             settings: settings,
             activeEngine: pipeline.activeEngineKind,
             input: selectedInput,
             stats: pipeline.stats,
             segments: pipeline.segments,
+            held: held,
             device: Self.deviceStateText,
             utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: now))
         )
@@ -1736,9 +1742,15 @@ public final class LiveCaptionViewModel {
     }
 
     /// The caption screen's offer of the recommended Whisper model, taken:
-    /// the model switches (and downloads, on Wi-Fi) like a pick in Settings.
-    public func acceptBetterModelOffer() async {
-        await setWhisperModel(settings.recommendedWhisperVariant)
+    /// the model switches (and downloads, on Wi-Fi) like a pick in Settings,
+    /// and like there, a model not on the phone waits for a yes while
+    /// captions are listening: switching stops them until it has
+    /// downloaded, and one slip of the thumb on the card at the start of a
+    /// lesson stopped them with no warning. Returns true while it waits.
+    @discardableResult
+    public func acceptBetterModelOffer() async -> Bool {
+        let variant = settings.recommendedWhisperVariant
+        return await modelRowTapped(variant, isInstalled: WhisperModelStore().isInstalled(variant))
     }
 
     /// "Not now" on that offer: it comes back later, see

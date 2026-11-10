@@ -30,6 +30,32 @@ struct ProblemSnapshotTests {
         #expect(lines[3].hasSuffix("line 3"))
     }
 
+    @Test("a line held to mark the problem goes in too, after the newest four, marked as held")
+    func heldOlderLine() {
+        let segments = (1...8).map { index in
+            TranscriptSegment(id: UUID(), text: "line \(index)", isCommitted: true, speakerClusterID: nil, startTimestamp: 0, lastUpdateTimestamp: 0)
+        }
+        let lines = ProblemSnapshot.lines(
+            settings: .default, activeEngine: nil, input: nil, stats: PipelineStats(), segments: segments, held: segments[1], device: "-", utcOffsetSeconds: 0
+        )
+        #expect(lines.count == 3 + ProblemSnapshot.lineCount + 1)
+        #expect(lines.last == "  line (held, final, sure -, 00:00:00): line 2")
+        #expect(ProblemSnapshot.isCaptionLine(lines.last ?? ""))
+        #expect(lines[3].hasSuffix("line 5"))
+    }
+
+    @Test("a held line among the newest four is marked where it is, not added twice")
+    func heldNewestLine() {
+        let segments = (1...6).map { index in
+            TranscriptSegment(id: UUID(), text: "line \(index)", isCommitted: true, speakerClusterID: nil, startTimestamp: 0, lastUpdateTimestamp: 0)
+        }
+        let lines = ProblemSnapshot.lines(
+            settings: .default, activeEngine: nil, input: nil, stats: PipelineStats(), segments: segments, held: segments[4], device: "-", utcOffsetSeconds: 0
+        )
+        #expect(lines.count == 3 + ProblemSnapshot.lineCount)
+        #expect(lines.filter { $0.contains("held") } == ["  line (held, final, sure -, 00:00:00): line 5"])
+    }
+
     @Test("each line carries its own last-update clock time, at her offset, not the moment the problem was marked")
     func lineTimestamps() {
         let segments = (1...4).map { index in

@@ -53,6 +53,9 @@ struct SettingsView: View {
     @State private var confirmingHomeServerCodeDelete = false
     @State private var confirmingCloudKeyDelete = false
     @State private var askingCloudConsent = false
+    /// The better model, tapped while captions listen: switching would stop
+    /// them for its download, so it waits for a yes, as in the model list.
+    @State private var pendingBetterModel: WhisperModelOption?
     /// The question was asked by Close, so either answer closes Settings.
     @State private var closingAfterCloudConsent = false
     @State private var confirmingWalkthrough = false
@@ -127,6 +130,7 @@ struct SettingsView: View {
                 aboutSection
             }
             .accessibilityIdentifier("settingsScreen")
+            .asksBeforeSwitchingModel($pendingBetterModel, viewModel: viewModel)
             // On the Form, not the key field: asked by Close with the
             // field scrolled away, the question never appeared.
             .alert(tr("לשלוח את הקול ל־%1?", "Send the audio to %1?", args: ["\(viewModel.settings.cloudProvider.name)"]), isPresented: $askingCloudConsent) {
@@ -309,7 +313,9 @@ struct SettingsView: View {
             .accessibilityIdentifier("modelManagerRow")
             if viewModel.settings.runsWeakerModel, let recommended = WhisperModelCatalog.option(for: viewModel.settings.recommendedWhisperVariant) {
                 Button {
-                    Task { await viewModel.acceptBetterModelOffer() }
+                    Task {
+                        if await viewModel.acceptBetterModelOffer() { pendingBetterModel = recommended }
+                    }
                 } label: {
                     Label(viewModel.settings.spokenLanguage == .hebrew
                           ? tr("המודל הזה טועה בהרבה מילים בעברית. הקישו כדי לעבור למודל ״\u{2068}%1\u{2069}״, %2", "This model gets many Hebrew words wrong. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"])

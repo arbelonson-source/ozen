@@ -15,6 +15,9 @@ struct LiveCaptionView: View {
     @State private var settingsFocus: SettingsView.Focus?
     @State private var showingTypeToSpeak = false
     @State private var confirmingClear = false
+    /// The better model, tapped while captions listen: switching would stop
+    /// them for its download, so it waits for a yes.
+    @State private var pendingBetterModel: WhisperModelOption?
     /// The banners' own height, which their strip above the captions is sized to.
     @State private var bannerHeight: CGFloat = 0
     @State private var namingSegment: TranscriptSegment?
@@ -626,6 +629,7 @@ struct LiveCaptionView: View {
         } message: {
             Text(cellularDownloadMessage)
         }
+        .asksBeforeSwitchingModel($pendingBetterModel, viewModel: viewModel)
         .confirmationDialog(
             tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?"),
             isPresented: $confirmingClear,
@@ -803,7 +807,7 @@ struct LiveCaptionView: View {
                 }
             }
             Button {
-                viewModel.markProblem()
+                viewModel.markProblem(heldLine: segment)
                 showingProblemMarked = true
             } label: {
                 Label(tr("הכתוביות לא טובות? לסמן בעיה", "Captions not good? Mark a problem"), systemImage: "exclamationmark.bubble")
@@ -836,7 +840,7 @@ struct LiveCaptionView: View {
                 }
             }
             Button(tr("הכתוביות לא טובות? לסמן בעיה", "Captions not good? Mark a problem")) {
-                viewModel.markProblem()
+                viewModel.markProblem(heldLine: segment)
                 showingProblemMarked = true
             }
         }
@@ -1063,7 +1067,9 @@ struct LiveCaptionView: View {
     private func betterModelOfferCard(_ option: WhisperModelOption) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Button {
-                Task { await viewModel.acceptBetterModelOffer() }
+                Task {
+                    if await viewModel.acceptBetterModelOffer() { pendingBetterModel = option }
+                }
             } label: {
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "sparkles")
