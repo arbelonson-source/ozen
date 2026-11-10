@@ -356,6 +356,10 @@ class CaptionSession(
         if (cameBack) {
             awayAlerts.takePostedIdentifiers().forEach(notifier::withdraw)
             notifier.withdrawAwayAlerts()
+            heardWhileAway?.let { missed ->
+                heardWhileAway = null
+                if (pipeline.currentBannerSoundAlert?.id != missed.id) showMissedSound(missed)
+            }
             stopAnnouncer.comingBack(pipeline.phase)?.let { announceStopOrReturn(it, pipeline.phase) }
             untold?.let { word ->
                 untold = null
@@ -1396,7 +1400,27 @@ class CaptionSession(
      * says it, as on the iPhone, whichever screen is open, and the caption
      * screen shows its banner; with the app away it is a notification.
      */
+    /**
+     * The most important sound heard while the app was away, the newest of
+     * equals, as on the iPhone: a dog barking after the smoke alarm must not
+     * hide the alarm. Coming back takes its
+     * notification away (old alerts must not pass for new ones), and its
+     * banner time is over by then, so without this someone who unlocked the
+     * phone to see what buzzed found nothing at all.
+     */
+    private var heardWhileAway: SoundAlert? = null
+
+    /** Shown and read out once, with the clock time it was heard, and never buzzed or flashed: it isn't new. */
+    private fun showMissedSound(alert: SoundAlert) {
+        val missed = MissedSound(alert, clockTime(alert.timestamp))
+        CaptionState.missedSound(missed)
+        if (ScreenReader.isOn(context)) announce("${alert.event.name}. ${missedSoundNote(missed.at)}", alert.event.importance == SoundEvent.Importance.Critical)
+    }
+
+    fun dismissMissedSound() = CaptionState.missedSound(null)
+
     private fun soundHeard(alert: SoundAlert) {
+        if (!appIsActive) heardWhileAway = heardWhileAway?.takeIf { it.event.importance > alert.event.importance } ?: alert
         CaptionState.soundHeard(pipeline.currentBannerSoundAlert, alert)
         if (appIsActive) {
             buzz(AlertVibration.pattern(alert.event.importance), alert.event.importance)

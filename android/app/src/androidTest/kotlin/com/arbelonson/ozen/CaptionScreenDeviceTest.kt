@@ -2878,6 +2878,19 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    @Test
+    fun aSoundHeardWhileAwayShowsWithItsTimeUntilClosed() {
+        val doorbell = SoundAlert(event = SoundEventCatalog.event("door_bell")!!, confidence = 0.9, timestamp = 1_000.0)
+        showLines(finishedLines)
+        compose.runOnUiThread { CaptionState.missedSound(MissedSound(doorbell, "14:05")) }
+        compose.onNodeWithTag(MISSED_SOUND).assertIsDisplayed()
+        compose.onNodeWithText("Heard at 14:05, while the app wasn’t on the screen").assertIsDisplayed()
+        compose.onNodeWithTag(MISSED_SOUND).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag(MISSED_SOUND).assertDoesNotExist()
+        assertNull(CaptionState.screen.value.missedSound)
+    }
+
     private fun showLines(lines: List<TranscriptSegment>, conversation: (Int) -> UUID? = { null }) {
         compose.runOnUiThread {
             CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines, conversation = conversation)

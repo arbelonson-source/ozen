@@ -70,6 +70,9 @@ data class AwayMark(val line: UUID, val count: Int, val offersJump: Boolean)
  * Lines older than the screen keeps: the newest of them, and the saved
  * conversation that holds it, null when it was not saved.
  */
+/** A sound heard while the app was away, its banner time over by the time she came back; [at] is its clock time. */
+data class MissedSound(val alert: SoundAlert, val at: String)
+
 data class EarlierLines(val conversation: UUID?, val line: UUID)
 
 data class CaptionScreenState(
@@ -113,6 +116,8 @@ data class CaptionScreenState(
     val sound: SoundAlert? = null,
     /** The newest sound alert raised, which flashes the screen's edge when it is new to the screen. */
     val heardSound: SoundAlert? = null,
+    /** Shown once she is back, until closed or a new sound comes: the notification that told her went away as she came back. */
+    val missedSound: MissedSound? = null,
     val downloadSecondsRemaining: Double? = null,
     /** Paused only while the phone says something aloud: a tap stops the voice, not opens the microphone onto it. */
     val pausedForSpeech: Boolean = false,
@@ -328,7 +333,11 @@ object CaptionState {
     }
 
     fun soundHeard(banner: SoundAlert?, heard: SoundAlert) {
-        state.value = state.value.copy(sound = banner, heardSound = heard)
+        state.value = state.value.copy(sound = banner, heardSound = heard, missedSound = null)
+    }
+
+    fun missedSound(missed: MissedSound?) {
+        state.value = state.value.copy(missedSound = missed)
     }
 
     /** The phone started or stopped saying something for her: the caption screen's Say button stops it meanwhile. */
