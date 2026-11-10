@@ -4,6 +4,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -14,10 +15,13 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.Localization
+import com.arbelonson.ozen.core.NetworkConditions
+import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.whisper.PreferencesMarkerStore
+import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -32,6 +36,7 @@ class ModelLoadCrashDeviceTest {
     private val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
     private val before: AppSettings = app.settings.current.value.copy()
     private val heavy = "ggml-ivrit-large-v3-turbo.bin"
+    private val modelFiles = ModelFilesAside(app.filesDir)
 
     @Before
     fun markTheHeavyModelAsLoadingWhenTheAppWasEnded() {
@@ -98,6 +103,43 @@ class ModelLoadCrashDeviceTest {
         } finally {
             ScreenReader.isOn = isOnBefore
             ScreenReader.announce = announceBefore
+        }
+    }
+
+    @Test
+    fun switchingOfflineKeepsTheCardSayingWhyAndTheCaptionsStartOnceTheLighterModelIsIn() {
+        val networkBefore = app.captions.networkNow
+        val freeBefore = app.captions.freeSpace
+        val heavyFile = File(app.filesDir, heavy)
+        val standIn = !heavyFile.exists()
+        try {
+            // The model that crashed has to be on the phone, or Switch only
+            // changes the choice and nothing needs downloading.
+            if (standIn) heavyFile.writeText("stands in for the model that crashed")
+            modelFiles.hold(keep = heavy)
+            app.captions.freeSpace = { 8_000_000_000L }
+            app.captions.networkNow = { NetworkConditions.offline }
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag("model-load-crash").fetchSemanticsNodes().isNotEmpty() }
+            val lighter = requireNotNull(app.captions.loadCrash.showing.value).file
+            compose.onNodeWithTag("model-load-crash-switch").performClick()
+            compose.waitUntil(5_000) { app.captions.phoneModels.switching.value is PhoneModelSwitch.Offline }
+            compose.waitForIdle()
+            compose.onNodeWithTag("model-load-crash").assertExists()
+            compose.onNodeWithTag("model-load-crash-status").assert(hasText("There is no internet connection to download it."))
+            assertEquals(PipelinePhase.Idle, app.captions.pipeline.phase)
+
+            modelFiles.putBack()
+            app.captions.networkNow = { NetworkConditions.wifi }
+            app.captions.phoneModels.resumeWaiting()
+            compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("model-load-crash").fetchSemanticsNodes().isEmpty() }
+            assertEquals(lighter, app.settings.current.value.phoneModel.file)
+            assertEquals(PhoneModelSwitch.Idle, app.captions.phoneModels.switching.value)
+        } finally {
+            app.captions.networkNow = networkBefore
+            app.captions.freeSpace = freeBefore
+            modelFiles.putBack()
+            if (standIn) heavyFile.delete()
         }
     }
 

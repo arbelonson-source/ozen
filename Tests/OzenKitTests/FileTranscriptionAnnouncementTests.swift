@@ -55,6 +55,19 @@ struct FileTranscriptionAnnouncementTests {
         }
     }
 
+    @Test("text History doesn't hold makes leaving ask first, and says to share it")
+    func textOnlyOnTheScreen() {
+        #expect(!done(.saved(UUID())).leavingLosesText)
+        #expect(done(.off).leavingLosesText)
+        #expect(done(.failed).leavingLosesText)
+        #expect(!ready.leavingLosesText)
+        #expect(!working(.transcribing, 0.5).leavingLosesText)
+        #expect(!FileTranscription.failed(name: "a.m4a", problem: .noSpeech).leavingLosesText)
+        Localization.$override.withValue(.english) {
+            #expect(HistorySave.off.message.hasSuffix("Share the text before you close this screen."))
+        }
+    }
+
     @Test("getting ready to start says nothing: the screen itself is what changed")
     func readyIsQuiet() {
         #expect(ready.announcement(after: .idle) == nil)

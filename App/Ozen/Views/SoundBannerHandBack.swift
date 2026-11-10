@@ -5,12 +5,13 @@ private struct SoundBannerHandBack: ViewModifier {
     let isCovered: Bool
     let viewModel: LiveCaptionViewModel
     @Binding var banner: SoundAlert?
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverRunning
 
     func body(content: Content) -> some View {
         content.onChange(of: isCovered) { _, covered in
             guard !covered, let alert = viewModel.bannerSoundAlert,
                   viewModel.soundAlerts.contains(where: { $0.id == alert.id }),
-                  viewModel.bannerSecondsLeft(for: alert) > 1,
+                  AlertBannerTimer.handsBack(secondsLeft: viewModel.bannerSecondsLeft(for: alert), voiceOverRunning: voiceOverRunning),
                   alert.takesBanner(from: banner)
             else { return }
             withAnimation { banner = alert }

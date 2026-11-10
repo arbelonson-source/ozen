@@ -64,6 +64,7 @@ struct LiveCaptionView: View {
     @Environment(\.scenePhase) private var scenePhase
     /// With Reduce Motion on, new lines jump into view instead of sliding.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverRunning
     /// On an iPad, keeps caption lines and the control bar from stretching
     /// edge to edge, which otherwise makes lines too long to track by eye
     /// and pushes the buttons into the screen's far corners.
@@ -284,12 +285,18 @@ struct LiveCaptionView: View {
     private struct KeywordPillTimer: Hashable {
         let id: UUID
         let seconds: Double
+        let voiceOverRunning: Bool
+    }
+
+    private struct SoundBannerTimer: Hashable {
+        let id: UUID?
+        let voiceOverRunning: Bool
     }
 
     private var keywordPillTimer: KeywordPillTimer? {
         guard let hit = visibleKeywordHit else { return nil }
         let seconds = KeywordPill.visibleSeconds(for: hit, speaker: viewModel.speakerName(for: hit), accessibilitySize: dynamicTypeSize.isAccessibilitySize)
-        return KeywordPillTimer(id: hit.id, seconds: seconds)
+        return KeywordPillTimer(id: hit.id, seconds: seconds, voiceOverRunning: voiceOverRunning)
     }
 
     /// The banners over the top of the captions: a sound, a word from the
@@ -401,9 +408,14 @@ struct LiveCaptionView: View {
                 critical: critical
             )
         }
-        .task(id: visibleSoundAlert?.id) {
-            guard let alert = visibleSoundAlert else { return }
-            try? await Task.sleep(for: .seconds(viewModel.bannerSecondsLeft(for: alert)))
+        // With VoiceOver the banner and pill stay until closed or replaced:
+        // see `AlertOverlay`.
+        .task(id: SoundBannerTimer(id: visibleSoundAlert?.id, voiceOverRunning: voiceOverRunning)) {
+            guard let alert = visibleSoundAlert,
+                  let left = AlertBannerTimer.hidesAfter(viewModel.bannerSecondsLeft(for: alert), voiceOverRunning: voiceOverRunning)
+            else { return }
+            try? await Task.sleep(for: .seconds(left))
+            if Task.isCancelled { return }
             if visibleSoundAlert?.id == alert.id {
                 withAnimation { visibleSoundAlert = nil }
             }
@@ -420,8 +432,9 @@ struct LiveCaptionView: View {
             announceAlert(KeywordPill.text(for: hit, speaker: viewModel.speakerName(for: hit)))
         }
         .task(id: keywordPillTimer) {
-            guard let timer = keywordPillTimer else { return }
-            let left = KeywordPill.secondsLeft(total: timer.seconds, elapsed: Date().timeIntervalSince(keywordHitShownAt))
+            guard let timer = keywordPillTimer,
+                  let left = AlertBannerTimer.hidesAfter(KeywordPill.secondsLeft(total: timer.seconds, elapsed: Date().timeIntervalSince(keywordHitShownAt)), voiceOverRunning: timer.voiceOverRunning)
+            else { return }
             try? await Task.sleep(for: .seconds(left))
             if Task.isCancelled { return }
             if visibleKeywordHit?.id == timer.id {
@@ -662,8 +675,18 @@ struct LiveCaptionView: View {
                 LazyVStack(alignment: .leading, spacing: max(12, liveDisplay.fontSize * 0.6)) {
                     if viewModel.segments.isEmpty {
                         emptyState
-                    } else if firstDrawnIndex > 0 {
-                        earlierLinesNote
+                    } else {
+                        // Captions start by themselves at launch, so the
+                        // card went with the empty screen at the first
+                        // line, a few seconds in, before she had read it.
+                        // Above the first line it stays until its X, until
+                        // it is opened or the captions are cleared.
+                        if let recent = viewModel.recentConversation {
+                            recentConversationCard(recent)
+                        }
+                        if firstDrawnIndex > 0 {
+                            earlierLinesNote
+                        }
                     }
                     let mark = awayMark
                     let slots = speakerSlots

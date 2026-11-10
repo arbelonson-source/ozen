@@ -81,7 +81,10 @@ sealed interface HistorySave {
     val message: String
         get() = when (this) {
             is Saved -> tr("נשמר בהיסטוריה, ואפשר לחפש אותו שם.", "Saved to History, where you can search it.")
-            Off -> tr("שמירת שיחות כבויה, ולכן ההקלטה לא נשמרה בהיסטוריה.", "History saving is off, so this wasn’t saved to History.")
+            Off -> tr(
+                "שמירת שיחות כבויה, ולכן ההקלטה לא נשמרה בהיסטוריה. כדאי לשתף את הטקסט לפני שסוגרים את המסך.",
+                "History saving is off, so this wasn’t saved to History. Share the text before you close this screen.",
+            )
             Failed -> tr(
                 "השמירה בהיסטוריה נכשלה. ייתכן שהטלפון מלא. כדאי לשתף את הטקסט לפני שסוגרים את המסך.",
                 "Couldn’t save to History. The phone may be full. Share the text before you close this screen.",

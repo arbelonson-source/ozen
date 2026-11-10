@@ -14,16 +14,27 @@ private struct AlertOverlay: ViewModifier {
     @State private var shownHit: KeywordHit?
     @State private var shownHitAt = Date()
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// A banner or pill that hid itself on its timer left a VoiceOver or
+    /// braille user, who heard only the buzz, no way to find which sound or
+    /// word it was; while VoiceOver runs it stays until closed or replaced
+    /// (see `AlertBannerTimer`), as the control bar does.
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverRunning
 
     private struct PillTimer: Hashable {
         let id: UUID
         let seconds: Double
+        let voiceOverRunning: Bool
+    }
+
+    private struct BannerTimer: Hashable {
+        let id: UUID?
+        let voiceOverRunning: Bool
     }
 
     private var pillTimer: PillTimer? {
         guard let hit = shownHit else { return nil }
         let seconds = KeywordPill.visibleSeconds(for: hit, speaker: viewModel.speakerName(for: hit), accessibilitySize: dynamicTypeSize.isAccessibilitySize)
-        return PillTimer(id: hit.id, seconds: seconds)
+        return PillTimer(id: hit.id, seconds: seconds, voiceOverRunning: voiceOverRunning)
     }
 
     func body(content: Content) -> some View {
@@ -61,16 +72,20 @@ private struct AlertOverlay: ViewModifier {
                 shownHitAt = Date()
                 withAnimation(reduceMotion ? nil : .default) { shownHit = hit }
             }
-            .task(id: shown?.id) {
-                guard let current = shown else { return }
-                try? await Task.sleep(for: .seconds(viewModel.bannerSecondsLeft(for: current)))
+            .task(id: BannerTimer(id: shown?.id, voiceOverRunning: voiceOverRunning)) {
+                guard let current = shown,
+                      let left = AlertBannerTimer.hidesAfter(viewModel.bannerSecondsLeft(for: current), voiceOverRunning: voiceOverRunning)
+                else { return }
+                try? await Task.sleep(for: .seconds(left))
+                if Task.isCancelled { return }
                 if shown?.id == current.id {
                     withAnimation { shown = nil }
                 }
             }
             .task(id: pillTimer) {
-                guard let timer = pillTimer else { return }
-                let left = KeywordPill.secondsLeft(total: timer.seconds, elapsed: Date().timeIntervalSince(shownHitAt))
+                guard let timer = pillTimer,
+                      let left = AlertBannerTimer.hidesAfter(KeywordPill.secondsLeft(total: timer.seconds, elapsed: Date().timeIntervalSince(shownHitAt)), voiceOverRunning: timer.voiceOverRunning)
+                else { return }
                 try? await Task.sleep(for: .seconds(left))
                 if Task.isCancelled { return }
                 if shownHit?.id == timer.id {

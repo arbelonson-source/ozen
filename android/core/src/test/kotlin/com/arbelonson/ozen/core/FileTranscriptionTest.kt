@@ -33,7 +33,7 @@ class FileTranscriptionTest {
     @Test
     fun aSaveThePhoneRefusedIsToldApartFromSavingBeingOff() {
         Localization.withLanguage(UILanguage.English) {
-            assertEquals("History saving is off, so this wasn’t saved to History.", HistorySave.Off.message)
+            assertEquals("History saving is off, so this wasn’t saved to History. Share the text before you close this screen.", HistorySave.Off.message)
             assertEquals("Couldn’t save to History. The phone may be full. Share the text before you close this screen.", HistorySave.Failed.message)
         }
     }
