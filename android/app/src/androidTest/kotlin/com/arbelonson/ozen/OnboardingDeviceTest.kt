@@ -6,10 +6,12 @@ import android.os.ParcelFileDescriptor
 import android.view.View
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
@@ -321,6 +323,24 @@ class OnboardingDeviceTest {
         compose.onNodeWithText("Skip").performClick()
         compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
         assertEquals("zh", app.settings.current.value.languageCode)
+    }
+
+    // Whisper barely knows Amharic: picked here, it looked as good as Hebrew
+    // until the captions came out mostly wrong.
+    @Test
+    fun pickingAmharicSaysItsCaptionsAreOftenWrongAndAnotherLanguageTakesThatAway() {
+        val note = "Captions in Amharic are often wrong for now. Check anything important with the person speaking."
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Which language do people around you speak?").assertExists()
+        assertFalse(shown(note))
+        compose.onNodeWithText(UILanguage.Amharic.spokenName).performScrollTo().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.languageCode == "am" }
+        compose.onNodeWithText(note).performScrollTo().assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        compose.onNodeWithText("English").performScrollTo().performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.languageCode == "en" }
+        compose.waitUntil(5_000) { !shown(note) }
     }
 
     // The spoken language starts as Hebrew. On an English phone, Skip on the
