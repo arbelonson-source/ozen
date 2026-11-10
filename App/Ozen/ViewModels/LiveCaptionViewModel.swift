@@ -1218,6 +1218,11 @@ public final class LiveCaptionViewModel {
         }
     }
 
+    /// The last check of each service's saved key while the app runs.
+    /// Kept in Settings' own state it was gone once Settings closed, and a
+    /// refused key then read as a green "Key saved on the phone" alone.
+    public var cloudKeyChecks: [CloudProvider: CloudKeyCheck] = [:]
+
     /// A cloud key was saved or removed in Settings. The engine reads
     /// it at every start, so a running or failed session just starts again.
     public func cloudKeyChanged() async {
