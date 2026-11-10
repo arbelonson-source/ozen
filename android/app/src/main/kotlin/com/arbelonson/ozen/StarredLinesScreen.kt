@@ -43,7 +43,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.arbelonson.ozen.core.StarredConversation
 import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.tr
@@ -127,12 +130,22 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
                     contentPadding = PaddingValues(bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    for ((session, starred) in shown.groupBy { it.sessionID }) {
-                        item(key = "conversation-$session") {
-                            SectionHeader(conversationHeading(starred.first().sessionStartedAt, now = now))
+                    for (group in StarredConversation.grouping(shown)) {
+                        item(key = "conversation-${group.sessionID}") {
+                            StarredHeading(group.title, conversationHeading(group.startedAt, now = now))
                         }
-                        items(starred, key = { it.id.toString() }) { line ->
-                            StarredLineView(SavedLine.of(line, markUncertain = marksUncertain, languageCode = languageCode), emphasizeNumbers, onOpen = { opened = line.sessionID to line.id })
+                        items(group.lines, key = { it.id.toString() }) { line ->
+                            StarredLineView(
+                                SavedLine.of(line, markUncertain = marksUncertain, languageCode = languageCode),
+                                emphasizeNumbers,
+                                onOpen = { opened = line.sessionID to line.id },
+                                onUnstar = {
+                                    scope.launch {
+                                        conversations.toggleStar(line.sessionID, line.id)
+                                        lines = withContext(Dispatchers.IO) { conversations.starredLines() }
+                                    }
+                                },
+                            )
                         }
                     }
                 }
@@ -141,9 +154,29 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
     }
 }
 
+/** A named conversation's heading says its name over its day and time, read as one heading, as on the iPhone. */
 @Composable
-private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: () -> Unit) {
+private fun StarredHeading(title: String?, day: String) {
+    if (title == null) {
+        SectionHeader(day)
+        return
+    }
+    Column(modifier = Modifier.semantics(mergeDescendants = true) { heading() }) {
+        SectionHeader(title)
+        Text(
+            day,
+            modifier = Modifier.padding(horizontal = 16.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** The star can come off from here too, as on the iPhone: only Copy was offered, and taking a star away meant finding the line inside its conversation. */
+@Composable
+private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: () -> Unit, onUnstar: () -> Unit) {
     val copy = tr("העתקה", "Copy")
+    val unstar = tr("הסרת הסימון", "Remove the star")
     val context = LocalContext.current
     val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, line.copied)) }
     var menu by remember { mutableStateOf(false) }
@@ -155,12 +188,16 @@ private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: 
                 .clickable(role = Role.Button, onClick = onOpen)
                 .clearAndSetSemantics {
                     contentDescription = line.spoken
-                    customActions = listOf(CustomAccessibilityAction(copy) { copyLine(); true })
+                    customActions = listOf(
+                        CustomAccessibilityAction(copy) { copyLine(); true },
+                        CustomAccessibilityAction(unstar) { onUnstar(); true },
+                    )
                 }
                 .padding(16.dp),
         ) {
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
+                DropdownMenuItem(text = { Text(unstar) }, onClick = { menu = false; onUnstar() })
             }
             LineDirection(line.rightToLeft) {
                 Column(modifier = Modifier.fillMaxWidth()) {

@@ -285,6 +285,28 @@ data class StarredLine(
 }
 
 /**
+ * The starred lines of one saved conversation, under one heading in the
+ * starred list, as on the iPhone: its name, when it was given one, over its
+ * day and time. Without the name, two conversations of the same morning
+ * looked alike.
+ */
+data class StarredConversation(
+    val sessionID: UUID,
+    val startedAt: Double,
+    val title: String?,
+    val lines: List<StarredLine>,
+) {
+    companion object {
+        /** In the order the lines come, each conversation once, with its lines in their order. A name of only spaces counts as none. */
+        fun grouping(lines: List<StarredLine>): List<StarredConversation> =
+            lines.groupBy { it.sessionID }.map { (session, starred) ->
+                val first = starred.first()
+                StarredConversation(session, first.sessionStartedAt, first.sessionTitle?.trim()?.takeIf { it.isNotEmpty() }, starred)
+            }
+    }
+}
+
+/**
  * A lightweight stand-in for a [TranscriptSessionRecord] used for listing
  * and searching, so browsing years of history never has to decode every
  * segment of every session just to show a list of dates and previews.
