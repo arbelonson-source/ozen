@@ -79,6 +79,23 @@ struct SettingsView: View {
             : AnyLayout(HStackLayout())
     }
 
+    /// The words under a slider for its two ends. At the largest text
+    /// sizes they stack, and both kept to the start, as if they named the
+    /// same end ("Faster" over "More accurate"); the second keeps to the
+    /// far end, where its side of the slider is.
+    private func sliderEnds(_ low: String, _ high: String) -> some View {
+        sliderLabelLayout {
+            Text(low)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(high)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .accessibilityHidden(true)
+    }
+
     /// A row that opens a screen, with its current value. At the largest
     /// text sizes the label and a long value side by side both broke
     /// mid-word (the sound alerts row, in Hebrew); there the value goes
@@ -631,14 +648,7 @@ struct SettingsView: View {
                     .accessibilityValue(Self.homeServerBeamDescription(Int(viewModel.homeServerBeam)))
                     .accessibilityHint(tr("החליקו למעלה לדיוק רב יותר, ולמטה למהירות רבה יותר.", "Swipe up for more accurate, down for faster."))
                     .accessibilityIdentifier("homeServerBeamSlider")
-                sliderLabelLayout {
-                    Text(tr("מהיר יותר", "Faster"))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(tr("מדויק יותר", "More accurate"))
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
+                sliderEnds(tr("מהיר יותר", "Faster"), tr("מדויק יותר", "More accurate"))
                 Text(tr("ההבדל בזמן ההמתנה קטן מאוד, חלקיק שנייה. עדיף להשאיר על 5, אלא אם אתם יודעים מה אתם עושים.", "The difference in waiting time is very small, a fraction of a second. Leave it at 5 unless you know what you’re doing."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -1165,14 +1175,7 @@ struct SettingsView: View {
                     .accessibilityLabel(tr("מהירות דיבור", "Speech rate"))
                     .accessibilityValue(SliderSpeech.speechRate(Double(viewModel.speechRate), in: Localization.language))
                     .accessibilityHint(SliderSpeech.speechRateHint(in: Localization.language))
-                sliderLabelLayout {
-                    Text(tr("איטי", "Slow"))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(tr("מהיר", "Fast"))
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
+                sliderEnds(tr("איטי", "Slow"), tr("מהיר", "Fast"))
             }
             Button {
                 viewModel.speak(Self.voiceSample)
@@ -1323,14 +1326,7 @@ struct SettingsView: View {
                     // The "more merging / more separating" ends are hidden
                     // from VoiceOver with the rest of the row's labels.
                     .accessibilityHint(tr("ערך נמוך מאחד קולות, וערך גבוה מפריד ביניהם.", "Lower merges voices, higher keeps them apart."))
-                sliderLabelLayout {
-                    Text(tr("מאחד יותר", "More merging"))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(tr("מפריד יותר", "More separating"))
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
+                sliderEnds(tr("מאחד יותר", "More merging"), tr("מפריד יותר", "More separating"))
                 if abs(viewModel.speakerSimilarityThreshold - AppSettings.default.speakerSimilarityThreshold) > 0.005 {
                     Button(tr("חזרה להגדרה הרגילה", "Back to the usual setting")) {
                         viewModel.speakerSimilarityThreshold = AppSettings.default.speakerSimilarityThreshold
