@@ -437,6 +437,41 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun recordingANewSpeakerWithoutTheMicrophoneSaysSoInsteadOfTooShortOrTooQuiet() {
+        val allowedBefore = SpeakerRecordings.microphoneAllowed
+        val askBefore = SpeakerRecordings.askForMicrophone
+        val book = RecordingBook()
+        try {
+            SpeakerRecordings.microphoneAllowed = { false }
+            SpeakerRecordings.askForMicrophone = { _, answer -> answer(false) }
+            compose.runOnUiThread { compose.activity.setContent { SpeakerEnrollmentScreen(book, onClose = {}) } }
+            compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.EditableText)).performTextInput("Grandma")
+            keyboardAway()
+            compose.onNodeWithText("Record and save (30 seconds)").performClick()
+            compose.onNodeWithText("No microphone access").assertExists()
+            compose.onNodeWithText("Recording a voice needs microphone access. You can allow it in the phone’s Settings.").assertExists()
+            compose.onNodeWithText("Open the phone’s settings").assertHasClickAction()
+            compose.onNodeWithText("The recording is too short or too quiet").assertDoesNotExist()
+            assertEquals(0, book.asked.size)
+
+            compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+            compose.onNodeWithText("No microphone access").assertDoesNotExist()
+            val pending = CopyOnWriteArrayList<(Boolean) -> Unit>()
+            SpeakerRecordings.askForMicrophone = { _, answer -> pending += answer }
+            compose.onNodeWithText("Record and save (30 seconds)").performClick()
+            compose.onNodeWithText("Record and save (30 seconds)").performClick()
+            compose.waitForIdle()
+            assertEquals("a second tap asked again while the first question was open", 1, pending.size)
+            compose.runOnUiThread { pending.single()(true) }
+            compose.waitUntil(5_000) { book.asked.size == 1 }
+            compose.runOnUiThread { SpeakerRecordings.stop() }
+        } finally {
+            SpeakerRecordings.microphoneAllowed = allowedBefore
+            SpeakerRecordings.askForMicrophone = askBefore
+        }
+    }
+
+    @Test
     fun atThirtyOfThirtyTheScreenSaysItIsSavingOffersNoStopAndCancelKeepsTheVoiceprint() {
         val book = RecordingBook()
         val closed = CompletableDeferred<Unit>()
