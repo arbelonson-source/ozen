@@ -73,6 +73,30 @@ public enum HomeServer {
         return !host.contains(".")
     }
 
+    /// An address only the home Wi‑Fi reaches: a home-network number or a
+    /// .local, .lan or .home.arpa name. A tailnet address (100.64/10,
+    /// .ts.net) works from anywhere, so it is not one; nor is a bare name,
+    /// which a tailnet can answer too.
+    public static func homeWiFiOnly(_ address: String) -> Bool {
+        guard let host = parsedURL(from: address)?.host?.lowercased() else { return false }
+        if host.hasSuffix(".local") || host.hasSuffix(".lan") || host.hasSuffix(".home.arpa") { return true }
+        let octets = host.split(separator: ".", omittingEmptySubsequences: false)
+            .map { $0.count > 1 && $0.hasPrefix("0") ? nil : Int($0) }
+        guard octets.count == 4, octets.allSatisfy({ $0 != nil && (0...255).contains($0!) }) else { return false }
+        let a = octets[0]!, b = octets[1]!
+        return a == 10 || (a == 192 && b == 168) || (a == 172 && (16...31).contains(b)) || (a == 169 && b == 254)
+    }
+
+    /// What a connection test that got no answer says. Paired at home, the
+    /// saved address is often one only the home Wi‑Fi reaches; tested away
+    /// from home it never answers, and "check that the computer is on" sent
+    /// her to a computer that was fine.
+    public static func unreachableText(address: String) -> String {
+        homeWiFiOnly(address)
+            ? tr("אין תשובה מהמחשב. הכתובת הזאת עובדת רק ב־Wi‑Fi של הבית. בבית, בדקו שהמחשב דלוק ולא במצב שינה. מחוץ לבית, השתמשו בכתובת שמתחילה ב־wss://", "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://")
+            : tr("אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.", "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.")
+    }
+
     /// "192.168.1.20", "grandma-pc:8765", "ws://…" or "wss://…" all work;
     /// a bare host gets the default port and plain `ws`. Unencrypted audio
     /// may only go to a computer on the home network or the family's

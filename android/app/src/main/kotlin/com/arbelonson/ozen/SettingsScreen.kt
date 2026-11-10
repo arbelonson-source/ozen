@@ -773,7 +773,7 @@ private fun HomeComputerSection(
                         )
                         if (checking && !ReducedMotion.isOn()) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
-                    check?.let { HomeComputerCheckLabel(it) }
+                    check?.let { HomeComputerCheckLabel(it, address) }
                 }
             }
         }
@@ -917,11 +917,11 @@ private fun HomeComputerBeam(engineSettings: EngineSettings, beam: Int, onMoved:
 }
 
 @Composable
-private fun HomeComputerCheckLabel(check: HomeServerCheck) {
+private fun HomeComputerCheckLabel(check: HomeServerCheck, address: String) {
     val (text, color) = when (check) {
         is HomeServerCheck.Connected -> tr("מחובר: המחשב ענה תוך %1 אלפיות שנייה", "Connected: the computer answered in %1 ms", listOf("${check.milliseconds}")) to savedGreen()
         HomeServerCheck.CodeRefused -> tr("המחשב ענה, אבל לא קיבל את הקוד. סרקו שוב את קוד ה־QR או הקלידו את הקוד מחדש.", "The computer answered but didn’t accept the code. Scan the QR code again or retype the code.") to MaterialTheme.colorScheme.error
-        HomeServerCheck.Unreachable -> tr("אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.", "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.") to cautionOrange()
+        HomeServerCheck.Unreachable -> HomeServer.unreachableText(address) to cautionOrange()
         HomeServerCheck.NotSetUp -> tr("הכתובת או הקוד חסרים", "The address or code is missing") to MaterialTheme.colorScheme.onSurfaceVariant
         HomeServerCheck.NeedsEncryptedAddress -> tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://") to cautionOrange()
     }

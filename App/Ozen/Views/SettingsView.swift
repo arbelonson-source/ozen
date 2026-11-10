@@ -566,7 +566,7 @@ struct SettingsView: View {
                         isCheckingHomeServer = false
                         guard generation == homeServerCheckGeneration else { return }
                         homeServerCheck = check
-                        UIAccessibility.post(notification: .announcement, argument: Self.homeServerCheckText(check))
+                        UIAccessibility.post(notification: .announcement, argument: Self.homeServerCheckText(check, address: viewModel.settings.homeServerAddress))
                     }
                 } label: {
                     HStack {
@@ -653,7 +653,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func homeServerCheckLabel(_ check: HomeServerCheck) -> some View {
-        let text = Self.homeServerCheckText(check)
+        let text = Self.homeServerCheckText(check, address: viewModel.settings.homeServerAddress)
         switch check {
         case .connected:
             Label(text, systemImage: "checkmark.circle.fill")
@@ -673,14 +673,14 @@ struct SettingsView: View {
         }
     }
 
-    static func homeServerCheckText(_ check: HomeServerCheck) -> String {
+    static func homeServerCheckText(_ check: HomeServerCheck, address: String) -> String {
         switch check {
         case .connected(let milliseconds):
             tr("מחובר: המחשב ענה תוך %1 אלפיות שנייה", "Connected: the computer answered in %1 ms", args: ["\(milliseconds)"])
         case .codeRefused:
             tr("המחשב ענה, אבל לא קיבל את הקוד. סרקו שוב את קוד ה־QR או הקלידו את הקוד מחדש.", "The computer answered but didn’t accept the code. Scan the QR code again or retype the code.")
         case .unreachable:
-            tr("אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.", "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.")
+            HomeServer.unreachableText(address: address)
         case .notSetUp:
             tr("הכתובת או הקוד חסרים", "The address or code is missing")
         case .needsEncryptedAddress:
