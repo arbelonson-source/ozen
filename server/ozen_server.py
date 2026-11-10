@@ -825,9 +825,17 @@ def raise_open_file_limit():
     log.info("could not raise the open-file limit above %d", soft)
 
 
+# A refused peer gets this long to answer the goodbye instead of the usual
+# 10 s. A flood that never answers would otherwise keep each socket that
+# long after the refusal, outside the count of connections waiting to say
+# hello; a phone answers in well under a second.
+REFUSED_GOODBYE_WAIT = 1
+
+
 async def refuse(ws, code, detail):
     """A peer that already hung up (a port scan, a check that gave up)
     gets no reply; sending anyway raised and put a traceback in the log."""
+    ws.close_timeout = REFUSED_GOODBYE_WAIT
     try:
         await ws.send(json.dumps({"type": "error", "code": code, "detail": detail}))
     except websockets.ConnectionClosed:

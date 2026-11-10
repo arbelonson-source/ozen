@@ -2529,5 +2529,54 @@ class EncryptedHomePort(unittest.TestCase):
         self.assertEqual((refused["type"], refused["code"]), ("error", "unauthorized"))
 
 
+class RefusedPeers(unittest.TestCase):
+    @unittest.skipUnless(any(os.path.isdir(os.path.join(p, "websockets", "asyncio")) for p in sys.path),
+                         "needs the real websockets package")
+    def test_a_refused_peer_that_never_says_goodbye_loses_its_socket_within_seconds(self):
+        import base64
+
+        loaded = {name: module for name, module in sys.modules.items() if name.split(".")[0] == "websockets"}
+        for name in loaded:
+            del sys.modules[name]
+        import websockets
+
+        def restore():
+            for name in [name for name in sys.modules if name.split(".")[0] == "websockets"]:
+                del sys.modules[name]
+            sys.modules.update(loaded)
+
+        self.addCleanup(restore)
+        self.enterContext(mock.patch.object(S, "websockets", websockets))
+
+        def frame(text):
+            payload = text.encode()
+            mask = os.urandom(4)
+            return bytes([0x81, 0x80 | len(payload)]) + mask + bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+
+        async def rude(port, hello):
+            reader, writer = await asyncio.open_connection("127.0.0.1", port)
+            key = base64.b64encode(os.urandom(16)).decode()
+            writer.write(f"GET / HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                         f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n".encode() + frame(hello))
+            await writer.drain()
+            await reader.readuntil(b"\r\n\r\n")
+            started = time.monotonic()
+            await asyncio.wait_for(reader.read(-1), 15)
+            writer.close()
+            return time.monotonic() - started
+
+        async def run():
+            async with websockets.serve(lambda ws: S.handle(ws, None, "example-code-123", 1.0), "127.0.0.1", 0) as server:
+                port = server.sockets[0].getsockname()[1]
+                return await asyncio.gather(
+                    rude(port, json.dumps({"type": "hello", "token": "wrong-code-789"})),
+                    rude(port, "not a hello"))
+
+        with self.assertLogs(S.log, "WARNING"):
+            held = asyncio.run(asyncio.wait_for(run(), 30))
+        for seconds in held:
+            self.assertLess(seconds, S.REFUSED_GOODBYE_WAIT + 2)
+
+
 if __name__ == "__main__":
     unittest.main()
