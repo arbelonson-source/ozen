@@ -1109,7 +1109,18 @@
   "Line fixed": "መስመሩ ተስተካክሏል",
   "A key is a long code you get from the %1 website after opening an account there.": "ቁልፍ ማለት በ%1 ድረ-ገጽ ላይ መለያ ከከፈቱ በኋላ የሚያገኙት ረጅም ኮድ ነው።",
   "Open the %1 website": "የ%1 ድረ-ገጽን ይክፈቱ",
-  "They stay saved in Settings, under “Previous conversations”.": "በቅንብሮች ውስጥ፣ በ“ያለፉ ውይይቶች” ስር ተቀምጠው ይቆያሉ።"
+  "They stay saved in Settings, under “Previous conversations”.": "በቅንብሮች ውስጥ፣ በ“ያለፉ ውይይቶች” ስር ተቀምጠው ይቆያሉ።",
+  "The phone’s built-in speech recognition": "በስልኩ ውስጥ ያለው የንግግር ማወቂያ",
+  "Available on this phone": "በዚህ ስልክ ላይ አለ",
+  "Current spoken language (%1)": "አሁን የተመረጠው የንግግር ቋንቋ (%1)",
+  "Needs Android 12 or later": "Android 12 ወይም ከዚያ በላይ ያስፈልጋል",
+  "Needs Android 13 or later": "Android 13 ወይም ከዚያ በላይ ያስፈልጋል",
+  "No answer": "መልስ የለም",
+  "Installed on the phone": "በስልኩ ላይ ተጭኗል",
+  "Can be downloaded": "ማውረድ ይቻላል",
+  "Downloading now": "አሁን እየወረደ ነው",
+  "Only over the internet": "በበይነመረብ ብቻ",
+  "Not supported": "አይደገፍም"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2221,7 +2232,18 @@
   "Line fixed": "تم تصحيح السطر",
   "A key is a long code you get from the %1 website after opening an account there.": "المفتاح رمز طويل تحصلون عليه من موقع %1 بعد فتح حساب فيه.",
   "Open the %1 website": "فتح موقع %1",
-  "They stay saved in Settings, under “Previous conversations”.": "تبقى محفوظة في الإعدادات، ضمن ‏“المحادثات السابقة”‏."
+  "They stay saved in Settings, under “Previous conversations”.": "تبقى محفوظة في الإعدادات، ضمن ‏“المحادثات السابقة”‏.",
+  "The phone’s built-in speech recognition": "التعرّف على الكلام المدمج في الهاتف",
+  "Available on this phone": "متاح على هذا الهاتف",
+  "Current spoken language (%1)": "لغة الكلام الحالية (%1)",
+  "Needs Android 12 or later": "يتطلب Android 12 أو أحدث",
+  "Needs Android 13 or later": "يتطلب Android 13 أو أحدث",
+  "No answer": "لا توجد إجابة",
+  "Installed on the phone": "مثبّت على الهاتف",
+  "Can be downloaded": "يمكن تنزيله",
+  "Downloading now": "قيد التنزيل الآن",
+  "Only over the internet": "عبر الإنترنت فقط",
+  "Not supported": "غير مدعوم"
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3333,7 +3355,18 @@
   "Line fixed": "这一行已更正",
   "A key is a long code you get from the %1 website after opening an account there.": "密钥是在 %1 网站开设账户后得到的一串长代码。",
   "Open the %1 website": "打开 %1 网站",
-  "They stay saved in Settings, under “Previous conversations”.": "它们会保存在“设置”的“以往的对话”中。"
+  "They stay saved in Settings, under “Previous conversations”.": "它们会保存在“设置”的“以往的对话”中。",
+  "The phone’s built-in speech recognition": "手机内置的语音识别",
+  "Available on this phone": "此手机是否可用",
+  "Current spoken language (%1)": "当前口语语言（%1）",
+  "Needs Android 12 or later": "需要 Android 12 或更高版本",
+  "Needs Android 13 or later": "需要 Android 13 或更高版本",
+  "No answer": "没有回应",
+  "Installed on the phone": "已安装在手机上",
+  "Can be downloaded": "可以下载",
+  "Downloading now": "正在下载",
+  "Only over the internet": "仅限联网使用",
+  "Not supported": "不支持"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4445,7 +4478,18 @@
   "Line fixed": "Ligne corrigée",
   "A key is a long code you get from the %1 website after opening an account there.": "Une clé est un long code que vous obtenez sur le site de %1 après y avoir ouvert un compte.",
   "Open the %1 website": "Ouvrir le site de %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Elles restent enregistrées dans Réglages, sous « Conversations précédentes »."
+  "They stay saved in Settings, under “Previous conversations”.": "Elles restent enregistrées dans Réglages, sous « Conversations précédentes ».",
+  "The phone’s built-in speech recognition": "Reconnaissance vocale intégrée au téléphone",
+  "Available on this phone": "Disponible sur ce téléphone",
+  "Current spoken language (%1)": "Langue parlée actuelle (%1)",
+  "Needs Android 12 or later": "Nécessite Android 12 ou une version plus récente",
+  "Needs Android 13 or later": "Nécessite Android 13 ou une version plus récente",
+  "No answer": "Aucune réponse",
+  "Installed on the phone": "Installée sur le téléphone",
+  "Can be downloaded": "Peut être téléchargée",
+  "Downloading now": "Téléchargement en cours",
+  "Only over the internet": "Uniquement par Internet",
+  "Not supported": "Non prise en charge"
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5557,7 +5601,18 @@
   "Line fixed": "Zeile korrigiert",
   "A key is a long code you get from the %1 website after opening an account there.": "Ein Schlüssel ist ein langer Code, den Sie auf der Website von %1 erhalten, nachdem Sie dort ein Konto eröffnet haben.",
   "Open the %1 website": "Website von %1 öffnen",
-  "They stay saved in Settings, under “Previous conversations”.": "Sie bleiben in den Einstellungen unter „Frühere Gespräche“ gespeichert."
+  "They stay saved in Settings, under “Previous conversations”.": "Sie bleiben in den Einstellungen unter „Frühere Gespräche“ gespeichert.",
+  "The phone’s built-in speech recognition": "Eingebaute Spracherkennung des Telefons",
+  "Available on this phone": "Auf diesem Telefon verfügbar",
+  "Current spoken language (%1)": "Aktuelle gesprochene Sprache (%1)",
+  "Needs Android 12 or later": "Benötigt Android 12 oder neuer",
+  "Needs Android 13 or later": "Benötigt Android 13 oder neuer",
+  "No answer": "Keine Antwort",
+  "Installed on the phone": "Auf dem Telefon installiert",
+  "Can be downloaded": "Kann heruntergeladen werden",
+  "Downloading now": "Wird gerade heruntergeladen",
+  "Only over the internet": "Nur über das Internet",
+  "Not supported": "Nicht unterstützt"
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6669,7 +6724,18 @@
   "Line fixed": "पंक्ति ठीक कर दी गई",
   "A key is a long code you get from the %1 website after opening an account there.": "कुंजी एक लंबा कोड है, जो %1 की वेबसाइट पर खाता खोलने के बाद मिलता है।",
   "Open the %1 website": "%1 की वेबसाइट खोलें",
-  "They stay saved in Settings, under “Previous conversations”.": "ये सेटिंग्स में “पिछली बातचीत” के अंतर्गत सहेजे रहेंगे।"
+  "They stay saved in Settings, under “Previous conversations”.": "ये सेटिंग्स में “पिछली बातचीत” के अंतर्गत सहेजे रहेंगे।",
+  "The phone’s built-in speech recognition": "फ़ोन में बनी बोली पहचान",
+  "Available on this phone": "इस फ़ोन पर उपलब्ध",
+  "Current spoken language (%1)": "अभी की बोली जाने वाली भाषा (%1)",
+  "Needs Android 12 or later": "Android 12 या उसके बाद का संस्करण चाहिए",
+  "Needs Android 13 or later": "Android 13 या उसके बाद का संस्करण चाहिए",
+  "No answer": "कोई जवाब नहीं",
+  "Installed on the phone": "फ़ोन पर इंस्टॉल है",
+  "Can be downloaded": "डाउनलोड किया जा सकता है",
+  "Downloading now": "अभी डाउनलोड हो रहा है",
+  "Only over the internet": "सिर्फ़ इंटरनेट से",
+  "Not supported": "समर्थित नहीं"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7781,7 +7847,18 @@
   "Line fixed": "Linha corrigida",
   "A key is a long code you get from the %1 website after opening an account there.": "Uma chave é um código longo que obtém no site de %1 depois de abrir lá uma conta.",
   "Open the %1 website": "Abrir o site de %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Ficam guardadas nas Definições, em “Conversas anteriores”."
+  "They stay saved in Settings, under “Previous conversations”.": "Ficam guardadas nas Definições, em “Conversas anteriores”.",
+  "The phone’s built-in speech recognition": "Reconhecimento de fala integrado ao telefone",
+  "Available on this phone": "Disponível neste telefone",
+  "Current spoken language (%1)": "Idioma falado atual (%1)",
+  "Needs Android 12 or later": "Requer Android 12 ou mais recente",
+  "Needs Android 13 or later": "Requer Android 13 ou mais recente",
+  "No answer": "Sem resposta",
+  "Installed on the phone": "Instalado no telefone",
+  "Can be downloaded": "Pode ser baixado",
+  "Downloading now": "Baixando agora",
+  "Only over the internet": "Somente pela internet",
+  "Not supported": "Não suportado"
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8893,7 +8970,18 @@
   "Line fixed": "Строка исправлена",
   "A key is a long code you get from the %1 website after opening an account there.": "Ключ — это длинный код, который выдают на сайте %1 после создания там учётной записи.",
   "Open the %1 website": "Открыть сайт %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Они сохранятся в настройках, в разделе «Предыдущие разговоры»."
+  "They stay saved in Settings, under “Previous conversations”.": "Они сохранятся в настройках, в разделе «Предыдущие разговоры».",
+  "The phone’s built-in speech recognition": "Встроенное распознавание речи в телефоне",
+  "Available on this phone": "Доступно на этом телефоне",
+  "Current spoken language (%1)": "Текущий язык речи (%1)",
+  "Needs Android 12 or later": "Нужен Android 12 или новее",
+  "Needs Android 13 or later": "Нужен Android 13 или новее",
+  "No answer": "Нет ответа",
+  "Installed on the phone": "Установлено на телефоне",
+  "Can be downloaded": "Можно скачать",
+  "Downloading now": "Скачивается сейчас",
+  "Only over the internet": "Только через интернет",
+  "Not supported": "Не поддерживается"
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -10005,7 +10093,18 @@
   "Line fixed": "Línea corregida",
   "A key is a long code you get from the %1 website after opening an account there.": "Una clave es un código largo que obtienes en el sitio web de %1 después de abrir una cuenta allí.",
   "Open the %1 website": "Abrir el sitio web de %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Se quedan guardados en Ajustes, en “Conversaciones anteriores”."
+  "They stay saved in Settings, under “Previous conversations”.": "Se quedan guardados en Ajustes, en “Conversaciones anteriores”.",
+  "The phone’s built-in speech recognition": "Reconocimiento de voz integrado en el teléfono",
+  "Available on this phone": "Disponible en este teléfono",
+  "Current spoken language (%1)": "Idioma hablado actual (%1)",
+  "Needs Android 12 or later": "Requiere Android 12 o posterior",
+  "Needs Android 13 or later": "Requiere Android 13 o posterior",
+  "No answer": "Sin respuesta",
+  "Installed on the phone": "Instalado en el teléfono",
+  "Can be downloaded": "Se puede descargar",
+  "Downloading now": "Descargando ahora",
+  "Only over the internet": "Solo por internet",
+  "Not supported": "No compatible"
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11117,6 +11216,17 @@
   "Line fixed": "Рядок виправлено",
   "A key is a long code you get from the %1 website after opening an account there.": "Ключ — це довгий код, який видають на сайті %1 після створення там облікового запису.",
   "Open the %1 website": "Відкрити сайт %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Вони збережуться в налаштуваннях, у розділі «Попередні розмови»."
+  "They stay saved in Settings, under “Previous conversations”.": "Вони збережуться в налаштуваннях, у розділі «Попередні розмови».",
+  "The phone’s built-in speech recognition": "Вбудоване розпізнавання мовлення в телефоні",
+  "Available on this phone": "Доступно на цьому телефоні",
+  "Current spoken language (%1)": "Поточна мова мовлення (%1)",
+  "Needs Android 12 or later": "Потрібен Android 12 або новіший",
+  "Needs Android 13 or later": "Потрібен Android 13 або новіший",
+  "No answer": "Немає відповіді",
+  "Installed on the phone": "Установлено на телефоні",
+  "Can be downloaded": "Можна завантажити",
+  "Downloading now": "Завантажується зараз",
+  "Only over the internet": "Лише через інтернет",
+  "Not supported": "Не підтримується"
  }
 }

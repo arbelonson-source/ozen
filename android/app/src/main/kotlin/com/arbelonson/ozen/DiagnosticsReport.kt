@@ -76,6 +76,8 @@ data class DiagnosticsFacts(
     val lockScreenAllowed: Boolean = true,
     /** The listening notification is up with its lines on the lock screen. */
     val lockScreenShowing: Boolean = false,
+    /** What the phone's own recognizer says about the spoken language, once asked. */
+    val builtInSpeech: BuiltInSpeech = BuiltInSpeech.Checking,
 )
 
 /** The journal as the report shows it, oldest first, and whether any of it is marked caption lines. */
@@ -152,6 +154,7 @@ object DiagnosticsReport {
             "thermal: ${facts.thermalStatus ?: "-"} low power: ${facts.batterySaver} battery: ${facts.batteryPercent?.let { "$it%" + if (facts.charging) " charging" else "" } ?: "-"} free space: ${ByteSize.text(facts.freeBytes)}",
             "memory: used ${ByteSize.text(facts.memoryInUseBytes)} left ${facts.memoryAvailableBytes?.let(ByteSize::text) ?: "-"}",
             "device: ${facts.device} app ${facts.appVersion}",
+            BuiltInSpeechRules.reportLine(facts.builtInSpeech, settings.languageCode),
             "events (oldest first):",
         )
         val journal = listOf("journal, previous runs included (oldest first):") + facts.journal.ifEmpty { listOf("-") }

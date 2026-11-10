@@ -143,6 +143,7 @@ class DiagnosticsReportTest {
         assertEquals("thermal: 3 low power: true battery: 54% free space: ${ByteSize.text(12_300_000_000)}", lines[16])
         assertEquals("memory: used ${ByteSize.text(412_000_000)} left ${ByteSize.text(1_800_000_000)}", lines[17])
         assertEquals("device: Google Pixel 8, Android 16 app 0.2.40 (40)", lines[18])
+        assertEquals("built-in speech recognition: available: not checked language he: -", lines[19])
         assertEquals(
             listOf(
                 "events (oldest first):",
@@ -152,7 +153,7 @@ class DiagnosticsReportTest {
                 "10-10 21:02:11 APP STARTED: 0.2.40 Android 16",
                 "10-10 21:40:03 PROBLEM MARKED: engine whisperKit",
             ),
-            lines.drop(19),
+            lines.drop(20),
         )
         assertEquals(listOf("journal, previous runs included (oldest first):", "-"), DiagnosticsReport.text(facts()).lines().takeLast(2))
         Localization.withLanguage(UILanguage.Hebrew) {

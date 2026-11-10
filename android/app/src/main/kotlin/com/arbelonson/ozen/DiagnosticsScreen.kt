@@ -80,7 +80,9 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
-    val facts = { source.diagnostics() }
+    val context = LocalContext.current
+    var builtIn by remember { mutableStateOf<BuiltInSpeech>(BuiltInSpeech.Checking) }
+    val facts = { source.diagnostics().copy(builtInSpeech = builtIn) }
     var now by remember { mutableStateOf(facts()) }
     // Bumped by a button that changed what the screen shows, so a refresh
     // still reading the journal is dropped instead of putting back the one
@@ -114,7 +116,11 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
     var sentHome by remember { mutableStateOf<Boolean?>(null) }
     var marked by rememberSaveable { mutableStateOf<Boolean?>(null) }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
+    val spokenLanguage = now.settings.languageCode
+    LaunchedEffect(spokenLanguage) {
+        builtIn = BuiltInSpeech.Checking
+        builtIn = BuiltInSpeechProbe.check(context, spokenLanguage)
+    }
     val stats = now.stats
     SettingsPageFrame(tr("אבחון", "Diagnostics"), onClose = onClose, closeLabel = tr("חזרה", "Back")) {
         Spacer(Modifier.height(OzenSpacing.Unit))
@@ -293,6 +299,12 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             Footnote(
                 tr("כשמסמנים בעיה, 30 השניות האחרונות של הקול נשמרות בטלפון בלבד, כדי להשוות בין מה שנאמר למה שהוצג. נשמרות עד 5 הקלטות, והן נשלחות רק כשמקישים על אחת מהן. כדי למחוק הקלטה, לוחצים עליה לחיצה ארוכה.", "Marking a problem keeps the last 30 seconds of sound, on the phone only, to compare what was said with what was shown. Up to 5 are kept, and they’re sent only when you tap one. Hold one to delete it."),
             )
+        }
+
+        SectionHeader(tr("זיהוי הדיבור המובנה בטלפון", "The phone’s built-in speech recognition"))
+        SettingsGroup {
+            value(tr("זמין בטלפון הזה", "Available on this phone"), BuiltInSpeechRules.availableText(builtIn))
+            value(tr("שפת הדיבור הנוכחית (%1)", "Current spoken language (%1)", listOf(spokenLanguage)), BuiltInSpeechRules.languageText(builtIn))
         }
 
         SectionHeader(tr("מודל ומילים", "Model and words"))
