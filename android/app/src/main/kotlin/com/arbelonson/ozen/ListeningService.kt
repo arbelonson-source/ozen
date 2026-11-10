@@ -93,6 +93,7 @@ class ListeningService : Service() {
     override fun onDestroy() {
         running = false
         captions.endPhoneSound()
+        captions.stopCameraLight()
         showingOnLockScreen = false
         scope.cancel()
         val phase = captions.pipeline.phase

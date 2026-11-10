@@ -15,6 +15,9 @@ import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.DoorFront
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.FlashlightOff
+import androidx.compose.material.icons.rounded.FlashlightOn
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Hearing
 import androidx.compose.material.icons.rounded.LocalFireDepartment
@@ -50,6 +53,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -81,6 +87,9 @@ internal fun SoundAlertsScreen(
     onFeel: (AlertVibration) -> Unit,
     onSoundsOnly: () -> Unit,
     onClose: () -> Unit,
+    flashLight: Boolean = false,
+    onFlashLight: (Boolean) -> Unit = {},
+    onTryLight: (refused: () -> Unit) -> Unit = {},
 ) {
     BackHandler(onBack = onClose)
     // Sounds go on being heard while the page is open, and one heard too
@@ -134,6 +143,7 @@ internal fun SoundAlertsScreen(
             ),
         )
         LetAlarmsThroughDoNotDisturb()
+        CameraLightRows(preferences.isEnabled, flashLight, onFlashLight, onTryLight)
 
         // Each kind of alert buzzes differently, which only helps once
         // she knows which is which.
@@ -191,6 +201,74 @@ private fun LetAlarmsThroughDoNotDisturb() {
         tr(
             "כדי שאזעקה או גלאי עשן יעירו אתכם גם ב״נא לא להפריע״ או במצב שינה: הקישו למעלה ואפשרו להתראות ״חירום״ של אוזן לעקוף את ״נא לא להפריע״.",
             "So an alarm or smoke detector still wakes you in Do Not Disturb or a sleep mode: tap above and let Ozen’s Emergency alerts override Do Not Disturb.",
+        ),
+    )
+}
+
+/**
+ * The camera light, Android only: it blinks for an emergency or the door
+ * while Ozen listens away from the screen (see `TorchFlash`). A phone
+ * without one says so instead, and the phone's own flash for every
+ * notification is pointed to either way, since one of the two is enough.
+ */
+@Composable
+private fun CameraLightRows(soundsOn: Boolean, on: Boolean, onChange: (Boolean) -> Unit, onTry: (refused: () -> Unit) -> Unit) {
+    val context = LocalContext.current
+    var available by remember { mutableStateOf(CameraLight.isAvailable(context)) }
+    LifecycleResumeEffect(Unit) {
+        available = CameraLight.isAvailable(context)
+        onPauseOrDispose { }
+    }
+    var inUse by remember { mutableStateOf(false) }
+    SettingsGroup(dividerInset = 56.dp) {
+        if (!available) {
+            item { SettingRow(tr("בטלפון הזה אין פנס מצלמה", "This phone has no camera light"), icon = Icons.Rounded.FlashlightOff) }
+            return@SettingsGroup
+        }
+        item {
+            SettingSwitchRow(
+                tr("הבהוב בפנס המצלמה", "Flash the camera light"),
+                on,
+                { checked ->
+                    inUse = false
+                    onChange(checked)
+                },
+                icon = Icons.Rounded.FlashlightOn,
+                enabled = soundsOn,
+            )
+        }
+        if (on) {
+            item {
+                SettingRow(tr("לנסות", "Try it"), icon = Icons.Rounded.FlashOn, enabled = soundsOn, onClick = {
+                    inUse = false
+                    if (ScreenReader.isOn(context)) ScreenReader.announce(context, tr("פנס המצלמה מהבהב", "Flashing the camera light"))
+                    onTry { inUse = true }
+                })
+            }
+            if (inUse) {
+                item {
+                    Text(
+                        tr("פנס המצלמה בשימוש כרגע. אפשר לנסות שוב אחרי סגירת המצלמה.", "The camera light is in use right now. Try again after closing the camera."),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 56.dp, end = 16.dp, top = 8.dp, bottom = 8.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
+            }
+        }
+    }
+    if (available) {
+        Footnote(
+            tr(
+                "בזמן שאוזן מאזינה והטלפון נעול או שאוזן לא מוצגת על המסך, פנס המצלמה מהבהב כ־10 שניות כשיש התראה על צליל חירום או צליל חשוב: הבהובים ארוכים במקרה חירום, ושניים קצרים לדלת. בשעות השקטות הפנס מהבהב רק במקרה חירום. עובד הכי טוב כשהטלפון מונח עם המסך כלפי מטה. ההבהוב עלול להעיר גם אנשים אחרים בחדר.",
+                "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.",
+            ),
+        )
+    }
+    Footnote(
+        tr(
+            "בחלק מהטלפונים אפשר להפעיל הבהוב גם לכל התראה: חפשו הגדרת הבהוב בהגדרות הנגישות של הטלפון. אם שתיהן פועלות, ההבהובים עלולים להתערבב, ולכן מספיקה אחת מהן.",
+            "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.",
         ),
     )
 }

@@ -1,5 +1,11 @@
 {
  "amharic": {
+  "Flash the camera light": "የካሜራውን መብራት ብልጭ ማድረግ",
+  "This phone has no camera light": "ይህ ስልክ የካሜራ መብራት የለውም",
+  "The camera light is in use right now. Try again after closing the camera.": "የካሜራው መብራት አሁን በጥቅም ላይ ነው። ካሜራውን ከዘጉ በኋላ እንደገና ይሞክሩ።",
+  "Flashing the camera light": "የካሜራው መብራት ብልጭ ብልጭ እያለ ነው",
+  "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Ozen እያዳመጠ እያለ ስልኩ ሲቆለፍ ወይም Ozen በስክሪኑ ላይ ሳይሆን፣ የአደጋ ወይም አስፈላጊ ድምፅ ማንቂያ ሲኖር የካሜራው መብራት ለ10 ሰከንድ ያህል ብልጭ ብልጭ ይላል፦ ለአደጋ ረጅም ብልጭታዎች፣ ለበር ሁለት አጭር። በጸጥታ ሰዓቶች ውስጥ ብልጭ የሚለው ለአደጋ ብቻ ነው። ስልኩ በስክሪኑ ተደፍቶ ሲቀመጥ በተሻለ ይሠራል። መብራቱ በክፍሉ ያሉ ሌሎች ሰዎችንም ሊቀሰቅስ ይችላል።",
+  "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "አንዳንድ ስልኮች ለእያንዳንዱ ማሳወቂያም ብልጭ ማለት ይችላሉ፦ በስልኩ የተደራሽነት ቅንብሮች ውስጥ የብልጭታ ቅንብር ይፈልጉ። ሁለቱም ከበሩ ብልጭታዎቹ ሊቀላቀሉ ይችላሉ፣ ስለዚህ አንዱ በቂ ነው።",
   "Added: %1": "ተጨምሯል፦ %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "ካፕሽን የቋንቋ ሞዴሉን ይፈልጋል። አንድ ጊዜ ብቻ ይወርዳል፣ መጠኑም ገደማ %1 ነው። በሞባይል ዳታ ይህ ገንዘብ ሊያስወጣ ወይም የዳታ ጥቅልዎን ሊጨርስ ይችላል። የዳታ ገደብ በሌለው Wi‑Fi (የስልክ ሆትስፖት ባልሆነ) ውርዱ ራሱን ችሎ ይጀምራል።",
   "Download the language model over mobile data?": "የቋንቋ ሞዴሉ በሞባይል ዳታ ይውረድ?",
@@ -1063,6 +1069,12 @@
   "Ozen on this phone: a captions problem was marked at %1.": "Ozen በዚህ ስልክ፦ በ%1 የካፕሽን ችግር ምልክት ተደርጓል።"
  },
  "arabic": {
+  "Flash the camera light": "وميض ضوء الكاميرا",
+  "This phone has no camera light": "لا يوجد ضوء كاميرا في هذا الهاتف",
+  "The camera light is in use right now. Try again after closing the camera.": "ضوء الكاميرا قيد الاستخدام الآن. حاولوا مرة أخرى بعد إغلاق الكاميرا.",
+  "Flashing the camera light": "ضوء الكاميرا يومض",
+  "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "بينما يستمع Ozen ويكون الهاتف مقفلًا أو لا يكون Ozen على الشاشة، يومض ضوء الكاميرا نحو 10 ثوانٍ عند التنبيه لصوت طارئ أو مهم: ومضات طويلة للطوارئ، وومضتان قصيرتان للباب. في ساعات الهدوء، لا يومض إلا للطوارئ. يعمل بشكل أفضل عندما يكون الهاتف مقلوبًا على وجهه. قد يوقظ الضوء أيضًا أشخاصًا آخرين في الغرفة.",
+  "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "يمكن لبعض الهواتف أيضًا أن تومض لكل إشعار: ابحثوا عن إعداد للوميض في إعدادات تسهيل الاستخدام في الهاتف. إذا كان الاثنان مفعّلين، فقد تختلط الومضات، لذا يكفي واحد منهما.",
   "Added: %1": "أُضيف: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "الترجمة النصية تحتاج إلى نموذج اللغة. يُنزَّل مرة واحدة فقط وحجمه نحو %1. عبر بيانات الجوال قد يكلف هذا مالًا أو يستهلك باقة البيانات. عبر Wi‑Fi بلا حد للبيانات (لا نقطة اتصال من هاتف) سيبدأ التنزيل من تلقاء نفسه.",
   "Download the language model over mobile data?": "تنزيل نموذج اللغة عبر بيانات الجوال؟",
@@ -2126,6 +2138,12 @@
   "Ozen on this phone: a captions problem was marked at %1.": "Ozen على هذا الهاتف: سُجّلت مشكلة في الترجمة النصية الساعة %1."
  },
  "chineseSimplified": {
+  "Flash the camera light": "让相机手电筒闪烁",
+  "This phone has no camera light": "这部手机没有相机手电筒",
+  "The camera light is in use right now. Try again after closing the camera.": "相机手电筒正在使用中。关闭相机后再试一次。",
+  "Flashing the camera light": "相机手电筒正在闪烁",
+  "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "当 Ozen 正在聆听，并且手机已锁定或 Ozen 不在屏幕上时，如果有紧急或重要声音的提醒，相机手电筒会闪烁约 10 秒：紧急情况是长闪，门口是两下短闪。在免打扰时段内，只有紧急情况才会闪烁。手机屏幕朝下放置时效果最好。灯光也可能吵醒房间里的其他人。",
+  "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "有些手机也可以在每条通知时闪烁：你可以在手机的无障碍设置中找一找闪烁相关的设置。如果两者都打开，闪烁可能会混在一起，所以开一个就够了。",
   "Added: %1": "已添加：%1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "字幕需要语言模型。它只需下载一次，大约 %1。使用移动数据下载可能会花钱或消耗流量套餐。连接没有流量限制的 Wi‑Fi（不是手机热点）时，下载会自动开始。",
   "Download the language model over mobile data?": "要用移动数据下载语言模型吗？",
@@ -3189,6 +3207,12 @@
   "Ozen on this phone: a captions problem was marked at %1.": "此手机上的 Ozen：%1 标记了一个字幕问题。"
  },
  "french": {
+  "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
+  "This phone has no camera light": "Ce téléphone n’a pas de lampe d’appareil photo",
+  "The camera light is in use right now. Try again after closing the camera.": "La lampe de l’appareil photo est utilisée en ce moment. Réessayez après avoir fermé l’appareil photo.",
+  "Flashing the camera light": "La lampe de l’appareil photo clignote",
+  "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Pendant qu’Ozen écoute et que le téléphone est verrouillé ou qu’Ozen n’est pas à l’écran, la lampe de l’appareil photo clignote pendant environ 10 secondes lors d’une alerte pour un son d’urgence ou important : de longs éclairs pour une urgence, deux courts pour la porte. Pendant les heures calmes, seules les urgences font clignoter la lampe. Fonctionne mieux avec le téléphone posé écran vers le bas. La lumière peut aussi réveiller d’autres personnes dans la pièce.",
+  "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "Certains téléphones peuvent aussi clignoter pour chaque notification : cherchez un réglage de clignotement dans les paramètres d’accessibilité du téléphone. Si les deux sont activés, les clignotements peuvent se mélanger : un seul suffit donc.",
   "Added: %1": "Ajouté : %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Les sous-titres ont besoin du modèle de langue. Il se télécharge une seule fois et pèse environ %1. Via les données mobiles, cela peut coûter de l’argent ou utiliser votre forfait. Sur un Wi‑Fi sans limite de données (pas le partage de connexion d’un téléphone), le téléchargement démarrera tout seul.",
   "Download the language model over mobile data?": "Télécharger le modèle de langue via les données mobiles ?",
@@ -4252,6 +4276,12 @@
   "Ozen on this phone: a captions problem was marked at %1.": "Ozen sur ce téléphone : un problème de sous-titres a été signalé à %1."
  },
  "german": {
+  "Flash the camera light": "Mit dem Kameralicht blinken",
+  "This phone has no camera light": "Dieses Telefon hat kein Kameralicht",
+  "The camera light is in use right now. Try again after closing the camera.": "Das Kameralicht wird gerade verwendet. Versuchen Sie es nach dem Schließen der Kamera erneut.",
+  "Flashing the camera light": "Das Kameralicht blinkt",
+  "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Während Ozen zuhört und das Telefon gesperrt ist oder Ozen nicht auf dem Bildschirm ist, blinkt das Kameralicht etwa 10 Sekunden lang, wenn ein Notfallton oder ein wichtiger Ton einen Hinweis auslöst: lang bei einem Notfall, zweimal kurz für die Tür. Während der Ruhezeiten blinkt es nur bei Notfällen. Am besten liegt das Telefon mit dem Bildschirm nach unten. Das Licht kann auch andere im Raum wecken.",
+  "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "Manche Telefone können auch bei jeder Benachrichtigung blinken: Suchen Sie in den Bedienungshilfen des Telefons nach einer Einstellung zum Blinken. Sind beide an, kann sich das Blinken vermischen, eine genügt also.",
   "Added: %1": "Hinzugefügt: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Für Untertitel wird das Sprachmodell gebraucht. Es wird einmal heruntergeladen und ist etwa %1 groß. Über mobile Daten kann das Geld kosten oder Ihr Datenvolumen aufbrauchen. Über Wi‑Fi ohne Datenlimit (kein Hotspot eines Handys) startet der Download von allein.",
   "Download the language model over mobile data?": "Das Sprachmodell über mobile Daten herunterladen?",
@@ -5315,6 +5345,12 @@
   "Ozen on this phone: a captions problem was marked at %1.": "Ozen auf diesem Telefon: Um %1 wurde ein Problem mit den Untertiteln markiert."
  },
  "hindi": {
+  "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
+  "This phone has no camera light": "इस फ़ोन में कैमरे की लाइट नहीं है",
+  "The camera light is in use right now. Try again after closing the camera.": "कैमरे की लाइट अभी इस्तेमाल में है। कैमरा बंद करने के बाद फिर से कोशिश करें।",
+  "Flashing the camera light": "कैमरे की लाइट फ़्लैश हो रही है",
+  "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "जब Ozen सुन रहा हो और फ़ोन लॉक हो या Ozen स्क्रीन पर न हो, तब किसी आपातकालीन या ज़रूरी आवाज़ का अलर्ट आने पर कैमरे की लाइट लगभग 10 सेकंड तक फ़्लैश होती है: आपातकाल के लिए लंबी चमक, दरवाज़े के लिए दो छोटी। शांत घंटों में सिर्फ़ आपातकाल के लिए फ़्लैश होती है। फ़ोन को स्क्रीन नीचे की ओर करके रखने पर यह सबसे अच्छा काम करती है। रोशनी कमरे में मौजूद दूसरे लोगों को भी जगा सकती है।",
+  "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "कुछ फ़ोन हर सूचना के लिए भी फ़्लैश कर सकते हैं: फ़ोन की सुलभता सेटिंग में फ़्लैश की सेटिंग देखें। अगर दोनों चालू हों, तो फ़्लैश आपस में मिल सकते हैं, इसलिए एक ही काफ़ी है।",
   "Added: %1": "जोड़ा गया: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "कैप्शन के लिए भाषा का मॉडल ज़रूरी है। यह एक बार डाउनलोड होता है और लगभग %1 का है। मोबाइल डेटा पर इसमें पैसे लग सकते हैं या आपका डेटा प्लान ख़त्म हो सकता है। बिना डेटा सीमा वाले Wi‑Fi पर (फ़ोन का हॉटस्पॉट नहीं) डाउनलोड खुद शुरू हो जाएगा।",
   "Download the language model over mobile data?": "भाषा का मॉडल मोबाइल डेटा पर डाउनलोड करें?",
@@ -6378,6 +6414,12 @@
   "Ozen on this phone: a captions problem was marked at %1.": "इस फ़ोन पर Ozen: %1 बजे कैप्शन में समस्या दर्ज की गई।"
  },
  "portuguese": {
+  "Flash the camera light": "Fazer piscar a luz da câmara",
+  "This phone has no camera light": "Este telemóvel não tem luz da câmara",
+  "The camera light is in use right now. Try again after closing the camera.": "A luz da câmara está a ser usada neste momento. Tente novamente depois de fechar a câmara.",
+  "Flashing the camera light": "A luz da câmara está a piscar",
+  "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Enquanto o Ozen está a ouvir e o telemóvel está bloqueado ou o Ozen não está no ecrã, a luz da câmara pisca durante cerca de 10 segundos quando há um aviso de um som de emergência ou importante: piscadelas longas para uma emergência, duas curtas para a porta. Nas horas de silêncio, só pisca para emergências. Funciona melhor com o telemóvel virado para baixo. A luz também pode acordar outras pessoas no quarto.",
+  "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "Alguns telemóveis também podem piscar para cada notificação: procure uma definição de piscar nas definições de Acessibilidade do telemóvel. Se ambas estiverem ativas, as piscadelas podem misturar-se, por isso basta uma.",
   "Added: %1": "Adicionado: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "As legendas precisam do modelo de idioma. É transferido uma só vez e tem cerca de %1. Com dados móveis isto pode custar dinheiro ou gastar o seu plano de dados. Numa rede Wi‑Fi sem limite de dados (que não seja o hotspot de um telemóvel) a transferência começa sozinha.",
   "Download the language model over mobile data?": "Transferir o modelo de idioma com dados móveis?",
@@ -7441,6 +7483,12 @@
   "Ozen on this phone: a captions problem was marked at %1.": "Ozen neste telemóvel: foi assinalado um problema nas legendas às %1."
  },
  "russian": {
+  "Flash the camera light": "Мигать фонариком камеры",
+  "This phone has no camera light": "На этом телефоне нет фонарика камеры",
+  "The camera light is in use right now. Try again after closing the camera.": "Фонарик камеры сейчас занят. Попробуйте снова, когда закроете камеру.",
+  "Flashing the camera light": "Фонарик камеры мигает",
+  "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Пока Ozen слушает, а телефон заблокирован или Ozen не на экране, фонарик камеры мигает около 10 секунд при оповещении об экстренном или важном звуке: длинные вспышки при экстренной ситуации, две короткие — для двери. В тихие часы он мигает только при экстренных ситуациях. Лучше всего работает, когда телефон лежит экраном вниз. Свет может разбудить и других людей в комнате.",
+  "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "Некоторые телефоны могут мигать и при каждом уведомлении: поищите настройку вспышки в разделе «Специальные возможности» телефона. Если включены обе, вспышки могут смешиваться, поэтому достаточно одной.",
   "Added: %1": "Добавлено: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Для субтитров нужна языковая модель. Она загружается один раз, её размер около %1. Через мобильный интернет это может стоить денег или израсходовать ваш пакет данных. По Wi‑Fi без ограничения трафика (не точка доступа с телефона) загрузка начнётся сама.",
   "Download the language model over mobile data?": "Загрузить языковую модель через мобильный интернет?",
@@ -8504,6 +8552,12 @@
   "Ozen on this phone: a captions problem was marked at %1.": "Ozen на этом телефоне: в %1 отмечена проблема с субтитрами."
  },
  "spanish": {
+  "Flash the camera light": "Hacer parpadear la linterna de la cámara",
+  "This phone has no camera light": "Este teléfono no tiene linterna de cámara",
+  "The camera light is in use right now. Try again after closing the camera.": "La linterna de la cámara está en uso ahora mismo. Vuelve a intentarlo después de cerrar la cámara.",
+  "Flashing the camera light": "La linterna de la cámara está parpadeando",
+  "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Mientras Ozen escucha y el teléfono está bloqueado o Ozen no está en pantalla, la linterna de la cámara parpadea unos 10 segundos cuando hay una alerta de un sonido de emergencia o importante: destellos largos para una emergencia, dos cortos para la puerta. En las horas tranquilas, solo parpadea con las emergencias. Funciona mejor con el teléfono boca abajo. La luz también puede despertar a otras personas de la habitación.",
+  "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "Algunos teléfonos también pueden parpadear con cada notificación: busca un ajuste de parpadeo en los ajustes de accesibilidad del teléfono. Si los dos están activados, los destellos pueden mezclarse, así que basta con uno.",
   "Added: %1": "Añadido: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Los subtítulos necesitan el modelo de idioma. Se descarga una sola vez y pesa unos %1. Con datos móviles esto puede costar dinero o agotar tu plan de datos. Con un Wi‑Fi sin límite de datos (no el punto de acceso de un móvil), la descarga empezará sola.",
   "Download the language model over mobile data?": "¿Descargar el modelo de idioma con datos móviles?",
@@ -9567,6 +9621,12 @@
   "Ozen on this phone: a captions problem was marked at %1.": "Ozen en este teléfono: se marcó un problema con los subtítulos a las %1."
  },
  "ukrainian": {
+  "Flash the camera light": "Блимати ліхтариком камери",
+  "This phone has no camera light": "На цьому телефоні немає ліхтарика камери",
+  "The camera light is in use right now. Try again after closing the camera.": "Ліхтарик камери зараз зайнятий. Спробуйте ще раз, коли закриєте камеру.",
+  "Flashing the camera light": "Ліхтарик камери блимає",
+  "While Ozen is listening and the phone is locked or Ozen isn’t on screen, the camera light blinks for about 10 seconds when an emergency or important sound alerts: long flashes for an emergency, two short ones for the door. During quiet hours, only emergencies flash. Works best with the phone face down. The light can wake others in the room too.": "Поки Ozen слухає, а телефон заблоковано або Ozen не на екрані, ліхтарик камери блимає близько 10 секунд під час сповіщення про екстрений або важливий звук: довгі спалахи для екстреної ситуації, два короткі — для дверей. У тихі години він блимає лише для екстрених ситуацій. Найкраще працює, коли телефон лежить екраном донизу. Світло може розбудити й інших людей у кімнаті.",
+  "Some phones can also flash for every notification: look for a flash setting in the phone’s Accessibility settings. If both are on, the flashes can mix, so one is enough.": "Деякі телефони можуть блимати й для кожного сповіщення: пошукайте налаштування спалаху в розділі «Спеціальні можливості» телефона. Якщо ввімкнено обидва, спалахи можуть змішуватися, тож досить одного.",
   "Added: %1": "Додано: %1",
   "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Для субтитрів потрібна мовна модель. Вона завантажується один раз і важить близько %1. Через мобільний інтернет це може коштувати грошей або витратити ваш пакет даних. Через Wi‑Fi без обмеження трафіку (не точка доступу з телефона) завантаження почнеться само.",
   "Download the language model over mobile data?": "Завантажити мовну модель через мобільний інтернет?",

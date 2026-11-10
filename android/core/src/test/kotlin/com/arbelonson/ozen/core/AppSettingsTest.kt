@@ -675,4 +675,25 @@ class OtherSettingsDecodingTest {
         val json = """{"wordFixes":[{"heard":"aval"},{"heard":"bat","written":"Batia"},{"heard":"a","written":3}]}"""
         assertEquals(listOf(WordFix("bat", "Batia")), decode(json).wordFixes)
     }
+
+    @Test
+    fun `the camera light choice survives a save and a copy, and a missing or garbled one reads as off`() {
+        val settings = AppSettings.default
+        assertFalse(settings.flashCameraLight)
+        settings.flashCameraLight = true
+        val json = settings.toJson()
+        assertTrue(decode(json).flashCameraLight)
+        assertTrue(settings.copy().flashCameraLight)
+        assertEquals(settings.copy(), settings)
+        assertTrue(settings.copy().also { it.flashCameraLight = false } != settings)
+        val old = kotlinx.serialization.json.Json.parseToJsonElement(json) as kotlinx.serialization.json.JsonObject
+        val without = kotlinx.serialization.json.JsonObject(old.filterKeys { it != "flashCameraLight" })
+        assertFalse(decode(without.toString()).flashCameraLight)
+        for (garbled in listOf("\"yes\"", "1", "null", "[true]", "{}")) {
+            val broken = kotlinx.serialization.json.JsonObject(old + ("flashCameraLight" to kotlinx.serialization.json.Json.parseToJsonElement(garbled)))
+            val read = decode(broken.toString())
+            assertFalse(read.flashCameraLight, garbled)
+            assertEquals(settings.speechRate, read.speechRate, garbled)
+        }
+    }
 }
