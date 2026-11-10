@@ -42,7 +42,10 @@ struct SoundAlertsView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(tr("אוזן היא כלי עזר, ולא מערכת התרעה מאושרת. אל תסתמכו עליה במצבים שבהם אפשר להיפגע או בשעת חירום: השאירו את גלאי העשן במקומם, ואת ההתרעות של פיקוד העורף פעילות.", "Ozen is a helper, not a certified alarm. Don’t rely on it where you could be hurt or in an emergency: keep your smoke alarms, and keep official emergency alerts turned on."))
                     Text(tr("הזיהוי נעשה בטלפון בלבד, על אותו קול שמשמש לכתוביות. אותו צליל לא יופיע שוב במשך 20 שניות.", "Detection happens only on the phone, using the same audio as the captions. The same sound won’t appear again for 20 seconds."))
-                    Text(tr("כדי שאזעקה או גלאי עשן יעירו אתכם גם במצב שינה או ב״נא לא להפריע״: בהגדרות ה־%1 עברו אל ״מיקוד״, ובכל מצב מיקוד הוסיפו את אוזן ל״אפליקציות מותרות״.", "So an alarm or smoke detector still wakes you in Sleep or Do Not Disturb: in %1 Settings, Focus, in each Focus, Allowed Apps, add Ozen.", args: ["\(DeviceWord.brand)"]))
+                    // The Night alerts checklist's own words, which are the
+                    // phone's: in Hebrew this line named Focus and its app
+                    // list with words a Hebrew iPhone's Settings don't use.
+                    Text(tr("בהגדרות ← ריכוז, גם ב״שינה״ וגם ב״נא לא להפריע״: הקישו על ״יישומים״ והוסיפו את אוזן, כדי שאזעקת עשן עדיין תעיר אתכם.", "In Settings > Focus, in both Sleep and Do Not Disturb, tap Apps and add Ozen, so a smoke alarm still comes through."))
                 }
             }
 
