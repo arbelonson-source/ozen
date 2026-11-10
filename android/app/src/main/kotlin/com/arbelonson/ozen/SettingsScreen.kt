@@ -225,11 +225,32 @@ fun SettingsScreen(
     // button is kept as Settings closes instead of silently dropped.
     val closing = rememberCoroutineScope()
     LaunchedEffect(Unit) { engineSettings.loadKeyState() }
+    // A key the phone failed to store keeps Settings open with the reason,
+    // rather than closing as if the cloud were set up.
+    var keyNotStored by rememberSaveable { mutableStateOf(false) }
     val finishClosing: (Boolean) -> Unit = { withKey ->
         closing.launch {
-            engineSettings.saveUnsavedEntries(if (withKey) cloudKeyDraft.value else "", addressDraft.value, codeDraft.value)
-            onClose()
+            val kept = engineSettings.saveUnsavedEntries(if (withKey) cloudKeyDraft.value else "", addressDraft.value, codeDraft.value)
+            if (kept) onClose() else keyNotStored = true
         }
+    }
+    if (keyNotStored) {
+        AlertDialog(
+            onDismissRequest = { keyNotStored = false },
+            text = { Text(tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again.")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    keyNotStored = false
+                    finishClosing(true)
+                }) { Text(tr("נסו שוב", "Try again")) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    keyNotStored = false
+                    finishClosing(false)
+                }) { Text(tr("סגירה", "Close")) }
+            },
+        )
     }
     // A key pasted for a service she hasn't agreed to send the audio to
     // can't be saved without that OK, and was dropped without a word as
