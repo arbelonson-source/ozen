@@ -225,11 +225,54 @@ fun SettingsScreen(
     // button is kept as Settings closes instead of silently dropped.
     val closing = rememberCoroutineScope()
     LaunchedEffect(Unit) { engineSettings.loadKeyState() }
-    val close: () -> Unit = {
+    // A key the phone failed to store keeps Settings open with the reason,
+    // rather than closing as if the cloud were set up.
+    var keyNotStored by rememberSaveable { mutableStateOf(false) }
+    val finishClosing: (Boolean) -> Unit = { withKey ->
         closing.launch {
-            engineSettings.saveUnsavedEntries(cloudKeyDraft.value, addressDraft.value, codeDraft.value)
-            onClose()
+            val kept = engineSettings.saveUnsavedEntries(if (withKey) cloudKeyDraft.value else "", addressDraft.value, codeDraft.value)
+            if (kept) onClose() else keyNotStored = true
         }
+    }
+    if (keyNotStored) {
+        AlertDialog(
+            onDismissRequest = { keyNotStored = false },
+            text = { Text(tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again.")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    keyNotStored = false
+                    finishClosing(true)
+                }) { Text(tr("נסו שוב", "Try again")) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    keyNotStored = false
+                    finishClosing(false)
+                }) { Text(tr("סגירה", "Close")) }
+            },
+        )
+    }
+    // A key pasted for a service she hasn't agreed to send the audio to
+    // can't be saved without that OK, and was dropped without a word as
+    // Settings closed: she believed the cloud was set up. She is asked first.
+    var askingBeforeClosing by rememberSaveable { mutableStateOf(false) }
+    val close: () -> Unit = {
+        if (cloudKeyDraft.value.isNotBlank() && !engineSettings.cloudSoundAcknowledged()) askingBeforeClosing = true else finishClosing(true)
+    }
+    if (askingBeforeClosing) {
+        CloudConsentDialog(
+            current.cloudProvider,
+            onAllow = {
+                askingBeforeClosing = false
+                engineSettings.acknowledgeCloud(current.cloudProvider)
+                finishClosing(true)
+            },
+            onCancel = {
+                askingBeforeClosing = false
+                finishClosing(false)
+            },
+            onDismiss = { askingBeforeClosing = false },
+        )
     }
     var showingWords by rememberSaveable { mutableStateOf(false) }
     var showingDiagnostics by rememberSaveable { mutableStateOf(false) }
@@ -503,6 +546,25 @@ private fun engineSummary(kind: TranscriptionEngineKind): String? = when (kind) 
 }
 
 @Composable
+private fun CloudConsentDialog(service: CloudProvider, onAllow: () -> Unit, onCancel: () -> Unit, onDismiss: () -> Unit = onCancel) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("לשלוח את הקול ל־%1?", "Send the audio to %1?", listOf(service.displayName))) },
+        text = {
+            DialogText(
+                tr(
+                    "כשהכתוביות מגיעות מ־%1, הקול מהמיקרופון נשלח לשירות דרך האינטרנט, יחד עם השמות, המילים המיוחדות והמילים החשובות. על מה שנשלח חלים תנאי השימוש ומדיניות הפרטיות של %1. בלי אישור שלכם, המפתח לא יישמר ושום דבר לא יישלח.",
+                    "While captions come from %1, the audio from the microphone is sent to it over the internet, together with the names and special words and the important words. %1’s own terms and privacy policy apply to what it receives. Without your OK, the key isn’t saved and nothing is sent.",
+                    listOf(service.displayName),
+                ),
+            )
+        },
+        confirmButton = { TextButton(onClick = onAllow) { Text(tr("לאשר ולשמור", "Allow and save")) } },
+        dismissButton = { TextButton(onClick = onCancel) { Text(tr("ביטול", "Cancel")) } },
+    )
+}
+
+@Composable
 private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, keyDraft: MutableState<String>) {
     val service = current.cloudProvider
     val keysHeld by engineSettings.cloudKeysHeld.collectAsStateWithLifecycle()
@@ -576,28 +638,14 @@ private fun CloudSection(engineSettings: EngineSettings, current: AppSettings, k
         }
     }
     if (askingConsent) {
-        AlertDialog(
-            onDismissRequest = { askingConsent = false },
-            title = { Text(tr("לשלוח את הקול ל־%1?", "Send the audio to %1?", listOf(service.displayName))) },
-            text = {
-                DialogText(
-                    tr(
-                        "כשהכתוביות מגיעות מ־%1, הקול מהמיקרופון נשלח לשירות דרך האינטרנט, יחד עם השמות, המילים המיוחדות והמילים החשובות. על מה שנשלח חלים תנאי השימוש ומדיניות הפרטיות של %1. בלי אישור שלכם, המפתח לא יישמר ושום דבר לא יישלח.",
-                        "While captions come from %1, the audio from the microphone is sent to it over the internet, together with the names and special words and the important words. %1’s own terms and privacy policy apply to what it receives. Without your OK, the key isn’t saved and nothing is sent.",
-                        listOf(service.displayName),
-                    ),
-                )
+        CloudConsentDialog(
+            service,
+            onAllow = {
+                askingConsent = false
+                engineSettings.acknowledgeCloud(service)
+                saveNow()
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        askingConsent = false
-                        engineSettings.acknowledgeCloud(service)
-                        saveNow()
-                    },
-                ) { Text(tr("לאשר ולשמור", "Allow and save")) }
-            },
-            dismissButton = { TextButton(onClick = { askingConsent = false }) { Text(tr("ביטול", "Cancel")) } },
+            onCancel = { askingConsent = false },
         )
     }
     if (confirmingDelete) {

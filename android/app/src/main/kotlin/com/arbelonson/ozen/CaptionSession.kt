@@ -1179,12 +1179,17 @@ class CaptionSession(
      * the phone took this voice for the wrong one, so it gets a print of
      * its own instead of taking that person's.
      */
-    fun nameSpeaker(lineID: UUID, name: String) {
+    /**
+     * False when nothing could be saved: the line, or the voice it was
+     * heard in, is from too long ago for the phone to still have. The
+     * sheet then says so instead of closing as if it had worked.
+     */
+    fun nameSpeaker(lineID: UUID, name: String): Boolean {
         val trimmed = name.trim()
-        val line = pipeline.segments.firstOrNull { it.id == lineID } ?: return
-        if (trimmed.isEmpty()) return
+        val line = pipeline.segments.firstOrNull { it.id == lineID } ?: return false
+        if (trimmed.isEmpty() || !pipeline.hasVoice(line)) return false
         val oldName = line.speakerClusterID?.let { voice -> pipeline.speakerClusters.firstOrNull { it.id == voice }?.name }
-        val print = pipeline.nameSpeaker(line, trimmed) ?: return
+        val print = pipeline.nameSpeaker(line, trimmed) ?: return true
         when (val naming = SpeakerNaming.of(oldName, trimmed, settings.current.value.speakerProfiles.map { it.name }.toSet())) {
             is SpeakerNaming.Rename -> renamePerson(naming.from, trimmed)
             SpeakerNaming.Unchanged -> Unit
@@ -1193,6 +1198,7 @@ class CaptionSession(
                 speakerLabelsChanged()
             }
         }
+        return true
     }
 
     private fun renamePerson(from: String, to: String) {

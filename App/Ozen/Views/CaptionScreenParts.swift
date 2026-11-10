@@ -128,8 +128,13 @@ struct NameSpeakerSheet: View {
     let segment: TranscriptSegment
     let viewModel: LiveCaptionViewModel
     @State private var name = ""
+    @State private var tooOld = false
     @FocusState private var typing: Bool
     @Environment(\.dismiss) private var dismiss
+
+    private var tooOldText: String {
+        tr("השורה הזו ישנה מדי כדי לזהות ממנה את הקול. אפשר ללחוץ לחיצה ארוכה על שורה חדשה יותר של אותו אדם.", "This line is too old to recognize the voice from. Press and hold a newer line by the same person.")
+    }
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
     private var canSave: Bool { !trimmedName.isEmpty && segment.speakerClusterID != nil }
@@ -161,9 +166,15 @@ struct NameSpeakerSheet: View {
                         .submitLabel(.done)
                         .onSubmit { if canSave { save() } }
                 } footer: {
-                    Text(segment.speakerClusterID == nil
-                         ? tr("עדיין לא זוהה קול לשורה הזו. נסו שוב אחרי שהאדם ידבר עוד קצת.", "No voice has been identified for this line yet. Try again after the person talks a bit more.")
-                         : tr("מעכשיו כל מה שהקול הזה יגיד יופיע עם השם הזה.", "From now on, everything this voice says will show with this name."))
+                    if tooOld {
+                        Text(tooOldText)
+                            .font(.body)
+                            .foregroundStyle(.readable(.orange))
+                    } else {
+                        Text(segment.speakerClusterID == nil
+                             ? tr("עדיין לא זוהה קול לשורה הזו. נסו שוב אחרי שהאדם ידבר עוד קצת.", "No voice has been identified for this line yet. Try again after the person talks a bit more.")
+                             : tr("מעכשיו כל מה שהקול הזה יגיד יופיע עם השם הזה.", "From now on, everything this voice says will show with this name."))
+                    }
                 }
                 if segment.speakerClusterID != nil, !savedNames.isEmpty {
                     Section(tr("דוברים שמורים", "Saved speakers")) {
@@ -199,9 +210,17 @@ struct NameSpeakerSheet: View {
         }
     }
 
+    /// Closes only when the name was saved, and says which way it went:
+    /// an older line could do nothing while the sheet closed as if it had
+    /// worked, and VoiceOver heard the same either way.
     private func save() {
-        viewModel.nameSpeaker(of: segment, name: trimmedName)
-        dismiss()
+        if viewModel.nameSpeaker(of: segment, name: trimmedName) {
+            Announcement.post(tr("הקול נשמר: %1", "Voice saved: %1", args: ["\(trimmedName)"]))
+            dismiss()
+        } else {
+            tooOld = true
+            Announcement.post(tooOldText)
+        }
     }
 }
 

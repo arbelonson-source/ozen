@@ -232,10 +232,11 @@ class EngineSettings(
         return checkHomeComputer()
     }
 
-    suspend fun saveUnsavedEntries(cloudKeyDraft: String, addressDraft: String, pairingCodeDraft: String) {
+    /** False when a typed key could not be stored, so Settings can stay open and say so instead of closing on it. */
+    suspend fun saveUnsavedEntries(cloudKeyDraft: String, addressDraft: String, pairingCodeDraft: String): Boolean {
         HomeServer.unsavedAddress(addressDraft, settings.current.value.homeServerAddress)?.let { saveHomeComputerAddress(it) }
         savePairingCode(pairingCodeDraft)
-        saveCloudKey(cloudKeyDraft)
+        return cloudKeyDraft.isBlank() || saveCloudKey(cloudKeyDraft)
     }
 
     companion object {

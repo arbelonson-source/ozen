@@ -500,6 +500,21 @@ class CaptionPipelineTokenTest {
     }
 
     @Test
+    fun `a line whose voice the phone has let go is known to have none, and one it still has is not`() = runTest {
+        val engine = FakeEngine()
+        val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))
+        pipeline.start(AppSettings.default)
+        engine.emit(token(UUID.randomUUID(), "hello"))
+        assertTrue(eventually { pipeline.segments.size == 1 })
+        audio.push(FloatArray(24_000) { 0.5f })
+        assertTrue(eventually { pipeline.segments.firstOrNull()?.speakerClusterID != null })
+
+        assertTrue(pipeline.hasVoice(pipeline.segments[0]))
+        assertFalse(pipeline.hasVoice(pipeline.segments[0].copy(speakerClusterID = 9_999)))
+        assertFalse(pipeline.hasVoice(pipeline.segments[0].copy(speakerClusterID = null)))
+    }
+
+    @Test
     fun `a line corrected to another known person leaves the first person's voice alone`() = runTest {
         val engine = FakeEngine()
         val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))

@@ -105,6 +105,20 @@ struct WhisperModelCatalogTests {
         #expect(ivrit.remainingDownloadMegabytes(onDiskBytes: 0) == 819)
     }
 
+    @Test("a model trained for Hebrew alone can't be picked for another language, unless it is the one in use")
+    func hebrewOnlyModelsOffLimitsElsewhere() throws {
+        let hebrewOnly = WhisperModelCatalog.options.filter(\.isHebrewOnly)
+        #expect(!hebrewOnly.isEmpty)
+        for option in hebrewOnly {
+            #expect(WhisperModelCatalog.isOffLimits(option, for: .english, isSelected: false))
+            #expect(WhisperModelCatalog.isOffLimits(option, for: .arabic, isSelected: false))
+            #expect(!WhisperModelCatalog.isOffLimits(option, for: .hebrew, isSelected: false))
+            #expect(!WhisperModelCatalog.isOffLimits(option, for: .english, isSelected: true))
+        }
+        let general = try #require(WhisperModelCatalog.option(for: WhisperModelCatalog.generalVariant))
+        #expect(!WhisperModelCatalog.isOffLimits(general, for: .english, isSelected: false))
+    }
+
     @Test("size labels switch to GB at a thousand megabytes")
     func sizeLabels() {
         #expect(WhisperModelCatalog.option(for: "small")?.sizeLabel == "486\u{00A0}MB")

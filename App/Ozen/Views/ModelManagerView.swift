@@ -165,6 +165,7 @@ struct ModelManagerView: View {
         // room to land; the row says why instead.
         let wontFit = !isInstalled && !isPartial && !isSelected
             && StorageSpaceGate.shortfallMegabytes(downloadMegabytes: option.installMegabytes, availableBytes: freeBytes) != nil
+        let hebrewOnly = option.isHebrewOnly && viewModel.settings.spokenLanguage != .hebrew
 
         return Button {
             Task {
@@ -201,7 +202,7 @@ struct ModelManagerView: View {
                     RatingDots(label: tr("מהירות", "Speed"), value: option.speed)
                 }
 
-                Text(localizedNote(for: option))
+                Text(hebrewOnly ? tr("מתאים לעברית בלבד, ולכן אי אפשר לבחור בו בשפה הזו.", "For Hebrew only, so it can’t be chosen in this language.") : localizedNote(for: option))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -230,6 +231,10 @@ struct ModelManagerView: View {
                         Image(systemName: "externaldrive.badge.exclamationmark")
                             .accessibilityHidden(true)
                         Text(tr("אין מספיק מקום בטלפון", "Not enough room on the phone"))
+                    } else if isSelected {
+                        Image(systemName: "clock")
+                            .accessibilityHidden(true)
+                        Text(tr("נבחר · יירד כשהכתוביות יופעלו", "Selected · downloads when captions start"))
                     } else {
                         Image(systemName: "icloud.and.arrow.down")
                             .accessibilityHidden(true)
@@ -253,7 +258,7 @@ struct ModelManagerView: View {
             .contentShape(Rectangle())
         }
         .foregroundStyle(.primary)
-        .disabled(wontFit)
+        .disabled(wontFit || WhisperModelCatalog.isOffLimits(option, for: viewModel.settings.spokenLanguage, isSelected: isSelected))
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if (isInstalled || isPartial) && downloadProgress == nil && !isChecking && !(isSelected && (viewModel.isListening || viewModel.phase == .paused || viewModel.phase.isTransitioning)) {
                 Button(role: .destructive) {

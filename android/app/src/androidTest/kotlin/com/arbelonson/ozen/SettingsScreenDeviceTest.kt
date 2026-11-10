@@ -750,10 +750,51 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Deepgram").performScrollTo().performClick()
         compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-not-agreed")
         compose.onNodeWithText("Close").performScrollTo().performClick()
+        compose.onNodeWithText("Send the audio to Deepgram?").assertExists()
+        compose.onNodeWithText("Cancel").performClick()
         compose.onNodeWithText("Close").assertDoesNotExist()
         compose.waitForIdle()
         assertNull(app.cloudKeys.read(CloudProvider.Deepgram))
         assertEquals(emptySet<CloudProvider>(), app.settings.current.value.cloudSoundAcknowledged)
+    }
+
+    @Test
+    fun aKeyPastedForAServiceNotYetAgreedToAsksBeforeSettingsCloseAndAllowSavesIt() {
+        app.settings.change { it.cloudSoundAcknowledged = emptySet() }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Cloud transcription").performScrollTo().performClick()
+        compose.onNodeWithText("Deepgram").performScrollTo().performClick()
+        compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-asked-on-back")
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.onNodeWithText("Send the audio to Deepgram?").assertExists()
+        assertNull(app.cloudKeys.read(CloudProvider.Deepgram))
+        compose.onNodeWithText("Allow and save").performClick()
+        compose.onNodeWithText("Close").assertDoesNotExist()
+        compose.waitUntil(5_000) { app.cloudKeys.read(CloudProvider.Deepgram) == "dg-asked-on-back" }
+        assertEquals(setOf(CloudProvider.Deepgram), app.settings.current.value.cloudSoundAcknowledged)
+    }
+
+    @Test
+    fun aKeyThePhoneFailsToStoreAsSettingsCloseKeepsSettingsOpenAndTryAgainSavesIt() {
+        app.settings.change { it.cloudSoundAcknowledged = setOf(CloudProvider.Deepgram) }
+        val keyFile = File(File(app.noBackupFilesDir, "cloud-keys"), CloudProvider.Deepgram.keychainService)
+        try {
+            File(keyFile, "in-the-way").apply { parentFile?.mkdirs() }.writeText("blocks the key file")
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Cloud transcription").performScrollTo().performClick()
+            compose.onNodeWithText("Deepgram").performScrollTo().performClick()
+            compose.onNodeWithText("Paste your Deepgram key here").performScrollTo().performTextInput("dg-not-stored")
+            compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("The key wasn’t saved. Try again.").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Paste your Deepgram key here").assertExists()
+            assertNull(app.cloudKeys.read(CloudProvider.Deepgram))
+            keyFile.deleteRecursively()
+            compose.onNodeWithText("Try again").performClick()
+            compose.waitUntil(5_000) { app.cloudKeys.read(CloudProvider.Deepgram) == "dg-not-stored" }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Paste your Deepgram key here").fetchSemanticsNodes().isEmpty() }
+        } finally {
+            keyFile.deleteRecursively()
+        }
     }
 
     @Test
