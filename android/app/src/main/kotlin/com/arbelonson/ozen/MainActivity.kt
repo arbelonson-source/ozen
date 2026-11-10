@@ -2186,6 +2186,16 @@ private fun DrawScope.drawDoubtDots(layout: TextLayoutResult, colour: Color) {
 @Composable
 private fun StatusLine(status: PhasePresentation, look: CaptionTheme, live: Boolean, onTap: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    // As on the iPhone: paused, off or stopped shows its own icon and colour.
+    // Only the small green dot went away before, and the old lines stayed,
+    // so a glance at the phone took the silence for nobody talking.
+    val quiet = !status.isBusy && !live
+    val tone = when (status.tint) {
+        PhaseTint.Problem -> colors.error
+        PhaseTint.Attention -> OzenColors.statusWarn(dark = !look.isLight)
+        PhaseTint.Inactive -> colors.onSurfaceVariant
+        else -> colors.onSurface
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2206,9 +2216,16 @@ private fun StatusLine(status: PhasePresentation, look: CaptionTheme, live: Bool
                 CircularProgressIndicator(color = colors.primary, strokeWidth = 2.dp, modifier = Modifier.size(16.dp).testTag(STATUS_BUSY).clearAndSetSemantics {})
             } else if (live) {
                 LiveDot(OzenColors.statusGood(dark = !look.isLight))
+            } else {
+                Icon(status.icon, contentDescription = null, tint = tone, modifier = Modifier.size(18.dp).testTag(STATUS_ICON))
             }
             val inline = status.detail != null && !status.isBusy && status.progress == null
-            Text(text = status.title, color = colors.onSurface, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f, fill = false))
+            Text(
+                text = status.title,
+                color = if (quiet) tone else colors.onSurface,
+                style = if (quiet) MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold) else MaterialTheme.typography.labelLarge,
+                modifier = Modifier.weight(1f, fill = false),
+            )
             if (inline) {
                 Text(text = "·", color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelLarge, modifier = Modifier.clearAndSetSemantics {})
                 Text(text = status.detail.orEmpty(), color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f, fill = false))
@@ -2224,6 +2241,8 @@ private fun StatusLine(status: PhasePresentation, look: CaptionTheme, live: Bool
 }
 
 internal const val STATUS_BUSY = "statusBusy"
+
+internal const val STATUS_ICON = "statusIcon"
 
 /**
  * A dot beside "Listening" that breathes while the microphone is on, as

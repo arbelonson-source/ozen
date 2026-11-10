@@ -22,8 +22,8 @@ object OzenColors {
     /** Green for "listening / ready" dots in StatusPill. Passes 3:1 on every surface. */
     fun statusGood(dark: Boolean): Color = if (dark) Color(0xFF6DD58C) else Color(0xFF1B7F3C)
 
-    /** Amber for "paused / attention" dots in StatusPill. */
-    fun statusWarn(dark: Boolean): Color = if (dark) Color(0xFFFFB74D) else Color(0xFF9A5B00)
+    /** Amber for a paused or waiting status line, its icon and title: 5.3:1 on the light status bar, above the 4.5:1 text needs. */
+    fun statusWarn(dark: Boolean): Color = if (dark) Color(0xFFFFB74D) else Color(0xFF8A5000)
 
     /** Amber notice card for trouble that is not an emergency: text on it passes AA. */
     fun warningContainer(dark: Boolean): Color = if (dark) Color(0xFF5A3600) else Color(0xFFFFE2C2)
