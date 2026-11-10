@@ -77,7 +77,7 @@ public final class ReleaseDownloadSession: NSObject, URLSessionDownloadDelegate,
             } onCancel: {
                 task.cancel { [weak self] data in
                     guard let self, let data, let placement = Self.placement(of: task) else { return }
-                    lock.withLock { resumeData[placement] = data }
+                    keep(resumeData: data, for: placement)
                 }
             }
         } catch {
@@ -96,10 +96,15 @@ public final class ReleaseDownloadSession: NSObject, URLSessionDownloadDelegate,
         let (joined, stale) = Self.sort(downloads.map { (Self.placement(of: $0), $0.state != .completed && $0.state != .canceling) }, for: placement)
         stale.forEach { downloads[$0].cancel() }
         let task: URLSessionDownloadTask
+        var placement = placement
         if let joined {
             task = downloads[joined]
-        } else if let data = lock.withLock({ resumeData.removeValue(forKey: placement) }) {
+        } else if let (data, resumed) = takeResumeData(for: placement) {
             task = session.downloadTask(withResumeData: data)
+            // What was cut off was the whole file, sent by a server that
+            // ignored the range: it carries on, and replaces the file.
+            if resumed.offset != placement.offset { received(-placement.offset) }
+            placement = resumed
         } else {
             task = session.downloadTask(with: request)
         }
@@ -113,6 +118,23 @@ public final class ReleaseDownloadSession: NSObject, URLSessionDownloadDelegate,
             transfers[task.taskIdentifier] = transfer
         }
         return task
+    }
+
+    /// What a cut-off download of this file had fetched: of the rest from
+    /// `offset`, or of the whole file when the server had ignored the range
+    /// (kept under offset 0, see `report`).
+    func takeResumeData(for placement: Placement) -> (Data, Placement)? {
+        lock.withLock {
+            if let data = resumeData.removeValue(forKey: placement) { return (data, placement) }
+            var whole = placement
+            whole.offset = 0
+            guard placement.offset > 0, let data = resumeData.removeValue(forKey: whole) else { return nil }
+            return (data, whole)
+        }
+    }
+
+    func keep(resumeData data: Data, for placement: Placement) {
+        lock.withLock { resumeData[placement] = data }
     }
 
     /// Of the downloads the session already has, the one to join (same

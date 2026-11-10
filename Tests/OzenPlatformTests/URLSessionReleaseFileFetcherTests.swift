@@ -127,6 +127,24 @@ struct URLSessionReleaseFileFetcherTests {
         #expect(String(decoding: try Data(contentsOf: destination), as: UTF8.self) == "abcdefgh")
     }
 
+    @Test("what a cut-off download fetched is used again: of the rest of the file, or of the whole file a server sent instead, which starts the file over")
+    func resumeDataFound() throws {
+        let downloads = downloads()
+        let rest = placement(try file("model.bin"), from: 3)
+        var whole = rest
+        whole.offset = 0
+        downloads.keep(resumeData: Data("whole".utf8), for: whole)
+        let found = try #require(downloads.takeResumeData(for: rest))
+        #expect(found.0 == Data("whole".utf8) && found.1 == whole)
+        #expect(downloads.takeResumeData(for: rest) == nil)
+
+        downloads.keep(resumeData: Data("whole".utf8), for: whole)
+        downloads.keep(resumeData: Data("rest".utf8), for: rest)
+        #expect(downloads.takeResumeData(for: rest)?.0 == Data("rest".utf8))
+        #expect(downloads.takeResumeData(for: whole)?.0 == Data("whole".utf8))
+        #expect(downloads.takeResumeData(for: whole) == nil)
+    }
+
     @Test("opening the app again joins the download of the same file instead of starting a second, and stops others into that file")
     func joinsTheSameDownload() throws {
         let wanted = placement(try file("model.bin"), from: 0)
