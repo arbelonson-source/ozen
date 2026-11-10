@@ -4,8 +4,8 @@ import Testing
 
 @Suite("HubDownloadMeter")
 struct HubDownloadMeterTests {
-    private let root = FileManager.default.temporaryDirectory
-        .appendingPathComponent("ozen-hub-\(UUID().uuidString)", isDirectory: true)
+    private let temporary = TemporaryFolder("ozen-hub")
+    private var root: URL { temporary.url }
 
     private var folder: URL { root.appendingPathComponent("openai_whisper-small", isDirectory: true) }
     private var partial: URL { root.appendingPathComponent(".cache/huggingface/download/openai_whisper-small", isDirectory: true) }

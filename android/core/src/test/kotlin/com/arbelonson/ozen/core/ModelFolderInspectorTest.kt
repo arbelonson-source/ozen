@@ -1,16 +1,23 @@
 package com.arbelonson.ozen.core
 
 import java.io.File
-import java.nio.file.Files
 import java.util.UUID
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ModelFolderInspectorTest {
+    private val temporary = TemporaryFolders()
+
+    @AfterTest
+    fun deleteTemporaryFolders() {
+        temporary.deleteAll()
+    }
+
     private fun makeFolder(): File {
-        val folder = File(Files.createTempDirectory("ozen-model").toFile(), "openai_whisper-small")
+        val folder = File(temporary.make("ozen-model"), "openai_whisper-small")
         folder.mkdirs()
         return folder
     }
@@ -37,7 +44,7 @@ class ModelFolderInspectorTest {
 
     @Test
     fun `no folder is missing`() {
-        val folder = File(Files.createTempDirectory("ozen-nope").toFile(), UUID.randomUUID().toString())
+        val folder = File(temporary.make("ozen-nope"), UUID.randomUUID().toString())
         assertEquals(ModelFolderState.Missing, ModelFolderInspector.state(folder))
         assertFalse(ModelFolderInspector.state(folder).isUsable)
     }

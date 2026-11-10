@@ -1,14 +1,21 @@
 package com.arbelonson.ozen.core
 
 import java.io.File
-import java.nio.file.Files
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ModelLoadMarkerTest {
-    private fun folder(): File = Files.createTempDirectory("marker").toFile()
+    private val temporary = TemporaryFolders()
+
+    @AfterTest
+    fun deleteTemporaryFolders() {
+        temporary.deleteAll()
+    }
+
+    private fun folder(): File = temporary.make("marker")
 
     @Test
     fun `a model never loaded is set up the long way`() {

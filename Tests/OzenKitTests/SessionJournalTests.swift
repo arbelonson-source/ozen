@@ -4,9 +4,11 @@ import Testing
 
 @Suite("SessionJournal")
 struct SessionJournalTests {
+    private let temporary = TemporaryFolder("ozen-journal")
+
     private func temporaryFile() -> URL {
-        FileManager.default.temporaryDirectory
-            .appendingPathComponent("ozen-journal-\(UUID())", isDirectory: true)
+        temporary.url
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
             .appendingPathComponent("journal.log")
     }
 
@@ -217,6 +219,8 @@ struct SessionJournalTests {
         let journal = SessionJournal(fileURL: url)
         journal.append("problem marked", at: 1_800_000_000)
         #expect(journal.entries().map(\.text) == ["problem marked"])
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+        journal.flush()
     }
 
     @Test("a file someone damaged loses the bad lines, not the rest")
