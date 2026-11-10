@@ -167,6 +167,24 @@ public enum HebrewText {
         return String(folded).precomposedStringWithCanonicalMapping
     }
 
+    /// "على" ("on"), among the commonest words in Arabic, folds to "علي",
+    /// the name Ali, so an alert for Ali buzzed on nearly every sentence.
+    /// Captions write the word with its alef maqsura and the name with ya,
+    /// so a caption word spelled exactly like this keeps its alef maqsura
+    /// and never matches a saved word, however the name was typed.
+    static let wordsKeptApartFromNames: Set<String> = ["على", "وعلى", "فعلى"]
+
+    /// `normalize` for one caption word, except the words in
+    /// `wordsKeptApartFromNames`, which keep their alef maqsura.
+    static func normalizeCaptionWord(_ word: String) -> String {
+        let normalized = normalize(word)
+        guard normalized.hasSuffix("ي") else { return normalized }
+        let unfolded = String(String.UnicodeScalarView(normalizeKeepingAccents(word).unicodeScalars.filter {
+            !(0x064B...0x065F).contains($0.value) && $0.value != 0x0670 && $0.value != 0x0640
+        }))
+        return wordsKeptApartFromNames.contains(unfolded) ? unfolded : normalized
+    }
+
     /// A word typed only in another alphabet ("Sarah" or "Саша" while the
     /// captions come out in Hebrew letters, "Dana" or "דנה" while they are
     /// in Arabic ones): its alert stays silent, so the screens that add one
@@ -470,7 +488,7 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
         // `rawWords`, so a word's index always means the same thing on
         // both sides even when a word is pure punctuation and normalizes
         // to the empty string.
-        let normalizedWords = rawWords.map(HebrewText.normalize)
+        let normalizedWords = rawWords.map(HebrewText.normalizeCaptionWord)
         let trimmedWords = rawWords.map(Self.trimmingEdgePunctuation)
 
         var unordered: [(match: KeywordMatch, sequence: Int)] = []

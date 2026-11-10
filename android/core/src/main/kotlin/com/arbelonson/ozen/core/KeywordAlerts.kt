@@ -234,6 +234,23 @@ object HebrewText {
     }
 
     /**
+     * "على" ("on"), among the commonest words in Arabic, folds to "علي", the
+     * name Ali, so an alert for Ali buzzed on nearly every sentence. Captions
+     * write the word with its alef maqsura and the name with ya, so a caption
+     * word spelled exactly like this keeps its alef maqsura and never matches
+     * a saved word, however the name was typed.
+     */
+    internal val wordsKeptApartFromNames: Set<String> = setOf("على", "وعلى", "فعلى")
+
+    /** [normalize] for one caption word, except [wordsKeptApartFromNames], which keep their alef maqsura. */
+    internal fun normalizeCaptionWord(word: String): String {
+        val normalized = normalize(word)
+        if (!normalized.endsWith("ي")) return normalized
+        val unfolded = normalizeKeepingAccents(word).filterNot { it.code in 0x064B..0x065F || it.code == 0x0670 || it.code == 0x0640 }
+        return if (unfolded in wordsKeptApartFromNames) unfolded else normalized
+    }
+
+    /**
      * A word typed only in another alphabet ("Sarah" or a Cyrillic name while
      * the captions come out in Hebrew letters, "Dana" or "דנה" while they are
      * in Arabic ones): its alert stays silent, so the screens that add one
@@ -528,7 +545,7 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>) {
         // and re-splitting) keeps this array the same length as `rawWords`, so
         // a word's index always means the same thing on both sides even when a
         // word is pure punctuation and normalizes to the empty string.
-        val normalizedWords = rawWords.map { HebrewText.normalize(it) }
+        val normalizedWords = rawWords.map { HebrewText.normalizeCaptionWord(it) }
         val trimmedWords = rawWords.map { trimmingEdgePunctuation(it) }
 
         val unordered = mutableListOf<Pair<KeywordMatch, Int>>()
