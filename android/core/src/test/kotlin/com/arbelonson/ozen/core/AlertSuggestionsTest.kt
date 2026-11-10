@@ -4,6 +4,7 @@ import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -62,5 +63,15 @@ class AlertSuggestionsTest {
         assertNull(AlertSuggestions.vibrationNote(listOf(KeywordAlert(phrase = "Dana")), UILanguage.English, captionLanguage = "he"))
         assertEquals("The phone will vibrate for: Dana", AlertSuggestions.vibrationNote(listOf(KeywordAlert(phrase = "Dana")), UILanguage.English, captionLanguage = "en"))
         assertEquals("The phone will vibrate for: Grandma", AlertSuggestions.vibrationNote(listOf(KeywordAlert(phrase = "سارة"), KeywordAlert(phrase = "סבתא")), UILanguage.English, captionLanguage = "he"))
+    }
+
+    @Test
+    fun `a name of several words gets a note that only all of them in a row alert`() {
+        assertNotNull(AlertSuggestions.severalWordsNote("רחל לוי", UILanguage.Hebrew))
+        assertTrue(AlertSuggestions.severalWordsNote("  Rachel   Levi ", UILanguage.English)!!.startsWith("When the name has several words"))
+        assertNull(AlertSuggestions.severalWordsNote("רחל", UILanguage.Hebrew))
+        assertNull(AlertSuggestions.severalWordsNote(" רחל ", UILanguage.Hebrew))
+        assertNull(AlertSuggestions.severalWordsNote("", UILanguage.Hebrew))
+        assertTrue(KeywordAlertMatcher(listOf(KeywordAlert(phrase = "רחל לוי"))).matches("רחל, בואי").isEmpty())
     }
 }

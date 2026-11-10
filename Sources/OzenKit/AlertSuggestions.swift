@@ -34,6 +34,14 @@ public enum AlertSuggestions {
         return tr("הטלפון ירטוט כשייאמרו: ", "The phone will vibrate for: ", in: language) + phrases.joined(separator: ", ")
     }
 
+    /// A name typed with a surname ("רחל לוי") only alerts when both words
+    /// come one after the other, and family says "רחל": the phone stayed
+    /// silent while the form promised a buzz.
+    public static func severalWordsNote(for draft: String, in language: UILanguage) -> String? {
+        guard HebrewText.normalize(draft).split(separator: " ").count > 1 else { return nil }
+        return tr("כשהשם כולל כמה מילים, הטלפון ירטוט רק כשכולן נאמרות ברצף. כדאי לכתוב רק את השם שקוראים לכם בו, בלי שם משפחה.", "When the name has several words, the phone vibrates only when they are all said in a row. Best to write just the name people call you, without a surname.", in: language)
+    }
+
     public static func said(_ match: KeywordMatch, in language: UILanguage) -> String {
         guard language != .hebrew, suggestion(matching: match.phrase) != nil else { return match.matchedText }
         return shown(match.phrase, in: language)

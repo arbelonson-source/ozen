@@ -357,6 +357,16 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
                     )
                 }
             }
+            Box(Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }) {
+                AlertSuggestions.severalWordsNote(draft.value, Localization.language)?.let { note ->
+                    Text(
+                        note,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 16.dp),
+                    )
+                }
+            }
         }
         val suggestions = @Composable { modifier: Modifier ->
             for (word in AlertSuggestions.offeredNames(settings.spokenLanguage)) {
