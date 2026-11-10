@@ -84,7 +84,24 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           working-directory: android
-          script: ./gradlew :app:connectedDebugAndroidTest -Pandroid.injected.build.abi=x86_64 "-Pandroid.testInstrumentationRunnerArguments.class=$(echo $SMOKE | tr -d ' ')"; status=$?; adb logcat -d > app/build/logcat.txt; exit $status
+          script: classes=$(echo $SMOKE | tr -d ' '); echo "Device test classes $classes"; ./gradlew :app:connectedDebugAndroidTest -Pandroid.injected.build.abi=x86_64 "-Pandroid.testInstrumentationRunnerArguments.class=$classes"; status=$?; adb logcat -d > app/build/logcat.txt; exit $status
+      - name: Count the tests that ran
+        if: always()
+        working-directory: android
+        run: |
+          python3 - <<'EOF'
+          import glob, sys, xml.etree.ElementTree as ET
+          ran = failed = skipped = 0
+          for path in glob.glob("app/build/outputs/androidTest-results/connected/**/TEST-*.xml", recursive=True):
+              root = ET.parse(path).getroot()
+              for suite in [root] if root.tag == "testsuite" else root.iter("testsuite"):
+                  ran += int(suite.get("tests", 0))
+                  failed += int(suite.get("failures", 0)) + int(suite.get("errors", 0))
+                  skipped += int(suite.get("skipped", 0))
+          print(f"Device tests: {ran} ran, {failed} failed, {skipped} skipped")
+          if ran == 0:
+              sys.exit("No device test ran: the class filter matched nothing or the run never started.")
+          EOF
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: failure()
         with:
