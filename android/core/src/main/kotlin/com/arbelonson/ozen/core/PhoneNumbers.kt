@@ -31,10 +31,10 @@ object PhoneNumbers {
     private fun digitsOf(written: String): String = written.codePoints().map { Character.digit(it, 10) }.filter { it >= 0 }.toArray().joinToString("")
 
     private val pattern: Pattern = unicodePattern(
-        """(?<![\d+])(?!\d{1,2}[-./]\d{1,2}[-./]\d{2,4})(?:\+972[- \u00A0\u202F\u2011]?|0)(?:[2-489](?:[- \u00A0\u202F\u2011]?\d){7}|[57](?:[- \u00A0\u202F\u2011]?\d){8})(?![-\u2011\u00A0]?\d)""",
+        """(?<![\d+])(?!\d{1,2}[-./]\d{1,2}[-./]\d{2,4})(?:\+972[- \u00A0\u202F\u2011]?|0)(?:[2-489](?:[- \u00A0\u202F\u2011]?\d){7}|[57](?:[- \u00A0\u202F\u2011]?\d){8})(?![-\u2011\u00A0\u202F]?\d)""",
     )
 
     private val servicePattern: Pattern = unicodePattern(
-        """(?<![\d+*])1[- \u00A0\u202F\u2011]?(?:700|800|801|599)(?:[- \u00A0\u202F\u2011]?\d){6}(?![-\u2011\u00A0]?\d)""",
+        """(?<![\d+*])1[- \u00A0\u202F\u2011]?(?:700|800|801|599)(?:[- \u00A0\u202F\u2011]?\d){6}(?![-\u2011\u00A0\u202F]?\d)""",
     )
 }

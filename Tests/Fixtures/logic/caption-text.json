@@ -99,6 +99,8 @@
   {"kind": "phoneNumbers", "input": "050‑1234567‑8", "expected": []},
   {"kind": "phoneNumbers", "input": "1‑800‑50‑50‑50", "expected": [["1‑800‑50‑50‑50", "1800505050"]]},
   {"kind": "phoneNumbers", "input": "1-800-505050 9", "expected": []},
+  {"kind": "phoneNumbers", "input": "התקשרו 050 123 4567", "expected": [["050 123 4567", "0501234567"]]},
+  {"kind": "phoneNumbers", "input": "0501234567 8", "expected": []},
   {"kind": "readableText", "input": "", "expected": ""},
   {"kind": "readableText", "input": "   ", "expected": "   "},
   {"kind": "readableText", "input": "#31#", "expected": "#31#"},
