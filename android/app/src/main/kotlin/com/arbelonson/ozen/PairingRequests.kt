@@ -21,6 +21,7 @@ class PairingRequests(
     val pending = MutableStateFlow<HomeServerPairing?>(null)
     val linkBroken = MutableStateFlow(false)
     val saveFailed = MutableStateFlow(false)
+    val paired = MutableStateFlow(false)
     var onPaired: (() -> Unit)? = null
 
     fun open(link: String) {
@@ -54,6 +55,7 @@ class PairingRequests(
             it.homeServerCertificatePin = pairing.pin
             it.engine = TranscriptionEngineKind.HomeServer
         }
+        paired.value = true
         onPaired?.invoke()
         return true
     }
