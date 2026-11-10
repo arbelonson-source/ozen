@@ -1,14 +1,21 @@
 package com.arbelonson.ozen.core
 
 import java.io.File
-import java.nio.file.Files
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ModelDiskSpaceTest {
-    private val root: File = Files.createTempDirectory("ozen-space-").toFile()
+    private val temporary = TemporaryFolders()
+
+    @AfterTest
+    fun deleteTemporaryFolders() {
+        temporary.deleteAll()
+    }
+
+    private val root: File = temporary.make("ozen-space-")
     private val folder = File(root, "openai_whisper-small")
     private val partial = File(root, ".cache/huggingface/download/openai_whisper-small")
     private val otherPartial = File(root, ".cache/huggingface/download/openai_whisper-base")

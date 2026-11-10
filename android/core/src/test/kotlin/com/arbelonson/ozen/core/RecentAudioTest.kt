@@ -3,6 +3,7 @@ package com.arbelonson.ozen.core
 import java.io.File
 import java.nio.file.Files
 import java.time.Instant
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -11,9 +12,16 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class RecentAudioTest {
+    private val temporary = TemporaryFolders()
+
+    @AfterTest
+    fun deleteTemporaryFolders() {
+        temporary.deleteAll()
+    }
+
     private fun floats(vararg values: Float) = floatArrayOf(*values)
 
-    private fun newClipDirectory(): File = File(Files.createTempDirectory("ozen-problem-audio-").toFile(), "clips")
+    private fun newClipDirectory(): File = File(temporary.make("ozen-problem-audio-"), "clips")
 
     private fun at(seconds: Double): Instant = Instant.ofEpochMilli((seconds * 1000).toLong())
 
