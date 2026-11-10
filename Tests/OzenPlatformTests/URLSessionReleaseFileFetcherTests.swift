@@ -65,6 +65,37 @@ struct URLSessionReleaseFileFetcherTests {
         #expect(tally.values.dropLast().allSatisfy { $0 >= Int64(URLSessionReleaseFileFetcher.writeBatch) })
     }
 
+    @Test("a download cancelled as it starts throws a cancellation instead of waiting forever", .timeLimit(.minutes(1)))
+    func cancelledAtTheStart() async throws {
+        let destination = try file("model.bin")
+        let url = StubReleaseServer.serve(status: 200, body: Data("abcdefgh".utf8))
+        let fetcher = fetcher()
+        let outcome = await Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            do {
+                try await fetcher.fetch(url, from: 0, appendingTo: destination) { _ in }
+                return "finished"
+            } catch is CancellationError {
+                return "cancelled"
+            } catch {
+                return "\(error)"
+            }
+        }.value
+        #expect(outcome == "cancelled")
+    }
+
+    @Test("an end that comes before the download is waited on is kept, not lost", .timeLimit(.minutes(1)))
+    func endBeforeWaiting() async throws {
+        let writer = ReleaseFileWriter(offset: 0, destination: try file("model.bin")) { _ in }
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.invalidateAndCancel() }
+        let task = session.dataTask(with: StubReleaseServer.serve(status: 200, body: Data()))
+        writer.urlSession(session, task: task, didCompleteWithError: URLError(.cancelled))
+        await #expect(throws: URLError.self) {
+            try await writer.run(task)
+        }
+    }
+
     @Test("the checksum is the file's SHA-256")
     func checksum() throws {
         let checked = try file("tokenizer.json", holding: "abc")

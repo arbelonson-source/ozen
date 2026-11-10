@@ -75,6 +75,9 @@ final class ReleaseFileWriter: NSObject, URLSessionDataDelegate, @unchecked Send
     private let received: @Sendable (Int64) -> Void
     private let lock = NSLock()
     private var continuation: CheckedContinuation<Void, Error>?
+    /// The task's end when it came before `run` was waiting: a download
+    /// cancelled as it was starting can finish that early.
+    private var outcome: Result<Void, Error>?
     private var handle: FileHandle?
     private var batch = Data()
     private var failure: Error?
@@ -87,8 +90,16 @@ final class ReleaseFileWriter: NSObject, URLSessionDataDelegate, @unchecked Send
 
     func run(_ task: URLSessionDataTask) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            lock.withLock { self.continuation = continuation }
-            task.resume()
+            let ended: Result<Void, Error>? = lock.withLock {
+                if let outcome { return outcome }
+                self.continuation = continuation
+                return nil
+            }
+            if let ended {
+                continuation.resume(with: ended)
+            } else {
+                task.resume()
+            }
         }
     }
 
@@ -122,16 +133,16 @@ final class ReleaseFileWriter: NSObject, URLSessionDataDelegate, @unchecked Send
         }
         try? handle?.close()
         handle = nil
-        let outcome = failure ?? error
-        let waiting = lock.withLock {
-            defer { continuation = nil }
-            return continuation
+        let ended: Result<Void, Error> = (failure ?? error).map { .failure($0) } ?? .success(())
+        let waiting: CheckedContinuation<Void, Error>? = lock.withLock {
+            guard let waiting = continuation else {
+                outcome = ended
+                return nil
+            }
+            continuation = nil
+            return waiting
         }
-        if let outcome {
-            waiting?.resume(throwing: outcome)
-        } else {
-            waiting?.resume()
-        }
+        waiting?.resume(with: ended)
     }
 
     private func open(for response: URLResponse) throws {
