@@ -1762,6 +1762,36 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithContentDescription("Alert: Doorbell").assertDoesNotExist()
     }
 
+    @Test
+    fun withTalkBackOnASoundBannerAndAWordPillStayPastTheirTimeUntilClosed() {
+        val isOnBefore = ScreenReader.isOn
+        try {
+            ScreenReader.isOn = { true }
+            compose.activityRule.scenario.recreate()
+            val now = System.currentTimeMillis() / 1_000.0
+            val door = SoundAlert(event = SoundEventCatalog.event("door_bell")!!, confidence = 0.7, timestamp = now)
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.sound(door)
+                CaptionState.heard(HeardWord(UUID.randomUUID(), "Doctor", now))
+            }
+            compose.onNodeWithContentDescription("Alert: Doorbell").assertIsDisplayed()
+            compose.onNodeWithText("Said: Doctor").assertIsDisplayed()
+            compose.mainClock.autoAdvance = false
+            compose.mainClock.advanceTimeBy(20_000)
+            compose.mainClock.autoAdvance = true
+            compose.waitForIdle()
+            compose.onNodeWithContentDescription("Alert: Doorbell").assertIsDisplayed()
+            compose.onNodeWithText("Said: Doctor").assertIsDisplayed().performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Doctor").fetchSemanticsNodes().isEmpty() }
+            compose.onNodeWithContentDescription("Alert: Doorbell").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Alert: Doorbell").fetchSemanticsNodes().isEmpty() }
+        } finally {
+            compose.mainClock.autoAdvance = true
+            ScreenReader.isOn = isOnBefore
+        }
+    }
+
     private fun heardSmoke() = SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = System.currentTimeMillis() / 1_000.0)
 
     private fun edgeIsRed(): Boolean {

@@ -930,23 +930,34 @@ private fun CaptionScreen(
     LaunchedEffect(state.speechResumed) {
         if (state.speechResumed > resumedBefore && buzzWhenTalkResumes) onBuzz(AlertVibration.speechResumed)
     }
+    // With TalkBack on, the pill and the banner stay until closed or
+    // replaced: hidden on their timer, they left someone who missed the
+    // spoken alert, or reads by braille, no way to find which word or
+    // sound it was. As on the iPhone.
+    val talkBack = screenReaderOn()
     // The session buzzes and tells TalkBack, whichever screen is open; the
     // pill is for a word said just now, or one the session tells her of as
     // she comes back. Back from Settings, an old one does not show again.
-    LaunchedEffect(state.heard?.id, state.heard?.at) {
+    LaunchedEffect(state.heard?.id, state.heard?.at, talkBack) {
         val word = state.heard ?: return@LaunchedEffect
-        if (secondsNow() - word.at > HEARD_SHOWN_SECONDS) return@LaunchedEffect
-        shownWord = word
+        val kept = shownWord?.id == word.id
+        if (secondsNow() - word.at > HEARD_SHOWN_SECONDS) {
+            if (kept && !talkBack) shownWord = null
+            if (!kept) return@LaunchedEffect
+        } else {
+            shownWord = word
+        }
+        if (talkBack) return@LaunchedEffect
         delay((HEARD_SHOWN_SECONDS * 1_000).toLong())
         if (shownWord?.id == word.id) shownWord = null
     }
     // The banner keeps what is left of its time: back from Settings within
     // it, the banner is there again, and one whose time is up is not.
     var shownSound by remember { mutableStateOf<SoundAlert?>(null) }
-    LaunchedEffect(state.sound?.id) {
-        val alert = state.sound?.takeIf { soundSecondsLeft(it) > 0 }
+    LaunchedEffect(state.sound?.id, talkBack) {
+        val alert = state.sound?.takeIf { soundSecondsLeft(it) > 0 || (talkBack && shownSound?.id == it.id) }
         shownSound = alert
-        if (alert == null) return@LaunchedEffect
+        if (alert == null || talkBack) return@LaunchedEffect
         delay((soundSecondsLeft(alert) * 1_000).toLong())
         shownSound = null
     }
@@ -1046,7 +1057,7 @@ private fun CaptionScreen(
     val hidden = state.hidesButtons(
         autoHide = display.autoHideControls,
         followingLatest = following,
-        screenReaderOn = screenReaderOn(),
+        screenReaderOn = talkBack,
         pointerAccessOn = pointerAccessOn(),
         lastTouchAt = lastTouchAt,
         now = clock,
@@ -1104,7 +1115,11 @@ private fun CaptionScreen(
                     }
                     ArrivingBanner(shownWord) { word ->
                         val speaker = state.lines.firstOrNull { it.id == word.line }?.speaker?.takeIf { display.showSpeakerNames }
-                        HeardPill(word.said, speaker, Modifier)
+                        HeardPill(
+                            word.said,
+                            speaker,
+                            if (talkBack) Modifier.clickable(onClickLabel = tr("סגירה", "Close")) { shownWord = null } else Modifier,
+                        )
                     }
                     ArrivingBanner(state.away?.takeIf { it.offersJump && !awayMarkShowing && state.lines.isNotEmpty() }) { mark ->
                         AwayJump(mark.count, look) {
@@ -1326,10 +1341,11 @@ private const val TOOLBAR_FONT_SCALE = 1.3f
 
 @Composable
 private fun screenReaderOn(): Boolean {
-    val manager = LocalContext.current.getSystemService(AccessibilityManager::class.java)
-    var on by remember(manager) { mutableStateOf(manager.isTouchExplorationEnabled) }
+    val context = LocalContext.current
+    val manager = context.getSystemService(AccessibilityManager::class.java)
+    var on by remember(manager) { mutableStateOf(ScreenReader.isOn(context)) }
     DisposableEffect(manager) {
-        val listener = AccessibilityManager.TouchExplorationStateChangeListener { on = it }
+        val listener = AccessibilityManager.TouchExplorationStateChangeListener { on = ScreenReader.isOn(context) }
         manager.addTouchExplorationStateChangeListener(listener)
         onDispose { manager.removeTouchExplorationStateChangeListener(listener) }
     }
