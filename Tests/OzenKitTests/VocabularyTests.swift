@@ -9,6 +9,14 @@ struct VocabularyTests {
         #expect(cleaned == ["רותי", "אבי", "Dani"])
     }
 
+    @Test("words that differ only by an accent are both kept as hints")
+    func accentKeepsTwoHints() {
+        #expect(VocabularyHints.normalized(["si", "sí"]) == ["si", "sí"])
+        #expect(VocabularyHints.normalized(["si", "SÍ", "sí"]) == ["si", "SÍ"])
+        #expect(VocabularyHints.listedEntry(matching: "sí", in: ["si", "sí"]) == "sí")
+        #expect(VocabularyHints.listedEntry(matching: "sí", in: ["si"]) == nil)
+    }
+
     @Test("a geresh makes a different word, and a typed apostrophe is the same mark")
     func geresh() {
         #expect(VocabularyHints.normalized(["ציפס", "צ׳יפס"]) == ["ציפס", "צ׳יפס"])

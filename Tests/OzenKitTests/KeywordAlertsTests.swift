@@ -730,4 +730,36 @@ struct KeywordMatchingRound2Tests {
         #expect(count("Anna", "annals") == 0)
         #expect(count("Anna", "annas") == 0)
     }
+
+    @Test("accents, hamza and yo are folded")
+    func accentsHamzaAndYoFolded() {
+        #expect(count("Jose", "Hola José") == 1)
+        #expect(count("Mama", "¡Hola, mamá!") == 1)
+        #expect(count("Алена", "Алёна пришла") == 1)
+        #expect(count("احمد", "قال أحمد") == 1)
+        #expect(count("هبه", "جاءت هبة") == 1)
+        #expect(count("مني", "قالت منى") == 1)
+        #expect(count("محمد", "قال مُحَمَّد") == 1)
+    }
+
+    @Test("folding does not merge different words")
+    func foldingKeepsDifferentWords() {
+        #expect(count("Dan", "Dana") == 0)
+        #expect(count("мои", "мой") == 0)
+        #expect(count("nino", "niño") == 0)
+    }
+
+    @Test("hamza on waw and ya is folded like the one on alef, and a longer word stays apart")
+    func hamzaOnWawAndYa() {
+        #expect(count("مومن", "قال مؤمن") == 1)
+        #expect(count("رايد", "قال رائد") == 1)
+        #expect(count("روس", "رؤوس كثيرة") == 0)
+    }
+
+    @Test("a name typed with or without an accent is the same listed word")
+    func listedWordIgnoresAccents() {
+        #expect(HebrewText.normalize("José") == HebrewText.normalize("Jose"))
+        #expect(HebrewText.normalize("دانة") == HebrewText.normalize("دانه"))
+        #expect(HebrewText.normalize("niño") != HebrewText.normalize("nino"))
+    }
 }
