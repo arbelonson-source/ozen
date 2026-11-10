@@ -941,7 +941,7 @@ struct LiveCaptionView: View {
 
     private func awayDivider(lineCount: Int) -> some View {
         HStack(spacing: 10) {
-            Text(tr("נאמר כשהאפליקציה הייתה סגורה · %1", "Said while the app was closed · %1", args: ["\(ConversationStats.linesText(lineCount))"]))
+            Text(tr("נאמר כשהאפליקציה לא הייתה על המסך · %1", "Said while the app wasn’t on the screen · %1", args: ["\(ConversationStats.linesText(lineCount))"]))
                 .font(.system(size: max(15, liveDisplay.fontSize * 0.5), weight: .semibold))
                 .foregroundStyle(theme.pendingText)
                 .fixedSize(horizontal: false, vertical: true)
@@ -951,7 +951,7 @@ struct LiveCaptionView: View {
         }
         .padding(.top, 8)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(tr("מכאן, מה שנאמר כשהאפליקציה הייתה סגורה: %1", "From here, what was said while the app was closed: %1", args: ["\(ConversationStats.linesText(lineCount))"]))
+        .accessibilityLabel(tr("מכאן, מה שנאמר כשהאפליקציה לא הייתה על המסך: %1", "From here, what was said while the app wasn’t on the screen: %1", args: ["\(ConversationStats.linesText(lineCount))"]))
         // On screen, it has been seen: no need to offer the jump.
         .onAppear { viewModel.acknowledgeAwayLines() }
     }
