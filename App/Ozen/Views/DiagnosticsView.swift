@@ -29,13 +29,13 @@ struct DiagnosticsView: View {
     @State private var notificationsAllowed: Bool?
     @State private var builtInRecognition: String?
 
-    private static func clipTitle(_ clip: URL) -> String {
+    static func clipTitle(_ clip: URL) -> String {
         let stamp = clip.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "problem-", with: "")
         let parser = DateFormatter()
         parser.locale = Locale(identifier: "en_US_POSIX")
         parser.dateFormat = "yyyy-MM-dd-HHmmss"
-        guard let date = parser.date(from: stamp) else { return stamp }
-        return date.formatted(inAppLanguage: .abbreviated, time: .standard)
+        let when = parser.date(from: stamp).map { $0.formatted(inAppLanguage: .abbreviated, time: .standard) } ?? stamp
+        return tr("הקלטה מ־%1", "Recording from %1", args: ["\(when)"])
     }
 
     private func reloadJournal() {
@@ -75,6 +75,12 @@ struct DiagnosticsView: View {
                         }
                     }
                     .disabled(sendingHome)
+                }
+            } footer: {
+                // The report is text only: whoever helps her heard none of
+                // the sound she marked, and nothing here said so.
+                if !problemClips.isEmpty {
+                    Text(tr("ההקלטות לא נשלחות עם הדוח. כדי לשלוח הקלטה, מקישים עליה ברשימה ״הקלטות של בעיות שסומנו״.", "Sound clips aren’t sent with the report. To send one, tap it under “Sound from marked problems”."))
                 }
             }
 
