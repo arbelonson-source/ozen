@@ -209,7 +209,7 @@ private fun ModelRow(
                 RadioButton(selected = selected, onClick = null, enabled = choosable, modifier = Modifier.padding(12.dp))
             }
             if (deletable) {
-                val action = tr("מחיקת המודל ״\u2068%1\u2069״", "Delete %1", listOf(model.displayName))
+                val action = tr("מחיקת המודל ״\u2068%1\u2069״", "Delete model “%1”", listOf(model.displayName))
                 TextButton(
                     onClick = { asking = true },
                     modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).testTag("phone-model-delete-" + model.file).semantics { contentDescription = action },
