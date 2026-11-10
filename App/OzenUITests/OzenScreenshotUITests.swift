@@ -1080,6 +1080,12 @@ final class OzenScreenshotUITests: XCTestCase {
 
         let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
         XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "say stop: the button to open it never appeared")
+        // The control bar hides itself after a while; bring it back first.
+        let reveal = app.descendants(matching: .any)["showControlsButton"]
+        for _ in 0..<20 where !typeToSpeakButton.isHittable {
+            if reveal.exists, reveal.isHittable { reveal.tap() }
+            Thread.sleep(forTimeInterval: 0.3)
+        }
         typeToSpeakButton.tap()
         XCTAssertTrue(app.descendants(matching: .any)["typeToSpeakScreen"].waitForExistence(timeout: 10), "say stop: the screen never appeared")
 
