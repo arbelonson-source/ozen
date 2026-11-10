@@ -2,5 +2,5 @@ faster-whisper==1.2.1
 websockets>=13,<18
 numpy>=1.26,<3
 soundfile>=0.12,<0.15
-qrcode>=7,<9
+qrcode>=8.2,<9
 cryptography>=42,<51
