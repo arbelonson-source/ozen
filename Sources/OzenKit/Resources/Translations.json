@@ -1099,7 +1099,8 @@
   "Press and hold a word to delete it.": "ቃልን ተጭነው በመያዝ መሰረዝ ይችላሉ።",
   "Tap a phrase to move it or delete it.": "ሐረግን በመንካት ማንቀሳቀስ ወይም መሰረዝ ይችላሉ።",
   "Move or delete": "ማንቀሳቀስ ወይም መሰረዝ",
-  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "ከኮምፒዩተሩ ምንም መልስ የለም። ይህ አድራሻ የሚሰራው በቤቱ Wi‑Fi ላይ ብቻ ነው። ቤት ውስጥ፣ ኮምፒዩተሩ መብራቱን እና እንቅልፍ ውስጥ አለመሆኑን ያረጋግጡ። ከቤት ውጭ፣ በwss:// የሚጀምረውን አድራሻ ይጠቀሙ።"
+  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "ከኮምፒዩተሩ ምንም መልስ የለም። ይህ አድራሻ የሚሰራው በቤቱ Wi‑Fi ላይ ብቻ ነው። ቤት ውስጥ፣ ኮምፒዩተሩ መብራቱን እና እንቅልፍ ውስጥ አለመሆኑን ያረጋግጡ። ከቤት ውጭ፣ በwss:// የሚጀምረውን አድራሻ ይጠቀሙ።",
+  "Saving the voiceprint…": "የድምጽ አሻራውን በማስቀመጥ ላይ…"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2201,7 +2202,8 @@
   "Press and hold a word to delete it.": "اضغطوا مطوّلًا على كلمة لحذفها.",
   "Tap a phrase to move it or delete it.": "المسوا عبارة لنقلها أو حذفها.",
   "Move or delete": "نقل أو حذف",
-  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "لا يوجد رد من الكمبيوتر. هذا العنوان يعمل فقط على شبكة Wi‑Fi في البيت. في البيت، تأكدوا من أن الكمبيوتر يعمل وليس في وضع السكون. خارج البيت، استخدموا العنوان الذي يبدأ بـ wss://"
+  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "لا يوجد رد من الكمبيوتر. هذا العنوان يعمل فقط على شبكة Wi‑Fi في البيت. في البيت، تأكدوا من أن الكمبيوتر يعمل وليس في وضع السكون. خارج البيت، استخدموا العنوان الذي يبدأ بـ wss://",
+  "Saving the voiceprint…": "جارٍ حفظ البصمة الصوتية…"
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3303,7 +3305,8 @@
   "Press and hold a word to delete it.": "长按一个词即可删除它。",
   "Tap a phrase to move it or delete it.": "点按一条常用语即可移动或删除它。",
   "Move or delete": "移动或删除",
-  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "电脑没有响应。这个地址只能在家里的 Wi‑Fi 下使用。在家时，请确认电脑已开机且未处于睡眠状态。在外面时，请使用以 wss:// 开头的地址。"
+  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "电脑没有响应。这个地址只能在家里的 Wi‑Fi 下使用。在家时，请确认电脑已开机且未处于睡眠状态。在外面时，请使用以 wss:// 开头的地址。",
+  "Saving the voiceprint…": "正在保存声纹…"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4405,7 +4408,8 @@
   "Press and hold a word to delete it.": "Appuyez longuement sur un mot pour le supprimer.",
   "Tap a phrase to move it or delete it.": "Touchez une phrase pour la déplacer ou la supprimer.",
   "Move or delete": "Déplacer ou supprimer",
-  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Pas de réponse de l’ordinateur. Cette adresse ne fonctionne que sur le Wi‑Fi de la maison. À la maison, vérifiez que l’ordinateur est allumé et réveillé. Hors de la maison, utilisez l’adresse qui commence par wss://"
+  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Pas de réponse de l’ordinateur. Cette adresse ne fonctionne que sur le Wi‑Fi de la maison. À la maison, vérifiez que l’ordinateur est allumé et réveillé. Hors de la maison, utilisez l’adresse qui commence par wss://",
+  "Saving the voiceprint…": "Sauvegarde de l’empreinte vocale…"
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5507,7 +5511,8 @@
   "Press and hold a word to delete it.": "Halten Sie ein Wort gedrückt, um es zu löschen.",
   "Tap a phrase to move it or delete it.": "Tippen Sie auf einen Satz, um ihn zu verschieben oder zu löschen.",
   "Move or delete": "Verschieben oder löschen",
-  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Keine Antwort vom Computer. Diese Adresse funktioniert nur im WLAN zu Hause. Zu Hause prüfen Sie, ob der Computer eingeschaltet und wach ist. Unterwegs verwenden Sie die Adresse, die mit wss:// beginnt"
+  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Keine Antwort vom Computer. Diese Adresse funktioniert nur im WLAN zu Hause. Zu Hause prüfen Sie, ob der Computer eingeschaltet und wach ist. Unterwegs verwenden Sie die Adresse, die mit wss:// beginnt",
+  "Saving the voiceprint…": "Stimmabdruck wird gespeichert …"
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6609,7 +6614,8 @@
   "Press and hold a word to delete it.": "किसी शब्द को दबाकर रखने से उसे मिटाया जा सकता है।",
   "Tap a phrase to move it or delete it.": "किसी वाक्य को छूकर उसे ऊपर-नीचे किया या मिटाया जा सकता है।",
   "Move or delete": "ऊपर-नीचे करें या मिटाएं",
-  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "कंप्यूटर से कोई जवाब नहीं। यह पता सिर्फ़ घर के Wi‑Fi पर काम करता है। घर पर, जांचें कि कंप्यूटर चालू है और स्लीप मोड में नहीं है। घर से बाहर, wss:// से शुरू होने वाला पता इस्तेमाल करें।"
+  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "कंप्यूटर से कोई जवाब नहीं। यह पता सिर्फ़ घर के Wi‑Fi पर काम करता है। घर पर, जांचें कि कंप्यूटर चालू है और स्लीप मोड में नहीं है। घर से बाहर, wss:// से शुरू होने वाला पता इस्तेमाल करें।",
+  "Saving the voiceprint…": "वॉइसप्रिंट सेव हो रहा है…"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7711,7 +7717,8 @@
   "Press and hold a word to delete it.": "Mantenha uma palavra premida para a eliminar.",
   "Tap a phrase to move it or delete it.": "Toque numa frase para a mover ou eliminar.",
   "Move or delete": "Mover ou eliminar",
-  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Sem resposta do computador. Este endereço só funciona na rede Wi‑Fi de casa. Em casa, verifique se o computador está ligado e ativo. Fora de casa, use o endereço que começa por wss://"
+  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Sem resposta do computador. Este endereço só funciona na rede Wi‑Fi de casa. Em casa, verifique se o computador está ligado e ativo. Fora de casa, use o endereço que começa por wss://",
+  "Saving the voiceprint…": "A guardar a impressão de voz…"
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8813,7 +8820,8 @@
   "Press and hold a word to delete it.": "Нажмите и удерживайте слово, чтобы удалить его.",
   "Tap a phrase to move it or delete it.": "Нажмите на фразу, чтобы переместить или удалить её.",
   "Move or delete": "Переместить или удалить",
-  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Компьютер не отвечает. Этот адрес работает только в домашней сети Wi‑Fi. Дома проверьте, что компьютер включён и не в спящем режиме. Вне дома используйте адрес, который начинается с wss://"
+  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Компьютер не отвечает. Этот адрес работает только в домашней сети Wi‑Fi. Дома проверьте, что компьютер включён и не в спящем режиме. Вне дома используйте адрес, который начинается с wss://",
+  "Saving the voiceprint…": "Сохранение голосового отпечатка…"
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -9915,7 +9923,8 @@
   "Press and hold a word to delete it.": "Mantén pulsada una palabra para borrarla.",
   "Tap a phrase to move it or delete it.": "Toca una frase para moverla o borrarla.",
   "Move or delete": "Mover o borrar",
-  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "No hay respuesta del ordenador. Esta dirección solo funciona en el Wi‑Fi de casa. En casa, comprueba que el ordenador esté encendido y activo. Fuera de casa, usa la dirección que empieza por wss://"
+  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "No hay respuesta del ordenador. Esta dirección solo funciona en el Wi‑Fi de casa. En casa, comprueba que el ordenador esté encendido y activo. Fuera de casa, usa la dirección que empieza por wss://",
+  "Saving the voiceprint…": "Guardando la huella de voz…"
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11017,6 +11026,7 @@
   "Press and hold a word to delete it.": "Натисніть і утримуйте слово, щоб видалити його.",
   "Tap a phrase to move it or delete it.": "Торкніться фрази, щоб перемістити або видалити її.",
   "Move or delete": "Перемістити або видалити",
-  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Комп’ютер не відповідає. Ця адреса працює лише в домашній мережі Wi‑Fi. Удома перевірте, чи комп’ютер увімкнений і не в режимі сну. Поза домом використовуйте адресу, що починається з wss://"
+  "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Комп’ютер не відповідає. Ця адреса працює лише в домашній мережі Wi‑Fi. Удома перевірте, чи комп’ютер увімкнений і не в режимі сну. Поза домом використовуйте адресу, що починається з wss://",
+  "Saving the voiceprint…": "Збереження голосового відбитка…"
  }
 }

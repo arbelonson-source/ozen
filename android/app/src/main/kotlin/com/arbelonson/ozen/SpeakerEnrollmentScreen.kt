@@ -92,8 +92,10 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
             onClose()
         }
     }
+    // Once the half minute is in, closing leaves the voiceprint to be saved:
+    // stopping then threw away a finished recording, nothing said.
     val cancel = {
-        SpeakerRecordings.stop()
+        if ((SpeakerRecordings.progress.value ?: 0.0) < 1.0) SpeakerRecordings.stop()
         onClose()
     }
     val record = { SpeakerRecordings.start(screen, speakers, name.trim()) }
@@ -121,13 +123,22 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
         GroupFootnote(tr("בקשו מהאדם לדבר בטבעיות, במרחק רגיל מהמיקרופון שנבחר. אם הפס לא זז כשמדברים, המיקרופון לא קולט כלום. הכתוביות מושהות בזמן ההקלטה.", "Ask the person to speak naturally, at a normal distance from the selected microphone. If the bar doesn’t move while the person speaks, the microphone isn’t hearing anything. Captions are paused during recording."))
         if (recording) {
             val seconds = ((progress ?: 0.0) * RECORDING_SECONDS).toInt()
+            // At 30/30 the microphone is done and the voiceprint is being
+            // made, which no longer is a recording to stop without saving.
+            val saving = (progress ?: 0.0) >= 1.0
             ProgressCard(
                 icon = Icons.Rounded.Mic,
-                title = tr("מקליטים… %1/%2 שניות", "Recording… %1/%2 seconds", listOf("$seconds", "$RECORDING_SECONDS")),
+                title = if (saving) {
+                    tr("שומרים את טביעת הקול…", "Saving the voiceprint…")
+                } else {
+                    tr("מקליטים… %1/%2 שניות", "Recording… %1/%2 seconds", listOf("$seconds", "$RECORDING_SECONDS"))
+                },
                 percent = ((progress ?: 0.0) * 100).toInt(),
             ) {
-                LevelMeter(level = { speakers.inputLevel }, active = true)
-                TonalButton(tr("עצירה בלי לשמור", "Stop without saving"), { SpeakerRecordings.stop() }, Modifier.fillMaxWidth(), icon = Icons.Rounded.Stop)
+                if (!saving) {
+                    LevelMeter(level = { speakers.inputLevel }, active = true)
+                    TonalButton(tr("עצירה בלי לשמור", "Stop without saving"), { SpeakerRecordings.stop() }, Modifier.fillMaxWidth(), icon = Icons.Rounded.Stop)
+                }
             }
         } else {
             PrimaryButton(
