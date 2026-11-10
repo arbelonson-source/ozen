@@ -3819,7 +3819,7 @@ struct CaptionPipelineAudioStallTests {
     }
 }
 
-/// Holds each embedding until the test lets it go (or a second passes).
+/// Holds each embedding until the test lets it go (or twenty seconds pass).
 final class BlockingEmbedder: SpeakerEmbedding, @unchecked Sendable {
     private let lock = NSLock()
     private let release = DispatchSemaphore(value: 0)
@@ -3832,7 +3832,13 @@ final class BlockingEmbedder: SpeakerEmbedding, @unchecked Sendable {
 
     func embed(samples: [Float], sampleRate: Double) -> [Float]? {
         lock.withLock { started = true }
-        _ = release.wait(timeout: .now() + .seconds(1))
+        // Long enough for a main actor shared with other tests on a busy
+        // CI machine to look in: given a second, it sometimes looked only
+        // after the wait was over, and the test failed with the analysis
+        // off the main actor. Run on the main actor, the analysis still
+        // keeps it from looking until the wait ends, and the test fails.
+        // Once let go, each embedding hands the release on to the next.
+        if release.wait(timeout: .now() + .seconds(20)) == .success { release.signal() }
         lock.withLock { finished = true }
         return [1, 0, 0]
     }
