@@ -371,11 +371,27 @@ struct LiveCaptionViewModelTests {
     func betterModelOfferFollowsTheLanguage() async {
         let store = temporaryStore()
         let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: fakePipeline())
-        await viewModel.start()
         await viewModel.setWhisperModel("small")
         await viewModel.setSpokenLanguage(.english)
 
-        await viewModel.acceptBetterModelOffer()
+        let waits = await viewModel.acceptBetterModelOffer()
+        #expect(!waits)
+        #expect(store.load().whisperModelVariant == WhisperModelCatalog.generalVariant)
+    }
+
+    @Test("the model offer taken while captions listen asks first, and switches only after the yes")
+    func betterModelOfferWhileListeningAsksFirst() async {
+        let store = temporaryStore()
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: fakePipeline())
+        await viewModel.start()
+        await viewModel.setWhisperModel("small")
+        await viewModel.setSpokenLanguage(.english)
+        #expect(viewModel.isListening)
+
+        let waits = await viewModel.acceptBetterModelOffer()
+        #expect(waits)
+        #expect(store.load().whisperModelVariant == "small")
+        await viewModel.chooseModel(viewModel.settings.recommendedWhisperVariant)
         #expect(store.load().whisperModelVariant == WhisperModelCatalog.generalVariant)
     }
 

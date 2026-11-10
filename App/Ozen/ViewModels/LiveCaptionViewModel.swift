@@ -1710,9 +1710,15 @@ public final class LiveCaptionViewModel {
     }
 
     /// The caption screen's offer of the recommended Whisper model, taken:
-    /// the model switches (and downloads, on Wi-Fi) like a pick in Settings.
-    public func acceptBetterModelOffer() async {
-        await setWhisperModel(settings.recommendedWhisperVariant)
+    /// the model switches (and downloads, on Wi-Fi) like a pick in Settings,
+    /// and like there, a model not on the phone waits for a yes while
+    /// captions are listening: switching stops them until it has
+    /// downloaded, and one slip of the thumb on the card at the start of a
+    /// lesson stopped them with no warning. Returns true while it waits.
+    @discardableResult
+    public func acceptBetterModelOffer() async -> Bool {
+        let variant = settings.recommendedWhisperVariant
+        return await modelRowTapped(variant, isInstalled: WhisperModelStore().isInstalled(variant))
     }
 
     /// "Not now" on that offer: it comes back later, see
