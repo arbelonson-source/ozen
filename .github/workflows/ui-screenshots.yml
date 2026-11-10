@@ -25,7 +25,7 @@ jobs:
     # Every test at once, on an iPad, runs well past half an hour.
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Use the newest Xcode 26, as the release build does
         # The runner's default Xcode is 16.x: its screenshots showed the
