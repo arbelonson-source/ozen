@@ -135,9 +135,10 @@ the same.
   said more than a minute ago is left off. After a minute with nothing
   said, only the newest line stays, with "said N minutes ago" (ne'emar
   lifnei N dakot) under it; after a quarter of an hour it gives way to
-  "Listening" (me'azina). With the caption text size at 34 or more, the lock
-  screen's lines are larger too, and show fewer words of the line before
-  the newest. Settings → Display (tetzuga) → "Captions on the lock screen
+  "Listening" (me'azina). With the caption text size at 34 or more, or the
+  phone's own text at one of the larger accessibility sizes (iOS Settings →
+  Accessibility → Display & Text Size → Larger Text), the lock screen's
+  lines are larger too, and show fewer words of the line before the newest. Settings → Display (tetzuga) → "Captions on the lock screen
   too" (ktuviyot gam be-masach ha-ne'ila) turns them off.
 
   If none appear: iOS Settings → Ozen → Live Activities must be on (when it
