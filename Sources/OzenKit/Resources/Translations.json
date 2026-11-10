@@ -1095,7 +1095,10 @@
   "In “Heard”: up to %1 words, with only spaces between them.": "በ“የተሰማው” ውስጥ፦ እስከ %1 ቃላት፣ በመካከላቸው ክፍተት ብቻ።",
   "The list is full. Delete a fix to add another.": "ዝርዝሩ ሞልቷል። ሌላ ለመጨመር አንድ ማስተካከያ ይሰርዙ።",
   "The phone’s media volume is at zero, so nobody will hear these phrases.": "የስልኩ የሚዲያ ድምጽ ዜሮ ላይ ነው፤ ስለዚህ እነዚህን ሐረጎች ማንም አይሰማም።",
-  "Turn the volume up": "ድምጹን ይጨምሩ"
+  "Turn the volume up": "ድምጹን ይጨምሩ",
+  "Press and hold a word to delete it.": "ቃልን ተጭነው በመያዝ መሰረዝ ይችላሉ።",
+  "Tap a phrase to move it or delete it.": "ሐረግን በመንካት ማንቀሳቀስ ወይም መሰረዝ ይችላሉ።",
+  "Move or delete": "ማንቀሳቀስ ወይም መሰረዝ"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2193,7 +2196,10 @@
   "In “Heard”: up to %1 words, with only spaces between them.": "في “المسموع”: حتى %1 كلمات، بينها مسافات فقط.",
   "The list is full. Delete a fix to add another.": "القائمة ممتلئة. احذفوا تصحيحًا لإضافة آخر.",
   "The phone’s media volume is at zero, so nobody will hear these phrases.": "مستوى صوت الوسائط في الهاتف على الصفر، لذلك لن يسمع أحد هذه العبارات.",
-  "Turn the volume up": "رفع الصوت"
+  "Turn the volume up": "رفع الصوت",
+  "Press and hold a word to delete it.": "اضغطوا مطوّلًا على كلمة لحذفها.",
+  "Tap a phrase to move it or delete it.": "المسوا عبارة لنقلها أو حذفها.",
+  "Move or delete": "نقل أو حذف"
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3291,7 +3297,10 @@
   "In “Heard”: up to %1 words, with only spaces between them.": "“听到的”中：最多 %1 个词，词之间只能有空格。",
   "The list is full. Delete a fix to add another.": "列表已满。删除一条修正才能再添加。",
   "The phone’s media volume is at zero, so nobody will hear these phrases.": "手机的媒体音量为零，所以没人能听到这些话。",
-  "Turn the volume up": "调高音量"
+  "Turn the volume up": "调高音量",
+  "Press and hold a word to delete it.": "长按一个词即可删除它。",
+  "Tap a phrase to move it or delete it.": "点按一条常用语即可移动或删除它。",
+  "Move or delete": "移动或删除"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4389,7 +4398,10 @@
   "In “Heard”: up to %1 words, with only spaces between them.": "Dans « Entendu » : jusqu’à %1 mots, séparés seulement par des espaces.",
   "The list is full. Delete a fix to add another.": "La liste est pleine. Supprimez une correction pour en ajouter une autre.",
   "The phone’s media volume is at zero, so nobody will hear these phrases.": "Le volume multimédia du téléphone est à zéro, donc personne n’entendra ces phrases.",
-  "Turn the volume up": "Monter le volume"
+  "Turn the volume up": "Monter le volume",
+  "Press and hold a word to delete it.": "Appuyez longuement sur un mot pour le supprimer.",
+  "Tap a phrase to move it or delete it.": "Touchez une phrase pour la déplacer ou la supprimer.",
+  "Move or delete": "Déplacer ou supprimer"
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5487,7 +5499,10 @@
   "In “Heard”: up to %1 words, with only spaces between them.": "In „Gehört“: bis zu %1 Wörter, nur durch Leerzeichen getrennt.",
   "The list is full. Delete a fix to add another.": "Die Liste ist voll. Löschen Sie eine Korrektur, um eine andere hinzuzufügen.",
   "The phone’s media volume is at zero, so nobody will hear these phrases.": "Die Medienlautstärke des Telefons steht auf null, daher hört niemand diese Sätze.",
-  "Turn the volume up": "Lauter stellen"
+  "Turn the volume up": "Lauter stellen",
+  "Press and hold a word to delete it.": "Halten Sie ein Wort gedrückt, um es zu löschen.",
+  "Tap a phrase to move it or delete it.": "Tippen Sie auf einen Satz, um ihn zu verschieben oder zu löschen.",
+  "Move or delete": "Verschieben oder löschen"
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6585,7 +6600,10 @@
   "In “Heard”: up to %1 words, with only spaces between them.": "“सुना गया” में: ज़्यादा से ज़्यादा %1 शब्द, बीच में सिर्फ़ खाली जगह।",
   "The list is full. Delete a fix to add another.": "सूची भर चुकी है। दूसरा जोड़ने के लिए एक सुधार मिटाएं।",
   "The phone’s media volume is at zero, so nobody will hear these phrases.": "फ़ोन की मीडिया आवाज़ शून्य पर है, इसलिए ये वाक्य कोई नहीं सुनेगा।",
-  "Turn the volume up": "आवाज़ बढ़ाएं"
+  "Turn the volume up": "आवाज़ बढ़ाएं",
+  "Press and hold a word to delete it.": "किसी शब्द को दबाकर रखने से उसे मिटाया जा सकता है।",
+  "Tap a phrase to move it or delete it.": "किसी वाक्य को छूकर उसे ऊपर-नीचे किया या मिटाया जा सकता है।",
+  "Move or delete": "ऊपर-नीचे करें या मिटाएं"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7683,7 +7701,10 @@
   "In “Heard”: up to %1 words, with only spaces between them.": "Em “Ouvido”: até %1 palavras, separadas só por espaços.",
   "The list is full. Delete a fix to add another.": "A lista está cheia. Elimine uma correção para adicionar outra.",
   "The phone’s media volume is at zero, so nobody will hear these phrases.": "O volume de multimédia do telemóvel está a zero, por isso ninguém vai ouvir estas frases.",
-  "Turn the volume up": "Aumentar o volume"
+  "Turn the volume up": "Aumentar o volume",
+  "Press and hold a word to delete it.": "Mantenha uma palavra premida para a eliminar.",
+  "Tap a phrase to move it or delete it.": "Toque numa frase para a mover ou eliminar.",
+  "Move or delete": "Mover ou eliminar"
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8781,7 +8802,10 @@
   "In “Heard”: up to %1 words, with only spaces between them.": "В поле «Услышано»: не больше %1 слов, только с пробелами между ними.",
   "The list is full. Delete a fix to add another.": "Список заполнен. Удалите исправление, чтобы добавить другое.",
   "The phone’s media volume is at zero, so nobody will hear these phrases.": "Громкость мультимедиа на телефоне на нуле, поэтому эти фразы никто не услышит.",
-  "Turn the volume up": "Сделать громче"
+  "Turn the volume up": "Сделать громче",
+  "Press and hold a word to delete it.": "Нажмите и удерживайте слово, чтобы удалить его.",
+  "Tap a phrase to move it or delete it.": "Нажмите на фразу, чтобы переместить или удалить её.",
+  "Move or delete": "Переместить или удалить"
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -9879,7 +9903,10 @@
   "In “Heard”: up to %1 words, with only spaces between them.": "En “Oído”: hasta %1 palabras, separadas solo por espacios.",
   "The list is full. Delete a fix to add another.": "La lista está llena. Elimina una corrección para añadir otra.",
   "The phone’s media volume is at zero, so nobody will hear these phrases.": "El volumen multimedia del teléfono está a cero, así que nadie oirá estas frases.",
-  "Turn the volume up": "Subir el volumen"
+  "Turn the volume up": "Subir el volumen",
+  "Press and hold a word to delete it.": "Mantén pulsada una palabra para borrarla.",
+  "Tap a phrase to move it or delete it.": "Toca una frase para moverla o borrarla.",
+  "Move or delete": "Mover o borrar"
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -10977,6 +11004,9 @@
   "In “Heard”: up to %1 words, with only spaces between them.": "У полі «Почуто»: не більше %1 слів, лише з пробілами між ними.",
   "The list is full. Delete a fix to add another.": "Список заповнений. Видаліть виправлення, щоб додати інше.",
   "The phone’s media volume is at zero, so nobody will hear these phrases.": "Гучність медіа на телефоні на нулі, тож ці фрази ніхто не почує.",
-  "Turn the volume up": "Зробити гучніше"
+  "Turn the volume up": "Зробити гучніше",
+  "Press and hold a word to delete it.": "Натисніть і утримуйте слово, щоб видалити його.",
+  "Tap a phrase to move it or delete it.": "Торкніться фрази, щоб перемістити або видалити її.",
+  "Move or delete": "Перемістити або видалити"
  }
 }

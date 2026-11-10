@@ -137,6 +137,7 @@ internal fun ImportantWordsScreen(
                 }
             }
         }
+        if (alerts.isNotEmpty()) Footnote(tr("לחיצה ארוכה על מילה מאפשרת למחוק אותה.", "Press and hold a word to delete it."))
         val suggestions = ImportantWords.suggestions(vocabulary, alerts, spoken)
         if (suggestions.isNotEmpty()) {
             SettingsGroup(dividerInset = 56.dp) {

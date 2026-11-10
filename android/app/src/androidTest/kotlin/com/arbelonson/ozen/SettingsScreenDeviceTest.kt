@@ -992,6 +992,23 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun theImportantWordsListSaysHowToDeleteAWordOnceItHasOne() {
+        val hint = "Press and hold a word to delete it."
+        val before = app.settings.current.value.keywordAlerts
+        try {
+            app.settings.change { it.keywordAlerts = emptyList() }
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Important words").performScrollTo().performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("No words yet", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(hint).assertDoesNotExist()
+            app.settings.change { it.keywordAlerts = listOf(KeywordAlert(phrase = "Shira")) }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(hint).fetchSemanticsNodes().isNotEmpty() }
+        } finally {
+            app.settings.change { it.keywordAlerts = before }
+        }
+    }
+
+    @Test
     fun aNameIsMovedUpOrDownTheWordsListFromItsHoldMenuOrTheScreenReader() {
         app.settings.change { it.vocabulary = listOf("Shira", "Dr. Levi", "Amoxicillin") }
         compose.onNodeWithText("Settings").performClick()

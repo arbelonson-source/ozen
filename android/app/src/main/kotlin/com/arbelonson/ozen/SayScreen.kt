@@ -214,7 +214,7 @@ internal fun SayScreen(
                     // Instead of the phrases to tap, not beside them as on the
                     // iPhone: the same phrase twice on one screen, once to say
                     // and once to delete, is one too many.
-                    Text(tr("עריכת המשפטים", "Edit phrases"), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
+                    Text(tr("לחיצה על משפט מאפשרת להזיז אותו או למחוק אותו.", "Tap a phrase to move it or delete it."), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(
                             value = newPhrase,
@@ -311,6 +311,7 @@ private fun EditablePhraseRow(phrase: String, onMoveUp: (() -> Unit)?, onMoveDow
             modifier = Modifier
                 .fillMaxWidth()
                 .onHold { menu = true }
+                .clickable(onClickLabel = tr("הזזה או מחיקה", "Move or delete"), role = Role.Button) { menu = true }
                 .semantics { customActions = choices.map { (label, act) -> CustomAccessibilityAction(label) { act(); true } } }
                 .heightIn(min = 56.dp)
                 .padding(horizontal = 16.dp, vertical = 16.dp),
