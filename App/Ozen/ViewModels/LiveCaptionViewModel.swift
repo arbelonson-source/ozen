@@ -1129,6 +1129,21 @@ public final class LiveCaptionViewModel {
         awayCatchUp.acknowledge()
     }
 
+    /// Clear after a question that said the lines stay saved in History:
+    /// they are saved first, and if that save fails nothing is cleared, so
+    /// the question can be asked again saying saving isn't working. Without
+    /// this the promise held only for saves before the question. Returns
+    /// whether it cleared.
+    @discardableResult
+    public func clearTranscriptKeepingHistory() -> Bool {
+        if settings.saveHistory {
+            persistHistory(ended: false)
+            if historySaveFailure != nil { return false }
+        }
+        clearTranscript()
+        return true
+    }
+
     public func clearTranscript() {
         recentConversation = nil
         awayCatchUp.clear()

@@ -618,7 +618,17 @@ struct LiveCaptionView: View {
             isPresented: $confirmingClear,
             titleVisibility: .visible
         ) {
-            Button(tr("מחיקה", "Delete"), role: .destructive) { viewModel.clearTranscript() }
+            Button(tr("מחיקה", "Delete"), role: .destructive) {
+                if !clearKeepsHistory {
+                    viewModel.clearTranscript()
+                } else if !viewModel.clearTranscriptKeepingHistory() {
+                    // The save failed just now: ask again, now saying so.
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(400))
+                        confirmingClear = true
+                    }
+                }
+            }
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
         } message: {
             Text(clearKeepsHistory
