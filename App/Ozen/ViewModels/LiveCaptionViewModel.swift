@@ -2403,13 +2403,17 @@ public final class LiveCaptionViewModel {
     }
 
     /// Names a saved conversation, in order with any autosave in flight.
-    public func renameConversation(id: UUID, title: String) {
+    /// False when the name was lost (the disk refused it), so the screen
+    /// can say so instead of showing a name History doesn't have.
+    @discardableResult
+    public func renameConversation(id: UUID, title: String) -> Bool {
         // The conversation still going may not have reached the disk yet
         // (the first autosave comes after 20 s), and a name given to a
         // conversation that isn't saved would be dropped without a word.
         if id == historySessionID { persistHistory(ended: false) }
-        historyWriter.renameNow(id: id, title: title)
+        let kept = historyWriter.renameNow(id: id, title: title)
         refreshSavingTrouble()
+        return kept
     }
 
     /// Hides the saving-failed banner until saving works and fails again.

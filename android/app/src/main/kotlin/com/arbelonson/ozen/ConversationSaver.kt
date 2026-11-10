@@ -245,7 +245,7 @@ class ConversationSaver(
      * queued with the saves so an autosave of the one still being captioned
      * can't write it back without the name.
      */
-    fun rename(id: UUID, title: String) = writer.renameNow(id, title)
+    fun rename(id: UUID, title: String): Boolean = writer.renameNow(id, title)
 
     /**
      * Stars a saved line from History, or takes its star away; the line's

@@ -519,6 +519,25 @@ class TranscriptHistoryWriterTest {
     }
 
     @Test
+    fun `a name the disk refuses says so, unless a version waiting for room keeps it`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.refused-name"))
+        val morning = record(UUID.randomUUID(), 2, true)
+        val evening = record(UUID.randomUUID(), 2, false)
+        writer.saveNow(morning)
+        writer.saveNow(evening)
+        permissions(dir, "r-x------")
+        writer.saveNow(evening.copy(endedAt = 200.0))
+
+        assertFalse(writer.renameNow(morning.id, "בוקר"))
+        assertTrue(writer.renameNow(evening.id, "ערב"))
+        permissions(dir, "rwx------")
+        assertTrue(writer.renameNow(UUID.randomUUID(), "לילה"))
+        assertNull(store.load(morning.id)?.title)
+        assertEquals("ערב", store.load(evening.id)?.title)
+    }
+
+    @Test
     fun `deleting everything also drops a conversation still waiting for room, and its warning`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)
         val writer = TranscriptHistoryWriter(store, SerialQueue("test.delete-all-waiting"))

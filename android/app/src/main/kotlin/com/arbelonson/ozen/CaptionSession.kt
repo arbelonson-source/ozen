@@ -523,10 +523,7 @@ class CaptionSession(
             publish()
         }
 
-        override fun rename(id: UUID, title: String) {
-            conversations.rename(id, title)
-            refreshSavingTrouble()
-        }
+        override fun rename(id: UUID, title: String) = conversations.rename(id, title).also { refreshSavingTrouble() }
 
         // A line still on the caption screen shows the change at once, as on
         // the iPhone, not only once the next caption redraws the screen.

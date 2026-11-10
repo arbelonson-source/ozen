@@ -158,8 +158,8 @@ interface SavedConversations {
     /** Deletes every saved conversation, the one still being captioned too. */
     fun deleteAll()
 
-    /** Names a conversation, or takes its name away with a blank one. */
-    fun rename(id: UUID, title: String)
+    /** Names a conversation, or takes its name away with a blank one: false when the name was lost. */
+    fun rename(id: UUID, title: String): Boolean
 
     /** Stars a saved line or takes its star away: its new state, or null when it is gone or could not be saved. */
     fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean?
@@ -724,6 +724,7 @@ internal fun ConversationScreen(
     var fixRejected by rememberSaveable { mutableStateOf(false) }
     var fixSaving by remember { mutableStateOf(false) }
     var starRefused by rememberSaveable { mutableStateOf(false) }
+    var nameRefused by rememberSaveable { mutableStateOf(false) }
     val fixingLine = fixingID?.let { wanted -> loaded?.lines?.firstOrNull { it.id.toString() == wanted } }
     fixingLine?.let { line ->
         FixWordDialog(
@@ -861,12 +862,14 @@ internal fun ConversationScreen(
                     onClick = {
                         naming = null
                         scope.launch {
+                            var kept = true
                             show(
                                 withContext(Dispatchers.IO) {
-                                    conversations.rename(id, draft)
+                                    kept = conversations.rename(id, draft)
                                     opened(conversations.load(id), query, marksUncertain, languageCode)
                                 },
                             )
+                            if (!kept) nameRefused = true
                         }
                     },
                 ) { Text(tr("שמירה", "Save")) }
@@ -896,14 +899,19 @@ internal fun ConversationScreen(
     }
     deleteError?.let { error -> DeletionFailed(error, onClose = { deleteError = null }) }
     if (starRefused) StarNotChanged(onClose = { starRefused = false })
+    if (nameRefused) NotSavedToHistory(tr("השם לא נשמר", "The name wasn’t saved"), onClose = { nameRefused = false })
 }
 
 /** A star History could not save: the line keeps the star it had, as on the iPhone. */
 @Composable
-internal fun StarNotChanged(onClose: () -> Unit) {
+internal fun StarNotChanged(onClose: () -> Unit) = NotSavedToHistory(tr("הסימון לא השתנה", "The star wasn’t changed"), onClose)
+
+/** A change History could not save, said as on the iPhone. */
+@Composable
+internal fun NotSavedToHistory(title: String, onClose: () -> Unit) {
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text(tr("הסימון לא השתנה", "The star wasn’t changed")) },
+        title = { Text(title) },
         text = { DialogText(tr("השמירה בהיסטוריה לא עובדת כרגע. אפשר לנסות שוב עוד רגע.", "Saving to History isn’t working right now. Try again in a moment.")) },
         confirmButton = { TextButton(onClick = onClose) { Text(tr("סגירה", "Close")) } },
     )

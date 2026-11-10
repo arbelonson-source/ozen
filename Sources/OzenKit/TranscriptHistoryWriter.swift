@@ -77,17 +77,21 @@ public final class TranscriptHistoryWriter: Sendable {
     ///
     /// A version still waiting for room takes the name too: never written
     /// before, it had no file for the name to go into, and it was written
-    /// later without one.
-    public func renameNow(id: UUID, title: String) {
+    /// later without one. False when the name was lost: the disk refused
+    /// it and no waiting version keeps it, so the screen must say so.
+    @discardableResult
+    public func renameNow(id: UUID, title: String) -> Bool {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
-            failure.capture { try store.rename(id: id, title: title) }
+            var kept = failure.capture { try store.rename(id: id, title: title) }
             if var waiting = pendingSaves.records[id] {
                 let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
                 waiting.title = trimmed.isEmpty ? nil : trimmed
                 pendingSaves.records[id] = waiting
+                kept = true
             }
             Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure)
+            return kept
         }
     }
 

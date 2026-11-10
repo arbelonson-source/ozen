@@ -3076,6 +3076,38 @@ struct LiveCaptionViewModelSavingTroubleTests {
         #expect(history.load(id: current.id)?.segments.last?.isStarred == true)
     }
 
+    @Test("a name the disk refuses comes back false, so the screen says so instead of showing it")
+    func nameThatCannotBeSaved() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-history-\(UUID())", isDirectory: true)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let history = TranscriptHistoryStore(directoryURL: folder)
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-settings-\(UUID()).json")),
+            pipeline: pipeline,
+            historyStore: history
+        )
+        await viewModel.start()
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "בוקר טוב", isFinal: true, timestamp: 1))
+        await eventually { !viewModel.segments.isEmpty }
+        viewModel.persistHistory(ended: true)
+        let saved = try #require(history.listSummaries().first)
+        viewModel.clearTranscript()
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: folder.path)
+        #expect(!viewModel.renameConversation(id: saved.id, title: "ביקור"))
+        #expect(viewModel.savingTrouble.shouldShow)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+        #expect(history.load(id: saved.id)?.title == nil)
+
+        #expect(viewModel.renameConversation(id: saved.id, title: "ביקור"))
+        #expect(history.load(id: saved.id)?.title == "ביקור")
+    }
+
     @Test("deleting every conversation takes the saving banner down at once, not at the next save")
     func deleteAllTakesTheBannerDown() async throws {
         let blocker = try blockedFolder()

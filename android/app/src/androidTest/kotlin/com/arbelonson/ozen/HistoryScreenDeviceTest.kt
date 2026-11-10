@@ -764,6 +764,26 @@ class HistoryScreenDeviceTest {
     }
 
     @Test
+    fun aNameHistoryCannotSaveSaysSoAndTheConversationKeepsNone() {
+        val id = seed("Unsaved name test opening line" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Unsaved name test opening line")
+        compose.onNodeWithText("Unsaved name test opening line", substring = true).performClick()
+        waitFor("Name this conversation")
+        historyRefusingWrites {
+            compose.onNodeWithText("Name this conversation").performClick()
+            compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextInput("Dentist visit")
+            compose.onNodeWithText("Save").performClick()
+            waitFor("The name wasn’t saved")
+            compose.onNode(hasText("Saving to History isn’t working right now. Try again in a moment.") and hasAnyAncestor(isDialog())).assertIsDisplayed()
+        }
+        compose.onNode(hasText("Close") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(5_000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() }
+        assertNull(store.load(id)!!.title)
+        assertTrue(compose.onAllNodesWithText("Dentist visit", substring = true).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
     fun turningThePhoneKeepsTheConversationsNameBeingTyped() {
         val id = seed("Turning test opening line" to null)
         compose.onNodeWithText("History").performClick()

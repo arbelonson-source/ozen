@@ -525,6 +525,31 @@ struct TranscriptHistoryWriterTests {
         #expect(writer.lastFailure == nil)
     }
 
+    @Test("a name the disk refuses says so, unless a version waiting for room keeps it")
+    func refusedNameSaysSo() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.refused-name"))
+        let morning = record(id: UUID(), lines: 2, ended: true)
+        let evening = record(id: UUID(), lines: 2, ended: false)
+        writer.saveNow(morning)
+        writer.saveNow(evening)
+        var later = evening
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+
+        #expect(!writer.renameNow(id: morning.id, title: "בוקר"))
+        #expect(writer.renameNow(id: evening.id, title: "ערב"))
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        #expect(writer.renameNow(id: UUID(), title: "לילה"))
+        #expect(store.load(id: morning.id)?.title == nil)
+        #expect(store.load(id: evening.id)?.title == "ערב")
+    }
+
     @Test("deleting the one conversation the disk refused takes the saving warning away with it")
     func deletingRefusedConversationClearsWarning() throws {
         let (store, dir) = makeStore()

@@ -140,19 +140,20 @@ class TranscriptHistoryWriter(
      *
      * A version still waiting for room takes the name too: never written
      * before, it had no file for the name to go into, and it was written
-     * later without one.
+     * later without one. False when the name was lost: the disk refused it
+     * and no waiting version keeps it, so the screen must say so.
      */
-    fun renameNow(id: UUID, title: String) {
-        queue.sync {
-            lastWritten.record = null
-            failure.capture { store.rename(id, title) }
-            val waiting = pendingSaves.records[id]
-            if (waiting != null) {
-                val trimmed = historyTrimmed(title)
-                pendingSaves.records[id] = waiting.copy(title = trimmed.ifEmpty { null })
-            }
-            catchUp(null)
+    fun renameNow(id: UUID, title: String): Boolean = queue.sync {
+        lastWritten.record = null
+        var kept = failure.capture { store.rename(id, title) }
+        val waiting = pendingSaves.records[id]
+        if (waiting != null) {
+            val trimmed = historyTrimmed(title)
+            pendingSaves.records[id] = waiting.copy(title = trimmed.ifEmpty { null })
+            kept = true
         }
+        catchUp(null)
+        kept
     }
 
     /**
