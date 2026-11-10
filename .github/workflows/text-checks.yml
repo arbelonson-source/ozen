@@ -1,0 +1,30 @@
+name: Text checks
+
+# Every push, documentation included: ci.yml skips a change that touches
+# only docs, and these are the checks such a change can break. The whole
+# job takes a few seconds on Linux.
+on:
+  push:
+    branches: ['**', '!release/verified-**']
+
+concurrency:
+  group: text-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  text:
+    name: Text checks (conflict markers, doc wording, real values)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      # git grep exits 1 when nothing matches; 0 (a marker) and 2 (an error) fail.
+      - name: No leftover merge conflict markers
+        run: |
+          status=0
+          git grep -nE '^(<<<<<<<|>>>>>>>)( |$)|^=======$' -- . || status=$?
+          test "$status" -eq 1
+      - name: Check that docs quote the app's current wording
+        run: python3 scripts/check-doc-quotes.py
+      - name: Check that no real pairing code or tailnet name is in the repo
+        run: python3 scripts/check-no-real-values.py

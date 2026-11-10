@@ -40,10 +40,6 @@ jobs:
         run: python3 scripts/check-translations.py
       - name: Check Siri phrase catalog
         run: python3 scripts/check-app-shortcuts.py
-      - name: Check that docs quote the app's current wording
-        run: python3 scripts/check-doc-quotes.py
-      - name: Check that no real pairing code or tailnet name is in the repo
-        run: python3 scripts/check-no-real-values.py
       - name: Check that the speech library is pinned to one release
         run: python3 scripts/check-pinned-libraries.py
       - name: Model release scripts
@@ -56,14 +52,16 @@ jobs:
       - run: swift build
       - run: swift test
       # The home server's own checks: faster-whisper and the GPU are stood
-      # in for, so they need numpy, qrcode for pairing, cryptography for the
-      # home-network certificate and websockets for the encrypted-port test.
+      # in for; the rest of its requirements are installed within the same
+      # bounds a home computer gets (numpy, qrcode for pairing, cryptography
+      # for the home-network certificate, websockets for the encrypted-port
+      # test).
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Home server tests
         working-directory: server
-        run: pip install numpy qrcode cryptography websockets && python -m unittest test_ozen_server test_pairing test_try_server test_lan_tls -v
+        run: pip install -r <(grep -v '^faster-whisper' requirements.txt) && python -m unittest test_ozen_server test_pairing test_try_server test_lan_tls -v
 
   # The Android app. Its shared core is plain Kotlin, so its tests run on
   # the JVM in seconds, reading the same translations and test cases as
