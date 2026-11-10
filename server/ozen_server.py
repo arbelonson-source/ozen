@@ -840,12 +840,45 @@ def worker_failed(error):
     return error is not None and not isinstance(error, websockets.ConnectionClosed)
 
 
+# Each connection may take 10 s to say hello, and a Funnel address is
+# public, so a flood of silent connections could otherwise hold every socket
+# the computer allows. Past this many, the one that has waited longest is let
+# go. A phone says hello a moment after connecting, so this reaches a phone
+# only if a thousand connections arrive within that moment; turning the
+# newest away instead (#327) let a few dozen silent ones keep phones out.
+MAX_WAITING_HELLOS = 1024
+waiting_hellos = {}
+let_go_logged_at = None
+
+
+async def read_hello(ws, peer):
+    global let_go_logged_at
+    if len(waiting_hellos) >= MAX_WAITING_HELLOS:
+        oldest = next(iter(waiting_hellos))
+        del waiting_hellos[oldest]
+        oldest.cancel()
+        if let_go_logged_at is None or time.monotonic() - let_go_logged_at > 60:
+            let_go_logged_at = time.monotonic()
+            log.warning("%d connections are waiting to say hello; letting the oldest go (latest from %s)",
+                        MAX_WAITING_HELLOS, peer)
+    reading = asyncio.ensure_future(ws.recv())
+    waiting_hellos[reading] = None
+    try:
+        await asyncio.wait({reading}, timeout=10)
+    finally:
+        waiting_hellos.pop(reading, None)
+        reading.cancel()
+    if not reading.done() or reading.cancelled() or reading.exception() is not None:
+        return None
+    try:
+        return json.loads(reading.result())
+    except Exception:
+        return None
+
+
 async def handle(ws, transcriber, token, live_interval, make_enhancer=None, general=None):
     peer = ws.remote_address
-    try:
-        hello = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
-    except Exception:
-        hello = None
+    hello = await read_hello(ws, peer)
     if not isinstance(hello, dict):
         await refuse(ws, "bad_request", "hello expected")
         return

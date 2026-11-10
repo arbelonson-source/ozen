@@ -1169,6 +1169,43 @@ class WrongCode(unittest.TestCase):
         self.assertIn("unauthorized", ws.sent[0])
 
 
+class SilentSocket:
+    remote_address = ("203.0.113.9", 4444)
+
+    def __init__(self):
+        self.sent = []
+
+    async def recv(self):
+        await asyncio.Event().wait()
+
+    async def send(self, text):
+        self.sent.append(text)
+
+
+class WaitingHellos(unittest.TestCase):
+    def test_a_flood_of_silent_connections_lets_its_oldest_go_and_never_keeps_a_phone_out(self):
+        async def flood():
+            silent = [SilentSocket() for _ in range(S.MAX_WAITING_HELLOS)]
+            waiting = [asyncio.create_task(S.handle(ws, None, "real-code-456", 1.0)) for ws in silent]
+            await asyncio.sleep(0.01)
+            self.assertEqual(len(S.waiting_hellos), S.MAX_WAITING_HELLOS)
+            phone = HelloSocket(S.json.dumps({"type": "hello", "token": "wrong-code-789"}))
+            await asyncio.wait_for(S.handle(phone, None, "real-code-456", 1.0), 1)
+            self.assertIn("unauthorized", phone.sent[0])
+            await asyncio.sleep(0.01)
+            self.assertTrue(waiting[0].done(), "the oldest silent connection was let go")
+            self.assertIn("bad_request", silent[0].sent[0])
+            self.assertFalse(any(task.done() for task in waiting[1:]))
+            self.assertLessEqual(len(S.waiting_hellos), S.MAX_WAITING_HELLOS)
+            for task in waiting:
+                task.cancel()
+            await asyncio.gather(*waiting, return_exceptions=True)
+            self.assertEqual(len(S.waiting_hellos), 0)
+
+        with self.assertLogs(S.log, "WARNING"):
+            asyncio.run(flood())
+
+
 class OpenFiles(unittest.TestCase):
     def limits(self, soft, hard, refuse_above=None):
         asked = []
