@@ -1109,7 +1109,8 @@
   "Line fixed": "መስመሩ ተስተካክሏል",
   "A key is a long code you get from the %1 website after opening an account there.": "ቁልፍ ማለት በ%1 ድረ-ገጽ ላይ መለያ ከከፈቱ በኋላ የሚያገኙት ረጅም ኮድ ነው።",
   "Open the %1 website": "የ%1 ድረ-ገጽን ይክፈቱ",
-  "They stay saved in Settings, under “Previous conversations”.": "በቅንብሮች ውስጥ፣ በ“ያለፉ ውይይቶች” ስር ተቀምጠው ይቆያሉ።"
+  "They stay saved in Settings, under “Previous conversations”.": "በቅንብሮች ውስጥ፣ በ“ያለፉ ውይይቶች” ስር ተቀምጠው ይቆያሉ።",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "ጥያቄዎቹ በእንግሊዝኛ ናቸው፤ ቤት ውስጥ ለሁሉም “አዎ” (Yes) ይመልሱ። ለመጨረሻው “አይ” (No) መመለስም ይቻላል፤ በኋላ ማዋቀሩን እንደገና በማስኬድ ማከል ይቻላል።"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2221,7 +2222,8 @@
   "Line fixed": "تم تصحيح السطر",
   "A key is a long code you get from the %1 website after opening an account there.": "المفتاح رمز طويل تحصلون عليه من موقع %1 بعد فتح حساب فيه.",
   "Open the %1 website": "فتح موقع %1",
-  "They stay saved in Settings, under “Previous conversations”.": "تبقى محفوظة في الإعدادات، ضمن ‏“المحادثات السابقة”‏."
+  "They stay saved in Settings, under “Previous conversations”.": "تبقى محفوظة في الإعدادات، ضمن ‏“المحادثات السابقة”‏.",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "أسئلته بالإنجليزية: في البيت أجيبوا عنها كلها بـ‏“نعم”‏ (Yes). وعن السؤال الأخير تصلح الإجابة بـ‏“لا”‏ (No) أيضًا: يمكن إضافة ذلك لاحقًا بتشغيل الإعداد مرة أخرى."
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3333,7 +3335,8 @@
   "Line fixed": "这一行已更正",
   "A key is a long code you get from the %1 website after opening an account there.": "密钥是在 %1 网站开设账户后得到的一串长代码。",
   "Open the %1 website": "打开 %1 网站",
-  "They stay saved in Settings, under “Previous conversations”.": "它们会保存在“设置”的“以往的对话”中。"
+  "They stay saved in Settings, under “Previous conversations”.": "它们会保存在“设置”的“以往的对话”中。",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "它的问题是英文的：在家时全部选“是”（Yes）。最后一个问题选“否”（No）也可以：以后再运行一次安装程序就能加上。"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4445,7 +4448,8 @@
   "Line fixed": "Ligne corrigée",
   "A key is a long code you get from the %1 website after opening an account there.": "Une clé est un long code que vous obtenez sur le site de %1 après y avoir ouvert un compte.",
   "Open the %1 website": "Ouvrir le site de %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Elles restent enregistrées dans Réglages, sous « Conversations précédentes »."
+  "They stay saved in Settings, under “Previous conversations”.": "Elles restent enregistrées dans Réglages, sous « Conversations précédentes ».",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Ses questions sont en anglais : à la maison, répondez « Oui » (Yes) à chacune. À la dernière, « Non » (No) convient aussi : relancer l’installation plus tard permet de l’ajouter."
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5557,7 +5561,8 @@
   "Line fixed": "Zeile korrigiert",
   "A key is a long code you get from the %1 website after opening an account there.": "Ein Schlüssel ist ein langer Code, den Sie auf der Website von %1 erhalten, nachdem Sie dort ein Konto eröffnet haben.",
   "Open the %1 website": "Website von %1 öffnen",
-  "They stay saved in Settings, under “Previous conversations”.": "Sie bleiben in den Einstellungen unter „Frühere Gespräche“ gespeichert."
+  "They stay saved in Settings, under “Previous conversations”.": "Sie bleiben in den Einstellungen unter „Frühere Gespräche“ gespeichert.",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Seine Fragen sind auf Englisch: Zu Hause beantworten Sie alle mit „Ja“ (Yes). Bei der letzten geht auch „Nein“ (No): Wer die Einrichtung später noch einmal startet, kann es nachholen."
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6669,7 +6674,8 @@
   "Line fixed": "पंक्ति ठीक कर दी गई",
   "A key is a long code you get from the %1 website after opening an account there.": "कुंजी एक लंबा कोड है, जो %1 की वेबसाइट पर खाता खोलने के बाद मिलता है।",
   "Open the %1 website": "%1 की वेबसाइट खोलें",
-  "They stay saved in Settings, under “Previous conversations”.": "ये सेटिंग्स में “पिछली बातचीत” के अंतर्गत सहेजे रहेंगे।"
+  "They stay saved in Settings, under “Previous conversations”.": "ये सेटिंग्स में “पिछली बातचीत” के अंतर्गत सहेजे रहेंगे।",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "इसके सवाल अंग्रेज़ी में हैं: घर पर सभी का जवाब “हां” (Yes) दें। आख़िरी सवाल का जवाब “नहीं” (No) भी ठीक है: बाद में सेटअप दोबारा चलाकर इसे जोड़ा जा सकता है।"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7781,7 +7787,8 @@
   "Line fixed": "Linha corrigida",
   "A key is a long code you get from the %1 website after opening an account there.": "Uma chave é um código longo que obtém no site de %1 depois de abrir lá uma conta.",
   "Open the %1 website": "Abrir o site de %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Ficam guardadas nas Definições, em “Conversas anteriores”."
+  "They stay saved in Settings, under “Previous conversations”.": "Ficam guardadas nas Definições, em “Conversas anteriores”.",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "As perguntas estão em inglês: em casa, responda “Sim” (Yes) a todas. À última, “Não” (No) também serve: pode acrescentá-lo mais tarde executando a instalação de novo."
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8893,7 +8900,8 @@
   "Line fixed": "Строка исправлена",
   "A key is a long code you get from the %1 website after opening an account there.": "Ключ — это длинный код, который выдают на сайте %1 после создания там учётной записи.",
   "Open the %1 website": "Открыть сайт %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Они сохранятся в настройках, в разделе «Предыдущие разговоры»."
+  "They stay saved in Settings, under “Previous conversations”.": "Они сохранятся в настройках, в разделе «Предыдущие разговоры».",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Вопросы установщика на английском: дома на все отвечайте «Да» (Yes). На последний можно ответить и «Нет» (No): это можно добавить позже, запустив установку ещё раз."
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -10005,7 +10013,8 @@
   "Line fixed": "Línea corregida",
   "A key is a long code you get from the %1 website after opening an account there.": "Una clave es un código largo que obtienes en el sitio web de %1 después de abrir una cuenta allí.",
   "Open the %1 website": "Abrir el sitio web de %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Se quedan guardados en Ajustes, en “Conversaciones anteriores”."
+  "They stay saved in Settings, under “Previous conversations”.": "Se quedan guardados en Ajustes, en “Conversaciones anteriores”.",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Sus preguntas están en inglés: en casa, responde “Sí” (Yes) a todas. A la última también vale “No”: se puede añadir más tarde ejecutando de nuevo la instalación."
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11117,6 +11126,7 @@
   "Line fixed": "Рядок виправлено",
   "A key is a long code you get from the %1 website after opening an account there.": "Ключ — це довгий код, який видають на сайті %1 після створення там облікового запису.",
   "Open the %1 website": "Відкрити сайт %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Вони збережуться в налаштуваннях, у розділі «Попередні розмови»."
+  "They stay saved in Settings, under “Previous conversations”.": "Вони збережуться в налаштуваннях, у розділі «Попередні розмови».",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Запитання програми англійською: удома на всі відповідайте «Так» (Yes). На останнє можна відповісти й «Ні» (No): це можна додати пізніше, запустивши встановлення ще раз."
  }
 }
