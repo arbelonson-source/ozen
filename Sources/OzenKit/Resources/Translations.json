@@ -930,7 +930,7 @@
   "Download and transcribe": "ያውርዱና ወደ ጽሑፍ ይቀይሩ",
   "Downloading the model": "ሞዴሉን በማውረድ ላይ",
   "Getting the model ready": "ሞዴሉን በማዘጋጀት ላይ",
-  "History saving is off, so this wasn’t saved to History.": "የታሪክ ማስቀመጥ ጠፍቷል፣ ስለዚህ ይህ በታሪክ ውስጥ አልተቀመጠም።",
+  "History saving is off, so this wasn’t saved to History. Share the text before you close this screen.": "የታሪክ ማስቀመጥ ጠፍቷል፣ ስለዚህ ይህ በታሪክ ውስጥ አልተቀመጠም። ይህን ስክሪን ከመዝጋትዎ በፊት ጽሑፉን ያጋሩ።",
   "Keep going": "ይቀጥሉ",
   "Language of the recording": "የቅጂው ቋንቋ",
   "Length: %1": "ርዝመት፦ %1",
@@ -1098,7 +1098,9 @@
   "Turn the volume up": "ድምጹን ይጨምሩ",
   "Press and hold a word to delete it.": "ቃልን ተጭነው በመያዝ መሰረዝ ይችላሉ።",
   "Tap a phrase to move it or delete it.": "ሐረግን በመንካት ማንቀሳቀስ ወይም መሰረዝ ይችላሉ።",
-  "Move or delete": "ማንቀሳቀስ ወይም መሰረዝ"
+  "Move or delete": "ማንቀሳቀስ ወይም መሰረዝ",
+  "Close without sharing the text?": "ጽሑፉ ሳይጋራ ይዘጋ?",
+  "The text isn’t saved anywhere else, so it will be lost.": "ጽሑፉ በሌላ ቦታ አልተቀመጠም፣ ስለዚህ ይጠፋል።"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2031,7 +2033,7 @@
   "Download and transcribe": "تنزيل وتحويل إلى نص",
   "Downloading the model": "جارٍ تنزيل النموذج",
   "Getting the model ready": "جارٍ تجهيز النموذج",
-  "History saving is off, so this wasn’t saved to History.": "حفظ السجل متوقف، لذا لم يُحفظ هذا في السجل.",
+  "History saving is off, so this wasn’t saved to History. Share the text before you close this screen.": "حفظ السجل متوقف، لذا لم يُحفظ هذا في السجل. شاركوا النص قبل إغلاق هذه الشاشة.",
   "Keep going": "متابعة",
   "Language of the recording": "لغة التسجيل",
   "Length: %1": "المدة: %1",
@@ -2199,7 +2201,9 @@
   "Turn the volume up": "رفع الصوت",
   "Press and hold a word to delete it.": "اضغطوا مطوّلًا على كلمة لحذفها.",
   "Tap a phrase to move it or delete it.": "المسوا عبارة لنقلها أو حذفها.",
-  "Move or delete": "نقل أو حذف"
+  "Move or delete": "نقل أو حذف",
+  "Close without sharing the text?": "هل تريدون الإغلاق دون مشاركة النص؟",
+  "The text isn’t saved anywhere else, so it will be lost.": "النص غير محفوظ في أي مكان آخر، لذا سيضيع."
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3132,7 +3136,7 @@
   "Download and transcribe": "下载并转写",
   "Downloading the model": "正在下载模型",
   "Getting the model ready": "正在准备模型",
-  "History saving is off, so this wasn’t saved to History.": "历史记录保存已关闭，所以这份内容没有保存到历史记录。",
+  "History saving is off, so this wasn’t saved to History. Share the text before you close this screen.": "历史记录保存已关闭，所以这份内容没有保存到历史记录。请先分享文字，再关闭此页面。",
   "Keep going": "继续",
   "Language of the recording": "录音语言",
   "Length: %1": "时长：%1",
@@ -3300,7 +3304,9 @@
   "Turn the volume up": "调高音量",
   "Press and hold a word to delete it.": "长按一个词即可删除它。",
   "Tap a phrase to move it or delete it.": "点按一条常用语即可移动或删除它。",
-  "Move or delete": "移动或删除"
+  "Move or delete": "移动或删除",
+  "Close without sharing the text?": "不分享文字就关闭吗？",
+  "The text isn’t saved anywhere else, so it will be lost.": "这段文字没有保存在其他任何地方，关闭后就会丢失。"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4233,7 +4239,7 @@
   "Download and transcribe": "Télécharger et transcrire",
   "Downloading the model": "Téléchargement du modèle",
   "Getting the model ready": "Préparation du modèle",
-  "History saving is off, so this wasn’t saved to History.": "L’enregistrement de l’historique est désactivé : ce texte n’a pas été enregistré dans l’historique.",
+  "History saving is off, so this wasn’t saved to History. Share the text before you close this screen.": "L’enregistrement de l’historique est désactivé : ce texte n’a pas été enregistré dans l’historique. Partagez le texte avant de fermer cet écran.",
   "Keep going": "Continuer",
   "Language of the recording": "Langue de l’enregistrement",
   "Length: %1": "Durée : %1",
@@ -4401,7 +4407,9 @@
   "Turn the volume up": "Monter le volume",
   "Press and hold a word to delete it.": "Appuyez longuement sur un mot pour le supprimer.",
   "Tap a phrase to move it or delete it.": "Touchez une phrase pour la déplacer ou la supprimer.",
-  "Move or delete": "Déplacer ou supprimer"
+  "Move or delete": "Déplacer ou supprimer",
+  "Close without sharing the text?": "Fermer sans partager le texte ?",
+  "The text isn’t saved anywhere else, so it will be lost.": "Le texte n’est enregistré nulle part ailleurs : il sera perdu."
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5334,7 +5342,7 @@
   "Download and transcribe": "Herunterladen und transkribieren",
   "Downloading the model": "Modell wird heruntergeladen",
   "Getting the model ready": "Modell wird vorbereitet",
-  "History saving is off, so this wasn’t saved to History.": "Das Speichern des Verlaufs ist aus, deshalb wurde dies nicht im Verlauf gespeichert.",
+  "History saving is off, so this wasn’t saved to History. Share the text before you close this screen.": "Das Speichern des Verlaufs ist aus, deshalb wurde dies nicht im Verlauf gespeichert. Teilen Sie den Text, bevor Sie diesen Bildschirm schließen.",
   "Keep going": "Weitermachen",
   "Language of the recording": "Sprache der Aufnahme",
   "Length: %1": "Länge: %1",
@@ -5502,7 +5510,9 @@
   "Turn the volume up": "Lauter stellen",
   "Press and hold a word to delete it.": "Halten Sie ein Wort gedrückt, um es zu löschen.",
   "Tap a phrase to move it or delete it.": "Tippen Sie auf einen Satz, um ihn zu verschieben oder zu löschen.",
-  "Move or delete": "Verschieben oder löschen"
+  "Move or delete": "Verschieben oder löschen",
+  "Close without sharing the text?": "Schließen, ohne den Text zu teilen?",
+  "The text isn’t saved anywhere else, so it will be lost.": "Der Text ist nirgendwo sonst gespeichert und geht verloren."
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6435,7 +6445,7 @@
   "Download and transcribe": "डाउनलोड करें और लिखित रूप में बदलें",
   "Downloading the model": "मॉडल डाउनलोड हो रहा है",
   "Getting the model ready": "मॉडल तैयार हो रहा है",
-  "History saving is off, so this wasn’t saved to History.": "इतिहास सहेजना बंद है, इसलिए यह इतिहास में नहीं सहेजा गया।",
+  "History saving is off, so this wasn’t saved to History. Share the text before you close this screen.": "इतिहास सहेजना बंद है, इसलिए यह इतिहास में नहीं सहेजा गया। इस स्क्रीन को बंद करने से पहले टेक्स्ट साझा करें।",
   "Keep going": "जारी रखें",
   "Language of the recording": "रिकॉर्डिंग की भाषा",
   "Length: %1": "अवधि: %1",
@@ -6603,7 +6613,9 @@
   "Turn the volume up": "आवाज़ बढ़ाएं",
   "Press and hold a word to delete it.": "किसी शब्द को दबाकर रखने से उसे मिटाया जा सकता है।",
   "Tap a phrase to move it or delete it.": "किसी वाक्य को छूकर उसे ऊपर-नीचे किया या मिटाया जा सकता है।",
-  "Move or delete": "ऊपर-नीचे करें या मिटाएं"
+  "Move or delete": "ऊपर-नीचे करें या मिटाएं",
+  "Close without sharing the text?": "टेक्स्ट साझा किए बिना बंद करें?",
+  "The text isn’t saved anywhere else, so it will be lost.": "यह टेक्स्ट कहीं और सहेजा नहीं गया है, इसलिए यह खो जाएगा।"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7536,7 +7548,7 @@
   "Download and transcribe": "Transferir e transcrever",
   "Downloading the model": "A transferir o modelo",
   "Getting the model ready": "A preparar o modelo",
-  "History saving is off, so this wasn’t saved to History.": "Guardar no histórico está desativado, por isso isto não foi guardado no histórico.",
+  "History saving is off, so this wasn’t saved to History. Share the text before you close this screen.": "Guardar no histórico está desativado, por isso isto não foi guardado no histórico. Partilhe o texto antes de fechar este ecrã.",
   "Keep going": "Continuar",
   "Language of the recording": "Idioma da gravação",
   "Length: %1": "Duração: %1",
@@ -7704,7 +7716,9 @@
   "Turn the volume up": "Aumentar o volume",
   "Press and hold a word to delete it.": "Mantenha uma palavra premida para a eliminar.",
   "Tap a phrase to move it or delete it.": "Toque numa frase para a mover ou eliminar.",
-  "Move or delete": "Mover ou eliminar"
+  "Move or delete": "Mover ou eliminar",
+  "Close without sharing the text?": "Fechar sem partilhar o texto?",
+  "The text isn’t saved anywhere else, so it will be lost.": "O texto não ficou guardado em mais nenhum lado, por isso vai perder-se."
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8637,7 +8651,7 @@
   "Download and transcribe": "Загрузить и расшифровать",
   "Downloading the model": "Загрузка модели",
   "Getting the model ready": "Подготовка модели",
-  "History saving is off, so this wasn’t saved to History.": "Сохранение истории выключено, поэтому запись не сохранена в истории.",
+  "History saving is off, so this wasn’t saved to History. Share the text before you close this screen.": "Сохранение истории выключено, поэтому запись не сохранена в истории. Поделитесь текстом, прежде чем закрыть этот экран.",
   "Keep going": "Продолжить",
   "Language of the recording": "Язык записи",
   "Length: %1": "Длительность: %1",
@@ -8805,7 +8819,9 @@
   "Turn the volume up": "Сделать громче",
   "Press and hold a word to delete it.": "Нажмите и удерживайте слово, чтобы удалить его.",
   "Tap a phrase to move it or delete it.": "Нажмите на фразу, чтобы переместить или удалить её.",
-  "Move or delete": "Переместить или удалить"
+  "Move or delete": "Переместить или удалить",
+  "Close without sharing the text?": "Закрыть, не поделившись текстом?",
+  "The text isn’t saved anywhere else, so it will be lost.": "Текст больше нигде не сохранён, поэтому он пропадёт."
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -9738,7 +9754,7 @@
   "Download and transcribe": "Descargar y transcribir",
   "Downloading the model": "Descargando el modelo",
   "Getting the model ready": "Preparando el modelo",
-  "History saving is off, so this wasn’t saved to History.": "El guardado del historial está desactivado, así que esto no se ha guardado en el historial.",
+  "History saving is off, so this wasn’t saved to History. Share the text before you close this screen.": "El guardado del historial está desactivado, así que esto no se ha guardado en el historial. Comparte el texto antes de cerrar esta pantalla.",
   "Keep going": "Seguir",
   "Language of the recording": "Idioma de la grabación",
   "Length: %1": "Duración: %1",
@@ -9906,7 +9922,9 @@
   "Turn the volume up": "Subir el volumen",
   "Press and hold a word to delete it.": "Mantén pulsada una palabra para borrarla.",
   "Tap a phrase to move it or delete it.": "Toca una frase para moverla o borrarla.",
-  "Move or delete": "Mover o borrar"
+  "Move or delete": "Mover o borrar",
+  "Close without sharing the text?": "¿Cerrar sin compartir el texto?",
+  "The text isn’t saved anywhere else, so it will be lost.": "El texto no se ha guardado en ningún otro sitio, así que se perderá."
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -10839,7 +10857,7 @@
   "Download and transcribe": "Завантажити й розшифрувати",
   "Downloading the model": "Завантаження моделі",
   "Getting the model ready": "Підготовка моделі",
-  "History saving is off, so this wasn’t saved to History.": "Збереження історії вимкнено, тому це не збережено в історії.",
+  "History saving is off, so this wasn’t saved to History. Share the text before you close this screen.": "Збереження історії вимкнено, тому це не збережено в історії. Поділіться текстом, перш ніж закрити цей екран.",
   "Keep going": "Продовжити",
   "Language of the recording": "Мова запису",
   "Length: %1": "Тривалість: %1",
@@ -11007,6 +11025,8 @@
   "Turn the volume up": "Зробити гучніше",
   "Press and hold a word to delete it.": "Натисніть і утримуйте слово, щоб видалити його.",
   "Tap a phrase to move it or delete it.": "Торкніться фрази, щоб перемістити або видалити її.",
-  "Move or delete": "Перемістити або видалити"
+  "Move or delete": "Перемістити або видалити",
+  "Close without sharing the text?": "Закрити, не поділившись текстом?",
+  "The text isn’t saved anywhere else, so it will be lost.": "Текст більше ніде не збережено, тому він зникне."
  }
 }

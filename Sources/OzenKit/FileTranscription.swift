@@ -42,10 +42,16 @@ public enum HistorySave: Sendable, Equatable {
     case off
     case failed
 
+    /// Whether the text is kept anywhere but the screen showing it.
+    public var keepsText: Bool {
+        if case .saved = self { return true }
+        return false
+    }
+
     public var message: String {
         switch self {
         case .saved: return tr("נשמר בהיסטוריה, ואפשר לחפש אותו שם.", "Saved to History, where you can search it.")
-        case .off: return tr("שמירת שיחות כבויה, ולכן ההקלטה לא נשמרה בהיסטוריה.", "History saving is off, so this wasn’t saved to History.")
+        case .off: return tr("שמירת שיחות כבויה, ולכן ההקלטה לא נשמרה בהיסטוריה. כדאי לשתף את הטקסט לפני שסוגרים את המסך.", "History saving is off, so this wasn’t saved to History. Share the text before you close this screen.")
         case .failed: return tr("השמירה בהיסטוריה נכשלה. ייתכן שהטלפון מלא. כדאי לשתף את הטקסט לפני שסוגרים את המסך.", "Couldn’t save to History. The phone may be full. Share the text before you close this screen.")
         }
     }
@@ -57,6 +63,15 @@ public enum FileTranscription: Sendable, Equatable {
     case working(Working)
     case done(Done)
     case failed(name: String, problem: FileTranscriptionProblem)
+
+    /// Finished text that History doesn't hold (saving off, or the save
+    /// failed) lives only on the screen showing it: one tap on Close, the
+    /// back swipe or a swipe down threw it away after a long wait, so
+    /// leaving asks first.
+    public var leavingLosesText: Bool {
+        if case .done(let done) = self { return !done.history.keepsText }
+        return false
+    }
 
     public struct Ready: Sendable, Equatable {
         public var name: String

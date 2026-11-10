@@ -8,6 +8,8 @@ struct TranscribeRecordingView: View {
     @Bindable var model: TranscribeRecordingModel
     var onClose: (() -> Void)?
     @State private var confirmingStop = false
+    @State private var confirmingLeave = false
+    @Environment(\.dismiss) private var dismiss
     /// The Start button vanishes with the form it sits in; VoiceOver is
     /// moved to the progress that replaces it instead of being left on
     /// nothing.
@@ -17,13 +19,16 @@ struct TranscribeRecordingView: View {
         content
             .navigationTitle(tr("המרת הקלטה לטקסט", "Transcribe a recording"))
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(model.isWorking)
-            .interactiveDismissDisabled(model.isWorking)
+            .navigationBarBackButtonHidden(model.isWorking || model.state.leavingLosesText)
+            .interactiveDismissDisabled(model.isWorking || model.state.leavingLosesText)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     if model.isWorking {
                         Button(tr("עצירה", "Stop")) { confirmingStop = true }
                             .accessibilityIdentifier("transcribeStopButton")
+                    } else if model.state.leavingLosesText {
+                        Button(tr("סגירה", "Close")) { confirmingLeave = true }
+                            .accessibilityIdentifier("transcribeCloseButton")
                     } else if let onClose {
                         Button(tr("סגירה", "Close"), action: onClose)
                     }
@@ -174,12 +179,12 @@ struct TranscribeRecordingView: View {
                 Label(tr("ההקלטה הומרה לטקסט", "Recording turned into text"), systemImage: "checkmark.circle.fill")
                     .font(.headline)
                 Text(done.name)
-                if done.history == .failed {
-                    Text(done.history.message)
-                        .foregroundStyle(.readable(.orange))
-                } else {
+                if done.history.keepsText {
                     Text(done.history.message)
                         .foregroundStyle(.secondary)
+                } else {
+                    Text(done.history.message)
+                        .foregroundStyle(.readable(.orange))
                 }
                 if done.endMissing {
                     Text(FileTranscription.Done.endMissingMessage)
@@ -201,6 +206,24 @@ struct TranscribeRecordingView: View {
             }
         }
         .accessibilityIdentifier("transcribeDone")
+        .confirmationDialog(
+            tr("לסגור בלי לשתף את הטקסט?", "Close without sharing the text?"),
+            isPresented: $confirmingLeave,
+            titleVisibility: .visible
+        ) {
+            Button(tr("סגירה", "Close"), role: .destructive, action: leave)
+            Button(tr("ביטול", "Cancel"), role: .cancel) {}
+        } message: {
+            Text(tr("הטקסט לא נשמר בשום מקום אחר, ולכן הוא יאבד.", "The text isn’t saved anywhere else, so it will be lost."))
+        }
+    }
+
+    private func leave() {
+        if let onClose {
+            onClose()
+        } else {
+            dismiss()
+        }
     }
 
     private func failedList(name: String, problem: FileTranscriptionProblem) -> some View {
