@@ -50,6 +50,9 @@ enum ScreenshotFixtures {
         /// Large English captions with the saving-failed banner up, to see
         /// the banner push the captions down rather than cover them.
         case banner
+        /// English captions with a doorbell heard while the app was away,
+        /// shown as she comes back.
+        case awaySound
         /// Hebrew captions with one saved word fix, for Settings' list.
         case wordFixes
         /// Captions stopped on a phone where the running model fell behind
@@ -94,7 +97,7 @@ enum ScreenshotFixtures {
         viewModel.completeOnboarding()
         // The conversation is written with `tr`, so the language has to be
         // set before it is seeded for its lines to come out in English.
-        if variant == .galleryDark || variant == .galleryLight || variant == .modelFitEnglish {
+        if variant == .galleryDark || variant == .galleryLight || variant == .modelFitEnglish || variant == .awaySound {
             viewModel.setAppLanguage(.english)
         }
         // History is kept on disk between launches, and each launch saves
@@ -164,6 +167,12 @@ enum ScreenshotFixtures {
             viewModel.setAppLanguage(.english)
             viewModel.display.fontSize = 50
             viewModel.savesFailForScreenshots = true
+        case .awaySound:
+            viewModel.setAppLanguage(.english)
+            if let doorbell = SoundEventCatalog.event(for: "door_bell") {
+                let heardAt = Date().timeIntervalSince1970 - 600
+                viewModel.seedAwaySoundForScreenshots(SoundAlert(event: doorbell, confidence: 0.9, timestamp: heardAt), heardAt: heardAt)
+            }
         case .readingBack:
             viewModel.setAppLanguage(.english)
             let pipeline = viewModel.pipeline

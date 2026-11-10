@@ -174,6 +174,28 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertGreaterThan(captions.frame.height, window.height * 0.3, "banner: the banner left the captions too little room (\(captions.frame))")
     }
 
+    /// A doorbell heard while the app was away: back on the screen, it is
+    /// there with the time it was heard, above the captions, until closed.
+    func testSoundHeardWhileAwayShowsOnReturn() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "awaySound"]
+        app.launch()
+
+        let transcript = app.descendants(matching: .any)["transcriptScroll"]
+        XCTAssertTrue(transcript.waitForExistence(timeout: 10), "away sound: the transcript never appeared")
+        let banner = app.descendants(matching: .any)["awaySoundBanner"]
+        XCTAssertTrue(banner.waitForExistence(timeout: 10), "away sound: the banner never appeared")
+        XCTAssertTrue(banner.label.hasPrefix("Doorbell. Heard at "), "away sound: the banner says \(banner.label)")
+        Thread.sleep(forTimeInterval: 10)
+        XCTAssertTrue(banner.exists, "away sound: the banner went by itself, like a sound heard just now")
+        capture(app, name: "away-sound")
+
+        let captions = app.scrollViews.containing(.any, identifier: "transcriptScroll").firstMatch
+        XCTAssertLessThanOrEqual(banner.frame.maxY, captions.frame.minY + 1, "away sound: the banner covers the captions (banner \(banner.frame), captions \(captions.frame))")
+        banner.tap()
+        XCTAssertTrue(banner.waitForNonExistence(timeout: 5), "away sound: closing it left it there")
+    }
+
     private func fixWordSheet(variant: String, name: String, lineText: String, menuTitle: String, saveTitle: String, hintField: String, wordButton: String) throws {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestScreenshots", variant]

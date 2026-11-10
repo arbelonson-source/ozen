@@ -311,10 +311,19 @@ struct LiveCaptionView: View {
             // A doorbell or smoke alarm lasts seconds; the warnings below
             // stay until tapped and, at large text sizes, can fill the
             // screen, so the sound comes first (as in `alertOverlay`).
-            if let alert = visibleSoundAlert {
+            // The same sound once: as heard while away, with its time,
+            // rather than as heard just now. An older banner, kept up by
+            // VoiceOver, stays beside it.
+            if let alert = visibleSoundAlert, alert.id != viewModel.awaySoundShown?.alert.id {
                 SoundAlertBanner(alert: alert) {
                     withAnimation { visibleSoundAlert = nil }
                     viewModel.dismissSoundAlert(id: alert.id)
+                }
+                .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
+            if let away = viewModel.awaySoundShown {
+                AwaySoundBanner(heard: away) {
+                    withAnimation { viewModel.closeAwaySound() }
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
@@ -374,7 +383,7 @@ struct LiveCaptionView: View {
     }
 
     private var hasTopBanner: Bool {
-        visibleSoundAlert != nil || visibleKeywordHit != nil || installExpiryToWarn != nil
+        visibleSoundAlert != nil || viewModel.awaySoundShown != nil || visibleKeywordHit != nil || installExpiryToWarn != nil
             || viewModel.savingTrouble.shouldShow || viewModel.microphoneDrop.title != nil || battery.notice != nil
             || viewModel.routedElsewhere != nil
             || viewModel.listeningCut != nil
