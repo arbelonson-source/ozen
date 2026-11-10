@@ -205,15 +205,23 @@ class ConversationSaver(
      * "Clear captions from the screen", as on the iPhone: what was said is
      * saved as one ended conversation before [clearLines] takes the lines
      * away, and the next words start a new one from the top of the screen.
+     * When the question promised the lines stay in History
+     * ([keepingHistory]) and that save fails, nothing is cleared and false
+     * comes back, so the question can be asked again, now saying saving
+     * isn't working.
      */
-    fun clear(clearLines: () -> Unit) {
-        if (settings().saveHistory) save(ended = true)
+    fun clear(keepingHistory: Boolean = false, clearLines: () -> Unit): Boolean {
+        if (settings().saveHistory) {
+            val saved = save(ended = true)
+            if (keepingHistory && saved != null && writer.lastFailure != null) return false
+        }
         clearLines()
         closed.clear()
         starred.clear()
         id = UUID.randomUUID()
         offset = 0
         startedAt = if (isListening()) now() else null
+        return true
     }
 
     /** Deletes every saved conversation; the lines on screen stay, and the next words start a new one. */

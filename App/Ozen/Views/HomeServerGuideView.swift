@@ -23,7 +23,7 @@ struct HomeServerGuideView: View {
         Step(
             id: 3, systemImage: "hand.tap",
             title: tr("ללחוץ עליו פעמיים ולענות על השאלות", "Double-click it and answer its questions"),
-            text: tr("הקובץ בודק קודם שכרטיס המסך מתאים, ואז מתקין הכול לבד (10 עד 30 דקות). אם Windows שואל אם לאפשר לו לפעול, עונים ״כן״. בהמשך הוא ישאל אם להשתמש במחשב גם כשאתם מחוץ לבית.", "It first checks that the graphics card is good enough, then installs everything by itself (10 to 30 minutes). If Windows asks whether to allow it, say yes. It asks whether to use the computer away from home too.")
+            text: tr("הקובץ בודק קודם שכרטיס המסך מתאים, ואז מתקין הכול לבד (10 עד 30 דקות). אם Windows שואל אם לאפשר לו לפעול, עונים ״כן״. בהמשך הוא ישאל אם להשתמש במחשב גם כשאתם מחוץ לבית.", "It first checks that the graphics card is good enough, then installs everything by itself (10 to 30 minutes). If Windows asks whether to allow it, say yes. It asks whether to use the computer away from home too.") + " " + tr("השאלות שלו כתובות באנגלית: בבית עונים על כולן ״כן״ (Yes). על האחרונה אפשר לענות גם ״לא״ (No): מריצים את ההתקנה שוב אחר כך כדי להוסיף את זה.", "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.")
         ),
         Step(
             id: 4, systemImage: "qrcode.viewfinder",

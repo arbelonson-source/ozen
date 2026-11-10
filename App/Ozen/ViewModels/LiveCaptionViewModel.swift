@@ -46,9 +46,21 @@ public final class LiveCaptionViewModel {
         settings.deviceModelCheck = DeviceModelCheck(deviceName: DeviceModelTable.currentDeviceName, supported: supported, measurement: measurement)
         persist()
     }
+    /// A screenshot fixture's doorbell, heard while the app was away.
+    func seedAwaySoundForScreenshots(_ alert: SoundAlert, heardAt: TimeInterval) {
+        awaySound.heard(alert, at: heardAt, appIsActive: false)
+        awaySound.screenReturned { _ in false }
+    }
     #endif
     /// Where the lines said while the screen was away begin.
     var awayCatchUp = AwayCatchUp()
+    /// The sound heard while the screen was away, shown when she is back.
+    private var awaySound = AwaySound()
+    public var awaySoundShown: AwaySound.Heard? { awaySound.shown }
+
+    public func closeAwaySound() {
+        awaySound.close()
+    }
     @ObservationIgnored private var keywordAttention = KeywordAttentionPolicy()
     @ObservationIgnored private var handledKeywordHitIDs: Set<UUID> = []
     @ObservationIgnored private var batteryNoticePosted = false
@@ -464,6 +476,8 @@ public final class LiveCaptionViewModel {
         let now = Date().timeIntervalSince1970
         if isActive {
             keywordsNotifiedWhileAway.removeAll()
+            // Its notification goes below, and its banner time may be over.
+            awaySound.screenReturned { pipeline.currentScreenSoundAlert?.id == $0.id }
             for identifier in postedAlertNotificationIDs { withdrawNotification?(identifier) }
             postedAlertNotificationIDs.removeAll()
             withdrawDeliveredAlerts?()
@@ -669,7 +683,8 @@ public final class LiveCaptionViewModel {
     /// `DownloadBackgroundedNotice`).
     private func checkDownloadBackgrounded() {
         switch downloadBackgrounded.update(
-            isDownloading: DownloadBackgroundedNotice.isDownloading(pipeline.phase),
+            isDownloading: DownloadBackgroundedNotice.isDownloading(pipeline.phase)
+                && DownloadBackgroundedNotice.pausesWhenAway(variant: settings.whisperModelVariant),
             appIsActive: isAppActive,
             isEnabled: settings.notifyWhenInBackground
         ) {
@@ -745,6 +760,7 @@ public final class LiveCaptionViewModel {
 
     private func alertRaised(sound alert: SoundAlert) {
         let now = Date().timeIntervalSince1970
+        awaySound.heard(alert, at: now, appIsActive: isAppActive)
         guard let content = backgroundAlerts.notification(
             for: alert, appIsActive: isAppActive, now: now, utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: now))
         ) else { return }
@@ -870,6 +886,14 @@ public final class LiveCaptionViewModel {
         settings.hasCompletedOnboarding = true
         persist()
     }
+
+    /// The walkthrough has run on this phone before: its model page, or
+    /// Skip, checked the phone, and the check is saved. Shown again, the
+    /// model in use is one the person settled on, and the model page keeps
+    /// it (`WhisperModelCatalog.walkthroughReplaces`). Read from the saved
+    /// settings rather than kept in memory, so it still holds when the app
+    /// ended halfway through the walkthrough shown again.
+    public var walkthroughRanBefore: Bool { settings.deviceModelCheck != nil }
 
     /// Leaving the caption screen for the walkthrough: captions stop (and
     /// the conversation so far is saved) rather than keep the microphone
@@ -1398,10 +1422,13 @@ public final class LiveCaptionViewModel {
     /// A backup for a model picked earlier may still be downloading: this
     /// one starts beside it (the tap did nothing for the whole of that
     /// download), and the rows follow the newest.
-    public func downloadBackupModel() {
-        guard BackupModel.canStart(backupModelStatus) else { return }
+    ///
+    /// `overCellular`: this one download goes over cellular data, which the
+    /// backup row asks about first; the setting for every model stays as it is.
+    public func downloadBackupModel(overCellular: Bool = false) {
+        guard BackupModel.canStart(backupModelStatus, overCellular: overCellular) else { return }
         let variant = settings.whisperModelVariant
-        let allowCellular = settings.allowCellularModelDownload
+        let allowCellular = overCellular || settings.allowCellularModelDownload
         backupModelFailedVariant = nil
         backupModelProgress = 0
         backupModelVariant = variant
@@ -2119,16 +2146,18 @@ public final class LiveCaptionViewModel {
     /// False when nothing could be saved: the phone no longer has the voice
     /// of a line from before a quiet break or long ago, and leaves it alone.
     /// The sheet then says so instead of closing as if it had worked.
+    /// `onlyThisLine`: the person said the name is someone else's, not a
+    /// spelling fix, so the saved person keeps their name everywhere.
     @discardableResult
-    public func nameSpeaker(of segment: TranscriptSegment, name: String) -> Bool {
+    public func nameSpeaker(of segment: TranscriptSegment, name: String, onlyThisLine: Bool = false) -> Bool {
         // The segment's own cluster may already carry a name (fixing a typo
         // on an earlier tag): rename that saved profile instead of adding a
         // second one for the same voice print.
         let oldName = segment.speakerClusterID.flatMap { id in
             pipeline.speakerClusters.first(where: { $0.id == id })?.name
         }
-        let isRespelling = pipeline.isRespelling(name, ofLine: segment)
-        guard let centroid = pipeline.nameSpeaker(of: segment, name: name) else { return false }
+        let isRespelling = !onlyThisLine && pipeline.isRespelling(name, ofLine: segment)
+        guard let centroid = pipeline.nameSpeaker(of: segment, name: name, onlyThisLine: onlyThisLine) else { return false }
         // A name another saved person already has is not a misspelling:
         // the phone took this voice for the wrong person. Renaming would
         // hand all of that person's prints to this name, and they would
@@ -2145,6 +2174,21 @@ public final class LiveCaptionViewModel {
             speakerLabelsChanged()
         }
         return true
+    }
+
+    /// The saved person a Save of `name` on this line would rename
+    /// everywhere, saved conversations included: the line's voice carries
+    /// their name and `name` looks like a spelling fix of it. One letter
+    /// apart is also Noa and Noam, Dana and Dani, Tal and Gal, so the sheet
+    /// asks which was meant. Nil when Save only names this voice.
+    public func savedPersonRenamed(byNaming segment: TranscriptSegment, as name: String) -> String? {
+        guard let oldName = segment.speakerClusterID.flatMap({ id in pipeline.speakerClusters.first(where: { $0.id == id })?.name }),
+              oldName != name,
+              pipeline.isRespelling(name, ofLine: segment),
+              !settings.speakerProfiles.contains(where: { $0.name == name }),
+              settings.speakerProfiles.contains(where: { $0.name == oldName })
+        else { return nil }
+        return oldName
     }
 
     /// Deletes a person from the saved speakers: every voice print with

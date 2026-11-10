@@ -1639,11 +1639,13 @@ public final class CaptionPipeline {
     /// took this line for the wrong person: only this line moves, to the
     /// cluster already named so, or to a new one seeded from the line's
     /// own voice, and the other person's voice keeps their name.
+    /// `onlyThisLine` moves the line even when the name looks like a
+    /// spelling fix: the person said it was someone else (Noa and Noam).
     @discardableResult
-    public func nameSpeaker(of segment: TranscriptSegment, name: String) -> [Float]? {
+    public func nameSpeaker(of segment: TranscriptSegment, name: String, onlyThisLine: Bool = false) -> [Float]? {
         guard let clusterID = segment.speakerClusterID else { return nil }
         let cluster = clusterer.clusters.first(where: { $0.id == clusterID })
-        if let cluster, !isRespelling(name, ofLine: segment) {
+        if let cluster, onlyThisLine || !isRespelling(name, ofLine: segment) {
             return moveLine(segment, to: name, from: cluster)
         }
         clusterer.nameCluster(id: clusterID, name: name)

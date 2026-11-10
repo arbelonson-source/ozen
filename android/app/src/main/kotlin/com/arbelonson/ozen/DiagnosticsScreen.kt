@@ -93,6 +93,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
     // The journal is a file read and most of a refresh's time, a tenth of
     // a second and more once it fills up: read on the main thread every
     // two seconds, the screen stopped drawing that long each time.
+    LaunchedEffect(Unit) { source.checkBuiltInRecognition() }
     LaunchedEffect(reread) {
         while (true) {
             delay(2_000)

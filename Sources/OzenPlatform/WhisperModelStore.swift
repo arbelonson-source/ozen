@@ -167,14 +167,15 @@ public struct WhisperModelStore: Sendable {
     /// raced, and the second caller hears its progress too.
     ///
     /// Without `allowCellular`, Wi-Fi dropping part-way stops the download
-    /// instead of moving it onto the phone plan. A model from the app's own
-    /// releases fetches every file with cellular data and Low Data Mode
-    /// refused. WhisperKit's hub downloads keep their own session, so a
-    /// watch on the connection cancels them instead (`GuardedDownload`):
-    /// this throws `CellularDownloadStopped` and what arrived is kept for
-    /// the next try. Not caught: iOS Wi-Fi Assist, which keeps reporting
-    /// Wi-Fi, and the short moment between the phone switching to cellular
-    /// data and the system saying so.
+    /// instead of moving it onto the phone plan. A watch on the connection
+    /// cancels it (`GuardedDownload`): this throws `CellularDownloadStopped`
+    /// and what arrived is kept for the next try. A model from the app's own
+    /// releases also asks for every file with cellular data and Low Data
+    /// Mode refused, which covers the time she is away from the app: its
+    /// download runs on in the background, where such a request waits for
+    /// Wi-Fi instead of failing. Not caught: iOS Wi-Fi Assist, which keeps
+    /// reporting Wi-Fi, and the short moment between the phone switching to
+    /// cellular data and the system saying so.
     public func download(
         variant: String,
         allowCellular: Bool = true,
@@ -219,11 +220,17 @@ public struct WhisperModelStore: Sendable {
                 )
             }
         case .ozenRelease(let tag):
-            folder = self.folder(for: variant)
+            let release = self.folder(for: variant)
+            folder = release
             // Compiling at the end takes a moment of its own, so the
             // download's share of the bar stops just short of full.
-            _ = try await ReleaseModelDownloader(fetcher: URLSessionReleaseFileFetcher(allowsCellular: allowCellular))
-                .download(tag: tag, into: folder, checking: checking) { progress($0 * 0.95) }
+            _ = try await GuardedDownload.run(
+                allowCellular: allowCellular,
+                network: { PathConditionStream.make() }
+            ) {
+                try await ReleaseModelDownloader(fetcher: URLSessionReleaseFileFetcher(allowsCellular: allowCellular))
+                    .download(tag: tag, into: release, checking: checking) { progress($0 * 0.95) }
+            }
             // The compile moves the bar on, one package at a time, rather
             // than leaving it on 95% for minutes like a stuck download.
             try await Self.compilePackages(in: folder) { progress(0.95 + $0 * 0.05) }

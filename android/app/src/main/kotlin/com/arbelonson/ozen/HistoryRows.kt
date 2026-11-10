@@ -161,12 +161,24 @@ object HistoryTexts {
         "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.",
     )
 
-    /** Said before clearing the captions when the lines would be lost: with History off, or saving to it failing. */
-    fun clearWarning(saving: Boolean, failing: Boolean): String? = when {
+    /**
+     * Said before clearing the captions: where the lines go, or that they
+     * are lost, with History off or saving to it failing. Without a word
+     * when saving worked, some didn't clear mid-lesson for fear of losing
+     * what was said, and others thought it gone for good.
+     */
+    fun clearWarning(saving: Boolean, failing: Boolean): String = when {
         !saving -> tr("שמירת שיחות כבויה, ולכן הן לא יישמרו.", "History is off, so they won’t be saved.")
         failing -> tr("השמירה בהיסטוריה לא עובדת כרגע, ולכן הן לא יישמרו.", "Saving to History isn’t working right now, so they won’t be saved.")
-        else -> null
+        else -> tr("הן נשארות שמורות בהיסטוריה.", "They stay saved in History.")
     }
+
+    /**
+     * The clear question as asked: its words, and whether they promised
+     * the lines a place in History, which the clear then keeps to even if
+     * a save failed between the question and Delete.
+     */
+    fun clearQuestion(saving: Boolean, failing: Boolean) = ClearQuestion(clearWarning(saving, failing), saving && !failing)
 
     fun emptyMessage(query: String, saving: Boolean, speakerFilter: String? = null): String = when {
         query.isNotBlank() -> tr("לא נמצא כלום עבור ״%1״.", "Nothing found for “%1”.", listOf(query.trim()))
@@ -222,3 +234,5 @@ class NumbersMentioned(val listed: List<SavedSegment>, val moreText: String?) {
         }
     }
 }
+
+data class ClearQuestion(val text: String, val keepsHistory: Boolean)

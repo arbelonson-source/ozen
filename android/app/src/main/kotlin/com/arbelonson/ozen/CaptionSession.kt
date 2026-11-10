@@ -356,6 +356,10 @@ class CaptionSession(
         if (cameBack) {
             awayAlerts.takePostedIdentifiers().forEach(notifier::withdraw)
             notifier.withdrawAwayAlerts()
+            heardWhileAway?.let { missed ->
+                heardWhileAway = null
+                if (pipeline.currentBannerSoundAlert?.id != missed.id) showMissedSound(missed)
+            }
             stopAnnouncer.comingBack(pipeline.phase)?.let { announceStopOrReturn(it, pipeline.phase) }
             untold?.let { word ->
                 untold = null
@@ -716,10 +720,21 @@ class CaptionSession(
     fun stopCameraLight() = light.stop()
 
     /** Settings' "Clear captions from the screen": the conversation so far is saved first. */
-    fun clearCaptions() {
+    /**
+     * When the question before this promised the lines stay in History
+     * ([keepingHistory]) and saving them fails now, they stay on screen and
+     * false comes back, as on the iPhone. What the question said counts, not
+     * how saving stands now: an autosave failing while it was open otherwise
+     * let the lines go unsaved under the promise.
+     */
+    fun clearCaptions(keepingHistory: Boolean = false): Boolean {
+        if (!conversations.clear(keepingHistory, pipeline::clearTranscript)) {
+            publish()
+            return false
+        }
         dismissRecentConversation()
-        conversations.clear(pipeline::clearTranscript)
         publish()
+        return true
     }
 
     /**
@@ -1024,6 +1039,7 @@ class CaptionSession(
         // The sticky broadcast, not BatteryManager's properties: it is what
         // Android itself shows, test overrides included.
         val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val memory = ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java).getMemoryInfo(it) }
         return DiagnosticsFacts(
             phase = pipeline.phase,
             activeEngine = pipeline.activeEngineKind,
@@ -1039,7 +1055,7 @@ class CaptionSession(
             settingsSaveFailed = settings.saveFailed.value,
             historySaveFailure = conversations.lastSaveFailure,
             events = pipeline.eventLog.reportLines(::utcOffsetAt),
-            device = "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE}",
+            device = "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE}, ${chip()}",
             appVersion = appVersion(),
             journal = read.lines,
             hasMarkedCaptionLines = read.hasMarkedCaptionLines,
@@ -1053,7 +1069,9 @@ class CaptionSession(
             charging = (battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0,
             freeBytes = context.filesDir.usableSpace,
             memoryInUseBytes = Debug.getPss() * 1_024,
-            memoryAvailableBytes = ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java).getMemoryInfo(it) }.availMem,
+            memoryAvailableBytes = memory.availMem,
+            memoryTotalBytes = memory.totalMem,
+            builtInRecognition = BuiltInRecognition.answer,
             problemClips = problemAudio.clips(),
             inputLevel = pipeline.inputLevel,
             speakersIdentified = pipeline.speakerClusters.size,
@@ -1067,8 +1085,18 @@ class CaptionSession(
 
     override fun markProblem(): Boolean = markProblem(heldLine = null)
 
+    override fun checkBuiltInRecognition() = BuiltInRecognition.check(context, listOf("he", settings.current.value.languageCode))
+
+    /** The phone's chip and core count, which decide which model keeps up on a cheap phone. */
+    private fun chip(): String {
+        val cores = "${Runtime.getRuntime().availableProcessors()} cores"
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return cores
+        return "chip ${Build.SOC_MANUFACTURER} ${Build.SOC_MODEL} $cores"
+    }
+
     /** From a line's hold menu: that line goes in the report too, marked as the one held. */
     fun markProblem(heldLine: UUID?): Boolean {
+        checkBuiltInRecognition()
         val now = System.currentTimeMillis() / 1_000.0
         val lines = ProblemSnapshot.lines(
             settings = settings.current.value,
@@ -1372,7 +1400,27 @@ class CaptionSession(
      * says it, as on the iPhone, whichever screen is open, and the caption
      * screen shows its banner; with the app away it is a notification.
      */
+    /**
+     * The most important sound heard while the app was away, the newest of
+     * equals, as on the iPhone: a dog barking after the smoke alarm must not
+     * hide the alarm. Coming back takes its
+     * notification away (old alerts must not pass for new ones), and its
+     * banner time is over by then, so without this someone who unlocked the
+     * phone to see what buzzed found nothing at all.
+     */
+    private var heardWhileAway: SoundAlert? = null
+
+    /** Shown and read out once, with the clock time it was heard, and never buzzed or flashed: it isn't new. */
+    private fun showMissedSound(alert: SoundAlert) {
+        val missed = MissedSound(alert, clockTime(alert.timestamp))
+        CaptionState.missedSound(missed)
+        if (ScreenReader.isOn(context)) announce("${alert.event.name}. ${missedSoundNote(missed.at)}", alert.event.importance == SoundEvent.Importance.Critical)
+    }
+
+    fun dismissMissedSound() = CaptionState.missedSound(null)
+
     private fun soundHeard(alert: SoundAlert) {
+        if (!appIsActive) heardWhileAway = heardWhileAway?.takeIf { it.event.importance > alert.event.importance } ?: alert
         CaptionState.soundHeard(pipeline.currentBannerSoundAlert, alert)
         if (appIsActive) {
             buzz(AlertVibration.pattern(alert.event.importance), alert.event.importance)

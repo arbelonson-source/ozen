@@ -892,6 +892,17 @@ struct LiveCaptionViewModelOnboardingTests {
         #expect(SettingsStore(fileURL: file).load().hasCompletedOnboarding == false)
     }
 
+    @Test("the walkthrough counts as run before once it checked the phone, also after the app is opened again")
+    func walkthroughRanBefore() async {
+        let (viewModel, file) = makeViewModel()
+        #expect(!viewModel.walkthroughRanBefore)
+        await viewModel.checkPhoneIfNeverChecked()
+        viewModel.completeOnboarding()
+        viewModel.showOnboardingAgain()
+        #expect(viewModel.walkthroughRanBefore)
+        #expect(SettingsStore(fileURL: file).load().deviceModelCheck != nil)
+    }
+
     @Test("skipping the walkthrough checks the phone and settles on the model recommended for it")
     func skipChecksPhone() async {
         let (viewModel, _) = makeViewModel()
@@ -2418,6 +2429,35 @@ struct LiveCaptionViewModelDeleteConversationTests {
         viewModel.nameSpeaker(of: viewModel.segments[0], name: "Danna")
         #expect(viewModel.settings.speakerProfiles.count == 1)
         #expect(viewModel.settings.speakerProfiles.first?.name == "Danna")
+    }
+
+    @Test("a name one letter from a saved person's asks first, and for this line only keeps that person as they were")
+    func nearNameAsksFirst() async throws {
+        let engine = FakeEngine()
+        let audio = FakeAudioCapturer()
+        let pipeline = CaptionPipeline(audio: audio, engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-rename-\(UUID())", isDirectory: true)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathComponent("settings.json")),
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { pipeline.speakerClusters.count == 1 })
+        await say("שלום", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        let line = try #require(viewModel.segments.first)
+        #expect(viewModel.savedPersonRenamed(byNaming: line, as: "Noa") == nil)
+
+        viewModel.nameSpeaker(of: line, name: "Noa")
+        let named = try #require(viewModel.segments.first)
+        #expect(viewModel.savedPersonRenamed(byNaming: named, as: "Noam") == "Noa")
+        #expect(viewModel.savedPersonRenamed(byNaming: named, as: "Noa") == nil)
+        #expect(viewModel.savedPersonRenamed(byNaming: named, as: "Yossi") == nil)
+
+        #expect(viewModel.nameSpeaker(of: named, name: "Noam", onlyThisLine: true))
+        #expect(Set(viewModel.settings.speakerProfiles.map(\.name)) == ["Noa", "Noam"])
+        #expect(pipeline.speakerClusters.contains { $0.name == "Noa" })
     }
 
     @Test("naming a line whose voice the phone no longer has says it saved nothing, and a line it knows says it saved")

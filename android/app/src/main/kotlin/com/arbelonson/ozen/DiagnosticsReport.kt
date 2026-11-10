@@ -60,6 +60,13 @@ data class DiagnosticsFacts(
     val freeBytes: Long,
     val memoryInUseBytes: Long,
     val memoryAvailableBytes: Long?,
+    /** The phone's whole memory, for telling a 3–4 GB phone from a big one. */
+    val memoryTotalBytes: Long? = null,
+    /**
+     * Android's own offline speech recognition for Hebrew and the captioning
+     * language, "-" until [DiagnosticsSource.checkBuiltInRecognition] hears back.
+     */
+    val builtInRecognition: String = "-",
     /** The sound kept with marked problems, newest first. */
     val problemClips: List<File> = emptyList(),
     /** The microphone's level now, 0 to 1. */
@@ -101,6 +108,9 @@ interface DiagnosticsSource {
      * conversations are saved. True when the sound was kept.
      */
     fun markProblem(): Boolean
+
+    /** Asks Android again about its own offline speech recognition; the answer lands in the next facts. */
+    fun checkBuiltInRecognition() {}
 
     /** Takes the caption lines marked problems kept out of the journal, and nothing else. */
     fun deleteMarkedCaptionLines()
@@ -150,7 +160,8 @@ object DiagnosticsReport {
                 "cellular downloads: ${settings.allowCellularModelDownload}",
             "model state: ${if (facts.modelInstalled) "unverified" else "missing"} vocabulary: ${settings.vocabulary.size}",
             "thermal: ${facts.thermalStatus ?: "-"} low power: ${facts.batterySaver} battery: ${facts.batteryPercent?.let { "$it%" + if (facts.charging) " charging" else "" } ?: "-"} free space: ${ByteSize.text(facts.freeBytes)}",
-            "memory: used ${ByteSize.text(facts.memoryInUseBytes)} left ${facts.memoryAvailableBytes?.let(ByteSize::text) ?: "-"}",
+            "memory: used ${ByteSize.text(facts.memoryInUseBytes)} left ${facts.memoryAvailableBytes?.let(ByteSize::text) ?: "-"} phone ${facts.memoryTotalBytes?.let(ByteSize::text) ?: "-"}",
+            "built-in recognition: ${facts.builtInRecognition}",
             "device: ${facts.device} app ${facts.appVersion}",
             "events (oldest first):",
         )

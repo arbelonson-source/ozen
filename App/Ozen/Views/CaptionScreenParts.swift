@@ -129,6 +129,7 @@ struct NameSpeakerSheet: View {
     let viewModel: LiveCaptionViewModel
     @State private var name = ""
     @State private var tooOld = false
+    @State private var renaming: String?
     @FocusState private var typing: Bool
     @Environment(\.dismiss) private var dismiss
 
@@ -164,7 +165,7 @@ struct NameSpeakerSheet: View {
                         .textInputAutocapitalization(.words)
                         .focused($typing)
                         .submitLabel(.done)
-                        .onSubmit { if canSave { save() } }
+                        .onSubmit { if canSave { askOrSave() } }
                 } footer: {
                     if tooOld {
                         Text(tooOldText)
@@ -193,7 +194,7 @@ struct NameSpeakerSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(tr("שמירה", "Save"), action: save)
+                    Button(tr("שמירה", "Save"), action: askOrSave)
                         .disabled(!canSave)
                 }
                 ToolbarItem(placement: .cancellationAction) {
@@ -202,6 +203,11 @@ struct NameSpeakerSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .confirmationDialog(renamingTitle, isPresented: askingAboutRename, titleVisibility: .visible) {
+            Button(tr("לשנות בכל מקום", "Change everywhere")) { save(onlyThisLine: false) }
+            Button(tr("רק בשורה הזו", "Only this line")) { save(onlyThisLine: true) }
+            Button(tr("ביטול", "Cancel"), role: .cancel) {}
+        }
         .task {
             // Focus asked for while the sheet is still sliding up is often
             // dropped: wait for it to settle.
@@ -210,11 +216,32 @@ struct NameSpeakerSheet: View {
         }
     }
 
+    /// A name one letter from the saved person's this voice carries (Noa
+    /// and Noam) was taken as a spelling fix: that person was renamed in
+    /// every saved conversation, and dropped from the saved speakers, with
+    /// nothing said. Only the person typing knows which was meant, so the
+    /// sheet asks, in a question VoiceOver and braille read out.
+    private func askOrSave() {
+        if let saved = viewModel.savedPersonRenamed(byNaming: segment, as: trimmedName) {
+            renaming = saved
+        } else {
+            save(onlyThisLine: false)
+        }
+    }
+
+    private var askingAboutRename: Binding<Bool> {
+        Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })
+    }
+
+    private var renamingTitle: String {
+        tr("לשנות את ״%1״ ל־״%2״ בכל מקום, גם בשיחות השמורות?", "Change “%1” to “%2” everywhere, also in saved conversations?", args: ["\(renaming ?? "")", "\(trimmedName)"])
+    }
+
     /// Closes only when the name was saved, and says which way it went:
     /// an older line could do nothing while the sheet closed as if it had
     /// worked, and VoiceOver heard the same either way.
-    private func save() {
-        if viewModel.nameSpeaker(of: segment, name: trimmedName) {
+    private func save(onlyThisLine: Bool) {
+        if viewModel.nameSpeaker(of: segment, name: trimmedName, onlyThisLine: onlyThisLine) {
             Announcement.post(tr("הקול נשמר: %1", "Voice saved: %1", args: ["\(trimmedName)"]))
             dismiss()
         } else {
@@ -229,9 +256,20 @@ struct NameSpeakerSheet: View {
 /// stay longer; everything else is calm.
 struct SoundAlertBanner: View {
     let alert: SoundAlert
+    /// The time a sound heard while the app was away was heard: said
+    /// instead of "Heard just now", and it doesn't hop.
+    var heardAt: String? = nil
     let onDismiss: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var rung = false
+
+    private var heardWhileAway: String? {
+        heardAt.map(Self.heardWhileAway(at:))
+    }
+
+    static func heardWhileAway(at time: String) -> String {
+        tr("נשמע ב־%1, כשהאפליקציה לא הייתה על המסך", "Heard at %1, while the app wasn’t on the screen", args: ["\(time)"])
+    }
 
     var body: some View {
         Button(action: onDismiss) {
@@ -240,11 +278,11 @@ struct SoundAlertBanner: View {
                 Image(systemName: alert.event.systemImage)
                     .font(.system(size: 30, weight: .semibold))
                     .symbolEffect(.bounce, value: rung)
-                    .onAppear { if !reduceMotion { rung = true } }
+                    .onAppear { if !reduceMotion, heardAt == nil { rung = true } }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(alert.event.name)
                         .font(.title3.weight(.bold))
-                    Text(alert.event.importance == .critical ? tr("שימו לב!", "Attention!") : tr("נשמע עכשיו", "Heard just now"))
+                    Text(heardWhileAway ?? (alert.event.importance == .critical ? tr("שימו לב!", "Attention!") : tr("נשמע עכשיו", "Heard just now")))
                         .font(.subheadline)
                         .opacity(BannerPalette.subtitleOpacity)
                 }
@@ -263,8 +301,26 @@ struct SoundAlertBanner: View {
             .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(tr("התראה: %1", "Alert: %1", args: ["\(alert.event.name)"]))
+        .accessibilityLabel(heardWhileAway.map { "\(alert.event.name). \($0)" } ?? tr("התראה: %1", "Alert: %1", args: ["\(alert.event.name)"]))
         .accessibilityHint(tr("הקישו לסגירה", "Tap to close"))
+    }
+}
+
+/// A sound heard while the app was away, on the caption screen once she is
+/// back (see `AwaySound`): when it was heard, read to a screen reader once,
+/// with no hop, buzz or flash.
+struct AwaySoundBanner: View {
+    let heard: AwaySound.Heard
+    let onDismiss: () -> Void
+
+    private var time: String {
+        Date(timeIntervalSince1970: heard.at).formatted(inAppLanguage: .omitted, time: .shortened)
+    }
+
+    var body: some View {
+        SoundAlertBanner(alert: heard.alert, heardAt: time, onDismiss: onDismiss)
+            .accessibilityIdentifier("awaySoundBanner")
+            .announcing("\(heard.alert.event.name). \(SoundAlertBanner.heardWhileAway(at: time))", whenTurningTrue: true, alsoWhenFirstShown: true)
     }
 }
 

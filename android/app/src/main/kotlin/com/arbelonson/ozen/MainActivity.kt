@@ -729,12 +729,13 @@ private fun OzenApp(
                                 onBuzz = app.captions::buzz,
                                 soundSecondsLeft = app.captions::soundBannerSecondsLeft,
                                 onDismissSound = app.captions::dismissSoundAlert,
+                                onDismissMissedSound = app.captions::dismissMissedSound,
                                 onFontSize = { size -> app.settings.change { it.display = it.display.copy(fontSize = size) } },
                                 onOpenConversation = { reading = it to null },
                                 onDismissRecent = app.captions::dismissRecentConversation,
                                 onDismissBattery = app.captions::dismissBatteryWarning,
                                 onClear = app.captions::clearCaptions,
-                                clearWarning = { HistoryTexts.clearWarning(current.saveHistory, app.captions.savedConversations.lastSaveFailure != null) },
+                                clearQuestion = { HistoryTexts.clearQuestion(current.saveHistory, app.captions.savedConversations.lastSaveFailure != null) },
                             )
                         }
                     }
@@ -911,12 +912,13 @@ private fun CaptionScreen(
     onBuzz: (AlertVibration) -> Unit,
     soundSecondsLeft: (SoundAlert) -> Double,
     onDismissSound: (UUID) -> Unit,
+    onDismissMissedSound: () -> Unit = {},
     onFontSize: (Double) -> Unit,
     onOpenConversation: (UUID) -> Unit,
     onDismissRecent: () -> Unit,
     onDismissBattery: () -> Unit,
-    onClear: () -> Unit,
-    clearWarning: () -> String?,
+    onClear: (keepingHistory: Boolean) -> Boolean,
+    clearQuestion: () -> ClearQuestion,
 ) {
     val list = rememberLazyListState()
     // As on the iPhone: the text grows under the fingers and only the
@@ -1123,6 +1125,9 @@ private fun CaptionScreen(
                             onDismissSound(alert.id)
                         }
                     }
+                    ArrivingBanner(state.missedSound?.takeIf { shownSound == null }) { missed ->
+                        MissedSoundBanner(missed, onDismissMissedSound)
+                    }
                     ArrivingBanner(shownWord) { word ->
                         val speaker = state.lines.firstOrNull { it.id == word.line }?.speaker?.takeIf { display.showSpeakerNames }
                         HeardPill(
@@ -1257,6 +1262,7 @@ private fun CaptionScreen(
             }
         }
         var askingToClear by rememberSaveable { mutableStateOf(false) }
+        var clearTries by remember { mutableIntStateOf(0) }
         AnimatedVisibility(visible = !hidden) {
             val microphone = state.selectedInput?.let(::inputShortName)?.takeIf { it.length <= 12 } ?: tr("מיקרופון", "Microphone")
             val choose = tr("בחירת מיקרופון", "Choose microphone")
@@ -1297,13 +1303,19 @@ private fun CaptionScreen(
             }
         }
         if (askingToClear) {
-            val warning = remember { clearWarning() }
+            val question = remember(clearTries) { clearQuestion() }
             AlertDialog(
                 onDismissRequest = { askingToClear = false },
                 title = { Text(tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?")) },
-                text = warning?.let { { Text(it) } },
+                text = { Text(question.text) },
                 confirmButton = {
-                    TextButton(onClick = { askingToClear = false; onClear() }) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
+                    // A save that fails now asks again, saying the lines won't be kept.
+                    TextButton(
+                        onClick = {
+                            askingToClear = !onClear(question.keepsHistory)
+                            if (askingToClear) clearTries += 1
+                        },
+                    ) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
                 },
                 dismissButton = { TextButton(onClick = { askingToClear = false }) { Text(tr("ביטול", "Cancel")) } },
             )

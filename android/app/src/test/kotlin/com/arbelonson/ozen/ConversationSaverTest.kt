@@ -201,6 +201,30 @@ class ConversationSaverTest {
     }
 
     @Test
+    fun `a clear promised to keep the lines in History keeps them on screen when that save fails, and clears them once she accepts the loss`() {
+        start()
+        say("Hello", at = clock - 60)
+        folder.deleteRecursively()
+        folder.writeText("not a folder")
+        var cleared = 0
+        assertFalse(saver.clear(keepingHistory = true) { cleared += 1; lines.clear() })
+        assertEquals(0, cleared)
+        assertEquals(1, lines.size)
+        assertNotNull(saver.lastSaveFailure)
+        assertTrue(saver.clear(keepingHistory = false) { cleared += 1; lines.clear() })
+        assertEquals(1, cleared)
+        assertTrue(lines.isEmpty())
+    }
+
+    @Test
+    fun `a clear with nothing said yet goes through even while saves fail`() {
+        start()
+        folder.deleteRecursively()
+        folder.writeText("not a folder")
+        assertTrue(saver.clear(keepingHistory = true) { lines.clear() })
+    }
+
+    @Test
     fun `clearing after a break closed an earlier conversation still starts the next one from the first line on the screen`() {
         start()
         say("Good morning", at = clock - 30 * 60)

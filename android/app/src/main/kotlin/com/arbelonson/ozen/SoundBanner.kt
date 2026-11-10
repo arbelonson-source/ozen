@@ -72,6 +72,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -98,6 +99,24 @@ internal fun SoundAlertBanner(alert: SoundAlert, onDismiss: () -> Unit) {
             .semantics { contentDescription = tr("התראה: %1", "Alert: %1", listOf(alert.event.name)) },
     ) { Icon(Icons.Rounded.Close, contentDescription = null) }
 }
+
+internal fun missedSoundNote(at: String) =
+    tr("נשמע ב־%1, כשהאפליקציה לא הייתה על המסך", "Heard at %1, while the app wasn’t on the screen", listOf(at))
+
+@Composable
+internal fun MissedSoundBanner(missed: MissedSound, onDismiss: () -> Unit) {
+    NoticeBanner(
+        soundIcon(missed.alert.event.systemImage),
+        soundTone(missed.alert.event.importance),
+        missed.alert.event.name,
+        missedSoundNote(missed.at),
+        Modifier
+            .testTag(MISSED_SOUND)
+            .clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button, onClick = onDismiss),
+    ) { Icon(Icons.Rounded.Close, contentDescription = null) }
+}
+
+internal const val MISSED_SOUND = "missedSound"
 
 internal enum class NoticeTone { Emergency, Warning, Info, Quiet }
 

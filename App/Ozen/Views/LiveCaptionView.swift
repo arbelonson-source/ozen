@@ -311,10 +311,19 @@ struct LiveCaptionView: View {
             // A doorbell or smoke alarm lasts seconds; the warnings below
             // stay until tapped and, at large text sizes, can fill the
             // screen, so the sound comes first (as in `alertOverlay`).
-            if let alert = visibleSoundAlert {
+            // The same sound once: as heard while away, with its time,
+            // rather than as heard just now. An older banner, kept up by
+            // VoiceOver, stays beside it.
+            if let alert = visibleSoundAlert, alert.id != viewModel.awaySoundShown?.alert.id {
                 SoundAlertBanner(alert: alert) {
                     withAnimation { visibleSoundAlert = nil }
                     viewModel.dismissSoundAlert(id: alert.id)
+                }
+                .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
+            if let away = viewModel.awaySoundShown {
+                AwaySoundBanner(heard: away) {
+                    withAnimation { viewModel.closeAwaySound() }
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
@@ -374,7 +383,7 @@ struct LiveCaptionView: View {
     }
 
     private var hasTopBanner: Bool {
-        visibleSoundAlert != nil || visibleKeywordHit != nil || installExpiryToWarn != nil
+        visibleSoundAlert != nil || viewModel.awaySoundShown != nil || visibleKeywordHit != nil || installExpiryToWarn != nil
             || viewModel.savingTrouble.shouldShow || viewModel.microphoneDrop.title != nil || battery.notice != nil
             || viewModel.routedElsewhere != nil
             || viewModel.listeningCut != nil
@@ -1361,7 +1370,7 @@ struct LiveCaptionView: View {
                 .font(.title3.weight(.semibold))
                 // The one control left once the bar hides: at least the
                 // 44-point target a shaky finger needs.
-                .frame(width: 64, height: 44)
+                .frame(width: 64, height: 48)
                 .ozenGlass(in: Capsule(), interactive: true)
         }
         .buttonStyle(.plain)
@@ -1435,12 +1444,21 @@ struct LiveCaptionView: View {
 
     // MARK: - Control bar
 
+    /// One glass group: the bar and its buttons are drawn together, so the
+    /// buttons' glass takes its look from the bar under it.
     private var controlBar: some View {
+        OzenGlassGroup(spacing: 8) {
+            controlBarContent
+        }
+    }
+
+    private var controlBarContent: some View {
         VStack(spacing: 6) {
             // Never its icon alone: where the bar can't give the status
             // button room for its words beside the others, it takes a row.
             if statusOwnRow {
                 statusControl
+                    .accessibilitySortPriority(1)
             }
             HStack(alignment: .center, spacing: 8) {
                 micButton
@@ -1450,12 +1468,16 @@ struct LiveCaptionView: View {
                     statusControl
                         .frame(maxWidth: .infinity)
                         .layoutPriority(-1)
+                        .accessibilitySortPriority(1)
                 }
                 typeToSpeakButton
                 clearButton
                 settingsButton
             }
         }
+        // VoiceOver reaches the pause button first, then the others in
+        // their order on screen.
+        .accessibilityElement(children: .contain)
         .onGeometryChange(for: CGFloat.self) { proxy in proxy.size.width } action: { width in barWidth = width }
         // At the accessibility text sizes the buttons' padding grew past
         // their fixed width until the bar was wider than the phone, and
@@ -1472,7 +1494,10 @@ struct LiveCaptionView: View {
         .padding(.top, 12)
         .padding(.bottom, 8)
         .frame(maxWidth: horizontalSizeClass == .regular ? 720 : .infinity)
-        .ozenGlassBar()
+        // Captions scroll on under the bar: glass alone let their words
+        // show through, blurred, behind the buttons' names. The theme's own
+        // colour over it, as on the jump-to-latest pill, keeps them back.
+        .ozenGlassBar(tint: theme.background.opacity(0.7))
         .foregroundStyle(theme.chrome)
     }
 
@@ -1484,11 +1509,11 @@ struct LiveCaptionView: View {
                 Image(systemName: MicPickerView.icon(for: viewModel.selectedInput?.portType ?? .other))
                     .font(.title2)
                 Text(viewModel.selectedInput.map(MicPickerView.shortName) ?? tr("מיקרופון", "Microphone"))
-                    .font(.caption2)
+                    .font(.caption)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56)
+            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56, minHeight: Self.buttonMinimumHeight)
         }
         .ozenGlassButton()
         .accessibilityLabel(tr("בחירת מיקרופון", "Choose microphone"))
@@ -1514,11 +1539,11 @@ struct LiveCaptionView: View {
                 Image(systemName: viewModel.isSpeaking ? "speaker.wave.3.fill" : "keyboard")
                     .font(.title2)
                 Text(tr("להגיד", "Say"))
-                    .font(.caption2)
+                    .font(.caption)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56)
+            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56, minHeight: Self.buttonMinimumHeight)
         }
         .ozenGlassButton()
         .accessibilityLabel(viewModel.isSpeaking ? tr("עצירת הדיבור", "Stop speaking") : tr("להגיד משהו בקול", "Say something out loud"))
@@ -1541,11 +1566,11 @@ struct LiveCaptionView: View {
                 Image(systemName: "trash")
                     .font(.title2)
                 Text(tr("ניקוי", "Clear"))
-                    .font(.caption2)
+                    .font(.caption)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56)
+            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56, minHeight: Self.buttonMinimumHeight)
         }
         .ozenGlassButton()
         .accessibilityLabel(tr("ניקוי הכתוביות מהמסך", "Clear the captions from the screen"))
@@ -1562,11 +1587,11 @@ struct LiveCaptionView: View {
                 Image(systemName: "gearshape")
                     .font(.title2)
                 Text(tr("הגדרות", "Settings"))
-                    .font(.caption2)
+                    .font(.caption)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56)
+            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56, minHeight: Self.buttonMinimumHeight)
         }
         .ozenGlassButton()
         .accessibilityLabel(tr("הגדרות", "Settings"))
@@ -1679,22 +1704,35 @@ struct LiveCaptionView: View {
         return detail == nil ? state : state + Text(" · ").foregroundStyle(theme.pendingText) + dim
     }
 
-    /// From the larger text sizes up, or wherever the bar is narrower than
-    /// a wide iPhone in landscape, the status button takes a row of its
-    /// own above the others: between four glass buttons on a 402-point
-    /// iPhone it was left about 40 points, its icon alone. Measured on the
-    /// whole bar, which doesn't change with where the button goes.
-    private var statusOwnRow: Bool { dynamicTypeSize >= .xxLarge || barWidth < Self.statusInlineMinimumBarWidth }
+    /// Wherever the bar is narrower than a wide iPhone held sideways, the
+    /// status button takes a row of its own above the others: between four
+    /// glass buttons on a 402-point iPhone it was left about 40 points, its
+    /// icon alone. Measured on the whole bar, which doesn't change with
+    /// where the button goes.
+    ///
+    /// The larger text sizes need more room beside the others, but not a
+    /// row everywhere: held sideways, a second row took half the height of
+    /// the screen from the captions while the bar was wide enough for the
+    /// button's words beside the other four.
+    private var statusOwnRow: Bool {
+        barWidth < (dynamicTypeSize >= .xxLarge ? Self.statusInlineMinimumBarWidthLargeText : Self.statusInlineMinimumBarWidth)
+    }
 
     /// Room for the four other buttons and a status button wide enough for
     /// "Continue captions" beside them.
     private static let statusInlineMinimumBarWidth: CGFloat = 600
+    /// The same from the larger text sizes up, where the bar's own text
+    /// stops growing (`.xxxLarge`): an iPhone Pro held sideways (about
+    /// 720 points of bar) keeps one row, an iPad's 688 and a mini's take two.
+    private static let statusInlineMinimumBarWidthLargeText: CGFloat = 700
 
     /// How narrow a bar button's icon and name may get, before the glass
     /// style's padding: room for the widest icon, the keyboard, at the
     /// default text size. Four of them and the gaps then fit a 375-point
     /// phone with room to spare.
     private static let buttonMinimumWidth: CGFloat = 32
+    /// With the glass style's own padding, a target of at least 52 points.
+    private static let buttonMinimumHeight: CGFloat = 44
 
     private var savingTroubleAnnouncement: String {
         SavingTroubleNotice.title + ". " + SavingTroubleNotice.detail
