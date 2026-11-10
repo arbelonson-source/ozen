@@ -199,11 +199,11 @@ final class OzenScreenshotUITests: XCTestCase {
     }
 
     func testFixWordSheetHebrew() throws {
-        try fixWordSheet(variant: "hebrewDefault", name: "fix-word-sheet-hebrew", lineText: "בוקר טוב", menuTitle: "תיקון מילה", saveTitle: "שמירה", hintField: "או הקלידו מה נשמע", wordButton: "בוקר")
+        try fixWordSheet(variant: "hebrewDefault", name: "fix-word-sheet-hebrew", lineText: "בוקר טוב", menuTitle: "תיקון מילה", saveTitle: "שמירה", hintField: "או הקלידו את המילה השגויה", wordButton: "בוקר")
     }
 
     func testFixWordSheetEnglish() throws {
-        try fixWordSheet(variant: "galleryDark", name: "fix-word-sheet-english", lineText: "Good morning", menuTitle: "Fix a word", saveTitle: "Save", hintField: "Or type what was heard", wordButton: "morning,")
+        try fixWordSheet(variant: "galleryDark", name: "fix-word-sheet-english", lineText: "Good morning", menuTitle: "Fix a word", saveTitle: "Save", hintField: "Or type the wrong word", wordButton: "morning,")
     }
 
     func testWordFixesSettingsHebrew() throws {

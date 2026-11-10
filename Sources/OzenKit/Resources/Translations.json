@@ -38,7 +38,6 @@
   "Fix it every time": "ሁልጊዜ ያስተካክሉ",
   "Heard": "የተሰማው",
   "How it should be written": "እንዴት መጻፍ እንዳለበት",
-  "Or type what was heard": "ወይም የተሰማውን ይተይቡ",
   "Points: %1": "ነጥቦች፦ %1",
   "%1 said: %2": "%1 — ተብሏል፦ %2",
   "1 of %1, fastest": "1 ከ%1፣ በጣም ፈጣን",
@@ -1049,7 +1048,11 @@
   "Needs checking": "መፈተሽ ያስፈልጋል",
   "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.": "ለካፕሽን፣ ድምጹ ኮዱን አሁን ወደቃኙት ኮምፒዩተር ይሄዳል (%1፣ በገጹ ላይ እንደሚታየው)። የእርስዎ ወይም የቤተሰብዎ ኮምፒዩተር ከሆነ ብቻ ያገናኙ።",
   "You can also type in the address and code shown under the square: in Settings, choose “Home computer” under “Transcription engine” and fill in both boxes.": "እንዲሁም ከካሬው በታች የሚታዩትን አድራሻና ኮድ መተየብ ይችላሉ፦ በቅንብሮች ውስጥ “የንግግር መለያ ፕሮግራም” ስር “የቤት ኮምፒዩተር”ን ይምረጡና ሁለቱን ሳጥኖች ይሙሉ።",
-  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "ለሌሊት፦ የጽሑፍ ትርጉሙ ይቆማል እና የንግግር ሞዴሉ ይለቀቃል፤ ስለዚህ iOS ኦዘንን የመዝጋት ዕድሉ ይቀንሳል። የድምጽ ማንቂያዎች ማዳመጣቸውን ይቀጥላሉ።"
+  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "ለሌሊት፦ የጽሑፍ ትርጉሙ ይቆማል እና የንግግር ሞዴሉ ይለቀቃል፤ ስለዚህ iOS ኦዘንን የመዝጋት ዕድሉ ይቀንሳል። የድምጽ ማንቂያዎች ማዳመጣቸውን ይቀጥላሉ።",
+  "Or type the wrong word": "ወይም የተሳሳተውን ቃል ይተይቡ",
+  "Now type how it should be written": "አሁን እንዴት መጻፍ እንዳለበት ይተይቡ",
+  "This word is not in the line": "ይህ ቃል በመስመሩ ውስጥ የለም",
+  "Press and hold a line to mark it as important, copy it or fix a word.": "መስመርን ተጭነው በመያዝ እንደ አስፈላጊ ምልክት ማድረግ፣ መቅዳት ወይም ቃል ማስተካከል ይችላሉ።"
  },
  "arabic": {
   "Added: %1": "أُضيف: %1",
@@ -1090,7 +1093,6 @@
   "Fix it every time": "التصحيح في كل مرة",
   "Heard": "المسموع",
   "How it should be written": "كيف يجب أن تُكتب",
-  "Or type what was heard": "أو اكتبوا ما سُمع",
   "Points: %1": "النقاط: %1",
   "%1 said: %2": "%1 — قيل: %2",
   "1 of %1, fastest": "1 من %1، الأسرع",
@@ -2101,7 +2103,11 @@
   "Needs checking": "يحتاج إلى تحقق",
   "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.": "لإنشاء الترجمة النصية، سيذهب الصوت إلى الكمبيوتر الذي مسحتم رمزه للتو (%1، كما يظهر في صفحته). اتصلوا فقط إذا كان كمبيوتركم أو كمبيوتر عائلتكم.",
   "You can also type in the address and code shown under the square: in Settings, choose “Home computer” under “Transcription engine” and fill in both boxes.": "يمكنكم أيضًا كتابة العنوان والرمز الظاهرين تحت المربع: في الإعدادات، اختاروا “كمبيوتر البيت” تحت “محرك النسخ” واملؤوا الخانتين.",
-  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "لليل: تتوقف الترجمة النصية ويُحرَّر نموذج الكلام، فيقلّ احتمال أن يغلق iOS أوزن. تظل تنبيهات الصوت تنصت."
+  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "لليل: تتوقف الترجمة النصية ويُحرَّر نموذج الكلام، فيقلّ احتمال أن يغلق iOS أوزن. تظل تنبيهات الصوت تنصت.",
+  "Or type the wrong word": "أو اكتبوا الكلمة الخاطئة",
+  "Now type how it should be written": "الآن اكتبوا كيف يجب أن تُكتب",
+  "This word is not in the line": "هذه الكلمة غير موجودة في السطر",
+  "Press and hold a line to mark it as important, copy it or fix a word.": "اضغطوا مطوّلًا على سطر لتمييزه كمهم أو نسخه أو تصحيح كلمة فيه."
  },
  "chineseSimplified": {
   "Added: %1": "已添加：%1",
@@ -2142,7 +2148,6 @@
   "Fix it every time": "每次都修正",
   "Heard": "听到的",
   "How it should be written": "应如何书写",
-  "Or type what was heard": "或输入听到的内容",
   "Points: %1": "磅：%1",
   "%1 said: %2": "%1 说：%2",
   "1 of %1, fastest": "第 1 项，共 %1 项，最快",
@@ -3153,7 +3158,11 @@
   "Needs checking": "需要检查",
   "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.": "为了生成字幕，音频会发送到你刚才扫码的那台电脑（%1，与它页面上显示的一致）。只有在这是你自己或家人的电脑时才连接。",
   "You can also type in the address and code shown under the square: in Settings, choose “Home computer” under “Transcription engine” and fill in both boxes.": "你也可以输入方块下面显示的地址和代码：在“设置”的“语音识别引擎”中选择“家里的电脑”，然后填写这两个框。",
-  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "夜间使用：字幕会停止并释放语音模型，这样 iOS 就不太可能关闭 Ozen。声音提醒会继续监听。"
+  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "夜间使用：字幕会停止并释放语音模型，这样 iOS 就不太可能关闭 Ozen。声音提醒会继续监听。",
+  "Or type the wrong word": "或输入写错的词",
+  "Now type how it should be written": "现在输入正确的写法",
+  "This word is not in the line": "这个词不在这一行中",
+  "Press and hold a line to mark it as important, copy it or fix a word.": "长按一行可将其标记为重要、复制，或修正其中的词。"
  },
  "french": {
   "Added: %1": "Ajouté : %1",
@@ -3194,7 +3203,6 @@
   "Fix it every time": "Corriger à chaque fois",
   "Heard": "Entendu",
   "How it should be written": "Comment cela doit s’écrire",
-  "Or type what was heard": "Ou saisissez ce qui a été entendu",
   "Points: %1": "Points : %1",
   "%1 said: %2": "%1 a dit : %2",
   "1 of %1, fastest": "1 sur %1, le plus rapide",
@@ -4205,7 +4213,11 @@
   "Needs checking": "À vérifier",
   "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.": "Pour les sous-titres, l’audio ira à l’ordinateur dont vous venez de scanner le code (%1, comme indiqué sur sa page). Ne vous connectez que s’il s’agit de votre ordinateur ou de celui de votre famille.",
   "You can also type in the address and code shown under the square: in Settings, choose “Home computer” under “Transcription engine” and fill in both boxes.": "Vous pouvez aussi saisir l’adresse et le code affichés sous le carré : dans les Réglages, choisissez « Ordinateur de la maison » sous « Moteur de transcription » et remplissez les deux champs.",
-  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "Pour la nuit : les sous-titres s’arrêtent et le modèle de parole est libéré, ce qui réduit le risque que iOS ferme Ozen. Les alertes sonores continuent d’écouter."
+  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "Pour la nuit : les sous-titres s’arrêtent et le modèle de parole est libéré, ce qui réduit le risque que iOS ferme Ozen. Les alertes sonores continuent d’écouter.",
+  "Or type the wrong word": "Ou saisissez le mot erroné",
+  "Now type how it should be written": "Saisissez maintenant comment cela doit s’écrire",
+  "This word is not in the line": "Ce mot ne figure pas dans la ligne",
+  "Press and hold a line to mark it as important, copy it or fix a word.": "Appuyez longuement sur une ligne pour la marquer comme importante, la copier ou corriger un mot."
  },
  "german": {
   "Added: %1": "Hinzugefügt: %1",
@@ -4246,7 +4258,6 @@
   "Fix it every time": "Jedes Mal korrigieren",
   "Heard": "Gehört",
   "How it should be written": "Wie es geschrieben werden soll",
-  "Or type what was heard": "Oder geben Sie ein, was gehört wurde",
   "Points: %1": "Punkte: %1",
   "%1 said: %2": "%1 sagte: %2",
   "1 of %1, fastest": "1 von %1, am schnellsten",
@@ -5257,7 +5268,11 @@
   "Needs checking": "Zu prüfen",
   "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.": "Für Untertitel geht das Audio an den Computer, dessen Code Sie gerade gescannt haben (%1, wie auf seiner Seite angegeben). Verbinden Sie sich nur, wenn es Ihr eigener Computer oder der Ihrer Familie ist.",
   "You can also type in the address and code shown under the square: in Settings, choose “Home computer” under “Transcription engine” and fill in both boxes.": "Sie können auch die Adresse und den Code eingeben, die unter dem Quadrat stehen: Wählen Sie in den Einstellungen unter „Transkriptions‑Engine“ die Option „Heimcomputer“ und füllen Sie beide Felder aus.",
-  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "Für die Nacht: Die Untertitel stoppen und das Sprachmodell wird freigegeben, sodass iOS Ozen seltener beendet. Die Klanghinweise hören weiter zu."
+  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "Für die Nacht: Die Untertitel stoppen und das Sprachmodell wird freigegeben, sodass iOS Ozen seltener beendet. Die Klanghinweise hören weiter zu.",
+  "Or type the wrong word": "Oder geben Sie das falsche Wort ein",
+  "Now type how it should be written": "Geben Sie jetzt ein, wie es geschrieben werden soll",
+  "This word is not in the line": "Dieses Wort steht nicht in der Zeile",
+  "Press and hold a line to mark it as important, copy it or fix a word.": "Halten Sie eine Zeile gedrückt, um sie als wichtig zu markieren, sie zu kopieren oder ein Wort zu korrigieren."
  },
  "hindi": {
   "Added: %1": "जोड़ा गया: %1",
@@ -5298,7 +5313,6 @@
   "Fix it every time": "हर बार सुधारें",
   "Heard": "सुना गया",
   "How it should be written": "इसे कैसे लिखा जाना चाहिए",
-  "Or type what was heard": "या जो सुना गया वह टाइप करें",
   "Points: %1": "पॉइंट: %1",
   "%1 said: %2": "%1 ने कहा: %2",
   "1 of %1, fastest": "%1 में से 1, सबसे तेज़",
@@ -6309,7 +6323,11 @@
   "Needs checking": "जांचना है",
   "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.": "कैप्शन के लिए ऑडियो उस कंप्यूटर को जाएगा जिसका कोड आपने अभी स्कैन किया है (%1, जैसा उसके पेज पर दिखाया गया है)। सिर्फ़ तभी जोड़ें जब यह आपका अपना या आपके परिवार का कंप्यूटर हो।",
   "You can also type in the address and code shown under the square: in Settings, choose “Home computer” under “Transcription engine” and fill in both boxes.": "आप वर्ग के नीचे दिखाया गया पता और कोड भी टाइप कर सकते हैं: सेटिंग्स में “ट्रांसक्रिप्शन इंजन” के नीचे “घर का कंप्यूटर” चुनें और दोनों बॉक्स भरें।",
-  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "रात के लिए: कैप्शन रुक जाते हैं और बोली पहचानने वाला मॉडल हटा दिया जाता है, जिससे iOS के Ozen को बंद करने की संभावना कम हो जाती है। आवाज़ के अलर्ट सुनते रहते हैं।"
+  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "रात के लिए: कैप्शन रुक जाते हैं और बोली पहचानने वाला मॉडल हटा दिया जाता है, जिससे iOS के Ozen को बंद करने की संभावना कम हो जाती है। आवाज़ के अलर्ट सुनते रहते हैं।",
+  "Or type the wrong word": "या ग़लत शब्द टाइप करें",
+  "Now type how it should be written": "अब टाइप करें कि इसे कैसे लिखा जाना चाहिए",
+  "This word is not in the line": "यह शब्द इस लाइन में नहीं है",
+  "Press and hold a line to mark it as important, copy it or fix a word.": "किसी लाइन को दबाकर रखें, ताकि आप उसे ज़रूरी के रूप में चिह्नित कर सकें, कॉपी कर सकें या कोई शब्द ठीक कर सकें।"
  },
  "portuguese": {
   "Added: %1": "Adicionado: %1",
@@ -6350,7 +6368,6 @@
   "Fix it every time": "Corrigir sempre",
   "Heard": "Ouvido",
   "How it should be written": "Como deve ser escrito",
-  "Or type what was heard": "Ou escreva o que foi ouvido",
   "Points: %1": "Pontos: %1",
   "%1 said: %2": "%1 disse: %2",
   "1 of %1, fastest": "1 de %1, mais rápido",
@@ -7361,7 +7378,11 @@
   "Needs checking": "Por verificar",
   "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.": "Para as legendas, o áudio vai para o computador cujo código acabou de ler (%1, como aparece na página dele). Só ligue se for o seu computador ou o da sua família.",
   "You can also type in the address and code shown under the square: in Settings, choose “Home computer” under “Transcription engine” and fill in both boxes.": "Também pode escrever o endereço e o código que aparecem por baixo do quadrado: nas Definições, escolha “Computador de casa” em “Motor de transcrição” e preencha as duas caixas.",
-  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "Para a noite: as legendas param e o modelo de fala é liberado, para que o iOS tenha menos chance de fechar o Ozen. Os avisos sonoros continuam ouvindo."
+  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "Para a noite: as legendas param e o modelo de fala é liberado, para que o iOS tenha menos chance de fechar o Ozen. Os avisos sonoros continuam ouvindo.",
+  "Or type the wrong word": "Ou escreva a palavra errada",
+  "Now type how it should be written": "Agora escreva como deve ficar escrito",
+  "This word is not in the line": "Esta palavra não está na linha",
+  "Press and hold a line to mark it as important, copy it or fix a word.": "Mantenha uma linha premida para a assinalar como importante, copiá-la ou corrigir uma palavra."
  },
  "russian": {
   "Added: %1": "Добавлено: %1",
@@ -7402,7 +7423,6 @@
   "Fix it every time": "Исправлять каждый раз",
   "Heard": "Услышано",
   "How it should be written": "Как это нужно писать",
-  "Or type what was heard": "Или введите, что было услышано",
   "Points: %1": "Пункты: %1",
   "%1 said: %2": "%1 сказал(а): %2",
   "1 of %1, fastest": "1 из %1, самый быстрый",
@@ -8413,7 +8433,11 @@
   "Needs checking": "Нужно проверить",
   "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.": "Для субтитров звук будет отправляться на компьютер, код которого вы только что отсканировали (%1, как указано на его странице). Подключайтесь, только если это ваш компьютер или компьютер вашей семьи.",
   "You can also type in the address and code shown under the square: in Settings, choose “Home computer” under “Transcription engine” and fill in both boxes.": "Можно также ввести адрес и код, указанные под квадратом: в Настройках в разделе «Движок распознавания» выберите «Домашний компьютер» и заполните оба поля.",
-  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "На ночь: субтитры останавливаются, а речевая модель выгружается, поэтому iOS реже закрывает Ozen. Звуковые оповещения продолжают слушать."
+  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "На ночь: субтитры останавливаются, а речевая модель выгружается, поэтому iOS реже закрывает Ozen. Звуковые оповещения продолжают слушать.",
+  "Or type the wrong word": "Или введите неправильное слово",
+  "Now type how it should be written": "Теперь введите, как это должно быть написано",
+  "This word is not in the line": "Этого слова нет в строке",
+  "Press and hold a line to mark it as important, copy it or fix a word.": "Нажмите и удерживайте строку, чтобы отметить её как важную, скопировать или исправить слово."
  },
  "spanish": {
   "Added: %1": "Añadido: %1",
@@ -8454,7 +8478,6 @@
   "Fix it every time": "Corregir siempre",
   "Heard": "Oído",
   "How it should be written": "Cómo debe escribirse",
-  "Or type what was heard": "O escribe lo que se oyó",
   "Points: %1": "Puntos: %1",
   "%1 said: %2": "%1 dijo: %2",
   "1 of %1, fastest": "1 de %1, el más rápido",
@@ -9465,7 +9488,11 @@
   "Needs checking": "Por revisar",
   "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.": "Para los subtítulos, el audio irá al ordenador cuyo código acabas de escanear (%1, como aparece en su página). Conéctate solo si es tu ordenador o el de tu familia.",
   "You can also type in the address and code shown under the square: in Settings, choose “Home computer” under “Transcription engine” and fill in both boxes.": "También puedes escribir la dirección y el código que aparecen debajo del cuadrado: en Ajustes, elige “Ordenador de casa” en “Motor de transcripción” y rellena los dos campos.",
-  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "Para la noche: los subtítulos se detienen y el modelo de voz se libera, así iOS tiene menos probabilidad de cerrar Ozen. Los avisos sonoros siguen escuchando."
+  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "Para la noche: los subtítulos se detienen y el modelo de voz se libera, así iOS tiene menos probabilidad de cerrar Ozen. Los avisos sonoros siguen escuchando.",
+  "Or type the wrong word": "O escribe la palabra incorrecta",
+  "Now type how it should be written": "Ahora escribe cómo debe escribirse",
+  "This word is not in the line": "Esta palabra no está en la línea",
+  "Press and hold a line to mark it as important, copy it or fix a word.": "Mantén pulsada una línea para marcarla como importante, copiarla o corregir una palabra."
  },
  "ukrainian": {
   "Added: %1": "Додано: %1",
@@ -9506,7 +9533,6 @@
   "Fix it every time": "Виправляти щоразу",
   "Heard": "Почуто",
   "How it should be written": "Як це потрібно писати",
-  "Or type what was heard": "Або введіть, що було почуто",
   "Points: %1": "Пункти: %1",
   "%1 said: %2": "%1 сказав(ла): %2",
   "1 of %1, fastest": "1 з %1, найшвидший",
@@ -10517,6 +10543,10 @@
   "Needs checking": "Потрібно перевірити",
   "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.": "Для субтитрів звук надсилатиметься на комп’ютер, код якого ви щойно відсканували (%1, як зазначено на його сторінці). Підключайтеся, лише якщо це ваш комп’ютер або комп’ютер вашої родини.",
   "You can also type in the address and code shown under the square: in Settings, choose “Home computer” under “Transcription engine” and fill in both boxes.": "Також можна ввести адресу й код, показані під квадратом: у Налаштуваннях у розділі «Рушій розпізнавання» виберіть «Домашній комп’ютер» і заповніть обидва поля.",
-  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "На ніч: субтитри зупиняються, а мовна модель вивантажується, тож iOS рідше закриває Ozen. Звукові сповіщення продовжують слухати."
+  "For the night: captions stop and the speech model is let go, so iOS is less likely to close Ozen. Sound alerts keep listening.": "На ніч: субтитри зупиняються, а мовна модель вивантажується, тож iOS рідше закриває Ozen. Звукові сповіщення продовжують слухати.",
+  "Or type the wrong word": "Або введіть неправильне слово",
+  "Now type how it should be written": "Тепер введіть, як це має бути написано",
+  "This word is not in the line": "Цього слова немає в рядку",
+  "Press and hold a line to mark it as important, copy it or fix a word.": "Натисніть і утримуйте рядок, щоб позначити його як важливий, скопіювати або виправити слово."
  }
 }

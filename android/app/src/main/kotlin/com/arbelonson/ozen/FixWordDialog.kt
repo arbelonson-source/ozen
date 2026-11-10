@@ -58,8 +58,8 @@ internal fun FixWordDialog(shown: String, languageCode: String, error: String? =
     var everyTime by rememberSaveable { mutableStateOf(false) }
     val picked = if (first >= 0) words.subList(first, minOf(last + 1, words.size)).joinToString(" ") else ""
     val heard = if (typed.isNotBlank()) typed.trim() else picked
-    val fits = heard.length <= WordFixes.MAXIMUM_LENGTH && written.trim().length <= WordFixes.MAXIMUM_LENGTH
-    val ready = fits && WordFixes.normalized(listOf(WordFix(heard, written))).isNotEmpty()
+    val ready = FixWordForm.changes(shown, heard, written)
+    val note = FixWordForm.note(shown, typed, heard, written)
     val direction = if (CaptionLayout.readsRightToLeft(shown, languageCode)) LayoutDirection.Rtl else LayoutDirection.Ltr
     val everyTimeLabel = tr("תיקון בכל פעם", "Fix it every time")
     AlertDialog(
@@ -95,12 +95,23 @@ internal fun FixWordDialog(shown: String, languageCode: String, error: String? =
                 OutlinedTextField(
                     value = typed,
                     onValueChange = { typed = it },
-                    label = { Text(tr("או הקלידו מה נשמע", "Or type what was heard")) },
+                    label = { Text(tr("או הקלידו את המילה השגויה", "Or type the wrong word")) },
                     isError = typed.trim().length > WordFixes.MAXIMUM_LENGTH,
                     singleLine = true,
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                note?.let {
+                    Text(
+                        when (it) {
+                            FixWordForm.Note.NotInLine -> tr("המילה הזו לא מופיעה בשורה", "This word is not in the line")
+                            FixWordForm.Note.NowWrite -> tr("עכשיו כתבו איך זה צריך להיכתב", "Now type how it should be written")
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (it == FixWordForm.Note.NotInLine) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
                 OutlinedTextField(
                     value = written,
                     onValueChange = { written = it },
@@ -131,4 +142,32 @@ internal fun FixWordDialog(shown: String, languageCode: String, error: String? =
         confirmButton = { TextButton(onClick = { onSave(heard, written.trim(), everyTime) }, enabled = ready) { Text(tr("שמירה", "Save")) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("ביטול", "Cancel")) } },
     )
+}
+
+/** What Save and the note under the first box go by, apart from the drawing. */
+internal object FixWordForm {
+    enum class Note { NotInLine, NowWrite }
+
+    /**
+     * Whether saving changes the line. A typed word that is not in it
+     * changed nothing: Save closed the dialog as if it had worked, and the
+     * word still went into the names list.
+     */
+    fun changes(shown: String, heard: String, written: String): Boolean {
+        val fits = heard.length <= WordFixes.MAXIMUM_LENGTH && written.trim().length <= WordFixes.MAXIMUM_LENGTH
+        return fits && WordFixes.normalized(listOf(WordFix(heard, written))).isNotEmpty() &&
+            WordFixes.apply(listOf(WordFix(heard, written.trim())), shown) != shown
+    }
+
+    /**
+     * The line under the first box: a typed word the line does not have,
+     * often the right word typed in the wrong box, or, once the wrong word
+     * is known, where the right one goes.
+     */
+    fun note(shown: String, typed: String, heard: String, written: String): Note? = when {
+        heard.isBlank() || heard.length > WordFixes.MAXIMUM_LENGTH -> null
+        typed.isNotBlank() && WordFixes.apply(listOf(WordFix(heard, "_")), shown) == shown -> Note.NotInLine
+        written.isBlank() -> Note.NowWrite
+        else -> null
+    }
 }

@@ -15,12 +15,11 @@ struct FixWordSheet: View {
         CaptionLayout.displayText(text).split(whereSeparator: \.isWhitespace).map(String.init)
     }
     private var fix: WordFix { WordFix(heard: heard, written: written) }
-    private var canSave: Bool {
-        let limit = WordFixes.maximumLength
-        return heard.trimmingCharacters(in: .whitespacesAndNewlines).count <= limit
-            && written.trimmingCharacters(in: .whitespacesAndNewlines).count <= limit
-            && !WordFixes.normalized([fix]).isEmpty
-    }
+    /// Saving needs a fix that changes this line: a typed word the line
+    /// doesn't have changed nothing, yet Save closed the sheet as if it had
+    /// worked and the word still went into the list. As on Android.
+    private var canSave: Bool { FixWordForm.changes(line: text, heard: heard, written: written) }
+    private var note: FixWordForm.Note? { FixWordForm.note(line: text, heard: heard, written: written) }
 
     var body: some View {
         NavigationStack {
@@ -36,8 +35,15 @@ struct FixWordSheet: View {
                     Text(tr("הקישו על המילים שנכתבו לא נכון", "Tap the words that came out wrong"))
                 }
                 Section {
-                    TextField(tr("או הקלידו מה נשמע", "Or type what was heard"), text: $heard)
+                    TextField(tr("או הקלידו את המילה השגויה", "Or type the wrong word"), text: $heard)
                     TextField(tr("איך זה צריך להיכתב", "How it should be written"), text: $written)
+                    if let note {
+                        Text(note == .notInLine
+                             ? tr("המילה הזו לא מופיעה בשורה", "This word is not in the line")
+                             : tr("עכשיו כתבו איך זה צריך להיכתב", "Now type how it should be written"))
+                            .font(.footnote)
+                            .foregroundStyle(ReadableColor(color: note == .notInLine ? .red : .secondary))
+                    }
                 }
                 Section {
                     Toggle(tr("תיקון בכל פעם", "Fix it every time"), isOn: $always)
@@ -92,7 +98,7 @@ struct FixWordSheet: View {
         }
         if let range = picked {
             let edge = CharacterSet.punctuationCharacters.union(.whitespaces)
-            heard = words[range].joined(separator: " ").trimmingCharacters(in: edge)
+            heard = FixWordForm.cleaned(words[range].joined(separator: " ")).trimmingCharacters(in: edge)
         }
     }
 }

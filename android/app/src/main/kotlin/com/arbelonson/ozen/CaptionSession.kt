@@ -1293,7 +1293,6 @@ class CaptionSession(
         if (ScreenReader.isOn(context)) announce(tr("נאמר: %1", "Said: %1", listOf(word.said)))
     }
 
-    private var heldUntil = 0L
     private val held = mutableListOf<String>()
     private var holding: Job? = null
 
@@ -1305,19 +1304,14 @@ class CaptionSession(
      * the iPhone gives the alarm a high priority instead.
      */
     private fun announce(text: String, critical: Boolean = false) {
-        val now = SystemClock.elapsedRealtime()
-        if (critical) heldUntil = now + CRITICAL_ANNOUNCEMENT_MILLIS
-        if (critical || (now >= heldUntil && held.isEmpty())) {
+        if (critical) AnnouncementHold.holdFor(CRITICAL_ANNOUNCEMENT_MILLIS)
+        if (critical || (AnnouncementHold.remaining() == 0L && held.isEmpty())) {
             ScreenReader.announce(context, text)
             return
         }
         held += text
         if (holding == null) holding = scope.launch {
-            while (true) {
-                val wait = heldUntil - SystemClock.elapsedRealtime()
-                if (wait <= 0) break
-                delay(wait)
-            }
+            AnnouncementHold.waitOut()
             val waiting = held.joinToString(". ")
             held.clear()
             holding = null
