@@ -3,12 +3,20 @@ package com.arbelonson.ozen.core
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermission
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
 class PrivateFileWritesTest {
-    private fun folder(): File = Files.createTempDirectory("private-writes").toFile()
+    private val temporary = TemporaryFolders()
+
+    @AfterTest
+    fun deleteTemporaryFolders() {
+        temporary.deleteAll()
+    }
+
+    private fun folder(): File = temporary.make("private-writes")
 
     @Test
     fun `a write lands whole, replaces an older file and leaves no temporary file behind`() {

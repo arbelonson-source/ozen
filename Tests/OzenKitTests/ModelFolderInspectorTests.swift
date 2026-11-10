@@ -4,9 +4,11 @@ import Testing
 
 @Suite("ModelFolderInspector")
 struct ModelFolderInspectorTests {
+    private let temporary = TemporaryFolder("ozen-model")
+
     private func makeFolder() throws -> URL {
-        let folder = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ozen-model-\(UUID().uuidString)", isDirectory: true)
+        let folder = temporary.url
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
             .appendingPathComponent("openai_whisper-small", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         return folder

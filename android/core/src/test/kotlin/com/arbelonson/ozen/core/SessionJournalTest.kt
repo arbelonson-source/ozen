@@ -1,8 +1,8 @@
 package com.arbelonson.ozen.core
 
 import java.io.File
-import java.nio.file.Files
 import java.util.UUID
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -10,9 +10,15 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class SessionJournalTest {
+    private val temporary = TemporaryFolders()
+
+    @AfterTest
+    fun deleteTemporaryFolders() {
+        temporary.deleteAll()
+    }
+
     private fun temporaryFile(): File {
-        val folder = Files.createTempDirectory("ozen-journal-").toFile()
-        folder.deleteOnExit()
+        val folder = temporary.make("ozen-journal-")
         return File(folder, "journal.log")
     }
 
@@ -174,12 +180,13 @@ class SessionJournalTest {
         val file = temporaryFile()
         val folder = file.parentFile
         folder.setWritable(false)
+        val journal = SessionJournal(file)
         try {
-            val journal = SessionJournal(file)
             journal.append("problem marked", 1_800_000_000.0)
             assertEquals(listOf("problem marked"), journal.entries().map { it.text })
         } finally {
             folder.setWritable(true)
+            journal.entries()
         }
     }
 

@@ -1,7 +1,7 @@
 package com.arbelonson.ozen.core
 
 import java.io.File
-import java.nio.file.Files
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -9,10 +9,17 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PhoneModelStorageTest {
+    private val temporary = TemporaryFolders()
+
+    @AfterTest
+    fun deleteTemporaryFolders() {
+        temporary.deleteAll()
+    }
+
     private val hebrew = WhisperModelCatalog.phoneModelFile(UILanguage.Hebrew)
     private val general = WhisperModelCatalog.phoneModelFile(UILanguage.English)
 
-    private fun root(): File = Files.createTempDirectory("phone-models").toFile().also { it.deleteOnExit() }
+    private fun root(): File = temporary.make("phone-models")
 
     private fun File.put(name: String, size: Int) = File(this, name).also { it.writeBytes(ByteArray(size) { 1 }) }
 

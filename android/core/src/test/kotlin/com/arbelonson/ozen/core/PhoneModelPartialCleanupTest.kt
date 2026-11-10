@@ -1,22 +1,29 @@
 package com.arbelonson.ozen.core
 
 import java.io.File
-import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PhoneModelPartialCleanupTest {
+    private val temporary = TemporaryFolders()
+
+    @AfterTest
+    fun deleteTemporaryFolders() {
+        temporary.deleteAll()
+    }
+
     private val general = WhisperModelCatalog.phoneModelFile(UILanguage.English)
     private val hebrew = WhisperModelCatalog.phoneModelFile(UILanguage.Hebrew)
     private val now = 1_800_000_000_000L
     private val day = 24L * 60 * 60 * 1000
 
-    private fun root(): File = Files.createTempDirectory("partials").toFile().also { it.deleteOnExit() }
+    private fun root(): File = temporary.make("partials")
 
     private fun File.put(name: String, ageDays: Double): File =
         File(this, name).also {
