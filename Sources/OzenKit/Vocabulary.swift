@@ -106,12 +106,17 @@ public enum VocabularyHints {
 
 /// Whisper conditioned on a prompt sometimes "hears" the prompt itself in
 /// a quiet window: the names list comes back as a caption ("Avi, Ruti,
-/// Dani."). Real speech almost never lists several of those names in
-/// exactly the order they were typed in, so a caption made only of a run
-/// of consecutive list entries is treated as an echo.
+/// Dani."), sometimes twice over. Real speech almost never lists several
+/// of those names in exactly the order they were typed in, so a caption
+/// made only of a run of consecutive list entries, or of several such runs
+/// back to back, is treated as an echo. The list named from another name
+/// onwards ("Dani, Avi, Ruti") is not: no run in it is long enough.
 ///
 /// One name on its own is never an echo. Someone calling "Avi!" across
-/// the room is exactly the caption the list exists to get right.
+/// the room is exactly the caption the list exists to get right. A list
+/// of one entry still comes back on silence, though, and that one entry
+/// is usually an alert word, so `isWholePrompt` lets the filter drop it
+/// when nothing else says it was really heard.
 public struct PromptEchoDetector: Sendable, Equatable {
     /// Each term as normalized words, in list order.
     private let terms: [[String]]
@@ -135,29 +140,50 @@ public struct PromptEchoDetector: Sendable, Equatable {
         let words = HebrewText.words(text)
         guard !words.isEmpty, words.allSatisfy(vocabularyWords.contains) else { return false }
 
+        // Which word positions a chain of runs, each an echo on its own,
+        // can reach from the start of the caption.
+        var reachable: Set<Int> = [0]
+        for position in words.indices where reachable.contains(position) {
+            reachable.formUnion(runEnds(in: words, from: position))
+        }
+        return reachable.contains(words.count)
+    }
+
+    /// Whether `text` is the whole prompt of a one-entry list, the way it
+    /// comes back on silence ("Savta." for the list "Savta"). Never an echo
+    /// by itself (see above): the filter drops it only when the model was
+    /// unsure of it or heard too little voice under it, as it does a lone
+    /// "thank you".
+    public func isWholePrompt(_ text: String) -> Bool {
+        terms.count == 1 && HebrewText.words(text) == terms[0]
+    }
+
+    /// Where a run of at least `minimumRun` consecutive list entries that
+    /// starts at word `position` can end.
+    private func runEnds(in words: [String], from position: Int) -> Set<Int> {
+        var ends = Set<Int>()
         for start in terms.indices {
-            var position = 0
+            var end = position
             var index = start
-            // Two entries sharing a word ("רותי" / "ד״ר רותי") is exactly
-            // what naming or disambiguating two people sounds like, not a
-            // list read back — a word already claimed by an earlier entry
-            // in this run can't count toward a later one.
+            // Two entries sharing a word (a name, and the same name with a
+            // title) is exactly what naming or disambiguating two people
+            // sounds like, not a list read back — a word already claimed by
+            // an earlier entry in this run can't count toward a later one.
             var claimedWords = Set<String>()
-            while index < terms.count, position < words.count {
+            while index < terms.count, end < words.count {
                 let term = terms[index]
-                guard position + term.count <= words.count,
-                      Array(words[position..<(position + term.count)]) == term,
+                guard end + term.count <= words.count,
+                      Array(words[end..<(end + term.count)]) == term,
                       term.allSatisfy({ !claimedWords.contains($0) })
                 else { break }
                 claimedWords.formUnion(term)
-                position += term.count
+                end += term.count
                 index += 1
-            }
-            let run = index - start
-            if position == words.count, run >= minimumRun {
-                return true
+                if index - start >= minimumRun {
+                    ends.insert(end)
+                }
             }
         }
-        return false
+        return ends
     }
 }

@@ -389,8 +389,11 @@ public actor WhisperKitEngine: TranscriptionEngine {
             }
 
             // The longer the names list, the less room is left for the
-            // line's own words (`WhisperKitDecodeRoom`).
+            // line's own words (`WhisperKitDecodeRoom`). The echo check is
+            // read with the list that prompts this pass: a list edited while
+            // the pass runs didn't prompt what it brings back.
             let prompt = promptTokens(using: pipe)
+            let echo = echoDetector
             let maxSamples = Int(WhisperKitDecodeRoom.longestLineSeconds(promptTokens: prompt?.count ?? 0, upTo: maxUtteranceSeconds) * sampleRate)
             // A pause the intake heard while a pass ran ends the line there,
             // though the next sentence has begun (see `mostLinesWaiting`).
@@ -542,19 +545,21 @@ public actor WhisperKitEngine: TranscriptionEngine {
                     seconds: windowSeconds
                 )
             } == true
-            // A thank-you alone in a moment of voice is most likely
-            // household noise (see `WhisperResultFilter.isUnvoicedPhrase`).
-            // When captions stop, the last chunk may not be scored yet.
+            // A thank-you, or a one-word names list read back, alone in a
+            // moment of voice is most likely household noise (see
+            // `WhisperResultFilter.isUnvoicedPhrase`). When captions stop,
+            // the last chunk may not be scored yet.
             let dropped = ranOut || speechFilter.isUnvoicedPhrase(
-                speechFilter.acceptedText(from: summaries, echo: echoDetector),
-                voicedChunks: status.finished ? nil : intake.voicedChunks(upTo: end)
+                speechFilter.acceptedText(from: summaries, echo: echo),
+                voicedChunks: status.finished ? nil : intake.voicedChunks(upTo: end),
+                echo: echo
             )
             // Confidence has to describe exactly the text being shown, not
             // the whole pass -- a rejected hallucination segment can have a
             // confident logprob of its own and skew the mean either way for
             // content that never reaches the screen.
-            let acceptedSegments = dropped ? [] : speechFilter.accepted(from: summaries, echo: echoDetector)
-            let text = dropped ? "" : speechFilter.acceptedText(from: summaries, echo: echoDetector)
+            let acceptedSegments = dropped ? [] : speechFilter.accepted(from: summaries, echo: echo)
+            let text = dropped ? "" : speechFilter.acceptedText(from: summaries, echo: echo)
             let confidence = CaptionConfidence.whisperConfidence(of: acceptedSegments)
             tally.recordSegments(seen: summaries.count, accepted: acceptedSegments.count)
             if isFinal { tally.recordFinalPass(cameBackEmpty: text.isEmpty) }

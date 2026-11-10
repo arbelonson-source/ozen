@@ -151,13 +151,18 @@ object VocabularyHints {
 
 /**
  * Whisper conditioned on a prompt sometimes "hears" the prompt itself in a
- * quiet window: the names list comes back as a caption ("Avi, Ruti, Dani.").
- * Real speech almost never lists several of those names in exactly the order
- * they were typed in, so a caption made only of a run of consecutive list
- * entries is treated as an echo.
+ * quiet window: the names list comes back as a caption ("Avi, Ruti, Dani."),
+ * sometimes twice over. Real speech almost never lists several of those names
+ * in exactly the order they were typed in, so a caption made only of a run of
+ * consecutive list entries, or of several such runs back to back, is treated
+ * as an echo. The list named from another name onwards ("Dani, Avi, Ruti") is
+ * not: no run in it is long enough.
  *
  * One name on its own is never an echo. Someone calling "Avi!" across the room
- * is exactly the caption the list exists to get right.
+ * is exactly the caption the list exists to get right. A list of one entry
+ * still comes back on silence, though, and that one entry is usually an alert
+ * word, so [isWholePrompt] lets the filter drop it when nothing else says it
+ * was really heard.
  */
 class PromptEchoDetector(terms: List<String>) {
     /** Each term as normalized words, in list order. */
@@ -176,30 +181,51 @@ class PromptEchoDetector(terms: List<String>) {
         val words = HebrewText.words(text)
         if (words.isEmpty() || !words.all { it in vocabularyWords }) return false
 
+        // Which word positions a chain of runs, each an echo on its own, can
+        // reach from the start of the caption.
+        val reachable = BooleanArray(words.size + 1)
+        reachable[0] = true
+        for (position in words.indices) {
+            if (!reachable[position]) continue
+            for (end in runEnds(words, position)) reachable[end] = true
+        }
+        return reachable[words.size]
+    }
+
+    /**
+     * Whether [text] is the whole prompt of a one-entry list, the way it comes
+     * back on silence ("Savta." for the list "Savta"). Never an echo by itself
+     * (see above): the filter drops it only when the model was unsure of it or
+     * heard too little voice under it, as it does a lone "thank you".
+     */
+    fun isWholePrompt(text: String): Boolean = terms.size == 1 && HebrewText.words(text) == terms[0]
+
+    /** Where a run of at least [minimumRun] consecutive list entries that starts at word [position] can end. */
+    private fun runEnds(words: List<String>, position: Int): Set<Int> {
+        val ends = HashSet<Int>()
         for (start in terms.indices) {
-            var position = 0
+            var end = position
             var index = start
             // Two entries sharing a word (a name, and the same name with a
             // title) is exactly what naming or disambiguating two people sounds
             // like, not a list read back - a word already claimed by an earlier
             // entry in this run can't count toward a later one.
             val claimedWords = HashSet<String>()
-            while (index < terms.size && position < words.size) {
+            while (index < terms.size && end < words.size) {
                 val term = terms[index]
-                if (position + term.size > words.size ||
-                    words.subList(position, position + term.size) != term ||
+                if (end + term.size > words.size ||
+                    words.subList(end, end + term.size) != term ||
                     !term.all { it !in claimedWords }
                 ) {
                     break
                 }
                 claimedWords.addAll(term)
-                position += term.size
+                end += term.size
                 index += 1
+                if (index - start >= minimumRun) ends.add(end)
             }
-            val run = index - start
-            if (position == words.size && run >= minimumRun) return true
         }
-        return false
+        return ends
     }
 
     override fun equals(other: Any?): Boolean = other is PromptEchoDetector && terms == other.terms

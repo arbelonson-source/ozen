@@ -165,4 +165,68 @@ struct PromptEchoDetectorTests {
         #expect(filter.acceptedText(from: segments, echo: detector) == "דני, בוא לאכול")
         #expect(filter.acceptedText(from: segments) == "אבי, רותי, דני. דני, בוא לאכול")
     }
+
+    @Test("the list read back twice over is an echo, with three names or two")
+    func listReadBackTwice() {
+        let three = PromptEchoDetector(terms: ["אבי", "רותי", "דני"])
+        #expect(three.isEcho("אבי, רותי, דני. אבי, רותי, דני."))
+        let two = PromptEchoDetector(terms: ["סבתא", "אמא"])
+        #expect(two.isEcho("סבתא, אמא. סבתא, אמא."))
+    }
+
+    @Test("the whole list named from another name onwards is real speech")
+    func listInAnotherOrder() {
+        let three = PromptEchoDetector(terms: ["אבי", "רותי", "דני"])
+        #expect(three.isEcho("דני, אבי, רותי") == false)
+        #expect(three.isEcho("אבי, רותי, דני, אבי") == false)
+        let two = PromptEchoDetector(terms: ["אבי", "רותי"])
+        #expect(two.isEcho("רותי, אבי") == false)
+        #expect(two.isEcho("אבי, רותי, רותי, אבי") == false)
+    }
+
+    @Test("a one-word list read back as a line goes when the model was unsure of it or heard no speech, and stays when it was sure")
+    func oneWordPromptReadBack() {
+        let single = PromptEchoDetector(terms: ["סבתא"])
+        let filter = WhisperResultFilter()
+        let unsure = WhisperSegmentSummary(text: " סבתא.", noSpeechProb: 0, avgLogprob: -1.2, compressionRatio: 1)
+        let quiet = WhisperSegmentSummary(text: " סבתא.", noSpeechProb: 0.3, avgLogprob: -0.2, compressionRatio: 1)
+        let sure = WhisperSegmentSummary(text: " סבתא.", noSpeechProb: 0, avgLogprob: -0.2, compressionRatio: 1)
+        let called = WhisperSegmentSummary(text: " סבתא!", noSpeechProb: 0, avgLogprob: -0.2, compressionRatio: 1)
+        #expect(filter.acceptedText(from: [unsure], echo: single) == "")
+        #expect(filter.acceptedText(from: [quiet], echo: single) == "")
+        #expect(filter.acceptedText(from: [sure], echo: single) == "סבתא.")
+        #expect(filter.acceptedText(from: [called], echo: single) == "סבתא!")
+        #expect(filter.acceptedText(from: [unsure]) == "סבתא.")
+    }
+
+    @Test("an unsure line with the one word in it, or the word from a longer list, is not the prompt and stays")
+    func oneWordInsideRealSpeech() {
+        let filter = WhisperResultFilter()
+        let longer = WhisperSegmentSummary(text: " סבתא, בואי.", noSpeechProb: 0, avgLogprob: -1.2, compressionRatio: 1)
+        let unsure = WhisperSegmentSummary(text: " סבתא.", noSpeechProb: 0, avgLogprob: -1.2, compressionRatio: 1)
+        #expect(filter.acceptedText(from: [longer], echo: PromptEchoDetector(terms: ["סבתא"])) == "סבתא, בואי.")
+        #expect(filter.acceptedText(from: [unsure], echo: PromptEchoDetector(terms: ["סבתא", "אמא"])) == "סבתא.")
+    }
+
+    @Test("an unsure one-word list the model wrote as its own piece of a longer line stays with the rest of the line")
+    func oneWordPromptBesideOtherSpeech() {
+        let single = PromptEchoDetector(terms: ["סבתא"])
+        let filter = WhisperResultFilter()
+        let name = WhisperSegmentSummary(text: " סבתא.", noSpeechProb: 0, avgLogprob: -1.2, compressionRatio: 1)
+        let rest = WhisperSegmentSummary(text: " בואי לאכול.", noSpeechProb: 0, avgLogprob: -0.2, compressionRatio: 1)
+        #expect(filter.acceptedText(from: [name, rest], echo: single) == "סבתא. בואי לאכול.")
+        #expect(filter.acceptedText(from: [rest, name], echo: single) == "בואי לאכול. סבתא.")
+        #expect(filter.acceptedText(from: [name, name], echo: single) == "")
+    }
+
+    @Test("a one-word list read back with too little voice under it is dropped, and with enough voice it stays")
+    func oneWordPromptUnvoiced() {
+        let single = PromptEchoDetector(terms: ["סבתא"])
+        let filter = WhisperResultFilter()
+        #expect(filter.isUnvoicedPhrase("סבתא.", voicedChunks: 1, echo: single))
+        #expect(!filter.isUnvoicedPhrase("סבתא.", voicedChunks: 3, echo: single))
+        #expect(!filter.isUnvoicedPhrase("סבתא.", voicedChunks: nil, echo: single))
+        #expect(!filter.isUnvoicedPhrase("סבתא, בואי", voicedChunks: 1, echo: single))
+        #expect(!filter.isUnvoicedPhrase("סבתא.", voicedChunks: 1))
+    }
 }
