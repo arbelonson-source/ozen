@@ -1239,6 +1239,25 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun inEditModeTheSayScreenSaysATapOpensAPhrasesMenuAndATapDoes() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val phrasesBefore = app.settings.current.value.quickPhrases
+        val english = AppSettings.defaultQuickPhrases(UILanguage.English)
+        app.settings.change { it.quickPhrases = english }
+        try {
+            compose.onNodeWithContentDescription("Say something out loud").performClick()
+            compose.onNodeWithText("Edit").performScrollTo().performClick()
+            compose.onNodeWithText("Tap a phrase to move it or delete it.").assertExists()
+            compose.onNodeWithText("Thank you").performScrollTo().performClick()
+            compose.onNodeWithText("Move down").assertExists()
+            compose.onNodeWithText("Delete").performClick()
+            compose.waitUntil(5_000) { app.settings.current.value.quickPhrases == english - "Thank you" }
+        } finally {
+            app.settings.change { it.quickPhrases = phrasesBefore }
+        }
+    }
+
+    @Test
     fun quickPhrasesMoveUpOrDownFromTheHoldMenuOrTheScreenReaderButNotPastTheEnds() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val phrasesBefore = app.settings.current.value.quickPhrases
