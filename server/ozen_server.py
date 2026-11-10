@@ -809,12 +809,32 @@ def worker_failed(error):
     return error is not None and not isinstance(error, websockets.ConnectionClosed)
 
 
+# Each connection may take 10 s to say hello. Uncapped, a flood of silent
+# connections from the internet (a Funnel address is public) could use up
+# the computer's open files; past this many the rest are turned away at
+# once, and a phone turned away carries on with its own model.
+MAX_WAITING_HELLOS = 32
+waiting_hellos = 0
+busy_logged_at = None
+
+
 async def handle(ws, transcriber, token, live_interval, make_enhancer=None, general=None):
+    global waiting_hellos, busy_logged_at
     peer = ws.remote_address
+    if waiting_hellos >= MAX_WAITING_HELLOS:
+        if busy_logged_at is None or time.monotonic() - busy_logged_at > 60:
+            busy_logged_at = time.monotonic()
+            log.warning("turning connections away: %d are already waiting to say hello (latest from %s)",
+                        waiting_hellos, peer)
+        await refuse(ws, "busy", "")
+        return
+    waiting_hellos += 1
     try:
         hello = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
     except Exception:
         hello = None
+    finally:
+        waiting_hellos -= 1
     if not isinstance(hello, dict):
         await refuse(ws, "bad_request", "hello expected")
         return
