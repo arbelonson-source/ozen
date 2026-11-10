@@ -662,8 +662,18 @@ struct LiveCaptionView: View {
                 LazyVStack(alignment: .leading, spacing: max(12, liveDisplay.fontSize * 0.6)) {
                     if viewModel.segments.isEmpty {
                         emptyState
-                    } else if firstDrawnIndex > 0 {
-                        earlierLinesNote
+                    } else {
+                        // Captions start by themselves at launch, so the
+                        // card went with the empty screen at the first
+                        // line, a few seconds in, before she had read it.
+                        // Above the first line it stays until its X, until
+                        // it is opened or the captions are cleared.
+                        if let recent = viewModel.recentConversation {
+                            recentConversationCard(recent)
+                        }
+                        if firstDrawnIndex > 0 {
+                            earlierLinesNote
+                        }
                     }
                     let mark = awayMark
                     let slots = speakerSlots
