@@ -500,6 +500,11 @@ class SettingsScreenDeviceTest {
         val record = compose.onNodeWithText("Record and save (30 seconds)")
         val name = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.EditableText))
         record.assertIsNotEnabled()
+        val howTo = compose.onNodeWithText("Captions are paused during recording", substring = true)
+        assertTrue(
+            "what to do is not said before Record",
+            howTo.fetchSemanticsNode().positionInRoot.y < record.fetchSemanticsNode().positionInRoot.y,
+        )
         name.performTextInput("   ")
         record.assertIsNotEnabled()
         name.performTextClearance()
