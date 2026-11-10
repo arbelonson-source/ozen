@@ -53,6 +53,54 @@ struct CloudSpeechTests {
         #expect(CloudSpeech.turns(in: "").isEmpty)
     }
 
+    @Test("a sentence that opens with a two-letter word and a colon keeps the word and stays with its speaker")
+    func twoLetterOpenerIsSpeech() {
+        #expect(CloudSpeech.turns(in: "No: I said no") == ["No: I said no"])
+        #expect(CloudSpeech.turns(in: "So: what now") == ["So: what now"])
+        #expect(CloudSpeech.turns(in: "OK: fine") == ["OK: fine"])
+        #expect(CloudSpeech.turns(in: "A: hi\nSo: we go") == ["hi So: we go"])
+    }
+
+    @Test("labels written SPEAKER_00, or as a letter and a digit, are labels")
+    func underscoreAndLetterDigitLabels() {
+        #expect(CloudSpeech.turns(in: "SPEAKER_00: כן\nSPEAKER_01: לא") == ["כן", "לא"])
+        #expect(CloudSpeech.turns(in: "S1: כן\nS2: לא") == ["כן", "לא"])
+    }
+
+    @Test("one speaker's label written in another case is still the same speaker")
+    func labelCaseIsTheSameSpeaker() {
+        #expect(CloudSpeech.turns(in: "S1: כן\ns1: בטח\nS2: לא") == ["כן בטח", "לא"])
+        #expect(CloudSpeech.turns(in: "Speaker A: yes\nspeaker a: sure") == ["yes sure"])
+    }
+
+    @Test("a speaker numbered in the hundreds is a label too")
+    func threeDigitSpeakerNumbers() {
+        #expect(CloudSpeech.turns(in: "Speaker 100: כן\nSpeaker 101: לא") == ["כן", "לא"])
+        #expect(CloudSpeech.turns(in: "SPEAKER_100: yes\nSPEAKER_100: sure") == ["yes sure"])
+    }
+
+    @Test("real words in parentheses stay in the line")
+    func realWordsInParentheses() {
+        #expect(CloudSpeech.turns(in: "I bank at (HSBC) now") == ["I bank at (HSBC) now"])
+        #expect(CloudSpeech.turns(in: "option (a) is fine") == ["option (a) is fine"])
+        #expect(CloudSpeech.turns(in: "made in (USA)") == ["made in (USA)"])
+        #expect(CloudSpeech.turns(in: "(in theory) it works") == ["(in theory) it works"])
+        #expect(CloudSpeech.turns(in: "(speaking of which) yes") == ["(speaking of which) yes"])
+        #expect(CloudSpeech.turns(in: "(the bank]") == ["(the bank]"])
+    }
+
+    @Test("sound notes in any case, with a word around them, or naming a language, still go")
+    func soundNotesStillGo() {
+        #expect(CloudSpeech.turns(in: "(Laughter) שלום") == ["שלום"])
+        #expect(CloudSpeech.turns(in: "[MUSIC]").isEmpty)
+        #expect(CloudSpeech.turns(in: "(laughs) ok") == ["ok"])
+        #expect(CloudSpeech.turns(in: "[speaking Hebrew] שלום") == ["שלום"])
+        #expect(CloudSpeech.turns(in: "(background noise) שלום (upbeat music)") == ["שלום"])
+        #expect(CloudSpeech.turns(in: "(music playing) שלום (INDISTINCT CHATTER)") == ["שלום"])
+        #expect(CloudSpeech.turns(in: "(speaking in a foreign language) שלום (in English) hello") == ["שלום hello"])
+        #expect(CloudSpeech.turns(in: "(no speech)").isEmpty)
+    }
+
     @Test("lines speech models are known to invent are dropped")
     func inventedLines() {
         #expect(CloudSpeech.turns(in: "A: תודה שצפיתם").isEmpty)

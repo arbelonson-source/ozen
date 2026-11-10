@@ -64,6 +64,54 @@ class CloudSpeechTest {
     }
 
     @Test
+    fun `a sentence that opens with a two-letter word and a colon keeps the word and stays with its speaker`() {
+        assertEquals(listOf("No: I said no"), CloudSpeech.turns("No: I said no"))
+        assertEquals(listOf("So: what now"), CloudSpeech.turns("So: what now"))
+        assertEquals(listOf("OK: fine"), CloudSpeech.turns("OK: fine"))
+        assertEquals(listOf("hi So: we go"), CloudSpeech.turns("A: hi\nSo: we go"))
+    }
+
+    @Test
+    fun `labels written SPEAKER_00, or as a letter and a digit, are labels`() {
+        assertEquals(listOf("כן", "לא"), CloudSpeech.turns("SPEAKER_00: כן\nSPEAKER_01: לא"))
+        assertEquals(listOf("כן", "לא"), CloudSpeech.turns("S1: כן\nS2: לא"))
+    }
+
+    @Test
+    fun `one speaker's label written in another case is still the same speaker`() {
+        assertEquals(listOf("כן בטח", "לא"), CloudSpeech.turns("S1: כן\ns1: בטח\nS2: לא"))
+        assertEquals(listOf("yes sure"), CloudSpeech.turns("Speaker A: yes\nspeaker a: sure"))
+    }
+
+    @Test
+    fun `a speaker numbered in the hundreds is a label too`() {
+        assertEquals(listOf("כן", "לא"), CloudSpeech.turns("Speaker 100: כן\nSpeaker 101: לא"))
+        assertEquals(listOf("yes sure"), CloudSpeech.turns("SPEAKER_100: yes\nSPEAKER_100: sure"))
+    }
+
+    @Test
+    fun `real words in parentheses stay in the line`() {
+        assertEquals(listOf("I bank at (HSBC) now"), CloudSpeech.turns("I bank at (HSBC) now"))
+        assertEquals(listOf("option (a) is fine"), CloudSpeech.turns("option (a) is fine"))
+        assertEquals(listOf("made in (USA)"), CloudSpeech.turns("made in (USA)"))
+        assertEquals(listOf("(in theory) it works"), CloudSpeech.turns("(in theory) it works"))
+        assertEquals(listOf("(speaking of which) yes"), CloudSpeech.turns("(speaking of which) yes"))
+        assertEquals(listOf("(the bank]"), CloudSpeech.turns("(the bank]"))
+    }
+
+    @Test
+    fun `sound notes in any case, with a word around them, or naming a language, still go`() {
+        assertEquals(listOf("שלום"), CloudSpeech.turns("(Laughter) שלום"))
+        assertTrue(CloudSpeech.turns("[MUSIC]").isEmpty())
+        assertEquals(listOf("ok"), CloudSpeech.turns("(laughs) ok"))
+        assertEquals(listOf("שלום"), CloudSpeech.turns("[speaking Hebrew] שלום"))
+        assertEquals(listOf("שלום"), CloudSpeech.turns("(background noise) שלום (upbeat music)"))
+        assertEquals(listOf("שלום"), CloudSpeech.turns("(music playing) שלום (INDISTINCT CHATTER)"))
+        assertEquals(listOf("שלום hello"), CloudSpeech.turns("(speaking in a foreign language) שלום (in English) hello"))
+        assertTrue(CloudSpeech.turns("(no speech)").isEmpty())
+    }
+
+    @Test
     fun `lines speech models are known to invent are dropped`() {
         assertTrue(CloudSpeech.turns("A: תודה שצפיתם").isEmpty())
         assertEquals(listOf("בואו נאכל"), CloudSpeech.turns("A: תודה על הצפייה\nB: בואו נאכל"))

@@ -151,12 +151,12 @@ public enum CloudSpeech {
     /// filler lines taken out.
     public static func turns(in transcript: String, filter: WhisperResultFilter = WhisperResultFilter()) -> [String] {
         var turns: [String] = []
-        var lastLabel: Substring?
+        var lastLabel: String?
         for rawLine in transcript.split(whereSeparator: \.isNewline) {
             var line = Substring(rawLine).trimmingCharacters(in: .whitespaces)[...]
-            var label: Substring?
+            var label: String?
             if let match = line.firstMatch(of: speakerLabel) {
-                label = match.output.1
+                label = (match.output.1 ?? match.output.2).map { $0.lowercased() }
                 line = line[match.range.upperBound...]
             }
             let text = WhisperResultFilter.collapsingRepeats(withoutAnnotations(String(line)))
@@ -175,13 +175,22 @@ public enum CloudSpeech {
         return turns
     }
 
-    /// "A:", "Speaker 2:", "דובר ב:". Hebrew only as a single letter, so a
-    /// sentence that opens with a short word and a colon keeps its word, and
-    /// never a colon before a digit, so a time like "10:30" keeps its hour.
-    private nonisolated(unsafe) static let speakerLabel = /^(?:(?:speaker|דוברת|דובר)\s*)?([A-Za-z0-9]{1,2}|[א-ת])\s*[:：](?!\d)\s*/.ignoresCase()
+    /// "A:", "S1:", "2:", "Speaker 2:", "SPEAKER_00:", "דובר ב:". On its own
+    /// a label is one letter, a letter and a digit, or a number, so a
+    /// sentence that opens with a short word and a colon ("No:", "So:",
+    /// "OK:") keeps its word, and never a colon before a digit, so a time
+    /// like "10:30" keeps its hour.
+    private nonisolated(unsafe) static let speakerLabel = /^(?:(?:speaker|דוברת|דובר)[\s_]*(\d{1,3}|[A-Za-z0-9]{1,2}|[א-ת])|([A-Za-z]\d?|\d{1,2}|[א-ת]))\s*[:：](?!\d)\s*/.ignoresCase()
+
+    /// Square and angle brackets hold only notes. Parentheses can hold real
+    /// words ("(HSBC)", "(a)"), so there only a known sound note goes, alone
+    /// or with one more word, or a note that names the language spoken.
+    private nonisolated(unsafe) static let bracketedNote = /\[[A-Za-z _-]*\]|<[A-Za-z _-]*>/
+    private nonisolated(unsafe) static let soundNoteInParentheses = /\((?:(?:[a-z]+[ _-])?(?:music|inaudible|unintelligible|indistinct|laughter|laughs|laughing|applause|clapping|noise|silence|crosstalk|cough(?:s|ing)?|sighs?|static|beep|chatter|foreign language|no speech)(?:[ _-][a-z]+)?|(?:speaking in|speaking|in) (?:(?:an? )?foreign language|Hebrew|English|Arabic|Russian|French|Spanish|Amharic|German|Italian|Portuguese|Ukrainian|Chinese|Hindi))\)/.ignoresCase()
 
     private static func withoutAnnotations(_ text: String) -> String {
-        text.replacing(/[\[(<][A-Za-z _-]*[\])>]/, with: "")
+        text.replacing(bracketedNote, with: "")
+            .replacing(soundNoteInParentheses, with: "")
             .replacing(/\s{2,}/, with: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
