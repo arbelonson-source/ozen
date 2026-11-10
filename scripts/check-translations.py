@@ -230,6 +230,32 @@ def kotlin_args_count(rest, after):
     return commas + 1 if seen else 0
 
 
+# The table is keyed by the English text alone, so one English text used
+# for two meanings gets one translation for both: "OK" served as the button
+# (אישור) and as Diagnostics' "working" (תקין), and every language had one
+# of the two wrong. English texts whose Hebrew wordings differ but mean the
+# same thing (a gender ending, a noun or a verb on the same button) are
+# listed here; any other must get its own English wording.
+MEANINGS = {}
+SAME_MEANING = {
+    "Cloud transcription",
+    "Delete",
+    "Delete %1",
+    "Less than a minute left",
+    "Try it",
+    "Working",
+}
+
+
+def check_one_meaning_per_key():
+    problems = []
+    for english, hebrew in sorted(MEANINGS.items()):
+        if len(hebrew) > 1 and english not in SAME_MEANING:
+            places = "; ".join(f"{where} ({he})" for he, where in sorted(hebrew.items()))
+            problems.append(f"one English text, {len(hebrew)} Hebrew meanings: {english!r}: {places}. Give each meaning its own English text, or add it to SAME_MEANING if they mean the same")
+    return problems
+
+
 def check(path, list_untranslated, keys):
     text = path.read_text(encoding="utf-8")
     problems = []
@@ -268,6 +294,7 @@ def check(path, list_untranslated, keys):
                     f"Hebrew has {sorted(heb_placeholders)}, English has {sorted(eng_placeholders)}"
                 )
         keys.setdefault(unescape(english), set()).update(range(1, (count or 0) + 1))
+        MEANINGS.setdefault(unescape(english), {}).setdefault(unescape(hebrew).replace("\u2068", "").replace("\u2069", ""), f"{path}:{line}")
     untranslated = []
     if list_untranslated:
         for start, _, body in literals(text):
@@ -603,6 +630,7 @@ def main():
                 print(f"{path}: {len(untranslated)} Hebrew literals outside tr (lines {', '.join(map(str, untranslated[:12]))}{' ...' if len(untranslated) > 12 else ''})")
     if not skip_table:
         all_problems += check_translation_table(keys)
+        all_problems += check_one_meaning_per_key()
         all_problems += check_system_strings()
         all_problems += check_siri_phrases()
         all_problems += check_permission_prompts()

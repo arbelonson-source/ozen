@@ -1707,7 +1707,7 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Settings").performClick()
             compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
             row("Phone notifications", "Turned off in Android settings")
-            row("Alert vibration", if (phoneVibrator(app)?.hasVibrator() == true) "OK" else "Not supported on this device")
+            row("Alert vibration", if (phoneVibrator(app)?.hasVibrator() == true) "Working" else "Not supported on this device")
             val connection = DiagnosticsReport.network(app.captions.pipeline.networkConditions)
             assertNotEquals("—", connection)
             row("Internet connection", connection)
@@ -1716,7 +1716,7 @@ class SettingsScreenDeviceTest {
             row("Word alerts", "1")
 
             AlertNotifier.allowed = { true }
-            compose.waitUntil(5_000) { compose.onAllNodes(hasText("Phone notifications") and hasText("OK")).fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { compose.onAllNodes(hasText("Phone notifications") and hasText("Working")).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Copy report").performScrollTo().performClick()
             val copied = compose.runOnUiThread { clipboard.primaryClip?.getItemAt(0)?.text.toString() }
             assertTrue(copied, copied.contains(" notifications allowed: yes haptics: ") && copied.contains(" network: $connection cellular downloads: "))
@@ -2333,7 +2333,7 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Diagnostics").performScrollTo().performClick()
             compose.waitUntil(10_000) { shown("Battery", "37%") && shown("Battery Saver", "On") }
             row("Temperature", "Hot · captions are slowing down")
-            row("Model", "${Build.MANUFACTURER} ${Build.MODEL}")
+            row("Device model", "${Build.MANUFACTURER} ${Build.MODEL}")
             row("Android", Build.VERSION.RELEASE)
             compose.onNode(hasText("Free space") and textMatching(Regex("^[0-9.]+\u00A0(KB|MB|GB)$"))).performScrollTo().assertExists()
             compose.onNode(hasText("Memory") and textMatching(Regex("^[0-9.]+\u00A0(KB|MB|GB) in use · [0-9.]+\u00A0(KB|MB|GB) more$"))).performScrollTo().assertExists()

@@ -127,8 +127,8 @@ struct DiagnosticsView: View {
             Section(tr("התאוששות", "Recovery")) {
                 DiagnosticsRow(tr("ניסיון חוזר אוטומטי", "Automatic retry"), retryText)
                 DiagnosticsRow(tr("שיחת טלפון תופסת את האודיו", "Phone call is using the audio"), viewModel.isInterruptedBySystem ? tr("כן", "Yes") : tr("לא", "No"))
-                DiagnosticsRow(tr("שמירת הגדרות", "Settings save"), viewModel.settingsSaveError == nil ? tr("תקינה", "OK") : tr("נכשלה", "Failed"))
-                DiagnosticsRow(tr("שמירת שיחות", "Saving conversations"), viewModel.historySaveFailure == nil ? tr("תקינה", "OK") : tr("נכשלה", "Failed"))
+                DiagnosticsRow(tr("שמירת הגדרות", "Settings save"), viewModel.settingsSaveError == nil ? tr("תקינה", "Working") : tr("נכשלה", "Failed"))
+                DiagnosticsRow(tr("שמירת שיחות", "Saving conversations"), viewModel.historySaveFailure == nil ? tr("תקינה", "Working") : tr("נכשלה", "Failed"))
                 DiagnosticsRow(tr("התראות בטלפון", "Phone notifications"), notificationsText)
                 DiagnosticsRow(tr("רטט להתראות", "Alert vibration"), Self.vibrationText)
                 DiagnosticsRow(tr("חיבור לאינטרנט", "Internet connection"), DiagnosticsReport.describe(viewModel.pipeline.networkConditions))
@@ -214,7 +214,7 @@ struct DiagnosticsView: View {
                 DiagnosticsRow(tr("סוללה", "Battery"), DiagnosticsReport.batteryText)
                 DiagnosticsRow(tr("מקום פנוי", "Free space"), DiagnosticsReport.freeSpaceText)
                 DiagnosticsRow(tr("זיכרון", "Memory"), Self.memoryText)
-                DiagnosticsRow(tr("דגם", "Model"), UIDevice.current.model)
+                DiagnosticsRow(tr("דגם המכשיר", "Device model"), UIDevice.current.model)
                 DiagnosticsRow("iOS", UIDevice.current.systemVersion)
                 DiagnosticsRow(tr("אפליקציה", "App"), SettingsView.versionString)
                 DiagnosticsRow(tr("ההתקנה תקפה עד", "Install valid until"), Self.installExpiryText)
@@ -255,7 +255,7 @@ struct DiagnosticsView: View {
         switch notificationsAllowed {
         case false?: return tr("כבויות בהגדרות של iOS", "Turned off in iOS Settings")
         case nil: return tr("עוד לא נשאל", "Not asked yet")
-        case true?: return AlertNotifier.shared.lastFailure == nil ? tr("תקינות", "OK") : tr("השליחה האחרונה נכשלה", "Last one failed to send")
+        case true?: return AlertNotifier.shared.lastFailure == nil ? tr("תקינות", "Working") : tr("השליחה האחרונה נכשלה", "Last one failed to send")
         }
     }
 
@@ -273,7 +273,7 @@ struct DiagnosticsView: View {
     private static var vibrationText: String {
         let player = AlertHapticPlayer.shared
         guard player.supportsHaptics else { return tr("לא נתמך במכשיר הזה", "Not supported on this device") }
-        return player.lastFailure == nil ? tr("תקין", "OK") : tr("נכשל, ולכן משתמשים ברטט רגיל", "Failed, using standard vibration instead")
+        return player.lastFailure == nil ? tr("תקין", "Working") : tr("נכשל, ולכן משתמשים ברטט רגיל", "Failed, using standard vibration instead")
     }
 
     /// "812 MB in use · 1.9 GB more": what the app uses, and how much more
