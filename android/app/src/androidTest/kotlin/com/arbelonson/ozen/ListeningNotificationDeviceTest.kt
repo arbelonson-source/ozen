@@ -39,6 +39,18 @@ class ListeningNotificationDeviceTest {
     }
 
     @Test
+    fun aSingleLongLineOnTheLockScreenOpensToTheWholeLineWithItsNewestWords() {
+        val said = "The doctor said to take the new pills twice a day with food and to come back next Tuesday"
+        val content = LockScreenCaptionContent(
+            lines = listOf(LockScreenCaptionLine(speaker = "Dana", text = said, isFinal = true)),
+            status = "Listening",
+        )
+        val shown = ListeningService.notification(context, content, public = true)
+        assertEquals("Dana: $said", shown.text(Notification.EXTRA_TEXT))
+        assertEquals("Dana: $said", shown.text(Notification.EXTRA_BIG_TEXT))
+    }
+
+    @Test
     fun withCaptionsKeptOffTheLockScreenTheLockedPhoneShowsOnlyTheStatus() {
         val content = LockScreenCaptionContent(
             lines = listOf(
