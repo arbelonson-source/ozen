@@ -290,8 +290,15 @@ struct OnboardingView: View {
         }
     }
 
+    /// Changes as each answer arrives, so the page brings it into view:
+    /// at the largest text sizes, or with the phone held sideways, both
+    /// landed below the screen's edge after iOS's question closed.
+    private var permissionAnswers: String? {
+        microphone.map { "\($0)-\(String(describing: notificationsAllowed))" }
+    }
+
     private var microphonePage: some View {
-        OnboardingPage(symbol: "mic.circle", title: tr("המיקרופון", "The microphone")) {
+        OnboardingPage(symbol: "mic.circle", title: tr("המיקרופון", "The microphone"), scrollsDownOn: permissionAnswers) {
             Text(tr("כדי להציג כתוביות לשיחה, אוזן צריכה להאזין דרך המיקרופון.", "To caption the conversation, Ozen needs to listen through the microphone."))
             if !viewModel.settings.audioLeavesPhone {
                 Text(tr("הקול לא יוצא מהטלפון, ולא נשמר אלא אם מסמנים בעיה.", "The sound doesn’t leave the phone, and it isn’t kept unless you mark a problem."))
@@ -344,6 +351,12 @@ struct OnboardingView: View {
                 EmptyView()
             }
         }
+        // Said aloud too: with VoiceOver the answers appeared in silence,
+        // and the reason for the notification question was never heard.
+        .announcing(tr("המיקרופון מאושר", "Microphone approved") + ". " + tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע לכם על צלצול בדלת, על אזעקה או על קריאה בשמכם.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."), whenTurningTrue: microphone == .granted)
+        .announcing(tr("המיקרופון חסום", "Microphone blocked") + ". " + tr("בלי מיקרופון אין כתוביות. אפשר לאשר אותו בהגדרות הטלפון.", "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings."), whenTurningTrue: microphone == .denied)
+        .announcing(tr("ההתראות מאושרות", "Notifications approved"), whenTurningTrue: notificationsAllowed == true)
+        .announcing(tr("ההתראות לא אושרו. אפשר לשנות את זה בהגדרות.", "No notifications. This can be changed in Settings."), whenTurningTrue: notificationsAllowed == false)
         // Coming back from "Open phone settings" below: re-check rather
         // than leave this page stuck showing "blocked" after she just
         // fixed it. Asking again is safe once denied -- iOS answers with
@@ -554,6 +567,9 @@ struct OnboardingView: View {
 private struct OnboardingPage<Content: View>: View {
     let symbol: String
     let title: String
+    /// A change to a new value scrolls the page to its end, where an
+    /// answer has just appeared.
+    var scrollsDownOn: String? = nil
     @ViewBuilder let content: Content
 
     // A fixed height only ever hid one line of the largest accessibility
@@ -569,13 +585,25 @@ private struct OnboardingPage<Content: View>: View {
     /// there, and the setup page's last line showed straight through
     /// them, so the dots get a solid strip of their own under the fade.
     private static var dotsClearance: CGFloat { 46 }
+    private static var pageEnd: String { "onboardingPageEnd" }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var arrived = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            ScrollView {
-                pageContent
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        pageContent
+                        Color.clear
+                            .frame(height: 1)
+                            .id(Self.pageEnd)
+                    }
+                }
+                .onChange(of: scrollsDownOn) { _, now in
+                    guard now != nil else { return }
+                    withAnimation(reduceMotion ? nil : .default) { proxy.scrollTo(Self.pageEnd, anchor: .bottom) }
+                }
             }
             // The page-style TabView draws its dots inside its own
             // bounds, over whatever content is there -- not in reserved
