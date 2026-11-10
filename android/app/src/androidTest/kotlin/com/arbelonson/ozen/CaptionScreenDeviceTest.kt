@@ -107,6 +107,7 @@ import com.arbelonson.ozen.core.UILanguage
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.math.abs
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -2336,6 +2337,40 @@ class CaptionScreenDeviceTest {
         show(PipelinePhase.Listening)
         status().assertIsEnabled().assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
         busy.assertDoesNotExist()
+    }
+
+    @Test
+    fun aStoppedPausedOrOffStatusShowsItsIconInItsOwnColourWhileListeningShowsOnlyTheLiveDot() {
+        fun show(phase: PipelinePhase) {
+            compose.runOnUiThread { CaptionState.show(phase, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
+            compose.waitForIdle()
+        }
+        val icon = compose.onNodeWithTag(STATUS_ICON, useUnmergedTree = true)
+        fun ink(): Color {
+            val pixels = icon.captureToImage().toPixelMap()
+            val background = pixels[0, 0]
+            fun far(c: Color) = abs(c.red - background.red) + abs(c.green - background.green) + abs(c.blue - background.blue) > 0.3f
+            val counts = mutableMapOf<Color, Int>()
+            for (x in 0 until pixels.width) for (y in 0 until pixels.height) pixels[x, y].takeIf(::far)?.let { counts[it] = (counts[it] ?: 0) + 1 }
+            return checkNotNull(counts.maxByOrNull { it.value }) { "the status icon has no ink" }.key
+        }
+        try {
+            show(PipelinePhase.Failed(PipelineFailure(PipelineFailure.Kind.MicrophonePermissionDenied, "test")))
+            val stopped = ink()
+            assertTrue("a stopped status is not red: $stopped", stopped.red > stopped.green + 0.15f && stopped.red > stopped.blue + 0.15f)
+
+            show(PipelinePhase.Paused)
+            val paused = ink()
+            assertTrue("a paused status is not amber: $paused", paused.red > paused.blue + 0.3f && paused.green > paused.blue)
+
+            show(PipelinePhase.Idle)
+            icon.assertExists()
+
+            show(PipelinePhase.Listening)
+            icon.assertDoesNotExist()
+        } finally {
+            compose.runOnUiThread { CaptionState.clear() }
+        }
     }
 
     // A link opened from another app's task can start a second caption
