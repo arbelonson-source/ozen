@@ -309,15 +309,18 @@ struct LocalizationTests {
     @Test("Arabic speaks to the reader in the plural on every screen, as the Hebrew does, so no one is addressed as a man")
     func arabicAddressesEveryoneInThePlural() {
         let singular: Set<String> = [
-            "اضغط", "المس", "انقر", "اختر", "واختر", "افتح", "اكتب", "امسح", "انسخ", "والصقه", "تأكد", "أضف",
-            "اسمح", "واسمح", "اتصل", "أعد", "حاول", "وحاول", "وتبرّع", "يمكنك", "ويمكنك", "اسمك", "يوقظك", "يساعدك", "تفوتك",
+            "اضغط", "المس", "انقر", "اختر", "افتح", "اكتب", "امسح", "انسخ", "الصقه", "تأكد", "أضف",
+            "اسمح", "اتصل", "أعد", "حاول", "تبرّع", "يمكنك", "اسمك", "يوقظك", "يساعدك", "تفوتك",
         ]
         let table = TranslationTable.shared.table(for: .arabic)
         #expect(!table.isEmpty)
         for (english, arabic) in table where !english.hasPrefix("Hey Siri") {
-            let words = Set(arabic.split { !$0.isLetter }.map(String.init))
-            for word in words.intersection(singular) {
-                Issue.record("Singular '\(word)' in the Arabic for: \(english)")
+            for word in arabic.split(whereSeparator: { !$0.isLetter }) {
+                // "And" and "so" are written onto the next word: واضغط.
+                let bare = word.first == "و" || word.first == "ف" ? String(word.dropFirst()) : String(word)
+                if singular.contains(String(word)) || singular.contains(bare) {
+                    Issue.record("Singular '\(word)' in the Arabic for: \(english)")
+                }
             }
         }
     }
