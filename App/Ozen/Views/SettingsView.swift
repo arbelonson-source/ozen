@@ -154,6 +154,11 @@ struct SettingsView: View {
             .modifier(ScrollsToFocus(focus: focus, proxy: proxy))
             }
             .onDisappear(perform: saveUnsavedEntries)
+            // Here, not on the address box: a scan made while another
+            // engine was chosen switches to the home computer, and the box
+            // appeared too late to hear of it, still holding text she had
+            // typed and not saved.
+            .onChange(of: viewModel.pairingsAccepted) { followPairing() }
             // Swiped down, a pasted key was dropped as well; Close asks.
             .interactiveDismissDisabled(hasUnsavedCloudKey)
             .navigationTitle(tr("הגדרות", "Settings"))
@@ -544,7 +549,6 @@ struct SettingsView: View {
                     if homeServerAddressDraft == saved { homeServerAddressLoaded = saved }
                     hasHomeServerCode = HomeServerCodeStore.hasKey
                 }
-                .onChange(of: viewModel.pairingsAccepted) { followPairing() }
                 .accessibilityIdentifier("homeServerAddressField")
             if homeServerAddressDraft.trimmingCharacters(in: .whitespacesAndNewlines) != viewModel.settings.homeServerAddress {
                 Button(tr("שמירת הכתובת", "Save address"), action: saveHomeServerAddress)

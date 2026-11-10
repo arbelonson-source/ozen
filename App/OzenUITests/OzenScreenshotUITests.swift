@@ -1011,6 +1011,53 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(shown, "pairing in place: the address box still shows \(String(describing: box.value)) after Connect")
     }
 
+    /// A code scanned while Settings is on another engine, with an address
+    /// typed into the home computer's box and never saved: the scan switches
+    /// to the home computer, and the box came back holding the old typing,
+    /// which closing Settings then saved over the scan.
+    func testPairingFromAnotherEngineReplacesUnsavedTyping() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "homeServer"]
+        app.launch()
+
+        let settingsButton = app.descendants(matching: .any)["settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "pairing from another engine: the settings button never appeared")
+        let reveal = app.descendants(matching: .any)["showControlsButton"]
+        for _ in 0..<20 where !settingsButton.isHittable {
+            if reveal.exists, reveal.isHittable { reveal.tap() }
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        settingsButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "pairing from another engine: settings never appeared")
+        let address = scrollDownUntilVisible(app, identifier: "homeServerAddressField", maxSwipes: 20)
+        XCTAssertTrue(address.exists, "pairing from another engine: the address box never appeared")
+        address.tap()
+        address.typeText("192.168.1.77")
+
+        let cloud = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ OR label BEGINSWITH %@", "תמלול בענן", "Cloud transcription")).firstMatch
+        for _ in 0..<20 where !(cloud.exists && cloud.isHittable) {
+            let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.25))
+            let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.85))
+            from.press(forDuration: 0, thenDragTo: to, withVelocity: .fast, thenHoldForDuration: 0)
+        }
+        XCTAssertTrue(cloud.isHittable, "pairing from another engine: the cloud engine row never came into view")
+        cloud.tap()
+        let gone = NSPredicate(format: "exists == false")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: gone, object: app.descendants(matching: .any)["homeServerAddressField"])], timeout: 10), .completed, "pairing from another engine: the address box stayed after choosing the cloud")
+
+        let scanned = "wss://desktop.tail0example.ts.net"
+        app.open(try XCTUnwrap(URL(string: "ozen://pair?address=\(scanned)&code=example-code-123")))
+        let prompt = app.alerts.firstMatch
+        XCTAssertTrue(prompt.waitForExistence(timeout: 10), "pairing from another engine: 'Connect to the home computer?' never appeared")
+        prompt.buttons.matching(NSPredicate(format: "label IN %@", ["להתחבר", "Connect"])).firstMatch.tap()
+
+        let box = scrollDownUntilVisible(app, identifier: "homeServerAddressField", maxSwipes: 20)
+        let followed = NSPredicate(format: "value == %@", scanned)
+        let shown = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: followed, object: box)], timeout: 10) == .completed
+        capture(app, name: "pairing-from-another-engine")
+        XCTAssertTrue(shown, "pairing from another engine: the address box shows \(String(describing: box.value)) instead of the scan")
+    }
+
     /// The steppers quiet hours reveals once enabled, at this text size --
     /// seeded on at launch (see ScreenshotFixtures.Variant.quietHoursEnabled)
     /// rather than flipped live by the test, since tapping the toggle
