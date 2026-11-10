@@ -508,6 +508,16 @@ private fun OzenApp(
     // one that waits for Wi-Fi or fails before the captions run.
     val captionsStarted = state.phase != PipelinePhase.Idle
     LaunchedEffect(captionsStarted) { if (captionsStarted) app.captions.dismissLoadCrash() }
+    // The lighter model offered after a crash is in use, whether it was on
+    // the phone already or has just finished downloading: the captions the
+    // crash held back start on it.
+    val crashSwitchDone = loadCrash?.file?.takeIf { it == current.phoneModel.file }
+    LaunchedEffect(crashSwitchDone) {
+        if (crashSwitchDone != null) {
+            app.captions.dismissLoadCrash()
+            onLaunch()
+        }
+    }
     var sayDraft by rememberSaveable { mutableStateOf("") }
     var awakeClock by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1_000.0) }
     LaunchedEffect(state.phase.isListening) {
@@ -700,11 +710,8 @@ private fun OzenApp(
                                             current.phoneModel,
                                             lighter,
                                             inUseModelBytes,
-                                            onSwitch = {
-                                                app.captions.dismissLoadCrash()
-                                                app.captions.phoneModels.replaceWith(lighter.file)
-                                                if (app.settings.current.value.phoneModel.file == lighter.file) onLaunch()
-                                            },
+                                            switching = modelSwitch.takeIf { it.fileOrNull == lighter.file },
+                                            onSwitch = { app.captions.phoneModels.replaceWith(lighter.file) },
                                             onRetry = {
                                                 app.captions.dismissLoadCrash()
                                                 onLaunch()
@@ -1972,7 +1979,7 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: L
 
 /** The app was ended while it set up the chosen model, most likely for lack of memory; the captions wait for her choice instead of starting on their own. */
 @Composable
-private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, inUseBytes: Long?, onSwitch: () -> Unit, onRetry: () -> Unit) {
+private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, inUseBytes: Long?, switching: PhoneModelSwitch?, onSwitch: () -> Unit, onRetry: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val title = tr("אוזן נסגרה בזמן שהכינה את מודל הדיבור", "Ozen closed while setting up the speech model")
     val body = tr(
@@ -2002,6 +2009,7 @@ private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, inUseByte
             }
         }
         ReplacedModelLine(inUseBytes)
+        switching?.let { LoadCrashSwitchStatus(it) }
         Row(horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Page, Alignment.End), modifier = Modifier.fillMaxWidth()) {
             Text(
                 tr("נסו שוב", "Try again"),
@@ -2009,7 +2017,9 @@ private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, inUseByte
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.clickable(role = Role.Button, onClick = onRetry).testTag("model-load-crash-retry").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
             )
-            Text(
+            // While the lighter model downloads, or waits for a connection
+            // it resumes on by itself, a second tap would do nothing.
+            if (switching == null || switching is PhoneModelSwitch.Idle || switching is PhoneModelSwitch.Failed || switching is PhoneModelSwitch.NotEnoughRoom) Text(
                 tr("החלפה", "Switch"),
                 color = colors.primary,
                 style = MaterialTheme.typography.labelLarge,
@@ -2017,6 +2027,38 @@ private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, inUseByte
             )
         }
     }
+}
+
+/**
+ * Where the switch to the lighter model stands, on the card itself: the
+ * card once vanished on Switch, leaving an empty screen and, when the
+ * download could not start, no notification either.
+ */
+@Composable
+private fun LoadCrashSwitchStatus(switching: PhoneModelSwitch) {
+    val text = when (switching) {
+        PhoneModelSwitch.Idle -> null
+        is PhoneModelSwitch.Downloading -> if (switching.checking) {
+            tr("בודקים את הקובץ…", "Checking the file…")
+        } else {
+            tr("מורידים… %1%", "Downloading… %1%", listOf("${(switching.fraction * 100).toInt()}"))
+        }
+        is PhoneModelSwitch.NotEnoughRoom -> tr("אין מקום להורדה. צריך לפנות עוד %1 MB.", "There is no room to download it. Free up %1 MB more.", listOf("${switching.megabytes}"))
+        is PhoneModelSwitch.WaitingForWiFi -> tr("ממתינים ל־Wi‑Fi כדי להוריד. בהגדרות אפשר לאשר הורדה גם בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.")
+        is PhoneModelSwitch.Offline -> tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד.", "There is no internet connection to download it.")
+        is PhoneModelSwitch.Retrying -> tr("ההורדה נעצרה. מנסים שוב אוטומטית.", "The download stopped. Trying again on its own.")
+        is PhoneModelSwitch.Failed -> tr("הורדת המודל נכשלה. כדאי לבדוק את החיבור ולנסות שוב.", "The model download failed. Check the connection and try again.")
+    } ?: return
+    val context = LocalContext.current
+    LaunchedEffect(switching::class) {
+        if (ScreenReader.isOn(context)) ScreenReader.announce(context, text)
+    }
+    Text(
+        text,
+        color = if (switching is PhoneModelSwitch.Downloading) MaterialTheme.colorScheme.onSurfaceVariant else cautionOrange(),
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(top = 8.dp).testTag("model-load-crash-status"),
+    )
 }
 
 /** Listening was cut off while the app was closed; she is told when and for how long, and the card goes with a tap. */

@@ -813,6 +813,39 @@ struct KeywordMatchingRound2Tests {
         #expect(count("دواء", "خذ الدواء") == 1)
     }
 
+    @Test("a Russian or Ukrainian name alerts in its case forms, above all the Ukrainian form she is called by")
+    func cyrillicNameCaseForms() {
+        #expect(count("Оксана", "Оксано, йди сюди") == 1)
+        #expect(count("Іван", "Іване, де ти?") == 1)
+        #expect(count("Марія", "Маріє!") == 1)
+        #expect(count("Андрій", "Андрію, допоможи") == 1)
+        #expect(count("Петро", "Петре, ходи") == 1)
+        #expect(count("Маша", "скажи Маше") == 1)
+        #expect(count("Иван", "у Ивана") == 1)
+        #expect(count("Игорь", "с Игорем") == 1)
+        #expect(count("Дарья", "у Дарьи") == 1)
+        #expect(count("Наталія", "з Наталією") == 1)
+    }
+
+    @Test("a case form that spells a common word, a short name or a longer word does not alert")
+    func cyrillicNameCaseFormsSkipEverydayWords() {
+        #expect(count("Алла", "алло, слушаю") == 0)
+        #expect(count("Коля", "коли прийдеш") == 0)
+        #expect(count("Тома", "год тому назад") == 0)
+        #expect(count("Мила", "это мило") == 0)
+        #expect(count("Лев", "на левом берегу") == 0)
+        #expect(count("Маша", "новая машина") == 0)
+        #expect(count("Ян", "пришла Яна") == 0)
+        #expect(count("Dan", "dance") == 0)
+    }
+
+    @Test("an Amharic word alerts with to, in, from or of glued on, as the Important words help promises")
+    func amharicAttachedPrefixes() {
+        #expect(count("አያት", "ለአያት ንገሩ") == 1)
+        #expect(count("ሐኪም", "ከሐኪም ጋር") == 1)
+        #expect(count("ሰው", "የሰው") == 0)
+    }
+
     @Test("folding does not merge different words")
     func foldingKeepsDifferentWords() {
         #expect(count("Dan", "Dana") == 0)
