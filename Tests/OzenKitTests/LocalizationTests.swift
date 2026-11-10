@@ -305,4 +305,67 @@ struct LocalizationTests {
             }
         }
     }
+
+    @Test("Arabic speaks to the reader in the plural on every screen, as the Hebrew does, so no one is addressed as a man")
+    func arabicAddressesEveryoneInThePlural() {
+        let singular: Set<String> = [
+            "اضغط", "المس", "انقر", "اختر", "واختر", "افتح", "اكتب", "امسح", "انسخ", "والصقه", "تأكد", "أضف",
+            "اسمح", "واسمح", "اتصل", "أعد", "حاول", "وحاول", "وتبرّع", "يمكنك", "ويمكنك", "اسمك", "يوقظك", "يساعدك", "تفوتك",
+        ]
+        let table = TranslationTable.shared.table(for: .arabic)
+        #expect(!table.isEmpty)
+        for (english, arabic) in table where !english.hasPrefix("Hey Siri") {
+            let words = Set(arabic.split { !$0.isLetter }.map(String.init))
+            for word in words.intersection(singular) {
+                Issue.record("Singular '\(word)' in the Arabic for: \(english)")
+            }
+        }
+    }
+
+    @Test("Amharic asks politely on every screen, the form that suits anyone")
+    func amharicAsksPolitely() {
+        let familiar: Set<String> = ["ንካ", "ምረጥ"]
+        let table = TranslationTable.shared.table(for: .amharic)
+        #expect(!table.isEmpty)
+        for (english, amharic) in table {
+            let words = Set(amharic.split { !$0.isLetter }.map(String.init))
+            for word in words.intersection(familiar) {
+                Issue.record("Familiar '\(word)' in the Amharic for: \(english)")
+            }
+        }
+    }
+
+    @Test("French keeps : ; ? ! and » on the line of the word before them, so large text never strands one")
+    func frenchPunctuationStaysWithItsWord() {
+        let table = TranslationTable.shared.table(for: .french)
+        #expect(!table.isEmpty)
+        for (english, french) in table {
+            for breakable in [" :", " ;", " ?", " !", " »", "« "] where french.contains(breakable) {
+                Issue.record("Breakable '\(breakable)' in the French for: \(english)")
+            }
+        }
+    }
+
+    @Test("Russian and Ukrainian name a model as a model, and a voice as a voice, so a name like «Малая» or «Дана» keeps its own ending in any sentence")
+    func modelAndVoiceNamesFollowTheirNoun() {
+        let sentences = [
+            "Delete model “%1”", "Delete %1 from the phone?", "Download %1 and switch to it?",
+            "%1 (%2) is lighter and keeps up better here.", "Tap to download %1, %2, once over Wi\u{2011}Fi",
+            "This model falls behind the speech on this phone. Tap to switch to %1, %2",
+            "This model gets many Hebrew words wrong. Tap to switch to %1, %2",
+            "This model was trained for Hebrew only. Tap to switch to %1, %2",
+            "This phone may not have enough memory for %1. %2 (%3) is lighter.",
+        ]
+        for language in [UILanguage.russian, .ukrainian] {
+            let table = TranslationTable.shared.table(for: language)
+            for english in sentences {
+                let text = table[english] ?? ""
+                #expect(text.lowercased().contains("модел") && text.contains("«%1»"), "\(language): \(english) → \(text)")
+            }
+            for english in ["Delete %1", "Delete %1 from saved speakers?"] {
+                let text = table[english] ?? ""
+                #expect(text.contains("голос «%1»"), "\(language): \(english) → \(text)")
+            }
+        }
+    }
 }
