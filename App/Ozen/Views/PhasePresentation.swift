@@ -56,7 +56,10 @@ struct PhasePresentation {
         offerBackup: Bool = false,
         spokenLanguage: UILanguage = .hebrew,
         network: NetworkConditions? = nil,
-        soundsOnly: Bool = false
+        soundsOnly: Bool = false,
+        builtInOffered: Bool = false,
+        modelGettingReady: Bool = false,
+        modelJustReady: Bool = false
     ) {
         // Only captions the call interrupted come back when it ends: ones
         // she paused or stopped herself stay that way, and saying they
@@ -125,10 +128,21 @@ struct PhasePresentation {
         case .listening where coveringForCloud && coveredEngine == .cloud && coverReason == .cloudLanguageNotCovered:
             self.init(title: tr("מאזינה", "Listening"), detail: tr("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", "This service can’t caption this language, carrying on with the phone’s own · Choose another service in Settings"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
 
+        // The phone's built-in recognition writes the captions until the
+        // chosen model, still to download, is ready (see `BuiltInWhileWaiting`).
+        case .listening where coveringForCloud && coverReason == .waitingForWiFi:
+            let detail = modelGettingReady
+                ? tr("בזיהוי הדיבור המובנה בטלפון, בזמן שהמודל בהכנה · הקישו כדי להשהות", "With the phone’s built-in recognition while the model gets ready · Tap to pause")
+                : tr("בזיהוי הדיבור המובנה בטלפון, עד שהמודל יירד ב־Wi‑Fi · הקישו כדי להשהות", "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause")
+            self.init(title: tr("מאזינה", "Listening"), detail: detail, systemImage: "waveform", tint: .green, action: .pause)
+
         case .listening where coveringForCloud:
             // Still captioning, so still green: the words keep coming, only
             // from the phone's own model while the cloud can't be used.
             self.init(title: tr("מאזינה", "Listening"), detail: tr("התמלול בענן לא זמין, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Cloud captions aren’t available, carrying on with the phone’s own · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
+
+        case .listening where modelJustReady:
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("המודל מוכן, הכתוביות ממשיכות איתו", "The model is ready, captions continue with it") + " · " + tr("הקישו כדי להשהות", "Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
         case .listening where MobileDataNote.shows(engine: engine, coveringForCloud: coveringForCloud, network: network):
             self.init(title: tr("מאזינה", "Listening"), detail: tr("דרך חבילת הגלישה · הקישו כדי להשהות", "Over mobile data · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
@@ -156,6 +170,19 @@ struct PhasePresentation {
                     tint: .orange,
                     isBusy: true,
                     action: .retry
+                )
+            }
+            // Apple's recognizer can caption right away while the model
+            // waits: the tap still opens the cellular question, which then
+            // offers it first.
+            if builtInOffered, let why = failure.engineUnavailability, why.kind == .waitingForWiFi {
+                let size = why.downloadMegabytes.flatMap { $0 > 0 ? "\($0)\u{00A0}MB" : nil }
+                self = PhasePresentation(
+                    title: title,
+                    detail: [size, tr("יורד לבד כשיהיה Wi‑Fi · הקישו לכתוביות כבר עכשיו", "Downloads on its own once there’s Wi‑Fi · Tap for captions right now")].compactMap { $0 }.joined(separator: " · "),
+                    systemImage: systemImage,
+                    tint: tint,
+                    action: .confirmCellularDownload
                 )
             }
             if offerBackup, failure.engineUnavailability?.kind == .homeServerUnreachable,

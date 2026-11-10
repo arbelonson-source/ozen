@@ -1066,7 +1066,14 @@
   "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "የችግሩ ዝርዝሮች፣ የመጨረሻዎቹ መስመሮች እና የመጨረሻዎቹ 30 ሰከንዶች ድምፅ በስልኩ ላይ ብቻ ተቀምጠዋል። ቁልፉ ዝርዝሮቹንና መስመሮቹን ይልካል፤ ድምፁ የሚላከው ከቅንብሮች → ምርመራዎች ነው።",
   "Send to whoever helps you": "ለሚረዳዎት ሰው ይላኩ",
   "Opens the share options with the diagnostics report": "የማጋሪያ አማራጮችን ከምርመራ ሪፖርቱ ጋር ይከፍታል",
-  "Ozen on this phone: a captions problem was marked at %1.": "Ozen በዚህ ስልክ፦ በ%1 የካፕሽን ችግር ምልክት ተደርጓል።"
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen በዚህ ስልክ፦ በ%1 የካፕሽን ችግር ምልክት ተደርጓል።",
+  "Captions now, with the phone’s built-in recognition": "ካፕሽን አሁን፣ በስልኩ ውስጥ በተካተተው መለያ",
+  "Download now over cellular data": "አሁን በሴሉላር ውሂብ አውርድ",
+  "Downloads on its own once there’s Wi‑Fi · Tap for captions right now": "Wi‑Fi ሲኖር ራሱን ችሎ ያወርዳል · አሁኑኑ ካፕሽን ለማግኘት ንካ",
+  "The model is ready, captions continue with it": "ሞዴሉ ዝግጁ ነው፣ ካፕሽኑ በእሱ ይቀጥላል",
+  "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.": "እስከዚያው ድረስ በስልኩ ውስጥ የተካተተው መለያ ካፕሽን ሊጽፍ ይችላል። ብዙውን ጊዜ ትክክለኛነቱ ያነሰ ነው፣ ሁሉም ነገር በስልኩ ላይ ይቆያል። ሞዴሉ ወርዶ ሲያልቅ ካፕሽኑ በራሱ ወደ እሱ ይቀየራል።",
+  "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause": "በስልኩ ውስጥ በተካተተው መለያ፣ ሞዴሉ በWi‑Fi እስኪወርድ ድረስ · ለማቆም ንካ",
+  "With the phone’s built-in recognition while the model gets ready · Tap to pause": "በስልኩ ውስጥ በተካተተው መለያ፣ ሞዴሉ በመዘጋጀት ላይ እያለ · ለማቆም ንካ"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2135,7 +2142,14 @@
   "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "حُفظت تفاصيل المشكلة وآخر الأسطر وآخر 30 ثانية من الصوت على الهاتف فقط. يرسل الزر التفاصيل والأسطر؛ أما الصوت فيُرسل من الإعدادات ← التشخيص.",
   "Send to whoever helps you": "إرسال لمن يساعدكم",
   "Opens the share options with the diagnostics report": "يفتح خيارات المشاركة مع تقرير التشخيص",
-  "Ozen on this phone: a captions problem was marked at %1.": "Ozen على هذا الهاتف: سُجّلت مشكلة في الترجمة النصية الساعة %1."
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen على هذا الهاتف: سُجّلت مشكلة في الترجمة النصية الساعة %1.",
+  "Captions now, with the phone’s built-in recognition": "ترجمة نصية الآن، بالتعرف المدمج في الهاتف",
+  "Download now over cellular data": "تنزيل الآن عبر بيانات الجوال",
+  "Downloads on its own once there’s Wi‑Fi · Tap for captions right now": "يُنزَّل من تلقاء نفسه عند توفر Wi‑Fi · المسوا للحصول على ترجمة نصية الآن",
+  "The model is ready, captions continue with it": "النموذج جاهز، وتستمر الترجمة النصية به",
+  "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.": "حتى ذلك الحين، يستطيع التعرف المدمج في الهاتف كتابة الترجمة النصية. عادةً ما يكون أقل دقة، ويبقى كل شيء على الهاتف. عند اكتمال تنزيل النموذج، تنتقل الترجمة النصية إليه تلقائيًا.",
+  "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause": "بالتعرف المدمج في الهاتف حتى يُنزَّل النموذج عبر Wi‑Fi · المسوا للإيقاف المؤقت",
+  "With the phone’s built-in recognition while the model gets ready · Tap to pause": "بالتعرف المدمج في الهاتف ريثما يجهز النموذج · المسوا للإيقاف المؤقت"
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3204,7 +3218,14 @@
   "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "问题详情、最后几行文字和最后 30 秒的声音已保存，仅保存在手机上。这个按钮会发送详情和文字；声音要在 设置 → 诊断 中发送。",
   "Send to whoever helps you": "发送给帮助你的人",
   "Opens the share options with the diagnostics report": "打开分享选项，附带诊断报告",
-  "Ozen on this phone: a captions problem was marked at %1.": "此手机上的 Ozen：%1 标记了一个字幕问题。"
+  "Ozen on this phone: a captions problem was marked at %1.": "此手机上的 Ozen：%1 标记了一个字幕问题。",
+  "Captions now, with the phone’s built-in recognition": "立即显示字幕，使用手机内置的识别功能",
+  "Download now over cellular data": "立即使用蜂窝网络下载",
+  "Downloads on its own once there’s Wi‑Fi · Tap for captions right now": "有 Wi‑Fi 时会自动下载 · 点一下立即显示字幕",
+  "The model is ready, captions continue with it": "模型已就绪，字幕改由它继续",
+  "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.": "在此之前，手机内置的识别功能可以先写出字幕。它通常不太准确，所有内容都留在手机上。模型下载完成后，字幕会自动切换到模型。",
+  "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause": "使用手机内置的识别功能，直到模型通过 Wi‑Fi 下载完成 · 点一下暂停",
+  "With the phone’s built-in recognition while the model gets ready · Tap to pause": "使用手机内置的识别功能，模型正在准备中 · 点一下暂停"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4273,7 +4294,14 @@
   "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "Les détails du problème, les dernières lignes et les 30 dernières secondes de son ont été enregistrés, sur le téléphone uniquement. Le bouton envoie les détails et les lignes ; le son s’envoie depuis Réglages → Diagnostic.",
   "Send to whoever helps you": "Envoyer à la personne qui vous aide",
   "Opens the share options with the diagnostics report": "Ouvre les options de partage avec le rapport de diagnostic",
-  "Ozen on this phone: a captions problem was marked at %1.": "Ozen sur ce téléphone : un problème de sous-titres a été signalé à %1."
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen sur ce téléphone : un problème de sous-titres a été signalé à %1.",
+  "Captions now, with the phone’s built-in recognition": "Sous-titres tout de suite, avec la reconnaissance intégrée au téléphone",
+  "Download now over cellular data": "Télécharger maintenant en données cellulaires",
+  "Downloads on its own once there’s Wi‑Fi · Tap for captions right now": "Se télécharge seul dès qu’il y a du Wi‑Fi · Touchez pour avoir les sous-titres tout de suite",
+  "The model is ready, captions continue with it": "Le modèle est prêt, les sous-titres continuent avec lui",
+  "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.": "D’ici là, la reconnaissance intégrée au téléphone peut écrire les sous-titres. Elle est en général moins précise, et tout reste sur le téléphone. Une fois le modèle téléchargé, les sous-titres passent à lui d’eux-mêmes.",
+  "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause": "Avec la reconnaissance intégrée au téléphone, jusqu’au téléchargement du modèle en Wi‑Fi · Touchez pour mettre en pause",
+  "With the phone’s built-in recognition while the model gets ready · Tap to pause": "Avec la reconnaissance intégrée au téléphone, pendant que le modèle se prépare · Touchez pour mettre en pause"
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5342,7 +5370,14 @@
   "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "Die Details des Problems, die letzten Zeilen und die letzten 30 Sekunden Ton wurden gespeichert, nur auf dem Telefon. Die Schaltfläche sendet die Details und Zeilen; der Ton wird über Einstellungen → Diagnose gesendet.",
   "Send to whoever helps you": "An die Person senden, die Ihnen hilft",
   "Opens the share options with the diagnostics report": "Öffnet die Teilen-Optionen mit dem Diagnosebericht",
-  "Ozen on this phone: a captions problem was marked at %1.": "Ozen auf diesem Telefon: Um %1 wurde ein Problem mit den Untertiteln markiert."
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen auf diesem Telefon: Um %1 wurde ein Problem mit den Untertiteln markiert.",
+  "Captions now, with the phone’s built-in recognition": "Untertitel sofort, mit der im Telefon eingebauten Erkennung",
+  "Download now over cellular data": "Jetzt über Mobilfunkdaten herunterladen",
+  "Downloads on its own once there’s Wi‑Fi · Tap for captions right now": "Lädt von allein herunter, sobald Wi‑Fi da ist · Für sofortige Untertitel tippen",
+  "The model is ready, captions continue with it": "Das Modell ist bereit, die Untertitel laufen damit weiter",
+  "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.": "Bis dahin kann die im Telefon eingebaute Erkennung die Untertitel schreiben. Sie ist meist ungenauer, und alles bleibt auf dem Telefon. Sobald das Modell heruntergeladen ist, wechseln die Untertitel von selbst dazu.",
+  "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause": "Mit der im Telefon eingebauten Erkennung, bis das Modell über Wi‑Fi geladen ist · Zum Anhalten tippen",
+  "With the phone’s built-in recognition while the model gets ready · Tap to pause": "Mit der im Telefon eingebauten Erkennung, während das Modell vorbereitet wird · Zum Anhalten tippen"
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6411,7 +6446,14 @@
   "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "समस्या का विवरण, आख़िरी कुछ पंक्तियां और आवाज़ के आख़िरी 30 सेकंड सिर्फ़ फ़ोन पर सहेजे गए। बटन विवरण और पंक्तियां भेजता है; आवाज़ सेटिंग्स → जांच रिपोर्ट से भेजी जाती है।",
   "Send to whoever helps you": "आपकी मदद करने वाले को भेजें",
   "Opens the share options with the diagnostics report": "जांच रिपोर्ट के साथ शेयर करने के विकल्प खोलता है",
-  "Ozen on this phone: a captions problem was marked at %1.": "इस फ़ोन पर Ozen: %1 बजे कैप्शन में समस्या दर्ज की गई।"
+  "Ozen on this phone: a captions problem was marked at %1.": "इस फ़ोन पर Ozen: %1 बजे कैप्शन में समस्या दर्ज की गई।",
+  "Captions now, with the phone’s built-in recognition": "अभी कैप्शन, फ़ोन में पहले से मौजूद पहचान से",
+  "Download now over cellular data": "अभी मोबाइल डेटा पर डाउनलोड करें",
+  "Downloads on its own once there’s Wi‑Fi · Tap for captions right now": "Wi‑Fi मिलते ही खुद डाउनलोड होता है · अभी कैप्शन के लिए छुएं",
+  "The model is ready, captions continue with it": "मॉडल तैयार है, कैप्शन अब उसी से जारी हैं",
+  "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.": "तब तक फ़ोन में पहले से मौजूद पहचान कैप्शन लिख सकती है। यह आम तौर पर कम सटीक होती है, और सब कुछ फ़ोन पर ही रहता है। मॉडल डाउनलोड होते ही कैप्शन अपने आप उस पर चले जाएंगे।",
+  "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause": "फ़ोन में पहले से मौजूद पहचान से, जब तक मॉडल Wi‑Fi पर डाउनलोड न हो जाए · रोकने के लिए छुएं",
+  "With the phone’s built-in recognition while the model gets ready · Tap to pause": "फ़ोन में पहले से मौजूद पहचान से, जब तक मॉडल तैयार हो रहा है · रोकने के लिए छुएं"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7480,7 +7522,14 @@
   "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "Os detalhes do problema, as últimas linhas e os últimos 30 segundos de som foram guardados, apenas no telemóvel. O botão envia os detalhes e as linhas; o som é enviado em Definições → Diagnóstico.",
   "Send to whoever helps you": "Enviar a quem o ajuda",
   "Opens the share options with the diagnostics report": "Abre as opções de partilha com o relatório de diagnóstico",
-  "Ozen on this phone: a captions problem was marked at %1.": "Ozen neste telemóvel: foi assinalado um problema nas legendas às %1."
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen neste telemóvel: foi assinalado um problema nas legendas às %1.",
+  "Captions now, with the phone’s built-in recognition": "Legendas já, com o reconhecimento incorporado no telemóvel",
+  "Download now over cellular data": "Transferir agora com dados móveis",
+  "Downloads on its own once there’s Wi‑Fi · Tap for captions right now": "Transfere sozinho assim que houver Wi‑Fi · Toque para ter legendas já",
+  "The model is ready, captions continue with it": "O modelo está pronto, as legendas continuam com ele",
+  "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.": "Até lá, o reconhecimento incorporado no telemóvel pode escrever as legendas. Costuma ser menos preciso, e tudo fica no telemóvel. Assim que o modelo for transferido, as legendas passam para ele sozinhas.",
+  "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause": "Com o reconhecimento incorporado no telemóvel até o modelo ser transferido por Wi‑Fi · Toque para pausar",
+  "With the phone’s built-in recognition while the model gets ready · Tap to pause": "Com o reconhecimento incorporado no telemóvel enquanto o modelo é preparado · Toque para pausar"
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8549,7 +8598,14 @@
   "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "Подробности проблемы, последние строки и последние 30 секунд звука сохранены только на телефоне. Кнопка отправляет подробности и строки; звук отправляется из раздела Настройки → Диагностика.",
   "Send to whoever helps you": "Отправить тому, кто вам помогает",
   "Opens the share options with the diagnostics report": "Открывает варианты отправки с диагностическим отчётом",
-  "Ozen on this phone: a captions problem was marked at %1.": "Ozen на этом телефоне: в %1 отмечена проблема с субтитрами."
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen на этом телефоне: в %1 отмечена проблема с субтитрами.",
+  "Captions now, with the phone’s built-in recognition": "Субтитры сейчас, со встроенным распознаванием телефона",
+  "Download now over cellular data": "Загрузить сейчас по мобильной сети",
+  "Downloads on its own once there’s Wi‑Fi · Tap for captions right now": "Загрузится сам, как только появится Wi‑Fi · Нажмите, чтобы получить субтитры сразу",
+  "The model is ready, captions continue with it": "Модель готова, субтитры продолжаются с ней",
+  "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.": "А пока субтитры может писать встроенное распознавание телефона. Обычно оно менее точное, и всё остаётся на телефоне. Когда модель загрузится, субтитры сами перейдут на неё.",
+  "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause": "Встроенное распознавание телефона, пока модель не загрузится по Wi‑Fi · Нажмите для паузы",
+  "With the phone’s built-in recognition while the model gets ready · Tap to pause": "Встроенное распознавание телефона, пока модель готовится · Нажмите для паузы"
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -9618,7 +9674,14 @@
   "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "Los detalles del problema, las últimas líneas y los últimos 30 segundos de sonido se guardaron, solo en el teléfono. El botón envía los detalles y las líneas; el sonido se envía desde Ajustes → Diagnóstico.",
   "Send to whoever helps you": "Enviar a quien te ayuda",
   "Opens the share options with the diagnostics report": "Abre las opciones para compartir con el informe de diagnóstico",
-  "Ozen on this phone: a captions problem was marked at %1.": "Ozen en este teléfono: se marcó un problema con los subtítulos a las %1."
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen en este teléfono: se marcó un problema con los subtítulos a las %1.",
+  "Captions now, with the phone’s built-in recognition": "Subtítulos ya, con el reconocimiento integrado en el teléfono",
+  "Download now over cellular data": "Descargar ahora con datos móviles",
+  "Downloads on its own once there’s Wi‑Fi · Tap for captions right now": "Se descarga solo en cuanto hay Wi‑Fi · Toca para tener subtítulos ya",
+  "The model is ready, captions continue with it": "El modelo está listo, los subtítulos siguen con él",
+  "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.": "Mientras tanto, el reconocimiento integrado en el teléfono puede escribir los subtítulos. Suele ser menos preciso, y todo se queda en el teléfono. En cuanto se descargue el modelo, los subtítulos pasarán a él solos.",
+  "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause": "Con el reconocimiento integrado en el teléfono hasta que el modelo se descargue con Wi‑Fi · Toca para pausar",
+  "With the phone’s built-in recognition while the model gets ready · Tap to pause": "Con el reconocimiento integrado en el teléfono mientras el modelo se prepara · Toca para pausar"
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -10687,6 +10750,13 @@
   "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "Подробиці проблеми, останні рядки та останні 30 секунд звуку збережено лише на телефоні. Кнопка надсилає подробиці та рядки; звук надсилається з розділу Налаштування → Діагностика.",
   "Send to whoever helps you": "Надіслати тому, хто вам допомагає",
   "Opens the share options with the diagnostics report": "Відкриває варіанти надсилання з діагностичним звітом",
-  "Ozen on this phone: a captions problem was marked at %1.": "Ozen на цьому телефоні: о %1 позначено проблему із субтитрами."
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen на цьому телефоні: о %1 позначено проблему із субтитрами.",
+  "Captions now, with the phone’s built-in recognition": "Субтитри зараз, із вбудованим розпізнаванням телефона",
+  "Download now over cellular data": "Завантажити зараз мобільною мережею",
+  "Downloads on its own once there’s Wi‑Fi · Tap for captions right now": "Завантажиться сам, щойно з’явиться Wi‑Fi · Натисніть, щоб отримати субтитри одразу",
+  "The model is ready, captions continue with it": "Модель готова, субтитри продовжуються з нею",
+  "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.": "А поки що субтитри може писати вбудоване розпізнавання телефона. Зазвичай воно менш точне, і все залишається на телефоні. Коли модель завантажиться, субтитри самі перейдуть на неї.",
+  "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause": "Вбудоване розпізнавання телефона, поки модель не завантажиться через Wi‑Fi · Натисніть для паузи",
+  "With the phone’s built-in recognition while the model gets ready · Tap to pause": "Вбудоване розпізнавання телефона, поки модель готується · Натисніть для паузи"
  }
 }

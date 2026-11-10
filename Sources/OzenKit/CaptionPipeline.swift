@@ -248,6 +248,7 @@ public final class CaptionPipeline {
     /// meanwhile runs now.
     public func endRecordingTranscription() {
         isTranscribingRecording = false
+        getWaitingModelReadyIfAllowed()
         guard let held = retryAfterTranscription else { return }
         retryAfterTranscription = nil
         Task { await retry(settings: held.settings) }
@@ -523,6 +524,7 @@ public final class CaptionPipeline {
             homeServerRecheck = nil
             cloudRecheck?.cancel()
             cloudRecheck = nil
+            endWaitingModel()
         }
         storageNeededMegabytes = nil
         // The stored threshold is the person's own choice once they've
@@ -643,19 +645,8 @@ public final class CaptionPipeline {
         let availability = await engine.prepare(languageCode: settings.languageCode) { [weak self] progress in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                // Abandoned, with a later start waiting for it to finish:
-                // that start shows what is really happening (the rest of a
-                // download, a first set-up) instead of "loading" for as
-                // long as it takes.
-                if self.runID != run, let waiting = self.waitingShown, self.phase == .preparingEngine(waiting) {
-                    let time = self.now()
-                    guard progress.isNews(after: waiting, shownAt: self.progressShownAt, now: time) else { return }
-                    self.progressShownAt = time
-                    self.waitingShown = progress
-                    self.phase = .preparingEngine(progress)
-                    self.trackDownload(progress, at: time)
-                    return
-                }
+                // Abandoned, with a later start waiting for it to finish.
+                if self.runID != run, self.showToWaitingStart(progress) { return }
                 guard self.runID == run, case .preparingEngine(let shown) = self.phase else { return }
                 let time = self.now()
                 guard progress.isNews(after: shown, shownAt: self.progressShownAt, now: time) else { return }
@@ -804,6 +795,7 @@ public final class CaptionPipeline {
         homeServerRecheck = nil
         cloudRecheck?.cancel()
         cloudRecheck = nil
+        endWaitingModel()
         cancelScheduledRetry()
         // Stopped by hand: nothing held for a voice sample's end may start
         // captions again.
@@ -882,8 +874,18 @@ public final class CaptionPipeline {
     /// recheck keeps trying what was chosen. Started from the phone's own
     /// settings, as a retry or a plain resume is, the cover was dropped
     /// and the home computer or the cloud was never tried again.
+    /// The phone's built-in recognition standing in for a model that waits
+    /// for Wi-Fi goes on likewise, from her settings or its own, until that
+    /// model is ready; then the start is the model itself.
     private func keepCovering(_ settings: inout AppSettings) {
         guard isCoveringForCloud else { return }
+        if coverReason == .waitingForWiFi {
+            let chosen = settings.engine == .appleSpeech ? (coveredSettings ?? settings) : settings
+            let resumed = BuiltInWhileWaiting.resumeSettings(chosen: chosen, modelReady: waitingModelReady)
+            settings = resumed.settings
+            nextStartCoversCloud = resumed.keepsBuiltIn
+            return
+        }
         if settings.engine == .cloud || settings.engine == .homeServer {
             settings.engine = .whisperKit
         }
@@ -905,6 +907,7 @@ public final class CaptionPipeline {
         homeServerRecheck = nil
         cloudRecheck?.cancel()
         cloudRecheck = nil
+        endWaitingModel()
     }
 
     /// Stops and starts again with new settings — the engine, model, or
@@ -2200,6 +2203,21 @@ public final class CaptionPipeline {
         }
     }
 
+    /// A start waiting for a preparation it didn't begin shows what is
+    /// really happening (the rest of a download, a first set-up) instead of
+    /// "loading" for as long as it takes. False when no start waits on
+    /// screen.
+    private func showToWaitingStart(_ progress: EnginePreparationProgress) -> Bool {
+        guard let waiting = waitingShown, phase == .preparingEngine(waiting) else { return false }
+        let time = now()
+        guard progress.isNews(after: waiting, shownAt: progressShownAt, now: time) else { return true }
+        progressShownAt = time
+        waitingShown = progress
+        phase = .preparingEngine(progress)
+        trackDownload(progress, at: time)
+        return true
+    }
+
     private func cachedEngine(for settings: AppSettings) -> any TranscriptionEngine {
         let key = engineCacheKey(settings)
         // Only the engine in use is kept. A Whisper engine holds its loaded
@@ -2600,9 +2618,167 @@ public final class CaptionPipeline {
 
     // MARK: - Downloads and the network
 
+    /// While the phone's built-in recognition captions for a model that
+    /// waits for Wi-Fi: that model is being downloaded or loaded behind it.
+    public private(set) var waitingModelGettingReady = false
+    /// How many times captions went over from the built-in recognition to
+    /// the model once it was ready, for the screen to say so.
+    public private(set) var builtInHandOvers = 0
+    /// How often a ready model looks for its moment to take over.
+    public var handOverCheckSeconds: Double = 1
+    /// A model that didn't get ready behind the built-in recognition (a
+    /// download cut off on Wi-Fi) is tried again this often, besides at
+    /// every change of connection.
+    public var waitingModelRetrySeconds: Double = 60
+    private var waitingModelTask: Task<Void, Never>?
+    private var waitingModelRetry: Task<Void, Never>?
+    private var waitingModelReady = false
+    private var waitingModelLacksRoom = false
+
+    /// "Captions now with the phone's built-in recognition": while her
+    /// model waits for Wi-Fi, Apple's recognizer captions on the phone
+    /// alone, through the same cover as for the cloud. Her settings stay
+    /// the ones covered, and the model takes over once it has downloaded
+    /// (see `BuiltInWhileWaiting`). The recognizer is asked first, so one
+    /// that can't run here leaves captions waiting as they were, sounds
+    /// still listened for, instead of a failure about an engine she never
+    /// chose.
+    public func captionWithBuiltInWhileWaiting(settings: AppSettings? = nil) async {
+        guard isWaitingForWiFi, let waiting = phase.failure, !isRecordingVoice, !isTranscribingRecording,
+              let chosen = settings ?? activeSettings, chosen.engine == .whisperKit
+        else { return }
+        let builtInSettings = BuiltInWhileWaiting.captionSettings(for: chosen)
+        let answer = await probeEngine(for: builtInSettings).checkAvailability(languageCode: builtInSettings.languageCode)
+        guard phase == .failed(waiting) else { return }
+        if let why = answer.unavailability {
+            logEvent(.note("the built-in recognition can't caption while the model waits: \(why.kind.rawValue)"))
+            return
+        }
+        logEvent(.note("the built-in recognition captions while the model waits for Wi-Fi"))
+        nextStartCoversCloud = true
+        coverReason = .waitingForWiFi
+        coveredSettings = chosen
+        await start(settings: builtInSettings)
+        getWaitingModelReadyIfAllowed()
+    }
+
+    /// See `captionWithBuiltInWhileWaiting`: the model is downloaded and
+    /// loaded behind the built-in recognition as soon as the connection
+    /// allows. It counts as the engine being prepared, so a start of the
+    /// phone's model meanwhile waits for it instead of preparing the same
+    /// engine twice, and a recording being transcribed stops its download.
+    private func getWaitingModelReadyIfAllowed(on conditions: NetworkConditions? = nil) {
+        guard isCoveringForCloud, coverReason == .waitingForWiFi, phase != .idle,
+              waitingModelTask == nil, !waitingModelReady, !isPreparingEngine, !isTranscribingRecording,
+              let chosen = coveredSettings
+        else { return }
+        let allowCellular = chosen.allowCellularModelDownload || cellularDownloadApproved
+        guard ModelDownloadGate.decide(network: conditions ?? network?.current, allowCellular: allowCellular) == .proceed else { return }
+        waitingModelRetry?.cancel()
+        waitingModelRetry = nil
+        let engine = probeEngine(for: chosen)
+        let key = engineCacheKey(chosen)
+        isPreparingEngine = true
+        preparing = (chosen.whisperModelVariant, engine)
+        waitingModelGettingReady = true
+        logEvent(.note("the waiting model gets ready behind the built-in recognition"))
+        let report: @Sendable (EnginePreparationProgress) -> Void = { [weak self] progress in
+            Task { @MainActor [weak self] in _ = self?.showToWaitingStart(progress) }
+        }
+        waitingModelTask = Task { [weak self] in
+            // The room it needs, checked as a start checks it: a phone too
+            // full for the model doesn't begin a download that can't finish.
+            if let megabytes = await engine.pendingDownloadMegabytes() {
+                let needed = await engine.pendingInstallMegabytes() ?? megabytes
+                if let missing = self?.storageShortfall(forDownloadOf: needed) {
+                    self?.storageNeededMegabytes = needed
+                    let why = EngineUnavailability(kind: .notEnoughStorage, detail: "checked before download", downloadMegabytes: megabytes, missingMegabytes: missing)
+                    await self?.waitingModelPrepared(.unavailable(why), engine: engine, key: key)
+                    return
+                }
+            }
+            await engine.setCellularDownloadAllowed(allowCellular)
+            let availability = await engine.prepare(languageCode: chosen.languageCode, progress: report)
+            await self?.waitingModelPrepared(availability, engine: engine, key: key)
+        }
+    }
+
+    private func waitingModelPrepared(_ availability: EngineAvailability, engine: any TranscriptionEngine, key: String) async {
+        isPreparingEngine = false
+        preparing = nil
+        let waiters = preparationWaiters.values
+        preparationWaiters = [:]
+        waiters.forEach { $0.resume() }
+        waitingModelGettingReady = false
+        guard !Task.isCancelled else { return }
+        guard isCoveringForCloud, coverReason == .waitingForWiFi, let chosen = coveredSettings, engineCacheKey(chosen) == key else {
+            waitingModelTask = nil
+            return
+        }
+        if let why = availability.unavailability {
+            waitingModelTask = nil
+            logEvent(.note("the waiting model didn't get ready, the built-in recognition carries on: \(why.detail)"))
+            // Retrying on a timer can't free up space: a return to the app
+            // tries again once there is room (`appDidBecomeActive`).
+            waitingModelLacksRoom = why.kind == .notEnoughStorage
+            if !waitingModelLacksRoom { retryWaitingModelLater() }
+            return
+        }
+        waitingModelReady = true
+        engineCache[key] = engine
+        logEvent(.note("the waiting model is ready"))
+        await handOverWhenTheMomentComes(key: key)
+    }
+
+    /// A model ready behind the built-in recognition takes over at the
+    /// next pause in the speech, as the home computer does when it answers
+    /// again, or at once if the built-in itself stopped. Not while captions
+    /// are paused or starting: a resume then starts the model directly.
+    private func handOverWhenTheMomentComes(key: String) async {
+        while !Task.isCancelled {
+            guard isCoveringForCloud, coverReason == .waitingForWiFi, coveredSettings.map({ engineCacheKey($0) }) == key else { return }
+            let decision = BuiltInWhileWaiting.handOver(modelReady: waitingModelReady, phase: phase, microphoneHeldElsewhere: isRecordingVoice || systemInterrupted)
+            var moment = decision == .now
+            if decision == .atNextPause {
+                moment = await switchBackMomentCame(answeredChecks: switchBackAfterAnsweredChecks)
+            }
+            // Read again after the wait: a name or a word added meanwhile
+            // reached `coveredSettings`, not a copy taken before it.
+            if moment, !Task.isCancelled, isCoveringForCloud, let latest = coveredSettings, engineCacheKey(latest) == key {
+                waitingModelTask = nil
+                logEvent(.note("the model is ready, captions go over to it from the built-in recognition"))
+                await switchBack(to: latest)
+                if phase.isListening, activeEngineKind == latest.engine { builtInHandOvers += 1 }
+                return
+            }
+            try? await Task.sleep(for: .seconds(handOverCheckSeconds))
+        }
+    }
+
+    private func retryWaitingModelLater() {
+        waitingModelRetry?.cancel()
+        let seconds = waitingModelRetrySeconds
+        waitingModelRetry = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled, let self else { return }
+            self.waitingModelRetry = nil
+            self.getWaitingModelReadyIfAllowed()
+        }
+    }
+
+    private func endWaitingModel() {
+        waitingModelTask?.cancel()
+        waitingModelTask = nil
+        waitingModelRetry?.cancel()
+        waitingModelRetry = nil
+        waitingModelReady = false
+        waitingModelLacksRoom = false
+    }
+
     /// "Download now anyway": this session's model may use cellular data.
     public func approveCellularDownload() async {
         cellularDownloadApproved = true
+        getWaitingModelReadyIfAllowed()
         guard isWaitingForWiFi else { return }
         await retry()
     }
@@ -2611,6 +2787,7 @@ public final class CaptionPipeline {
     public func setAllowCellularModelDownload(_ allowed: Bool) async {
         activeSettings?.allowCellularModelDownload = allowed
         coveredSettings?.allowCellularModelDownload = allowed
+        getWaitingModelReadyIfAllowed()
         guard allowed, isWaitingForWiFi else { return }
         await retry()
     }
@@ -2619,6 +2796,12 @@ public final class CaptionPipeline {
     /// phone and there is room now (she freed some up in the Settings
     /// app), the download starts without anyone having to tap.
     public func appDidBecomeActive() async {
+        if waitingModelLacksRoom, isCoveringForCloud, coverReason == .waitingForWiFi {
+            if let megabytes = storageNeededMegabytes, storageShortfall(forDownloadOf: megabytes) != nil { return }
+            waitingModelLacksRoom = false
+            getWaitingModelReadyIfAllowed()
+            return
+        }
         guard let why = phase.failure?.engineUnavailability,
               why.kind == .notEnoughStorage,
               !phase.isTransitioning
@@ -2648,6 +2831,7 @@ public final class CaptionPipeline {
         let allowCellular = allowsCellularDownload
         let previous = lastNetwork
         lastNetwork = conditions
+        getWaitingModelReadyIfAllowed(on: conditions)
         guard networkRetryTask == nil, !systemInterrupted, let kind = phase.failure?.engineUnavailability?.kind else { return }
         let returned: Bool
         switch kind {

@@ -79,6 +79,45 @@ struct PhasePresentationTests {
         #expect(presentation.detail?.contains("MB") == false)
     }
 
+    @Test("waiting for Wi-Fi with the phone's built-in recognition on offer says a tap gives captions right now, and keeps the size")
+    func waitingForWiFiOffersBuiltIn() {
+        let phase = failure(EngineUnavailability(kind: .waitingForWiFi, detail: "", downloadMegabytes: 626))
+        let offered = PhasePresentation(phase: phase, engine: .whisperKit, interruptedBySystem: false, builtInOffered: true)
+        let plain = PhasePresentation(phase: phase, engine: .whisperKit, interruptedBySystem: false)
+        #expect(offered.title == plain.title)
+        #expect(offered.action == .confirmCellularDownload)
+        #expect(offered.detail?.contains("626\u{00A0}MB") == true)
+        #expect(offered.detail?.contains("לכתוביות כבר עכשיו") == true)
+        #expect(plain.detail?.contains("לכתוביות כבר עכשיו") == false)
+    }
+
+    @Test("captions from the built-in recognition while the model waits say so, not that the cloud is down")
+    func coveringForTheWaitingModel() {
+        func covering(gettingReady: Bool) -> PhasePresentation {
+            PhasePresentation(phase: .listening, engine: .appleSpeech, interruptedBySystem: false, coveringForCloud: true, coveredEngine: .whisperKit, coverReason: .waitingForWiFi, modelGettingReady: gettingReady)
+        }
+        let plain = PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: false)
+        let waiting = covering(gettingReady: false)
+        let gettingReady = covering(gettingReady: true)
+        for status in [waiting, gettingReady] {
+            #expect(status.title == plain.title)
+            #expect(status.tint == .green && status.action == .pause)
+            #expect(status.detail?.contains("המובנה בטלפון") == true)
+            #expect(status.detail?.contains("בענן") == false)
+        }
+        #expect(waiting.detail?.contains("Wi\u{2011}Fi") == true)
+        #expect(gettingReady.detail?.contains("בהכנה") == true)
+    }
+
+    @Test("for a few seconds after the downloaded model takes over, the status line says it is ready")
+    func modelJustReady() {
+        let ready = PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: false, modelJustReady: true)
+        let plain = PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: false)
+        #expect(ready.title == plain.title && ready.action == .pause && ready.tint == .green)
+        #expect(ready.detail?.contains("המודל מוכן") == true)
+        #expect(plain.detail?.contains("המודל מוכן") == false)
+    }
+
     @Test("a full phone says how much room to free, and a tap opens the model choice")
     func notEnoughStorage() {
         let presentation = PhasePresentation(

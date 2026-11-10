@@ -528,7 +528,9 @@ Open a section for the details.
 - **Downloads that don't eat the data plan.** On cellular or in Low Data
   Mode a model waits for Wi-Fi, says how big it is, and starts by itself
   when Wi-Fi arrives. "Download now" asks first; a setting allows it
-  always.
+  always. Meanwhile, where Apple's recognizer works on the phone alone for
+  the spoken language, it can caption until the model is ready, which then
+  takes over by itself at a pause in the speech.
 - **Downloads that fit.** Free space is checked before a model download
   starts, with room left for the first load. A phone that's too full says
   how much to free (or to pick a smaller model), is never retried on a

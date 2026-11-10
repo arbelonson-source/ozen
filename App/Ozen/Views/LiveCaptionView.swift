@@ -50,6 +50,9 @@ struct LiveCaptionView: View {
     @State private var bigText = ""
     @State private var showingBigText = false
     @State private var confirmingCellularDownload = false
+    /// For a few seconds after the downloaded model took over from the
+    /// phone's built-in recognition.
+    @State private var showingModelReady = false
     /// A saved conversation opened from this screen, and the line to open
     /// it at.
     @State private var openedConversation: OpenedConversation?
@@ -133,8 +136,16 @@ struct LiveCaptionView: View {
                 && BackupModel.shouldOffer(after: .homeServerUnreachable, status: viewModel.backupModelStatus),
             spokenLanguage: viewModel.settings.spokenLanguage,
             network: viewModel.pipeline.observedNetwork,
-            soundsOnly: viewModel.isListeningForSoundsOnly
+            soundsOnly: viewModel.isListeningForSoundsOnly,
+            builtInOffered: builtInOffered,
+            modelGettingReady: viewModel.pipeline.waitingModelGettingReady,
+            modelJustReady: showingModelReady
         )
+    }
+
+    /// Apple's recognizer can caption while the model waits for Wi-Fi.
+    private var builtInOffered: Bool {
+        viewModel.builtInWhileWaitingOffer == .builtInOrCellularDownload
     }
 
     /// How far the bottom of the transcript, and the "jump to latest"
@@ -421,6 +432,9 @@ struct LiveCaptionView: View {
             announceStopOrReturn(phase)
             updateControlsVisibility()
         }
+        .modifier(ModelReadyNotice(handOvers: viewModel.pipeline.builtInHandOvers, showing: $showingModelReady) {
+            announceAlert(tr("המודל מוכן, הכתוביות ממשיכות איתו", "The model is ready, captions continue with it"))
+        })
         .onChange(of: isPinnedToBottom) { _, _ in
             updateControlsVisibility()
         }
@@ -583,11 +597,16 @@ struct LiveCaptionView: View {
                 .pageSized()
         }
         .confirmationDialog(
-            tr("להוריד את המודל בחבילת הגלישה?", "Download the model over cellular data?"),
+            cellularDownloadTitle,
             isPresented: $confirmingCellularDownload,
             titleVisibility: .visible
         ) {
-            Button(tr("להוריד עכשיו", "Download now")) {
+            if builtInOffered {
+                Button(tr("כתוביות עכשיו, בזיהוי הדיבור המובנה בטלפון", "Captions now, with the phone’s built-in recognition")) {
+                    Task { await viewModel.captionWithBuiltInWhileWaiting() }
+                }
+            }
+            Button(cellularDownloadButton) {
                 Task { await viewModel.approveCellularDownload() }
             }
             Button(tr("לחכות ל־Wi-Fi", "Wait for Wi‑Fi"), role: .cancel) {}
@@ -1673,7 +1692,23 @@ struct LiveCaptionView: View {
     private var cellularDownloadMessage: String {
         let megabytes = viewModel.phase.failure?.engineUnavailability?.downloadMegabytes ?? 0
         let size = megabytes > 0 ? "\(megabytes)\u{00A0}MB" : tr("כמה מאות MB", "A few hundred MB")
-        return tr("גודל המודל הוא בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi ההורדה תתחיל מעצמה.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", args: ["\(size)"])
+        let cost = tr("גודל המודל הוא בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi ההורדה תתחיל מעצמה.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", args: ["\(size)"])
+        guard builtInOffered else { return cost }
+        return cost + "\n\n" + tr("עד אז, זיהוי הדיבור המובנה בטלפון יכול לכתוב כתוביות. בדרך כלל הוא פחות מדויק, והכול נשאר בטלפון. כשהמודל יסיים לרדת, הכתוביות יעברו אליו מעצמן.", "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.")
+    }
+
+    /// With Apple's recognizer on offer the question is no longer only
+    /// about cellular data.
+    private var cellularDownloadTitle: String {
+        builtInOffered
+            ? tr("ממתינים ל־Wi‑Fi כדי להוריד את מודל הדיבור", "Waiting for Wi‑Fi to download the language model")
+            : tr("להוריד את המודל בחבילת הגלישה?", "Download the model over cellular data?")
+    }
+
+    private var cellularDownloadButton: String {
+        builtInOffered
+            ? tr("להוריד עכשיו בחבילת הגלישה", "Download now over cellular data")
+            : tr("להוריד עכשיו", "Download now")
     }
 
     private func perform(_ action: PhasePresentation.Action) {
@@ -1720,6 +1755,29 @@ private struct ClosesSettings: ViewModifier {
 private struct OpenedConversation: Identifiable {
     let id: UUID
     var lineID: UUID? = nil
+}
+
+/// The model that was downloading took over from the phone's built-in
+/// recognition: the screen reader says so, as it says captions are back,
+/// and the status line says it for a few seconds. Its own modifier, like
+/// `OnReflow`, so the long chain still type-checks in time.
+private struct ModelReadyNotice: ViewModifier {
+    let handOvers: Int
+    @Binding var showing: Bool
+    let announce: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: handOvers) { _, _ in
+                announce()
+                showing = true
+            }
+            .task(id: showing) {
+                guard showing else { return }
+                try? await Task.sleep(for: .seconds(8))
+                if !Task.isCancelled { showing = false }
+            }
+    }
 }
 
 /// Its own modifier so the caption screen's long chain stays within what

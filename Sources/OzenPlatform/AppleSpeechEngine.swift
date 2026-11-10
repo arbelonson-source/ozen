@@ -106,6 +106,20 @@ public final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
         }
     }
 
+    /// Whether this recognizer can caption `languageCode` on this phone
+    /// with nothing sent to Apple's servers, and its permission isn't
+    /// refused: what `BuiltInWhileWaiting` needs before offering it.
+    public static func worksOnDevice(languageCode: String) -> Bool {
+        switch SFSpeechRecognizer.authorizationStatus() {
+        case .denied, .restricted:
+            return false
+        default:
+            break
+        }
+        let locale = Locale(identifier: localeIdentifier(for: languageCode))
+        return SFSpeechRecognizer(locale: locale)?.supportsOnDeviceRecognition == true
+    }
+
     static func localeIdentifier(for languageCode: String) -> String {
         guard !languageCode.contains("-"), let language = UILanguage.match(languageTag: languageCode) else { return languageCode }
         return language.speechVoiceCode

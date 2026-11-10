@@ -83,7 +83,12 @@ phone is not on Wi-Fi, the button says "Waiting for Wi‑Fi to download the
 language model" (mamtinim le-Wi-Fi kdei lehorid et model ha-dibur). The
 download then starts by itself when Wi-Fi comes back. You can also tap the
 button, and Ozen asks whether to download over mobile data now or to wait
-for Wi-Fi.
+for Wi-Fi. Where the phone's built-in recognition works on the phone alone
+for the language you speak, the same question also offers "Captions now,
+with the phone's built-in recognition" (kituviyot achshav, be-zihui ha-dibur
+ha-muvne ba-telefon). Captions then start right away, usually less accurate,
+with nothing sent off the phone, and they switch to the model by themselves
+once it has downloaded over Wi-Fi. Your choice of model stays as it was.
 
 ### The microphone
 
