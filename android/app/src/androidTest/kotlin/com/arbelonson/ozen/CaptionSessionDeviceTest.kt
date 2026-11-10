@@ -423,7 +423,7 @@ class CaptionSessionDeviceTest {
         ScreenReader.announce = { _, text -> announced += text }
         val session = withContext(Dispatchers.Main) {
             CaptionState.clear()
-            CaptionSession(context, SettingsHolder(SettingsStore(File(work, "settings.json"))), HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))
+            CaptionSession(context, SettingsHolder(SettingsStore(File(work, "settings.json"))), HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = File(work, "no-model"), historyFolder = File(work, "history"), awaySoundStore = AwaySoundInMemory())
         }
         try {
             val heardAt = System.currentTimeMillis() / 1_000.0 - 60
@@ -685,6 +685,51 @@ class CaptionSessionDeviceTest {
             assertTrue(clips.clips().isEmpty())
         } finally {
             withContext(Dispatchers.Main) { session.close() }
+        }
+    }
+
+    private class AwaySoundInMemory : AwaySoundStore {
+        override var record: String? = null
+    }
+
+    // A sound heard while away was kept only in memory: when Android ended
+    // the app meanwhile, coming back withdrew its notification and showed
+    // nothing in its place (#323).
+    @Test
+    fun aSoundHeardWhileAwayIsStillShownWhenTheAppWasEndedMeanwhile(): Unit = runBlocking {
+        val work = File(context.cacheDir, "missed-sound-kept-test").apply { deleteRecursively(); mkdirs() }
+        val kept = AwaySoundInMemory()
+        val languageBefore = Localization.language
+        Localization.language = UILanguage.English
+        fun session() = CaptionSession(context, SettingsHolder(SettingsStore(File(work, "settings.json"))), HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = File(work, "no-model"), historyFolder = File(work, "history"), awaySoundStore = kept)
+        val open = mutableListOf<CaptionSession>()
+        try {
+            val heardAt = System.currentTimeMillis() / 1_000.0 - 60
+            val smoke = SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = heardAt)
+            withContext(Dispatchers.Main) {
+                CaptionState.clear()
+                val ended = session().also(open::add)
+                ended.screenStarted()
+                ended.screenStopped()
+                checkNotNull(ended.pipeline.onSoundAlert).invoke(smoke)
+                ended.close()
+                open.remove(ended)
+                CaptionState.clear()
+            }
+            assertNotNull(kept.record)
+
+            withContext(Dispatchers.Main) { session().also(open::add).screenStarted() }
+            val missed = CaptionState.screen.value.missedSound
+            assertEquals(smoke.id, missed?.alert?.id)
+            assertEquals(clockTime(heardAt), missed?.at)
+            assertNull("kept for yet another return", kept.record)
+        } finally {
+            Localization.language = languageBefore
+            withContext(Dispatchers.Main) {
+                open.forEach { it.close() }
+                CaptionState.clear()
+            }
+            work.deleteRecursively()
         }
     }
 
