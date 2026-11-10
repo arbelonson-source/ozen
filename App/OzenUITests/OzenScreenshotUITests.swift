@@ -718,6 +718,11 @@ final class OzenScreenshotUITests: XCTestCase {
             XCTAssertTrue(next.waitForExistence(timeout: 10), "onboarding: no Next button on page \(index + 1)")
             if name == "page7-name" {
                 answerPermissionQuestions(app, next: next)
+                // The page scrolls to each answer as it arrives: at this
+                // size both used to land below the screen's edge.
+                let answer = app.descendants(matching: .any)["onboardingNotificationsAnswered"]
+                Thread.sleep(forTimeInterval: 0.5)
+                XCTAssertTrue(app.windows.firstMatch.frame.contains(answer.frame), "onboarding: the notification answer is off screen at this text size (\(answer.frame))")
                 capture(app, name: "onboarding-accessibility-text-page6-microphone-answered")
             }
             next.tap()
