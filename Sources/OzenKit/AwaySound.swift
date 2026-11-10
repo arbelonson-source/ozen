@@ -50,4 +50,13 @@ public struct AwaySound: Sendable, Equatable {
     public mutating func close() {
         shown = nil
     }
+
+    public var waitingRecord: String? {
+        waiting.map(AwaySoundRecord.encode)
+    }
+
+    public mutating func restore(_ record: String?, now: TimeInterval) {
+        guard waiting == nil, let heard = AwaySoundRecord.decode(record, now: now) else { return }
+        waiting = heard
+    }
 }

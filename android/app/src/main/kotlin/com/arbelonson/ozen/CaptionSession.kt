@@ -18,6 +18,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.content.pm.PackageInfoCompat
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioCapturing
+import com.arbelonson.ozen.core.AwaySoundRecord
 import com.arbelonson.ozen.core.CaptionAnnouncer
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionPipeline
@@ -125,6 +126,7 @@ class CaptionSession(
     problemAudioFolder: File = File(context.filesDir, PROBLEM_AUDIO_FOLDER),
     listeningRecords: ListeningRecordStore = PreferencesListeningStore(context),
     private val soundsOnlyChoice: SoundsOnlyStore = PreferencesSoundsOnlyStore(context),
+    private val awaySoundStore: AwaySoundStore = PreferencesAwaySoundStore(context),
 ) : DiagnosticsSource, SpeakerBook, PhoneBackup {
     private val scope = MainScope()
     private val lightScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -358,6 +360,7 @@ class CaptionSession(
             notifier.withdrawAwayAlerts()
             heardWhileAway?.let { missed ->
                 heardWhileAway = null
+                awaySoundStore.record = null
                 if (pipeline.currentBannerSoundAlert?.id != missed.id) showMissedSound(missed)
             }
             stopAnnouncer.comingBack(pipeline.phase)?.let { announceStopOrReturn(it, pipeline.phase) }
@@ -1408,7 +1411,7 @@ class CaptionSession(
      * banner time is over by then, so without this someone who unlocked the
      * phone to see what buzzed found nothing at all.
      */
-    private var heardWhileAway: SoundAlert? = null
+    private var heardWhileAway: SoundAlert? = AwaySoundRecord.decode(awaySoundStore.record, System.currentTimeMillis() / 1_000.0)
 
     /** Shown and read out once, with the clock time it was heard, and never buzzed or flashed: it isn't new. */
     private fun showMissedSound(alert: SoundAlert) {
@@ -1420,7 +1423,10 @@ class CaptionSession(
     fun dismissMissedSound() = CaptionState.missedSound(null)
 
     private fun soundHeard(alert: SoundAlert) {
-        if (!appIsActive) heardWhileAway = heardWhileAway?.takeIf { it.event.importance > alert.event.importance } ?: alert
+        if (!appIsActive) {
+            heardWhileAway = heardWhileAway?.takeIf { it.event.importance > alert.event.importance } ?: alert
+            awaySoundStore.record = heardWhileAway?.let(AwaySoundRecord::encode)
+        }
         CaptionState.soundHeard(pipeline.currentBannerSoundAlert, alert)
         if (appIsActive) {
             buzz(AlertVibration.pattern(alert.event.importance), alert.event.importance)

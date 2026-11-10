@@ -61,4 +61,66 @@ struct AwaySoundTests {
         away.close()
         #expect(away.shown == nil)
     }
+
+    @Test("a sound kept while away survives the app being ended: restored, it shows on return with its time")
+    func survivesRestart() throws {
+        var away = AwaySound()
+        let smoke = try alert("smoke_detector")
+        away.heard(smoke, at: 1_000, appIsActive: false)
+        let record = try #require(away.waitingRecord)
+
+        var restarted = AwaySound()
+        restarted.restore(record, now: 1_000 + 3_600)
+        restarted.screenReturned { _ in false }
+        let shown = try #require(restarted.shown)
+        #expect(shown.alert.event == smoke.event)
+        #expect(shown.alert.id == smoke.id)
+        #expect(shown.at == 1_000)
+    }
+
+    @Test("nothing is kept once the sound was shown on return")
+    func clearedOnReturn() throws {
+        var away = AwaySound()
+        away.heard(try alert("door_bell"), at: 1_000, appIsActive: false)
+        away.screenReturned { _ in false }
+        #expect(away.waitingRecord == nil)
+    }
+
+    @Test("a record too old to name its time plainly, from the future, of an unknown sound or garbled is dropped")
+    func badRecordsDropped() throws {
+        var away = AwaySound()
+        away.heard(try alert("door_bell"), at: 1_000, appIsActive: false)
+        let record = try #require(away.waitingRecord)
+        let id = UUID().uuidString
+        for (text, now) in [
+            (record, 1_000 + AwaySoundRecord.keptSeconds + 1),
+            (record, 1_000 - 301),
+            ("v1\tno_such_sound\t1000.0\t\(id)", 1_000),
+            ("v2\tdoor_bell\t1000.0\t\(id)", 1_000),
+            ("v1\tdoor_bell\tnot a time\t\(id)", 1_000),
+            ("garbage", 1_000),
+        ] as [(String, TimeInterval)] {
+            var restarted = AwaySound()
+            restarted.restore(text, now: now)
+            restarted.screenReturned { _ in false }
+            #expect(restarted.shown == nil, "\(text) at \(now)")
+        }
+        var fresh = AwaySound()
+        fresh.restore(record, now: 1_000 + AwaySoundRecord.keptSeconds)
+        fresh.screenReturned { _ in false }
+        #expect(fresh.shown != nil, "twelve hours exactly is still kept")
+    }
+
+    @Test("a sound heard after the restart isn't replaced by the one kept from before")
+    func newerSoundStays() throws {
+        var before = AwaySound()
+        before.heard(try alert("smoke_detector"), at: 1_000, appIsActive: false)
+        let record = try #require(before.waitingRecord)
+        var restarted = AwaySound()
+        let doorbell = try alert("door_bell")
+        restarted.heard(doorbell, at: 2_000, appIsActive: false)
+        restarted.restore(record, now: 2_000)
+        restarted.screenReturned { _ in false }
+        #expect(restarted.shown?.alert.id == doorbell.id)
+    }
 }
