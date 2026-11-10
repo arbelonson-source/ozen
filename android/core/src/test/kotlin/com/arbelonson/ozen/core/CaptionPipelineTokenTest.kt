@@ -123,6 +123,18 @@ class CaptionPipelineTokenTest {
     }
 
     @Test
+    fun `lines seeded for screenshots take a hand fix as heard ones do, and only those lines`() = runTest {
+        val (pipeline, _, _) = makePipeline()
+        val id = UUID.randomUUID()
+        val line = TranscriptSegment(id = id, text = "I spoke with Shera yesterday", isCommitted = true, speakerClusterID = 0, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+        pipeline.seedLinesForScreenshots(listOf(line))
+        assertEquals(1, pipeline.committedLineCount)
+        assertEquals("I spoke with Shira yesterday", pipeline.correctWord(id, WordFix("Shera", "Shira")))
+        assertEquals("I spoke with Shira yesterday", pipeline.segments.single().text)
+        assertNull(pipeline.correctWord(UUID.randomUUID(), WordFix("Shira", "Shera")))
+    }
+
+    @Test
     fun `a second hand correction on a line keeps the first one working when the engine rewrites the line`() = runTest {
         val engine = FakeEngine()
         val (pipeline, _, _) = makePipeline(engines = mapOf(whisper to engine), now = { 1_001.0 })

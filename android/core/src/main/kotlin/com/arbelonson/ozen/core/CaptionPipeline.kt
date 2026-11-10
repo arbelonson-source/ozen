@@ -2261,6 +2261,18 @@ class CaptionPipeline(
     }
 
     /**
+     * Lines put in place as if they had been heard, as the iPhone's
+     * `seedForScreenshots` does, for the screen tour and the caption
+     * screen's device tests: a line only drawn on the screen can't take a
+     * fix the way a heard one does. Nothing else is told, so whatever the
+     * caller already shows stays.
+     */
+    fun seedLinesForScreenshots(lines: List<TranscriptSegment>) {
+        segments = lines
+        committedLineCount = lines.count { it.isCommitted }
+    }
+
+    /**
      * Fixes one word of a finished line by hand. The line is read as it is
      * now, the fix is kept for it when the engine rewrites the line later,
      * and the keyword highlight follows the new text. Null when the line is
