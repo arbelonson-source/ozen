@@ -875,7 +875,7 @@ private fun CaptionScreen(
     onStar: (UUID) -> Unit,
     onOpen: (conversation: UUID, line: UUID) -> Unit,
     onFixWord: (UUID, String, String, Boolean) -> Unit,
-    onNameSpeaker: (line: UUID, name: String) -> Unit,
+    onNameSpeaker: (line: UUID, name: String) -> Boolean,
     savedSpeakerNames: () -> List<String>,
     onAskToRepeat: (() -> Unit)?,
     onSay: () -> Unit,
@@ -979,7 +979,7 @@ private fun CaptionScreen(
             namingText,
             hasVoice = namingHasVoice,
             savedNames = remember(id) { savedSpeakerNames() },
-            onSave = { onNameSpeaker(id, it); naming = null },
+            onSave = { name -> onNameSpeaker(id, name).also { saved -> if (saved) naming = null } },
             onDismiss = { naming = null },
         )
     }

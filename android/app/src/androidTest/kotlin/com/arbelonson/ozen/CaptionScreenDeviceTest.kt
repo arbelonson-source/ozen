@@ -2544,7 +2544,10 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Save").assertIsNotEnabled()
             compose.onNode(hasSetTextAction()).performTextInput("Dana")
             compose.onNodeWithText("Save").assertIsEnabled()
-            compose.onNodeWithText("Yossi").performClick()
+            compose.onNode(hasText("Yossi") and hasClickAction() and !hasSetTextAction()).performClick()
+            compose.onNode(hasSetTextAction()).assert(hasText("Yossi"))
+            compose.onNodeWithText("Name the speaker").assertExists()
+            compose.onNodeWithText("Cancel").performClick()
             compose.waitUntil(5_000) { compose.onAllNodesWithText("Name the speaker").fetchSemanticsNodes().isEmpty() }
 
             val action = lineText("Hello there").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == who }
@@ -2553,6 +2556,31 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Saved speakers").assertDoesNotExist()
             compose.onNode(hasSetTextAction()).performTextInput("Dana")
             compose.onNodeWithText("Save").assertIsNotEnabled()
+            compose.onNodeWithText("Cancel").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Name the speaker").fetchSemanticsNodes().isEmpty() }
+        } finally {
+            app.settings.change { it.speakerProfiles = before }
+        }
+    }
+
+    @Test
+    fun namingALineTooOldForThePhoneToStillHaveItsVoiceKeepsTheSheetOpenAndSaysSo() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.speakerProfiles
+        val forgotten = TranscriptSegment(id = UUID.randomUUID(), text = "Good afternoon", isCommitted = true, speakerClusterID = 9_999, startTimestamp = 0.0, lastUpdateTimestamp = 0.0)
+        try {
+            compose.runOnUiThread {
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(forgotten), speakerName = { "Speaker 1" })
+            }
+            lineText("Good afternoon").performTouchInput { longClick() }
+            compose.onNodeWithText("Who is speaking?").performClick()
+            compose.onNode(hasSetTextAction()).performTextInput("Rivka")
+            compose.onNodeWithText("Save").performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText("Name the speaker").assertExists()
+            compose.onNodeWithText("This line is too old to recognize the voice from. Press and hold a newer line by the same person.").assertExists()
+            compose.onNodeWithText("From now on, everything this voice says will show with this name.").assertDoesNotExist()
+            assertEquals(before, app.settings.current.value.speakerProfiles)
             compose.onNodeWithText("Cancel").performClick()
             compose.waitUntil(5_000) { compose.onAllNodesWithText("Name the speaker").fetchSemanticsNodes().isEmpty() }
         } finally {
