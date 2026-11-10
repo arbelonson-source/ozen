@@ -55,4 +55,22 @@ public enum ModelDownloadGate {
     public static func canRetryDownload(on network: NetworkConditions, allowCellular: Bool) -> Bool {
         decide(network: network, allowCellular: allowCellular) == .proceed
     }
+
+    /// Whether picking a model that isn't on the phone starts its download
+    /// at once: on the phone's own engine, with captions stopped or paused
+    /// (running captions switch over and download it themselves), with room
+    /// for it and a connection this allows. As on Android: on the iPhone the
+    /// pick only took effect when captions next started, maybe away from
+    /// Wi-Fi, while the row said "Downloads when selected".
+    public static func startsOnPick(
+        onPhoneEngine: Bool,
+        captionsRunning: Bool,
+        installed: Bool,
+        shortfallMegabytes: Int?,
+        network: NetworkConditions?,
+        allowCellular: Bool
+    ) -> Bool {
+        onPhoneEngine && !captionsRunning && !installed && shortfallMegabytes == nil
+            && decide(network: network, allowCellular: allowCellular) == .proceed
+    }
 }

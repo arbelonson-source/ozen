@@ -1098,7 +1098,8 @@
   "Turn the volume up": "ድምጹን ይጨምሩ",
   "Press and hold a word to delete it.": "ቃልን ተጭነው በመያዝ መሰረዝ ይችላሉ።",
   "Tap a phrase to move it or delete it.": "ሐረግን በመንካት ማንቀሳቀስ ወይም መሰረዝ ይችላሉ።",
-  "Move or delete": "ማንቀሳቀስ ወይም መሰረዝ"
+  "Move or delete": "ማንቀሳቀስ ወይም መሰረዝ",
+  "Selected · downloads when captions start": "ተመርጧል · ካፕሽኑ ሲጀምር ያወርዳል"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2199,7 +2200,8 @@
   "Turn the volume up": "رفع الصوت",
   "Press and hold a word to delete it.": "اضغطوا مطوّلًا على كلمة لحذفها.",
   "Tap a phrase to move it or delete it.": "المسوا عبارة لنقلها أو حذفها.",
-  "Move or delete": "نقل أو حذف"
+  "Move or delete": "نقل أو حذف",
+  "Selected · downloads when captions start": "تم اختياره · يُنزَّل عند بدء الترجمة النصية"
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3300,7 +3302,8 @@
   "Turn the volume up": "调高音量",
   "Press and hold a word to delete it.": "长按一个词即可删除它。",
   "Tap a phrase to move it or delete it.": "点按一条常用语即可移动或删除它。",
-  "Move or delete": "移动或删除"
+  "Move or delete": "移动或删除",
+  "Selected · downloads when captions start": "已选中 · 字幕开始时下载"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4401,7 +4404,8 @@
   "Turn the volume up": "Monter le volume",
   "Press and hold a word to delete it.": "Appuyez longuement sur un mot pour le supprimer.",
   "Tap a phrase to move it or delete it.": "Touchez une phrase pour la déplacer ou la supprimer.",
-  "Move or delete": "Déplacer ou supprimer"
+  "Move or delete": "Déplacer ou supprimer",
+  "Selected · downloads when captions start": "Sélectionné · se télécharge quand les sous-titres démarrent"
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5502,7 +5506,8 @@
   "Turn the volume up": "Lauter stellen",
   "Press and hold a word to delete it.": "Halten Sie ein Wort gedrückt, um es zu löschen.",
   "Tap a phrase to move it or delete it.": "Tippen Sie auf einen Satz, um ihn zu verschieben oder zu löschen.",
-  "Move or delete": "Verschieben oder löschen"
+  "Move or delete": "Verschieben oder löschen",
+  "Selected · downloads when captions start": "Ausgewählt · wird heruntergeladen, wenn die Untertitel starten"
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6603,7 +6608,8 @@
   "Turn the volume up": "आवाज़ बढ़ाएं",
   "Press and hold a word to delete it.": "किसी शब्द को दबाकर रखने से उसे मिटाया जा सकता है।",
   "Tap a phrase to move it or delete it.": "किसी वाक्य को छूकर उसे ऊपर-नीचे किया या मिटाया जा सकता है।",
-  "Move or delete": "ऊपर-नीचे करें या मिटाएं"
+  "Move or delete": "ऊपर-नीचे करें या मिटाएं",
+  "Selected · downloads when captions start": "चुना गया · कैप्शन शुरू होने पर डाउनलोड होगा"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7704,7 +7710,8 @@
   "Turn the volume up": "Aumentar o volume",
   "Press and hold a word to delete it.": "Mantenha uma palavra premida para a eliminar.",
   "Tap a phrase to move it or delete it.": "Toque numa frase para a mover ou eliminar.",
-  "Move or delete": "Mover ou eliminar"
+  "Move or delete": "Mover ou eliminar",
+  "Selected · downloads when captions start": "Selecionado · transfere quando as legendas começarem"
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8805,7 +8812,8 @@
   "Turn the volume up": "Сделать громче",
   "Press and hold a word to delete it.": "Нажмите и удерживайте слово, чтобы удалить его.",
   "Tap a phrase to move it or delete it.": "Нажмите на фразу, чтобы переместить или удалить её.",
-  "Move or delete": "Переместить или удалить"
+  "Move or delete": "Переместить или удалить",
+  "Selected · downloads when captions start": "Выбрано · загрузится, когда включатся субтитры"
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -9906,7 +9914,8 @@
   "Turn the volume up": "Subir el volumen",
   "Press and hold a word to delete it.": "Mantén pulsada una palabra para borrarla.",
   "Tap a phrase to move it or delete it.": "Toca una frase para moverla o borrarla.",
-  "Move or delete": "Mover o borrar"
+  "Move or delete": "Mover o borrar",
+  "Selected · downloads when captions start": "Seleccionado · se descarga al iniciar los subtítulos"
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11007,6 +11016,7 @@
   "Turn the volume up": "Зробити гучніше",
   "Press and hold a word to delete it.": "Натисніть і утримуйте слово, щоб видалити його.",
   "Tap a phrase to move it or delete it.": "Торкніться фрази, щоб перемістити або видалити її.",
-  "Move or delete": "Перемістити або видалити"
+  "Move or delete": "Перемістити або видалити",
+  "Selected · downloads when captions start": "Вибрано · завантажиться, коли ввімкнуться субтитри"
  }
 }
