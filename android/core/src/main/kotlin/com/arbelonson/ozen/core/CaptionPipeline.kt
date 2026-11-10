@@ -1915,6 +1915,9 @@ class CaptionPipeline(
         return clusterer.clusters.firstOrNull { it.id == clusterID }?.centroid
     }
 
+    /** Whether the phone still has the voice of [of]: one heard long ago has been let go, and naming it would do nothing. */
+    fun hasVoice(of: TranscriptSegment): Boolean = of.speakerClusterID?.let { clusterer.cluster(it) } != null
+
     fun displayName(forSegment: TranscriptSegment): String = clusterer.displayName(forSegment.speakerClusterID)
 
     /**

@@ -29,7 +29,7 @@ class NameSpeakerDialogDeviceTest {
         val saved = CopyOnWriteArrayList<String>()
         compose.runOnUiThread {
             compose.activity.setContent {
-                NameSpeakerDialog(shown = "Good evening", hasVoice = true, savedNames = listOf("Dana", "Shira"), onSave = { saved += it }, onDismiss = {})
+                NameSpeakerDialog(shown = "Good evening", hasVoice = true, savedNames = listOf("Dana", "Shira"), onSave = { saved += it; true }, onDismiss = {})
             }
         }
         chip("Shira").performClick()
