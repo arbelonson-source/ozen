@@ -1734,11 +1734,12 @@ private fun BellMark(fontSize: Double, colour: Color) {
  * failed again. The iPhone's way to free space is left out of the words.
  */
 /**
- * Where a problem marked from a caption line went, and how it reaches
- * whoever helps her: a kept sound is sent from its own row in Diagnostics.
+ * Where a problem marked from a caption line or from Diagnostics went, and
+ * how it reaches whoever helps her: a kept sound is sent from its own row
+ * in Diagnostics.
  */
 @Composable
-private fun ProblemMarkedDialog(keptSound: Boolean, keptCaptions: Boolean, onDismiss: () -> Unit) {
+internal fun ProblemMarkedDialog(keptSound: Boolean, keptCaptions: Boolean, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("הבעיה סומנה", "Problem marked")) },

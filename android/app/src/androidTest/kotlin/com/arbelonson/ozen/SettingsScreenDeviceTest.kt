@@ -1592,6 +1592,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Delete the caption lines kept here").assertDoesNotExist()
         val marked = clock()
         compose.onNodeWithText("Mark a problem now").performScrollTo().performClick()
+        compose.onNode(hasText("OK") and hasAnyAncestor(isDialog())).performClick()
         assertTrue(since(marked).any { it.startsWith("PROBLEM MARKED: engine ") })
         val problem = compose.runOnUiThread { app.captions.diagnostics().journal.last { it.contains(" PROBLEM MARKED: engine ") } }
         val problemAt = compose.onAllNodes(hasText(problem) and journal).fetchSemanticsNodes().minOf { it.positionInRoot.y }
