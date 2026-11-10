@@ -2392,10 +2392,11 @@ public final class LiveCaptionViewModel {
         // second tap took it off.
         historyWriter.waitUntilIdle()
         let saved = historyStore.load(id: sessionID)?.segments.first { $0.id == segmentID }?.isStarred
-        guard let saved, saved != starredSegmentIDs.contains(segmentID) else { return true }
-        // The save failed: the line goes back to the star History shows,
-        // and is saved that way, so neither the save left waiting nor a
-        // second tap brings back a star the person was told didn't change.
+        if saved == starredSegmentIDs.contains(segmentID) { return true }
+        // The save failed (or the file can't be read back to show it): the
+        // line goes back to the star History shows, and is saved that way,
+        // so neither the save left waiting nor a second tap brings back a
+        // star the person was told didn't change.
         toggleStar(segment)
         historyWriter.waitUntilIdle()
         return false
