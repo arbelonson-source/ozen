@@ -292,7 +292,7 @@ class PhasePresentationTest {
         val refused = covering(EngineUnavailability.Kind.HomeServerRejected)
         assertTrue(unreachable.detail?.contains("אין חיבור למחשב בבית") == true)
         assertTrue(refused.detail?.contains("קוד הצימוד") == true)
-        assertTrue(refused.action == Action.OpenEngineSettings && refused.tint == PhaseTint.Active)
+        assertTrue(refused.action == Action.Pause && refused.tint == PhaseTint.Active)
         assertTrue(refused.detail?.contains("ממי שהגדיר את הטלפון") == true)
         assertTrue(!refused.detailFitsInStatus && !unreachable.detailFitsInStatus)
     }
@@ -319,7 +319,7 @@ class PhasePresentationTest {
     }
 
     @Test
-    fun `covering for the cloud sends the family to Settings when only they can fix it, and offers nothing to fix for no internet`() {
+    fun `covering for the cloud names what only the family can fix, and the button still pauses as on the iPhone`() {
         fun covering(reason: EngineUnavailability.Kind) = present(
             PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
             coveringForCloud = true, coveredEngine = TranscriptionEngineKind.Cloud, coverReason = reason,
@@ -328,9 +328,9 @@ class PhasePresentationTest {
         val noCredit = covering(EngineUnavailability.Kind.CloudOutOfCredit)
         val offline = covering(EngineUnavailability.Kind.NoInternet)
         assertTrue(noKey.detail?.contains("OpenRouter") == false && noKey.detail?.contains("ממי שהגדיר את הטלפון") == true)
-        assertTrue(noKey.action == Action.OpenEngineSettings && noKey.tint == PhaseTint.Active)
+        assertTrue(noKey.action == Action.Pause && noKey.tint == PhaseTint.Active)
         assertTrue(noCredit.detail?.contains("הקרדיט") == true)
-        assertTrue(noCredit.action == Action.OpenEngineSettings && noCredit.tint == PhaseTint.Active)
+        assertTrue(noCredit.action == Action.Pause && noCredit.tint == PhaseTint.Active)
         assertEquals(Action.Pause, offline.action)
         assertTrue(offline.detail?.contains("בענן") == true)
     }
@@ -502,7 +502,7 @@ class PhasePresentationTest {
             coverReason = EngineUnavailability.Kind.CloudLanguageNotCovered,
         )
         assertEquals("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", covering.detail)
-        assertEquals(Action.OpenEngineSettings, covering.action)
+        assertEquals(Action.Pause, covering.action)
         assertEquals(PhaseTint.Active, covering.tint)
     }
 
