@@ -1,14 +1,18 @@
 import SwiftUI
+import UIKit
+import AVFAudio
 import OzenKit
 
 struct SpeakerEnrollmentView: View {
     let viewModel: LiveCaptionViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     @State private var name = ""
     @State private var isRecording = false
     @State private var progress: Double = 0
     @State private var failed = false
+    @State private var noMicrophone = false
     @State private var recording: Task<Void, Never>?
 
     private let targetSeconds = 30.0
@@ -71,9 +75,27 @@ struct SpeakerEnrollmentView: View {
                 Text(tr("לא הצלחנו להפיק טביעת קול. ודאו שהמיקרופון הנכון נבחר ושהאדם מדבר לאורך כל ההקלטה.", "A voiceprint couldn’t be made. Make sure the right microphone is selected and the person speaks throughout the recording."))
             }
         }
+        .alert(tr("אין גישה למיקרופון", "No microphone access"), isPresented: $noMicrophone) {
+            Button(tr("פתיחת הגדרות הטלפון", "Open the phone’s settings")) {
+                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+            }
+            Button(tr("ביטול", "Cancel"), role: .cancel) {}
+        } message: {
+            Text(tr("כדי להקליט קול צריך גישה למיקרופון. אפשר לאשר אותה בהגדרות הטלפון.", "Recording a voice needs microphone access. You can allow it in the phone’s Settings."))
+        }
     }
 
     private func record() {
+        Task {
+            if await AVAudioApplication.requestRecordPermission() {
+                startRecording()
+            } else {
+                noMicrophone = true
+            }
+        }
+    }
+
+    private func startRecording() {
         isRecording = true
         progress = 0
         let speaker = name.trimmingCharacters(in: .whitespaces)
