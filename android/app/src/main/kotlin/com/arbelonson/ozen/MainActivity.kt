@@ -214,6 +214,9 @@ class MainActivity : ComponentActivity() {
     private val showingSettings = mutableStateOf(false)
     private val settingsAtBackup = mutableStateOf(false)
     private val confirmingCellular = mutableStateOf(false)
+    // Counts the tile's and the shortcut's start requests, so the screens
+    // held inside the composition close too and the captions are in front.
+    private val captionsAsked = mutableIntStateOf(0)
     // Every answer counts, even a second "no" after the first: the walkthrough
     // then looks again at whether the system would still ask.
     internal val microphoneAnswer = mutableStateOf<Boolean?>(null, neverEqualPolicy())
@@ -254,7 +257,7 @@ class MainActivity : ComponentActivity() {
         StartCaptionsRequest.applyAppLanguage(app.settings)
         StartCaptionsRequest.publishShortcut(this)
         enableEdgeToEdge()
-        setContent { OzenApp(app, showingSettings, settingsAtBackup, confirmingCellular, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onSoundsOnly = ::startSoundsOnly, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
+        setContent { OzenApp(app, showingSettings, settingsAtBackup, confirmingCellular, captionsAsked, onboarding(), onStatusTap = ::statusTapped, onLaunch = ::startListening, onSoundsOnly = ::startSoundsOnly, onAppLanguage = ::chooseAppLanguage, onLightScreen = ::systemBarsFor) }
         // Once per link: a rebuilt screen (a turn, a new language, the app
         // back after Android ended it) and an opening from recent apps carry
         // the link the app was first opened with, and asking about it again
@@ -279,6 +282,9 @@ class MainActivity : ComponentActivity() {
         )
         if (!start) return
         app.captions.takeFirstAppearance()
+        showingSettings.value = false
+        settingsAtBackup.value = false
+        captionsAsked.intValue += 1
         startListening()
     }
 
@@ -454,6 +460,7 @@ private fun OzenApp(
     showingSettings: MutableState<Boolean>,
     settingsAtBackup: MutableState<Boolean>,
     confirmingCellular: MutableState<Boolean>,
+    captionsAsked: State<Int>,
     onboarding: OnboardingHooks,
     onStatusTap: () -> Unit,
     onLaunch: () -> Unit,
@@ -477,6 +484,14 @@ private fun OzenApp(
         if (answer.resultCode == Activity.RESULT_OK && consent != null) ListeningService.startPhoneSound(context, answer.resultCode, consent)
     }
     var namingAlert by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(captionsAsked.value) {
+        if (captionsAsked.value == 0) return@LaunchedEffect
+        showingHistory = false
+        reading = null
+        saying = false
+        choosingMicrophone = false
+        namingAlert = false
+    }
     val modelSwitch by app.captions.phoneModels.switching.collectAsStateWithLifecycle()
     var comebacks by remember { mutableIntStateOf(0) }
     LifecycleEventEffect(Lifecycle.Event.ON_START) { comebacks++ }
