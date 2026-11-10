@@ -84,30 +84,45 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           working-directory: android
-          script: classes=$(echo $SMOKE | tr -d ' '); echo "Device test classes $classes"; ./gradlew :app:connectedDebugAndroidTest -Pandroid.injected.build.abi=x86_64 "-Pandroid.testInstrumentationRunnerArguments.class=$classes"; status=$?; adb logcat -d > app/build/logcat.txt; exit $status
+          script: classes=$(echo $SMOKE | tr -d ' '); echo "Device test classes $classes"; ./gradlew -q :app:installDebug :app:installDebugAndroidTest -Pandroid.injected.build.abi=x86_64 && adb shell am instrument -w -r -e class "$classes" com.arbelonson.ozen.test/com.arbelonson.ozen.OzenTestRunner > app/build/instrument.txt; status=$?; adb logcat -d > app/build/logcat.txt; exit $status
       - name: Count the tests that ran
         if: always()
         working-directory: android
         run: |
           python3 - <<'EOF'
-          import glob, sys, xml.etree.ElementTree as ET
-          ran = failed = skipped = 0
-          for path in glob.glob("app/build/outputs/androidTest-results/connected/**/TEST-*.xml", recursive=True):
-              root = ET.parse(path).getroot()
-              for suite in [root] if root.tag == "testsuite" else root.iter("testsuite"):
-                  ran += int(suite.get("tests", 0))
-                  failed += int(suite.get("failures", 0)) + int(suite.get("errors", 0))
-                  skipped += int(suite.get("skipped", 0))
-          print(f"Device tests: {ran} ran, {failed} failed, {skipped} skipped")
-          if ran == 0:
+          import pathlib, re, sys
+          path = pathlib.Path("app/build/instrument.txt")
+          text = path.read_text(errors="replace") if path.exists() else ""
+          results, current = [], {}
+          for line in text.splitlines():
+              if line.startswith("INSTRUMENTATION_STATUS: class="):
+                  current["class"] = line.split("=", 1)[1]
+              elif line.startswith("INSTRUMENTATION_STATUS: test="):
+                  current["test"] = line.split("=", 1)[1]
+              elif line.startswith("INSTRUMENTATION_STATUS_CODE: "):
+                  code = int(line.split(": ", 1)[1])
+                  if code in (0, -1, -2, -3, -4):
+                      results.append((current.get("class", "?"), current.get("test", "?"), code))
+          failed = [r for r in results if r[1] and r[2] in (-1, -2)]
+          skipped = [r for r in results if r[2] in (-3, -4)]
+          print(f"Device tests: {len(results)} ran, {len(failed)} failed, {len(skipped)} skipped")
+          for cls, test, code in failed:
+              print(f"FAILED {cls}#{test}")
+          for cls, test, code in skipped:
+              print(f"skipped {cls}#{test}")
+          finished = re.search(r"^INSTRUMENTATION_CODE: -1", text, re.M) is not None
+          if not results:
               sys.exit("No device test ran: the class filter matched nothing or the run never started.")
+          if not finished or "INSTRUMENTATION_FAILED" in text:
+              sys.exit("The test run did not finish: the app or the runner crashed (see logcat).")
+          if failed:
+              sys.exit(f"{len(failed)} device test(s) failed.")
           EOF
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: failure()
         with:
           name: android-device-test-results
           path: |
-            android/app/build/outputs/androidTest-results/connected/
-            android/app/build/reports/androidTests/connected/
+            android/app/build/instrument.txt
             android/app/build/logcat.txt
           if-no-files-found: ignore
