@@ -1922,8 +1922,6 @@ public final class LiveCaptionViewModel {
     @discardableResult
     public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, text current: String, sessionID: UUID?) -> Bool {
         guard let fixed = WordFixes.normalized([fix]).first else { return false }
-        addVocabularyTerm(fixed.written)
-        if always { addWordFix(fixed) }
         let before = pipeline.segments.last { $0.id == lineID }?.text
         let live = pipeline.correctWord(inSegment: lineID, with: fixed)
         let text = live ?? WordFixes.apply([fixed], to: current)
@@ -1932,7 +1930,14 @@ public final class LiveCaptionViewModel {
             historyWriter.replaceTextNow(sessionID: sessionID, segmentID: lineID, text: text)
         }
         refreshSavingTrouble()
-        return (live.map { $0 != before } ?? false) || (sessionID != nil && text != current)
+        let changed = (live.map { $0 != before } ?? false) || (sessionID != nil && text != current)
+        // Kept only with the line it fixed, as on Android: the sheet now
+        // says the fix was not saved, and it must not be kept for next time.
+        if changed {
+            addVocabularyTerm(fixed.written)
+            if always { addWordFix(fixed) }
+        }
+        return changed
     }
 
     private func correctedLine(_ id: UUID, text: String) {
