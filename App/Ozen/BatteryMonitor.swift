@@ -96,33 +96,16 @@ struct BatteryBanner: View {
     }
 
     var body: some View {
-        Button(action: onDismiss) {
-            HStack(spacing: 12) {
-                Image(systemName: isCritical ? "battery.0percent" : "battery.25percent")
-                    .font(.system(size: 26, weight: .semibold))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(tr("הסוללה ב־%1%", "Battery at %1%", args: ["\(notice.warning.percent)"]))
-                        .font(.headline)
-                    Text(advice)
-                        .font(.subheadline)
-                        .opacity(BannerPalette.subtitleOpacity)
-                }
-                Spacer()
-                Image(systemName: "xmark")
-                    .font(.headline)
-                    .opacity(0.7)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity)
-            // White on the system orange is under 3:1: the deeper shade
-            // keeps the percentage readable at a glance.
-            .background((isCritical ? Color.red : Color.orange).deepShade.opacity(BannerPalette.fillAlpha), in: RoundedRectangle(cornerRadius: 16))
-            .foregroundStyle(.white)
-            .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Self.spoken(notice.warning))
-        .accessibilityHint(tr("הקישו לסגירה", "Tap to close"))
+        // White on the system orange is under 3:1: the deeper shade
+        // keeps the percentage readable at a glance.
+        WarningCard(
+            systemImage: isCritical ? "battery.0percent" : "battery.25percent",
+            title: tr("הסוללה ב־%1%", "Battery at %1%", args: ["\(notice.warning.percent)"]),
+            detail: advice,
+            tint: (isCritical ? Color.red : Color.orange).deepShade.opacity(BannerPalette.fillAlpha),
+            spoken: Self.spoken(notice.warning),
+            closeIdentifier: "batteryClose",
+            onClose: onDismiss
+        )
     }
 }

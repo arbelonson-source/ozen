@@ -36,6 +36,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
@@ -1569,6 +1570,8 @@ class CaptionScreenDeviceTest {
             compose.waitUntil(5_000) { banner() }
             compose.onNodeWithText("The phone is probably full. New conversations and settings won’t be saved until space frees up. Ask whoever helps you with the phone to free some (Settings → Storage).", substring = true).assertExists()
             compose.onNodeWithText(title, substring = true).performClick()
+            assertFalse("a tap on its words put it away", within(1_000) { !banner() })
+            compose.onNode(hasContentDescription("Close") and hasClickAction() and hasAnyAncestor(hasText(title, substring = true))).performClick()
             compose.waitUntil(5_000) { !banner() }
             save()
             assertFalse("back while saving still fails", within(1_500) { banner() })
@@ -2138,7 +2141,7 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
-    fun aLowBatteryShowsABannerThatSaysHowUrgentItIsAndGoesWithATap() {
+    fun aLowBatteryShowsABannerThatSaysHowUrgentItIsAndGoesWithItsCloseButton() {
         try {
             compose.runOnUiThread {
                 CaptionState.clear()
@@ -2147,6 +2150,9 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Battery at 19%").assertExists()
             compose.onNodeWithText("Consider plugging in a charger.").assertExists()
             compose.onNodeWithText("Battery at 19%").performClick()
+            compose.onNodeWithText("Battery at 19%").assertExists()
+            assertNotNull(CaptionState.screen.value.battery)
+            compose.onNode(hasContentDescription("Close") and hasClickAction() and hasAnyAncestor(hasText("Battery at 19%"))).performClick()
             compose.onNodeWithText("Battery at 19%").assertDoesNotExist()
             assertNull(CaptionState.screen.value.battery)
 
