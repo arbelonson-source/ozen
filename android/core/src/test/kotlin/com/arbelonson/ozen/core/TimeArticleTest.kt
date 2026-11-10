@@ -21,6 +21,15 @@ class TimeArticleTest {
     }
 
     @Test
+    fun `the phone's own digits count too, so a phone set to Arabic-Indic or Devanagari numbers still gets la 1_05`() {
+        assertEquals("hoy a la ١:٠٥", TimeArticle.agreeing("hoy a las ١:٠٥", "١:٠٥", UILanguage.Spanish))
+        assertEquals("hoje à १:०५", TimeArticle.agreeing("hoje às १:०५", "१:०५", UILanguage.Portuguese))
+        assertEquals("hoy a las ١٣:٠٥", TimeArticle.agreeing("hoy a las ١٣:٠٥", "١٣:٠٥", UILanguage.Spanish))
+        assertEquals(1, TimeArticle.hour("٠١:٠٥"))
+        assertEquals(null, TimeArticle.hour("p. m."))
+    }
+
+    @Test
     fun `other languages are left as they are`() {
         for (language in UILanguage.entries.filter { it != UILanguage.Spanish && it != UILanguage.Portuguese }) {
             assertEquals("las 1:05 às 1:05 das 1:05", TimeArticle.agreeing("las 1:05 às 1:05 das 1:05", "1:05", language), "$language")

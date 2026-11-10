@@ -15,7 +15,7 @@ public enum TimeArticle {
     }
 
     static func hour(of time: String) -> Int? {
-        let digits = time.drop { !($0.isASCII && $0.isNumber) }.prefix { $0.isASCII && $0.isNumber }
-        return Int(digits)
+        let digits = time.drop { $0.wholeNumberValue == nil }.prefix { $0.wholeNumberValue != nil }
+        return digits.isEmpty ? nil : digits.compactMap(\.wholeNumberValue).reduce(0) { $0 * 10 + $1 }
     }
 }

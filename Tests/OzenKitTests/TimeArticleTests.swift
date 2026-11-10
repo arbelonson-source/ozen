@@ -20,6 +20,15 @@ struct TimeArticleTests {
         #expect(TimeArticle.agreeing("hoje às 21:05", time: "21:05", in: .portuguese) == "hoje às 21:05")
     }
 
+    @Test("the phone's own digits count too: a phone set to Arabic-Indic or Devanagari numbers still gets la ١:٠٥")
+    func otherDigits() {
+        #expect(TimeArticle.agreeing("hoy a las ١:٠٥", time: "١:٠٥", in: .spanish) == "hoy a la ١:٠٥")
+        #expect(TimeArticle.agreeing("hoje às १:०५", time: "१:०५", in: .portuguese) == "hoje à १:०५")
+        #expect(TimeArticle.agreeing("hoy a las ١٣:٠٥", time: "١٣:٠٥", in: .spanish) == "hoy a las ١٣:٠٥")
+        #expect(TimeArticle.hour(of: "٠١:٠٥") == 1)
+        #expect(TimeArticle.hour(of: "p. m.") == nil)
+    }
+
     @Test("other languages are left as they are")
     func others() {
         for language in UILanguage.allCases where language != .spanish && language != .portuguese {

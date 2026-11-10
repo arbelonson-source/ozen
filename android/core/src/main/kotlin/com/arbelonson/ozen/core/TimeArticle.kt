@@ -13,5 +13,5 @@ object TimeArticle {
     }
 
     internal fun hour(time: String): Int? =
-        time.dropWhile { it !in '0'..'9' }.takeWhile { it in '0'..'9' }.toIntOrNull()
+        time.dropWhile { !it.isDigit() }.takeWhile { it.isDigit() }.toIntOrNull()
 }
