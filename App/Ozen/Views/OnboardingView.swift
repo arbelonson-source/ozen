@@ -577,7 +577,7 @@ private struct OnboardingPage<Content: View>: View {
     /// there, and the setup page's last line showed straight through
     /// them, so the dots get a solid strip of their own under the fade.
     private static var dotsClearance: CGFloat { 46 }
-    private static let pageEnd = "onboardingPageEnd"
+    private static var pageEnd: String { "onboardingPageEnd" }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var arrived = false
 
