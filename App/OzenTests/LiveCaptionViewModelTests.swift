@@ -888,8 +888,12 @@ struct LiveCaptionViewModelOnboardingTests {
         viewModel.completeOnboarding()
         #expect(viewModel.hasCompletedOnboarding)
         #expect(SettingsStore(fileURL: file).load().hasCompletedOnboarding)
+        #expect(!viewModel.onboardingShownAgain)
         viewModel.showOnboardingAgain()
         #expect(SettingsStore(fileURL: file).load().hasCompletedOnboarding == false)
+        #expect(viewModel.onboardingShownAgain)
+        viewModel.completeOnboarding()
+        #expect(!viewModel.onboardingShownAgain)
     }
 
     @Test("skipping the walkthrough checks the phone and settles on the model recommended for it")

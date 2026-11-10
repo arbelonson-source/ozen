@@ -3,6 +3,18 @@ import Testing
 
 @Suite("WhisperModelCatalog")
 struct WhisperModelCatalogTests {
+    @Test("the walkthrough keeps a model the person chose, unless it is trained for Hebrew alone and another language is spoken")
+    func walkthroughKeepsAChosenModel() {
+        let hebrewOnly = WhisperModelCatalog.recommendedVariant
+        #expect(WhisperModelCatalog.option(for: hebrewOnly)?.isHebrewOnly == true)
+        #expect(!WhisperModelCatalog.walkthroughReplaces("small", for: .hebrew, chosen: true))
+        #expect(!WhisperModelCatalog.walkthroughReplaces("small", for: .english, chosen: true))
+        #expect(!WhisperModelCatalog.walkthroughReplaces(hebrewOnly, for: .hebrew, chosen: true))
+        #expect(WhisperModelCatalog.walkthroughReplaces(hebrewOnly, for: .english, chosen: true))
+        #expect(WhisperModelCatalog.walkthroughReplaces("small", for: .hebrew, chosen: false))
+        #expect(WhisperModelCatalog.walkthroughReplaces("no-such-model", for: .hebrew, chosen: true))
+    }
+
     @Test("the default and recommended variants both exist in the catalog")
     func defaultsExist() {
         #expect(WhisperModelCatalog.option(for: WhisperModelCatalog.defaultVariant) != nil)
