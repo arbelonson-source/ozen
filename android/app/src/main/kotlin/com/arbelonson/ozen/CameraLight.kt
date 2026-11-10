@@ -6,6 +6,7 @@ import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.os.Handler
 import android.os.Looper
+import com.arbelonson.ozen.core.TorchOwnership
 import com.arbelonson.ozen.core.TorchRunner
 
 internal class CameraLight(private val context: Context) : TorchRunner.Torch {
@@ -21,9 +22,7 @@ internal class CameraLight(private val context: Context) : TorchRunner.Torch {
 private object PhoneTorch {
     @Volatile private var cameraId: String? = null
     @Volatile private var looked = false
-    @Volatile private var ozenOn = false
-    @Volatile private var ozenOwns = false
-    @Volatile private var personLit = false
+    private val ownership = TorchOwnership()
     private var callback: CameraManager.TorchCallback? = null
 
     fun camera(context: Context): String? {
@@ -46,25 +45,22 @@ private object PhoneTorch {
     }
 
     fun set(context: Context, on: Boolean): Boolean {
-        if (!on && !ozenOn) return true
-        if (on && personLit) return false
+        if (!on && !ownership.needsTurningOff()) return true
+        if (on && !ownership.mayTurnOn()) return false
         val id = camera(context) ?: return false
         val manager = context.getSystemService(CameraManager::class.java) ?: return false
-        return try {
+        val succeeded = try {
             manager.setTorchMode(id, on)
-            ozenOn = on
-            if (on) ozenOwns = true
             true
         } catch (_: CameraAccessException) {
-            ozenOn = false
             false
         } catch (_: IllegalArgumentException) {
-            ozenOn = false
             false
         } catch (_: SecurityException) {
-            ozenOn = false
             false
         }
+        ownership.switched(on, succeeded)
+        return succeeded
     }
 
     @Synchronized
@@ -73,22 +69,15 @@ private object PhoneTorch {
         callback?.let { manager.unregisterTorchCallback(it) }
         callback = null
         if (!on || camera(context) == null) return
+        ownership.watching()
         callback = object : CameraManager.TorchCallback() {
             override fun onTorchModeChanged(id: String, enabled: Boolean) {
-                if (id != cameraId) return
-                if (enabled) {
-                    personLit = !ozenOwns
-                } else {
-                    ozenOwns = false
-                    personLit = false
-                }
+                if (id == cameraId) ownership.changed(enabled)
             }
 
             override fun onTorchModeUnavailable(id: String) {
                 if (id != cameraId) return
-                ozenOn = false
-                ozenOwns = false
-                personLit = false
+                ownership.unavailable()
                 unavailable()
             }
         }.also { manager.registerTorchCallback(it, Handler(Looper.getMainLooper())) }

@@ -194,7 +194,11 @@ private fun LetAlarmsThroughDoNotDisturb() {
 @Composable
 private fun CameraLightRows(soundsOn: Boolean, on: Boolean, onChange: (Boolean) -> Unit, onTry: (refused: () -> Unit) -> Unit) {
     val context = LocalContext.current
-    val available = remember { CameraLight.isAvailable(context) }
+    var available by remember { mutableStateOf(CameraLight.isAvailable(context)) }
+    LifecycleResumeEffect(Unit) {
+        available = CameraLight.isAvailable(context)
+        onPauseOrDispose { }
+    }
     var inUse by remember { mutableStateOf(false) }
     SettingsGroup(dividerInset = 56.dp) {
         if (!available) {

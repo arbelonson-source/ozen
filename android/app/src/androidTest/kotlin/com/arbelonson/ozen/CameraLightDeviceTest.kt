@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.SoundAlertPreferences
@@ -19,6 +20,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.Collections
+import java.util.concurrent.atomic.AtomicBoolean
 
 @RunWith(AndroidJUnit4::class)
 class CameraLightDeviceTest {
@@ -85,6 +87,20 @@ class CameraLightDeviceTest {
         assertTrue(compose.onAllNodesWithText("Flash the camera light").fetchSemanticsNodes().isEmpty())
         assertTrue(compose.onAllNodesWithText("Try it").fetchSemanticsNodes().isEmpty())
         compose.onNodeWithText("one is enough", substring = true).performScrollTo()
+    }
+
+    @Test
+    fun aCameraLightThatCouldNotBeFoundIsLookedForAgainOnComingBack() {
+        val found = AtomicBoolean(false)
+        fakeLight(available = false)
+        CameraLight.isAvailable = { found.get() }
+        openSounds()
+        compose.onNodeWithText("This phone has no camera light").performScrollTo()
+        found.set(true)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Flash the camera light").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue(compose.onAllNodesWithText("This phone has no camera light").fetchSemanticsNodes().isEmpty())
     }
 
     @Test
