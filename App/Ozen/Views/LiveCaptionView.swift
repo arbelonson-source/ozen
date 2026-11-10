@@ -1679,16 +1679,27 @@ struct LiveCaptionView: View {
         return detail == nil ? state : state + Text(" · ").foregroundStyle(theme.pendingText) + dim
     }
 
-    /// From the larger text sizes up, or wherever the bar is narrower than
-    /// a wide iPhone in landscape, the status button takes a row of its
-    /// own above the others: between four glass buttons on a 402-point
-    /// iPhone it was left about 40 points, its icon alone. Measured on the
-    /// whole bar, which doesn't change with where the button goes.
-    private var statusOwnRow: Bool { dynamicTypeSize >= .xxLarge || barWidth < Self.statusInlineMinimumBarWidth }
+    /// Wherever the bar is narrower than a wide iPhone held sideways, the
+    /// status button takes a row of its own above the others: between four
+    /// glass buttons on a 402-point iPhone it was left about 40 points, its
+    /// icon alone. Measured on the whole bar, which doesn't change with
+    /// where the button goes.
+    ///
+    /// The larger text sizes need more room beside the others, but not a
+    /// row everywhere: held sideways, a second row took half the height of
+    /// the screen from the captions while the bar was wide enough for the
+    /// button's words beside the other four.
+    private var statusOwnRow: Bool {
+        barWidth < (dynamicTypeSize >= .xxLarge ? Self.statusInlineMinimumBarWidthLargeText : Self.statusInlineMinimumBarWidth)
+    }
 
     /// Room for the four other buttons and a status button wide enough for
     /// "Continue captions" beside them.
     private static let statusInlineMinimumBarWidth: CGFloat = 600
+    /// The same from the larger text sizes up, where the bar's own text
+    /// stops growing (`.xxxLarge`): an iPhone Pro held sideways (about
+    /// 720 points of bar) keeps one row, an iPad's 688 and a mini's take two.
+    private static let statusInlineMinimumBarWidthLargeText: CGFloat = 700
 
     /// How narrow a bar button's icon and name may get, before the glass
     /// style's padding: room for the widest icon, the keyboard, at the

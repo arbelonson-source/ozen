@@ -27,8 +27,16 @@ struct OnboardingView: View {
         Step.allCases.filter { $0 != .model || viewModel.settings.engine == .whisperKit }
     }
 
-    @State private var pickedModel = false
+    /// Shown again from Settings, the model in use is one the person
+    /// already chose: the model page used to put the recommended one back
+    /// without a word as it opened.
+    @State private var pickedModel: Bool
     @State private var finishing = false
+
+    init(viewModel: LiveCaptionViewModel) {
+        self.viewModel = viewModel
+        _pickedModel = State(initialValue: viewModel.walkthroughRanBefore)
+    }
 
     /// UI test walkthroughs can't answer iOS's own prompts; there, Next on
     /// the microphone page answers yes for them.
@@ -277,7 +285,7 @@ struct OnboardingView: View {
 
     private func checkPhone() async {
         await viewModel.testThisPhone()
-        if !pickedModel {
+        if WhisperModelCatalog.walkthroughReplaces(viewModel.settings.whisperModelVariant, for: viewModel.settings.spokenLanguage, chosen: pickedModel) {
             await viewModel.setWhisperModel(viewModel.settings.recommendedWhisperVariant)
         }
     }

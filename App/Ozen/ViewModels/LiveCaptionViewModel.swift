@@ -871,6 +871,14 @@ public final class LiveCaptionViewModel {
         persist()
     }
 
+    /// The walkthrough has run on this phone before: its model page, or
+    /// Skip, checked the phone, and the check is saved. Shown again, the
+    /// model in use is one the person settled on, and the model page keeps
+    /// it (`WhisperModelCatalog.walkthroughReplaces`). Read from the saved
+    /// settings rather than kept in memory, so it still holds when the app
+    /// ended halfway through the walkthrough shown again.
+    public var walkthroughRanBefore: Bool { settings.deviceModelCheck != nil }
+
     /// Leaving the caption screen for the walkthrough: captions stop (and
     /// the conversation so far is saved) rather than keep the microphone
     /// open behind a screen that isn't showing them. Its Start button then

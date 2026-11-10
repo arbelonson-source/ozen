@@ -892,6 +892,17 @@ struct LiveCaptionViewModelOnboardingTests {
         #expect(SettingsStore(fileURL: file).load().hasCompletedOnboarding == false)
     }
 
+    @Test("the walkthrough counts as run before once it checked the phone, also after the app is opened again")
+    func walkthroughRanBefore() async {
+        let (viewModel, file) = makeViewModel()
+        #expect(!viewModel.walkthroughRanBefore)
+        await viewModel.checkPhoneIfNeverChecked()
+        viewModel.completeOnboarding()
+        viewModel.showOnboardingAgain()
+        #expect(viewModel.walkthroughRanBefore)
+        #expect(SettingsStore(fileURL: file).load().deviceModelCheck != nil)
+    }
+
     @Test("skipping the walkthrough checks the phone and settles on the model recommended for it")
     func skipChecksPhone() async {
         let (viewModel, _) = makeViewModel()

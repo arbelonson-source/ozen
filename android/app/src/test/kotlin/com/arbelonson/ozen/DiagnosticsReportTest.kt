@@ -41,6 +41,7 @@ class DiagnosticsReportTest {
         selected: AudioInputDescriptor? = headset,
         lockScreenAllowed: Boolean = true,
         lockScreenShowing: Boolean = false,
+        builtInRecognition: String = "-",
     ) = DiagnosticsFacts(
         phase = PipelinePhase.Failed(PipelineFailure(PipelineFailure.Kind.AudioSessionFailed, "the microphone is busy")),
         activeEngine = TranscriptionEngineKind.WhisperKit,
@@ -82,6 +83,8 @@ class DiagnosticsReportTest {
         freeBytes = 12_300_000_000,
         memoryInUseBytes = 412_000_000,
         memoryAvailableBytes = 1_800_000_000,
+        memoryTotalBytes = 3_900_000_000,
+        builtInRecognition = builtInRecognition,
         soundNearMisses = nearMisses,
         soundAlertConfidence = 0.6,
         coveringForCloud = true,
@@ -141,8 +144,9 @@ class DiagnosticsReportTest {
         assertEquals("settings save error: failed history save error: - notifications allowed: no haptics: ok network: Cellular · Data saving cellular downloads: true", lines[14])
         assertEquals("model state: unverified vocabulary: ${settings.vocabulary.size}", lines[15])
         assertEquals("thermal: 3 low power: true battery: 54% free space: ${ByteSize.text(12_300_000_000)}", lines[16])
-        assertEquals("memory: used ${ByteSize.text(412_000_000)} left ${ByteSize.text(1_800_000_000)}", lines[17])
-        assertEquals("device: Google Pixel 8, Android 16 app 0.2.40 (40)", lines[18])
+        assertEquals("memory: used ${ByteSize.text(412_000_000)} left ${ByteSize.text(1_800_000_000)} phone ${ByteSize.text(3_900_000_000)}", lines[17])
+        assertEquals("built-in recognition: -", lines[18])
+        assertEquals("device: Google Pixel 8, Android 16 app 0.2.40 (40)", lines[19])
         assertEquals(
             listOf(
                 "events (oldest first):",
@@ -152,7 +156,7 @@ class DiagnosticsReportTest {
                 "10-10 21:02:11 APP STARTED: 0.2.40 Android 16",
                 "10-10 21:40:03 PROBLEM MARKED: engine whisperKit",
             ),
-            lines.drop(19),
+            lines.drop(20),
         )
         assertEquals(listOf("journal, previous runs included (oldest first):", "-"), DiagnosticsReport.text(facts()).lines().takeLast(2))
         Localization.withLanguage(UILanguage.Hebrew) {
@@ -256,6 +260,13 @@ class DiagnosticsReportTest {
             assertEquals(shown, DiagnosticsReport.clipTitle("problem-2026-10-11-130507.wav"))
             assertEquals("not-a-moment", DiagnosticsReport.clipTitle("problem-not-a-moment.wav"))
         }
+    }
+
+    @Test
+    fun `the phone's own offline recognition goes in the report as Android answered`() {
+        val lines = DiagnosticsReport.text(facts(builtInRecognition = "on device he can download, en installed")).lines()
+        assertTrue("built-in recognition: on device he can download, en installed" in lines)
+        assertTrue(lines.indexOf("built-in recognition: on device he can download, en installed") < lines.indexOfFirst { it.startsWith("device: ") })
     }
 
     @Test

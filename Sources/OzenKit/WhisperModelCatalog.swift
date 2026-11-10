@@ -258,6 +258,18 @@ public enum WhisperModelCatalog {
         language == .hebrew ? recommendedVariant : generalVariant
     }
 
+    /// Whether the walkthrough's model page puts the recommended model in
+    /// place of `variant`: yes unless the person chose it (on that page,
+    /// or before, when the walkthrough is shown again from Settings), and
+    /// even then for a model trained for Hebrew alone when another
+    /// language is spoken. A chosen model this list doesn't know stays:
+    /// nothing says it doesn't suit the language.
+    public static func walkthroughReplaces(_ variant: String, for language: UILanguage, chosen: Bool) -> Bool {
+        guard chosen else { return true }
+        guard let option = option(for: variant) else { return false }
+        return isOffLimits(option, for: language, isSelected: false)
+    }
+
     /// For Hebrew, `recommendedImproves(on:)`. For any other language only
     /// a model trained for Hebrew alone is clearly worse: the general ones
     /// carry no rating in it to compare.
