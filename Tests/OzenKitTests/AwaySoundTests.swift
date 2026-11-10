@@ -123,4 +123,22 @@ struct AwaySoundTests {
         restarted.screenReturned { _ in false }
         #expect(restarted.shown?.alert.id == doorbell.id)
     }
+
+    @Test("a kept sound is named in the app's language at the moment it is shown, not when it was heard or restored")
+    func namedInTheLanguageShown() throws {
+        var away = AwaySound()
+        let record = try Localization.$override.withValue(.hebrew) {
+            away.heard(try alert("smoke_detector"), at: 1_000, appIsActive: false)
+            return try #require(away.waitingRecord)
+        }
+        var restarted = AwaySound()
+        Localization.$override.withValue(.hebrew) { restarted.restore(record, now: 2_000) }
+        Localization.$override.withValue(.english) {
+            away.screenReturned { _ in false }
+            restarted.screenReturned { _ in false }
+        }
+        #expect(away.shown?.alert.event.name == "Smoke detector")
+        #expect(restarted.shown?.alert.event.name == "Smoke detector")
+        #expect(restarted.shown?.alert.event.importance == .critical)
+    }
 }

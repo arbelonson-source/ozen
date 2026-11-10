@@ -33,4 +33,14 @@ class AwaySoundRecordTest {
         assertNull(AwaySoundRecord.decode(null, now = 1_000.0))
         assertNotNull(AwaySoundRecord.decode(record, now = 1_000.0 + AwaySoundRecord.KEPT_SECONDS), "twelve hours exactly is still kept")
     }
+
+    @Test
+    fun `a kept sound is named in the app's language when it is shown, not when it was restored`() {
+        val record = Localization.withLanguage(UILanguage.Hebrew) { AwaySoundRecord.encode(alert("smoke_detector", 1_000.0)) }
+        val restored = assertNotNull(Localization.withLanguage(UILanguage.Hebrew) { AwaySoundRecord.decode(record, now = 2_000.0) })
+        val shown = Localization.withLanguage(UILanguage.English) { AwaySoundRecord.inCurrentLanguage(restored) }
+        assertEquals("Smoke detector", shown.event.name)
+        assertEquals(restored.id, shown.id)
+        assertEquals(1_000.0, shown.timestamp)
+    }
 }

@@ -17,4 +17,7 @@ object AwaySoundRecord {
         if (at > now + 300 || now - at > KEPT_SECONDS) return null
         return SoundAlert(id = id, event = event, confidence = 1.0, timestamp = at)
     }
+
+    fun inCurrentLanguage(alert: SoundAlert): SoundAlert =
+        SoundEventCatalog.event(alert.event.identifier)?.let { alert.copy(event = it) } ?: alert
 }

@@ -44,7 +44,7 @@ public struct AwaySound: Sendable, Equatable {
     public mutating func screenReturned(bannerStillUp: (SoundAlert) -> Bool) {
         defer { waiting = nil }
         guard let waiting, !bannerStillUp(waiting.alert) else { return }
-        shown = waiting
+        shown = Heard(alert: waiting.alert.inCurrentLanguage, at: waiting.at)
     }
 
     public mutating func close() {

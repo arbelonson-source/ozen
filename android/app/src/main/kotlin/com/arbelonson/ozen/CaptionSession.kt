@@ -361,7 +361,7 @@ class CaptionSession(
             heardWhileAway?.let { missed ->
                 heardWhileAway = null
                 awaySoundStore.record = null
-                if (pipeline.currentBannerSoundAlert?.id != missed.id) showMissedSound(missed)
+                if (pipeline.currentBannerSoundAlert?.id != missed.id) showMissedSound(AwaySoundRecord.inCurrentLanguage(missed))
             }
             stopAnnouncer.comingBack(pipeline.phase)?.let { announceStopOrReturn(it, pipeline.phase) }
             untold?.let { word ->

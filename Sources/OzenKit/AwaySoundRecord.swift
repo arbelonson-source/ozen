@@ -22,3 +22,9 @@ public enum AwaySoundRecord {
         return AwaySound.Heard(alert: SoundAlert(id: id, event: event, confidence: 1, timestamp: at), at: at)
     }
 }
+
+extension SoundAlert {
+    public var inCurrentLanguage: SoundAlert {
+        SoundEventCatalog.event(for: event.identifier).map { SoundAlert(id: id, event: $0, confidence: confidence, timestamp: timestamp) } ?? self
+    }
+}
