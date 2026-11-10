@@ -27,12 +27,17 @@ class ListeningNoticeTest {
     }
 
     @Test
-    fun `a line nobody was recognised on keeps no name, and one line needs no opened view`() {
+    fun `a line nobody was recognised on keeps no name`() {
         val unnamed = LockScreenCaptionContent(listOf(line("Good morning", "Dana"), line("Who is there")))
         assertEquals("Who is there", ListeningNotice.glance(unnamed))
-        val one = LockScreenCaptionContent(listOf(line("Hello")))
-        assertEquals("Hello", ListeningNotice.glance(one))
-        assertNull(ListeningNotice.opened(one))
+    }
+
+    @Test
+    fun `one line alone opens whole too, so the end a single row cuts off can still be read`() {
+        val said = "and the newest words of a long first sentence are at its end"
+        val one = LockScreenCaptionContent(listOf(line(said, "Dana")))
+        assertEquals("Dana: $said", ListeningNotice.glance(one))
+        assertEquals("Dana: $said", ListeningNotice.opened(one))
     }
 
     @Test

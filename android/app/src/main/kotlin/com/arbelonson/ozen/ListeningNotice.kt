@@ -11,7 +11,7 @@ object ListeningNotice {
     }
 
     fun opened(content: LockScreenCaptionContent): String? =
-        content.lines.takeIf { it.size > 1 }?.joinToString("\n") { said(it.text, it.speaker) }
+        content.lines.takeIf { it.isNotEmpty() }?.joinToString("\n") { said(it.text, it.speaker) }
 
     private fun said(text: String, name: String?) = if (name == null) text else "$name: $text"
 }
