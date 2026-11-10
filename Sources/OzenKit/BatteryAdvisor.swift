@@ -79,9 +79,9 @@ public struct BatteryAdvisor: Sendable, Equatable {
     /// retrying, or the microphone kept on for sounds alone, run the
     /// battery down, and the moment between two attempts took the warning
     /// down, never to come back once given.
-    public static func watches(_ phase: PipelinePhase) -> Bool {
+    public static func watches(_ phase: PipelinePhase, soundsOnly: Bool = false) -> Bool {
         switch phase {
-        case .idle, .paused: return false
+        case .idle, .paused: return soundsOnly
         case .requestingMicrophonePermission, .preparingEngine, .startingAudio, .listening, .failed: return true
         }
     }

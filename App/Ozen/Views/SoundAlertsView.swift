@@ -46,6 +46,7 @@ struct SoundAlertsView: View {
                 }
             }
 
+            SoundsOnlySection(viewModel: viewModel)
             if viewModel.soundAlertPreferences.isEnabled {
                 Section { NightAlertsRow(ozenAlerts: $viewModel.notifyWhenInBackground) }
             }
