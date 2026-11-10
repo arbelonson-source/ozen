@@ -115,8 +115,22 @@ class AlertNotifier(private val context: Context) {
             .forEach { manager.cancel(it.tag, it.id) }
     }
 
+    /**
+     * Posts the test alert after the 10 seconds she has to lock the phone.
+     * That wait counts only while the processor is awake, and a locked phone
+     * on battery soon sleeps, so the test came late or not at all and she
+     * could decide alerts don't work. A short wake lock keeps it on time.
+     */
     fun postTest(content: AlertNotificationContent = BackgroundAlertPolicy.testNotification) {
-        Handler(Looper.getMainLooper()).postDelayed({ post(content) }, TEST_DELAY_MILLIS)
+        val lock = testLock(context)
+        lock.acquire(TEST_DELAY_MILLIS + TEST_LOCK_SPARE_MILLIS)
+        Handler(Looper.getMainLooper()).postDelayed({
+            try {
+                post(content)
+            } finally {
+                lock.release()
+            }
+        }, TEST_DELAY_MILLIS)
     }
 
     companion object {
@@ -125,6 +139,9 @@ class AlertNotifier(private val context: Context) {
         const val SOUNDS_THREAD = "sounds"
         const val KEYWORDS_THREAD = "keywords"
         const val TEST_DELAY_MILLIS = 10_000L
+        const val TEST_LOCK_SPARE_MILLIS = 5_000L
+
+        var testLock: (Context) -> TimedLock = { partialWakeLock(it, "ozen:test-alert") }
 
         fun buzzMuted(canBypassDnd: Boolean, interruptionFilter: Int, ringerSilent: Boolean): Boolean {
             if (canBypassDnd) return false
