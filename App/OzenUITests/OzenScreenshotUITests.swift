@@ -1069,6 +1069,34 @@ final class OzenScreenshotUITests: XCTestCase {
         }
     }
 
+    /// Stop used to appear where Play had been the moment the phone began
+    /// to talk, so a second tap on Play, by someone who can't hear that it
+    /// had started, cut the sentence off. Stop is there from the start,
+    /// dimmed, and Play never moves.
+    func testSayStopIsThereBeforePlayAndPlayStaysPut() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "hebrewDefault"]
+        app.launch()
+
+        let typeToSpeakButton = app.descendants(matching: .any)["typeToSpeakButton"]
+        XCTAssertTrue(typeToSpeakButton.waitForExistence(timeout: 10), "say stop: the button to open it never appeared")
+        typeToSpeakButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["typeToSpeakScreen"].waitForExistence(timeout: 10), "say stop: the screen never appeared")
+
+        let stop = app.buttons["stopSpeakingButton"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 5), "say stop: Stop isn't there before anything is said")
+        XCTAssertFalse(stop.isEnabled, "say stop: Stop is live with nothing being said")
+
+        app.textFields.firstMatch.typeText("תזכירי לי לקחת תרופות")
+        let play = app.buttons["השמעה"]
+        XCTAssertTrue(play.waitForExistence(timeout: 5), "say stop: no Play button")
+        let before = play.frame
+        play.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+        capture(app, name: "say-while-speaking")
+        XCTAssertEqual(play.frame, before, "say stop: Play moved once the phone started talking")
+    }
+
     /// Clear in the big letters pad can be undone: a mis-tap must not
     /// lose a long message.
     func testBigTextClearCanBeRestored() throws {
