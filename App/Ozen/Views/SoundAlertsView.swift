@@ -74,6 +74,10 @@ struct SoundAlertsView: View {
                     }
                 } header: {
                     Label(Self.groupName(importance), systemImage: Self.groupImage(importance))
+                } footer: {
+                    if !viewModel.soundAlertPreferences.isEnabled || importance < viewModel.soundAlertPreferences.minimumImportance {
+                        Text(Self.silencedGroupNote(alertsOn: viewModel.soundAlertPreferences.isEnabled, floor: viewModel.soundAlertPreferences.minimumImportance))
+                    }
                 }
             }
 
@@ -116,6 +120,14 @@ struct SoundAlertsView: View {
             Label(title, systemImage: "iphone.radiowaves.left.and.right")
         }
         .accessibilityHint(tr("הקישו כדי להרגיש את הרטט", "Tap to feel the vibration"))
+    }
+
+    /// Under a group whose switches stay as they were saved but can't alert,
+    /// so a doorbell that still reads "on" isn't trusted to wake anyone.
+    static func silencedGroupNote(alertsOn: Bool, floor: SoundEvent.Importance) -> String {
+        alertsOn
+            ? tr("על הצלילים האלה לא תקבלו התראה עכשיו, כי למעלה נבחר ״%1״.", "You won’t be alerted to these sounds now, because “%1” is chosen above.", args: ["\(floorName(floor))"])
+            : tr("ההתראות על צלילים כבויות, ולכן לא תקבלו התראה על הצלילים האלה.", "Sound alerts are off, so you won’t be alerted to these sounds.")
     }
 
     static func floorName(_ importance: SoundEvent.Importance) -> String {

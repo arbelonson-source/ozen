@@ -9,4 +9,10 @@ internal object SoundAlertsText {
         "Ozen is a helper, not a certified alarm. Don’t rely on it where you could be hurt or in an emergency: keep your smoke alarms, and keep official emergency alerts turned on.",
         language,
     )
+
+    fun silencedGroupNote(alertsOn: Boolean, floorName: String): String = if (alertsOn) {
+        tr("על הצלילים האלה לא תקבלו התראה עכשיו, כי למעלה נבחר ״%1״.", "You won’t be alerted to these sounds now, because “%1” is chosen above.", listOf(floorName))
+    } else {
+        tr("ההתראות על צלילים כבויות, ולכן לא תקבלו התראה על הצלילים האלה.", "Sound alerts are off, so you won’t be alerted to these sounds.")
+    }
 }

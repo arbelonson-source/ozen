@@ -1528,6 +1528,8 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Settings").performClick()
             compose.onNode(hasText("Sounds at home") and hasText("Home sounds and above")).performScrollTo().assertExists()
             compose.onNodeWithText("Sounds at home").performScrollTo().performClick()
+            val below = { floor: String -> compose.onAllNodesWithText("You won’t be alerted to these sounds now, because “$floor” is chosen above.").fetchSemanticsNodes().size }
+            assertEquals("groups said to be silenced by the default level", 1, below("Home sounds and above"))
 
             compose.onNodeWithText("Doorbell").performScrollTo().performClick()
             compose.waitUntil(5_000) { app.settings.current.value.soundAlerts.isMuted("door_bell") }
@@ -1542,10 +1544,14 @@ class SettingsScreenDeviceTest {
             compose.waitUntil(5_000) { app.settings.current.value.soundAlerts.minimumImportance == SoundEvent.Importance.Critical }
             compose.onNodeWithText("Doorbell").performScrollTo().assertIsNotEnabled()
             compose.onNodeWithText("Smoke detector").performScrollTo().assertIsEnabled()
+            compose.waitUntil(5_000) { below("Emergency only") == 3 }
+            assertEquals(0, below("Home sounds and above"))
 
             compose.onNodeWithText("Sound alerts").performScrollTo().performClick()
             compose.waitUntil(5_000) { !app.settings.current.value.soundAlerts.isEnabled }
             compose.onNodeWithText("Smoke detector").performScrollTo().assertIsNotEnabled()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Sound alerts are off, so you won’t be alerted to these sounds.").fetchSemanticsNodes().size == 4 }
+            assertEquals(0, below("Emergency only"))
             compose.onNodeWithText("Back").performScrollTo().performClick()
             compose.onNode(hasText("Sounds at home") and hasText("Off")).performScrollTo().assertExists()
         } finally {

@@ -1087,7 +1087,9 @@
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "ሁሉም የተቀመጡ ውይይቶች ይሰረዛሉ፤ ኮከብ ወይም ስም ያለባቸውም፣ አሁን ያለውም ውይይት ጭምር። ይህን መመለስ አይቻልም።",
   "Working": "እየሰራ ነው",
   "Device model": "የመሣሪያው ሞዴል",
-  "The download failed. To try again, choose the model again in Settings.": "ማውረዱ አልተሳካም። እንደገና ለመሞከር በቅንብሮች ውስጥ ሞዴሉን እንደገና ይምረጡ።"
+  "The download failed. To try again, choose the model again in Settings.": "ማውረዱ አልተሳካም። እንደገና ለመሞከር በቅንብሮች ውስጥ ሞዴሉን እንደገና ይምረጡ።",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "ከላይ “%1” ስለተመረጠ፣ አሁን ስለ እነዚህ ድምጾች ማንቂያ አይደርስዎትም።",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "የድምጽ ማንቂያዎች ጠፍተዋል፤ ስለዚህ ስለ እነዚህ ድምጾች ማንቂያ አይደርስዎትም።"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2177,7 +2179,9 @@
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "ستُحذف كل المحادثات المحفوظة، ومنها المحادثات التي فيها سطر مميز بنجمة أو اسم، والمحادثة الحالية أيضًا. لا يمكن التراجع عن ذلك.",
   "Working": "يعمل",
   "Device model": "طراز الجهاز",
-  "The download failed. To try again, choose the model again in Settings.": "فشل التنزيل. للمحاولة من جديد، اختاروا النموذج مرة أخرى في الإعدادات."
+  "The download failed. To try again, choose the model again in Settings.": "فشل التنزيل. للمحاولة من جديد، اختاروا النموذج مرة أخرى في الإعدادات.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "لن تصلكم الآن تنبيهات عن هذه الأصوات، لأن الخيار المحدد في الأعلى هو ‏“%1”‏.",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "تنبيهات الصوت متوقفة، لذلك لن تصلكم تنبيهات عن هذه الأصوات."
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3267,7 +3271,9 @@
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "所有已保存的对话都会被删除，包括带星标或姓名的对话，以及当前这段对话。此操作无法撤销。",
   "Working": "正常",
   "Device model": "设备型号",
-  "The download failed. To try again, choose the model again in Settings.": "下载失败。如需重试，请在设置中再次选择该模型。"
+  "The download failed. To try again, choose the model again in Settings.": "下载失败。如需重试，请在设置中再次选择该模型。",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "目前不会提醒这些声音，因为上方选择了“%1”。",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "声音提醒已关闭，所以不会提醒这些声音。"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4357,7 +4363,9 @@
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Toutes les conversations enregistrées seront supprimées, y compris celles avec une ligne marquée d’une étoile ou un nom, ainsi que la conversation en cours. Impossible d’annuler.",
   "Working": "Fonctionne",
   "Device model": "Modèle de l’appareil",
-  "The download failed. To try again, choose the model again in Settings.": "Le téléchargement a échoué. Pour réessayer, choisissez à nouveau le modèle dans Réglages."
+  "The download failed. To try again, choose the model again in Settings.": "Le téléchargement a échoué. Pour réessayer, choisissez à nouveau le modèle dans Réglages.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "Pour l’instant, vous ne recevrez pas d’alerte pour ces sons, car « %1 » est choisi plus haut.",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "Les alertes sonores sont désactivées, vous ne recevrez donc pas d’alerte pour ces sons."
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5447,7 +5455,9 @@
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Alle gespeicherten Gespräche werden gelöscht, auch die mit einer markierten Zeile oder einem Namen und das aktuelle Gespräch. Das lässt sich nicht rückgängig machen.",
   "Working": "Funktioniert",
   "Device model": "Gerätemodell",
-  "The download failed. To try again, choose the model again in Settings.": "Der Download ist fehlgeschlagen. Wählen Sie das Modell in den Einstellungen erneut, um es noch einmal zu versuchen."
+  "The download failed. To try again, choose the model again in Settings.": "Der Download ist fehlgeschlagen. Wählen Sie das Modell in den Einstellungen erneut, um es noch einmal zu versuchen.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "Für diese Geräusche erhalten Sie gerade keinen Hinweis, weil oben „%1“ gewählt ist.",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "Geräuschhinweise sind aus, daher erhalten Sie für diese Geräusche keinen Hinweis."
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6537,7 +6547,9 @@
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "सारी सहेजी गई बातचीत मिट जाएगी, तारांकित लाइन या नाम वाली भी, और अभी की बातचीत भी। इसे वापस नहीं लाया जा सकता।",
   "Working": "काम कर रहा है",
   "Device model": "डिवाइस मॉडल",
-  "The download failed. To try again, choose the model again in Settings.": "डाउनलोड नहीं हो सका। दोबारा कोशिश करने के लिए सेटिंग्स में मॉडल फिर से चुनें।"
+  "The download failed. To try again, choose the model again in Settings.": "डाउनलोड नहीं हो सका। दोबारा कोशिश करने के लिए सेटिंग्स में मॉडल फिर से चुनें।",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "अभी इन आवाज़ों पर अलर्ट नहीं मिलेगा, क्योंकि ऊपर “%1” चुना गया है।",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "आवाज़ के अलर्ट बंद हैं, इसलिए इन आवाज़ों पर अलर्ट नहीं मिलेगा।"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7627,7 +7639,9 @@
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Todas as conversas guardadas serão eliminadas, incluindo as que têm uma linha assinalada ou um nome, e a conversa atual. Não é possível anular.",
   "Working": "A funcionar",
   "Device model": "Modelo do aparelho",
-  "The download failed. To try again, choose the model again in Settings.": "A transferência falhou. Para tentar outra vez, escolha o modelo de novo nas Definições."
+  "The download failed. To try again, choose the model again in Settings.": "A transferência falhou. Para tentar outra vez, escolha o modelo de novo nas Definições.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "Agora não vai receber avisos destes sons, porque está escolhido “%1” acima.",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "Os avisos de sons estão desligados, por isso não vai receber avisos destes sons."
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8717,7 +8731,9 @@
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Все сохранённые разговоры будут удалены, в том числе с отмеченной строкой или именем, и текущий разговор тоже. Это нельзя отменить.",
   "Working": "Работает",
   "Device model": "Модель устройства",
-  "The download failed. To try again, choose the model again in Settings.": "Не удалось загрузить. Чтобы повторить, выберите модель ещё раз в настройках."
+  "The download failed. To try again, choose the model again in Settings.": "Не удалось загрузить. Чтобы повторить, выберите модель ещё раз в настройках.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "Оповещений об этих звуках сейчас не будет, потому что выше выбрано «%1».",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "Звуковые оповещения выключены, поэтому оповещений об этих звуках не будет."
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -9807,7 +9823,9 @@
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Se eliminarán todas las conversaciones guardadas, incluidas las que tienen una línea marcada o un nombre, y la conversación actual. No se puede deshacer.",
   "Working": "Funciona",
   "Device model": "Modelo del dispositivo",
-  "The download failed. To try again, choose the model again in Settings.": "La descarga ha fallado. Para intentarlo de nuevo, elige el modelo otra vez en Ajustes."
+  "The download failed. To try again, choose the model again in Settings.": "La descarga ha fallado. Para intentarlo de nuevo, elige el modelo otra vez en Ajustes.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "Ahora no recibirás avisos de estos sonidos, porque arriba está elegido “%1”.",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "Las alertas de sonido están desactivadas, así que no recibirás avisos de estos sonidos."
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -10897,6 +10915,8 @@
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Усі збережені розмови буде видалено, зокрема з позначеним рядком або іменем, і поточну розмову теж. Це неможливо скасувати.",
   "Working": "Працює",
   "Device model": "Модель пристрою",
-  "The download failed. To try again, choose the model again in Settings.": "Не вдалося завантажити. Щоб повторити, виберіть модель ще раз у налаштуваннях."
+  "The download failed. To try again, choose the model again in Settings.": "Не вдалося завантажити. Щоб повторити, виберіть модель ще раз у налаштуваннях.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "Сповіщень про ці звуки зараз не буде, бо вище вибрано «%1».",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "Звукові сповіщення вимкнено, тож сповіщень про ці звуки не буде."
  }
 }
