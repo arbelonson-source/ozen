@@ -1377,7 +1377,9 @@ class CaptionSession(
      * screen shows its banner; with the app away it is a notification.
      */
     /**
-     * The newest sound heard while the app was away. Coming back takes its
+     * The most important sound heard while the app was away, the newest of
+     * equals, as on the iPhone: a dog barking after the smoke alarm must not
+     * hide the alarm. Coming back takes its
      * notification away (old alerts must not pass for new ones), and its
      * banner time is over by then, so without this someone who unlocked the
      * phone to see what buzzed found nothing at all.
@@ -1394,7 +1396,7 @@ class CaptionSession(
     fun dismissMissedSound() = CaptionState.missedSound(null)
 
     private fun soundHeard(alert: SoundAlert) {
-        if (!appIsActive) heardWhileAway = alert
+        if (!appIsActive) heardWhileAway = heardWhileAway?.takeIf { it.event.importance > alert.event.importance } ?: alert
         CaptionState.soundHeard(pipeline.currentBannerSoundAlert, alert)
         if (appIsActive) {
             buzz(AlertVibration.pattern(alert.event.importance), alert.event.importance)

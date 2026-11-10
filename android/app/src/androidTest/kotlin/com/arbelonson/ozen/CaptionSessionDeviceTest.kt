@@ -448,6 +448,17 @@ class CaptionSessionDeviceTest {
             }
             assertNull("shown again on a later return", CaptionState.screen.value.missedSound)
             assertEquals(listOf(said), announced.filter { it.startsWith("Doorbell") })
+
+            val smoke = SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = heardAt + 10)
+            val dog = SoundAlert(event = SoundEventCatalog.event("dog_bark")!!, confidence = 0.9, timestamp = heardAt + 20)
+            assertTrue(smoke.event.importance > dog.event.importance)
+            withContext(Dispatchers.Main) {
+                session.screenStopped()
+                checkNotNull(session.pipeline.onSoundAlert).invoke(smoke)
+                checkNotNull(session.pipeline.onSoundAlert).invoke(dog)
+                session.screenStarted()
+            }
+            assertEquals("a dog barking after the alarm hid it", smoke.id, CaptionState.screen.value.missedSound?.alert?.id)
         } finally {
             ScreenReader.isOn = readerBefore
             ScreenReader.announce = announceBefore
