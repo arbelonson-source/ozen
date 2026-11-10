@@ -23,6 +23,7 @@ struct NameAlertForm: View {
                     .submitLabel(.done)
                     .onSubmit { addName() }
                     .announcing(otherLettersNote, whenTurningTrue: HebrewText.isInOtherLetters(nameDraft, captionLanguage: viewModel.settings.languageCode))
+                    .announcing(severalWordsNote ?? "", whenTurningTrue: severalWordsNote != nil)
                 Button(tr("הוספה", "Add")) { addName() }
                     .buttonStyle(.bordered)
                     .controlSize(.large)
@@ -31,6 +32,11 @@ struct NameAlertForm: View {
             }
             if HebrewText.isInOtherLetters(nameDraft, captionLanguage: viewModel.settings.languageCode) || viewModel.settings.keywordAlerts.contains(where: { $0.isEnabled && HebrewText.isInOtherLetters($0.phrase, captionLanguage: viewModel.settings.languageCode) }) {
                 Text(otherLettersNote)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            if let severalWordsNote {
+                Text(severalWordsNote)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -47,6 +53,10 @@ struct NameAlertForm: View {
         // A name typed and then "Next" or "Done" instead of "Add" was
         // dropped, and the name alert never came.
         .onDisappear { addName(announcing: false) }
+    }
+
+    private var severalWordsNote: String? {
+        AlertSuggestions.severalWordsNote(for: nameDraft, in: viewModel.uiLanguage)
     }
 
     private var otherLettersNote: String {

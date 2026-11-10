@@ -61,4 +61,14 @@ struct AlertSuggestionsTests {
     private static func hasHebrew(_ text: String) -> Bool {
         text.unicodeScalars.contains { (0x0590...0x05FF).contains($0.value) }
     }
+
+    @Test("a name of several words gets a note that only all of them in a row alert")
+    func severalWordsNote() {
+        #expect(AlertSuggestions.severalWordsNote(for: "רחל לוי", in: .hebrew) != nil)
+        #expect(AlertSuggestions.severalWordsNote(for: "  Rachel   Levi ", in: .english)?.hasPrefix("When the name has several words") == true)
+        #expect(AlertSuggestions.severalWordsNote(for: "רחל", in: .hebrew) == nil)
+        #expect(AlertSuggestions.severalWordsNote(for: " רחל ", in: .hebrew) == nil)
+        #expect(AlertSuggestions.severalWordsNote(for: "", in: .hebrew) == nil)
+        #expect(KeywordAlertMatcher(alerts: [KeywordAlert(phrase: "רחל לוי")]).matches(in: "רחל, בואי").isEmpty)
+    }
 }

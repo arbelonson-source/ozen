@@ -29,6 +29,11 @@ object AlertSuggestions {
         return tr("הטלפון ירטוט כשייאמרו: ", "The phone will vibrate for: ", language) + phrases.joinToString(", ")
     }
 
+    fun severalWordsNote(draft: String, language: UILanguage): String? {
+        if (HebrewText.normalize(draft).split(" ").size < 2) return null
+        return tr("כשהשם כולל כמה מילים, הטלפון ירטוט רק כשכולן נאמרות ברצף. כדאי לכתוב רק את השם שקוראים לכם בו, בלי שם משפחה.", "When the name has several words, the phone vibrates only when they are all said in a row. Best to write just the name people call you, without a surname.", language)
+    }
+
     fun said(match: KeywordMatch, language: UILanguage): String {
         if (language == UILanguage.Hebrew || suggestion(match.phrase) == null) return match.matchedText
         return shown(match.phrase, language)

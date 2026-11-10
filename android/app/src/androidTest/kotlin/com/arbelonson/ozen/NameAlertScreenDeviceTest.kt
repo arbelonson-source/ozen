@@ -105,6 +105,18 @@ class NameAlertScreenDeviceTest {
         compose.onNodeWithText("✓ The phone will vibrate for: Grandma").performScrollTo().assertExists()
     }
 
+    // "רחל לוי" was saved as one two-word alert and promised a vibration, but
+    // family says "רחל" alone, and the phone never buzzed.
+    @Test
+    fun aNameWithASurnameIsToldOnlyAllItsWordsInARowAlert() {
+        val note = "When the name has several words, the phone vibrates only when they are all said in a row."
+        val field = compose.onNode(hasSetTextAction())
+        field.performTextInput("רחל")
+        compose.onNodeWithText(note, substring = true).assertDoesNotExist()
+        field.performTextInput(" לוי")
+        compose.onNodeWithText(note, substring = true).assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+    }
+
     // The keyboard stayed up over the only line saying what will buzz.
     @Test
     fun addAndTheKeyboardsDoneBothPutTheKeyboardAway() {

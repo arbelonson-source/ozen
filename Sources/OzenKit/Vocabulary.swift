@@ -62,7 +62,7 @@ public enum VocabularyHints {
             .replacingOccurrences(of: "\"", with: "\u{02BA}")
             .replacingOccurrences(of: "\u{201C}", with: "\u{02BA}")
             .replacingOccurrences(of: "\u{201D}", with: "\u{02BA}")
-        return HebrewText.normalize(marked).lowercased()
+        return HebrewText.normalizeKeepingAccents(marked).lowercased()
     }
 
     /// The terms to actually prime a recognizer with: the person's own

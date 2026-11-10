@@ -114,7 +114,17 @@ public enum HebrewText {
     /// Other invisible characters go too: a zero-width space, joiner or
     /// soft hyphen pasted along with a name from a web page or a contact,
     /// and emoji variation selectors, made the word a different string.
+    ///
+    /// Accents fold away too, as on Android: most people type "Jose",
+    /// "احمد" or "Алена", and the captions spell "José", "أحمد" and
+    /// "Алёна", so the alert stayed silent all conversation.
     public static func normalize(_ text: String) -> String {
+        foldingAccents(normalizeKeepingAccents(text))
+    }
+
+    /// `normalize` without the accent folding: "si" and "sí" stay two
+    /// strings, for the vocabulary list where they are two recognizer hints.
+    public static func normalizeKeepingAccents(_ text: String) -> String {
         let withoutNiqqud = stripNiqqud(separatingJoiners(removingDirectionMarks(text)))
         let stripped = withoutNiqqud.unicodeScalars.filter { scalar in
             !CharacterSet.punctuationCharacters.contains(scalar)
@@ -124,8 +134,37 @@ public enum HebrewText {
         }
         return String(String.UnicodeScalarView(stripped))
             .lowercased()
+            .replacingOccurrences(of: "ё", with: "е")
             .split(whereSeparator: { $0.isWhitespace })
             .joined(separator: " ")
+            .precomposedStringWithCanonicalMapping
+    }
+
+    /// Drops Latin and Cyrillic accents (except the breve of й and the
+    /// tilde of ñ, which make other letters), Arabic vowel marks, tatweel
+    /// and the hamza on its seat, and writes alef maqsura as ya and ta
+    /// marbuta as ha: the spellings a person types and the captions write
+    /// for the same name. Same table as Android's `foldAccents`.
+    static func foldingAccents(_ text: String) -> String {
+        var folded = String.UnicodeScalarView()
+        var previous: Unicode.Scalar?
+        for scalar in text.decomposedStringWithCanonicalMapping.unicodeScalars {
+            let keep: Bool
+            switch scalar.value {
+            case 0x0300...0x036F: keep = (scalar == "\u{0306}" && previous == "и") || (scalar == "\u{0303}" && previous == "n")
+            case 0x064B...0x065F, 0x0670, 0x0640: keep = false
+            default: keep = true
+            }
+            guard keep else { continue }
+            switch scalar {
+            case "أ", "إ", "آ": folded.append("ا")
+            case "ى": folded.append("ي")
+            case "ة": folded.append("ه")
+            default: folded.append(scalar)
+            }
+            previous = scalar
+        }
+        return String(folded).precomposedStringWithCanonicalMapping
     }
 
     /// A word typed only in another alphabet ("Sarah" or "Саша" while the
