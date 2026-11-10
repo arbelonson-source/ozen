@@ -1169,42 +1169,37 @@ class WrongCode(unittest.TestCase):
         self.assertIn("unauthorized", ws.sent[0])
 
 
-class SilentSocket:
-    remote_address = ("203.0.113.9", 4444)
+class OpenFiles(unittest.TestCase):
+    def limits(self, soft, hard, refuse_above=None):
+        asked = []
 
-    def __init__(self):
-        self.sent = []
-        self.spoke = asyncio.Event()
+        def setrlimit(which, limits):
+            if refuse_above is not None and limits[0] > refuse_above:
+                raise ValueError("not allowed")
+            asked.append(limits)
 
-    async def recv(self):
-        await self.spoke.wait()
-        return S.json.dumps({"type": "hello", "token": "wrong-code-789"})
+        fake = types.SimpleNamespace(RLIMIT_NOFILE=7, RLIM_INFINITY=-1, getrlimit=lambda which: (soft, hard),
+                                     setrlimit=setrlimit)
+        with mock.patch.object(S, "resource", fake):
+            S.raise_open_file_limit()
+        return asked
 
-    async def send(self, text):
-        self.sent.append(text)
+    def test_a_mac_keeping_256_open_files_asks_for_as_many_as_it_may(self):
+        self.assertEqual(self.limits(256, 100_000), [(65_536, 100_000)])
+        self.assertEqual(self.limits(256, 4_096), [(4_096, 4_096)])
+        self.assertEqual(self.limits(256, -1), [(65_536, -1)])
 
+    def test_a_mac_that_refuses_that_many_gets_the_most_it_allows(self):
+        self.assertEqual(self.limits(256, -1, refuse_above=10_240), [(10_240, -1)])
+        self.assertEqual(self.limits(256, -1, refuse_above=1_000), [])
 
-class WaitingHellos(unittest.TestCase):
-    def test_a_flood_of_silent_connections_is_turned_away_at_once_and_the_door_opens_again(self):
-        async def flood():
-            silent = [SilentSocket() for _ in range(S.MAX_WAITING_HELLOS)]
-            waiting = [asyncio.create_task(S.handle(ws, None, "real-code-456", 1.0)) for ws in silent]
-            await asyncio.sleep(0)
-            extra = HelloSocket(S.json.dumps({"type": "hello", "token": "wrong-code-789"}))
-            await asyncio.wait_for(S.handle(extra, None, "real-code-456", 1.0), 1)
-            self.assertEqual(len(extra.sent), 1)
-            self.assertIn("busy", extra.sent[0])
-            self.assertTrue(all(not ws.sent for ws in silent))
-            for ws in silent:
-                ws.spoke.set()
-            await asyncio.gather(*waiting)
-            self.assertTrue(all("unauthorized" in ws.sent[0] for ws in silent))
-            again = HelloSocket(S.json.dumps({"type": "hello", "token": "wrong-code-789"}))
-            await S.handle(again, None, "real-code-456", 1.0)
-            self.assertIn("unauthorized", again.sent[0])
+    def test_a_limit_already_high_is_never_lowered(self):
+        self.assertEqual(self.limits(524_288, 524_288), [])
+        self.assertEqual(self.limits(-1, -1), [])
 
-        with self.assertLogs(S.log, "WARNING"):
-            asyncio.run(flood())
+    def test_windows_without_the_module_is_left_alone(self):
+        with mock.patch.object(S, "resource", None):
+            S.raise_open_file_limit()
 
 
 class BadHello(unittest.TestCase):

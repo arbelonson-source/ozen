@@ -49,6 +49,11 @@ import os
 import re
 import time
 
+try:
+    import resource
+except ImportError:
+    resource = None
+
 import numpy as np
 import websockets
 from faster_whisper import WhisperModel
@@ -794,6 +799,32 @@ def requested_beam(value):
     return value if 1 <= value <= 10 else None
 
 
+# A program may keep only 256 (a Mac) or 1,024 (many Linux services) files
+# and connections open unless it asks for more, so a burst of connections (a
+# flood from the internet: a Funnel address is public) could leave no room
+# for a phone. Asking costs nothing; Windows has no such limit for sockets.
+OPEN_FILES_WANTED = 65_536
+OPEN_FILES_MAC_MOST = 10_240
+
+
+def raise_open_file_limit():
+    if resource is None:
+        return
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    if soft == resource.RLIM_INFINITY:
+        return
+    most = OPEN_FILES_WANTED if hard == resource.RLIM_INFINITY else min(hard, OPEN_FILES_WANTED)
+    for wanted in (most, min(most, OPEN_FILES_MAC_MOST)):
+        if wanted <= soft:
+            return
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (wanted, hard))
+            return
+        except (ValueError, OSError):
+            continue
+    log.info("could not raise the open-file limit above %d", soft)
+
+
 async def refuse(ws, code, detail):
     """A peer that already hung up (a port scan, a check that gave up)
     gets no reply; sending anyway raised and put a traceback in the log."""
@@ -809,32 +840,12 @@ def worker_failed(error):
     return error is not None and not isinstance(error, websockets.ConnectionClosed)
 
 
-# Each connection may take 10 s to say hello. Uncapped, a flood of silent
-# connections from the internet (a Funnel address is public) could use up
-# the computer's open files; past this many the rest are turned away at
-# once, and a phone turned away carries on with its own model.
-MAX_WAITING_HELLOS = 32
-waiting_hellos = 0
-busy_logged_at = None
-
-
 async def handle(ws, transcriber, token, live_interval, make_enhancer=None, general=None):
-    global waiting_hellos, busy_logged_at
     peer = ws.remote_address
-    if waiting_hellos >= MAX_WAITING_HELLOS:
-        if busy_logged_at is None or time.monotonic() - busy_logged_at > 60:
-            busy_logged_at = time.monotonic()
-            log.warning("turning connections away: %d are already waiting to say hello (latest from %s)",
-                        waiting_hellos, peer)
-        await refuse(ws, "busy", "")
-        return
-    waiting_hellos += 1
     try:
         hello = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
     except Exception:
         hello = None
-    finally:
-        waiting_hellos -= 1
     if not isinstance(hello, dict):
         await refuse(ws, "bad_request", "hello expected")
         return
@@ -950,6 +961,7 @@ async def main():
     if not token:
         raise SystemExit("set OZEN_TOKEN to the pairing code the phone will send")
     setup_logging()
+    raise_open_file_limit()
     general = OnDemandTranscriber(lambda: load_general(args), args.general_model, args.beam,
                                   (args.unload_after or GENERAL_IDLE_MINUTES) * 60, args.context) if args.general_model else None
     if args.unload_after > 0:
