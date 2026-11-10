@@ -531,4 +531,24 @@ class PhasePresentationTest {
     fun `the phone talking over sounds-only still says so`() = Localization.withLanguage(UILanguage.English) {
         assertEquals("The phone is talking", present(PipelinePhase.Paused, null, pausedForSpeech = true, soundsOnly = true).title)
     }
+
+    @Test
+    fun `beside the status button the state line leaves out the tap hint the button already says`() = Localization.withLanguage(UILanguage.English) {
+        val listening = present(PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit)
+        val paused = present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit)
+        val off = present(PipelinePhase.Idle, TranscriptionEngineKind.WhisperKit)
+        val soundsOnly = present(PipelinePhase.Idle, null, soundsOnly = true)
+        for (shown in listOf(listening, paused, off, soundsOnly)) {
+            assertTrue(shown.detail?.startsWith("Tap to") == true, "${shown.detail}")
+            assertEquals(null, shown.stateDetail, "${shown.detail}")
+        }
+        val covering = present(
+            PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
+            coveringForCloud = true, coveredEngine = TranscriptionEngineKind.HomeServer, coverReason = EngineUnavailability.Kind.HomeServerUnreachable,
+        )
+        assertEquals("Can’t reach the home computer, so the phone carries on by itself · Tap to pause", covering.detail)
+        assertEquals("Can’t reach the home computer, so the phone carries on by itself", covering.stateDetail)
+        val settings = present(failure(unavailable(EngineUnavailability.Kind.CloudLanguageNotCovered)), TranscriptionEngineKind.Cloud)
+        assertEquals(settings.detail, settings.stateDetail)
+    }
 }
