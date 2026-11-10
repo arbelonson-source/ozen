@@ -327,6 +327,49 @@ object HebrewText {
     )
 
     /**
+     * Arabic glues "and", "so", "with", "to" and "like" onto the next word the
+     * same way: "وجدتي" ("and my grandma"), "لجدتي" ("to my grandma"). The
+     * Important words help promises these count. They are glued only onto a
+     * stem written in Arabic letters, and only one of three letters or more:
+     * a two-letter word hides inside too many others.
+     */
+    val arabicAttachedPrefixes: Set<String> = setOf(
+        "و", "ف", "ب", "ل", "ك", "وب", "فب", "ول", "فل", "وك", "فك",
+    )
+
+    /**
+     * The article, alone or behind those: "الطبيب" ("the doctor"), "للطبيب"
+     * ("to the doctor", where the lam of "to" swallows the article's alef),
+     * "وبالطبيب". A word saved with the article keeps it: "الطبيب" finds
+     * "والطبيب" and "للطبيب" but not a bare "طبيب"; saved as "طبيب" it finds
+     * them all.
+     */
+    val arabicArticlePrefixes: Set<String> = setOf(
+        "ال", "لل", "وال", "فال", "بال", "كال", "وكال", "فكال", "ولل", "فلل", "وبال", "فبال",
+    )
+
+    /**
+     * Arabic names that are everyday words too. A name never takes the
+     * article, so with it the word is meant: "the age", "the light", "peace".
+     * "To Ali" still alerts: being called matters more.
+     */
+    internal val arabicNamesThatAreWords: Set<String> = setOf(
+        "علي", "عمر", "نور", "امل", "سلام", "صالح", "حسن", "جمال", "فرح", "ايمان", "كريم", "رحمه",
+    )
+
+    internal fun isArabicStem(stem: String): Boolean =
+        stem.codePointCount(0, stem.length) >= 3 && stem.codePoints().allMatch { it in 0x0620..0x064A || it in 0x0671..0x06D3 }
+
+    internal fun hasArabicPrefix(word: String, stem: String): Boolean {
+        if (!isArabicStem(stem)) return false
+        if (arabicAttachedPrefixes.any { word == it + stem }) return true
+        if (stem !in arabicNamesThatAreWords && arabicArticlePrefixes.any { word == it + stem }) return true
+        if (!stem.startsWith("ال")) return false
+        val noun = stem.substring(2)
+        return isArabicStem(noun) && listOf("لل", "ولل", "فلل").any { word == it + noun }
+    }
+
+    /**
      * True if [word] is [stem] on its own, or [stem] with one of the attached
      * prefixes glued to the front. Deliberately does not touch the end of the
      * word, so a suffix change ("savta'ot") is correctly left unmatched.
@@ -334,7 +377,8 @@ object HebrewText {
     fun stripAttachedPrefix(word: String, stem: String): Boolean {
         if (word == stem) return true
         if (everydayWordsNotNames[stem]?.contains(word) == true) return false
-        return attachedPrefixes.any { word == it + stem }
+        if (attachedPrefixes.any { word == it + stem }) return true
+        return hasArabicPrefix(word, stem)
     }
 
     /**
@@ -378,6 +422,16 @@ object HebrewText {
         // A doctor's abbreviated title after the article spells the name
         // Hadar, which is said far more often than "the Dr.".
         "דר" to setOf("הדר", "והדר", "שהדר", "להדר", "בהדר", "מהדר", "כשהדר", "וכשהדר", "ושהדר", "שמהדר"),
+        // Arabic names hiding in everyday words: "actual" (so Ali), "at the
+        // age of" (with Omar), "with hope", "in good (faith)"; and names that
+        // start with the article's letters: "to despair" (Elias), "for the
+        // important" (Ilham).
+        "علي" to setOf("فعلي"),
+        "عمر" to setOf("بعمر"),
+        "امل" to setOf("بامل"),
+        "حسن" to setOf("بحسن"),
+        "الياس" to setOf("للياس"),
+        "الهام" to setOf("للهام"),
     )
 
     /**

@@ -775,6 +775,44 @@ struct KeywordMatchingRound2Tests {
         #expect(count("علي حسن", "قال على حسن") == 0)
     }
 
+    @Test("an Arabic word alerts with the article or a preposition glued on, as the Important words help promises")
+    func arabicAttachedPrefixes() {
+        #expect(count("طبيب", "ذهبت إلى الطبيب") == 1)
+        #expect(count("طبيب", "قولوا للطبيب") == 1)
+        #expect(count("طبيب", "وبالطبيب") == 1)
+        #expect(count("جدتي", "قل لجدتي") == 1)
+        #expect(count("جدتي", "أنا وجدتي") == 1)
+        #expect(count("ماما", "قولوا لماما") == 1)
+        #expect(count("الطبيب", "والطبيب قال") == 1)
+        #expect(count("الطبيب", "طبيب جديد") == 0)
+        #expect(count("علي", "قل لعلي") == 1)
+        #expect(count("طبيب", "وكالطبيب") == 1)
+        #expect(count("الطبيب", "قولوا للطبيب") == 1)
+        #expect(count("إلياس", "قل لإلياس") == 1)
+    }
+
+    @Test("a short Arabic word, or a name that is also an everyday word, does not alert inside another word")
+    func arabicPrefixesSkipShortAndEverydayWords() {
+        #expect(count("ام", "كام") == 0)
+        #expect(count("ام", "لام") == 0)
+        #expect(count("علي", "هذا فعلي") == 0)
+        #expect(count("عمر", "بعمر عشر سنوات") == 0)
+        #expect(count("نور", "أطفئوا النور") == 0)
+        #expect(count("سلام", "السلام عليكم") == 0)
+        #expect(count("نور", "فالنور") == 0)
+        #expect(count("عمر", "وكالعمر") == 0)
+        #expect(count("إلياس", "لا مكان لليأس") == 0)
+        #expect(count("نور", "قولوا لنور") == 1)
+        #expect(count("Dan", "وDan") == 0)
+    }
+
+    @Test("the suggested Arabic doctor and medicine are the bare words, so every glued form alerts")
+    func arabicSuggestionsAreBareWords() {
+        #expect(AlertSuggestions.offeredWords(spoken: .arabic).contains("طبيب"))
+        #expect(AlertSuggestions.offeredWords(spoken: .arabic).contains("دواء"))
+        #expect(count("دواء", "خذ الدواء") == 1)
+    }
+
     @Test("folding does not merge different words")
     func foldingKeepsDifferentWords() {
         #expect(count("Dan", "Dana") == 0)

@@ -259,6 +259,44 @@ public enum HebrewText {
         "כשה", "וכשה", "ומה", "שמה",
     ]
 
+    /// Arabic glues "and", "so", "with", "to" and "like" onto the next word
+    /// the same way: "وجدتي" ("and my grandma"), "لجدتي" ("to my grandma").
+    /// The Important words help promises these count. They are glued only
+    /// onto a stem written in Arabic letters, and only one of three letters
+    /// or more: a two-letter word hides inside too many others.
+    public static let arabicAttachedPrefixes: Set<String> = [
+        "و", "ف", "ب", "ل", "ك", "وب", "فب", "ول", "فل", "وك", "فك",
+    ]
+
+    /// The article, alone or behind those: "الطبيب" ("the doctor"),
+    /// "للطبيب" ("to the doctor", where the lam of "to" swallows the
+    /// article's alef), "وبالطبيب". A word saved with the article keeps it:
+    /// "الطبيب" finds "والطبيب" and "للطبيب" but not a bare "طبيب"; saved
+    /// as "طبيب" it finds them all.
+    public static let arabicArticlePrefixes: Set<String> = [
+        "ال", "لل", "وال", "فال", "بال", "كال", "وكال", "فكال", "ولل", "فلل", "وبال", "فبال",
+    ]
+
+    /// Arabic names that are everyday words too. A name never takes the
+    /// article, so with it the word is meant: "the age", "the light",
+    /// "peace". "To Ali" still alerts: being called matters more.
+    static let arabicNamesThatAreWords: Set<String> = [
+        "علي", "عمر", "نور", "امل", "سلام", "صالح", "حسن", "جمال", "فرح", "ايمان", "كريم", "رحمه",
+    ]
+
+    static func isArabicStem(_ stem: String) -> Bool {
+        stem.unicodeScalars.count >= 3 && stem.unicodeScalars.allSatisfy { (0x0620...0x064A).contains($0.value) || (0x0671...0x06D3).contains($0.value) }
+    }
+
+    static func hasArabicPrefix(_ word: String, leaving stem: String) -> Bool {
+        guard isArabicStem(stem) else { return false }
+        if arabicAttachedPrefixes.contains(where: { word == $0 + stem }) { return true }
+        if !arabicNamesThatAreWords.contains(stem), arabicArticlePrefixes.contains(where: { word == $0 + stem }) { return true }
+        guard stem.hasPrefix("ال") else { return false }
+        let noun = String(stem.dropFirst(2))
+        return isArabicStem(noun) && ["لل", "ولل", "فلل"].contains { word == $0 + noun }
+    }
+
     /// True if `word` is `stem` on its own, or `stem` with one of the
     /// attached prefixes glued to the front. Deliberately does not touch
     /// the end of the word, so a *suffix* change ("savta'ot") is correctly
@@ -269,7 +307,7 @@ public enum HebrewText {
         for prefix in attachedPrefixes where word == prefix + stem {
             return true
         }
-        return false
+        return hasArabicPrefix(word, leaving: stem)
     }
 
     /// Short names that, with a prefix glued on, spell an everyday word far
@@ -312,6 +350,16 @@ public enum HebrewText {
         // A doctor's abbreviated title ("ד״ר") after the article spells the
         // name Hadar, which is said far more often than "the Dr.".
         "דר": ["הדר", "והדר", "שהדר", "להדר", "בהדר", "מהדר", "כשהדר", "וכשהדר", "ושהדר", "שמהדר"],
+        // Arabic names hiding in everyday words: "actual" (so Ali), "at the
+        // age of" (with Omar), "with hope", "in good (faith)"; and names that
+        // start with the article's letters: "to despair" (Elias), "for the
+        // important" (Ilham).
+        "علي": ["فعلي"],
+        "عمر": ["بعمر"],
+        "امل": ["بامل"],
+        "حسن": ["بحسن"],
+        "الياس": ["للياس"],
+        "الهام": ["للهام"],
     ]
 
     /// The Hebrew geresh, and the plain and typographic apostrophes a
