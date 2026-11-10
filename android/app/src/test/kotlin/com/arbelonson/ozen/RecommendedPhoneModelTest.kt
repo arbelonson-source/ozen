@@ -22,4 +22,12 @@ class RecommendedPhoneModelTest {
         assertNotEquals(PhoneModelCatalog.recommended(UILanguage.Hebrew), picked)
         assertEquals(picked, recommendedPhoneModel(UILanguage.Hebrew, slow, 4_000_000_000))
     }
+
+    @Test
+    fun `without a phone test a phone with little memory gets the estimate's pick, not the catalog's`() {
+        val memory = 1_500_000_000L
+        val picked = PhoneModelEstimate.recommend(UILanguage.Hebrew, null, memory)
+        assertNotEquals(PhoneModelCatalog.recommended(UILanguage.Hebrew), picked)
+        assertEquals(picked, recommendedPhoneModel(UILanguage.Hebrew, null, memory))
+    }
 }
