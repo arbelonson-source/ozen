@@ -292,7 +292,7 @@ class PhasePresentationTest {
         val refused = covering(EngineUnavailability.Kind.HomeServerRejected)
         assertTrue(unreachable.detail?.contains("אין חיבור למחשב בבית") == true)
         assertTrue(refused.detail?.contains("קוד הצימוד") == true)
-        assertTrue(refused.action == Action.OpenEngineSettings && refused.tint == PhaseTint.Active)
+        assertTrue(refused.action == Action.Pause && refused.tint == PhaseTint.Active)
         assertTrue(refused.detail?.contains("ממי שהגדיר את הטלפון") == true)
         assertTrue(!refused.detailFitsInStatus && !unreachable.detailFitsInStatus)
     }
@@ -320,20 +320,17 @@ class PhasePresentationTest {
 
     @Test
     fun `covering for the cloud names what only the family can fix, and the button still pauses as on the iPhone`() {
-        fun covering(reason: EngineUnavailability.Kind, engine: TranscriptionEngineKind = TranscriptionEngineKind.Cloud) = present(
+        fun covering(reason: EngineUnavailability.Kind) = present(
             PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
-            coveringForCloud = true, coveredEngine = engine, coverReason = reason,
+            coveringForCloud = true, coveredEngine = TranscriptionEngineKind.Cloud, coverReason = reason,
         )
         val noKey = covering(EngineUnavailability.Kind.CloudKeyNeeded)
         val noCredit = covering(EngineUnavailability.Kind.CloudOutOfCredit)
-        val rejected = covering(EngineUnavailability.Kind.HomeServerRejected, TranscriptionEngineKind.HomeServer)
         val offline = covering(EngineUnavailability.Kind.NoInternet)
         assertTrue(noKey.detail?.contains("OpenRouter") == false && noKey.detail?.contains("ממי שהגדיר את הטלפון") == true)
         assertTrue(noKey.action == Action.Pause && noKey.tint == PhaseTint.Active)
         assertTrue(noCredit.detail?.contains("הקרדיט") == true)
         assertTrue(noCredit.action == Action.Pause && noCredit.tint == PhaseTint.Active)
-        assertTrue(rejected.detail?.contains("קוד הצימוד") == true)
-        assertTrue(rejected.action == Action.Pause && rejected.tint == PhaseTint.Active)
         assertEquals(Action.Pause, offline.action)
         assertTrue(offline.detail?.contains("בענן") == true)
     }
