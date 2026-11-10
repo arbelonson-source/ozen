@@ -1665,7 +1665,7 @@ class CaptionScreenDeviceTest {
         val before = app.settings.current.value.vocabulary
         app.settings.change { it.vocabulary = listOf("Dr. Levi") }
         try {
-            showLines(listOf(committed("I spoke with Shera yesterday")))
+            showHeardLines(listOf(committed("I spoke with Shera yesterday")))
             val fix = "Fix a word"
             lineText("Shera").performTouchInput { longClick() }
             compose.onNodeWithText(fix).performClick()
@@ -1679,8 +1679,9 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Save").performClick()
             compose.waitUntil(5_000) { app.settings.current.value.vocabulary == listOf("Shira", "Dr. Levi") }
             compose.waitUntil(5_000) { compose.onAllNodesWithText("Tap the words that came out wrong").fetchSemanticsNodes().isEmpty() }
+            compose.waitUntil(5_000) { compose.onAllNodes(shownAs("I spoke with Shira yesterday")).fetchSemanticsNodes().isNotEmpty() }
 
-            val action = lineText("Shera").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == fix }
+            val action = lineText("Shira").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == fix }
             compose.runOnUiThread { action.action() }
             compose.onAllNodes(hasSetTextAction())[1].performTextInput("Shai")
             compose.onNodeWithText("Cancel").performClick()
@@ -1703,7 +1704,7 @@ class CaptionScreenDeviceTest {
         try {
             ScreenReader.isOn = { true }
             ScreenReader.announce = { _, text -> announced += text }
-            showLines(listOf(committed("I spoke with Shera yesterday")))
+            showHeardLines(listOf(committed("I spoke with Shera yesterday")))
             val fix = { lineText("Shera").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Fix a word" } }
 
             val first = fix()
@@ -1726,6 +1727,38 @@ class CaptionScreenDeviceTest {
         } finally {
             ScreenReader.isOn = readerBefore
             ScreenReader.announce = announceBefore
+            app.settings.change {
+                it.vocabulary = vocabularyBefore
+                it.wordFixes = fixesBefore
+            }
+        }
+    }
+
+    @Test
+    fun aFixForALineTheCaptionsNoLongerHoldKeepsTheDialogOpenSaysSoAndKeepsNothing() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val vocabularyBefore = app.settings.current.value.vocabulary
+        val fixesBefore = app.settings.current.value.wordFixes
+        val notSaved = "The line is no longer on the screen, so the fix was not saved."
+        try {
+            app.settings.change {
+                it.vocabulary = emptyList()
+                it.wordFixes = emptyList()
+            }
+            compose.runOnUiThread { app.captions.pipeline.seedLinesForScreenshots(emptyList()) }
+            showLines(listOf(committed("I spoke with Shera yesterday")))
+            lineText("Shera").performTouchInput { longClick() }
+            compose.onNodeWithText("Fix a word").performClick()
+            compose.onNodeWithContentDescription("Shera").performClick()
+            compose.onAllNodes(hasSetTextAction())[1].performTextInput("Shira")
+            compose.onNodeWithText("Save").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(notSaved).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Tap the words that came out wrong").assertExists()
+            assertTrue(app.settings.current.value.vocabulary.isEmpty())
+            assertTrue(app.settings.current.value.wordFixes.isEmpty())
+            compose.onNodeWithText("Cancel").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Tap the words that came out wrong").fetchSemanticsNodes().isEmpty() }
+        } finally {
             app.settings.change {
                 it.vocabulary = vocabularyBefore
                 it.wordFixes = fixesBefore
@@ -2895,6 +2928,13 @@ class CaptionScreenDeviceTest {
         compose.waitForIdle()
         compose.onNodeWithTag(MISSED_SOUND).assertDoesNotExist()
         assertNull(CaptionState.screen.value.missedSound)
+    }
+
+    /** Lines the captions really hold, as heard ones: only those take a fix (see `CaptionSession.fixLine`). */
+    private fun showHeardLines(lines: List<TranscriptSegment>) {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        compose.runOnUiThread { app.captions.pipeline.seedLinesForScreenshots(lines) }
+        showLines(lines)
     }
 
     private fun showLines(lines: List<TranscriptSegment>, conversation: (Int) -> UUID? = { null }) {

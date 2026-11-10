@@ -1466,9 +1466,17 @@ class CaptionSession(
         if (everyTime) setWordFixes(WordFixes.adding(fix, settings.current.value.wordFixes))
     }
 
-    fun fixLine(line: UUID, heard: String, written: String) {
-        val text = pipeline.correctWord(line, WordFix(heard, written)) ?: return
+    /**
+     * True when the line took the fix. False when it is gone from the
+     * captions or was rewritten so the words aren't in it any more: the
+     * dialog then stays open and says so, and nothing is kept for next time.
+     */
+    fun fixLine(line: UUID, heard: String, written: String): Boolean {
+        val before = pipeline.segments.lastOrNull { it.id == line }?.text
+        val text = pipeline.correctWord(line, WordFix(heard, written)) ?: return false
+        if (text == before) return false
         conversations.fixLiveLine(line, text)
+        return true
     }
 
     /** Stars a caption line or takes its star away, in its conversation and on screen. */

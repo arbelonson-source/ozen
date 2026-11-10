@@ -681,8 +681,9 @@ private fun OzenApp(
                                     reading = conversation to line
                                 },
                                 onFixWord = { line, heard, written, everyTime ->
-                                    app.captions.fixLine(line, heard, written)
-                                    app.captions.saveWordFix(heard, written, everyTime)
+                                    app.captions.fixLine(line, heard, written).also { fixed ->
+                                        if (fixed) app.captions.saveWordFix(heard, written, everyTime)
+                                    }
                                 },
                                 onNameSpeaker = app.captions::nameSpeaker,
                                 savedSpeakerNames = { app.captions.savedSpeakerNames },
@@ -885,7 +886,7 @@ private fun CaptionScreen(
     languageCode: String,
     onStar: (UUID) -> Unit,
     onOpen: (conversation: UUID, line: UUID) -> Unit,
-    onFixWord: (UUID, String, String, Boolean) -> Unit,
+    onFixWord: (UUID, String, String, Boolean) -> Boolean,
     onNameSpeaker: (line: UUID, name: String) -> Boolean,
     savedSpeakerNames: () -> List<String>,
     onAskToRepeat: (() -> Unit)?,
@@ -978,15 +979,24 @@ private fun CaptionScreen(
     // leaving the newest 200 the screen holds while she types.
     var fixing by rememberSaveable { mutableStateOf<String?>(null) }
     var fixingLine by rememberSaveable { mutableStateOf<UUID?>(null) }
+    var fixRefused by rememberSaveable { mutableStateOf(false) }
     fixing?.let { text ->
         FixWordDialog(
             text,
             languageCode = languageCode,
+            error = tr("השורה כבר לא על המסך, ולכן התיקון לא נשמר.", "The line is no longer on the screen, so the fix was not saved.").takeIf { fixRefused },
             onSave = { heard, written, everyTime ->
-                fixingLine?.let { onFixWord(it, heard, written, everyTime) }
-                fixing = null
+                if (fixingLine?.let { onFixWord(it, heard, written, everyTime) } == true) {
+                    fixing = null
+                    fixRefused = false
+                } else {
+                    fixRefused = true
+                }
             },
-            onDismiss = { fixing = null },
+            onDismiss = {
+                fixing = null
+                fixRefused = false
+            },
         )
     }
     var naming by rememberSaveable { mutableStateOf<UUID?>(null) }
@@ -1239,7 +1249,7 @@ private fun CaptionScreen(
                                 if (offer != null) LighterModelOffer(offer, modelOfferWaiting, inUseModelBytes, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             }
                         }
-                        CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, marks, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { line -> markedWithCaptions = savesConversations; problemMarkedAt = secondsNow(); problemMarked = onMarkProblem(line) })
+                        CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, marks, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id; fixRefused = false }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { line -> markedWithCaptions = savesConversations; problemMarkedAt = secondsNow(); problemMarked = onMarkProblem(line) })
                         if (!following) {
                             JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                                 following = true
