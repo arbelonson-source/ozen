@@ -20,6 +20,27 @@ struct MicPickerView: View {
         NavigationStack {
             List {
                 Section {
+                    // A row of the list rather than a cover over it: the
+                    // tips below (USB-C, AirPods) are what helps when the
+                    // list is empty, and at large text the message scrolls
+                    // with everything else instead of overlapping it.
+                    if viewModel.availableInputs.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label(tr("אין מיקרופונים זמינים", "No microphones available"), systemImage: "mic.slash")
+                                .font(.headline)
+                            Text(tr("אם האפליקציה עדיין עולה, חכו רגע. אחרת, חברו אוזניות או מיקרופון חיצוני והקישו על רענון.", "If the app is still starting up, wait a moment. Otherwise, connect headphones or an external microphone and tap refresh."))
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("noMicrophonesMessage")
+                        Button {
+                            viewModel.refreshInputs()
+                        } label: {
+                            Label(tr("רענון", "Refresh"), systemImage: "arrow.clockwise")
+                        }
+                        .accessibilityIdentifier("noMicrophonesRefresh")
+                    }
                     ForEach(viewModel.availableInputs) { input in
                         Button {
                             let before = switchWarning
@@ -77,15 +98,6 @@ struct MicPickerView: View {
                     }
                 }
                 .font(.footnote)
-            }
-            .overlay {
-                if viewModel.availableInputs.isEmpty {
-                    ContentUnavailableView {
-                        Label(tr("אין מיקרופונים זמינים", "No microphones available"), systemImage: "mic.slash")
-                    } description: {
-                        Text(tr("אם האפליקציה עדיין עולה, חכו רגע. אחרת, חברו אוזניות או מיקרופון חיצוני והקישו על רענון.", "If the app is still starting up, wait a moment. Otherwise, connect headphones or an external microphone and tap refresh."))
-                    }
-                }
             }
             // Opened before captions ever set up the microphone, the list
             // would otherwise be empty until someone found the refresh button.
