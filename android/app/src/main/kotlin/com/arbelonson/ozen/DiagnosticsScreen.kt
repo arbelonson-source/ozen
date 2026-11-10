@@ -212,7 +212,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             value(tr("ניסיון חוזר אוטומטי", "Automatic retry"), DiagnosticsReport.retry(now.scheduledRetry, System.currentTimeMillis() / 1_000.0))
             value(tr("שיחת טלפון תופסת את האודיו", "Phone call is using the audio"), if (now.interruptedBySystem) tr("כן", "Yes") else tr("לא", "No"))
             value(tr("שמירת הגדרות", "Settings save"), if (now.settingsSaveFailed) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
-            value(tr("שמירת שיחות", "Conversation history save"), if (now.historySaveFailure != null) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
+            value(tr("שמירת שיחות", "Saving conversations"), if (now.historySaveFailure != null) tr("נכשלה", "Failed") else tr("תקינה", "OK"))
             value(tr("התראות בטלפון", "Phone notifications"), if (now.notificationsAllowed) tr("תקינות", "OK") else tr("כבויות בהגדרות של Android", "Turned off in Android settings"))
             value(tr("רטט להתראות", "Alert vibration"), if (now.canVibrate) tr("תקין", "OK") else tr("לא נתמך במכשיר הזה", "Not supported on this device"))
             value(tr("חיבור לאינטרנט", "Internet connection"), DiagnosticsReport.network(now.network))

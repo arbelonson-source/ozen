@@ -128,7 +128,7 @@ struct DiagnosticsView: View {
                 DiagnosticsRow(tr("ניסיון חוזר אוטומטי", "Automatic retry"), retryText)
                 DiagnosticsRow(tr("שיחת טלפון תופסת את האודיו", "Phone call is using the audio"), viewModel.isInterruptedBySystem ? tr("כן", "Yes") : tr("לא", "No"))
                 DiagnosticsRow(tr("שמירת הגדרות", "Settings save"), viewModel.settingsSaveError == nil ? tr("תקינה", "OK") : tr("נכשלה", "Failed"))
-                DiagnosticsRow(tr("שמירת שיחות", "Conversation history save"), viewModel.historySaveFailure == nil ? tr("תקינה", "OK") : tr("נכשלה", "Failed"))
+                DiagnosticsRow(tr("שמירת שיחות", "Saving conversations"), viewModel.historySaveFailure == nil ? tr("תקינה", "OK") : tr("נכשלה", "Failed"))
                 DiagnosticsRow(tr("התראות בטלפון", "Phone notifications"), notificationsText)
                 DiagnosticsRow(tr("רטט להתראות", "Alert vibration"), Self.vibrationText)
                 DiagnosticsRow(tr("חיבור לאינטרנט", "Internet connection"), DiagnosticsReport.describe(viewModel.pipeline.networkConditions))
