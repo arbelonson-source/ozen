@@ -211,7 +211,7 @@ struct OnboardingView: View {
     }
 
     private var languageNote: String? {
-        SpokenLanguageNote.text(for: viewModel.settings.spokenLanguage, engine: viewModel.settings.engine)
+        SpokenLanguageNote.text(for: viewModel.settings.spokenLanguage)
     }
 
     private var enginePage: some View {

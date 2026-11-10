@@ -914,7 +914,7 @@ struct SettingsView: View {
         } footer: {
             VStack(alignment: .leading, spacing: 6) {
                 Text(tr("השפה שמדברים בה סביבכם. הכתוביות נכתבות בשפה הזו.", "The language people around you speak. The captions are written in it."))
-                // Amharic on a Whisper model is mostly wrong for now: said
+                // Amharic captions are mostly wrong for now: said
                 // here rather than leave a deaf user leaning on captions
                 // she can't check. As on Android.
                 if let note = spokenLanguageNote {
@@ -928,7 +928,7 @@ struct SettingsView: View {
     }
 
     private var spokenLanguageNote: String? {
-        SpokenLanguageNote.text(for: viewModel.settings.spokenLanguage, engine: viewModel.settings.engine)
+        SpokenLanguageNote.text(for: viewModel.settings.spokenLanguage)
     }
 
     private func appLanguageName(_ language: AppLanguage) -> String {
