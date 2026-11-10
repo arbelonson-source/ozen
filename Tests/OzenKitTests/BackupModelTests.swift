@@ -44,6 +44,9 @@ struct BackupModelTests {
         #expect(!BackupModel.canStart(status(network: .cellular)))
         #expect(!BackupModel.canStart(status(downloading: 0.1)))
         #expect(!BackupModel.canStart(status(installed: true)))
+        #expect(BackupModel.canStart(status(network: .cellular), overCellular: true))
+        #expect(!BackupModel.canStart(status(network: .offline), overCellular: true))
+        #expect(!BackupModel.canStart(status(downloading: 0.1), overCellular: true))
     }
 
     @Test("a computer that can't be reached offers the backup only while one could still be fetched")

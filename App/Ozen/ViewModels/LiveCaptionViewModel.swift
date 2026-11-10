@@ -1398,10 +1398,13 @@ public final class LiveCaptionViewModel {
     /// A backup for a model picked earlier may still be downloading: this
     /// one starts beside it (the tap did nothing for the whole of that
     /// download), and the rows follow the newest.
-    public func downloadBackupModel() {
-        guard BackupModel.canStart(backupModelStatus) else { return }
+    ///
+    /// `overCellular`: this one download goes over cellular data, which the
+    /// backup row asks about first; the setting for every model stays as it is.
+    public func downloadBackupModel(overCellular: Bool = false) {
+        guard BackupModel.canStart(backupModelStatus, overCellular: overCellular) else { return }
         let variant = settings.whisperModelVariant
-        let allowCellular = settings.allowCellularModelDownload
+        let allowCellular = overCellular || settings.allowCellularModelDownload
         backupModelFailedVariant = nil
         backupModelProgress = 0
         backupModelVariant = variant
