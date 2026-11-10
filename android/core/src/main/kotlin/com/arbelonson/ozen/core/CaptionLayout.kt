@@ -57,22 +57,32 @@ object CaptionLayout {
         directed(joiningNumbers(readableText(text)), languageCode)
 
     /**
-     * Spaces inside a phone number, or between an amount and what it is of
-     * ("3 pills"), become no-break spaces so a caption line never wraps in
-     * the middle of one. Same length, so offsets stay valid. Display only.
+     * Spaces inside a phone number, a dose, or between an amount and what
+     * it counts ("3 pills") become no-break spaces so a caption line never
+     * wraps in the middle of one, and a phone number's hyphens become
+     * non-breaking hyphens: "050-1234567" wrapped after "050-". A longer
+     * run of number words still wraps at its spaces: held as one, it would
+     * not fit a line at the largest text size. Same as the iPhone, same
+     * length, so offsets stay valid. Display only.
      */
     internal fun joiningNumbers(text: String): String {
-        val spans = PhoneNumbers.matches(text).map { it.start until it.end } +
-            NumberEmphasis.ranges(text).map { it.start until it.endExclusive }
-        if (spans.isEmpty()) return text
+        val phones = PhoneNumbers.matches(text).map { it.start until it.end }
+        val amounts = NumberEmphasis.ranges(text).map { it.start until it.endExclusive }
+            .filter { span -> span.count { text[it] == ' ' } == 1 }
         val result = StringBuilder(text)
-        for (span in spans) {
+        for (span in phones + amounts) {
             for (index in span) if (result[index] == ' ') result.setCharAt(index, NO_BREAK_SPACE)
         }
-        return result.toString()
+        for (span in phones) {
+            for (index in span) if (result[index] == '-') result.setCharAt(index, NON_BREAKING_HYPHEN)
+        }
+        return doseSpace.matcher(result).replaceAll(NO_BREAK_SPACE.toString())
     }
 
     private const val NO_BREAK_SPACE = '\u00A0'
+    private const val NON_BREAKING_HYPHEN = '\u2011'
+
+    private val doseSpace = unicodePattern("""(?<=\d) (?=(?:מיליגרם|מיליליטר|מ״ג|מ״ל|גרם|ליטר|mg|ml)(?![\p{L}]))""")
 
     /**
      * The marks alone, without breaking the text into paragraphs: for a
