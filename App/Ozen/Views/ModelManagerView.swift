@@ -67,19 +67,7 @@ struct ModelManagerView: View {
                 Text(tr("אפשר להוריד אותו שוב בכל עת.", "It can be downloaded again anytime."))
             }
         }
-        .confirmationDialog(
-            tr("להוריד את המודל ״\u{2068}%1\u{2069}״ ולעבור אליו?", "Download %1 and switch to it?", args: ["\(pendingSwitch?.displayName ?? "")"]),
-            isPresented: Binding(get: { pendingSwitch != nil }, set: { if !$0 { pendingSwitch = nil } }),
-            titleVisibility: .visible,
-            presenting: pendingSwitch
-        ) { option in
-            Button(tr("להוריד ולעבור", "Download and switch")) {
-                Task { await viewModel.chooseModel(option.variant) }
-            }
-            Button(tr("ביטול", "Cancel"), role: .cancel) {}
-        } message: { option in
-            Text(tr("הכתוביות ייעצרו עד שההורדה (%1) תסתיים והמודל ייטען. בלי Wi‑Fi, ייתכן שההורדה תחכה עד שיהיה חיבור.", "Captions will stop until the download (%1) finishes and the model loads. Without Wi‑Fi, the download may wait for it.", args: ["\(option.sizeLabel)"]))
-        }
+        .asksBeforeSwitchingModel($pendingSwitch, viewModel: viewModel)
         .alert(tr("המחיקה נכשלה", "Delete failed"), isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
             Button(tr("סגירה", "Close"), role: .cancel) {}
         } message: {

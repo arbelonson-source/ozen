@@ -616,19 +616,7 @@ struct LiveCaptionView: View {
         } message: {
             Text(cellularDownloadMessage)
         }
-        .confirmationDialog(
-            tr("להוריד את המודל ״\u{2068}%1\u{2069}״ ולעבור אליו?", "Download %1 and switch to it?", args: ["\(pendingBetterModel?.displayName ?? "")"]),
-            isPresented: Binding(get: { pendingBetterModel != nil }, set: { if !$0 { pendingBetterModel = nil } }),
-            titleVisibility: .visible,
-            presenting: pendingBetterModel
-        ) { option in
-            Button(tr("להוריד ולעבור", "Download and switch")) {
-                Task { await viewModel.chooseModel(option.variant) }
-            }
-            Button(tr("ביטול", "Cancel"), role: .cancel) {}
-        } message: { option in
-            Text(tr("הכתוביות ייעצרו עד שההורדה (%1) תסתיים והמודל ייטען. בלי Wi‑Fi, ייתכן שההורדה תחכה עד שיהיה חיבור.", "Captions will stop until the download (%1) finishes and the model loads. Without Wi‑Fi, the download may wait for it.", args: ["\(option.sizeLabel)"]))
-        }
+        .asksBeforeSwitchingModel($pendingBetterModel, viewModel: viewModel)
         .confirmationDialog(
             tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?"),
             isPresented: $confirmingClear,
