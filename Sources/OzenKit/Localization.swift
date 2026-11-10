@@ -238,11 +238,13 @@ public func tr(_ hebrew: String, _ english: String) -> String {
 }
 
 public func tr(_ hebrew: String, _ english: String, in language: UILanguage) -> String {
+    let text: String
     switch language {
-    case .hebrew: return readingInOrder(hebrew, in: language)
-    case .english: return readingInOrder(english, in: language)
-    default: return readingInOrder(TranslationTable.shared.lookup(english, language: language) ?? english, in: language)
+    case .hebrew: text = hebrew
+    case .english: text = english
+    default: text = TranslationTable.shared.lookup(english, language: language) ?? english
     }
+    return readingInOrder(keepingAddressesInOrder(text, in: language), in: language)
 }
 
 /// iOS lays a line out in the direction of its first letter, so a Hebrew
@@ -263,6 +265,32 @@ private func readingInOrder(_ text: String, in language: UILanguage) -> String {
     return hasLetter && !opensLeftToRight ? leftToRightMark + text : text
 }
 
+/// The "://" of an address has no direction of its own, and in a Hebrew or
+/// Arabic sentence it took the sentence's: it was drawn on the far side of
+/// the letters before it, so "wss://" read "//:wss", and whoever typed the
+/// address from the screen got it wrong. Each address in the app's own
+/// sentence is kept whole, left to right, in an isolate; values put into
+/// it are left alone.
+private func keepingAddressesInOrder(_ text: String, in language: UILanguage) -> String {
+    guard language.isRightToLeft, text.contains("://"), let addressPattern else { return text }
+    let whole = NSRange(text.startIndex..., in: text)
+    var result = ""
+    var rest = text.startIndex
+    for match in addressPattern.matches(in: text, range: whole).compactMap({ Range($0.range, in: text) }) {
+        guard match.lowerBound == text.startIndex || text[text.index(before: match.lowerBound)] != "\u{2066}" else { continue }
+        var end = match.upperBound
+        while let last = text[match.lowerBound..<end].last, closingPunctuation.contains(last) {
+            end = text.index(before: end)
+        }
+        result += text[rest..<match.lowerBound] + "\u{2066}" + text[match.lowerBound..<end] + "\u{2069}"
+        rest = end
+    }
+    return result + text[rest...]
+}
+
+private let addressPattern = try? NSRegularExpression(pattern: #"[A-Za-z][A-Za-z0-9+.-]*://\S*"#)
+private let closingPunctuation: Set<Character> = [".", ",", ";", ":", "!", "?", ")", "]", "\"", "'", "״", "׳"]
+
 /// For a string built from `\(...)` interpolation, which can't be looked up
 /// by its finished text: `hebrewTemplate`/`englishTemplate` hold `%1`,
 /// `%2`... in place of each value, and `args` gives those values in that
@@ -281,7 +309,7 @@ public func tr(_ hebrewTemplate: String, _ englishTemplate: String, args: [Strin
     case .english: template = englishTemplate
     default: template = TranslationTable.shared.lookup(englishTemplate, language: language) ?? englishTemplate
     }
-    return readingInOrder(substitutingPlaceholders(in: template, with: args), in: language)
+    return readingInOrder(substitutingPlaceholders(in: keepingAddressesInOrder(template, in: language), with: args), in: language)
 }
 
 /// Replaces `%1`, `%2`... with `args[0]`, `args[1]`... in one pass from

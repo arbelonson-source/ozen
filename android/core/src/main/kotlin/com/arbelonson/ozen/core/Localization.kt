@@ -161,11 +161,14 @@ object Localization {
 fun tr(hebrew: String, english: String): String = tr(hebrew, english, Localization.language)
 
 fun tr(hebrew: String, english: String, language: UILanguage): String = readingInOrder(
-    when (language) {
-        UILanguage.Hebrew -> hebrew
-        UILanguage.English -> english
-        else -> TranslationTable.lookup(english, language) ?: english
-    },
+    keepingAddressesInOrder(
+        when (language) {
+            UILanguage.Hebrew -> hebrew
+            UILanguage.English -> english
+            else -> TranslationTable.lookup(english, language) ?: english
+        },
+        language,
+    ),
     language,
 )
 
@@ -184,7 +187,7 @@ fun tr(hebrewTemplate: String, englishTemplate: String, args: List<String>, lang
         UILanguage.English -> englishTemplate
         else -> TranslationTable.lookup(englishTemplate, language) ?: englishTemplate
     }
-    return readingInOrder(substitutingPlaceholders(template, args), language)
+    return readingInOrder(substitutingPlaceholders(keepingAddressesInOrder(template, language), args), language)
 }
 
 /**
@@ -202,6 +205,31 @@ private fun readingInOrder(text: String, language: UILanguage): String {
     val hasLetter = text.codePoints().anyMatch { Character.isAlphabetic(it) }
     return if (hasLetter && !opensLeftToRight) TextDirection.LEFT_TO_RIGHT_MARK + text else text
 }
+
+/**
+ * The "://" of an address has no direction of its own, and in a Hebrew or
+ * Arabic sentence it took the sentence's: it was drawn on the far side of the
+ * letters before it, so "wss://" read "//:wss", and whoever typed the address
+ * from the screen got it wrong. Each address in the app's own sentence is kept
+ * whole, left to right, in an isolate; values put into it are left alone.
+ */
+private fun keepingAddressesInOrder(text: String, language: UILanguage): String {
+    if (!language.isRightToLeft || "://" !in text) return text
+    val result = StringBuilder()
+    var rest = 0
+    for (match in ADDRESS.findAll(text)) {
+        val start = match.range.first
+        if (start > 0 && text[start - 1] == '\u2066') continue
+        var end = match.range.last + 1
+        while (end > start && text[end - 1] in CLOSING_PUNCTUATION) end--
+        result.append(text, rest, start).append('\u2066').append(text, start, end).append('\u2069')
+        rest = end
+    }
+    return result.append(text, rest, text.length).toString()
+}
+
+private val ADDRESS = Regex("""[A-Za-z][A-Za-z0-9+.-]*://\S*""")
+private const val CLOSING_PUNCTUATION = ".,;:!?)]\"'״׳"
 
 /**
  * Replaces `%1`, `%2`... with `args[0]`, `args[1]`... in one pass from the

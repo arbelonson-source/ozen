@@ -156,6 +156,26 @@ struct LocalizationTests {
         #expect(tr("%1 מתוך %2", "%1 of %2", args: ["3", "5"], in: .english) == "3 of 5")
     }
 
+    // "שמתחילה ב־wss://" was drawn "//:wss": in a right-to-left sentence
+    // the "://" took the sentence's direction (iPhone screen walk-through).
+    @Test("an address in a right-to-left sentence is kept whole, left to right, so it reads the way it is typed")
+    func addressReadsInOrder() {
+        let (isolate, end) = ("\u{2066}", "\u{2069}")
+        let outside = "Outside the home network, use the address that starts with wss://"
+        #expect(tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", outside, in: .hebrew)
+            == "מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־" + isolate + "wss://" + end)
+        #expect(tr("", outside + " · Tap for Settings", in: .arabic).contains(isolate + "wss://" + end + " · "))
+        #expect(tr("כתובת שמתחילה ב־wss://. הקוד", "x", in: .hebrew) == "כתובת שמתחילה ב־" + isolate + "wss://" + end + ". הקוד")
+        #expect(tr("ראו https://ozen.live/he/help, ואז", "x", in: .hebrew) == "ראו " + isolate + "https://ozen.live/he/help" + end + ", ואז")
+        #expect(tr("שתי כתובות: ws:// ו־wss://", "x", in: .hebrew) == "שתי כתובות: " + isolate + "ws://" + end + " ו־" + isolate + "wss://" + end)
+        #expect(tr("כבר " + isolate + "wss://" + end + " כאן", "x", in: .hebrew) == "כבר " + isolate + "wss://" + end + " כאן")
+        #expect(tr("הכתובת: %1", "The address: %1", args: ["wss://a.example"], in: .hebrew) == "הכתובת: wss://a.example")
+        #expect(tr("ב־%1, כמו wss://", "In %1, like wss://", args: ["Ozen"], in: .hebrew) == "ב־Ozen, כמו " + isolate + "wss://" + end)
+        for language in UILanguage.allCases where !language.isRightToLeft {
+            #expect(!tr("", outside, in: language).contains(isolate), "\(language)")
+        }
+    }
+
     @Test("the voice follows the letters, and the app's language when there are none")
     func speakingVoice() {
         #expect(UILanguage.forSpeaking("שלום, thanks", otherwise: .english) == .hebrew)

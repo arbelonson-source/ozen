@@ -161,6 +161,29 @@ class LocalizationTest {
         assertEquals("3 of 5", tr("%1 מתוך %2", "%1 of %2", listOf("3", "5"), UILanguage.English))
     }
 
+    // "שמתחילה ב־wss://" was drawn "//:wss": in a right-to-left sentence the
+    // "://" took the sentence's direction (iPhone screen walk-through).
+    @Test
+    fun `an address in a right-to-left sentence is kept whole, left to right, so it reads the way it is typed`() {
+        val isolate = "\u2066"
+        val end = "\u2069"
+        val outside = "Outside the home network, use the address that starts with wss://"
+        assertEquals(
+            "מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־" + isolate + "wss://" + end,
+            tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", outside, UILanguage.Hebrew),
+        )
+        assertTrue(tr("", "$outside · Tap for Settings", UILanguage.Arabic).contains(isolate + "wss://" + end + " · "))
+        assertEquals("כתובת שמתחילה ב־" + isolate + "wss://" + end + ". הקוד", tr("כתובת שמתחילה ב־wss://. הקוד", "x", UILanguage.Hebrew))
+        assertEquals("ראו " + isolate + "https://ozen.live/he/help" + end + ", ואז", tr("ראו https://ozen.live/he/help, ואז", "x", UILanguage.Hebrew))
+        assertEquals("שתי כתובות: " + isolate + "ws://" + end + " ו־" + isolate + "wss://" + end, tr("שתי כתובות: ws:// ו־wss://", "x", UILanguage.Hebrew))
+        assertEquals("כבר " + isolate + "wss://" + end + " כאן", tr("כבר " + isolate + "wss://" + end + " כאן", "x", UILanguage.Hebrew))
+        assertEquals("הכתובת: wss://a.example", tr("הכתובת: %1", "The address: %1", listOf("wss://a.example"), UILanguage.Hebrew))
+        assertEquals("ב־Ozen, כמו " + isolate + "wss://" + end, tr("ב־%1, כמו wss://", "In %1, like wss://", listOf("Ozen"), UILanguage.Hebrew))
+        for (language in UILanguage.entries.filter { !it.isRightToLeft }) {
+            assertFalse(tr("", outside, language).contains(isolate), language.name)
+        }
+    }
+
     @Test
     fun `the voice follows the letters, and the app's language when there are none`() {
         val cases = listOf(
