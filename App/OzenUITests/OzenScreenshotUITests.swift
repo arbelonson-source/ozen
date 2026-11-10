@@ -997,12 +997,31 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "pairing: settings never appeared")
 
         let link = try XCTUnwrap(URL(string: "ozen://pair?address=wss://desktop.tail0example.ts.net&code=example-code-123"))
-        app.open(link)
-
         let prompt = app.alerts.firstMatch
+        openInRunningApp(link, until: prompt)
         let shown = prompt.waitForExistence(timeout: 10)
         capture(app, name: "pairing-over-settings")
         XCTAssertTrue(shown, "pairing: 'Connect to the home computer?' never appeared with Settings open")
+    }
+
+    /// Hands a link to the app already running, as a scan with the Camera
+    /// does. `XCUIApplication.open` launched the app afresh with the link,
+    /// which closed every screen first, so this test never had Settings
+    /// open. Handed over this way, iOS 18 and 26 alike close Settings
+    /// before the question shows (runs 42810691161, 42818483985).
+    /// iOS may ask "Open in Ozen?" first, and on a busy runner the question
+    /// can take a while: it is watched for until the app shows `landed`.
+    private func openInRunningApp(_ url: URL, until landed: XCUIElement) {
+        XCUIDevice.shared.system.open(url)
+        let confirm = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Open"]
+        for _ in 0..<60 {
+            if landed.exists { return }
+            if confirm.exists {
+                confirm.tap()
+                return
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
     }
 
     /// The steppers quiet hours reveals once enabled, at this text size --
