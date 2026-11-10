@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -87,6 +88,25 @@ class TranscribeDoneDeviceTest {
             compose.waitForIdle()
             assertEquals(1, closed.get())
         }
+    }
+
+    @Test
+    fun aRecordingSharedWhileTheQuestionIsOpenTakesTheQuestionAwayInsteadOfClosingTheNewOne() {
+        val closed = AtomicInteger()
+        val model = FileModelChoice.toDownload(UILanguage.English)
+        val done = FileTranscription.Done("Lecture.wav", UILanguage.English, model, listOf(TranscribedLine(0.0, 2.0, "Good morning")), HistorySave.Off)
+        val next = FileTranscription.Ready("Interview.m4a", UILanguage.English, model, listOf(model), model, 60.0, captionsRunning = false)
+        val state = mutableStateOf<FileTranscription>(done)
+        compose.runOnUiThread { compose.activity.setContent { TranscribeScreen(app.transcriber, state.value, onClose = { closed.incrementAndGet() }) } }
+        compose.onNodeWithText("Done").performClick()
+        compose.onNodeWithText("Close without sharing the text?").assertExists()
+        compose.runOnUiThread { state.value = next }
+        compose.waitForIdle()
+        compose.onNodeWithText("Close without sharing the text?").assertDoesNotExist()
+        compose.runOnUiThread { state.value = done }
+        compose.waitForIdle()
+        compose.onNodeWithText("Close without sharing the text?").assertDoesNotExist()
+        assertEquals(0, closed.get())
     }
 
     @Test

@@ -90,6 +90,10 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
         }
     }
     BackHandler(onBack = close)
+    // A recording shared in meanwhile replaces the finished text: the
+    // question was about text no longer on screen, and its Close would
+    // have closed the new recording instead.
+    LaunchedEffect(state.leavingLosesText) { if (!state.leavingLosesText) confirmingLeave = false }
     when (state) {
         FileTranscription.Idle -> Unit
         is FileTranscription.Ready -> ReadyPage(transcriber, state, close)
