@@ -13,6 +13,7 @@ step() {
         failed+=("$name")
     fi
 }
+step no-conflict-markers bash -c '! git grep -nE "^(<<<<<<<|>>>>>>>)( |$)|^=======$" -- .'
 step translations python3 scripts/check-translations.py
 step app-shortcuts python3 scripts/check-app-shortcuts.py
 step doc-quotes python3 scripts/check-doc-quotes.py
