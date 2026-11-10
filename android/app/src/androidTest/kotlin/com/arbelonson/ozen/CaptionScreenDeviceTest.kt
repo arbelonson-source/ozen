@@ -1686,6 +1686,48 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    @Test
+    fun savingAFixedWordTellsTheScreenReaderTheLineWasFixedAndCancelSaysNothing() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val vocabularyBefore = app.settings.current.value.vocabulary
+        val fixesBefore = app.settings.current.value.wordFixes
+        val readerBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        val announced = CopyOnWriteArrayList<String>()
+        val dialogGone = { compose.onAllNodesWithText("Tap the words that came out wrong").fetchSemanticsNodes().isEmpty() }
+        try {
+            ScreenReader.isOn = { true }
+            ScreenReader.announce = { _, text -> announced += text }
+            showLines(listOf(committed("I spoke with Shera yesterday")))
+            val fix = { lineText("Shera").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Fix a word" } }
+
+            val first = fix()
+            compose.runOnUiThread { first.action() }
+            compose.onAllNodes(hasSetTextAction())[1].performTextInput("Shai")
+            compose.onNodeWithText("Cancel").performClick()
+            compose.waitUntil(5_000) { dialogGone() }
+            compose.waitForIdle()
+            assertEquals("said $announced", 0, announced.count { it == "Line fixed" })
+
+            val second = fix()
+            compose.runOnUiThread { second.action() }
+            compose.onNodeWithContentDescription("Shera").performClick()
+            compose.onAllNodes(hasSetTextAction())[1].performTextInput("Shira")
+            compose.onNodeWithText("Save").performClick()
+            compose.waitUntil(5_000) { "Line fixed" in announced }
+            compose.waitForIdle()
+            assertTrue(dialogGone())
+            assertEquals("said $announced", 1, announced.count { it == "Line fixed" })
+        } finally {
+            ScreenReader.isOn = readerBefore
+            ScreenReader.announce = announceBefore
+            app.settings.change {
+                it.vocabulary = vocabularyBefore
+                it.wordFixes = fixesBefore
+            }
+        }
+    }
+
     // TalkBack has no priority for an announcement: the next one cuts off
     // the one being spoken, and "Attention! Smoke detector" went unheard.
     @Test
