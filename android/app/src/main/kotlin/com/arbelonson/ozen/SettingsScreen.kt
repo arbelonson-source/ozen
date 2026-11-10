@@ -208,7 +208,7 @@ fun SettingsScreen(
     onSoundAlerts: (SoundAlertPreferences) -> Unit = {},
     onSoundsOnly: () -> Unit = {},
     soundNearMiss: (SoundEvent) -> SoundNearMisses.Entry? = { null },
-    onFeel: (AlertVibration) -> Unit = {},
+    onFeel: (AlertVibration, SoundEvent.Importance?) -> Unit = { _, _ -> },
     onTryLight: (refused: () -> Unit) -> Unit = {},
     speakers: SpeakerBook,
     onCellularDownloads: (Boolean) -> Unit,

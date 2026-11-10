@@ -10,12 +10,14 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AlertNotificationContent
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.BackgroundAlertPolicy
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.SoundEventCatalog
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -23,6 +25,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 @RunWith(AndroidJUnit4::class)
 class AwayAlertsDeviceTest {
@@ -54,6 +58,39 @@ class AwayAlertsDeviceTest {
             Thread.sleep(100)
         }
         throw AssertionError("$identifier was never posted")
+    }
+
+    // The test alert waits 10 seconds for the phone to be locked; that wait
+    // stopped while the processor slept, so the test came late or never.
+    @Test
+    fun theTestAlertKeepsThePhoneAwakeUntilItIsPosted() {
+        val before = AlertNotifier.testLock
+        val held = AtomicBoolean(false)
+        val heldFor = AtomicLong(0)
+        AlertNotifier.testLock = {
+            object : TimedLock {
+                override fun acquire(timeoutMillis: Long) {
+                    heldFor.set(timeoutMillis)
+                    held.set(true)
+                }
+
+                override fun release() = held.set(false)
+            }
+        }
+        val content = BackgroundAlertPolicy.testNotification
+        manager.cancel(content.identifier, 0)
+        posted += content.identifier
+        try {
+            AlertNotifier(context).postTest(content)
+            assertTrue("the phone was not kept awake for the wait", held.get())
+            assertTrue("kept awake for only ${heldFor.get()} ms", heldFor.get() > AlertNotifier.TEST_DELAY_MILLIS)
+            val deadline = System.currentTimeMillis() + AlertNotifier.TEST_DELAY_MILLIS + 5_000
+            while (held.get() && System.currentTimeMillis() < deadline) Thread.sleep(100)
+            assertFalse("the phone was kept awake after the test", held.get())
+            assertNotNull("the test alert was never posted", manager.activeNotifications.firstOrNull { it.tag == content.identifier })
+        } finally {
+            AlertNotifier.testLock = before
+        }
     }
 
     // On a phone that hides notification contents when locked, a smoke alarm

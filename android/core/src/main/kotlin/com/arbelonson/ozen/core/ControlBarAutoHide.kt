@@ -9,11 +9,12 @@ object ControlBarAutoHide {
         followingLatest: Boolean,
         hasLines: Boolean,
         voiceOverRunning: Boolean,
+        switchControlRunning: Boolean = false,
         pausedForCall: Boolean = false,
         lastTouchAt: Double,
         now: Double,
     ): Boolean {
-        if (!enabled || !isListening || !followingLatest || !hasLines || voiceOverRunning || pausedForCall) return false
+        if (!enabled || !isListening || !followingLatest || !hasLines || voiceOverRunning || switchControlRunning || pausedForCall) return false
         return now - lastTouchAt >= IDLE_SECONDS
     }
 }

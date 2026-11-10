@@ -262,6 +262,27 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun withSwitchAccessOnTheButtonsStayWhileCaptionsRunUntouched() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val before = app.settings.current.value.display
+        val servicesBefore = ScreenReader.enabledServiceIds
+        try {
+            ScreenReader.enabledServiceIds = { listOf("com.google.android.marvin.talkback/com.google.android.accessibility.switchaccess.SwitchAccessService") }
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            app.settings.change { it.display = it.display.copy(autoHideControls = true) }
+            showLine("Captions running on their own", PipelinePhase.Listening)
+            val later = System.currentTimeMillis() + 8_000
+            compose.waitUntil(12_000) { System.currentTimeMillis() >= later }
+            compose.onNodeWithText("Settings").assertExists()
+            compose.onNodeWithContentDescription("Show the buttons").assertDoesNotExist()
+        } finally {
+            ScreenReader.enabledServiceIds = servicesBefore
+            app.settings.change { it.display = before }
+        }
+    }
+
+    @Test
     fun theNewestLineStaysWhollyInViewWhenTheButtonsComeBackAsOnTheIPhone() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val before = app.settings.current.value.display
