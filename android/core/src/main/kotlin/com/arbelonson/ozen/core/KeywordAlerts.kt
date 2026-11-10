@@ -341,6 +341,10 @@ object HebrewText {
         "אור" to setOf("האור", "באור", "לאור"),
         "שיר" to setOf("השיר", "לשיר", "בשיר"),
         "אביב" to setOf("באביב", "האביב"),
+        "אדם" to setOf("האדם", "והאדם", "לאדם", "באדם"),
+        "שני" to setOf("השני", "ושני", "בשני"),
+        "שחר" to setOf("בשחר", "השחר"),
+        "נועם" to setOf("בנועם", "הנועם"),
         // A doctor's abbreviated title after the article spells the name
         // Hadar, which is said far more often than "the Dr.".
         "דר" to setOf("הדר", "והדר", "שהדר", "להדר", "בהדר", "מהדר", "כשהדר", "וכשהדר", "ושהדר", "שמהדר"),
@@ -446,6 +450,12 @@ object HebrewText {
         val wordLetters = graphemesOf(word)
         return wordLetters.size >= stem.size && wordLetters.subList(0, stem.size) == stem && wordLetters.size - stem.size <= 2
     }
+
+    /**
+     * Small words that start a phrase far more often than they start a name:
+     * "ten li or" ("give me light") must not read as the name "Lior".
+     */
+    internal val wordsThatTakeNoName: Set<String> = setOf("לי", "לו", "לה", "לך")
 
     internal val finalLetters: Map<String, String> = mapOf("ך" to "כ", "ם" to "מ", "ן" to "נ", "ף" to "פ", "ץ" to "צ")
 
@@ -601,6 +611,7 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>) {
             } else if (phraseWords.size == 1 && graphemesOf(joinedPhrase).size >= 4) {
                 for (index in 0 until normalizedWords.size - 1) {
                     if (normalizedWords[index].isEmpty() || normalizedWords[index + 1].isEmpty()) continue
+                    if (normalizedWords[index] in HebrewText.wordsThatTakeNoName) continue
                     if (normalizedWords[index + 1] in HebrewText.wordsThatNeverEndAName) continue
                     val glued = HebrewText.foldingFinalLetters(normalizedWords[index] + normalizedWords[index + 1])
                     if (!HebrewText.stripAttachedPrefix(glued, joinedPhrase)) continue

@@ -731,6 +731,25 @@ struct KeywordMatchingRound2Tests {
         #expect(count("Anna", "annas") == 0)
     }
 
+    @Test("everyday words that hide a short name do not match it")
+    func everydayWordsHideShortNames() {
+        for (stem, text) in [
+            ("בר", "כבר אכלתי"), ("בר", "וכבר"), ("בר", "זה שבר"), ("שי", "ביום ששי"),
+            ("נתן", "מה שנתן לי"), ("אלה", "דברים כאלה"), ("אלה", "האלה באו"), ("לאה", "ממחר והלאה"),
+        ] {
+            #expect(count(stem, text) == 0, "\(stem) in \(text)")
+        }
+    }
+
+    @Test("the name itself with a prefix still matches")
+    func shortNameWithPrefixStillMatches() {
+        for (stem, text) in [
+            ("בר", "אמרתי לבר"), ("בר", "ובר בא"), ("נתן", "נתן בא"), ("נתן", "ולנתן"), ("אלה", "ואלה באו"),
+        ] {
+            #expect(count(stem, text) == 1, "\(stem) in \(text)")
+        }
+    }
+
     @Test("accents, hamza and yo are folded")
     func accentsHamzaAndYoFolded() {
         #expect(count("Jose", "Hola José") == 1)
