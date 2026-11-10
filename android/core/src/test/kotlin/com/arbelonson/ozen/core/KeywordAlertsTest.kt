@@ -587,6 +587,14 @@ class OtherLettersTest {
     }
 
     @Test
+    fun `an everyday word with a prefix is not a name`() {
+        listOf(
+            "אדם" to "לאדם צעיר", "אדם" to "האדם בא", "שני" to "הילד השני", "שחר" to "בשחר",
+            "שחר" to "השחר עלה", "נועם" to "בנועם", "נועם" to "הנועם", "ליאור" to "תן לי אור",
+        ).forEach { (stem, text) -> assertEquals(0, hits(stem, text), "$stem in $text") }
+    }
+
+    @Test
     fun `the name itself with a prefix still matches`() {
         listOf(
             "בר" to "אמרתי לבר", "בר" to "ובר בא", "נתן" to "נתן בא", "נתן" to "ולנתן", "אלה" to "ואלה באו",

@@ -264,18 +264,22 @@ public enum HebrewText {
         // Found in real speech the home computer wrote: "pains of" (as in
         // headaches), "full", "buildings of"; and a name never takes "the".
         "אבי": ["כאבי", "וכאבי"],
-        "לאה": ["מלאה", "ומלאה", "שמלאה"],
+        "לאה": ["מלאה", "ומלאה", "שמלאה", "הלאה", "והלאה"],
+        "בר": ["כבר", "וכבר", "שבר", "ושבר", "הבר"],
+        "אלה": ["כאלה", "וכאלה", "האלה", "והאלה"],
+        "שי": ["ששי", "וששי"],
+        "נתן": ["שנתן", "כשנתן", "ושנתן"],
         "בני": ["מבני", "ומבני"],
         "מרים": ["המרים", "והמרים", "שהמרים"],
         "אור": ["האור", "באור", "לאור"],
         "שיר": ["השיר", "לשיר", "בשיר"],
         "אביב": ["באביב", "האביב"],
-        // A doctor's abbreviated title ("ד״ר") after the article spells the
-        // name Hadar, which is said far more often than "the Dr.".
         "אדם": ["האדם", "והאדם", "לאדם", "באדם"],
         "שני": ["השני", "ושני", "בשני"],
         "שחר": ["בשחר", "השחר"],
         "נועם": ["בנועם", "הנועם"],
+        // A doctor's abbreviated title ("ד״ר") after the article spells the
+        // name Hadar, which is said far more often than "the Dr.".
         "דר": ["הדר", "והדר", "שהדר", "להדר", "בהדר", "מהדר", "כשהדר", "וכשהדר", "ושהדר", "שמהדר"],
     ]
 
