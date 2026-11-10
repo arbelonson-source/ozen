@@ -22,6 +22,19 @@ public enum FixWordForm {
         return WordFixes.apply([WordFix(heard: cleaned(heard), written: wanted)], to: line) != line
     }
 
+    public static func tapped(_ picked: ClosedRange<Int>?, index: Int, words: [String]) -> ClosedRange<Int>? {
+        guard let range = picked else { return index...index }
+        if range.contains(index) {
+            if range.count == 1 { return nil }
+            return index == range.lowerBound ? (index + 1)...range.upperBound : range.lowerBound...(index - 1)
+        }
+        if range.count < WordFixes.maximumPhraseWords {
+            if index == range.upperBound + 1, WordFixes.canJoin(words[range.upperBound], words[index]) { return range.lowerBound...index }
+            if index == range.lowerBound - 1, WordFixes.canJoin(words[index], words[range.lowerBound]) { return index...range.upperBound }
+        }
+        return index...index
+    }
+
     public static func note(line: String, heard: String, written: String) -> Note? {
         let typed = heard.trimmingCharacters(in: .whitespacesAndNewlines)
         if typed.isEmpty || typed.count > WordFixes.maximumLength { return nil }

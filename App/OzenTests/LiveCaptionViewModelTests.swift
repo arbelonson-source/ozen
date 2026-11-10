@@ -2444,6 +2444,28 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(viewModel.settings.speakerProfiles.map(\.name) == ["Dana"])
     }
 
+    @Test("fixing a word says whether the line changed: not once the captions were cleared under the sheet")
+    func wordFixSaysWhetherTheLineChanged() async throws {
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-fixword-\(UUID())", isDirectory: true)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathComponent("settings.json")),
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        await say("I saw aval today", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        pipeline.commitStaleSegments(now: Date().timeIntervalSince1970 + 1_000_000)
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        let line = viewModel.segments[0]
+
+        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: false, toLine: line))
+        #expect(viewModel.segments[0].text.contains("Avi"))
+        viewModel.clearTranscript()
+        #expect(!viewModel.applyWordFix(WordFix(heard: "today", written: "now"), always: false, toLine: line))
+    }
+
     @Test("naming a line with another saved person's name gives that person a voice print, and the one it was taken for keeps theirs")
     func namingAsAnotherSavedPersonKeepsBoth() async throws {
         let engine = FakeEngine()

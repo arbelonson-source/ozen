@@ -15,6 +15,38 @@ struct FixWordFormTests {
         #expect(FixWordForm.note(line: line, heard: "Shira", written: "") == .notInLine)
     }
 
+    @Test("tapped words build a run of up to four neighbours, as on Android")
+    func tappingBuildsARun() {
+        let words = ["one", "two", "three", "four", "five", "six"]
+        var at: ClosedRange<Int>? = nil
+        at = FixWordForm.tapped(at, index: 2, words: words)
+        #expect(at == 2...2)
+        at = FixWordForm.tapped(at, index: 3, words: words)
+        #expect(at == 2...3)
+        at = FixWordForm.tapped(at, index: 1, words: words)
+        #expect(at == 1...3)
+        at = FixWordForm.tapped(at, index: 0, words: words)
+        #expect(at == 0...3)
+        #expect(FixWordForm.tapped(at, index: 4, words: words) == 4...4)
+        #expect(FixWordForm.tapped(2...2, index: 5, words: words) == 5...5)
+    }
+
+    @Test("a picked word tapped again is let go: the only one, or the end of a run joined by a near-miss")
+    func tappingAgainLetsGo() {
+        let words = ["one", "two", "three", "four"]
+        #expect(FixWordForm.tapped(2...2, index: 2, words: words) == nil)
+        #expect(FixWordForm.tapped(1...3, index: 1, words: words) == 2...3)
+        #expect(FixWordForm.tapped(1...3, index: 3, words: words) == 1...2)
+        #expect(FixWordForm.tapped(0...3, index: 2, words: words) == 0...1)
+    }
+
+    @Test("a run never reaches across punctuation")
+    func notAcrossPunctuation() {
+        let words = ["bat,", "sheva", "ok"]
+        #expect(FixWordForm.tapped(0...0, index: 1, words: words) == 1...1)
+        #expect(FixWordForm.tapped(1...1, index: 2, words: words) == 1...2)
+    }
+
     @Test("a word picked or typed with nothing written yet asks for how it should be written")
     func nowWrite() {
         #expect(FixWordForm.note(line: line, heard: "Shera", written: "") == .nowWrite)
