@@ -450,6 +450,14 @@ struct ScreenWordingTests {
         #expect(HistoryView.savingFooter(saving: false, size: "2 MB", retention: .month).hasSuffix("נשמרות תמיד."))
     }
 
+    @Test("delete all warns that starred and named conversations and the current one go too, for good")
+    func deleteAllMessage() {
+        let message = HistoryView.deleteAllMessage()
+        #expect(message.contains("שורה מסומנת או עם שם"))
+        #expect(message.contains("השיחה הנוכחית"))
+        #expect(message.contains("אי אפשר לבטל"))
+    }
+
     @Test("an empty History with saving off says saving is off, not that conversations are coming")
     func emptyHistoryWithSavingOff() {
         #expect(HistoryView.emptyConversationsMessage(query: "", speakerFilter: nil, saving: true) == "עדיין אין שיחות שמורות.")

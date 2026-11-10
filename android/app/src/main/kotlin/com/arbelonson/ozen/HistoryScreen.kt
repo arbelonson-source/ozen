@@ -395,6 +395,7 @@ fun HistoryScreen(
         AlertDialog(
             onDismissRequest = { confirmingDeleteAll = false },
             title = { Text(tr("למחוק את כל השיחות השמורות?", "Delete all saved conversations?")) },
+            text = { DialogText(HistoryTexts.deleteAllMessage()) },
             confirmButton = {
                 TextButton(
                     onClick = {

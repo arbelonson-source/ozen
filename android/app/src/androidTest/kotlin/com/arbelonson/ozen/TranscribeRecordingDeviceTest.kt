@@ -7,6 +7,9 @@ import android.net.Uri
 import android.os.SystemClock
 import android.provider.MediaStore
 import android.util.Log
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -147,6 +150,13 @@ class TranscribeRecordingDeviceTest {
             waitFor(300_000, "work to begin") { (transcriber.state.value as? FileTranscription.Working)?.stage == FileTranscription.Working.Stage.Transcribing }
             Thread.sleep(3_000)
             compose.onNodeWithTag(TRANSCRIBE_CANCEL).performClick()
+            compose.onNodeWithText("Stop turning the recording into text?").assertExists()
+            assertTrue("Cancel stopped the work before the question was answered", transcriber.state.value is FileTranscription.Working)
+            compose.onNode(hasText("Keep going") and hasAnyAncestor(isDialog())).performClick()
+            Thread.sleep(2_000)
+            assertTrue("Keep going stopped the work", transcriber.state.value is FileTranscription.Working)
+            compose.onNodeWithTag(TRANSCRIBE_CANCEL).performClick()
+            compose.onNode(hasText("Stop") and hasAnyAncestor(isDialog())).performClick()
             val asked = SystemClock.elapsedRealtime()
             waitFor(15_000, "the stop") { transcriber.state.value is FileTranscription.Ready }
             Log.i("OzenTranscribe", "cancel took ${SystemClock.elapsedRealtime() - asked} ms")
@@ -219,6 +229,7 @@ class TranscribeRecordingDeviceTest {
             assertTrue("no working state right after start", right)
             waitFor(300_000, "work to begin") { (transcriber.state.value as? FileTranscription.Working)?.stage == FileTranscription.Working.Stage.Transcribing }
             compose.onNodeWithTag(TRANSCRIBE_CANCEL).performClick()
+            compose.onNode(hasText("Stop") and hasAnyAncestor(isDialog())).performClick()
             waitFor(15_000, "the stop") { transcriber.state.value is FileTranscription.Ready }
             Thread.sleep(2_000)
             assertTrue("a second job kept writing", transcriber.state.value is FileTranscription.Ready)
