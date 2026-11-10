@@ -29,7 +29,7 @@ class CaptionStabilizerSharedCasesTest {
     )
 
     @Test
-    fun `every sequence in the shared table leaves the same lines after every step on this platform`() {
+    fun `every sequence in the shared table gives back and leaves the same lines at every step on this platform`() {
         val text = File(System.getProperty("ozen.fixtures"), "logic/caption-stabilizer.json").readText(Charsets.UTF_8)
         val sequences = Json.parseToJsonElement(text).jsonObject.getValue("sequences").jsonArray
         val failures = mutableListOf<String>()
@@ -40,23 +40,31 @@ class CaptionStabilizerSharedCasesTest {
             val stabilizer = CaptionStabilizer()
             for ((index, stepElement) in sequence.getValue("steps").jsonArray.withIndex()) {
                 val step = stepElement.jsonObject
-                when (step.getValue("op").jsonPrimitive.content) {
-                    "ingest" -> stabilizer.ingest(
-                        TranscriptToken(
-                            utteranceID = id(step.getValue("u").jsonPrimitive.int),
-                            text = step.getValue("text").jsonPrimitive.content,
-                            isFinal = step.getValue("final").jsonPrimitive.boolean,
-                            timestamp = step.getValue("at").jsonPrimitive.double,
-                            speakerClusterID = step["speaker"]?.jsonPrimitive?.intOrNull,
-                            startsNewSpeakerTurn = step.getValue("newTurn").jsonPrimitive.boolean,
+                val returned: List<TranscriptSegment> = when (step.getValue("op").jsonPrimitive.content) {
+                    "ingest" -> listOf(
+                        stabilizer.ingest(
+                            TranscriptToken(
+                                utteranceID = id(step.getValue("u").jsonPrimitive.int),
+                                text = step.getValue("text").jsonPrimitive.content,
+                                isFinal = step.getValue("final").jsonPrimitive.boolean,
+                                timestamp = step.getValue("at").jsonPrimitive.double,
+                                speakerClusterID = step["speaker"]?.jsonPrimitive?.intOrNull,
+                                startsNewSpeakerTurn = step.getValue("newTurn").jsonPrimitive.boolean,
+                            ),
                         ),
                     )
                     "commitStale" -> stabilizer.commitStale(step.getValue("at").jsonPrimitive.double)
                     "commitAll" -> stabilizer.commitAll()
-                    "commit" -> stabilizer.commit(id(step.getValue("u").jsonPrimitive.int))
-                    else -> failures += "$name: bad step"
+                    "commit" -> listOfNotNull(stabilizer.commit(id(step.getValue("u").jsonPrimitive.int)))
+                    else -> {
+                        failures += "$name: bad step"
+                        emptyList()
+                    }
                 }
                 steps++
+                val expectedReturn = step.getValue("returns").jsonArray.map { state(it.jsonArray) }
+                val actualReturn = returned.map(::state)
+                if (actualReturn != expectedReturn) failures += "$name, step ${index + 1} gave back: table $expectedReturn, Kotlin $actualReturn"
                 val expected = step.getValue("after").jsonArray.map { state(it.jsonArray) }
                 val actual = stabilizer.segments.map(::state)
                 if (actual != expected) failures += "$name, step ${index + 1}: table $expected, Kotlin $actual"
