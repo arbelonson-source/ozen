@@ -94,7 +94,7 @@ jobs:
         working-directory: android
         run: |
           python3 - <<'EOF'
-          import pathlib, re, sys
+          import os, pathlib, re, sys
           path = pathlib.Path("app/build/instrument.txt")
           text = path.read_text(errors="replace") if path.exists() else ""
           results, current = [], {}
@@ -117,6 +117,16 @@ jobs:
           finished = re.search(r"^INSTRUMENTATION_CODE: -1", text, re.M) is not None
           if not results:
               sys.exit("No device test ran: the class filter matched nothing or the run never started.")
+          ran = {(cls, test) for cls, test, code in results}
+          missing = []
+          for selector in (s.strip() for s in os.environ["SMOKE"].split(",")):
+              cls, _, method = selector.partition("#")
+              if selector and not any(c == cls and (not method or t == method) for c, t in ran):
+                  missing.append(selector)
+          for selector in missing:
+              print(f"no test ran for {selector}")
+          if missing:
+              sys.exit(f"{len(missing)} entries of the smoke list ran no test: renamed or removed?")
           if not finished or "INSTRUMENTATION_FAILED" in text:
               sys.exit("The test run did not finish: the app or the runner crashed (see logcat).")
           if failed:
