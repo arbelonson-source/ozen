@@ -135,18 +135,10 @@ struct TypeToSpeakView: View {
                 .onSubmit(speakTyped)
                 .textFieldStyle(.roundedBorder)
 
+            // Stop is always there, dimmed until the phone talks: it used to
+            // appear where Play had been, so a second tap on Play, by someone
+            // who can't hear that the sentence had started, cut it off.
             playButtonsLayout {
-                if viewModel.isSpeaking {
-                    Button {
-                        viewModel.stopSpeaking()
-                    } label: {
-                        Label(tr("עצירה", "Stop"), systemImage: "stop.fill")
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .ozenGlassButton()
-                    .controlSize(.large)
-                }
                 Button(action: speakTyped) {
                     Label(tr("השמעה", "Play"), systemImage: "speaker.wave.3.fill")
                         .fixedSize(horizontal: false, vertical: true)
@@ -155,6 +147,17 @@ struct TypeToSpeakView: View {
                 .ozenGlassButton(prominent: true)
                 .controlSize(.large)
                 .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !viewModel.canSay(text))
+                Button {
+                    viewModel.stopSpeaking()
+                } label: {
+                    Label(tr("עצירה", "Stop"), systemImage: "stop.fill")
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity)
+                }
+                .ozenGlassButton()
+                .controlSize(.large)
+                .disabled(!viewModel.isSpeaking)
+                .accessibilityIdentifier("stopSpeakingButton")
             }
 
             if let lastTyped {
