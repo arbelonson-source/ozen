@@ -259,6 +259,19 @@ class DiagnosticsReportTest {
     }
 
     @Test
+    fun `a kept sound's row says it is a recording, and the note says the report goes without it, in her language`() {
+        val name = "problem-2026-10-11-130507.wav"
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("Recording from ${DiagnosticsReport.clipTitle(name)}", DiagnosticsReport.clipLabel(name))
+            assertEquals("Sound clips aren’t sent with the report. To send one, tap it under “Sound from marked problems”.", DiagnosticsReport.clipsNotInReport())
+        }
+        Localization.withLanguage(UILanguage.Hebrew) {
+            assertEquals("הקלטה מ־${DiagnosticsReport.clipTitle(name)}", DiagnosticsReport.clipLabel(name))
+            assertTrue(DiagnosticsReport.clipsNotInReport().startsWith("ההקלטות לא נשלחות עם הדוח."))
+        }
+    }
+
+    @Test
     fun `an automatic retry shows its attempt and the seconds left, in her language`() {
         Localization.withLanguage(UILanguage.English) {
             assertEquals("Attempt 2, in 12 s", DiagnosticsReport.retry(ScheduledRetry(at = 1_012.4, attempt = 2), now = 1_000.0))

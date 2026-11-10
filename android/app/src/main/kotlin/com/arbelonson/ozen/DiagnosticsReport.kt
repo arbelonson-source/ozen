@@ -227,6 +227,13 @@ object DiagnosticsReport {
         return available?.let { "$used · ${tr("עוד %1", "%1 more", listOf(ByteSize.text(it)))}" } ?: used
     }
 
+    /** A kept sound's row says it is a recording, not only a date that reads as nothing to tap. */
+    fun clipLabel(name: String): String = tr("הקלטה מ־%1", "Recording from %1", listOf(clipTitle(name)))
+
+    /** Beside Send report while sounds are kept: the report goes without them, as on the iPhone. */
+    fun clipsNotInReport(): String =
+        tr("ההקלטות לא נשלחות עם הדוח. כדי לשלוח הקלטה, מקישים עליה ברשימה ״הקלטות של בעיות שסומנו״.", "Sound clips aren’t sent with the report. To send one, tap it under “Sound from marked problems”.")
+
     /** A kept sound's file name read back as its moment, in her language: "Oct 11, 2026, 1:05:07 PM". */
     fun clipTitle(name: String): String {
         val stamp = name.removeSuffix(".wav").removePrefix("problem-")

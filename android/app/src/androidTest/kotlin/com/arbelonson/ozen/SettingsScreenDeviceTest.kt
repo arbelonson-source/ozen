@@ -1817,8 +1817,8 @@ class SettingsScreenDeviceTest {
         store.deleteAll()
         val older = store.save(floatArrayOf(0.1f, 0.2f), 16_000, Instant.parse("2026-03-04T05:06:07Z"))!!
         val newer = store.save(floatArrayOf(0.3f), 16_000, Instant.parse("2026-03-05T05:06:07Z"))!!
-        val olderTitle = DiagnosticsReport.clipTitle(older.name)
-        val newerTitle = DiagnosticsReport.clipTitle(newer.name)
+        val olderTitle = DiagnosticsReport.clipLabel(older.name)
+        val newerTitle = DiagnosticsReport.clipLabel(newer.name)
         val started = CopyOnWriteArrayList<Intent>()
         val sheet = object : Instrumentation.ActivityMonitor() {
             override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {

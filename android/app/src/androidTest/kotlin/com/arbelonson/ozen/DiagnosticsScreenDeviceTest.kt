@@ -76,9 +76,14 @@ class DiagnosticsScreenDeviceTest {
         moveAll(folder, aside)
         val store = ProblemAudioStore(folder)
         val clip = store.save(floatArrayOf(0.1f, 0.2f), 16_000, Instant.parse("2026-03-04T05:06:07Z"))!!
-        val title = DiagnosticsReport.clipTitle(clip.name)
+        val title = DiagnosticsReport.clipLabel(clip.name)
         try {
             compose.runOnUiThread { compose.activity.setContent { DiagnosticsScreen(app.captions, onClose = {}) } }
+            // "Send report" shares the text only: beside it, while a sound is
+            // kept, the page says so, above the technical rows.
+            val note = compose.onNodeWithText("Sound clips aren’t sent with the report. To send one, tap it under “Sound from marked problems”.")
+            assertTrue(note.fetchSemanticsNode().positionInRoot.y < compose.onNodeWithText("Status").fetchSemanticsNode().positionInRoot.y)
+            assertEquals("Recording from ${DiagnosticsReport.clipTitle(clip.name)}", title)
             val row = compose.onNodeWithText(title).performScrollTo()
             assertEquals("Share", row.fetchSemanticsNode().config[SemanticsActions.OnClick].label)
             assertEquals("Delete", row.fetchSemanticsNode().config[SemanticsActions.OnLongClick].label)
@@ -86,6 +91,7 @@ class DiagnosticsScreenDeviceTest {
             compose.onNodeWithText("Delete").performClick()
             compose.waitUntil(5_000) { compose.onAllNodesWithText(title).fetchSemanticsNodes().isEmpty() }
             assertFalse(clip.exists())
+            compose.onNodeWithText("Sound clips aren’t sent", substring = true).assertDoesNotExist()
         } finally {
             store.deleteAll()
             moveAll(aside, folder)

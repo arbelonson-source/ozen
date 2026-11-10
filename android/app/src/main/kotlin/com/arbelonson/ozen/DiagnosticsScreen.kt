@@ -273,6 +273,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             }
         }
         Footnote(ProblemNotes.diagnostics(now.settings.saveHistory))
+        if (now.problemClips.isNotEmpty()) Footnote(DiagnosticsReport.clipsNotInReport())
 
         if (now.problemClips.isNotEmpty()) {
             SectionHeader(tr("הקלטות של בעיות שסומנו", "Sound from marked problems"))
@@ -280,7 +281,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 for (clip in now.problemClips) {
                     item {
                         ClipRow(
-                            DiagnosticsReport.clipTitle(clip.name),
+                            DiagnosticsReport.clipLabel(clip.name),
                             onSend = { context.startActivity(clipSheet(context, clip)) },
                             onDelete = {
                                 source.deleteProblemClip(clip)
