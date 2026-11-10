@@ -371,4 +371,13 @@ struct LocalizationTests {
             }
         }
     }
+
+    @Test("Hindi 'let it keep doing' takes the -ते form: Ozen को सुनते रहने दें, never सुनता रहने दें")
+    func hindiKeepDoingTakesTheObliqueForm() {
+        let table = TranslationTable.shared.table(for: .hindi)
+        #expect(!table.isEmpty)
+        for (english, hindi) in table where hindi.range(of: #"\S+(ता|ती) रहने द"#, options: .regularExpression) != nil {
+            Issue.record("-ता/-ती before रहने देना in the Hindi for: \(english)")
+        }
+    }
 }
