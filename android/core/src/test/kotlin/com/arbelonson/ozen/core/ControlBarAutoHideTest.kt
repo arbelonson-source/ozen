@@ -11,6 +11,7 @@ private fun hides(
     followingLatest: Boolean = true,
     hasLines: Boolean = true,
     voiceOverRunning: Boolean = false,
+    switchControlRunning: Boolean = false,
     pausedForCall: Boolean = false,
     idle: Double = 10.0,
 ): Boolean = ControlBarAutoHide.hides(
@@ -19,6 +20,7 @@ private fun hides(
     followingLatest = followingLatest,
     hasLines = hasLines,
     voiceOverRunning = voiceOverRunning,
+    switchControlRunning = switchControlRunning,
     pausedForCall = pausedForCall,
     lastTouchAt = 1_000.0,
     now = 1_000.0 + idle,
@@ -35,6 +37,12 @@ class ControlBarAutoHideTest {
     fun `a recent touch keeps them`() {
         assertFalse(hides(idle = ControlBarAutoHide.IDLE_SECONDS - 0.5))
         assertFalse(hides(idle = 0.0))
+    }
+
+    @Test
+    fun `switch or voice control keeps the bar, as on the iPhone, since it presses buttons without a touch`() {
+        assertFalse(hides(switchControlRunning = true))
+        assertFalse(hides(switchControlRunning = true, idle = 60.0))
     }
 
     @Test

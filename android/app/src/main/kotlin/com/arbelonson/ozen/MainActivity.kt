@@ -1047,6 +1047,7 @@ private fun CaptionScreen(
         autoHide = display.autoHideControls,
         followingLatest = following,
         screenReaderOn = screenReaderOn(),
+        pointerAccessOn = pointerAccessOn(),
         lastTouchAt = lastTouchAt,
         now = clock,
     )
@@ -1331,6 +1332,27 @@ private fun screenReaderOn(): Boolean {
         val listener = AccessibilityManager.TouchExplorationStateChangeListener { on = it }
         manager.addTouchExplorationStateChangeListener(listener)
         onDispose { manager.removeTouchExplorationStateChangeListener(listener) }
+    }
+    return on
+}
+
+/**
+ * Switch Access, Voice Access and Samsung's Universal Switch press buttons
+ * through accessibility actions, which never reach the touch that keeps the
+ * buttons up, so they keep the buttons on screen as TalkBack does (and as
+ * Switch Control does on the iPhone). Read again on each return to the app,
+ * where such a service is switched on.
+ */
+@Composable
+private fun pointerAccessOn(): Boolean {
+    val context = LocalContext.current
+    val manager = context.getSystemService(AccessibilityManager::class.java)
+    var on by remember(manager) { mutableStateOf(ScreenReader.pointsWithoutTouch(ScreenReader.enabledServiceIds(context))) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { on = ScreenReader.pointsWithoutTouch(ScreenReader.enabledServiceIds(context)) }
+    DisposableEffect(manager) {
+        val listener = AccessibilityManager.AccessibilityStateChangeListener { on = ScreenReader.pointsWithoutTouch(ScreenReader.enabledServiceIds(context)) }
+        manager.addAccessibilityStateChangeListener(listener)
+        onDispose { manager.removeAccessibilityStateChangeListener(listener) }
     }
     return on
 }

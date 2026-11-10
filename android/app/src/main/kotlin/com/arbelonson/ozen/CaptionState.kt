@@ -148,13 +148,14 @@ data class CaptionScreenState(
         now = maxOf(now, lastActivityAt ?: 0.0),
     )
 
-    fun hidesButtons(autoHide: Boolean, followingLatest: Boolean, screenReaderOn: Boolean, lastTouchAt: Double, now: Double): Boolean =
+    fun hidesButtons(autoHide: Boolean, followingLatest: Boolean, screenReaderOn: Boolean, pointerAccessOn: Boolean = false, lastTouchAt: Double, now: Double): Boolean =
         ControlBarAutoHide.hides(
             enabled = autoHide,
             isListening = phase.isListening,
             followingLatest = followingLatest,
             hasLines = lines.isNotEmpty(),
             voiceOverRunning = screenReaderOn,
+            switchControlRunning = pointerAccessOn,
             pausedForCall = interruptedBySystem,
             lastTouchAt = lastTouchAt,
             now = now,
