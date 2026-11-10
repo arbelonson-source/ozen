@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HomeServer
@@ -556,7 +557,7 @@ class PhasePresentation private constructor(
                 )
 
                 EngineUnavailability.Kind.WaitingForWiFi -> {
-                    val size = engineFailure.downloadMegabytes?.let { if (it > 0) "$it MB" else null }
+                    val size = engineFailure.downloadMegabytes?.let { if (it > 0) ByteSize.megabytes(it) else null }
                     PhasePresentation(
                         title = tr("ממתינים ל־Wi‑Fi כדי להוריד את מודל הדיבור", "Waiting for Wi‑Fi to download the language model"),
                         detail = listOfNotNull(size, tr("יורד לבד ב־Wi‑Fi בלי הגבלת נפח · הקישו כדי להוריד עכשיו", "Downloads on its own on Wi‑Fi without a data limit · Tap to download now")).joinToString(" · "),
@@ -679,14 +680,11 @@ class PhasePresentation private constructor(
 
         /**
          * "450 MB", or "1.3 GB" once it's that big, in the same decimal units
-         * as the model list and the Settings app. Rounded up: this is how
-         * much room to free, and freeing a little less wouldn't do.
+         * as the model list and the Settings app, written in Ozen's language
+         * ("1,3 Go" in French). Rounded up: this is how much room to free,
+         * and freeing a little less wouldn't do.
          */
-        fun sizeText(megabytes: Int): String {
-            if (megabytes < 1_000) return "$megabytes MB"
-            val tenths = (megabytes + 99) / 100
-            return "${tenths / 10}.${tenths % 10} GB"
-        }
+        fun sizeText(megabytes: Int): String = ByteSize.roundedUp(megabytes)
 
         private fun aboutMinutesLeftText(minutes: Int): String {
             val text = tr("עוד כ־%1 דקות", "About %1 minutes left", listOf("$minutes"))

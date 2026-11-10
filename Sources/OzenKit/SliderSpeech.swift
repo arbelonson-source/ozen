@@ -3,7 +3,7 @@ import Foundation
 public enum SliderSpeech {
     public static func speechRate(_ rate: Double, in language: UILanguage) -> String {
         let step = Int((rate * 20).rounded())
-        let number = String(format: "%.2f", Double(step) / 20)
+        let number = NumberText.decimal(Double(step) / 20, places: 2, in: language)
         let word: String
         if step < 8 {
             word = tr("איטי", "Slow", in: language)
@@ -40,6 +40,6 @@ public enum SliderSpeech {
         } else {
             word = tr("רגיל", "Normal", in: language)
         }
-        return "\(word), \(String(format: "%.2f", threshold))"
+        return "\(word), \(NumberText.decimal(threshold, places: 2, in: language))"
     }
 }

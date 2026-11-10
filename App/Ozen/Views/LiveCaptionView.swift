@@ -1793,7 +1793,7 @@ struct LiveCaptionView: View {
 
     private var cellularDownloadMessage: String {
         let megabytes = viewModel.phase.failure?.engineUnavailability?.downloadMegabytes ?? 0
-        let size = megabytes > 0 ? "\(megabytes)\u{00A0}MB" : tr("כמה מאות MB", "A few hundred MB")
+        let size = megabytes > 0 ? ByteSize.megabytes(megabytes) : tr("כמה מאות MB", "A few hundred MB")
         let cost = tr("גודל המודל הוא בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לגמור את נפח הגלישה. ב־Wi‑Fi ההורדה תתחיל מעצמה.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", args: ["\(size)"])
         guard builtInOffered else { return cost }
         return cost + "\n\n" + tr("עד אז, זיהוי הדיבור המובנה בטלפון יכול לכתוב כתוביות. בדרך כלל הוא פחות מדויק, והכול נשאר בטלפון. כשהמודל יסיים לרדת, הכתוביות יעברו אליו מעצמן.", "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.")

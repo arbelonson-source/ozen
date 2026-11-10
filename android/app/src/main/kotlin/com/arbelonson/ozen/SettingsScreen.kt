@@ -70,6 +70,7 @@ import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.arbelonson.ozen.core.NumberText
 import com.arbelonson.ozen.ui.Chevron
 import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.OzenSpacing
@@ -182,7 +183,6 @@ import com.arbelonson.ozen.core.SoundNearMisses
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
 import com.arbelonson.ozen.core.tr
-import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -1279,8 +1279,8 @@ private fun SpeechSection(rate: Float, onRate: (Float) -> Unit, canSay: (String)
     SectionHeader(tr("הקראה בקול של מה שמקלידים", "Say something (type to speak)"))
     var shown by remember(rate) { mutableFloatStateOf(rate) }
     val label = tr("מהירות דיבור", "Speech rate")
-    // Written as on the iPhone, whatever the phone's own number format.
-    val value = String.format(Locale.ROOT, "%.2f", shown)
+    // Written in Ozen's language, as on the iPhone, whatever the phone's own number format.
+    val value = NumberText.decimal(shown.toDouble(), 2)
     val sample = tr("שלום, זה קול הטלפון. ככה אני נשמע.", "Hello, this is the phone’s voice. This is how I sound.")
     SettingsGroup(dividerInset = 56.dp) {
         item {

@@ -85,7 +85,7 @@ struct ModelManagerView: View {
             .accessibilityIdentifier("modelManagerTestPhone")
             if let check = viewModel.settings.deviceModelCheck {
                 if let measured = check.measurement, measured.passes >= DeviceModelAdvisor.minimumMeasuredPasses {
-                    Text(tr("נמדד בטלפון הזה: כ־%1 שניות לכל עדכון עם המודל ״\u{2068}%2\u{2069}״.", "Timed on this phone: about %1 seconds per update with %2.", args: ["\(String(format: "%.1f", measured.averageSeconds))", "\(WhisperModelCatalog.option(for: measured.variant)?.displayName ?? measured.variant)"]))
+                    Text(tr("נמדד בטלפון הזה: כ־%1 שניות לכל עדכון עם המודל ״\u{2068}%2\u{2069}״.", "Timed on this phone: about %1 seconds per update with %2.", args: ["\(NumberText.decimal(measured.averageSeconds, places: 1))", "\(WhisperModelCatalog.option(for: measured.variant)?.displayName ?? measured.variant)"]))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

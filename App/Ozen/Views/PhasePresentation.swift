@@ -220,7 +220,7 @@ struct PhasePresentation {
             // waits: the tap still opens the cellular question, which then
             // offers it first.
             if builtInOffered, let why = failure.engineUnavailability, why.kind == .waitingForWiFi {
-                let size = why.downloadMegabytes.flatMap { $0 > 0 ? "\($0)\u{00A0}MB" : nil }
+                let size = why.downloadMegabytes.flatMap { $0 > 0 ? ByteSize.megabytes($0) : nil }
                 self = PhasePresentation(
                     title: title,
                     detail: [size, tr("יורד לבד כשיהיה Wi‑Fi · הקישו לכתוביות כבר עכשיו", "Downloads on its own once there’s Wi‑Fi · Tap for captions right now")].compactMap { $0 }.joined(separator: " · "),
@@ -357,7 +357,7 @@ struct PhasePresentation {
                 action: .retry
             )
         case .waitingForWiFi:
-            let size = engineFailure?.downloadMegabytes.flatMap { $0 > 0 ? "\($0)\u{00A0}MB" : nil }
+            let size = engineFailure?.downloadMegabytes.flatMap { $0 > 0 ? ByteSize.megabytes($0) : nil }
             self.init(
                 title: tr("ממתינים ל־Wi‑Fi כדי להוריד את מודל הדיבור", "Waiting for Wi‑Fi to download the language model"),
                 detail: [size, tr("יורד לבד כשיהיה Wi‑Fi · הקישו כדי להוריד עכשיו", "Downloads on its own once there’s Wi‑Fi · Tap to download now")].compactMap { $0 }.joined(separator: " · "),
@@ -448,9 +448,6 @@ struct PhasePresentation {
         }
     }
 
-    /// "450 MB", or "1.3 GB" once it's that big, in the same decimal
-    /// units as the model list and the Settings app. Rounded up: this is
-    /// how much room to free, and freeing a little less wouldn't do.
     /// How long a download has left, in words and never falsely precise.
     static func remainingText(seconds: Double) -> String {
         switch seconds {
@@ -463,9 +460,11 @@ struct PhasePresentation {
         }
     }
 
+    /// "450 MB", or "1.3 GB" once it's that big, in the same decimal
+    /// units as the model list and the Settings app, written in Ozen's
+    /// language ("1,3 Go" in French). Rounded up: this is how much room
+    /// to free, and freeing a little less wouldn't do.
     static func sizeText(megabytes: Int) -> String {
-        guard megabytes >= 1_000 else { return "\(megabytes)\u{00A0}MB" }
-        let tenths = (megabytes + 99) / 100
-        return "\(tenths / 10).\(tenths % 10)\u{00A0}GB"
+        ByteSize.roundedUp(megabytes: megabytes)
     }
 }

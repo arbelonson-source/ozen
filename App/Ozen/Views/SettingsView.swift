@@ -1166,7 +1166,7 @@ struct SettingsView: View {
                 sliderLabelLayout {
                     Text(tr("מהירות דיבור", "Speech rate"))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(String(format: "%.2f", viewModel.speechRate))
+                    Text(NumberText.decimal(Double(viewModel.speechRate), places: 2))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
@@ -1313,7 +1313,7 @@ struct SettingsView: View {
                 sliderLabelLayout {
                     Text(tr("רגישות הפרדת דוברים", "Speaker separation sensitivity"))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(String(format: "%.2f", viewModel.speakerSimilarityThreshold))
+                    Text(NumberText.decimal(Double(viewModel.speakerSimilarityThreshold), places: 2))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }

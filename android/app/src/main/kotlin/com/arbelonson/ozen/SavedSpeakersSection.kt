@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.AppSettings
+import com.arbelonson.ozen.core.NumberText
 import com.arbelonson.ozen.core.RecordingImport
 import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SpeakerProfile
@@ -50,7 +51,6 @@ import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.SettingRow
 import com.arbelonson.ozen.ui.SettingSwitchRow
 import com.arbelonson.ozen.ui.SettingsGroup
-import java.util.Locale
 import kotlin.math.abs
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -242,7 +242,7 @@ internal fun BehaviourSection(buzzWhenTalkResumes: Boolean, onBuzz: (Boolean) ->
     SectionHeader(tr("התנהגות", "Behavior"))
     var shown by remember(separation) { mutableFloatStateOf(separation) }
     val label = tr("רגישות הפרדת דוברים", "Speaker separation sensitivity")
-    val value = String.format(Locale.ROOT, "%.2f", shown)
+    val value = NumberText.decimal(shown.toDouble(), 2)
     val usual = AppSettings.default.speakerSimilarityThreshold
     SettingsGroup(dividerInset = 56.dp) {
         item {

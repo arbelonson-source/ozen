@@ -108,7 +108,7 @@ struct DiagnosticsView: View {
                 }
                 DiagnosticsRow(tr("עוצמה עכשיו", "Level now"), String(format: "%.0f%%", viewModel.inputLevel * 100))
                 DiagnosticsRow(tr("חבילות אודיו", "Audio chunks"), "\(viewModel.stats.audioChunksReceived)")
-                DiagnosticsRow(tr("שניות אודיו", "Audio seconds"), String(format: "%.1f", viewModel.stats.audioSecondsReceived))
+                DiagnosticsRow(tr("שניות אודיו", "Audio seconds"), NumberText.decimal(viewModel.stats.audioSecondsReceived, places: 1))
                 DiagnosticsRow(tr("החלפות מיקרופון", "Microphone changes"), "\(viewModel.stats.inputChanges)")
                 DiagnosticsRow(tr("תקיעות מיקרופון", "Microphone stalls"), "\(viewModel.stats.audioStalls)")
                 DiagnosticsRow(tr("רמות קול (dBFS)", "Sound levels (dBFS)"), Self.levelsText(viewModel.stats.inputLevels))
@@ -122,7 +122,7 @@ struct DiagnosticsView: View {
                 DiagnosticsRow(tr("עדכונים מהמנוע", "Updates from engine"), "\(viewModel.stats.tokensReceived)")
                 DiagnosticsRow(tr("שורות שנסגרו", "Lines closed"), "\(viewModel.stats.segmentsCommitted)")
                 DiagnosticsRow(tr("שורות על המסך", "Lines on screen"), "\(viewModel.segments.count)")
-                DiagnosticsRow(tr("עיכוב בכתוביות", "Caption lag"), viewModel.stats.captionLagSeconds.map { String(format: tr("%.1f שנ׳", "%.1f s"), $0) } ?? "—")
+                DiagnosticsRow(tr("עיכוב בכתוביות", "Caption lag"), viewModel.stats.captionLagSeconds.map { tr("%1 שנ׳", "%1 s", args: ["\(NumberText.decimal($0, places: 1))"]) } ?? "—")
                 DiagnosticsRow(tr("הפעלות מחדש", "Restarts"), "\(viewModel.stats.engineRestarts)")
                 DiagnosticsRow(tr("דוברים שזוהו", "Speakers identified"), "\(viewModel.pipeline.speakerClusters.count)")
                 DiagnosticsRow(tr("דוברים חדשים מאז שהאפליקציה נפתחה", "New speakers since the app opened"), "\(viewModel.stats.speakerClustersOpened)")
