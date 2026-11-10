@@ -42,7 +42,7 @@ struct ModelDownloadGateTests {
 struct PickedModelDownloadTests {
     private func starts(
         onPhoneEngine: Bool = true,
-        captionsRunning: Bool = false,
+        phase: PipelinePhase = .idle,
         installed: Bool = false,
         shortfallMegabytes: Int? = nil,
         network: NetworkConditions? = .wifi,
@@ -50,7 +50,7 @@ struct PickedModelDownloadTests {
     ) -> Bool {
         ModelDownloadGate.startsOnPick(
             onPhoneEngine: onPhoneEngine,
-            captionsRunning: captionsRunning,
+            phase: phase,
             installed: installed,
             shortfallMegabytes: shortfallMegabytes,
             network: network,
@@ -61,19 +61,28 @@ struct PickedModelDownloadTests {
     @Test("picked with captions stopped or paused on Wi-Fi, it starts downloading at once")
     func startsOnWiFi() {
         #expect(starts())
+        #expect(starts(phase: .paused))
         #expect(starts(network: .cellular, allowCellular: true))
+    }
+
+    @Test("captions that failed to start again after the pick are stopped, so it downloads")
+    func startsAfterAFailedStart() {
+        #expect(starts(phase: .failed(PipelineFailure(kind: .microphonePermissionDenied, detail: "denied"))))
+        #expect(starts(phase: .failed(PipelineFailure(kind: .audioSessionFailed, detail: "busy"))))
     }
 
     @Test("not when it is on the phone already, captions are running, another engine is in use, there is no room, or the connection says wait")
     func waitsOtherwise() {
         let waits = [
             starts(installed: true),
-            starts(captionsRunning: true),
+            starts(phase: .listening),
+            starts(phase: .startingAudio),
+            starts(phase: .requestingMicrophonePermission),
             starts(onPhoneEngine: false),
             starts(shortfallMegabytes: 200),
             starts(network: .cellular),
             starts(network: .offline),
         ]
-        #expect(waits == [false, false, false, false, false, false])
+        #expect(waits == Array(repeating: false, count: 8))
     }
 }

@@ -1002,7 +1002,7 @@ public final class LiveCaptionViewModel {
     }
 
     /// Starts the download of a model just picked while captions are
-    /// stopped or paused (`ModelDownloadGate.startsOnPick`). It goes through
+    /// stopped, paused or failed (`ModelDownloadGate.startsOnPick`). It goes through
     /// the store's shared downloads, so captions started meanwhile join it,
     /// and the model screen shows its progress like any running download.
     private func downloadPickedModel(_ variant: String) {
@@ -1010,7 +1010,7 @@ public final class LiveCaptionViewModel {
         guard let option = WhisperModelCatalog.option(for: variant),
               ModelDownloadGate.startsOnPick(
                   onPhoneEngine: settings.engine == .whisperKit,
-                  captionsRunning: pipeline.phase != .idle && pipeline.phase != .paused,
+                  phase: pipeline.phase,
                   installed: store.isInstalled(variant),
                   shortfallMegabytes: StorageSpaceGate.shortfallMegabytes(
                       downloadMegabytes: option.remainingInstallMegabytes(onDiskBytes: store.sizeOnDisk(of: variant)),

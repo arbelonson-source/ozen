@@ -57,20 +57,23 @@ public enum ModelDownloadGate {
     }
 
     /// Whether picking a model that isn't on the phone starts its download
-    /// at once: on the phone's own engine, with captions stopped or paused
-    /// (running captions switch over and download it themselves), with room
-    /// for it and a connection this allows. As on Android: on the iPhone the
-    /// pick only took effect when captions next started, maybe away from
-    /// Wi-Fi, while the row said "Downloads when selected".
+    /// at once: on the phone's own engine, with captions stopped, paused or
+    /// stuck on a failed start (running captions switch over and download
+    /// it themselves), with room for it and a connection this allows. As on
+    /// Android: on the iPhone the pick only took effect when captions next
+    /// started, maybe away from Wi-Fi, while the row said "Downloads when
+    /// selected". A start that failed again after the pick, with no
+    /// microphone say, leaves captions stopped, so the download goes ahead.
     public static func startsOnPick(
         onPhoneEngine: Bool,
-        captionsRunning: Bool,
+        phase: PipelinePhase,
         installed: Bool,
         shortfallMegabytes: Int?,
         network: NetworkConditions?,
         allowCellular: Bool
     ) -> Bool {
-        onPhoneEngine && !captionsRunning && !installed && shortfallMegabytes == nil
+        let captionsStopped = phase == .idle || phase == .paused || phase.failure != nil
+        return onPhoneEngine && captionsStopped && !installed && shortfallMegabytes == nil
             && decide(network: network, allowCellular: allowCellular) == .proceed
     }
 }
