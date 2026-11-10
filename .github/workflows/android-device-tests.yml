@@ -16,6 +16,7 @@ permissions:
 
 env:
   API_LEVEL: 35
+  PROFILE: pixel_6
   SMOKE: >-
     com.arbelonson.ozen.DiagnosticsScreenDeviceTest,
     com.arbelonson.ozen.MobileDataNoteDeviceTest,
@@ -62,7 +63,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ env.API_LEVEL }}-google_apis-x86_64
+          key: avd-${{ env.API_LEVEL }}-google_apis-x86_64-${{ env.PROFILE }}
       - name: Create the emulator snapshot
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
@@ -70,6 +71,7 @@ jobs:
           api-level: ${{ env.API_LEVEL }}
           target: google_apis
           arch: x86_64
+          profile: ${{ env.PROFILE }}
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
@@ -80,6 +82,7 @@ jobs:
           api-level: ${{ env.API_LEVEL }}
           target: google_apis
           arch: x86_64
+          profile: ${{ env.PROFILE }}
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
