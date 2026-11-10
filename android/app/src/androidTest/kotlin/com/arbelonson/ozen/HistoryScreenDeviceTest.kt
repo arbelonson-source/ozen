@@ -944,6 +944,40 @@ class HistoryScreenDeviceTest {
         assertSides(english, hebrew, digits)
     }
 
+    @Test
+    fun aStarredLineOpenedFromStarredLinesIsReadOutOnArrival() {
+        val target = "Arrival speech test take the pills twice a day"
+        val startedAt = System.currentTimeMillis() / 1_000.0 - 600
+        val record = TranscriptSessionRecord(
+            startedAt = startedAt,
+            endedAt = startedAt + 120,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = "home server",
+            inputName = null,
+            segments = (0 until 40).map {
+                SavedSegment(UUID.randomUUID(), if (it == 30) target else "Arrival speech filler line $it", null, null, startedAt + it * 3, true, isStarred = it == 30)
+            },
+        )
+        store.save(record)
+        seeded += record.id
+        val announced = CopyOnWriteArrayList<String>()
+        val announceBefore = ScreenReader.announce
+        ScreenReader.announce = { _, text -> announced += text }
+        try {
+            compose.onNodeWithText("History").performClick()
+            waitFor("Arrival speech filler line 0")
+            val total = store.listSummaries().sumOf { it.starredCount }
+            compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
+            waitFor("Share")
+            compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasContentDescription(target, substring = true))
+            compose.onNodeWithContentDescription(target, substring = true).performClick()
+            compose.waitUntil(5_000) { shownLine(target) }
+            compose.waitUntil(5_000) { announced.any { target in it } }
+        } finally {
+            ScreenReader.announce = announceBefore
+        }
+    }
+
     private fun assertSides(english: String, hebrew: String, digits: String) {
         val left = inkMiddle(english)
         val right = inkMiddle(hebrew)

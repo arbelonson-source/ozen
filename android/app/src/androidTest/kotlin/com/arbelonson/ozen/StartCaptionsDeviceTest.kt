@@ -5,6 +5,10 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -15,6 +19,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -23,6 +28,17 @@ class StartCaptionsDeviceTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val app = context.applicationContext as OzenApplication
+
+    @get:Rule
+    val compose = createEmptyComposeRule()
+
+    private fun shown(text: String) = compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+
+    private fun waitStarted() {
+        val until = System.currentTimeMillis() + 15_000
+        while (app.captions.pipeline.phase == PipelinePhase.Idle && System.currentTimeMillis() < until) Thread.sleep(100)
+        assertTrue("never started: ${app.captions.pipeline.phase}", app.captions.pipeline.phase != PipelinePhase.Idle)
+    }
 
     @After
     fun stopCaptions() {
@@ -82,6 +98,27 @@ class StartCaptionsDeviceTest {
             val until = System.currentTimeMillis() + 15_000
             while (app.captions.pipeline.phase == PipelinePhase.Idle && System.currentTimeMillis() < until) Thread.sleep(100)
             assertTrue("never started: ${app.captions.pipeline.phase}", app.captions.pipeline.phase != PipelinePhase.Idle)
+        }
+    }
+
+    @Test
+    fun theStartActionWithSettingsOrHistoryOpenBringsTheCaptionsToTheFront() {
+        instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.RECORD_AUDIO)
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            stopped()
+            compose.onNodeWithText("Settings").performClick()
+            compose.waitUntil(5_000) { shown("Diagnostics") }
+            scenario.onActivity { it.startActivity(startIntent()) }
+            waitStarted()
+            compose.waitUntil(10_000) { !shown("Diagnostics") }
+
+            stopped()
+            compose.onNodeWithText("History").performClick()
+            compose.waitUntil(5_000) { shown("Delete all") }
+            scenario.onActivity { it.startActivity(startIntent()) }
+            waitStarted()
+            compose.waitUntil(10_000) { !shown("Delete all") }
+            compose.onNodeWithText("Settings").assertExists()
         }
     }
 

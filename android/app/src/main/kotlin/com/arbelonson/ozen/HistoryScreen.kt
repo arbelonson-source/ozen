@@ -656,6 +656,7 @@ internal fun ConversationScreen(
         if (star == null) jumpedToStar = false
         loaded = now
     }
+    val context = LocalContext.current
     LaunchedEffect(id, marksUncertain) {
         var jumped = false
         while (true) {
@@ -683,13 +684,16 @@ internal fun ConversationScreen(
                     delay(2_000)
                     arrived = null
                 }
+                // A screen reader hears which line it was, as after a jump:
+                // the mark alone told a blind or deaf-blind person nothing.
+                AnnouncementHold.waitOut()
+                ScreenReader.announce(context, now.lines[held].spoken)
             }
             if (!conversations.isCurrent(id)) break
             delay(20_000)
         }
     }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     // Each jump says where it landed, as one from the caption screen does:
     // the line is read out and marked for a moment. A jump only scrolled,
     // so a line near the end, or in a short conversation, hardly moved the
