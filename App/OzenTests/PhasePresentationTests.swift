@@ -190,6 +190,20 @@ struct PhasePresentationTests {
         #expect(presentation.detail?.contains("לנסות עכשיו") == true)
     }
 
+    @Test("the microphone taken away says a call or another app may have it, since either one pauses captions this way")
+    func callOrAnotherApp() {
+        Localization.$override.withValue(.english) {
+            let presentation = PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: true)
+            #expect(presentation.title == "Captions paused for a call or another app")
+            #expect(presentation.detail == "They’ll continue on their own once the microphone is free · Tap to try now")
+        }
+        Localization.$override.withValue(.hebrew) {
+            let presentation = PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: true)
+            #expect(presentation.title == "הכתוביות מושהות בגלל שיחה או אפליקציה אחרת")
+            #expect(presentation.detail == "הכתוביות ימשיכו לבד כשהמיקרופון יתפנה · הקישו כדי לנסות עכשיו")
+        }
+    }
+
     @Test("a failure with a retry on the way says so and still lets her retry now")
     func scheduledRetry() {
         let presentation = PhasePresentation(

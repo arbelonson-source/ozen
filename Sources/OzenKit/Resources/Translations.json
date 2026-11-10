@@ -813,7 +813,6 @@
   "There's a problem with the cloud transcription key. Open Ozen for details.": "ከደመና ንግግር መለያ ቁልፍ ጋር ችግር አለ። ለዝርዝሮች Ozenን ይክፈቱ።",
   "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition.": "ኢንተርኔት የለም፣ የደመና ንግግር መለያም ይፈልገዋል። Ozenን ከፍተው እንደገና ይሞክሩ፤ ወይም ስልኩን ያዘጋጀውን ሰው ወደ ስልኩ ራሱ የንግግር መለያ እንዲቀይር ይጠይቁ።",
   "There’s no internet, so the backup can’t be downloaded now.": "ኢንተርኔት የለም፣ ስለዚህ ምትኬው አሁን ሊወርድ አይችልም።",
-  "They’ll continue on their own when the call ends · Tap to try now": "ጥሪው ሲያልቅ በራሳቸው ይቀጥላሉ · አሁን ለመሞከር ይንኩ",
   "This is the selected model. Next time it needs to load, for example when the app reopens, it will download again (%1) before there are captions.": "ይህ የተመረጠው ሞዴል ነው። በሚቀጥለው ጊዜ ሲጫን፣ ለምሳሌ መተግበሪያው እንደገና ሲከፈት፣ ካፕሽን ከመታየቱ በፊት እንደገና ይወርዳል (%1)።",
   "This is what a notification from Ozen looks like when the phone is in a pocket or locked.": "ይህ ስልኩ በኪስ ወይም ተቆልፎ ሳለ ከOzen የሚመጣ ማሳወቂያ ምን እንደሚመስል ነው።",
   "This model gets many Hebrew words wrong. Tap to switch to %1, %2": "ይህ ሞዴል በዕብራይስጥ ብዙ ቃላት ስህተት ይሠራል። ወደ %1፣ %2 ለመቀየር ይንኩ",
@@ -1055,7 +1054,9 @@
   "Or type the wrong word": "ወይም የተሳሳተውን ቃል ይተይቡ",
   "Now type how it should be written": "አሁን እንዴት መጻፍ እንዳለበት ይተይቡ",
   "This word is not in the line": "ይህ ቃል በመስመሩ ውስጥ የለም",
-  "Press and hold a line to mark it as important, copy it or fix a word.": "መስመርን ተጭነው በመያዝ እንደ አስፈላጊ ምልክት ማድረግ፣ መቅዳት ወይም ቃል ማስተካከል ይችላሉ።"
+  "Press and hold a line to mark it as important, copy it or fix a word.": "መስመርን ተጭነው በመያዝ እንደ አስፈላጊ ምልክት ማድረግ፣ መቅዳት ወይም ቃል ማስተካከል ይችላሉ።",
+  "Captions paused for a call or another app": "ካፕሽን በጥሪ ወይም በሌላ መተግበሪያ ምክንያት ተቋርጧል",
+  "They’ll continue on their own once the microphone is free · Tap to try now": "ማይክሮፎኑ ሲለቀቅ ራሳቸውን ችለው ይቀጥላሉ · አሁን ለመሞከር ይንኩ"
  },
  "arabic": {
   "Added: %1": "أُضيف: %1",
@@ -1871,7 +1872,6 @@
   "There's a problem with the cloud transcription key. Open Ozen for details.": "توجد مشكلة في مفتاح النسخ السحابي. افتحوا Ozen للتفاصيل.",
   "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition.": "لا يوجد إنترنت، والنسخ السحابي يحتاجه. افتحوا Ozen وحاولوا مجددًا، أو اطلبوا ممن أعدّ الهاتف التحويل إلى التعرف على الكلام في الهاتف نفسه.",
   "There’s no internet, so the backup can’t be downloaded now.": "لا يوجد إنترنت، لذلك لا يمكن تنزيل النسخة الاحتياطية الآن.",
-  "They’ll continue on their own when the call ends · Tap to try now": "ستستمر من تلقاء نفسها عند انتهاء المكالمة · المسوا للمحاولة الآن",
   "This is the selected model. Next time it needs to load, for example when the app reopens, it will download again (%1) before there are captions.": "هذا هو النموذج المختار. في المرة القادمة التي يحتاج فيها إلى التحميل، مثلًا عند إعادة فتح التطبيق، سيُنزَّل مجددًا (%1) قبل ظهور الترجمة النصية.",
   "This is what a notification from Ozen looks like when the phone is in a pocket or locked.": "هكذا يبدو إشعار من Ozen عندما يكون الهاتف في الجيب أو مقفلًا.",
   "This model gets many Hebrew words wrong. Tap to switch to %1, %2": "يخطئ هذا النموذج في كلمات عبرية كثيرة. المسوا للتبديل إلى %1، %2",
@@ -2113,7 +2113,9 @@
   "Or type the wrong word": "أو اكتبوا الكلمة الخاطئة",
   "Now type how it should be written": "الآن اكتبوا كيف يجب أن تُكتب",
   "This word is not in the line": "هذه الكلمة غير موجودة في السطر",
-  "Press and hold a line to mark it as important, copy it or fix a word.": "اضغطوا مطوّلًا على سطر لتمييزه كمهم أو نسخه أو تصحيح كلمة فيه."
+  "Press and hold a line to mark it as important, copy it or fix a word.": "اضغطوا مطوّلًا على سطر لتمييزه كمهم أو نسخه أو تصحيح كلمة فيه.",
+  "Captions paused for a call or another app": "توقفت الترجمة النصية مؤقتًا بسبب مكالمة أو تطبيق آخر",
+  "They’ll continue on their own once the microphone is free · Tap to try now": "ستستمر من تلقاء نفسها عندما يصبح الميكروفون متاحًا · المسوا للمحاولة الآن"
  },
  "chineseSimplified": {
   "Added: %1": "已添加：%1",
@@ -2929,7 +2931,6 @@
   "There's a problem with the cloud transcription key. Open Ozen for details.": "云端语音识别的密钥有问题。打开 Ozen 查看详情。",
   "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition.": "没有网络，而云端语音识别需要它。打开 Ozen 重试，或者请设置手机的人切换回手机自带的语音识别。",
   "There’s no internet, so the backup can’t be downloaded now.": "没有网络，现在无法下载备用模型。",
-  "They’ll continue on their own when the call ends · Tap to try now": "通话结束后会自动继续 · 点按立即尝试",
   "This is the selected model. Next time it needs to load, for example when the app reopens, it will download again (%1) before there are captions.": "这是当前选中的模型。下次需要加载时，例如应用重新打开时，它会在出现字幕之前再次下载（%1）。",
   "This is what a notification from Ozen looks like when the phone is in a pocket or locked.": "手机放在口袋里或锁屏时，Ozen 的通知就是这个样子。",
   "This model gets many Hebrew words wrong. Tap to switch to %1, %2": "这个模型在希伯来语上错得很多。点按即可切换到 %1（%2）",
@@ -3171,7 +3172,9 @@
   "Or type the wrong word": "或输入写错的词",
   "Now type how it should be written": "现在输入正确的写法",
   "This word is not in the line": "这个词不在这一行中",
-  "Press and hold a line to mark it as important, copy it or fix a word.": "长按一行可将其标记为重要、复制，或修正其中的词。"
+  "Press and hold a line to mark it as important, copy it or fix a word.": "长按一行可将其标记为重要、复制，或修正其中的词。",
+  "Captions paused for a call or another app": "因通话或其他应用，字幕已暂停",
+  "They’ll continue on their own once the microphone is free · Tap to try now": "麦克风空闲后会自动继续 · 点一下立即尝试"
  },
  "french": {
   "Added: %1": "Ajouté : %1",
@@ -3987,7 +3990,6 @@
   "There's a problem with the cloud transcription key. Open Ozen for details.": "Il y a un problème avec la clé de transcription dans le cloud. Ouvrez Ozen pour plus de détails.",
   "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition.": "Il n’y a pas de connexion Internet, et la transcription dans le cloud en a besoin. Ouvrez Ozen et réessayez, ou demandez à la personne qui a configuré le téléphone de passer à la reconnaissance vocale du téléphone.",
   "There’s no internet, so the backup can’t be downloaded now.": "Pas d’Internet : la copie de secours ne peut pas être téléchargée maintenant.",
-  "They’ll continue on their own when the call ends · Tap to try now": "Ils reprendront seuls à la fin de l’appel · Touchez pour réessayer maintenant",
   "This is the selected model. Next time it needs to load, for example when the app reopens, it will download again (%1) before there are captions.": "C’est le modèle sélectionné. La prochaine fois qu’il devra se charger, par exemple à la réouverture de l’application, il sera téléchargé à nouveau (%1) avant qu’il y ait des sous-titres.",
   "This is what a notification from Ozen looks like when the phone is in a pocket or locked.": "Voici à quoi ressemble une notification d’Ozen quand le téléphone est dans une poche ou verrouillé.",
   "This model gets many Hebrew words wrong. Tap to switch to %1, %2": "Ce modèle se trompe sur beaucoup de mots en hébreu. Touchez pour passer à %1, %2",
@@ -4229,7 +4231,9 @@
   "Or type the wrong word": "Ou saisissez le mot erroné",
   "Now type how it should be written": "Saisissez maintenant comment cela doit s’écrire",
   "This word is not in the line": "Ce mot ne figure pas dans la ligne",
-  "Press and hold a line to mark it as important, copy it or fix a word.": "Appuyez longuement sur une ligne pour la marquer comme importante, la copier ou corriger un mot."
+  "Press and hold a line to mark it as important, copy it or fix a word.": "Appuyez longuement sur une ligne pour la marquer comme importante, la copier ou corriger un mot.",
+  "Captions paused for a call or another app": "Sous-titres en pause pour un appel ou une autre application",
+  "They’ll continue on their own once the microphone is free · Tap to try now": "Ils reprendront seuls dès que le microphone sera libre · Touchez pour réessayer maintenant"
  },
  "german": {
   "Added: %1": "Hinzugefügt: %1",
@@ -5045,7 +5049,6 @@
   "There's a problem with the cloud transcription key. Open Ozen for details.": "Es gibt ein Problem mit dem Cloud‑Transkriptionsschlüssel. Öffnen Sie Ozen für Details.",
   "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition.": "Es gibt kein Internet, und die Cloud‑Transkription braucht es. Öffnen Sie Ozen und versuchen Sie es erneut, oder bitten Sie die Person, die das Telefon eingerichtet hat, auf die eigene Spracherkennung des Telefons umzustellen.",
   "There’s no internet, so the backup can’t be downloaded now.": "Kein Internet, daher kann die Reserve jetzt nicht geladen werden.",
-  "They’ll continue on their own when the call ends · Tap to try now": "Die Untertitel laufen von allein weiter, wenn der Anruf endet · Zum sofortigen Versuch tippen",
   "This is the selected model. Next time it needs to load, for example when the app reopens, it will download again (%1) before there are captions.": "Dies ist das ausgewählte Modell. Muss es das nächste Mal geladen werden, zum Beispiel wenn die App neu geöffnet wird, wird es noch einmal heruntergeladen (%1), bevor Untertitel erscheinen.",
   "This is what a notification from Ozen looks like when the phone is in a pocket or locked.": "So sieht eine Benachrichtigung von Ozen aus, wenn das Telefon in einer Tasche oder gesperrt ist.",
   "This model gets many Hebrew words wrong. Tap to switch to %1, %2": "Dieses Modell macht viele Fehler auf Hebräisch. Zum Wechseln zu %1, %2 tippen",
@@ -5287,7 +5290,9 @@
   "Or type the wrong word": "Oder geben Sie das falsche Wort ein",
   "Now type how it should be written": "Geben Sie jetzt ein, wie es geschrieben werden soll",
   "This word is not in the line": "Dieses Wort steht nicht in der Zeile",
-  "Press and hold a line to mark it as important, copy it or fix a word.": "Halten Sie eine Zeile gedrückt, um sie als wichtig zu markieren, sie zu kopieren oder ein Wort zu korrigieren."
+  "Press and hold a line to mark it as important, copy it or fix a word.": "Halten Sie eine Zeile gedrückt, um sie als wichtig zu markieren, sie zu kopieren oder ein Wort zu korrigieren.",
+  "Captions paused for a call or another app": "Untertitel für einen Anruf oder eine andere App angehalten",
+  "They’ll continue on their own once the microphone is free · Tap to try now": "Sie machen von allein weiter, sobald das Mikrofon frei ist · Zum sofortigen Versuch tippen"
  },
  "hindi": {
   "Added: %1": "जोड़ा गया: %1",
@@ -6103,7 +6108,6 @@
   "There's a problem with the cloud transcription key. Open Ozen for details.": "क्लाउड ट्रांसक्रिप्शन की कुंजी में समस्या है। जानकारी के लिए Ozen खोलें।",
   "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition.": "इंटरनेट नहीं है, और क्लाउड ट्रांसक्रिप्शन को इसकी ज़रूरत है। Ozen खोलकर फिर से कोशिश करें, या जिसने फ़ोन सेट किया था उससे फ़ोन की अपनी वाणी पहचान पर बदलने को कहें।",
   "There’s no internet, so the backup can’t be downloaded now.": "इंटरनेट नहीं है, इसलिए बैकअप अभी डाउनलोड नहीं हो सकता।",
-  "They’ll continue on their own when the call ends · Tap to try now": "कॉल ख़त्म होने पर ये खुद जारी हो जाएंगे · अभी कोशिश के लिए टैप करें",
   "This is the selected model. Next time it needs to load, for example when the app reopens, it will download again (%1) before there are captions.": "यह चुना गया मॉडल है। अगली बार जब इसे लोड होना होगा, जैसे ऐप के फिर से खुलने पर, कैप्शन आने से पहले यह फिर से (%1) डाउनलोड होगा।",
   "This is what a notification from Ozen looks like when the phone is in a pocket or locked.": "जब फ़ोन जेब में हो या लॉक हो, तो Ozen की सूचना ऐसी दिखती है।",
   "This model gets many Hebrew words wrong. Tap to switch to %1, %2": "यह मॉडल हिब्रू के कई शब्दों में ग़लती करता है। %1, %2 पर जाने के लिए टैप करें",
@@ -6345,7 +6349,9 @@
   "Or type the wrong word": "या ग़लत शब्द टाइप करें",
   "Now type how it should be written": "अब टाइप करें कि इसे कैसे लिखा जाना चाहिए",
   "This word is not in the line": "यह शब्द इस लाइन में नहीं है",
-  "Press and hold a line to mark it as important, copy it or fix a word.": "किसी लाइन को दबाकर रखें, ताकि आप उसे ज़रूरी के रूप में चिह्नित कर सकें, कॉपी कर सकें या कोई शब्द ठीक कर सकें।"
+  "Press and hold a line to mark it as important, copy it or fix a word.": "किसी लाइन को दबाकर रखें, ताकि आप उसे ज़रूरी के रूप में चिह्नित कर सकें, कॉपी कर सकें या कोई शब्द ठीक कर सकें।",
+  "Captions paused for a call or another app": "कॉल या किसी दूसरे ऐप की वजह से कैप्शन रुके हुए हैं",
+  "They’ll continue on their own once the microphone is free · Tap to try now": "माइक्रोफ़ोन खाली होने पर ये खुद जारी हो जाएंगे · अभी कोशिश के लिए छुएं"
  },
  "portuguese": {
   "Added: %1": "Adicionado: %1",
@@ -7161,7 +7167,6 @@
   "There's a problem with the cloud transcription key. Open Ozen for details.": "Há um problema com a chave de transcrição na nuvem. Abra o Ozen para mais detalhes.",
   "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition.": "Não há internet, e a transcrição na nuvem precisa dela. Abra o Ozen e tente novamente, ou peça a quem configurou o telemóvel para mudar para o reconhecimento de voz do próprio telemóvel.",
   "There’s no internet, so the backup can’t be downloaded now.": "Não há internet, por isso a cópia de segurança não pode ser transferida agora.",
-  "They’ll continue on their own when the call ends · Tap to try now": "Vão continuar sozinhas quando a chamada terminar · Toque para tentar agora",
   "This is the selected model. Next time it needs to load, for example when the app reopens, it will download again (%1) before there are captions.": "Este é o modelo selecionado. Da próxima vez que precisar de ser carregado, por exemplo quando a aplicação reabrir, vai ser transferido outra vez (%1) antes de haver legendas.",
   "This is what a notification from Ozen looks like when the phone is in a pocket or locked.": "Este é o aspeto de uma notificação do Ozen quando o telemóvel está no bolso ou bloqueado.",
   "This model gets many Hebrew words wrong. Tap to switch to %1, %2": "Este modelo erra muitas palavras em hebraico. Toque para mudar para %1, %2",
@@ -7403,7 +7408,9 @@
   "Or type the wrong word": "Ou escreva a palavra errada",
   "Now type how it should be written": "Agora escreva como deve ficar escrito",
   "This word is not in the line": "Esta palavra não está na linha",
-  "Press and hold a line to mark it as important, copy it or fix a word.": "Mantenha uma linha premida para a assinalar como importante, copiá-la ou corrigir uma palavra."
+  "Press and hold a line to mark it as important, copy it or fix a word.": "Mantenha uma linha premida para a assinalar como importante, copiá-la ou corrigir uma palavra.",
+  "Captions paused for a call or another app": "Legendas em pausa por causa de uma chamada ou de outra aplicação",
+  "They’ll continue on their own once the microphone is free · Tap to try now": "Vão continuar sozinhas quando o microfone ficar livre · Toque para tentar agora"
  },
  "russian": {
   "Added: %1": "Добавлено: %1",
@@ -8219,7 +8226,6 @@
   "There's a problem with the cloud transcription key. Open Ozen for details.": "Проблема с ключом облачного распознавания. Откройте Ozen, чтобы узнать подробности.",
   "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition.": "Нет интернета, а он нужен для облачного распознавания. Откройте Ozen и попробуйте снова или попросите того, кто настраивал телефон, переключиться на распознавание речи телефона.",
   "There’s no internet, so the backup can’t be downloaded now.": "Нет интернета, поэтому резервную модель сейчас загрузить нельзя.",
-  "They’ll continue on their own when the call ends · Tap to try now": "Субтитры возобновятся сами, когда звонок закончится · Нажмите, чтобы попробовать сейчас",
   "This is the selected model. Next time it needs to load, for example when the app reopens, it will download again (%1) before there are captions.": "Это выбранная модель. В следующий раз, когда её нужно будет загрузить, например при повторном открытии приложения, она загрузится снова (%1), прежде чем появятся субтитры.",
   "This is what a notification from Ozen looks like when the phone is in a pocket or locked.": "Так выглядит уведомление от Ozen, когда телефон в кармане или заблокирован.",
   "This model gets many Hebrew words wrong. Tap to switch to %1, %2": "Эта модель ошибается во многих словах на иврите. Нажмите, чтобы переключиться на %1, %2",
@@ -8461,7 +8467,9 @@
   "Or type the wrong word": "Или введите неправильное слово",
   "Now type how it should be written": "Теперь введите, как это должно быть написано",
   "This word is not in the line": "Этого слова нет в строке",
-  "Press and hold a line to mark it as important, copy it or fix a word.": "Нажмите и удерживайте строку, чтобы отметить её как важную, скопировать или исправить слово."
+  "Press and hold a line to mark it as important, copy it or fix a word.": "Нажмите и удерживайте строку, чтобы отметить её как важную, скопировать или исправить слово.",
+  "Captions paused for a call or another app": "Субтитры приостановлены из-за звонка или другого приложения",
+  "They’ll continue on their own once the microphone is free · Tap to try now": "Они продолжат сами, когда микрофон освободится · Нажмите, чтобы попробовать сейчас"
  },
  "spanish": {
   "Added: %1": "Añadido: %1",
@@ -9277,7 +9285,6 @@
   "There's a problem with the cloud transcription key. Open Ozen for details.": "Hay un problema con la clave de transcripción en la nube. Abre Ozen para más detalles.",
   "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition.": "No hay internet, y la transcripción en la nube lo necesita. Abre Ozen y vuelve a intentarlo, o pide a quien configuró el teléfono que cambie al reconocimiento de voz propio del teléfono.",
   "There’s no internet, so the backup can’t be downloaded now.": "No hay internet, así que ahora no se puede descargar la copia de seguridad.",
-  "They’ll continue on their own when the call ends · Tap to try now": "Continuarán solos cuando termine la llamada · Toca para intentarlo ahora",
   "This is the selected model. Next time it needs to load, for example when the app reopens, it will download again (%1) before there are captions.": "Este es el modelo seleccionado. La próxima vez que tenga que cargarse, por ejemplo al reabrir la aplicación, se volverá a descargar (%1) antes de que haya subtítulos.",
   "This is what a notification from Ozen looks like when the phone is in a pocket or locked.": "Así se ve una notificación de Ozen cuando el teléfono está en un bolsillo o bloqueado.",
   "This model gets many Hebrew words wrong. Tap to switch to %1, %2": "Este modelo se equivoca en muchas palabras en hebreo. Toca para cambiar a %1, %2",
@@ -9519,7 +9526,9 @@
   "Or type the wrong word": "O escribe la palabra incorrecta",
   "Now type how it should be written": "Ahora escribe cómo debe escribirse",
   "This word is not in the line": "Esta palabra no está en la línea",
-  "Press and hold a line to mark it as important, copy it or fix a word.": "Mantén pulsada una línea para marcarla como importante, copiarla o corregir una palabra."
+  "Press and hold a line to mark it as important, copy it or fix a word.": "Mantén pulsada una línea para marcarla como importante, copiarla o corregir una palabra.",
+  "Captions paused for a call or another app": "Subtítulos en pausa por una llamada u otra aplicación",
+  "They’ll continue on their own once the microphone is free · Tap to try now": "Continuarán solos cuando el micrófono quede libre · Toca para intentarlo ahora"
  },
  "ukrainian": {
   "Added: %1": "Додано: %1",
@@ -10335,7 +10344,6 @@
   "There's a problem with the cloud transcription key. Open Ozen for details.": "Проблема з ключем хмарного розпізнавання. Відкрийте Ozen, щоб дізнатися більше.",
   "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition.": "Немає інтернету, а хмарне розпізнавання його потребує. Відкрийте Ozen і спробуйте знову, або попросіть того, хто налаштовував телефон, перемкнутися на розпізнавання мовлення телефону.",
   "There’s no internet, so the backup can’t be downloaded now.": "Немає інтернету, тож резервну модель зараз не можна завантажити.",
-  "They’ll continue on their own when the call ends · Tap to try now": "Вони продовжать самі, коли дзвінок закінчиться · Натисніть, щоб спробувати зараз",
   "This is the selected model. Next time it needs to load, for example when the app reopens, it will download again (%1) before there are captions.": "Це вибрана модель. Наступного разу, коли її потрібно буде завантажити, наприклад під час повторного відкриття застосунку, вона завантажиться знову (%1), перш ніж з’являться субтитри.",
   "This is what a notification from Ozen looks like when the phone is in a pocket or locked.": "Так виглядає сповіщення від Ozen, коли телефон у кишені або заблокований.",
   "This model gets many Hebrew words wrong. Tap to switch to %1, %2": "Ця модель помиляється в багатьох словах на івриті. Натисніть, щоб перемкнутися на %1, %2",
@@ -10577,6 +10585,8 @@
   "Or type the wrong word": "Або введіть неправильне слово",
   "Now type how it should be written": "Тепер введіть, як це має бути написано",
   "This word is not in the line": "Цього слова немає в рядку",
-  "Press and hold a line to mark it as important, copy it or fix a word.": "Натисніть і утримуйте рядок, щоб позначити його як важливий, скопіювати або виправити слово."
+  "Press and hold a line to mark it as important, copy it or fix a word.": "Натисніть і утримуйте рядок, щоб позначити його як важливий, скопіювати або виправити слово.",
+  "Captions paused for a call or another app": "Субтитри призупинено через дзвінок або інший застосунок",
+  "They’ll continue on their own once the microphone is free · Tap to try now": "Вони продовжать самі, коли мікрофон звільниться · Натисніть, щоб спробувати зараз"
  }
 }
