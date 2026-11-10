@@ -310,11 +310,14 @@ class WhisperResultFilterTest {
 
     @Test
     fun `the language lists do not leak into Hebrew or English`() {
-        val german = "Untertitel der Amara.org-Community"
+        val german = "Untertitel im Auftrag des ZDF"
         assertTrue(filter.forSpeech("he").accepts(segment(german, logprob = -0.2f)))
         assertTrue(filter.forSpeech("en").accepts(segment(german, logprob = -0.2f)))
-        assertTrue(filter.forSpeech("en").accepts(segment("Danke", logprob = -1.2f)))
-        assertTrue(filter.forSpeech("he").accepts(segment("Gracias", logprob = -1.2f)))
+        assertTrue(filter.forSpeech("en").accepts(segment("Danke schön", logprob = -1.2f)))
+        assertTrue(filter.forSpeech("he").accepts(segment("Muchas gracias", logprob = -1.2f)))
+        assertFalse(filter.forSpeech("de").accepts(segment(german, logprob = -0.2f)))
+        assertFalse(filter.forSpeech("de").accepts(segment("Danke schön", logprob = -1.2f)))
+        assertFalse(filter.forSpeech("es").accepts(segment("Muchas gracias", logprob = -1.2f)))
         assertFalse(filter.forSpeech("en").accepts(segment("Subtitles by the Amara.org community", logprob = -0.2f)))
         assertFalse(filter.forSpeech("he").accepts(segment("תודה שצפיתם", logprob = -0.2f)))
     }

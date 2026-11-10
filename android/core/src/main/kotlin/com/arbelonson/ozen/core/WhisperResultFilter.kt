@@ -475,13 +475,19 @@ class WhisperResultFilter(
             "כתוביות ע״י", "תורגם ע״י", "תרגום ע״י", "תמלול ע״י",
             "תורגם וסונכרן", "סונכרן על ידי", "סונכרן ע״י",
             "subtitles by", "subtitled by", "translated by", "transcribed by", "captions by",
+            "ترجمة نانسي قنقر", "تمت الترجمة بواسطة",
+            "subtítulos realizados por la comunidad de amara.org",
+            "sous-titres réalisés par la communauté d'amara.org",
+            "untertitel der amara.org-community",
+            "legendas pela comunidade amara.org",
+            "субтитры сделал",
         )
 
         /** See [forSpeech]. */
         internal val englishWordsAlsoSaid: List<String> = listOf("you", "music", "applause", "laughter")
 
         val defaultCreditLabels: List<String> = listOf(
-            "כתוביות", "תרגום", "תמלול", "הפקה", "עריכה", "סנכרון", "subtitles", "translation", "captions",
+            "כתוביות", "תרגום", "תמלול", "הפקה", "עריכה", "סנכרון", "subtitles", "translation", "captions", "ترجمة",
         )
 
         /** Nobody says these to someone across a dinner table: they are broadcast credits and sound tags, always dropped. */
@@ -502,6 +508,8 @@ class WhisperResultFilter(
             // The same outros as Hebrew YouTube and subtitle files word them.
             "תודה רבה שצפיתם", "תודה רבה לכם שצפיתם", "תודה שצפיתם בסרטון",
             "הירשמו לערוץ", "תירשמו לערוץ", "אל תשכחו להירשם לערוץ",
+            "اشتركوا في القناة", "اشترك في القناة", "شكرا على المشاهدة", "شكرا لمشاهدتكم",
+            "продолжение следует",
         )
 
         val defaultAmbiguousHallucinations: Set<String> = setOf(
@@ -517,6 +525,8 @@ class WhisperResultFilter(
             // also unsure of itself.
             "see you next time", "see you in the next video",
             "נתראה בסרטון הבא", "צפייה מהנה", "צפיה מהנה",
+            "شكرا", "شكرا لكم",
+            "gracias", "merci", "danke", "obrigado", "спасибо",
         )
 
         /**
