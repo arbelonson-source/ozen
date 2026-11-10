@@ -10,6 +10,10 @@ struct WordFixesSection: View {
         WordFixes.canAdd(WordFix(heard: heard, written: written), to: viewModel.wordFixes)
     }
 
+    private var refusalNote: String? {
+        WordFixes.refusalNote(WordFixes.refusal(WordFix(heard: heard, written: written), to: viewModel.wordFixes))
+    }
+
     var body: some View {
         Section {
             ForEach(viewModel.wordFixes, id: \.self) { fix in
@@ -40,6 +44,12 @@ struct WordFixesSection: View {
                     Announcement.post(tr("התיקון נוסף", "Fix added"))
                 }
                 .disabled(!canAdd)
+                .accessibilityHint(refusalNote ?? "")
+                if let refusalNote {
+                    Text(refusalNote)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
         } header: {
             Text(tr("תיקוני מילים", "Word fixes"))

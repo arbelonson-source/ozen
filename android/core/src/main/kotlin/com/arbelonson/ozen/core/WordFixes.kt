@@ -191,6 +191,32 @@ object WordFixes {
         return fixes.size < MAXIMUM_FIXES || fixes.any { keyOf(it.heard) == keyOf(one.heard) }
     }
 
+    /** Why "Add fix" can't take a fix; [Missing] while a box is still empty, which needs no word. */
+    enum class Refusal { Missing, TooLong, SameWord, HeardWords, Full }
+
+    /** Why [fix] can't go into [fixes], or null exactly when [canAdd] takes it. */
+    fun refusal(fix: WordFix, fixes: List<WordFix>): Refusal? {
+        if (canAdd(fix, fixes)) return null
+        val heard = fix.heard.trim()
+        val written = fix.written.trim()
+        return when {
+            heard.isEmpty() || written.isEmpty() -> Refusal.Missing
+            heard.length > MAXIMUM_LENGTH || written.length > MAXIMUM_LENGTH -> Refusal.TooLong
+            keyOf(heard.replace(Regex("\\s+"), " ")) == keyOf(written) -> Refusal.SameWord
+            normalized(listOf(fix)).isEmpty() -> Refusal.HeardWords
+            else -> Refusal.Full
+        }
+    }
+
+    /** Said under a grey "Add fix", so the button doesn't just look broken. */
+    fun refusalNote(refusal: Refusal?): String? = when (refusal) {
+        null, Refusal.Missing -> null
+        Refusal.TooLong -> tr("עד %1 אותיות ורווחים בכל שדה.", "Up to %1 letters and spaces in each box.", listOf("$MAXIMUM_LENGTH"))
+        Refusal.SameWord -> tr("״מה שנשמע״ ו״מה שייכתב״ זהים. תיקון לא יכול לשנות רק אותיות גדולות וקטנות.", "“Heard” and “Written” are the same. A fix can’t change only capital letters.")
+        Refusal.HeardWords -> tr("ב״מה שנשמע״: עד %1 מילים, רק עם רווחים ביניהן.", "In “Heard”: up to %1 words, with only spaces between them.", listOf("$MAXIMUM_WORDS"))
+        Refusal.Full -> tr("הרשימה מלאה. מחקו תיקון כדי להוסיף אחר.", "The list is full. Delete a fix to add another.")
+    }
+
     /** The arrow between heard and written words, pointing the way [heard] is read: left for Hebrew or Arabic. */
     fun arrow(heard: String): String {
         var at = 0

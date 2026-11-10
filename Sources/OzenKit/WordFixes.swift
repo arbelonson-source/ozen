@@ -43,6 +43,33 @@ public enum WordFixes {
         return list.count < maximumFixes || list.contains { key($0.heard) == key(one.heard) }
     }
 
+    /// Why "Add fix" can't take a fix; `.missing` while a box is still
+    /// empty, which needs no word.
+    public enum Refusal: Sendable { case missing, tooLong, sameWord, heardWords, full }
+
+    /// Why `fix` can't go into `list`, or nil exactly when `canAdd` takes it.
+    public static func refusal(_ fix: WordFix, to list: [WordFix]) -> Refusal? {
+        if canAdd(fix, to: list) { return nil }
+        let heard = fix.heard.trimmingCharacters(in: .whitespacesAndNewlines)
+        let written = fix.written.trimmingCharacters(in: .whitespacesAndNewlines)
+        if heard.isEmpty || written.isEmpty { return .missing }
+        if heard.count > maximumLength || written.count > maximumLength { return .tooLong }
+        if key(collapsed(heard)) == key(written) { return .sameWord }
+        if normalized([fix]).isEmpty { return .heardWords }
+        return .full
+    }
+
+    /// Said under a grey "Add fix", so the button doesn't just look broken.
+    public static func refusalNote(_ refusal: Refusal?) -> String? {
+        switch refusal {
+        case nil, .missing?: return nil
+        case .tooLong?: return tr("עד %1 אותיות ורווחים בכל שדה.", "Up to %1 letters and spaces in each box.", args: ["\(maximumLength)"])
+        case .sameWord?: return tr("״מה שנשמע״ ו״מה שייכתב״ זהים. תיקון לא יכול לשנות רק אותיות גדולות וקטנות.", "“Heard” and “Written” are the same. A fix can’t change only capital letters.")
+        case .heardWords?: return tr("ב״מה שנשמע״: עד %1 מילים, רק עם רווחים ביניהן.", "In “Heard”: up to %1 words, with only spaces between them.", args: ["\(maximumPhraseWords)"])
+        case .full?: return tr("הרשימה מלאה. מחקו תיקון כדי להוסיף אחר.", "The list is full. Delete a fix to add another.")
+        }
+    }
+
     /// A fix as VoiceOver reads it: "heard → written" was spoken as
     /// "heard right arrow written".
     public static func spokenLabel(_ fix: WordFix, in language: UILanguage) -> String {

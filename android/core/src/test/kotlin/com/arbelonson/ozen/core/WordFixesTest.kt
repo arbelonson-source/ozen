@@ -2,10 +2,34 @@ package com.arbelonson.ozen.core
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class WordFixesTest {
     private fun fix(heard: String, written: String) = WordFix(heard, written)
     private fun run(text: String, vararg fixes: WordFix) = WordFixes.apply(fixes.toList(), text)
+
+    @Test fun aRefusalSaysWhyAddFixIsGreyAndIsNullExactlyWhenItCanAdd() {
+        val none = emptyList<WordFix>()
+        assertEquals(WordFixes.Refusal.SameWord, WordFixes.refusal(fix("nasa", "NASA"), none))
+        assertEquals(WordFixes.Refusal.HeardWords, WordFixes.refusal(fix("one two three four five", "x"), none))
+        assertEquals(WordFixes.Refusal.HeardWords, WordFixes.refusal(fix("ok, dana", "Dana"), none))
+        assertEquals(WordFixes.Refusal.TooLong, WordFixes.refusal(fix("a".repeat(41), "b"), none))
+        assertEquals(WordFixes.Refusal.Missing, WordFixes.refusal(fix("dana", "  "), none))
+        val full = (1..WordFixes.MAXIMUM_FIXES).map { fix("word$it", "Word number $it") }
+        assertEquals(WordFixes.Refusal.Full, WordFixes.refusal(fix("dana", "Dana Levi"), full))
+        assertNull(WordFixes.refusal(fix("word7", "Seven"), full))
+        assertNull(WordFixes.refusal(fix("dana", "Dana Levi"), none))
+        val samples = listOf(fix("nasa", "NASA"), fix("a b c d e", "x"), fix("ok, dana", "Dana"), fix("dana", "Dana Levi"), fix("", "x"), fix("שלום", "שלום"), fix("מאיה", "מיה"))
+        for (sample in samples) assertEquals(WordFixes.canAdd(sample, none), WordFixes.refusal(sample, none) == null, sample.toString())
+    }
+
+    @Test fun aRefusalNoteNamesTheRuleAndAnEmptyBoxNeedsNone() = Localization.withLanguage(UILanguage.English) {
+        assertEquals("Up to 40 letters and spaces in each box.", WordFixes.refusalNote(WordFixes.Refusal.TooLong))
+        assertEquals("In “Heard”: up to 4 words, with only spaces between them.", WordFixes.refusalNote(WordFixes.Refusal.HeardWords))
+        assertEquals("The list is full. Delete a fix to add another.", WordFixes.refusalNote(WordFixes.Refusal.Full))
+        assertNull(WordFixes.refusalNote(WordFixes.Refusal.Missing))
+        assertNull(WordFixes.refusalNote(null))
+    }
 
     @Test fun rule1WholeWordsIgnoringLatinCase() {
         val avi = fix("aval", "Avi")

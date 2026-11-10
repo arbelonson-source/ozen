@@ -7,6 +7,34 @@ struct WordFixesTests {
     private func fix(_ heard: String, _ written: String) -> WordFix { WordFix(heard: heard, written: written) }
     private let avi = [WordFix(heard: "aval", written: "Avi")]
 
+    @Test("a refusal says why Add fix is grey, and is nil exactly when the fix can be added")
+    func refusalReasons() {
+        #expect(WordFixes.refusal(fix("nasa", "NASA"), to: []) == .sameWord)
+        #expect(WordFixes.refusal(fix("one two three four five", "x"), to: []) == .heardWords)
+        #expect(WordFixes.refusal(fix("ok, dana", "Dana"), to: []) == .heardWords)
+        #expect(WordFixes.refusal(fix(String(repeating: "a", count: 41), "b"), to: []) == .tooLong)
+        #expect(WordFixes.refusal(fix("dana", "  "), to: []) == .missing)
+        let full = (1...WordFixes.maximumFixes).map { fix("word\($0)", "Word number \($0)") }
+        #expect(WordFixes.refusal(fix("dana", "Dana Levi"), to: full) == .full)
+        #expect(WordFixes.refusal(fix("word7", "Seven"), to: full) == nil)
+        #expect(WordFixes.refusal(fix("dana", "Dana Levi"), to: []) == nil)
+        let samples = [fix("nasa", "NASA"), fix("a b c d e", "x"), fix("ok, dana", "Dana"), fix("dana", "Dana Levi"), fix("", "x"), fix("שלום", "שלום"), fix("מאיה", "מיה")]
+        for sample in samples {
+            #expect(WordFixes.canAdd(sample, to: []) == (WordFixes.refusal(sample, to: []) == nil), "\(sample)")
+        }
+    }
+
+    @Test("a refusal note names the rule, and an empty box needs none")
+    func refusalNotes() {
+        Localization.$override.withValue(.english) {
+            #expect(WordFixes.refusalNote(.tooLong) == "Up to 40 letters and spaces in each box.")
+            #expect(WordFixes.refusalNote(.heardWords) == "In “Heard”: up to 4 words, with only spaces between them.")
+            #expect(WordFixes.refusalNote(.full) == "The list is full. Delete a fix to add another.")
+            #expect(WordFixes.refusalNote(.missing) == nil)
+            #expect(WordFixes.refusalNote(nil) == nil)
+        }
+    }
+
     @Test("rule 1: whole words only, ignoring case")
     func wholeWords() {
         #expect(WordFixes.apply(avi, to: "I saw aval today") == "I saw Avi today")
