@@ -8,8 +8,13 @@ import OzenKit
 struct MicPickerView: View {
     let viewModel: LiveCaptionViewModel
     @Environment(\.dismiss) private var dismiss
-    /// The microphone last tapped that the phone wouldn't switch to.
-    @State private var refusedInputName: String?
+    /// The microphone last tapped; the warning follows whether the phone
+    /// is recording from it (see `MicSwitchCheck`).
+    @State private var tapped: AudioInputDescriptor?
+
+    private var switchWarning: String? {
+        MicSwitchCheck.warning(tapped: tapped, recording: viewModel.selectedInput)
+    }
 
     var body: some View {
         NavigationStack {
@@ -17,14 +22,21 @@ struct MicPickerView: View {
                 Section {
                     ForEach(viewModel.availableInputs) { input in
                         Button {
-                            refusedInputName = viewModel.selectInput(uid: input.uid) ? nil : input.portName
+                            let before = switchWarning
+                            tapped = input
+                            viewModel.selectInput(uid: input.uid)
+                            // The same refusal again isn't a change, so
+                            // the announcement below wouldn't repeat it.
+                            if let warning = switchWarning, warning == before {
+                                Announcement.post(warning)
+                            }
                         } label: {
                             InputRow(input: input, isSelected: input.uid == viewModel.selectedInputUID)
                         }
                         .foregroundStyle(.primary)
                     }
-                    if let refusedInputName {
-                        Label(tr("הטלפון לא עבר ל״%1״, והמיקרופון המסומן עדיין מקליט. נסו לנתק ולחבר אותו שוב.", "The phone did not switch to “%1”, and the marked microphone is still recording. Try unplugging and reconnecting it.", args: ["\(refusedInputName)"]), systemImage: "exclamationmark.triangle.fill")
+                    if let switchWarning {
+                        Label(switchWarning, systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(.readable(.orange))
                             .font(.footnote)
                     }
@@ -78,6 +90,12 @@ struct MicPickerView: View {
             // Opened before captions ever set up the microphone, the list
             // would otherwise be empty until someone found the refresh button.
             .onAppear { viewModel.refreshInputs() }
+            // Refused at the tap, or taken back seconds later: VoiceOver
+            // focus stays on the row, which just doesn't become selected,
+            // and nothing else told a VoiceOver or braille user.
+            .onChange(of: switchWarning) { _, warning in
+                if let warning { Announcement.post(warning) }
+            }
             .accessibilityIdentifier("micPickerScreen")
             .navigationTitle(tr("בחירת מיקרופון", "Choose microphone"))
             .navigationBarTitleDisplayMode(.inline)
