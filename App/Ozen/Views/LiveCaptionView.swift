@@ -621,7 +621,9 @@ struct LiveCaptionView: View {
             Button(tr("מחיקה", "Delete"), role: .destructive) { viewModel.clearTranscript() }
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
         } message: {
-            Text(viewModel.settings.saveHistory
+            Text(clearKeepsHistory
+                 ? tr("הן נשארות שמורות בהגדרות, תחת ״שיחות קודמות״.", "They stay saved in Settings, under “Previous conversations”.")
+                 : viewModel.settings.saveHistory
                  ? tr("השמירה בהיסטוריה לא עובדת כרגע, ולכן הן לא יישמרו.", "Saving to History isn’t working right now, so they won’t be saved.")
                  : tr("שמירת שיחות כבויה, ולכן הן לא יישמרו.", "History is off, so they won’t be saved."))
         }
@@ -1389,9 +1391,7 @@ struct LiveCaptionView: View {
                     // takes what is left, its icon at least.
                     .layoutPriority(-1)
                 typeToSpeakButton
-                if !viewModel.segments.isEmpty {
-                    clearButton
-                }
+                clearButton
                 settingsButton
             }
             statusDetailLine
@@ -1465,17 +1465,16 @@ struct LiveCaptionView: View {
         .accessibilityIdentifier("typeToSpeakButton")
     }
 
-    /// Wipes the captions off the screen and starts fresh. What was said is
-    /// kept in History first when saving is on, so nothing is lost with a tap;
-    /// with saving off, or saving failing, it asks before throwing the lines
-    /// away. Shown only when there is something to clear.
+    /// Wipes the captions off the screen and starts fresh, after asking;
+    /// what was said is kept in History first when saving is on, and the
+    /// question says where. It used to appear only once there were lines,
+    /// between Say and Settings, so the first words moved Say inward and
+    /// put the trash exactly where Say had been, and with History on one
+    /// tap there wiped the screen without a word. Now it stays put, greyed
+    /// while there is nothing to clear, and always asks, as on Android.
     private var clearButton: some View {
         Button {
-            if clearKeepsHistory {
-                viewModel.clearTranscript()
-            } else {
-                confirmingClear = true
-            }
+            confirmingClear = true
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: "trash")
@@ -1490,6 +1489,7 @@ struct LiveCaptionView: View {
         .ozenGlassButton()
         .accessibilityLabel(tr("ניקוי הכתוביות מהמסך", "Clear the captions from the screen"))
         .accessibilityShowsLargeContentViewer()
+        .disabled(viewModel.segments.isEmpty)
         .accessibilityIdentifier("clearButton")
     }
 
