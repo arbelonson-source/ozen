@@ -68,6 +68,11 @@ class AlertNotifier(private val context: Context) {
         }
         manager.createNotificationChannel(channel)
         val open = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        // A sound's name or "captions stopped" holds nothing private, and a
+        // locked phone that hides contents left a smoke alarm looking like a
+        // doorbell. A word alert's line can be private: on such a phone it
+        // shows only "Said: <word>".
+        val words = content.threadIdentifier == KEYWORDS_THREAD
         val notification = Notification.Builder(context, channel.id)
             .apply { if (alarm) setCategory(Notification.CATEGORY_ALARM) }
             .setSmallIcon(R.drawable.ic_listening)
@@ -77,6 +82,17 @@ class AlertNotifier(private val context: Context) {
             .setGroup(content.threadIdentifier)
             .setContentIntent(open)
             .setAutoCancel(true)
+            .setVisibility(if (words) Notification.VISIBILITY_PRIVATE else Notification.VISIBILITY_PUBLIC)
+            .apply {
+                if (words) {
+                    setPublicVersion(
+                        Notification.Builder(context, channel.id)
+                            .setSmallIcon(R.drawable.ic_listening)
+                            .setContentTitle(content.title)
+                            .build(),
+                    )
+                }
+            }
             .build()
         manager.notify(content.identifier, 0, notification)
         val playing = manager.getNotificationChannel(channel.id) ?: channel
@@ -107,6 +123,7 @@ class AlertNotifier(private val context: Context) {
         const val CHANNEL_ID = "alerts"
         const val ALARM_CHANNEL_ID = "alarms"
         const val SOUNDS_THREAD = "sounds"
+        const val KEYWORDS_THREAD = "keywords"
         const val TEST_DELAY_MILLIS = 10_000L
 
         fun buzzMuted(canBypassDnd: Boolean, interruptionFilter: Int, ringerSilent: Boolean): Boolean {

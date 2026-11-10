@@ -7,6 +7,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.arbelonson.ozen.core.AlertNotificationContent
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.SoundAlert
@@ -17,6 +18,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -52,6 +54,36 @@ class AwayAlertsDeviceTest {
             Thread.sleep(100)
         }
         throw AssertionError("$identifier was never posted")
+    }
+
+    // On a phone that hides notification contents when locked, a smoke alarm
+    // showed only "Ozen", like a doorbell or any other alert.
+    @Test
+    fun soundAlertsCanBeReadOnALockedPhone() {
+        for (identifier in listOf("door_bell", "smoke_detector")) {
+            assertEquals(identifier, Notification.VISIBILITY_PUBLIC, postedWhileAway(identifier).visibility)
+        }
+    }
+
+    // A word alert quotes the line, which can be private: a locked phone that
+    // hides contents shows only the word, never the line.
+    @Test
+    fun aWordAlertShowsOnlyTheWordOnALockedPhoneThatHidesContents() {
+        val content = AlertNotificationContent("keyword-DEVICE-TEST", "Said: Dana", "Dana, the test results came back", AlertNotifier.KEYWORDS_THREAD, false)
+        manager.cancel(content.identifier, 0)
+        posted += content.identifier
+        assertTrue(AlertNotifier(context).post(content))
+        val deadline = System.currentTimeMillis() + 5_000
+        var notification: Notification? = null
+        while (notification == null && System.currentTimeMillis() < deadline) {
+            notification = manager.activeNotifications.firstOrNull { it.tag == content.identifier }?.notification
+            if (notification == null) Thread.sleep(100)
+        }
+        checkNotNull(notification) { "the word alert was never posted" }
+        assertEquals(Notification.VISIBILITY_PRIVATE, notification.visibility)
+        val public = checkNotNull(notification.publicVersion) { "no lock-screen version" }
+        assertEquals("Said: Dana", public.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
+        assertNull(public.extras.getCharSequence(Notification.EXTRA_TEXT))
     }
 
     @Test

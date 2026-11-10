@@ -415,6 +415,38 @@ object HebrewText {
         "דוקטור" to setOf("דר"),
     )
 
+    internal fun containsHan(text: String): Boolean =
+        text.codePoints().anyMatch { it in 0x4E00..0x9FFF || it in 0x3400..0x4DBF || it in 0x20000..0x323AF }
+
+    internal fun containsHebrew(text: String): Boolean =
+        text.codePoints().anyMatch { it in 0x0590..0x05FF || it in 0xFB1D..0xFB4F }
+
+    /**
+     * The app's own suggested everyday words, as said in each language it
+     * offers them in. Only these get inflected endings matched; a name the
+     * reader typed never does ("Dan" must not fire on "dance").
+     */
+    internal val inflectableOfferedWords: Set<String> by lazy {
+        AlertSuggestions.words.flatMap { word ->
+            UILanguage.entries.filter { it != UILanguage.Hebrew }.mapNotNull { language ->
+                AlertSuggestions.meaning(word, language)?.let { normalize(it) }
+            }
+        }.toSet()
+    }
+
+    internal val spellingVariants: Map<String, Set<String>> = mapOf("mom" to setOf("mum", "mommy", "mummy"))
+
+    private val vowels: Set<String> by lazy { graphemesOf("aeiouyаеёиоуыэюяіїєáéíóúàèìòùâêîôûäöüãõ").toSet() }
+
+    /** "маме" for "мама", "medicines" for "medicine": the stem, less a final vowel, and at most two more letters. */
+    internal fun isInflectedForm(word: String, phrase: String): Boolean {
+        val phraseLetters = graphemesOf(phrase)
+        if (phraseLetters.size < 4 || word == phrase || containsHebrew(phrase)) return false
+        val stem = if (phraseLetters.last() in vowels) phraseLetters.dropLast(1) else phraseLetters
+        val wordLetters = graphemesOf(word)
+        return wordLetters.size >= stem.size && wordLetters.subList(0, stem.size) == stem && wordLetters.size - stem.size <= 2
+    }
+
     internal val finalLetters: Map<String, String> = mapOf("ך" to "כ", "ם" to "מ", "ן" to "נ", "ף" to "פ", "ץ" to "צ")
 
     /**
@@ -500,6 +532,7 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>) {
         val trimmedWords = rawWords.map { trimmingEdgePunctuation(it) }
 
         val unordered = mutableListOf<Pair<KeywordMatch, Int>>()
+        val repeatedInOneWord = HashSet<Int>()
         var sequence = 0
         for (alert in alerts) {
             if (!alert.isEnabled) continue
@@ -507,6 +540,26 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>) {
             // No skipping a line with fewer words than the phrase: a name
             // saved as two words can be the whole line written as one.
             if (phraseWords.isEmpty()) continue
+
+            // Chinese captions have no spaces: a whole sentence is one
+            // "word", so a saved word is looked for inside it.
+            if (HebrewText.containsHan(alert.phrase)) {
+                for ((text, wordIndex) in substringMatches(phraseWords.joinToString(" "), normalizedWords)) {
+                    unordered.add(KeywordMatch(alert.id, alert.phrase, text, wordIndex) to sequence)
+                    repeatedInOneWord.add(sequence)
+                    sequence += 1
+                }
+                continue
+            }
+
+            if (phraseWords.size == 1 && phraseWords[0] in HebrewText.inflectableOfferedWords) {
+                val variants = HebrewText.spellingVariants[phraseWords[0]] ?: emptySet()
+                for (index in normalizedWords.indices) {
+                    if (normalizedWords[index] !in variants && !HebrewText.isInflectedForm(normalizedWords[index], phraseWords[0])) continue
+                    unordered.add(KeywordMatch(alert.id, alert.phrase, trimmedWords[index], index) to sequence)
+                    sequence += 1
+                }
+            }
 
             for (start in normalizedWords.indices) {
                 if (!HebrewText.stripAttachedPrefixOrVariant(rawWords[start], normalizedWords[start], phraseWords[0])) continue
@@ -567,11 +620,30 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>) {
         val seen = HashSet<String>()
         return unordered
             .sortedWith(compareBy({ it.first.wordIndex }, { it.second }))
+            .filter { it.second in repeatedInOneWord || seen.add("${it.first.wordIndex} ${it.first.matchedText}") }
             .map { it.first }
-            .filter { seen.add("${it.wordIndex} ${it.matchedText}") }
     }
 
     companion object {
+        private fun substringMatches(phrase: String, normalizedWords: List<String>): List<Pair<String, Int>> {
+            val line = StringBuilder()
+            val starts = mutableListOf<Pair<Int, Int>>()
+            for ((index, word) in normalizedWords.withIndex()) {
+                if (word.isEmpty()) continue
+                if (line.isNotEmpty()) line.append(' ')
+                starts.add(line.length to index)
+                line.append(word)
+            }
+            val hits = mutableListOf<Pair<String, Int>>()
+            if (phrase.isEmpty()) return hits
+            var position = line.indexOf(phrase)
+            while (position >= 0) {
+                hits.add(phrase to (starts.lastOrNull { it.first <= position }?.second ?: 0))
+                position = line.indexOf(phrase, position + phrase.length)
+            }
+            return hits
+        }
+
         internal fun droppingCutOffWord(text: String): String {
             val words = splitOnKeywordWhitespace(HebrewText.separatingJoiners(HebrewText.removingDirectionMarks(text))).toMutableList()
             val last = words.lastOrNull() ?: return text
