@@ -38,6 +38,7 @@ class ModelDownloadService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         running = true
+        getSystemService(NotificationManager::class.java).cancel(ENDED_NOTIFICATION_ID)
         if (wake == null) wake = DownloadWakeLock.of(this)
         val shown = notification(this, models.switching.value)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -72,7 +73,11 @@ class ModelDownloadService : Service() {
                 delay(UPDATE_MILLISECONDS)
             } else {
                 delay(QUIET_MILLISECONDS)
-                if (!models.switching.value.keepsServiceUp) finish()
+                val ended = models.switching.value
+                if (!ended.keepsServiceUp) {
+                    endedNotice(this, ended)?.let { getSystemService(NotificationManager::class.java).notify(ENDED_NOTIFICATION_ID, it) }
+                    finish()
+                }
             }
         }
     }
@@ -100,6 +105,7 @@ class ModelDownloadService : Service() {
     companion object {
         const val CHANNEL_ID = "model-download"
         const val NOTIFICATION_ID = 2
+        const val ENDED_NOTIFICATION_ID = 3
         private const val UPDATE_MILLISECONDS = 1_000L
         private const val QUIET_MILLISECONDS = 1_000L
 
@@ -119,15 +125,21 @@ class ModelDownloadService : Service() {
             false
         }
 
-        internal fun notification(context: Context, state: PhoneModelSwitch): Notification {
+        private fun channel(context: Context) {
             context.getSystemService(NotificationManager::class.java).createNotificationChannel(
                 NotificationChannel(CHANNEL_ID, tr("הורדת מודל", "Model download"), NotificationManager.IMPORTANCE_LOW),
             )
-            val open = PendingIntent.getActivity(context, 2, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        }
+
+        private fun open(context: Context): PendingIntent =
+            PendingIntent.getActivity(context, 2, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+
+        internal fun notification(context: Context, state: PhoneModelSwitch): Notification {
+            channel(context)
             val builder = Notification.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_download)
                 .setContentTitle(state.modelName() ?: "Ozen")
-                .setContentIntent(open)
+                .setContentIntent(open(context))
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setCategory(Notification.CATEGORY_PROGRESS)
@@ -148,11 +160,36 @@ class ModelDownloadService : Service() {
             return builder.build()
         }
 
+        /**
+         * Left in the shade when a download is given up on. The progress
+         * notification goes either way, so without this a failed download
+         * looked exactly like a finished one, and captions quietly kept the
+         * old model while the person believed they had switched.
+         */
+        internal fun endedNotice(context: Context, state: PhoneModelSwitch): Notification? {
+            val text = when (state) {
+                is PhoneModelSwitch.Failed -> tr("ההורדה נכשלה. כדי לנסות שוב, בחרו את המודל מחדש בהגדרות.", "The download failed. To try again, choose the model again in Settings.")
+                is PhoneModelSwitch.NotEnoughRoom -> tr("אין מקום להורדה. צריך לפנות עוד %1 MB.", "There is no room to download it. Free up %1 MB more.", listOf("${state.megabytes}"))
+                else -> return null
+            }
+            channel(context)
+            return Notification.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_notify_error)
+                .setContentTitle(state.modelName() ?: "Ozen")
+                .setContentText(text)
+                .setStyle(Notification.BigTextStyle().bigText(text))
+                .setContentIntent(open(context))
+                .setAutoCancel(true)
+                .build()
+        }
+
         private fun PhoneModelSwitch.modelName(): String? = when (this) {
             is PhoneModelSwitch.Downloading -> file
             is PhoneModelSwitch.Retrying -> file
             is PhoneModelSwitch.WaitingForWiFi -> file
             is PhoneModelSwitch.Offline -> file
+            is PhoneModelSwitch.Failed -> file
+            is PhoneModelSwitch.NotEnoughRoom -> file
             else -> null
         }?.let { file -> PhoneModelCatalog.byFile(file)?.displayName }
     }

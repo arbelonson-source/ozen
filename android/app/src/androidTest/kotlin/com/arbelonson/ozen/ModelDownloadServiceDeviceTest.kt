@@ -25,6 +25,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -75,6 +76,7 @@ class ModelDownloadServiceDeviceTest {
     @After
     fun putBack() {
         release.countDown()
+        app.getSystemService(NotificationManager::class.java).cancel(ModelDownloadService.ENDED_NOTIFICATION_ID)
         app.captions.networkNow = networkBefore
         app.captions.modelFetcher = fetcherBefore
         File(app.filesDir, target.file).delete()
@@ -91,6 +93,9 @@ class ModelDownloadServiceDeviceTest {
 
     private fun shown(): Notification? =
         app.getSystemService(NotificationManager::class.java).activeNotifications.firstOrNull { it.id == ModelDownloadService.NOTIFICATION_ID }?.notification
+
+    private fun ended(): Notification? =
+        app.getSystemService(NotificationManager::class.java).activeNotifications.firstOrNull { it.id == ModelDownloadService.ENDED_NOTIFICATION_ID }?.notification
 
     @Suppress("DEPRECATION")
     private fun runningInTheForeground(): Boolean =
@@ -114,6 +119,30 @@ class ModelDownloadServiceDeviceTest {
         release.countDown()
         compose.waitUntil(15_000) { app.settings.current.value.phoneModelFile == target.file }
         compose.waitUntil(10_000) { !ModelDownloadService.running && shown() == null && !runningInTheForeground() }
+        assertNull("a finished download left a failure notice", ended())
+    }
+
+    @Test
+    fun aDownloadThatFailsItsCheckLeavesANoticeSayingSoWhenItsNotificationGoes() {
+        app.captions.modelFetcher = object : ReleaseFileFetching {
+            override fun fetch(url: URI, from: Long, appendingTo: File, received: (Long) -> Unit) {
+                RandomAccessFile(appendingTo, "rw").use { it.setLength(target.bytes) }
+                received(target.bytes - from)
+            }
+
+            override fun sha256(file: File): String = "0".repeat(64)
+        }
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Speech model on the phone").performScrollTo()
+        compose.onNodeWithTag("phone-model-" + target.file).performScrollTo().performClick()
+        compose.waitUntil(15_000) { app.captions.phoneModels.switching.value is PhoneModelSwitch.Failed }
+        compose.waitUntil(15_000) { !ModelDownloadService.running && shown() == null }
+        val notice = ended()
+        assertNotNull("a failed download left nothing in the shade, like a finished one", notice)
+        assertEquals(target.displayName, notice!!.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString())
+        assertEquals("The download failed. To try again, choose the model again in Settings.", notice.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString())
+        assertEquals(ModelDownloadService.CHANNEL_ID, notice.channelId)
+        assertEquals(null, app.settings.current.value.phoneModelFile)
     }
 
     @Test
