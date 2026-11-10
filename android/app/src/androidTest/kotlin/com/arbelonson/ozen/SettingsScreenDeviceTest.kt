@@ -177,6 +177,18 @@ class SettingsScreenDeviceTest {
     private val batteryListBefore = NightAlerts.openBatteryList
     private val overrideDndBefore = AlertNotifier.alarmsOverrideDoNotDisturb
 
+    // Skip goes to the language question first when the spoken language
+    // differs from the phone's; from there it ends the walkthrough.
+    private fun skipTheWalkthrough() {
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitForIdle()
+        if (!app.settings.current.value.hasCompletedOnboarding &&
+            compose.onAllNodesWithText("Which language do people around you speak?").fetchSemanticsNodes().isNotEmpty()
+        ) {
+            compose.onNodeWithText("Skip").performClick()
+        }
+    }
+
     @Before
     fun remember() {
         keyCheckHTTPBefore = app.cloudKeyCheckHTTP
@@ -1797,7 +1809,7 @@ class SettingsScreenDeviceTest {
             compose.waitUntil(5_000) { !app.settings.current.value.hasCompletedOnboarding }
             compose.waitUntil(10_000) { app.captions.pipeline.phase == PipelinePhase.Idle }
             compose.onNodeWithText("Live captions for conversation.").assertExists()
-            compose.onNodeWithText("Skip").performClick()
+            skipTheWalkthrough()
             compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
             compose.onNodeWithText("History").assertExists()
             compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
@@ -1837,7 +1849,7 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Show the initial walkthrough again").performScrollTo().performClick()
             compose.onNodeWithText("Show it").performClick()
             compose.waitUntil(5_000) { !app.settings.current.value.hasCompletedOnboarding }
-            compose.onNodeWithText("Skip").performClick()
+            skipTheWalkthrough()
             compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
             compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
             compose.runOnUiThread { app.captions.pipeline.stop() }

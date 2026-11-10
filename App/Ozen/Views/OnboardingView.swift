@@ -425,9 +425,24 @@ struct OnboardingView: View {
         .font(.title3.weight(.semibold))
     }
 
+    /// On a phone in another language, Skip before the language page goes
+    /// to it: the spoken language starts as Hebrew, and someone who skipped
+    /// from the first page got their English or Arabic conversation as
+    /// Hebrew-letter nonsense after downloading the Hebrew model. From the
+    /// language page on, Skip ends the walkthrough.
+    private var skipsToLanguage: Int? {
+        guard let languagePage = steps.firstIndex(of: .language), page < languagePage,
+              viewModel.settings.spokenLanguage != viewModel.uiLanguage else { return nil }
+        return languagePage
+    }
+
     private var skipButton: some View {
         Button {
-            finish()
+            if let languagePage = skipsToLanguage {
+                withAnimation(reduceMotion ? nil : .default) { page = languagePage }
+            } else {
+                finish()
+            }
         } label: {
             // Bare text is a ~25 pt target beside the 50 pt Next
             // button, and a slip ends the walkthrough.

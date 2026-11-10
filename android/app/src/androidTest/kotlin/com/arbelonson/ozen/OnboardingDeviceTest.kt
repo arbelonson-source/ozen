@@ -39,6 +39,7 @@ import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.UILanguage
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
@@ -322,11 +323,34 @@ class OnboardingDeviceTest {
         assertEquals("zh", app.settings.current.value.languageCode)
     }
 
+    // The spoken language starts as Hebrew. On an English phone, Skip on the
+    // first page ended the walkthrough before the language question, and
+    // English speech came out as Hebrew-letter nonsense.
+    @Test
+    fun onAPhoneInAnotherLanguageSkipBeforeTheLanguageQuestionGoesToIt() {
+        assertEquals(UILanguage.English, Localization.language)
+        compose.onNodeWithText("Skip").performClick()
+        compose.onNodeWithText("Which language do people around you speak?").assertExists()
+        assertEquals(false, app.settings.current.value.hasCompletedOnboarding)
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
+    }
+
+    @Test
+    fun withTheSpokenLanguageMatchingThePhoneSkipEndsTheWalkthroughAtOnce() {
+        compose.runOnUiThread { app.settings.change { it.languageCode = "en" } }
+        compose.waitForIdle()
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
+    }
+
     @Test
     fun theScreenStaysOnThroughTheWalkthroughAndSkipEndsItIntoTheCaptionsAsOnTheIPhone() {
         compose.waitUntil(5_000) { screenKeptOn() }
         compose.onNodeWithText("Next").performClick()
         assertEquals(PipelinePhase.Idle, app.captions.pipeline.phase)
+        compose.onNodeWithText("Skip").performClick()
+        compose.onNodeWithText("Which language do people around you speak?").assertExists()
         compose.onNodeWithText("Skip").performClick()
         compose.waitUntil(5_000) { app.settings.current.value.hasCompletedOnboarding }
         compose.onNodeWithText("History").assertExists()
@@ -362,6 +386,8 @@ class OnboardingDeviceTest {
             NotificationAsking.ask = { asked.incrementAndGet() }
             app.settings.change { it.notifyWhenInBackground = true }
             compose.onNodeWithText("Next").performClick()
+            compose.onNodeWithText("Skip").performClick()
+            compose.onNodeWithText("Which language do people around you speak?").assertExists()
             compose.onNodeWithText("Skip").performClick()
             compose.waitUntil(10_000) { app.captions.pipeline.phase != PipelinePhase.Idle }
             compose.waitForIdle()
