@@ -2,6 +2,7 @@ package com.arbelonson.ozen
 
 import com.arbelonson.ozen.core.CaptionsStopAnnouncer
 import com.arbelonson.ozen.core.EnginePreparationProgress
+import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import kotlin.test.Test
@@ -39,6 +40,7 @@ class CaptionPhaseChangesTest {
     private val captions = PipelineCaptions()
     private val said = mutableListOf<Said>()
     private var seconds = 0.0
+    private var progressChanged: (PipelinePhase) -> Unit = {}
 
     private fun TestScope.phaseChanges(): SpokenReplies {
         val replies = SpokenReplies(voice, this, captions)
@@ -52,6 +54,7 @@ class CaptionPhaseChangesTest {
             say = { event, phase -> said += event to phase },
         )
         captions.onPhaseChange = changes::phaseChanged
+        progressChanged = changes::preparationProgressed
         return replies
     }
 
@@ -89,6 +92,26 @@ class CaptionPhaseChangesTest {
         phraseEnds()
         assertEquals(PipelinePhase.Listening, captions.phase)
         val expected = listOf<Said>(CaptionsStopAnnouncer.Event.Stopped to stalled, CaptionsStopAnnouncer.Event.Back to PipelinePhase.Listening)
+        assertEquals(expected, said)
+    }
+
+    @Test
+    fun `the download that waited for Wi-Fi is said when its progress reaches the download step`() = runTest {
+        phaseChanges()
+        val waiting = PipelinePhase.Failed(
+            PipelineFailure(
+                kind = PipelineFailure.Kind.EngineUnavailable,
+                detail = "",
+                engineUnavailability = EngineUnavailability(EngineUnavailability.Kind.WaitingForWiFi, "", 626),
+            ),
+        )
+        captions.move(waiting)
+        captions.move(PipelinePhase.RequestingMicrophonePermission)
+        captions.move(PipelinePhase.PreparingEngine(EnginePreparationProgress(stage = EnginePreparationProgress.Stage.CheckingSupport)))
+        val downloading = PipelinePhase.PreparingEngine(EnginePreparationProgress(stage = EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.0))
+        progressChanged(downloading)
+        progressChanged(PipelinePhase.PreparingEngine(EnginePreparationProgress(stage = EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.1)))
+        val expected = listOf<Said>(CaptionsStopAnnouncer.Event.Stopped to waiting, CaptionsStopAnnouncer.Event.DownloadStarted to downloading)
         assertEquals(expected, said)
     }
 }

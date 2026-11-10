@@ -724,14 +724,33 @@ private enum class Front(val depth: Int) { Walkthrough(0), Captions(0), History(
 /** The screen in front, with the conversation open on it, so one sliding away still shows what it showed. */
 private data class FrontScreen(val kind: Front, val reading: Pair<UUID, UUID?>? = null)
 
+/**
+ * What the question before a download over mobile data says, kept apart so
+ * a test can read it. It opens with what waiting costs: no captions at all
+ * until the model is on the phone. Any metered network counts as mobile
+ * data, a phone's hotspot or a Wi-Fi marked as limited too, so the promise
+ * to start on its own names the Wi-Fi that keeps it.
+ */
+internal object CellularDownloadTexts {
+    val title: String get() = tr("להוריד את מודל הדיבור בחבילת הגלישה?", "Download the language model over mobile data?")
+
+    fun body(megabytes: Int?): String {
+        val size = megabytes?.takeIf { it > 0 }?.let { "$it\u00A0MB" } ?: tr("כמה מאות MB", "A few hundred MB")
+        return tr(
+            "בלי מודל הדיבור אין כתוביות. צריך להוריד אותו פעם אחת בלבד, והגודל שלו בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi בלי הגבלת נפח (לא נקודה חמה של טלפון) ההורדה תתחיל מעצמה.",
+            "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.",
+            listOf(size),
+        )
+    }
+}
+
 /** As on the iPhone: "Tap to download now" on the waiting-for-Wi-Fi status asks first, saying what cellular data may cost. */
 @Composable
 private fun CellularDownloadDialog(megabytes: Int?, onDownload: () -> Unit, onWait: () -> Unit) {
-    val size = megabytes?.takeIf { it > 0 }?.let { "$it\u00A0MB" } ?: tr("כמה מאות MB", "A few hundred MB")
     AlertDialog(
         onDismissRequest = onWait,
-        title = { Text(tr("להוריד את המודל בחבילת הגלישה?", "Download the model over cellular data?")) },
-        text = { DialogText(tr("גודל המודל הוא בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi ההורדה תתחיל מעצמה.", "The model is about %1. Over cellular data this can cost money or use up your data plan. On Wi‑Fi the download will start on its own.", listOf(size))) },
+        title = { Text(CellularDownloadTexts.title) },
+        text = { DialogText(CellularDownloadTexts.body(megabytes)) },
         confirmButton = { TextButton(onClick = onDownload) { Text(tr("להוריד עכשיו", "Download now")) } },
         dismissButton = { TextButton(onClick = onWait) { Text(tr("לחכות ל־Wi-Fi", "Wait for Wi‑Fi")) } },
     )

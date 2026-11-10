@@ -533,7 +533,7 @@ class PhasePresentation private constructor(
                     val size = engineFailure.downloadMegabytes?.let { if (it > 0) "$it MB" else null }
                     PhasePresentation(
                         title = tr("ממתינים ל־Wi‑Fi כדי להוריד את מודל הדיבור", "Waiting for Wi‑Fi to download the language model"),
-                        detail = listOfNotNull(size, tr("יורד לבד כשיהיה Wi‑Fi · הקישו כדי להוריד עכשיו", "Downloads on its own once there’s Wi‑Fi · Tap to download now")).joinToString(" · "),
+                        detail = listOfNotNull(size, tr("יורד לבד ב־Wi‑Fi בלי הגבלת נפח · הקישו כדי להוריד עכשיו", "Downloads on its own on Wi‑Fi without a data limit · Tap to download now")).joinToString(" · "),
                         systemImage = "wifi",
                         tint = PhaseTint.Attention,
                         action = Action.ConfirmCellularDownload,

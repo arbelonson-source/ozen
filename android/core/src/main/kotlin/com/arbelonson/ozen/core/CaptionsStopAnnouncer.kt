@@ -1,8 +1,9 @@
 package com.arbelonson.ozen.core
 
 class CaptionsStopAnnouncer {
-    enum class Event { Stopped, Back, Ready }
+    enum class Event { Stopped, Back, Ready, DownloadStarted }
 
+    private var waitingForWiFi = false
     private var stoppedByFailure = false
     private var startBegan: Double? = null
     private var pendingStop = false
@@ -10,6 +11,7 @@ class CaptionsStopAnnouncer {
 
     fun phaseChanged(phase: PipelinePhase, active: Boolean = true, seconds: Double = 0.0): Event? = when (phase) {
         is PipelinePhase.Failed -> {
+            waitingForWiFi = phase.reason.engineUnavailability?.kind == EngineUnavailability.Kind.WaitingForWiFi
             if (stoppedByFailure) {
                 if (pendingStop && active) {
                     pendingStop = false
@@ -48,7 +50,13 @@ class CaptionsStopAnnouncer {
         }
         PipelinePhase.RequestingMicrophonePermission, is PipelinePhase.PreparingEngine, PipelinePhase.StartingAudio -> {
             if (startBegan == null) startBegan = seconds
-            null
+            if (stoppedByFailure && waitingForWiFi && phase.preparationProgress?.stage == EnginePreparationProgress.Stage.DownloadingModel) {
+                waitingForWiFi = false
+                stoppedByFailure = false
+                Event.DownloadStarted
+            } else {
+                null
+            }
         }
     }
 

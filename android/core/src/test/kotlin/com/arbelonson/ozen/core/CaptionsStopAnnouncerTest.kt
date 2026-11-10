@@ -72,6 +72,47 @@ class CaptionsStopAnnouncerTest {
         assertNull(announcer.phaseChanged(stalled, active = true))
     }
 
+    private val waitingForWiFi = PipelinePhase.Failed(
+        PipelineFailure(
+            kind = PipelineFailure.Kind.EngineUnavailable,
+            detail = "626 MB to download, waiting for Wi-Fi",
+            engineUnavailability = EngineUnavailability(EngineUnavailability.Kind.WaitingForWiFi, "cellular", 626),
+        ),
+    )
+    private val checking = PipelinePhase.PreparingEngine(EnginePreparationProgress(stage = EnginePreparationProgress.Stage.CheckingSupport))
+    private val downloading = PipelinePhase.PreparingEngine(EnginePreparationProgress(stage = EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.0))
+
+    @Test
+    fun `the download that was waiting for Wi-Fi is told when it starts, and a failure after it is told again`() {
+        val announcer = CaptionsStopAnnouncer()
+        assertEquals(CaptionsStopAnnouncer.Event.Stopped, announcer.phaseChanged(waitingForWiFi))
+        assertNull(announcer.phaseChanged(PipelinePhase.RequestingMicrophonePermission))
+        assertNull(announcer.phaseChanged(checking))
+        assertEquals(CaptionsStopAnnouncer.Event.DownloadStarted, announcer.phaseChanged(downloading))
+        assertNull(announcer.phaseChanged(downloading.copy(progress = downloading.progress.copy(fraction = 0.4))))
+        val lost = PipelinePhase.Failed(PipelineFailure(kind = PipelineFailure.Kind.EngineUnavailable, detail = "offline"))
+        assertEquals(CaptionsStopAnnouncer.Event.Stopped, announcer.phaseChanged(lost))
+    }
+
+    @Test
+    fun `a retry still waiting for Wi-Fi, other retries and a start by hand say nothing about a download`() {
+        val stillWaiting = CaptionsStopAnnouncer()
+        stillWaiting.phaseChanged(waitingForWiFi)
+        val again = listOf(PipelinePhase.RequestingMicrophonePermission, checking, waitingForWiFi)
+        assertTrue(again.map { stillWaiting.phaseChanged(it) }.all { it == null })
+
+        val stalledRetry = CaptionsStopAnnouncer()
+        stalledRetry.phaseChanged(stalled)
+        assertNull(stalledRetry.phaseChanged(preparing))
+        assertNull(stalledRetry.phaseChanged(downloading))
+
+        val byHand = CaptionsStopAnnouncer()
+        byHand.phaseChanged(waitingForWiFi)
+        byHand.phaseChanged(PipelinePhase.Idle)
+        assertNull(byHand.phaseChanged(PipelinePhase.RequestingMicrophonePermission))
+        assertNull(byHand.phaseChanged(downloading))
+    }
+
     @Test
     fun `leaving again while captions restart and fail keeps the stop owed for the return`() {
         val stopped = CaptionsStopAnnouncer.Event.Stopped

@@ -18,4 +18,9 @@ class CaptionPhaseChanges(
         replies.captionsCameOn()
         publish()
     }
+
+    fun preparationProgressed(phase: PipelinePhase) {
+        stopAnnouncer.phaseChanged(phase, appIsActive(), seconds())?.let { say(it, phase) }
+        publish()
+    }
 }
