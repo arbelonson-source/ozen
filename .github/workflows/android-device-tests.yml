@@ -1,8 +1,9 @@
 name: Android device tests
 
+# Nightly and by hand from the Actions tab, not on every push: the device
+# tests change far less often than the code, and the run holds a runner
+# for about ten minutes with a warm cache.
 on:
-  push:
-    branches: [android-device-tests-nightly]
   workflow_dispatch:
   schedule:
     - cron: "17 2 * * *"
