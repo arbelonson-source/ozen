@@ -614,4 +614,53 @@ class OtherLettersTest {
         assertEquals(1, hits("رايد", "قال رائد"))
         assertEquals(0, hits("روس", "رؤوس كثيرة"))
     }
+
+    @Test
+    fun `Chinese words match inside unspaced sentences`() {
+        assertEquals(1, hits("奶奶", "奶奶来了"))
+        assertEquals(1, hits("医生", "我们去看医生吧"))
+        assertEquals(1, hits("妈妈", "妈妈，你好"))
+        assertEquals(0, hits("奶奶", "爷爷来了"))
+        assertEquals(2, hits("奶奶", "奶奶来了，奶奶好"))
+        val match = KeywordAlertMatcher(listOf(KeywordAlert(phrase = "医生"))).matches("我们去看医生吧")
+        assertEquals("医生", match[0].matchedText)
+        assertEquals(0, match[0].wordIndex)
+        val spaced = KeywordAlertMatcher(listOf(KeywordAlert(phrase = "医生"))).matches("我们 去看医生吧")
+        assertEquals(1, spaced[0].wordIndex)
+    }
+
+    @Test
+    fun `a rare Chinese character from the extension planes still matches inside a sentence`() {
+        assertEquals(1, hits("\uD842\uDFB7\uD842\uDFB7", "我在\uD842\uDFB7\uD842\uDFB7家吃饭"))
+    }
+
+    @Test
+    fun `other scripts are unchanged and a cut-off Chinese word is dropped`() {
+        assertEquals(1, hits("סבתא", "היום סבתא באה"))
+        assertEquals(1, hits("Dan", "Dan came"))
+        assertEquals(0, hits("Dan", "dance"))
+        val matcher = KeywordAlertMatcher(listOf(KeywordAlert(phrase = "奶奶")))
+        assertTrue(matcher.matchesInLiveText("奶奶...").isEmpty())
+        assertEquals(1, matcher.matchesInLiveText("你好 奶奶来了").size)
+    }
+
+    @Test
+    fun `offered everyday words match inflected forms`() {
+        assertEquals(1, hits("Мама", "Позвони маме"))
+        assertEquals(1, hits("Бабушка", "Бабушке привет"))
+        assertEquals(1, hits("Medicine", "did you take the medicines"))
+        assertEquals(1, hits("Doctor", "two doctors came"))
+        assertEquals(1, hits("Mom", "call Mum"))
+        assertEquals(1, hits("Mom", "call Mommy"))
+    }
+
+    @Test
+    fun `inflection does not fire on look-alike words or typed names`() {
+        assertEquals(0, hits("Мама", "мамонт"))
+        assertEquals(0, hits("Dan", "dance"))
+        assertEquals(0, hits("Doctor", "doctorate"))
+        assertEquals(0, hits("Mark", "market"))
+        assertEquals(0, hits("Anna", "annals"))
+        assertEquals(0, hits("Anna", "annas"))
+    }
 }
