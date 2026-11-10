@@ -380,4 +380,15 @@ struct LocalizationTests {
             Issue.record("-ता/-ती before रहने देना in the Hindi for: \(english)")
         }
     }
+
+    @Test("A setting or button named inside a sentence is quoted with the curly quotes the English uses, never straight ones")
+    func namedSettingsTakeCurlyQuotes() {
+        let straight = #"(^|[\s(])'[^'\s][^']{1,40}'([\s.,:;)!?]|$)"#
+        for language in UILanguage.allCases {
+            let table = TranslationTable.shared.table(for: language)
+            for (english, translated) in table where translated.range(of: straight, options: .regularExpression) != nil {
+                Issue.record("Straight quotes in the \(language) for: \(english)")
+            }
+        }
+    }
 }
