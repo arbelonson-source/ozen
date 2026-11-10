@@ -992,11 +992,37 @@ public final class LiveCaptionViewModel {
     public func chooseModel(_ variant: String) async {
         if settings.whisperModelVariant != variant {
             await setWhisperModel(variant)
+            downloadPickedModel(variant)
         } else if let kind = pipeline.phase.failure?.engineUnavailability?.kind,
                   kind == .modelDownloadFailed || kind == .waitingForWiFi {
             await retry()
         } else if pipeline.phase == .idle {
             await start()
+        }
+    }
+
+    /// Starts the download of a model just picked while captions are
+    /// stopped, paused or failed (`ModelDownloadGate.startsOnPick`). It goes through
+    /// the store's shared downloads, so captions started meanwhile join it,
+    /// and the model screen shows its progress like any running download.
+    private func downloadPickedModel(_ variant: String) {
+        let store = WhisperModelStore()
+        guard let option = WhisperModelCatalog.option(for: variant),
+              ModelDownloadGate.startsOnPick(
+                  onPhoneEngine: settings.engine == .whisperKit,
+                  phase: pipeline.phase,
+                  installed: store.isInstalled(variant),
+                  shortfallMegabytes: StorageSpaceGate.shortfallMegabytes(
+                      downloadMegabytes: option.remainingInstallMegabytes(onDiskBytes: store.sizeOnDisk(of: variant)),
+                      availableBytes: DeviceStorage.availableBytes()
+                  ),
+                  network: pipeline.networkConditions,
+                  allowCellular: settings.allowCellularModelDownload
+              )
+        else { return }
+        let allowCellular = settings.allowCellularModelDownload
+        Task {
+            _ = try? await WhisperModelStore().download(variant: variant, allowCellular: allowCellular) { _ in }
         }
     }
 

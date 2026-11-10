@@ -231,6 +231,10 @@ struct ModelManagerView: View {
                         Image(systemName: "externaldrive.badge.exclamationmark")
                             .accessibilityHidden(true)
                         Text(tr("אין מספיק מקום בטלפון", "Not enough room on the phone"))
+                    } else if isSelected {
+                        Image(systemName: "clock")
+                            .accessibilityHidden(true)
+                        Text(tr("נבחר · יירד כשהכתוביות יופעלו", "Selected · downloads when captions start"))
                     } else {
                         Image(systemName: "icloud.and.arrow.down")
                             .accessibilityHidden(true)
