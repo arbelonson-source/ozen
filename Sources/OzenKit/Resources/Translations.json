@@ -1086,7 +1086,9 @@
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "ማይክሮፎኑ ቆሞ አልተመለሰም። የድምጽ ማንቂያዎችን እንደገና ለማብራት ኦዘንን ክፈት።",
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "ሁሉም የተቀመጡ ውይይቶች ይሰረዛሉ፤ ኮከብ ወይም ስም ያለባቸውም፣ አሁን ያለውም ውይይት ጭምር። ይህን መመለስ አይቻልም።",
   "Working": "እየሰራ ነው",
-  "Device model": "የመሣሪያው ሞዴል"
+  "Device model": "የመሣሪያው ሞዴል",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "የስልኩ የሚዲያ ድምጽ ዜሮ ላይ ነው፤ ስለዚህ እነዚህን ሐረጎች ማንም አይሰማም።",
+  "Turn the volume up": "ድምጹን ይጨምሩ"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2175,7 +2177,9 @@
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "توقف الميكروفون ولم يعد. افتحوا Ozen لتشغيل تنبيهات الصوت من جديد.",
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "ستُحذف كل المحادثات المحفوظة، ومنها المحادثات التي فيها سطر مميز بنجمة أو اسم، والمحادثة الحالية أيضًا. لا يمكن التراجع عن ذلك.",
   "Working": "يعمل",
-  "Device model": "طراز الجهاز"
+  "Device model": "طراز الجهاز",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "مستوى صوت الوسائط في الهاتف على الصفر، لذلك لن يسمع أحد هذه العبارات.",
+  "Turn the volume up": "رفع الصوت"
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3264,7 +3268,9 @@
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "麦克风停止了，且没有恢复。打开 Ozen 以重新开启声音提醒。",
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "所有已保存的对话都会被删除，包括带星标或姓名的对话，以及当前这段对话。此操作无法撤销。",
   "Working": "正常",
-  "Device model": "设备型号"
+  "Device model": "设备型号",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "手机的媒体音量为零，所以没人能听到这些话。",
+  "Turn the volume up": "调高音量"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4353,7 +4359,9 @@
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Le microphone s’est arrêté et n’est pas revenu. Ouvrez Ozen pour réactiver les alertes sonores.",
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Toutes les conversations enregistrées seront supprimées, y compris celles avec une ligne marquée d’une étoile ou un nom, ainsi que la conversation en cours. Impossible d’annuler.",
   "Working": "Fonctionne",
-  "Device model": "Modèle de l’appareil"
+  "Device model": "Modèle de l’appareil",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "Le volume multimédia du téléphone est à zéro, donc personne n’entendra ces phrases.",
+  "Turn the volume up": "Monter le volume"
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5442,7 +5450,9 @@
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Das Mikrofon hat aufgehört und kam nicht zurück. Öffnen Sie Ozen, um die Klanghinweise wieder einzuschalten.",
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Alle gespeicherten Gespräche werden gelöscht, auch die mit einer markierten Zeile oder einem Namen und das aktuelle Gespräch. Das lässt sich nicht rückgängig machen.",
   "Working": "Funktioniert",
-  "Device model": "Gerätemodell"
+  "Device model": "Gerätemodell",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "Die Medienlautstärke des Telefons steht auf null, daher hört niemand diese Sätze.",
+  "Turn the volume up": "Lauter stellen"
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6531,7 +6541,9 @@
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "माइक्रोफ़ोन रुक गया और फिर चालू नहीं हुआ। आवाज़ के अलर्ट फिर से चालू करने के लिए Ozen खोलें।",
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "सारी सहेजी गई बातचीत मिट जाएगी, तारांकित लाइन या नाम वाली भी, और अभी की बातचीत भी। इसे वापस नहीं लाया जा सकता।",
   "Working": "काम कर रहा है",
-  "Device model": "डिवाइस मॉडल"
+  "Device model": "डिवाइस मॉडल",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "फ़ोन की मीडिया आवाज़ शून्य पर है, इसलिए ये वाक्य कोई नहीं सुनेगा।",
+  "Turn the volume up": "आवाज़ बढ़ाएं"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7620,7 +7632,9 @@
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "O microfone parou e não voltou. Abra o Ozen para ligar os avisos sonoros de novo.",
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Todas as conversas guardadas serão eliminadas, incluindo as que têm uma linha assinalada ou um nome, e a conversa atual. Não é possível anular.",
   "Working": "A funcionar",
-  "Device model": "Modelo do aparelho"
+  "Device model": "Modelo do aparelho",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "O volume de multimédia do telemóvel está a zero, por isso ninguém vai ouvir estas frases.",
+  "Turn the volume up": "Aumentar o volume"
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8709,7 +8723,9 @@
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Микрофон перестал работать и не включился снова. Откройте Ozen, чтобы снова включить звуковые оповещения.",
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Все сохранённые разговоры будут удалены, в том числе с отмеченной строкой или именем, и текущий разговор тоже. Это нельзя отменить.",
   "Working": "Работает",
-  "Device model": "Модель устройства"
+  "Device model": "Модель устройства",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "Громкость мультимедиа на телефоне на нуле, поэтому эти фразы никто не услышит.",
+  "Turn the volume up": "Сделать громче"
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -9798,7 +9814,9 @@
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "El micrófono se detuvo y no volvió. Abre Ozen para volver a activar las alertas de sonido.",
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Se eliminarán todas las conversaciones guardadas, incluidas las que tienen una línea marcada o un nombre, y la conversación actual. No se puede deshacer.",
   "Working": "Funciona",
-  "Device model": "Modelo del dispositivo"
+  "Device model": "Modelo del dispositivo",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "El volumen multimedia del teléfono está a cero, así que nadie oirá estas frases.",
+  "Turn the volume up": "Subir el volumen"
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -10887,6 +10905,8 @@
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Мікрофон перестав працювати й не відновився. Відкрийте Ozen, щоб знову ввімкнути звукові сповіщення.",
   "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Усі збережені розмови буде видалено, зокрема з позначеним рядком або іменем, і поточну розмову теж. Це неможливо скасувати.",
   "Working": "Працює",
-  "Device model": "Модель пристрою"
+  "Device model": "Модель пристрою",
+  "The phone’s media volume is at zero, so nobody will hear these phrases.": "Гучність медіа на телефоні на нулі, тож ці фрази ніхто не почує.",
+  "Turn the volume up": "Зробити гучніше"
  }
 }

@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.speech.tts.TextToSpeech
+import android.media.AudioManager
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -1199,6 +1200,26 @@ class CaptionScreenDeviceTest {
             compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
         }
         assertTrue("still ${app.captions.voice.installed.value}, not $real", within(5_000) { app.captions.voice.installed.value == real })
+    }
+
+    @Test
+    fun theSayScreenWarnsWhenTheMediaVolumeIsAtZeroAndTurnsItUp() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val audio = app.getSystemService(AudioManager::class.java)
+        val volumeBefore = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+        val silent = "The phone’s media volume is at zero, so nobody will hear these phrases."
+        try {
+            audio.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
+            compose.onNodeWithContentDescription("Say something out loud").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(silent).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Turn the volume up").performScrollTo().performClick()
+            compose.waitUntil(5_000) { audio.getStreamVolume(AudioManager.STREAM_MUSIC) > 0 }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(silent).fetchSemanticsNodes().isEmpty() }
+            audio.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(silent).fetchSemanticsNodes().isNotEmpty() }
+        } finally {
+            audio.setStreamVolume(AudioManager.STREAM_MUSIC, volumeBefore, 0)
+        }
     }
 
     @Test
