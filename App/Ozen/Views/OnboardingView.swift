@@ -35,7 +35,7 @@ struct OnboardingView: View {
 
     init(viewModel: LiveCaptionViewModel) {
         self.viewModel = viewModel
-        _pickedModel = State(initialValue: viewModel.onboardingShownAgain)
+        _pickedModel = State(initialValue: viewModel.walkthroughRanBefore)
     }
 
     /// UI test walkthroughs can't answer iOS's own prompts; there, Next on

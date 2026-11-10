@@ -12,7 +12,8 @@ struct WhisperModelCatalogTests {
         #expect(!WhisperModelCatalog.walkthroughReplaces(hebrewOnly, for: .hebrew, chosen: true))
         #expect(WhisperModelCatalog.walkthroughReplaces(hebrewOnly, for: .english, chosen: true))
         #expect(WhisperModelCatalog.walkthroughReplaces("small", for: .hebrew, chosen: false))
-        #expect(WhisperModelCatalog.walkthroughReplaces("no-such-model", for: .hebrew, chosen: true))
+        #expect(!WhisperModelCatalog.walkthroughReplaces("a-model-not-listed", for: .english, chosen: true))
+        #expect(WhisperModelCatalog.walkthroughReplaces("a-model-not-listed", for: .english, chosen: false))
     }
 
     @Test("the default and recommended variants both exist in the catalog")

@@ -868,14 +868,16 @@ public final class LiveCaptionViewModel {
 
     public func completeOnboarding() {
         settings.hasCompletedOnboarding = true
-        onboardingShownAgain = false
         persist()
     }
 
-    /// True while the walkthrough is shown again from Settings: the model
-    /// in use then is one the person already chose, and the model page
-    /// keeps it (`WhisperModelCatalog.walkthroughReplaces`).
-    public private(set) var onboardingShownAgain = false
+    /// The walkthrough has run on this phone before: its model page, or
+    /// Skip, checked the phone, and the check is saved. Shown again, the
+    /// model in use is one the person settled on, and the model page keeps
+    /// it (`WhisperModelCatalog.walkthroughReplaces`). Read from the saved
+    /// settings rather than kept in memory, so it still holds when the app
+    /// ended halfway through the walkthrough shown again.
+    public var walkthroughRanBefore: Bool { settings.deviceModelCheck != nil }
 
     /// Leaving the caption screen for the walkthrough: captions stop (and
     /// the conversation so far is saved) rather than keep the microphone
@@ -890,7 +892,6 @@ public final class LiveCaptionViewModel {
             checkCaptionsStillRunning()
         }
         settings.hasCompletedOnboarding = false
-        onboardingShownAgain = true
         persist()
         hasHandledLaunch = false
     }
