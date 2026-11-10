@@ -18,11 +18,11 @@ import android.media.projection.MediaProjection
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import com.arbelonson.ozen.core.AndroidInputChoice
 import com.arbelonson.ozen.core.AudioCapturing
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPermission
 import com.arbelonson.ozen.core.AudioPortType
-import com.arbelonson.ozen.core.AudioRoutePolicy
 import com.arbelonson.ozen.core.EnergyVoiceDetector
 import com.arbelonson.ozen.core.PhoneSound
 import com.arbelonson.ozen.core.PhoneSoundListening
@@ -253,14 +253,15 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
         devices = found.associate { (device, descriptor) -> descriptor.uid to device }
         deviceIds = found.map { (device, descriptor) -> device.id to descriptor }
         availableInputs = PhoneSound.inputs(found.map { it.second }, Build.VERSION.SDK_INT)
+        // With nothing picked, a wired or USB microphone is used, as Android
+        // and the iPhone would by themselves. Only Ozen's own last choice
+        // went in before: nothing at launch, so the phone's own microphone,
+        // and every recording is held to the choice, so a USB-C or lapel
+        // microphone plugged in before or during captions was never heard.
         selectedInputUID = if (phoneSound.active) {
             PhoneSound.UID
         } else {
-            AudioRoutePolicy.resolveSelection(
-                available = availableInputs,
-                preferredUID = preferredInputUID,
-                currentUID = selectedInputUID,
-            )
+            AndroidInputChoice.resolve(availableInputs, preferredInputUID, selectedInputUID)
         }
     }
 
