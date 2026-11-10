@@ -43,6 +43,47 @@ struct PhasePresentation {
     let isBusy: Bool
     let action: Action
 
+    /// The status button's words when a tap starts, pauses or continues the
+    /// captions: the button says what it does, and the state ("Listening",
+    /// "Paused") goes on the line under it. The state as the big words,
+    /// with "Tap to pause" in small type that dropped off at large text,
+    /// didn't read as a button. Nil where a tap retries or opens a setting;
+    /// the title then stays on the button.
+    var actionLabel: String? {
+        switch action {
+        case .pause: tr("השהיית כתוביות", "Pause captions")
+        case .resume: tr("המשך כתוביות", "Continue captions")
+        case .start: tr("התחלת כתוביות", "Start captions")
+        default: nil
+        }
+    }
+
+    /// Pause and Continue differ by shape, not only by colour or words.
+    var actionImage: String {
+        switch action {
+        case .pause: "pause.fill"
+        case .resume, .start: "play.fill"
+        default: systemImage
+        }
+    }
+
+    /// The detail for the line under the button, without the tap hint the
+    /// button's own words now give.
+    var stateDetail: String? {
+        guard let detail, actionLabel != nil else { return detail }
+        let hints = [
+            tr("הקישו כדי להשהות", "Tap to pause"),
+            tr("הקישו כדי להמשיך", "Tap to continue"),
+            tr("הקישו כדי להתחיל", "Tap to start"),
+            tr("הקישו כדי להחזיר כתוביות", "Tap to bring captions back"),
+        ]
+        if hints.contains(detail) { return nil }
+        for hint in hints where detail.hasSuffix(" · " + hint) {
+            return String(detail.dropLast(hint.count + 3))
+        }
+        return detail
+    }
+
     init(
         phase: PipelinePhase,
         engine: TranscriptionEngineKind?,

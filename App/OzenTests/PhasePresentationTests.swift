@@ -300,6 +300,30 @@ struct PhasePresentationTests {
         #expect(timed.detail?.hasPrefix("עוד כ־3 דקות · ") == true)
     }
 
+    @Test("the status button says what a tap does, pause and continue differ in words and shape, and the state goes under it")
+    func buttonSaysWhatATapDoes() {
+        let listening = PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: false)
+        let paused = PhasePresentation(phase: .paused, engine: .whisperKit, interruptedBySystem: false)
+        let off = PhasePresentation(phase: .idle, engine: .whisperKit, interruptedBySystem: false)
+        #expect(listening.actionLabel == "השהיית כתוביות" && listening.actionImage == "pause.fill")
+        #expect(paused.actionLabel == "המשך כתוביות" && paused.actionImage == "play.fill")
+        #expect(off.actionLabel == "התחלת כתוביות" && off.actionImage == "play.fill")
+        #expect(listening.actionLabel != paused.actionLabel && listening.actionImage != paused.actionImage)
+        #expect(listening.title == "מאזינה" && paused.title == "מושהה")
+        #expect(listening.stateDetail == nil && paused.stateDetail == nil && off.stateDetail == nil)
+
+        let covering = PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: false, coveringForCloud: true, coveredEngine: .homeServer, coverReason: .homeServerUnreachable)
+        #expect(covering.actionLabel == listening.actionLabel)
+        #expect(covering.stateDetail == "אין חיבור למחשב בבית, ממשיכים בזיהוי שבטלפון")
+
+        let soundsOnly = PhasePresentation(phase: .paused, engine: nil, interruptedBySystem: false, soundsOnly: true)
+        #expect(soundsOnly.actionLabel == paused.actionLabel && soundsOnly.stateDetail == nil)
+
+        let setUp = PhasePresentation(phase: failure(EngineUnavailability(kind: .homeServerRejected, detail: "")), engine: .homeServer, interruptedBySystem: false)
+        #expect(setUp.actionLabel == nil)
+        #expect(setUp.actionImage == setUp.systemImage && setUp.stateDetail == setUp.detail)
+    }
+
     @Test("after the last byte the screen says the file is being checked, with no bar")
     func checkingTheFile() {
         let checking = PhasePresentation(
