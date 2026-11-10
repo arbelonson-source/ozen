@@ -86,6 +86,7 @@ import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MicOff
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
@@ -104,6 +105,7 @@ import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.IconBadge
 import com.arbelonson.ozen.ui.OzenColors
 import com.arbelonson.ozen.ui.OzenSpacing
+import com.arbelonson.ozen.ui.PrimaryButton
 import com.arbelonson.ozen.ui.ToolbarButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -164,6 +166,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -200,10 +203,12 @@ import com.arbelonson.ozen.core.UncertainWords
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.OzenTheme
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     private val showingSettings = mutableStateOf(false)
@@ -655,6 +660,10 @@ private fun OzenApp(
                                 onDismissRoutedElsewhere = app.captions::dismissRoutedElsewhere,
                                 onDismissPhoneSoundStopped = app.captions::dismissPhoneSoundStopped,
                                 onMarkProblem = app.captions::markProblem,
+                                onSendReport = { markedAt ->
+                                    val journal = withContext(Dispatchers.IO) { app.captions.readJournal() }
+                                    helperReport(ProblemNotes.reportLine(markedAt), app.captions.diagnostics(journal))
+                                },
                                 savesConversations = current.saveHistory,
                                 onMicrophone = { choosingMicrophone = true },
                                 offersNameAlert = current.offersNameAlert,
@@ -855,6 +864,7 @@ private fun CaptionScreen(
     onDismissRoutedElsewhere: () -> Unit = {},
     onDismissPhoneSoundStopped: () -> Unit,
     onMarkProblem: () -> Boolean,
+    onSendReport: suspend (markedAt: Double) -> String,
     savesConversations: Boolean,
     onMicrophone: () -> Unit,
     offersNameAlert: Boolean,
@@ -891,6 +901,7 @@ private fun CaptionScreen(
     val savedSize by rememberUpdatedState(display.fontSize)
     var problemMarked by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var markedWithCaptions by rememberSaveable { mutableStateOf(true) }
+    var problemMarkedAt by rememberSaveable { mutableDoubleStateOf(0.0) }
     val context = LocalContext.current
     var shownWord by remember { mutableStateOf<HeardWord?>(null) }
     // Counted from when this screen appeared: talk that resumed while she
@@ -952,7 +963,9 @@ private fun CaptionScreen(
             onDismiss = { naming = null },
         )
     }
-    problemMarked?.let { keptSound -> ProblemMarkedDialog(keptSound, markedWithCaptions, onDismiss = { problemMarked = null }) }
+    problemMarked?.let { keptSound ->
+        ProblemMarkedDialog(keptSound, markedWithCaptions, report = { onSendReport(problemMarkedAt) }, onDismiss = { problemMarked = null })
+    }
     var following by rememberSaveable { mutableStateOf(true) }
     var countWhenLeft by rememberSaveable { mutableIntStateOf(0) }
     val lineCount by rememberUpdatedState(state.lineCount)
@@ -1175,7 +1188,7 @@ private fun CaptionScreen(
                                 if (offer != null) LighterModelOffer(offer, modelOfferWaiting, inUseModelBytes, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             }
                         }
-                        CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, marks, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarked = onMarkProblem() })
+                        CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, marks, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { markedWithCaptions = savesConversations; problemMarkedAt = secondsNow(); problemMarked = onMarkProblem() })
                         if (!following) {
                             JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                                 following = true
@@ -1754,16 +1767,48 @@ private fun BellMark(fontSize: Double, colour: Color) {
  * failed again. The iPhone's way to free space is left out of the words.
  */
 /**
- * Where a problem marked from a caption line or from Diagnostics went, and
- * how it reaches whoever helps her: a kept sound is sent from its own row
- * in Diagnostics.
+ * Where a problem marked from a caption line or from Diagnostics went.
+ * Marked from a caption line, one large button sends the report to
+ * whoever helps her through the phone's share sheet (built at the tap, its
+ * journal read off the main thread); Diagnostics has its own Send report
+ * first, so there the dialog only explains. A kept sound is sent from its
+ * own row in Diagnostics.
  */
 @Composable
-internal fun ProblemMarkedDialog(keptSound: Boolean, keptCaptions: Boolean, onDismiss: () -> Unit) {
+internal fun ProblemMarkedDialog(keptSound: Boolean, keptCaptions: Boolean, report: (suspend () -> String)? = null, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var building by remember { mutableStateOf(false) }
+    val send = {
+        if (report != null && !building) {
+            building = true
+            scope.launch {
+                try {
+                    context.startActivity(reportSheet(report()))
+                } finally {
+                    building = false
+                }
+            }
+        }
+    }
+    val hint = tr("פותח את אפשרויות השיתוף עם דוח האבחון", "Opens the share options with the diagnostics report")
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("הבעיה סומנה", "Problem marked")) },
-        text = { DialogText(ProblemNotes.marked(keptSound, keptCaptions)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                DialogText(ProblemNotes.marked(keptSound, keptCaptions), Modifier.weight(1f, fill = false))
+                if (report != null) {
+                    PrimaryButton(
+                        tr("שליחה למי שעוזר לכם", "Send to whoever helps you"),
+                        onClick = { send() },
+                        icon = Icons.Rounded.Share,
+                        enabled = !building,
+                        modifier = Modifier.fillMaxWidth().semantics { onClick(label = hint) { send(); true } },
+                    )
+                }
+            }
+        },
         confirmButton = { TextButton(onClick = onDismiss) { Text(tr("אישור", "OK")) } },
     )
 }

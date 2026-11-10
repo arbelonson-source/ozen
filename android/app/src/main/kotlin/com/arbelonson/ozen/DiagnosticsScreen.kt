@@ -380,14 +380,6 @@ private fun clipSheet(context: Context, clip: File): Intent {
     return Intent.createChooser(send, null)
 }
 
-private fun reportSheet(report: String): Intent {
-    val send = Intent(Intent.ACTION_SEND)
-        .setType("text/plain")
-        .putExtra(Intent.EXTRA_SUBJECT, tr("דוח אבחון של אוזן", "Ozen diagnostics report"))
-        .putExtra(Intent.EXTRA_TEXT, report)
-    return Intent.createChooser(send, null)
-}
-
 private fun copyReport(context: Context, report: String) {
     context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(tr("דוח אבחון של אוזן", "Ozen diagnostics report"), report))
 }

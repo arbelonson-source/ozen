@@ -800,9 +800,6 @@
   "The phone will stop alerting when this word is said.": "ይህ ቃል ሲባል ስልኩ ማስጠንቀቁን ያቆማል።",
   "The phone will vibrate for: ": "ስልኩ የሚነዝርላቸው፦ ",
   "The phone’s speech recognition": "የስልኩ የንግግር መለያ",
-  "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.": "የችግሩ ዝርዝሮችና የመጨረሻዎቹ ጥቂት መስመሮች ተቀምጠዋል፣ በስልኩ ላይ ብቻ። ለሚረዳዎት ሰው ለመላክ፦ ቅንብሮች → ምርመራዎች → ሪፖርት ይላኩ።",
-  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off. To send them to whoever helps you: Settings → Diagnostics → Send report.": "የችግሩ ዝርዝሮች በስልኩ ላይ ብቻ ተቀምጠዋል፣ ያለ ካፕሽን መስመሮችና ያለ ድምጽ፣ ምክንያቱም ውይይቶችን ማስቀመጥ ጠፍቷል። ለሚረዳዎት ሰው ለመላክ፦ ቅንብሮች → ምርመራዎች → ሪፖርት ይላኩ።",
-  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.": "የችግሩ ዝርዝሮች፣ የመጨረሻዎቹ መስመሮች እና የመጨረሻዎቹ 30 ሰከንዶች ድምጽ በስልኩ ላይ ብቻ ተቀምጠዋል። ለሚረዳዎት ሰው ለመላክ፦ ቅንብሮች → ምርመራዎች።",
   "The recording is too short or too quiet": "ቅጂው በጣም አጭር ወይም ጸጥ ያለ ነው",
   "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from.": "ቅጂው ራሱ አይቀመጥም፤ ንግግሩን እንደገና መገንባት የማይቻልበት አጭር ቁጥራዊ “የድምጽ አሻራ” ብቻ ይቀመጣል።",
   "The service didn’t accept this key. Check that you copied all of it.": "አገልግሎቱ ይህን ቁልፍ አልተቀበለም። ሙሉውን እንደቀዱት ያረጋግጡ።",
@@ -1057,7 +1054,13 @@
   "Press and hold a line to mark it as important, copy it or fix a word.": "መስመርን ተጭነው በመያዝ እንደ አስፈላጊ ምልክት ማድረግ፣ መቅዳት ወይም ቃል ማስተካከል ይችላሉ።",
   "Captions paused for a call or another app": "ካፕሽን በጥሪ ወይም በሌላ መተግበሪያ ምክንያት ተቋርጧል",
   "They’ll continue on their own once the microphone is free · Tap to try now": "ማይክሮፎኑ ሲለቀቅ ራሳቸውን ችለው ይቀጥላሉ · አሁን ለመሞከር ይንኩ",
-  "%1 isn’t responding": "%1 ምላሽ አይሰጥም"
+  "%1 isn’t responding": "%1 ምላሽ አይሰጥም",
+  "The problem's details and the last few lines were saved, on the phone only.": "የችግሩ ዝርዝሮችና የመጨረሻዎቹ ጥቂት መስመሮች ተቀምጠዋል፣ በስልኩ ላይ ብቻ።",
+  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off.": "የችግሩ ዝርዝሮች በስልኩ ላይ ብቻ ተቀምጠዋል፣ ያለ ካፕሽን መስመሮችና ያለ ድምፅ፣ ምክንያቱም ንግግሮችን ማስቀመጥ ጠፍቷል።",
+  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "የችግሩ ዝርዝሮች፣ የመጨረሻዎቹ መስመሮች እና የመጨረሻዎቹ 30 ሰከንዶች ድምፅ በስልኩ ላይ ብቻ ተቀምጠዋል። ቁልፉ ዝርዝሮቹንና መስመሮቹን ይልካል፤ ድምፁ የሚላከው ከቅንብሮች → ምርመራዎች ነው።",
+  "Send to whoever helps you": "ለሚረዳዎት ሰው ይላኩ",
+  "Opens the share options with the diagnostics report": "የማጋሪያ አማራጮችን ከምርመራ ሪፖርቱ ጋር ይከፍታል",
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen በዚህ ስልክ፦ በ%1 የካፕሽን ችግር ምልክት ተደርጓል።"
  },
  "arabic": {
   "Added: %1": "أُضيف: %1",
@@ -1860,9 +1863,6 @@
   "The phone will stop alerting when this word is said.": "سيتوقف الهاتف عن التنبيه عند قول هذه الكلمة.",
   "The phone will vibrate for: ": "سيهتز الهاتف عند سماع: ",
   "The phone’s speech recognition": "التعرف على الكلام في الهاتف",
-  "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.": "حُفظت تفاصيل المشكلة وآخر الأسطر، على الهاتف فقط. لإرسالها لمن يساعدكم: الإعدادات ← التشخيص ← إرسال التقرير.",
-  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off. To send them to whoever helps you: Settings → Diagnostics → Send report.": "حُفظت تفاصيل المشكلة على الهاتف فقط، دون أسطر الترجمة النصية ودون صوت، لأن حفظ المحادثات متوقف. لإرسالها لمن يساعدكم: الإعدادات ← التشخيص ← إرسال التقرير.",
-  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.": "حُفظت تفاصيل المشكلة وآخر الأسطر وآخر 30 ثانية من الصوت على الهاتف فقط. لإرسالها لمن يساعدكم: الإعدادات ← التشخيص.",
   "The recording is too short or too quiet": "التسجيل قصير جدًا أو خافت جدًا",
   "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from.": "التسجيل نفسه لا يُحفظ — فقط ‏“بصمة صوتية”‏ رقمية قصيرة لا يمكن إعادة بناء الكلام منها.",
   "The service didn’t accept this key. Check that you copied all of it.": "لم تقبل الخدمة هذا المفتاح. تأكدوا من نسخه كاملًا.",
@@ -2117,7 +2117,13 @@
   "Press and hold a line to mark it as important, copy it or fix a word.": "اضغطوا مطوّلًا على سطر لتمييزه كمهم أو نسخه أو تصحيح كلمة فيه.",
   "Captions paused for a call or another app": "توقفت الترجمة النصية مؤقتًا بسبب مكالمة أو تطبيق آخر",
   "They’ll continue on their own once the microphone is free · Tap to try now": "ستستمر من تلقاء نفسها عندما يصبح الميكروفون متاحًا · المسوا للمحاولة الآن",
-  "%1 isn’t responding": "%1 لا يستجيب"
+  "%1 isn’t responding": "%1 لا يستجيب",
+  "The problem's details and the last few lines were saved, on the phone only.": "حُفظت تفاصيل المشكلة وآخر الأسطر، على الهاتف فقط.",
+  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off.": "حُفظت تفاصيل المشكلة على الهاتف فقط، دون أسطر الترجمة النصية ودون صوت، لأن حفظ المحادثات متوقف.",
+  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "حُفظت تفاصيل المشكلة وآخر الأسطر وآخر 30 ثانية من الصوت على الهاتف فقط. يرسل الزر التفاصيل والأسطر؛ أما الصوت فيُرسل من الإعدادات ← التشخيص.",
+  "Send to whoever helps you": "إرسال لمن يساعدكم",
+  "Opens the share options with the diagnostics report": "يفتح خيارات المشاركة مع تقرير التشخيص",
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen على هذا الهاتف: سُجّلت مشكلة في الترجمة النصية الساعة %1."
  },
  "chineseSimplified": {
   "Added: %1": "已添加：%1",
@@ -2920,9 +2926,6 @@
   "The phone will stop alerting when this word is said.": "说到这个词时，手机会停止提醒。",
   "The phone will vibrate for: ": "手机会为以下内容振动：",
   "The phone’s speech recognition": "手机的语音识别",
-  "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.": "问题的详情和最近的几行都已保存，仅在手机上。要发给帮助你的人：设置 → 诊断 → 发送报告。",
-  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off. To send them to whoever helps you: Settings → Diagnostics → Send report.": "问题的详情已保存，仅在手机上，不含字幕行和声音，因为保存对话已关闭。要发给帮助你的人：设置 → 诊断 → 发送报告。",
-  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.": "问题详情、最后几行文字和最后 30 秒的声音已保存，仅保存在手机上。要发送给帮助你的人：设置 → 诊断。",
   "The recording is too short or too quiet": "录音太短或音量太小",
   "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from.": "录音本身不会被保存——只有一个简短的数字“声纹”，无法从中还原出说话内容。",
   "The service didn’t accept this key. Check that you copied all of it.": "服务不接受这个密钥。请确认已完整复制。",
@@ -3177,7 +3180,13 @@
   "Press and hold a line to mark it as important, copy it or fix a word.": "长按一行可将其标记为重要、复制，或修正其中的词。",
   "Captions paused for a call or another app": "因通话或其他应用，字幕已暂停",
   "They’ll continue on their own once the microphone is free · Tap to try now": "麦克风空闲后会自动继续 · 点一下立即尝试",
-  "%1 isn’t responding": "%1 没有响应"
+  "%1 isn’t responding": "%1 没有响应",
+  "The problem's details and the last few lines were saved, on the phone only.": "问题的详情和最近的几行都已保存，仅在手机上。",
+  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off.": "问题的详情已保存，仅在手机上，不含字幕行和声音，因为保存对话已关闭。",
+  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "问题详情、最后几行文字和最后 30 秒的声音已保存，仅保存在手机上。这个按钮会发送详情和文字；声音要在 设置 → 诊断 中发送。",
+  "Send to whoever helps you": "发送给帮助你的人",
+  "Opens the share options with the diagnostics report": "打开分享选项，附带诊断报告",
+  "Ozen on this phone: a captions problem was marked at %1.": "此手机上的 Ozen：%1 标记了一个字幕问题。"
  },
  "french": {
   "Added: %1": "Ajouté : %1",
@@ -3980,9 +3989,6 @@
   "The phone will stop alerting when this word is said.": "Le téléphone ne vous alertera plus quand ce mot sera dit.",
   "The phone will vibrate for: ": "Le téléphone vibrera pour : ",
   "The phone’s speech recognition": "La reconnaissance vocale du téléphone",
-  "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.": "Les détails du problème et les dernières lignes ont été enregistrés, sur le téléphone uniquement. Pour les envoyer à la personne qui vous aide : Réglages → Diagnostic → Envoyer le rapport.",
-  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off. To send them to whoever helps you: Settings → Diagnostics → Send report.": "Les détails du problème ont été enregistrés, sur le téléphone uniquement, sans lignes de sous-titres ni son, car l’enregistrement des conversations est désactivé. Pour les envoyer à la personne qui vous aide : Réglages → Diagnostic → Envoyer le rapport.",
-  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.": "Les détails du problème, les dernières lignes et les 30 dernières secondes de son ont été enregistrés, sur le téléphone uniquement. Pour les envoyer à la personne qui vous aide : Réglages → Diagnostic.",
   "The recording is too short or too quiet": "L’enregistrement est trop court ou trop silencieux",
   "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from.": "L’enregistrement lui-même n’est pas conservé — seulement une courte « empreinte vocale » numérique à partir de laquelle la parole ne peut pas être reconstituée.",
   "The service didn’t accept this key. Check that you copied all of it.": "Le service n’a pas accepté cette clé. Vérifiez que vous l’avez copiée en entier.",
@@ -4237,7 +4243,13 @@
   "Press and hold a line to mark it as important, copy it or fix a word.": "Appuyez longuement sur une ligne pour la marquer comme importante, la copier ou corriger un mot.",
   "Captions paused for a call or another app": "Sous-titres en pause pour un appel ou une autre application",
   "They’ll continue on their own once the microphone is free · Tap to try now": "Ils reprendront seuls dès que le microphone sera libre · Touchez pour réessayer maintenant",
-  "%1 isn’t responding": "%1 ne répond pas"
+  "%1 isn’t responding": "%1 ne répond pas",
+  "The problem's details and the last few lines were saved, on the phone only.": "Les détails du problème et les dernières lignes ont été enregistrés, sur le téléphone uniquement.",
+  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off.": "Les détails du problème ont été enregistrés, sur le téléphone uniquement, sans lignes de sous-titres ni son, car l’enregistrement des conversations est désactivé.",
+  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "Les détails du problème, les dernières lignes et les 30 dernières secondes de son ont été enregistrés, sur le téléphone uniquement. Le bouton envoie les détails et les lignes ; le son s’envoie depuis Réglages → Diagnostic.",
+  "Send to whoever helps you": "Envoyer à la personne qui vous aide",
+  "Opens the share options with the diagnostics report": "Ouvre les options de partage avec le rapport de diagnostic",
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen sur ce téléphone : un problème de sous-titres a été signalé à %1."
  },
  "german": {
   "Added: %1": "Hinzugefügt: %1",
@@ -5040,9 +5052,6 @@
   "The phone will stop alerting when this word is said.": "Das Telefon gibt keinen Hinweis mehr, wenn dieses Wort gesagt wird.",
   "The phone will vibrate for: ": "Das Telefon vibriert bei: ",
   "The phone’s speech recognition": "Die Spracherkennung des Telefons",
-  "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.": "Die Details des Problems und die letzten Zeilen wurden nur auf dem Telefon gespeichert. Um sie an die Person zu senden, die Ihnen hilft: Einstellungen → Diagnose → Bericht senden.",
-  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off. To send them to whoever helps you: Settings → Diagnostics → Send report.": "Die Details des Problems wurden nur auf dem Telefon gespeichert, ohne Untertitelzeilen und ohne Ton, weil das Speichern von Gesprächen ausgeschaltet ist. Um sie an die Person zu senden, die Ihnen hilft: Einstellungen → Diagnose → Bericht senden.",
-  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.": "Die Details des Problems, die letzten Zeilen und die letzten 30 Sekunden Ton wurden gespeichert, nur auf dem Telefon. Um sie an die Person zu senden, die Ihnen hilft: Einstellungen → Diagnose.",
   "The recording is too short or too quiet": "Die Aufnahme ist zu kurz oder zu leise",
   "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from.": "Die Aufnahme selbst wird nicht gespeichert – nur ein kurzer numerischer „Stimmabdruck“, aus dem die Sprache nicht rekonstruiert werden kann.",
   "The service didn’t accept this key. Check that you copied all of it.": "Der Dienst hat diesen Schlüssel nicht akzeptiert. Prüfen Sie, ob Sie ihn vollständig kopiert haben.",
@@ -5297,7 +5306,13 @@
   "Press and hold a line to mark it as important, copy it or fix a word.": "Halten Sie eine Zeile gedrückt, um sie als wichtig zu markieren, sie zu kopieren oder ein Wort zu korrigieren.",
   "Captions paused for a call or another app": "Untertitel für einen Anruf oder eine andere App angehalten",
   "They’ll continue on their own once the microphone is free · Tap to try now": "Sie machen von allein weiter, sobald das Mikrofon frei ist · Zum sofortigen Versuch tippen",
-  "%1 isn’t responding": "%1 reagiert nicht"
+  "%1 isn’t responding": "%1 reagiert nicht",
+  "The problem's details and the last few lines were saved, on the phone only.": "Die Details des Problems und die letzten Zeilen wurden nur auf dem Telefon gespeichert.",
+  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off.": "Die Details des Problems wurden nur auf dem Telefon gespeichert, ohne Untertitelzeilen und ohne Ton, weil das Speichern von Gesprächen ausgeschaltet ist.",
+  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "Die Details des Problems, die letzten Zeilen und die letzten 30 Sekunden Ton wurden gespeichert, nur auf dem Telefon. Die Schaltfläche sendet die Details und Zeilen; der Ton wird über Einstellungen → Diagnose gesendet.",
+  "Send to whoever helps you": "An die Person senden, die Ihnen hilft",
+  "Opens the share options with the diagnostics report": "Öffnet die Teilen-Optionen mit dem Diagnosebericht",
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen auf diesem Telefon: Um %1 wurde ein Problem mit den Untertiteln markiert."
  },
  "hindi": {
   "Added: %1": "जोड़ा गया: %1",
@@ -6100,9 +6115,6 @@
   "The phone will stop alerting when this word is said.": "यह शब्द कहे जाने पर फ़ोन अलर्ट करना बंद कर देगा।",
   "The phone will vibrate for: ": "फ़ोन इनके लिए कंपन करेगा: ",
   "The phone’s speech recognition": "फ़ोन की वाणी पहचान",
-  "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.": "समस्या की जानकारी और आख़िरी कुछ लाइनें, सिर्फ़ फ़ोन पर सहेजी गईं। आपकी मदद करने वाले को भेजने के लिए: सेटिंग्स → जांच रिपोर्ट → रिपोर्ट भेजें।",
-  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off. To send them to whoever helps you: Settings → Diagnostics → Send report.": "समस्या की जानकारी सिर्फ़ फ़ोन पर सहेजी गई, बिना कैप्शन लाइनों और बिना आवाज़ के, क्योंकि बातचीत सहेजना बंद है। आपकी मदद करने वाले को भेजने के लिए: सेटिंग्स → जांच रिपोर्ट → रिपोर्ट भेजें।",
-  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.": "समस्या की जानकारी, आख़िरी कुछ लाइनें और आवाज़ के आख़िरी 30 सेकंड सिर्फ़ फ़ोन पर सहेजे गए। मदद करने वाले को भेजने के लिए: सेटिंग्स → जांच रिपोर्ट।",
   "The recording is too short or too quiet": "रिकॉर्डिंग बहुत छोटी या बहुत हल्की है",
   "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from.": "रिकॉर्डिंग खुद सहेजी नहीं जाती — सिर्फ़ एक छोटा अंकों वाला “वॉइसप्रिंट” रखा जाता है, जिससे आवाज़ दोबारा नहीं बनाई जा सकती।",
   "The service didn’t accept this key. Check that you copied all of it.": "सेवा ने यह कुंजी स्वीकार नहीं की। जांचें कि आपने उसे पूरा कॉपी किया है।",
@@ -6357,7 +6369,13 @@
   "Press and hold a line to mark it as important, copy it or fix a word.": "किसी लाइन को दबाकर रखें, ताकि आप उसे ज़रूरी के रूप में चिह्नित कर सकें, कॉपी कर सकें या कोई शब्द ठीक कर सकें।",
   "Captions paused for a call or another app": "कॉल या किसी दूसरे ऐप की वजह से कैप्शन रुके हुए हैं",
   "They’ll continue on their own once the microphone is free · Tap to try now": "माइक्रोफ़ोन खाली होने पर ये खुद जारी हो जाएंगे · अभी कोशिश के लिए छुएं",
-  "%1 isn’t responding": "%1 जवाब नहीं दे रहा है"
+  "%1 isn’t responding": "%1 जवाब नहीं दे रहा है",
+  "The problem's details and the last few lines were saved, on the phone only.": "समस्या की जानकारी और आख़िरी कुछ लाइनें, सिर्फ़ फ़ोन पर सहेजी गईं।",
+  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off.": "समस्या की जानकारी सिर्फ़ फ़ोन पर सहेजी गई, बिना कैप्शन लाइनों और बिना आवाज़ के, क्योंकि बातचीत सहेजना बंद है।",
+  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "समस्या का विवरण, आख़िरी कुछ पंक्तियां और आवाज़ के आख़िरी 30 सेकंड सिर्फ़ फ़ोन पर सहेजे गए। बटन विवरण और पंक्तियां भेजता है; आवाज़ सेटिंग्स → जांच रिपोर्ट से भेजी जाती है।",
+  "Send to whoever helps you": "आपकी मदद करने वाले को भेजें",
+  "Opens the share options with the diagnostics report": "जांच रिपोर्ट के साथ शेयर करने के विकल्प खोलता है",
+  "Ozen on this phone: a captions problem was marked at %1.": "इस फ़ोन पर Ozen: %1 बजे कैप्शन में समस्या दर्ज की गई।"
  },
  "portuguese": {
   "Added: %1": "Adicionado: %1",
@@ -7160,9 +7178,6 @@
   "The phone will stop alerting when this word is said.": "O telemóvel vai deixar de avisar quando esta palavra for dita.",
   "The phone will vibrate for: ": "O telemóvel vai vibrar para: ",
   "The phone’s speech recognition": "O reconhecimento de voz do telemóvel",
-  "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.": "Os detalhes do problema e as últimas linhas foram guardados, só no telemóvel. Para os enviar a quem o ajuda: Definições → Diagnóstico → Enviar relatório.",
-  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off. To send them to whoever helps you: Settings → Diagnostics → Send report.": "Os detalhes do problema foram guardados, só no telemóvel, sem linhas de legendas e sem som, porque guardar conversas está desligado. Para os enviar a quem o ajuda: Definições → Diagnóstico → Enviar relatório.",
-  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.": "Os detalhes do problema, as últimas linhas e os últimos 30 segundos de som foram guardados, apenas no telemóvel. Para os enviar a quem o ajuda: Definições → Diagnóstico.",
   "The recording is too short or too quiet": "A gravação é demasiado curta ou demasiado silenciosa",
   "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from.": "A própria gravação não é guardada — só uma curta “impressão de voz” numérica, a partir da qual a fala não pode ser reconstruída.",
   "The service didn’t accept this key. Check that you copied all of it.": "O serviço não aceitou esta chave. Confirme que a copiou inteira.",
@@ -7417,7 +7432,13 @@
   "Press and hold a line to mark it as important, copy it or fix a word.": "Mantenha uma linha premida para a assinalar como importante, copiá-la ou corrigir uma palavra.",
   "Captions paused for a call or another app": "Legendas em pausa por causa de uma chamada ou de outra aplicação",
   "They’ll continue on their own once the microphone is free · Tap to try now": "Vão continuar sozinhas quando o microfone ficar livre · Toque para tentar agora",
-  "%1 isn’t responding": "%1 não está a responder"
+  "%1 isn’t responding": "%1 não está a responder",
+  "The problem's details and the last few lines were saved, on the phone only.": "Os detalhes do problema e as últimas linhas foram guardados, só no telemóvel.",
+  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off.": "Os detalhes do problema foram guardados, só no telemóvel, sem linhas de legendas e sem som, porque a gravação das conversas está desligada.",
+  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "Os detalhes do problema, as últimas linhas e os últimos 30 segundos de som foram guardados, apenas no telemóvel. O botão envia os detalhes e as linhas; o som é enviado em Definições → Diagnóstico.",
+  "Send to whoever helps you": "Enviar a quem o ajuda",
+  "Opens the share options with the diagnostics report": "Abre as opções de partilha com o relatório de diagnóstico",
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen neste telemóvel: foi assinalado um problema nas legendas às %1."
  },
  "russian": {
   "Added: %1": "Добавлено: %1",
@@ -8220,9 +8241,6 @@
   "The phone will stop alerting when this word is said.": "Телефон перестанет оповещать, когда произносится это слово.",
   "The phone will vibrate for: ": "Телефон будет вибрировать, услышав: ",
   "The phone’s speech recognition": "Распознавание речи телефона",
-  "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.": "Подробности проблемы и последние строки сохранены только на телефоне. Чтобы отправить их тому, кто вам помогает: Настройки → Диагностика → Отправить отчёт.",
-  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off. To send them to whoever helps you: Settings → Diagnostics → Send report.": "Подробности проблемы сохранены только на телефоне, без строк субтитров и без звука, потому что сохранение разговоров выключено. Чтобы отправить их тому, кто вам помогает: Настройки → Диагностика → Отправить отчёт.",
-  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.": "Подробности проблемы, последние строки и последние 30 секунд звука сохранены только на телефоне. Чтобы отправить их тому, кто вам помогает: Настройки → Диагностика.",
   "The recording is too short or too quiet": "Запись слишком короткая или слишком тихая",
   "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from.": "Сама запись не сохраняется — только короткий числовой «голосовой отпечаток», по которому нельзя восстановить речь.",
   "The service didn’t accept this key. Check that you copied all of it.": "Сервис не принял этот ключ. Проверьте, что вы скопировали его целиком.",
@@ -8477,7 +8495,13 @@
   "Press and hold a line to mark it as important, copy it or fix a word.": "Нажмите и удерживайте строку, чтобы отметить её как важную, скопировать или исправить слово.",
   "Captions paused for a call or another app": "Субтитры приостановлены из-за звонка или другого приложения",
   "They’ll continue on their own once the microphone is free · Tap to try now": "Они продолжат сами, когда микрофон освободится · Нажмите, чтобы попробовать сейчас",
-  "%1 isn’t responding": "%1 не отвечает"
+  "%1 isn’t responding": "%1 не отвечает",
+  "The problem's details and the last few lines were saved, on the phone only.": "Подробности проблемы и последние строки сохранены, только на телефоне.",
+  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off.": "Подробности проблемы сохранены только на телефоне, без строк субтитров и без звука, потому что сохранение разговоров выключено.",
+  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "Подробности проблемы, последние строки и последние 30 секунд звука сохранены только на телефоне. Кнопка отправляет подробности и строки; звук отправляется из раздела Настройки → Диагностика.",
+  "Send to whoever helps you": "Отправить тому, кто вам помогает",
+  "Opens the share options with the diagnostics report": "Открывает варианты отправки с диагностическим отчётом",
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen на этом телефоне: в %1 отмечена проблема с субтитрами."
  },
  "spanish": {
   "Added: %1": "Añadido: %1",
@@ -9280,9 +9304,6 @@
   "The phone will stop alerting when this word is said.": "El teléfono dejará de alertar cuando se diga esta palabra.",
   "The phone will vibrate for: ": "El teléfono vibrará para: ",
   "The phone’s speech recognition": "El reconocimiento de voz del teléfono",
-  "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.": "Los detalles del problema y las últimas líneas se han guardado, solo en el teléfono. Para enviarlos a quien te ayuda: Ajustes → Diagnóstico → Enviar informe.",
-  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off. To send them to whoever helps you: Settings → Diagnostics → Send report.": "Los detalles del problema se han guardado, solo en el teléfono, sin líneas de subtítulos ni sonido, porque el guardado de conversaciones está desactivado. Para enviarlos a quien te ayuda: Ajustes → Diagnóstico → Enviar informe.",
-  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.": "Los detalles del problema, las últimas líneas y los últimos 30 segundos de sonido se han guardado, solo en el teléfono. Para enviarlos a quien te ayuda: Ajustes → Diagnóstico.",
   "The recording is too short or too quiet": "La grabación es demasiado corta o demasiado silenciosa",
   "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from.": "La grabación en sí no se guarda, solo una breve “huella de voz” numérica de la que no se puede reconstruir el habla.",
   "The service didn’t accept this key. Check that you copied all of it.": "El servicio no ha aceptado esta clave. Comprueba que la has copiado entera.",
@@ -9537,7 +9558,13 @@
   "Press and hold a line to mark it as important, copy it or fix a word.": "Mantén pulsada una línea para marcarla como importante, copiarla o corregir una palabra.",
   "Captions paused for a call or another app": "Subtítulos en pausa por una llamada u otra aplicación",
   "They’ll continue on their own once the microphone is free · Tap to try now": "Continuarán solos cuando el micrófono quede libre · Toca para intentarlo ahora",
-  "%1 isn’t responding": "%1 no responde"
+  "%1 isn’t responding": "%1 no responde",
+  "The problem's details and the last few lines were saved, on the phone only.": "Los detalles del problema y las últimas líneas se guardaron, solo en el teléfono.",
+  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off.": "Los detalles del problema se guardaron, solo en el teléfono, sin líneas de subtítulos ni sonido, porque guardar las conversaciones está desactivado.",
+  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "Los detalles del problema, las últimas líneas y los últimos 30 segundos de sonido se guardaron, solo en el teléfono. El botón envía los detalles y las líneas; el sonido se envía desde Ajustes → Diagnóstico.",
+  "Send to whoever helps you": "Enviar a quien te ayuda",
+  "Opens the share options with the diagnostics report": "Abre las opciones para compartir con el informe de diagnóstico",
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen en este teléfono: se marcó un problema con los subtítulos a las %1."
  },
  "ukrainian": {
   "Added: %1": "Додано: %1",
@@ -10340,9 +10367,6 @@
   "The phone will stop alerting when this word is said.": "Телефон перестане сповіщати, коли вимовляється це слово.",
   "The phone will vibrate for: ": "Телефон вібруватиме для: ",
   "The phone’s speech recognition": "Розпізнавання мовлення телефону",
-  "The problem's details and the last few lines were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics → Send report.": "Подробиці проблеми та останні рядки збережено лише на телефоні. Щоб надіслати їх тому, хто вам допомагає: Налаштування → Діагностика → Надіслати звіт.",
-  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off. To send them to whoever helps you: Settings → Diagnostics → Send report.": "Подробиці проблеми збережено лише на телефоні, без рядків субтитрів і без звуку, бо збереження розмов вимкнено. Щоб надіслати їх тому, хто вам допомагає: Налаштування → Діагностика → Надіслати звіт.",
-  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. To send them to whoever helps you: Settings → Diagnostics.": "Подробиці проблеми, останні рядки та останні 30 секунд звуку збережено лише на телефоні. Щоб надіслати їх тому, хто допомагає: Налаштування → Діагностика.",
   "The recording is too short or too quiet": "Запис занадто короткий або занадто тихий",
   "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from.": "Сам запис не зберігається — лише короткий числовий «голосовий відбиток», за яким не можна відтворити мовлення.",
   "The service didn’t accept this key. Check that you copied all of it.": "Сервіс не прийняв цей ключ. Перевірте, чи ви скопіювали його повністю.",
@@ -10597,6 +10621,12 @@
   "Press and hold a line to mark it as important, copy it or fix a word.": "Натисніть і утримуйте рядок, щоб позначити його як важливий, скопіювати або виправити слово.",
   "Captions paused for a call or another app": "Субтитри призупинено через дзвінок або інший застосунок",
   "They’ll continue on their own once the microphone is free · Tap to try now": "Вони продовжать самі, коли мікрофон звільниться · Натисніть, щоб спробувати зараз",
-  "%1 isn’t responding": "%1 не відповідає"
+  "%1 isn’t responding": "%1 не відповідає",
+  "The problem's details and the last few lines were saved, on the phone only.": "Подробиці проблеми та останні рядки збережено, лише на телефоні.",
+  "The problem's details were saved, on the phone only, with no caption lines and no sound because saving conversations is off.": "Подробиці проблеми збережено лише на телефоні, без рядків субтитрів і без звуку, бо збереження розмов вимкнено.",
+  "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.": "Подробиці проблеми, останні рядки та останні 30 секунд звуку збережено лише на телефоні. Кнопка надсилає подробиці та рядки; звук надсилається з розділу Налаштування → Діагностика.",
+  "Send to whoever helps you": "Надіслати тому, хто вам допомагає",
+  "Opens the share options with the diagnostics report": "Відкриває варіанти надсилання з діагностичним звітом",
+  "Ozen on this phone: a captions problem was marked at %1.": "Ozen на цьому телефоні: о %1 позначено проблему із субтитрами."
  }
 }

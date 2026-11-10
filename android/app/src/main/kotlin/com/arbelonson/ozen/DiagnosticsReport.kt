@@ -247,3 +247,10 @@ object DiagnosticsReport {
 
     private fun format(pattern: String, value: Double): String = String.format(Locale.ROOT, pattern, value)
 }
+
+/**
+ * The report sent from the caption screen after a problem is marked: one
+ * line in her language that whoever helps her reads in the message
+ * preview, then the diagnostics report as it is.
+ */
+fun helperReport(summary: String, facts: DiagnosticsFacts): String = summary + "\n" + DiagnosticsReport.text(facts)
