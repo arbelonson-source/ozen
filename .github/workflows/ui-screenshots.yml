@@ -75,8 +75,14 @@ jobs:
             "App Store iPhone 6.9-inch") FAMILY="iPhone.*Pro Max" ;;
             "App Store iPad 13-inch") FAMILY="iPad Pro 13" ;;
           esac
+          # The newest iOS first: in the list's own order the runner's
+          # iPhone 16 Pro on iOS 18.5 came first, and every screenshot showed
+          # iOS 18's bars and buttons, not the glass of iOS 26.
           DEVICE=$(xcrun simctl list devices available -j \
-            | jq -r --arg family "$FAMILY" '.devices | to_entries[] | .value[] | select(.name | test($family)) | "\(.udid) \(.name)"' \
+            | jq -r --arg family "$FAMILY" '.devices | to_entries
+                | map(select(.key | test("SimRuntime\\.iOS-[0-9]+-[0-9]+")))
+                | sort_by(.key | capture("iOS-(?<major>[0-9]+)-(?<minor>[0-9]+)") | [(.major | tonumber), (.minor | tonumber)])
+                | reverse | .[] | .value[] | select(.name | test($family)) | "\(.udid) \(.name)"' \
             | head -n1)
           if [ -z "$DEVICE" ]; then
             echo "No available $FAMILY simulator found" >&2
