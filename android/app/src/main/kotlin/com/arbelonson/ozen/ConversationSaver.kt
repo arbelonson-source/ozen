@@ -54,6 +54,7 @@ class ConversationSaver(
     private var sawListening = false
     private var autosave: Job? = null
     private var lastRetentionCheck = 0.0
+    private var lastSaved: Long? = null
 
     private val currentLines: List<TranscriptSegment>
         get() = lines().let { if (offset == 0) it else it.drop(minOf(offset, it.size)) }
@@ -73,7 +74,7 @@ class ConversationSaver(
                 autosave = scope.launch {
                     while (true) {
                         delay(AUTOSAVE_MILLIS)
-                        if (!checkForConversationBreak()) save(ended = false, inBackground = true)
+                        if (!checkForConversationBreak()) save(ended = false, inBackground = true, onlyIfChanged = true)
                     }
                 }
             }
@@ -87,12 +88,25 @@ class ConversationSaver(
     /**
      * A save after captions stopped keeps the end the stop wrote; without
      * it the conversation turned open again, or ended at that later save.
+     *
+     * [onlyIfChanged] is for the periodic autosave: when nothing that would
+     * be written differs from the last save, and that save did not fail, it
+     * returns null without building the record. A long session otherwise
+     * rebuilt every line of the conversation every twenty seconds for nothing.
      */
-    fun save(ended: Boolean, endedAt: Double? = null, inBackground: Boolean = false): TranscriptSessionRecord? {
+    fun save(
+        ended: Boolean,
+        endedAt: Double? = null,
+        inBackground: Boolean = false,
+        onlyIfChanged: Boolean = false,
+    ): TranscriptSessionRecord? {
         if (!settings().saveHistory) return null
         val startedAt = conversationStart ?: return null
         val kept = end?.takeIf { it.first == id && !isListening() }?.second
         val endsAt = if (ended) (endedAt ?: kept ?: now()).also { end = id to it } else kept
+        val fingerprint = fingerprint(startedAt, endsAt)
+        if (onlyIfChanged && !ended && fingerprint == lastSaved && writer.lastFailure == null) return null
+        lastSaved = fingerprint
         val using = transcribing()
         val record = TranscriptSessionRecord.make(
             from = currentLines,
@@ -108,6 +122,34 @@ class ConversationSaver(
         if (inBackground) writer.saveInBackground(record) else writer.saveNow(record)
         deleteExpiredIfDue()
         return record
+    }
+
+    /**
+     * A cheap stand-in for "what a save would write": every line's id, text,
+     * state, speaker and score, plus the conversation's id, start and end
+     * and the starred lines. The engine and microphone are left out: the
+     * history store keeps the ones the first save wrote.
+     */
+    private fun fingerprint(startedAt: Double, endsAt: Double?): Long {
+        var hash = 17L
+        fun add(value: Any?) {
+            hash = hash * 1_000_003L + (value?.hashCode() ?: 0)
+        }
+        add(id)
+        add(startedAt)
+        add(endsAt)
+        add(starred)
+        for (line in currentLines) {
+            add(line.id)
+            add(line.text)
+            add(line.isCommitted)
+            add(line.speakerClusterID)
+            add(speakerName(line))
+            add(line.startTimestamp)
+            add(line.confidence)
+            add(line.scoredBy)
+        }
+        return hash
     }
 
     /**

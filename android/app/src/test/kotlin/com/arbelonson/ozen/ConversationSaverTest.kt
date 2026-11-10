@@ -40,6 +40,7 @@ class ConversationSaverTest {
     private val settings = AppSettings.default
     private var clock = 1_800_000_000.0
     private var newConversations = 0
+    private var recordsBuilt = 0
     private val clips = ProblemAudioStore(File(folder, "problem-audio"))
     private val names = mutableMapOf<Int, String>()
     private val saver = ConversationSaver(
@@ -49,7 +50,7 @@ class ConversationSaverTest {
         settings = { settings },
         transcribing = { settings },
         speakerName = { it.speakerClusterID?.let(names::get) },
-        inputName = { "Wired headset" },
+        inputName = { recordsBuilt += 1; "Wired headset" },
         startNewConversation = { newConversations += 1 },
         setSaveHistory = { settings.saveHistory = it },
         scope = scope,
@@ -91,6 +92,53 @@ class ConversationSaverTest {
         val conversation = saved().single()
         assertEquals("Good morning", conversation.preview)
         assertEquals(clock, conversation.endedAt)
+    }
+
+    private fun tick() {
+        scope.advanceTimeBy(20_001)
+        scope.runCurrent()
+    }
+
+    @Test
+    fun `an autosave tick with nothing changed since the last save writes nothing`() {
+        start()
+        say("Good morning")
+        tick()
+        assertEquals(1, recordsBuilt)
+        tick()
+        tick()
+        assertEquals(1, recordsBuilt)
+        assertEquals("Good morning", saved().single().preview)
+    }
+
+    @Test
+    fun `a new line or an edited line is written on the next autosave tick`() {
+        start()
+        say("Good morning")
+        tick()
+        say("Good evening")
+        tick()
+        assertEquals(2, recordsBuilt)
+        assertEquals(2, saved().single().segmentCount)
+        lines[1] = lines[1].copy(text = "Good night")
+        tick()
+        assertEquals(3, recordsBuilt)
+        assertEquals("Good morning", saved().single().preview)
+        tick()
+        assertEquals(3, recordsBuilt)
+    }
+
+    @Test
+    fun `a final save writes even when nothing changed`() {
+        start()
+        say("Good morning")
+        tick()
+        assertEquals(1, recordsBuilt)
+        saver.save(ended = false)
+        assertEquals(2, recordsBuilt)
+        stop()
+        assertEquals(3, recordsBuilt)
+        assertEquals(clock, saved().single().endedAt)
     }
 
     @Test
