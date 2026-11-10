@@ -236,6 +236,7 @@ class SettingsScreenDeviceTest {
             app.captions.pipeline.setSpeakerSimilarityThreshold(separationBefore)
             CaptionState.clear()
             app.pairing.paired.value = false
+            app.pairing.pending.value = null
         }
     }
 
@@ -793,6 +794,20 @@ class SettingsScreenDeviceTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Pairing code saved on the phone").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Pairing code saved on the phone").performScrollTo()
         compose.onNodeWithText("Delete code").performScrollTo()
+    }
+
+    @Test
+    fun aNewPairingQuestionIsNotHiddenUnderTheLastPairingsConfirmation() {
+        val worked = "Connected with the code you scanned. Captions come from the computer at home."
+        compose.runOnUiThread {
+            app.pairing.paired.value = true
+            app.pairing.open("ozen://pair?address=ws://192.168.1.20:8765&code=example-code-123")
+        }
+        compose.onNodeWithText("Connect to the home computer?").assertExists()
+        compose.onNodeWithText(worked).assertDoesNotExist()
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+        compose.onNodeWithText("Connect to the home computer?").assertDoesNotExist()
+        compose.onNodeWithText(worked).assertExists()
     }
 
     @Test
