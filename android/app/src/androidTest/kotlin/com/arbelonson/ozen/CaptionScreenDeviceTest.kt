@@ -1217,6 +1217,12 @@ class CaptionScreenDeviceTest {
             compose.waitUntil(5_000) { compose.onAllNodesWithText(silent).fetchSemanticsNodes().isEmpty() }
             audio.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
             compose.waitUntil(5_000) { compose.onAllNodesWithText(silent).fetchSemanticsNodes().isNotEmpty() }
+
+            compose.onAllNodes(hasSetTextAction())[0].performTextInput("Hello there")
+            assertTrue("the phone has no voice to say it with", app.captions.canSay("Hello there"))
+            compose.onNodeWithText("Full screen, big letters").performScrollTo().performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Speak").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(silent).fetchSemanticsNodes().isNotEmpty() }
         } finally {
             audio.setStreamVolume(AudioManager.STREAM_MUSIC, volumeBefore, 0)
         }
