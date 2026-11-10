@@ -34,6 +34,8 @@ struct LiveCaptionView: View {
     /// How many lines there were when she scrolled up, so the way back down
     /// can say how many came since.
     @State private var lineCountWhenUnpinned = 0
+    /// The line VoiceOver is on (see `CaptionLayout.readsBack`).
+    @AccessibilityFocusState private var focusedLine: UUID?
     @State private var speechResume = SpeechResume()
     /// Advanced every half minute, so a long quiet can let the phone lock
     /// (see `ScreenAwakePolicy`) and the install-expiry warning appears on
@@ -473,6 +475,13 @@ struct LiveCaptionView: View {
             typeSize: dynamicTypeSize,
             action: scrollToLatestIfPinned
         ))
+        // VoiceOver moved back to an earlier line: stop following, as a
+        // finger's scroll up does; the jump-to-newest button brings it back.
+        .onChange(of: focusedLine) { _, line in
+            guard isPinnedToBottom, CaptionLayout.readsBack(focusedLineID: line, newestLineID: viewModel.segments.last?.id) else { return }
+            lineCountWhenUnpinned = viewModel.segments.count
+            withAnimation { isPinnedToBottom = false }
+        }
         .onChange(of: viewModel.segments.isEmpty) { _, _ in
             announceNewLines()
         }
@@ -737,6 +746,7 @@ struct LiveCaptionView: View {
             languageCode: viewModel.settings.languageCode
         )
         .id(segment.id)
+        .accessibilityFocused($focusedLine, equals: segment.id)
         // No plain-tap action: a finger brushing the text while reading, or
         // handing the phone over, used to open the naming sheet and its
         // keyboard mid-conversation. Naming lives in the hold menu below.

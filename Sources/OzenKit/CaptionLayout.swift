@@ -240,6 +240,16 @@ extension CaptionLayout {
         guard let held else { return usual }
         return max(min(held, usual), lineCount - 2 * onScreenLineLimit)
     }
+
+    /// Whether VoiceOver moving onto a line means she is reading back: any
+    /// line but the newest. VoiceOver and Switch Control scroll for her, and
+    /// only a finger's scroll used to stop the captions following, so the
+    /// next word pulled the screen back down, away from the line she wanted
+    /// to act on, and the lazy list could drop it from under the cursor.
+    public static func readsBack(focusedLineID: UUID?, newestLineID: UUID?) -> Bool {
+        guard let focusedLineID else { return false }
+        return focusedLineID != newestLineID
+    }
 }
 
 extension CaptionLayout {
