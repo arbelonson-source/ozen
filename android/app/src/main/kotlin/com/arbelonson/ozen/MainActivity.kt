@@ -729,6 +729,7 @@ private fun OzenApp(
                                 onBuzz = app.captions::buzz,
                                 soundSecondsLeft = app.captions::soundBannerSecondsLeft,
                                 onDismissSound = app.captions::dismissSoundAlert,
+                                onDismissMissedSound = app.captions::dismissMissedSound,
                                 onFontSize = { size -> app.settings.change { it.display = it.display.copy(fontSize = size) } },
                                 onOpenConversation = { reading = it to null },
                                 onDismissRecent = app.captions::dismissRecentConversation,
@@ -911,6 +912,7 @@ private fun CaptionScreen(
     onBuzz: (AlertVibration) -> Unit,
     soundSecondsLeft: (SoundAlert) -> Double,
     onDismissSound: (UUID) -> Unit,
+    onDismissMissedSound: () -> Unit = {},
     onFontSize: (Double) -> Unit,
     onOpenConversation: (UUID) -> Unit,
     onDismissRecent: () -> Unit,
@@ -1122,6 +1124,9 @@ private fun CaptionScreen(
                             shownSound = null
                             onDismissSound(alert.id)
                         }
+                    }
+                    ArrivingBanner(state.missedSound?.takeIf { shownSound == null }) { missed ->
+                        MissedSoundBanner(missed, onDismissMissedSound)
                     }
                     ArrivingBanner(shownWord) { word ->
                         val speaker = state.lines.firstOrNull { it.id == word.line }?.speaker?.takeIf { display.showSpeakerNames }

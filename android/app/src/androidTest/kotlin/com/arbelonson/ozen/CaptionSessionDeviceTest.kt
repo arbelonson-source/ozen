@@ -31,7 +31,9 @@ import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.SavedSpeaker
 import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SettingsStore
+import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundEvent
+import com.arbelonson.ozen.core.SoundEventCatalog
 import com.arbelonson.ozen.core.StoppedCaptionsNotice
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -402,6 +404,58 @@ class CaptionSessionDeviceTest {
                 CaptionState.clear()
             }
             Localization.language = languageBefore
+            work.deleteRecursively()
+        }
+    }
+
+    // Coming back takes away the notification that told her of a sound heard
+    // meanwhile, and its banner time is over by then: someone who unlocked
+    // the phone to see what buzzed found nothing at all.
+    @Test
+    fun aSoundHeardWhileAwayIsShownAndReadOutOnceSheComesBack(): Unit = runBlocking {
+        val work = File(context.cacheDir, "missed-sound-test").apply { deleteRecursively(); mkdirs() }
+        val announced = CopyOnWriteArrayList<String>()
+        val readerBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        val languageBefore = Localization.language
+        Localization.language = UILanguage.English
+        ScreenReader.isOn = { true }
+        ScreenReader.announce = { _, text -> announced += text }
+        val session = withContext(Dispatchers.Main) {
+            CaptionState.clear()
+            CaptionSession(context, SettingsHolder(SettingsStore(File(work, "settings.json"))), HomeServerCodeStore(File(work, "code"), KeystoreCodeCipher()), CloudKeyStore(File(work, "cloud-keys"), KeystoreCodeCipher()), ClipAudio(FloatArray(0)), modelFolder = File(work, "no-model"), historyFolder = File(work, "history"))
+        }
+        try {
+            val heardAt = System.currentTimeMillis() / 1_000.0 - 60
+            val doorbell = SoundAlert(event = SoundEventCatalog.event("door_bell")!!, confidence = 0.9, timestamp = heardAt)
+            withContext(Dispatchers.Main) {
+                session.screenStarted()
+                session.screenStopped()
+                checkNotNull(session.pipeline.onSoundAlert).invoke(doorbell)
+            }
+            assertNull(CaptionState.screen.value.missedSound)
+            withContext(Dispatchers.Main) { session.screenStarted() }
+            val missed = CaptionState.screen.value.missedSound
+            assertEquals(doorbell.id, missed?.alert?.id)
+            assertEquals(clockTime(heardAt), missed?.at)
+            val said = "Doorbell. Heard at ${clockTime(heardAt)}, while the app wasn’t on the screen"
+            assertEquals(listOf(said), announced.filter { it.startsWith("Doorbell") })
+
+            withContext(Dispatchers.Main) {
+                session.dismissMissedSound()
+                session.screenStopped()
+                session.screenStarted()
+            }
+            assertNull("shown again on a later return", CaptionState.screen.value.missedSound)
+            assertEquals(listOf(said), announced.filter { it.startsWith("Doorbell") })
+        } finally {
+            ScreenReader.isOn = readerBefore
+            ScreenReader.announce = announceBefore
+            Localization.language = languageBefore
+            withContext(Dispatchers.Main) {
+                session.close()
+                CaptionState.clear()
+            }
             work.deleteRecursively()
         }
     }
