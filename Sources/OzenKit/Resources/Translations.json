@@ -1083,7 +1083,9 @@
   "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, or other sound is heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → Flash for Alerts → LED Flash.": "ንዝረት እና ማድመቅ አስፈላጊ ቃል ሲባል፤ ባነር የበር ደወል፣ ስልክ፣ ማንቂያ እና ሌላም ሲሰማ። ስልኩ በኪስ ወይም ተቆልፎ ሲሆን፣ ተመሳሳይ ማንቂያዎች እንደ ስልክ ማሳወቂያ ይደርሳሉ፣ እንዲሁም ካፕሽን ቆሞ በራሱ ካልተመለሰ ማሳወቂያ። ለካሜራ ብልጭታ በእያንዳንዱ ማሳወቂያም እንዲበራ፦ ስልክ ቅንብሮች (Settings) → Accessibility → Audio & Visual → Flash for Alerts → LED Flash።",
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "ቪዲዮዎች እና በዚህ ስልክ ላይ የሚጫወት ሌላ ማንኛውም ድምፅ። አንዳንድ መተግበሪያዎች ይህን አይፈቅዱም፣ ለምሳሌ ጥሪዎች። ስልኩ ስክሪኑን ለማጋራት ፈቃድ ይጠይቃል፤ Ozen የሚወስደው ድምፁን ብቻ ነው። ይህ ካፕሽን እስኪቆም ድረስ ይቆያል።",
   "This phone’s microphone": "የዚህ ስልክ ማይክሮፎን",
-  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "ማይክሮፎኑ ቆሞ አልተመለሰም። የድምጽ ማንቂያዎችን እንደገና ለማብራት ኦዘንን ክፈት።"
+  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "ማይክሮፎኑ ቆሞ አልተመለሰም። የድምጽ ማንቂያዎችን እንደገና ለማብራት ኦዘንን ክፈት።",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "ከላይ “%1” ስለተመረጠ፣ አሁን ስለ እነዚህ ድምጾች ማንቂያ አይደርስዎትም።",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "የድምጽ ማንቂያዎች ጠፍተዋል፤ ስለዚህ ስለ እነዚህ ድምጾች ማንቂያ አይደርስዎትም።"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2169,7 +2171,9 @@
   "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, or other sound is heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → Flash for Alerts → LED Flash.": "اهتزاز وإبراز عند قول كلمة مهمة؛ وشريط عند سماع جرس الباب أو الهاتف أو الإنذار وغيرها. عندما يكون الهاتف في الجيب أو مقفلًا، تصل التنبيهات نفسها كإشعار هاتفي، بالإضافة إلى إشعار إذا توقفت الترجمة النصية ولم تعد من تلقاء نفسها. كي يومض فلاش الكاميرا أيضًا مع كل إشعار: إعدادات الهاتف ← تسهيلات الاستخدام ← الصوت والصورة ← الوميض للتنبيهات ← وميض LED.",
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "مقاطع الفيديو وأي صوت آخر يُشغَّل على هذا الهاتف. بعض التطبيقات لا تسمح بذلك، مثل المكالمات. سيطلب الهاتف الإذن بمشاركة الشاشة، ولا يأخذ Ozen سوى الصوت. يستمر ذلك حتى تتوقف الترجمة النصية.",
   "This phone’s microphone": "ميكروفون هذا الهاتف",
-  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "توقف الميكروفون ولم يعد. افتحوا Ozen لتشغيل تنبيهات الصوت من جديد."
+  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "توقف الميكروفون ولم يعد. افتحوا Ozen لتشغيل تنبيهات الصوت من جديد.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "لن تصلكم الآن تنبيهات عن هذه الأصوات، لأن الخيار المحدد في الأعلى هو ‏“%1”‏.",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "تنبيهات الصوت متوقفة، لذلك لن تصلكم تنبيهات عن هذه الأصوات."
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3255,7 +3259,9 @@
   "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, or other sound is heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → Flash for Alerts → LED Flash.": "说了重要词语时会振动并高亮；听到门铃、电话、闹钟等会显示横幅。手机放在口袋里或锁屏时，同样的提醒会以手机通知的形式送达；如果字幕停止且没有自动恢复，也会有通知。若想让相机闪光灯随每条通知闪烁：手机设置 → 辅助功能 → 音频与视觉 → 闪烁以示提醒 → LED 闪烁。",
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "视频以及本机播放的其他声音。有些应用不允许这样做，例如通话。手机会请求允许共享屏幕；Ozen 只获取声音。此选择持续到字幕停止。",
   "This phone’s microphone": "本机麦克风",
-  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "麦克风停止了，且没有恢复。打开 Ozen 以重新开启声音提醒。"
+  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "麦克风停止了，且没有恢复。打开 Ozen 以重新开启声音提醒。",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "目前不会提醒这些声音，因为上方选择了“%1”。",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "声音提醒已关闭，所以不会提醒这些声音。"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4341,7 +4347,9 @@
   "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, or other sound is heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → Flash for Alerts → LED Flash.": "Vibration et surlignage quand un mot important est dit ; une bannière quand une sonnette, un téléphone, une alarme ou d’autres sons sont entendus. Quand le téléphone est dans une poche ou verrouillé, les mêmes alertes arrivent comme notification, plus une notification si les sous-titres se sont arrêtés et ne sont pas revenus seuls. Pour que le flash de l’appareil photo clignote aussi à chaque notification : réglages du téléphone → Accessibilité → Audio et visuel → Clignotement pour les alertes → Flash LED.",
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "Vidéos et autres sons lus sur ce téléphone. Certaines applications ne le permettent pas, par exemple les appels. Le téléphone demandera l’autorisation de partager l’écran ; Ozen ne prend que le son. Cela dure jusqu’à l’arrêt des sous-titres.",
   "This phone’s microphone": "Microphone de ce téléphone",
-  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Le microphone s’est arrêté et n’est pas revenu. Ouvrez Ozen pour réactiver les alertes sonores."
+  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Le microphone s’est arrêté et n’est pas revenu. Ouvrez Ozen pour réactiver les alertes sonores.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "Pour l’instant, vous ne recevrez pas d’alerte pour ces sons, car « %1 » est choisi plus haut.",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "Les alertes sonores sont désactivées, vous ne recevrez donc pas d’alerte pour ces sons."
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5427,7 +5435,9 @@
   "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, or other sound is heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → Flash for Alerts → LED Flash.": "Vibration und Hervorhebung, wenn ein wichtiges Wort gesagt wird; ein Banner, wenn eine Türklingel, ein Telefon, ein Alarm und mehr gehört werden. Ist das Telefon in einer Tasche oder gesperrt, kommen dieselben Hinweise als Telefonbenachrichtigung an, plus eine Benachrichtigung, wenn die Untertitel gestoppt wurden und nicht von allein zurückgekehrt sind. Damit das Kamerablitzlicht auch bei jeder Benachrichtigung blinkt: Telefoneinstellungen → Bedienungshilfen → Audio & Visuelles → Bei Hinweisen blinken → LED-Blitz.",
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "Videos und andere Töne, die auf diesem Telefon abgespielt werden. Manche Apps erlauben das nicht, zum Beispiel Anrufe. Das Telefon fragt nach der Erlaubnis, den Bildschirm zu teilen; Ozen nimmt nur den Ton. Das gilt, bis die Untertitel stoppen.",
   "This phone’s microphone": "Mikrofon dieses Telefons",
-  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Das Mikrofon hat aufgehört und kam nicht zurück. Öffnen Sie Ozen, um die Klanghinweise wieder einzuschalten."
+  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Das Mikrofon hat aufgehört und kam nicht zurück. Öffnen Sie Ozen, um die Klanghinweise wieder einzuschalten.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "Für diese Geräusche erhalten Sie gerade keinen Hinweis, weil oben „%1“ gewählt ist.",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "Geräuschhinweise sind aus, daher erhalten Sie für diese Geräusche keinen Hinweis."
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6513,7 +6523,9 @@
   "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, or other sound is heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → Flash for Alerts → LED Flash.": "ज़रूरी शब्द कहे जाने पर कंपन और हाइलाइट; डोरबेल, फ़ोन, अलार्म वग़ैरह सुनने पर एक बैनर। जब फ़ोन जेब में हो या लॉक हो, तो वही अलर्ट फ़ोन की सूचना के रूप में आते हैं, साथ ही अगर कैप्शन रुके और खुद वापस न आए तो एक सूचना और। हर सूचना पर कैमरे का फ़्लैश भी चमके, इसके लिए: फ़ोन सेटिंग्ज़ → ऐक्सेसिबिलिटी → ऑडियो और विज़ुअल → अलर्ट के लिए फ़्लैश करें → LED फ़्लैश।",
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "वीडियो और इस फ़ोन पर चल रही दूसरी हर आवाज़। कुछ ऐप्स इसकी अनुमति नहीं देते, जैसे कॉल। फ़ोन स्क्रीन शेयर करने की अनुमति मांगेगा; Ozen सिर्फ़ आवाज़ लेता है। यह कैप्शन रुकने तक चलता है।",
   "This phone’s microphone": "इस फ़ोन का माइक्रोफ़ोन",
-  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "माइक्रोफ़ोन रुक गया और फिर चालू नहीं हुआ। आवाज़ के अलर्ट फिर से चालू करने के लिए Ozen खोलें।"
+  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "माइक्रोफ़ोन रुक गया और फिर चालू नहीं हुआ। आवाज़ के अलर्ट फिर से चालू करने के लिए Ozen खोलें।",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "अभी इन आवाज़ों पर अलर्ट नहीं मिलेगा, क्योंकि ऊपर “%1” चुना गया है।",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "आवाज़ के अलर्ट बंद हैं, इसलिए इन आवाज़ों पर अलर्ट नहीं मिलेगा।"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7599,7 +7611,9 @@
   "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, or other sound is heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → Flash for Alerts → LED Flash.": "Vibração e realce quando uma palavra importante é dita; uma faixa quando se ouve uma campainha, um telefone, um alarme e outros sons. Quando o telemóvel está no bolso ou bloqueado, os mesmos avisos chegam como notificação do telemóvel, mais uma notificação se as legendas pararem e não voltarem sozinhas. Para o flash da câmara também piscar em cada notificação: definições do telemóvel → Acessibilidade → Áudio e visual → Avisos por intermitência → Flash LED.",
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "Vídeos e outros sons que tocam neste telemóvel. Algumas aplicações não o permitem, como as chamadas. O telemóvel vai pedir autorização para partilhar o ecrã; o Ozen usa apenas o som. Isto dura até as legendas pararem.",
   "This phone’s microphone": "Microfone deste telemóvel",
-  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "O microfone parou e não voltou. Abra o Ozen para ligar os avisos sonoros de novo."
+  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "O microfone parou e não voltou. Abra o Ozen para ligar os avisos sonoros de novo.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "Agora não vai receber avisos destes sons, porque está escolhido “%1” acima.",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "Os avisos de sons estão desligados, por isso não vai receber avisos destes sons."
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8685,7 +8699,9 @@
   "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, or other sound is heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → Flash for Alerts → LED Flash.": "Вибрация и выделение, когда произносится важное слово; баннер, когда слышны звонок в дверь, звонок телефона, сигнализация и другие звуки. Когда телефон в кармане или заблокирован, те же оповещения приходят как уведомление на телефон, плюс уведомление, если субтитры остановились и не возобновились сами. Чтобы вспышка камеры мигала при каждом уведомлении: настройки телефона → Универсальный доступ → Аудиовизуализация → Мигание при предупреждениях → LED‑вспышка.",
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "Видео и любой другой звук, воспроизводимый на этом телефоне. Некоторые приложения этого не разрешают, например звонки. Телефон попросит разрешения поделиться экраном; Ozen берёт только звук. Это действует, пока не остановятся субтитры.",
   "This phone’s microphone": "Микрофон этого телефона",
-  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Микрофон перестал работать и не включился снова. Откройте Ozen, чтобы снова включить звуковые оповещения."
+  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Микрофон перестал работать и не включился снова. Откройте Ozen, чтобы снова включить звуковые оповещения.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "Оповещений об этих звуках сейчас не будет, потому что выше выбрано «%1».",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "Звуковые оповещения выключены, поэтому оповещений об этих звуках не будет."
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -9771,7 +9787,9 @@
   "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, or other sound is heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → Flash for Alerts → LED Flash.": "Vibración y resaltado cuando se dice una palabra importante; un aviso cuando se oye un timbre, un teléfono, una alarma y más. Cuando el teléfono está en un bolsillo o bloqueado, las mismas alertas llegan como notificación, más una notificación si los subtítulos se detienen y no vuelven solos. Para que el flash de la cámara también parpadee en cada notificación: ajustes del teléfono → Accesibilidad → Audio y efectos visuales → Parpadeo para los avisos → Flash LED.",
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "Vídeos y cualquier otro sonido que se reproduce en este teléfono. Algunas aplicaciones no lo permiten, por ejemplo las llamadas. El teléfono pedirá permiso para compartir la pantalla; Ozen solo toma el sonido. Esto dura hasta que se detengan los subtítulos.",
   "This phone’s microphone": "Micrófono de este teléfono",
-  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "El micrófono se detuvo y no volvió. Abre Ozen para volver a activar las alertas de sonido."
+  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "El micrófono se detuvo y no volvió. Abre Ozen para volver a activar las alertas de sonido.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "Ahora no recibirás avisos de estos sonidos, porque arriba está elegido “%1”.",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "Las alertas de sonido están desactivadas, así que no recibirás avisos de estos sonidos."
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -10857,6 +10875,8 @@
   "Vibration and highlighting when an important word is said; a banner when a doorbell, phone, alarm, or other sound is heard. When the phone is in a pocket or locked, the same alerts arrive as a phone notification, plus a notification if captions stopped and didn’t come back on their own. For the camera flash to blink on every notification too: phone settings → Accessibility → Audio & Visual → Flash for Alerts → LED Flash.": "Вібрація і виділення, коли вимовляється важливе слово; банер, коли чути дзвінок у двері, телефон, сигналізацію та інше. Коли телефон у кишені або заблокований, ті самі сповіщення надходять як звичайні сповіщення телефону, а також сповіщення, якщо субтитри зупинилися і не відновилися самі. Щоб спалах камери блимав під час кожного сповіщення: параметри телефону → Доступність → Аудіювання і візуалізація → Блимання для оповісток → LED-спалах.",
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "Відео та будь-який інший звук, що відтворюється на цьому телефоні. Деякі застосунки цього не дозволяють, наприклад дзвінки. Телефон попросить дозволу поділитися екраном; Ozen бере лише звук. Це діє, доки не зупиняться субтитри.",
   "This phone’s microphone": "Мікрофон цього телефону",
-  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Мікрофон перестав працювати й не відновився. Відкрийте Ozen, щоб знову ввімкнути звукові сповіщення."
+  "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Мікрофон перестав працювати й не відновився. Відкрийте Ozen, щоб знову ввімкнути звукові сповіщення.",
+  "You won’t be alerted to these sounds now, because “%1” is chosen above.": "Сповіщень про ці звуки зараз не буде, бо вище вибрано «%1».",
+  "Sound alerts are off, so you won’t be alerted to these sounds.": "Звукові сповіщення вимкнено, тож сповіщень про ці звуки не буде."
  }
 }

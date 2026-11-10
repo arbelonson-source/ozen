@@ -172,6 +172,7 @@ internal fun SoundAlertsScreen(
             if (events.isEmpty()) continue
             SectionHeader(soundGroupName(importance))
             val enabled = preferences.isEnabled && importance >= preferences.minimumImportance
+            if (!enabled) Footnote(SoundAlertsText.silencedGroupNote(preferences.isEnabled, soundFloorName(preferences.minimumImportance)))
             SettingsGroup(dividerInset = 56.dp) {
                 for (event in events) soundRows(event, preferences, enabled, misses[event], onChange)
             }

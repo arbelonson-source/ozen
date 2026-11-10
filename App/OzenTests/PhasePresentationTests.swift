@@ -450,6 +450,12 @@ struct ScreenWordingTests {
         #expect(HistoryView.savingFooter(saving: false, size: "2 MB", retention: .month).hasSuffix("נשמרות תמיד."))
     }
 
+    @Test("a silenced sound group says why: the level chosen above, or sound alerts switched off")
+    func silencedSoundGroupNote() {
+        #expect(SoundAlertsView.silencedGroupNote(alertsOn: true, floor: .critical).contains("נבחר ״\(SoundAlertsView.floorName(.critical))״"))
+        #expect(SoundAlertsView.silencedGroupNote(alertsOn: false, floor: .critical).hasPrefix("ההתראות על צלילים כבויות"))
+    }
+
     @Test("an empty History with saving off says saving is off, not that conversations are coming")
     func emptyHistoryWithSavingOff() {
         #expect(HistoryView.emptyConversationsMessage(query: "", speakerFilter: nil, saving: true) == "עדיין אין שיחות שמורות.")
