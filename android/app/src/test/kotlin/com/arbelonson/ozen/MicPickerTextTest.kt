@@ -22,7 +22,7 @@ class MicPickerTextTest {
     fun `the phone's microphones show as one row named for the phone, not its model code`() = english {
         val rows = MicPickerText.rows(listOf(bottom, back, lapel), selected = null)
         assertEquals(listOf(bottom, lapel), rows)
-        assertEquals("This phone's microphone", MicPickerText.title(bottom))
+        assertEquals("This phone’s microphone", MicPickerText.title(bottom))
         assertEquals("Lapel mic", MicPickerText.title(lapel))
         assertEquals("Sound playing on this phone", MicPickerText.title(PhoneSound.entry))
     }
@@ -69,7 +69,7 @@ class MicPickerTextTest {
     @Test
     fun `the phone's sound stopping is said in the picker too, where she is when it happens`() = english {
         assertEquals(
-            listOf("Stopped listening to the phone's sound. Back to the microphone."),
+            listOf("Stopped listening to the phone’s sound. Back to the microphone."),
             MicPickerText.notices(refused = null, phoneSoundStopped = true),
         )
     }

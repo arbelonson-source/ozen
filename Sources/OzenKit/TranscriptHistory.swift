@@ -1049,7 +1049,7 @@ public struct TranscriptHistoryStore: Sendable {
                 // The question mark the screen showed, in words: whoever
                 // reads "two pills at ten thirty" in a chat should know too.
                 let unsure = marksUncertain && CaptionConfidence.isUncertain(segment, engine: record.engine, model: record.modelVariant)
-                let warning = unsure ? tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") : ""
+                let warning = unsure ? tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ") : ""
                 let line: String
                 // "Unknown speaker:" on every unrecognised line says nothing;
                 // numbered voices ("Speaker 2") still tell turns apart.
@@ -1129,7 +1129,7 @@ public struct TranscriptHistoryStore: Sendable {
             }
             let time = formattedClockTime(line.segment.startTimestamp, utcOffsetSeconds: offset(line.segment.startTimestamp))
             let said = CaptionLayout.isolatingNumbers(line.segment.text)
-            let warning = marksUncertain && line.isUncertain ? tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") : ""
+            let warning = marksUncertain && line.isUncertain ? tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ") : ""
             let text: String
             if let name = line.segment.speakerName, !name.isEmpty, !TranscriptSessionSummary.isGenericLabel(name) {
                 text = "[\(time)] \(warning)\(name): \(said)"

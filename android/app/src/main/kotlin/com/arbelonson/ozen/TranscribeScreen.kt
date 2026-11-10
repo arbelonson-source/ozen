@@ -124,7 +124,7 @@ private fun ReadyPage(transcriber: FileTranscriber, ready: FileTranscription.Rea
         } else {
             Text(
                 tr(
-                    "אין בטלפון מודל לשפה %1. לפני ההמרה לטקסט, אוזן תוריד את \"%2\" (%3 MB).",
+                    "אין בטלפון מודל לשפה %1. לפני ההמרה לטקסט, אוזן תוריד את ״%2״ (%3 MB).",
                     "There is no model for %1 on this phone. Ozen will download “%2” (%3 MB) before turning the recording into text.",
                     listOf(ready.language.nativeName, ready.toDownload.displayName, "${ready.toDownload.megabytes}"),
                 ),
@@ -163,7 +163,7 @@ private fun ReadyPage(transcriber: FileTranscriber, ready: FileTranscription.Rea
         AlertDialog(
             onDismissRequest = { stoppingCaptions = false },
             title = { Text(tr("הכתוביות פועלות עכשיו", "Captions are on right now")) },
-            text = { DialogText(tr("אותו מודל לא יכול לעבוד בבת אחת על כתוביות חיות ועל הקלטה. לעצור את הכתוביות?", "One model can’t run live captions and a recording at the same time. Stop the captions?")) },
+            text = { DialogText(tr("מודל אחד לא יכול לעבוד במקביל על כתוביות בזמן אמת ועל הקלטה. לעצור את הכתוביות?", "One model can’t run live captions and a recording at the same time. Stop the captions?")) },
             confirmButton = {
                 TextButton(onClick = { stoppingCaptions = false; transcriber.stopCaptions(); transcriber.start() }, modifier = Modifier.testTag("transcribe-stop-captions")) {
                     Text(tr("עצירת הכתוביות", "Stop captions"))

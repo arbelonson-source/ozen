@@ -99,9 +99,9 @@ internal fun ImportantWordsScreen(
             val shown = shown(it.phrase)
             Text(
                 if (it.isEnabled) {
-                    tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", listOf(shown))
+                    tr("״%1״ כבר ברשימה.", "“%1” is already in the list.", listOf(shown))
                 } else {
-                    tr("\"%1\" כבר ברשימה, במצב כבוי. הקישו על הפלוס כדי להפעיל אותה שוב.", "“%1” is already in the list, turned off. Tap the plus to turn it back on.", listOf(shown))
+                    tr("״%1״ כבר ברשימה, במצב כבוי. הקישו על הפלוס כדי להפעיל אותה שוב.", "“%1” is already in the list, turned off. Tap the plus to turn it back on.", listOf(shown))
                 },
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -110,7 +110,7 @@ internal fun ImportantWordsScreen(
         if (HebrewText.isInOtherLetters(draft, captionLanguage)) Text(otherLetters, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
         Footnote(
             tr(
-                "כשמילה מהרשימה נאמרת, הטלפון ירטוט והשורה תודגש בצהוב עם פעמון. גם צורות כמו \"לסבתא\" או \"וסבתא\" נחשבות. כדאי לכתוב מילים בלי ה׳ הידיעה: \"רופא\" ולא \"הרופא\", כדי שגם \"לרופא\" ייחשב.",
+                "כשמילה מהרשימה נאמרת, הטלפון ירטוט והשורה תודגש בצהוב עם פעמון. גם צורות כמו ״לסבתא״ או ״וסבתא״ נחשבות. כדאי לכתוב מילים בלי ה׳ הידיעה: ״רופא״ ולא ״הרופא״, כדי שגם ״לרופא״ ייחשב.",
                 "When a word from the list is said, the phone will vibrate and the line will be highlighted in yellow with a bell. Forms like “to grandma” or “and grandma” count too. It’s best to write words without a leading “the”: “doctor” instead of “the doctor”, so “to the doctor” counts too.",
             ),
         )
@@ -119,7 +119,7 @@ internal fun ImportantWordsScreen(
             if (alerts.isEmpty()) {
                 item {
                     Text(
-                        tr("עדיין אין מילים. הוסיפו את השם שלכם, שמות של הנכדים או מילים כמו \"תרופה\".", "No words yet. Add your name, grandchildren’s names, or words like “medicine”."),
+                        tr("עדיין אין מילים. הוסיפו את השם שלכם, שמות של הנכדים או מילים כמו ״תרופה״.", "No words yet. Add your name, grandchildren’s names, or words like “medicine”."),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(16.dp),
                     )
@@ -175,7 +175,7 @@ internal fun ImportantWordsScreen(
     pendingDelete?.let { alert ->
         AlertDialog(
             onDismissRequest = { pendingDeleteId = null },
-            title = { Text(tr("למחוק את \"%1\"?", "Delete “%1”?", listOf(shown(alert.phrase)))) },
+            title = { Text(tr("למחוק את ״%1״?", "Delete “%1”?", listOf(shown(alert.phrase)))) },
             text = { DialogText(tr("הטלפון יפסיק להתריע כשהמילה הזו תיאמר.", "The phone will stop alerting when this word is said.")) },
             confirmButton = {
                 TextButton(

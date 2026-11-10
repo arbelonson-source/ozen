@@ -70,7 +70,7 @@ class CaptionAnnouncer {
             // After a quiet stretch the name comes again, as on screen.
             var part = text
             if (name != null && (name != lastSpeaker || CaptionLayout.startsAfterQuiet(segment, lastLine))) part = "$name: $text"
-            if (isUncertain(segment)) part = tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") + part
+            if (isUncertain(segment)) part = tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ") + part
             parts += part
             lastSpeaker = name
             lastLine = segment

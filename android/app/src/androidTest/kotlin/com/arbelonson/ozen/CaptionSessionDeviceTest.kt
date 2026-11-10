@@ -393,7 +393,7 @@ class CaptionSessionDeviceTest {
         try {
             withContext(Dispatchers.Main) { session.listen() }
             val covering = withTimeoutOrNull(180_000) {
-                CaptionState.screen.first { it.status.detail == "Can’t reach the home computer, carrying on with the phone’s own · Tap to pause" }
+                CaptionState.screen.first { it.status.detail == "Can’t reach the home computer, so the phone carries on by itself · Tap to pause" }
             }
             assertNotNull("never said the phone covers: ${CaptionState.screen.value.phase}, ${CaptionState.screen.value.status.detail}", covering)
         } finally {

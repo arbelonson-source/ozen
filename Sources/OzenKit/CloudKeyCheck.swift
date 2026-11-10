@@ -30,7 +30,7 @@ extension CloudKeyCheck {
         case .rejected:
             tr("השירות לא קיבל את המפתח. בדקו שהעתקתם אותו במלואו.", "The service didn’t accept this key. Check that you copied all of it.")
         case .noCredit:
-            tr("המפתח תקין, אבל נגמרה היתרה בחשבון. הוסיפו יתרה באתר של השירות.", "The key is valid, but it has no credit left. Add credit at the service.")
+            tr("המפתח תקין, אבל נגמר הקרדיט. הוסיפו קרדיט באתר של השירות.", "The key is valid, but it has no credit left. Add credit at the service.")
         case .unreachable:
             tr("לא הצלחנו לבדוק את המפתח עכשיו. הוא נשמר, ונבדוק שוב כשהכתוביות יתחילו.", "Couldn’t check the key right now. It’s saved, and it’s checked again when captions start.")
         }

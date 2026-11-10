@@ -41,7 +41,7 @@ struct KeywordAlertsView: View {
                     .accessibilityLabel(Text(listed == nil ? tr("הוספה", "Add") : tr("הפעלה", "Turn on")))
                 }
                 if let listed {
-                    Text(listed.isEnabled ? tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", args: ["\(shown(listed.phrase))"]) : tr("\"%1\" כבר ברשימה, במצב כבוי. הקישו על הפלוס כדי להפעיל אותה שוב.", "“%1” is already in the list, turned off. Tap the plus to turn it back on.", args: ["\(shown(listed.phrase))"]))
+                    Text(listed.isEnabled ? tr("״%1״ כבר ברשימה.", "“%1” is already in the list.", args: ["\(shown(listed.phrase))"]) : tr("״%1״ כבר ברשימה, במצב כבוי. הקישו על הפלוס כדי להפעיל אותה שוב.", "“%1” is already in the list, turned off. Tap the plus to turn it back on.", args: ["\(shown(listed.phrase))"]))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -51,12 +51,12 @@ struct KeywordAlertsView: View {
                         .foregroundStyle(.secondary)
                 }
             } footer: {
-                Text(tr("כשמילה מהרשימה נאמרת, הטלפון ירטוט והשורה תודגש בצהוב עם פעמון. גם צורות כמו \"לסבתא\" או \"וסבתא\" נחשבות. כדאי לכתוב מילים בלי ה׳ הידיעה: \"רופא\" ולא \"הרופא\", כדי שגם \"לרופא\" ייחשב.", "When a word from the list is said, the phone will vibrate and the line will be highlighted in yellow with a bell. Forms like “to grandma” or “and grandma” count too. It’s best to write words without a leading “the”: “doctor” instead of “the doctor”, so “to the doctor” counts too."))
+                Text(tr("כשמילה מהרשימה נאמרת, הטלפון ירטוט והשורה תודגש בצהוב עם פעמון. גם צורות כמו ״לסבתא״ או ״וסבתא״ נחשבות. כדאי לכתוב מילים בלי ה׳ הידיעה: ״רופא״ ולא ״הרופא״, כדי שגם ״לרופא״ ייחשב.", "When a word from the list is said, the phone will vibrate and the line will be highlighted in yellow with a bell. Forms like “to grandma” or “and grandma” count too. It’s best to write words without a leading “the”: “doctor” instead of “the doctor”, so “to the doctor” counts too."))
             }
 
             Section(tr("הרשימה", "List")) {
                 if viewModel.keywordAlerts.isEmpty {
-                    Text(tr("עדיין אין מילים. הוסיפו את השם שלכם, שמות של הנכדים או מילים כמו \"תרופה\".", "No words yet. Add your name, grandchildren’s names, or words like “medicine”."))
+                    Text(tr("עדיין אין מילים. הוסיפו את השם שלכם, שמות של הנכדים או מילים כמו ״תרופה״.", "No words yet. Add your name, grandchildren’s names, or words like “medicine”."))
                         .foregroundStyle(.secondary)
                 }
                 ForEach(viewModel.keywordAlerts) { alert in
@@ -120,7 +120,7 @@ struct KeywordAlertsView: View {
         .accessibilityIdentifier("keywordAlertsScreen")
         .navigationTitle(tr("מילים חשובות", "Important words"))
         .confirmationDialog(
-            tr("למחוק את \"%1\"?", "Delete “%1”?", args: ["\(shown(pendingDelete?.phrase ?? ""))"]),
+            tr("למחוק את ״%1״?", "Delete “%1”?", args: ["\(shown(pendingDelete?.phrase ?? ""))"]),
             isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
             titleVisibility: .visible
         ) {

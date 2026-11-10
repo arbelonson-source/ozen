@@ -26,7 +26,7 @@ struct VocabularyView: View {
                     .accessibilityLabel(tr("הוספה", "Add"))
                 }
                 if let listed {
-                    Text(tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", args: ["\(listed)"]))
+                    Text(tr("״%1״ כבר ברשימה.", "“%1” is already in the list.", args: ["\(listed)"]))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 } else if isFull {

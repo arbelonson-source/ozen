@@ -13,7 +13,7 @@ internal object MicPickerText {
     }
 
     fun title(input: AudioInputDescriptor): String =
-        if (input.portType == AudioPortType.BuiltInMic) tr("המיקרופון של הטלפון", "This phone's microphone") else input.portName
+        if (input.portType == AudioPortType.BuiltInMic) tr("המיקרופון של הטלפון", "This phone’s microphone") else input.portName
 
     fun listNote(listening: Boolean, phoneSound: Boolean): String = when {
         !listening -> tr("המיקרופון המסומן הוא זה שהכתוביות ישתמשו בו. אוזניות או מיקרופון שיתחברו יופיעו כאן אוטומטית.", "The marked microphone is the one captions will use. Headphones or a microphone that connect will appear here automatically.")
@@ -22,7 +22,7 @@ internal object MicPickerText {
     }
 
     fun meterNote(listening: Boolean, phoneSound: Boolean): String = when {
-        !listening -> tr("המד פועל רק בזמן ההאזנה.", "The meter is only active while listening.")
+        !listening -> tr("מד העוצמה פועל רק בזמן ההאזנה.", "The meter is only active while listening.")
         phoneSound -> tr("הפעילו סרטון או שיר בטלפון ובדקו שהפס זז. אם הוא לא זז, האפליקציה שמנגנת אותו לא מאפשרת להאזין לה.", "Play a video or a song on the phone and watch the bar move. If it doesn’t move, the app playing it doesn’t allow listening.")
         else -> tr("דברו ובדקו שהפס זז. אם הוא לא זז, המיקרופון שנבחר לא קולט כלום.", "Speak and watch the bar move. If it doesn’t move, the selected microphone isn’t hearing anything.")
     }

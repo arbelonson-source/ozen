@@ -12,7 +12,7 @@ enum class CloudKeyCheck {
         get() = when (this) {
             Accepted -> tr("המפתח נבדק והשירות קיבל אותו", "The key was checked and the service accepted it")
             Rejected -> tr("השירות לא קיבל את המפתח. בדקו שהעתקתם אותו במלואו.", "The service didn’t accept this key. Check that you copied all of it.")
-            NoCredit -> tr("המפתח תקין, אבל נגמרה היתרה בחשבון. הוסיפו יתרה באתר של השירות.", "The key is valid, but it has no credit left. Add credit at the service.")
+            NoCredit -> tr("המפתח תקין, אבל נגמר הקרדיט. הוסיפו קרדיט באתר של השירות.", "The key is valid, but it has no credit left. Add credit at the service.")
             Unreachable -> tr("לא הצלחנו לבדוק את המפתח עכשיו. הוא נשמר, ונבדוק שוב כשהכתוביות יתחילו.", "Couldn’t check the key right now. It’s saved, and it’s checked again when captions start.")
         }
 

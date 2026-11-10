@@ -1272,7 +1272,7 @@ class TranscriptHistoryStore(
                 // The question mark the screen showed, in words: whoever
                 // reads "two pills at ten thirty" in a chat should know too.
                 val unsure = marksUncertain && CaptionConfidence.isUncertain(segment, record.engine, record.modelVariant)
-                val warning = if (unsure) tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") else ""
+                val warning = if (unsure) tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ") else ""
                 // "Unknown speaker:" on every unrecognised line says nothing;
                 // numbered voices ("Speaker 2") still tell turns apart.
                 val name = segment.speakerName
@@ -1385,7 +1385,7 @@ class TranscriptHistoryStore(
                 }
                 val time = formattedClockTime(line.segment.startTimestamp, utcOffsetAt(line.segment.startTimestamp))
                 val said = CaptionLayout.isolatingNumbers(line.segment.text)
-                val warning = if (marksUncertain && line.isUncertain) tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") else ""
+                val warning = if (marksUncertain && line.isUncertain) tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ") else ""
                 val name = line.segment.speakerName
                 val text = if (name != null && name.isNotEmpty() && !TranscriptSessionSummary.isGenericLabel(name)) {
                     "[$time] $warning$name: $said"

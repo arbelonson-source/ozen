@@ -13,7 +13,7 @@ struct HomeServerGuideView: View {
         Step(
             id: 1, systemImage: "desktopcomputer",
             title: tr("מחשב מתאים", "A suitable computer"),
-            text: tr("מחשב Windows בבית עם כרטיס מסך של NVIDIA, שיש לו לפחות 6 ג׳יגה זיכרון (8 ג׳יגה ומעלה לכתוביות מדויקות יותר). המחשב צריך להיות דלוק כשרוצים לקבל ממנו כתוביות.", "A Windows computer at home with an NVIDIA graphics card of at least 6 GB (8 GB or more for the more accurate captions). It has to be on when captions should come from it.")
+            text: tr("מחשב Windows בבית עם כרטיס מסך של NVIDIA. לכרטיס המסך צריך להיות לפחות 6 ג׳יגה זיכרון (8 ג׳יגה ומעלה לכתוביות מדויקות יותר). המחשב צריך להיות דלוק כשרוצים לקבל ממנו כתוביות.", "A Windows computer at home with an NVIDIA graphics card of at least 6 GB (8 GB or more for the more accurate captions). It has to be on when captions should come from it.")
         ),
         Step(
             id: 2, systemImage: "arrow.down.circle",
@@ -23,7 +23,7 @@ struct HomeServerGuideView: View {
         Step(
             id: 3, systemImage: "hand.tap",
             title: tr("ללחוץ עליו פעמיים ולענות על השאלות", "Double-click it and answer its questions"),
-            text: tr("הקובץ בודק קודם שכרטיס המסך מתאים, ואז מתקין הכול לבד (10 עד 30 דקות). אם Windows שואל אם לאפשר לו לפעול, עונים \"כן\". בהמשך הוא ישאל אם להשתמש במחשב גם כשאתם מחוץ לבית.", "It first checks that the graphics card is good enough, then installs everything by itself (10 to 30 minutes). If Windows asks whether to allow it, say yes. It asks whether to use the computer away from home too.")
+            text: tr("הקובץ בודק קודם שכרטיס המסך מתאים, ואז מתקין הכול לבד (10 עד 30 דקות). אם Windows שואל אם לאפשר לו לפעול, עונים ״כן״. בהמשך הוא ישאל אם להשתמש במחשב גם כשאתם מחוץ לבית.", "It first checks that the graphics card is good enough, then installs everything by itself (10 to 30 minutes). If Windows asks whether to allow it, say yes. It asks whether to use the computer away from home too.")
         ),
         Step(
             id: 4, systemImage: "qrcode.viewfinder",

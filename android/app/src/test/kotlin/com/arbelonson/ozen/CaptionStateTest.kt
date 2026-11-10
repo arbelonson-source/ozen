@@ -50,7 +50,7 @@ class CaptionStateTest {
             PipelinePhase.Listening, engine = TranscriptionEngineKind.WhisperKit, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(),
             coveringForCloud = true, coveredEngine = TranscriptionEngineKind.HomeServer, coverReason = EngineUnavailability.Kind.HomeServerUnreachable,
         )
-        assertEquals("Can’t reach the home computer, carrying on with the phone’s own · Tap to pause", status().detail)
+        assertEquals("Can’t reach the home computer, so the phone carries on by itself · Tap to pause", status().detail)
 
         CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), pausedForSpeech = true)
         assertEquals("The phone is talking", status().title)

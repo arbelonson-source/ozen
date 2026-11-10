@@ -152,7 +152,7 @@ class LocalizationTest {
         assertEquals(mark + "סבתא said: two pills", tr("%1 — נאמר: %2", "%1 said: %2", listOf("סבתא", "two pills"), UILanguage.English))
         assertEquals(
             mark + "“דנה אברהמי” is already in the list.",
-            tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", listOf("דנה אברהמי"), UILanguage.English),
+            tr("״%1״ כבר ברשימה.", "“%1” is already in the list.", listOf("דנה אברהמי"), UILanguage.English),
         )
         assertTrue(tr("%1 (%2 הקלטות)", "%1 (%2 recordings)", listOf("סבתא", "2"), UILanguage.Russian).startsWith(mark))
         assertEquals(mark + "סבתא", tr(mark + "%1", mark + "%1", listOf("סבתא"), UILanguage.English))

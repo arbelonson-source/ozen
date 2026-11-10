@@ -574,7 +574,7 @@ struct TranscriptHistoryTests {
         unsure.confidence = 0.7
         let session = record(startedAt: 3_661, segments: [unsure])
         #expect(TranscriptHistoryStore.exportAllText([session], utcOffsetAt: { _ in 0 }, marksUncertain: true)
-            == "כל השיחות מתוך אוזן\n\nשיחה מתאריך 01.01.1970\n\n[01:01:01] ייתכן שלא נשמע נכון. רופא: שני כדורים בעשר וחצי")
+            == "כל השיחות מתוך אוזן\n\nשיחה מתאריך 01.01.1970\n\n[01:01:01] ייתכן שלא נשמעה נכון. רופא: שני כדורים בעשר וחצי")
         #expect(TranscriptHistoryStore.exportAllText([session], utcOffsetAt: { _ in 0 }, marksUncertain: false)
             == "כל השיחות מתוך אוזן\n\nשיחה מתאריך 01.01.1970\n\n[01:01:01] רופא: שני כדורים בעשר וחצי")
     }
@@ -599,7 +599,7 @@ struct TranscriptHistoryTests {
         let session = record(startedAt: 3_661, segments: [unsure, sure])
         let offset: (TimeInterval) -> Int = { _ in 0 }
         #expect(TranscriptHistoryStore.exportText(session, utcOffsetAt: offset, marksUncertain: true)
-            == "שיחה מתאריך 01.01.1970\n\n[01:01:01] ייתכן שלא נשמע נכון. רופא: שני כדורים בעשר וחצי\n[01:01:05] ולחזור בעוד חודש")
+            == "שיחה מתאריך 01.01.1970\n\n[01:01:01] ייתכן שלא נשמעה נכון. רופא: שני כדורים בעשר וחצי\n[01:01:05] ולחזור בעוד חודש")
         #expect(TranscriptHistoryStore.exportText(session, utcOffsetAt: offset, marksUncertain: false)
             == "שיחה מתאריך 01.01.1970\n\n[01:01:01] רופא: שני כדורים בעשר וחצי\n[01:01:05] ולחזור בעוד חודש")
     }
@@ -1391,7 +1391,7 @@ struct TranscriptHistoryAllStarredTests {
         try store.save(TranscriptSessionRecord(startedAt: 100, engine: .whisperKit, modelVariant: "ivrit-large-v3-turbo-8bit", inputName: nil, segments: [ivrit]))
 
         #expect(store.starredLines().map(\.isUncertain) == [true, false])
-        #expect(TranscriptHistoryStore.exportText(a3Record, utcOffsetAt: { _ in 0 }, marksUncertain: true).contains("ייתכן שלא נשמע נכון."))
+        #expect(TranscriptHistoryStore.exportText(a3Record, utcOffsetAt: { _ in 0 }, marksUncertain: true).contains("ייתכן שלא נשמעה נכון."))
     }
 
     @Test("a conversation that switched models judges each saved line by the model that wrote it; an older line by the conversation's")
@@ -1412,7 +1412,7 @@ struct TranscriptHistoryAllStarredTests {
         #expect(loaded.segments.map(\.scoredBy) == [before.scoredBy, nil])
         #expect(store.starredLines().map(\.isUncertain) == [false, true])
         let exported = TranscriptHistoryStore.exportText(loaded, utcOffsetAt: { _ in 0 }, marksUncertain: true)
-        #expect(exported.components(separatedBy: "ייתכן שלא נשמע נכון.").count == 2)
+        #expect(exported.components(separatedBy: "ייתכן שלא נשמעה נכון.").count == 2)
     }
 
     @Test("no stars anywhere gives an empty list")
@@ -1451,7 +1451,7 @@ struct TranscriptHistoryStarredExportTests {
         doubtful.confidence = 0.7
         let lines = [StarredLine(sessionID: UUID(), sessionStartedAt: september, segment: doubtful, engine: .whisperKit)]
         let offset: (TimeInterval) -> Int = { _ in 0 }
-        #expect(TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt: offset, marksUncertain: true) == "14.09.2026\n[09:05:00] ייתכן שלא נשמע נכון. ד״ר כהן: שני כדורים בעשר וחצי")
+        #expect(TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt: offset, marksUncertain: true) == "14.09.2026\n[09:05:00] ייתכן שלא נשמעה נכון. ד״ר כהן: שני כדורים בעשר וחצי")
         #expect(TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt: offset, marksUncertain: false) == "14.09.2026\n[09:05:00] ד״ר כהן: שני כדורים בעשר וחצי")
     }
 
@@ -1685,6 +1685,6 @@ struct TranscriptSourceLineTests {
         #expect(record(.cloud, model: GeminiSpeech.model, input: nil).sourceLine(in: .english) == "Cloud transcription · Google Gemini · Transcribe")
         #expect(record(.cloud, model: SpeechmaticsSpeech.model, input: nil).sourceLine(in: .english) == "Cloud transcription · Speechmatics · Enhanced")
         #expect(record(.cloud, model: AssemblyAISpeech.model, input: nil).sourceLine(in: .english) == "Cloud transcription · AssemblyAI · Universal-3.6 Pro")
-        #expect(record(.appleSpeech, model: nil, input: nil).sourceLine(in: .english) == "Apple's speech recognition")
+        #expect(record(.appleSpeech, model: nil, input: nil).sourceLine(in: .english) == "Apple’s speech recognition")
     }
 }

@@ -29,8 +29,8 @@ public enum ListeningCut {
             let style = Date.FormatStyle(date: .omitted, time: .shortened, locale: Localization.locale, timeZone: timeZone)
             let clock = Date(timeIntervalSince1970: stoppedAt).formatted(style)
             return tr(
-                "ההאזנה נעצרה בערך ב־%1 והייתה כבויה %2. בזמן הזה לא יכלו להגיע התראות.",
-                "Listening stopped at about %1 and was off for %2. Alerts couldn't come during that time.",
+                "ההאזנה נעצרה בערך ב־%1 והייתה כבויה במשך %2. בזמן הזה לא יכלו להגיע התראות.",
+                "Listening stopped at about %1 and was off for %2. No alerts could come through during that time.",
                 args: ["\(clock)", "\(ConversationStats.minutesText(offSeconds))"]
             )
         }

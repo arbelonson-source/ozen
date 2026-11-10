@@ -85,7 +85,7 @@ internal fun NightAlertsScreen(soundsOn: Boolean, onSounds: () -> Unit, onClose:
                     done = battery,
                     title = tr("סוללה", "Battery"),
                     text = NightAlerts.batteryText(battery),
-                    button = if (battery) null else tr("פתחו את רשימת הסוללה", "Open the battery list"),
+                    button = if (battery) null else tr("פתחו את הגדרות הסוללה", "Open the battery list"),
                     onButton = { NightAlerts.openBatteryList(context) },
                 )
             }
@@ -115,7 +115,7 @@ internal fun NightAlertsScreen(soundsOn: Boolean, onSounds: () -> Unit, onClose:
                     title = tr("מצב שקט וטעינה", "Silent mode and charging"),
                     text = tr(
                         "במצב שקט גם הרטט של ההתראות מושתק, אלא אם הן מגיעות דרך ״נא לא להפריע״. השאירו את הטלפון במצב רטט, בטעינה וקרוב אליכם.",
-                        "On silent, alerts don’t vibrate either, unless they come through Do Not Disturb. Keep the phone on vibrate, charging, near you.",
+                        "On silent, alerts don’t vibrate either, unless they come through Do Not Disturb. Keep the phone on vibrate, charging, and near you.",
                     ),
                     button = null,
                     onButton = { },

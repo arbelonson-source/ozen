@@ -24,7 +24,7 @@ struct MicPickerView: View {
                         .foregroundStyle(.primary)
                     }
                     if let refusedInputName {
-                        Label(tr("הטלפון לא עבר ל\"%1\", והמיקרופון המסומן עדיין מקליט. נסו לנתק ולחבר אותו שוב.", "The phone did not switch to “%1”, and the marked microphone is still recording. Try unplugging and reconnecting it.", args: ["\(refusedInputName)"]), systemImage: "exclamationmark.triangle.fill")
+                        Label(tr("הטלפון לא עבר ל״%1״, והמיקרופון המסומן עדיין מקליט. נסו לנתק ולחבר אותו שוב.", "The phone did not switch to “%1”, and the marked microphone is still recording. Try unplugging and reconnecting it.", args: ["\(refusedInputName)"]), systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(.readable(.orange))
                             .font(.footnote)
                     }
@@ -46,7 +46,7 @@ struct MicPickerView: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     } else {
-                        Text(tr("המד פועל רק בזמן ההאזנה.", "The meter is only active while listening."))
+                        Text(tr("מד העוצמה פועל רק בזמן ההאזנה.", "The meter is only active while listening."))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -54,12 +54,12 @@ struct MicPickerView: View {
 
                 Section(tr("טיפים", "Tips")) {
                     Label {
-                        Text(tr("מיקרופון USB‑C צריך להיות מסוג \"USB Audio\" (כמו רוב מיקרופוני הדש). אם הוא לא מופיע ברשימה, ה־%1 עצמו לא מזהה אותו, ולא רק האפליקציה.", "A USB‑C microphone needs to be of the “USB Audio” type (like most lapel mics). If it doesn’t appear in the list, the %1 isn’t recognizing it at all, not just the app.", args: ["\(DeviceWord.brand)"]))
+                        Text(tr("מיקרופון USB‑C צריך להיות מסוג ״USB Audio״ (כמו רוב מיקרופוני הדש). אם הוא לא מופיע ברשימה, ה־%1 עצמו לא מזהה אותו, ולא רק האפליקציה.", "A USB‑C microphone needs to be of the “USB Audio” type (like most lapel mics). If it doesn’t appear in the list, the %1 isn’t recognizing it at all, not just the app.", args: ["\(DeviceWord.brand)"]))
                     } icon: {
                         Image(systemName: "cable.connector")
                     }
                     Label {
-                        Text(tr("AirPods מופיעים כשהם באוזניים ומחוברים. איכות ההקלטה דרכם נמוכה יותר מאשר במיקרופון חוטי.", "AirPods appear when they’re in the ears and connected. Recording quality through them is lower than a wired microphone."))
+                        Text(tr("AirPods מופיעים כשהם באוזניים ומחוברים. איכות ההקלטה דרכם נמוכה יותר מאשר במיקרופון חוטי.", "AirPods appear when they’re in your ears and connected. Recording quality through them is lower than through a wired microphone."))
                     } icon: {
                         Image(systemName: "airpodspro")
                     }

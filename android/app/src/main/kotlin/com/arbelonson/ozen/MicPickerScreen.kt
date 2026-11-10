@@ -131,13 +131,13 @@ internal fun MicPickerScreen(
             item {
                 Tip(
                     Icons.Rounded.Usb,
-                    tr("מיקרופון USB‑C צריך להיות מסוג \"USB Audio\" (כמו רוב מיקרופוני הדש). אם הוא לא מופיע ברשימה, הטלפון עצמו לא מזהה אותו, ולא רק האפליקציה.", "A USB‑C microphone needs to be of the “USB Audio” type (like most lapel mics). If it doesn’t appear in the list, the phone isn’t recognizing it at all, not just the app."),
+                    tr("מיקרופון USB‑C צריך להיות מסוג ״USB Audio״ (כמו רוב מיקרופוני הדש). אם הוא לא מופיע ברשימה, הטלפון עצמו לא מזהה אותו, ולא רק האפליקציה.", "A USB‑C microphone needs to be of the “USB Audio” type (like most lapel mics). If it doesn’t appear in the list, the phone isn’t recognizing it at all, not just the app."),
                 )
             }
             item {
                 Tip(
                     Icons.Rounded.Bluetooth,
-                    tr("אוזניות Bluetooth מופיעות כשהן מחוברות. איכות ההקלטה דרכן נמוכה יותר מאשר במיקרופון חוטי.", "A Bluetooth headset appears once it’s connected. Recording quality through it is lower than a wired microphone."),
+                    tr("אוזניות Bluetooth מופיעות כשהן מחוברות. איכות ההקלטה דרכן נמוכה יותר מאשר במיקרופון חוטי.", "A Bluetooth headset appears once it’s connected. Recording quality through it is lower than through a wired microphone."),
                 )
             }
         }

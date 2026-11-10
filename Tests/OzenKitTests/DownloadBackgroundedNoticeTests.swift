@@ -24,7 +24,7 @@ struct DownloadBackgroundedNoticeTests {
             return
         }
         #expect(content.identifier == DownloadBackgroundedNotice.identifier)
-        #expect(content.title == "ההורדה נעצרה")
+        #expect(content.title == "ההורדה הושהתה")
         #expect(!content.isUrgent)
         #expect(notice.update(isDownloading: true, appIsActive: false, isEnabled: true) == nil)
     }

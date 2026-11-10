@@ -329,7 +329,7 @@ class PhasePresentationTest {
         val offline = covering(EngineUnavailability.Kind.NoInternet)
         assertTrue(noKey.detail?.contains("OpenRouter") == false && noKey.detail?.contains("ממי שהגדיר את הטלפון") == true)
         assertTrue(noKey.action == Action.OpenEngineSettings && noKey.tint == PhaseTint.Active)
-        assertTrue(noCredit.detail?.contains("התקציב") == true)
+        assertTrue(noCredit.detail?.contains("הקרדיט") == true)
         assertTrue(noCredit.action == Action.OpenEngineSettings && noCredit.tint == PhaseTint.Active)
         assertEquals(Action.Pause, offline.action)
         assertTrue(offline.detail?.contains("בענן") == true)

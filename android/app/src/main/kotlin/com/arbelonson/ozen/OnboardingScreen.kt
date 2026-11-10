@@ -196,7 +196,7 @@ internal fun OnboardingScreen(
                         SettingsGroup(dividerInset = 72.dp) {
                             item { Point(Icons.Rounded.Mic, tr("מניחים את הטלפון על השולחן, והכתוביות מופיעות מעצמן.", "Set the phone on the table, and the captions run on their own.")) }
                             item { Point(Icons.Rounded.Groups, tr("האפליקציה מבדילה בין דוברים ויכולה ללמוד את השמות שלהם.", "The app tells speakers apart and can learn their names.")) }
-                            item { Point(Icons.Rounded.NotificationsActive, tr("היא מתריעה כשאומרים שמות שחשובים לכם, וגם על צלצול בדלת או על אזעקה, ברטט שונה לכל אחד מהם.", "It alerts you to names that matter to you, and to a doorbell or alarm, with a different vibration for each.")) }
+                            item { Point(Icons.Rounded.NotificationsActive, tr("היא מתריעה כשאומרים שמות שחשובים לכם, כשמצלצלים בדלת או כשיש אזעקה, ברטט שונה לכל אחד מהם.", "It alerts you to names that matter to you, and to a doorbell or alarm, with a different vibration for each.")) }
                             item { Point(Icons.Rounded.Keyboard, tr("ואפשר גם להקליד תשובה, והטלפון יקריא אותה בקול.", "And you can type a reply, and the phone will speak it aloud.")) }
                         }
                     }
@@ -210,10 +210,10 @@ internal fun OnboardingScreen(
                     else -> Page(Icons.Rounded.CheckCircle, pageTitle(PAGES - 1)) {
                         if (settings.engine.firstRunNote == FirstRunNote.ModelDownload) {
                             val model = settings.phoneModel
-                            Body(tr("בהפעלה הראשונה אוזן תוריד את מודל הדיבור: %1, %2. זה לוקח כמה דקות, וההתקדמות מוצגת על המסך. בפעמים הבאות הכתוביות יתחילו מיד.", "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that — instantly.", listOf(model.displayName, ByteSize.text(model.bytes))))
+                            Body(tr("בהפעלה הראשונה אוזן תוריד את מודל הדיבור: %1, %2. זה לוקח כמה דקות, וההתקדמות מוצגת על המסך. בפעמים הבאות הכתוביות יתחילו מיד.", "The first time it runs, Ozen will download the language model: %1, %2. This takes a few minutes and shows on the screen. After that, it starts instantly.", listOf(model.displayName, ByteSize.text(model.bytes))))
                         }
                         if (settings.engine.firstRunNote == FirstRunNote.HomeComputer) {
-                            Body(tr("החיבור נעשה בעזרת הקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home."))
+                            Body(tr("התחברתם בעזרת הקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home."))
                         }
                         Body(tr("הכפתור למטה מפעיל את הכתוביות. בהצלחה, סבתא.", "The button below starts the captions. Good luck, Grandma."))
                     }
@@ -251,7 +251,7 @@ private fun MicrophonePage(
         when (ask) {
             MicrophoneAsk.Granted -> {
                 Status("✓ " + tr("המיקרופון מאושר", "Microphone approved"), good = true)
-                Body(tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע לכם על צלצול בדלת, על אזעקה או כשקוראים בשמכם.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."))
+                Body(tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע לכם על צלצול בדלת, על אזעקה או על קריאה בשמכם.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."))
                 when (notifications) {
                     true -> Status("✓ " + tr("ההתראות מאושרות", "Notifications approved"), good = true)
                     false -> Body(tr("ההתראות לא אושרו. אפשר לשנות את זה בהגדרות.", "No notifications. This can be changed in Settings."))
@@ -260,7 +260,7 @@ private fun MicrophonePage(
             }
             MicrophoneAsk.OpenSettings -> {
                 Status("✕ " + tr("המיקרופון חסום", "Microphone blocked"), good = false)
-                Body(tr("בלי מיקרופון אין כתוביות. אפשר לאשר אותו בהגדרות הטלפון.", "Without a microphone there are no captions. It can be approved in the phone’s Settings."))
+                Body(tr("בלי מיקרופון אין כתוביות. אפשר לאשר אותו בהגדרות הטלפון.", "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings."))
                 TonalButton(tr("פתיחת הגדרות הטלפון", "Open phone settings"), onOpenPhoneSettings, Modifier.fillMaxWidth(), icon = Icons.Rounded.Settings)
             }
             MicrophoneAsk.AskAgain -> {

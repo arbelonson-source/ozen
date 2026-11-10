@@ -14,8 +14,8 @@ struct ProblemMarkedSheet: View {
 
     private var message: String {
         viewModel.problemKeptSound
-            ? tr("פרטי התקלה, השורות האחרונות ו־30 השניות האחרונות של הקול נשמרו בטלפון בלבד. הכפתור שולח את הפרטים והשורות; את הקול שולחים מהגדרות ← אבחון.", "The problem's details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.")
-            : tr("פרטי התקלה והשורות האחרונות נשמרו בטלפון בלבד.", "The problem's details and the last few lines were saved, on the phone only.")
+            ? tr("פרטי התקלה, השורות האחרונות ו־30 השניות האחרונות של הקול נשמרו בטלפון בלבד. הכפתור שולח את הפרטים והשורות; את הקול שולחים מהגדרות ← אבחון.", "The problem’s details, the last few lines and the last 30 seconds of sound were saved, on the phone only. The button sends the details and lines; the sound is sent from Settings → Diagnostics.")
+            : tr("פרטי התקלה והשורות האחרונות נשמרו בטלפון בלבד.", "The problem’s details and the last few lines were saved, on the phone only.")
     }
 
     var body: some View {

@@ -14,8 +14,8 @@ object ListeningCut {
         fun title(): String = tr("ההאזנה הייתה כבויה לזמן מה", "Listening was off for a while")
 
         fun text(zone: ZoneId = ZoneId.systemDefault()): String = tr(
-            "ההאזנה נעצרה בערך ב־%1 והייתה כבויה %2. בזמן הזה לא יכלו להגיע התראות.",
-            "Listening stopped at about %1 and was off for %2. Alerts couldn't come during that time.",
+            "ההאזנה נעצרה בערך ב־%1 והייתה כבויה במשך %2. בזמן הזה לא יכלו להגיע התראות.",
+            "Listening stopped at about %1 and was off for %2. No alerts could come through during that time.",
             listOf(clockTime(stoppedAt, zone), ConversationStats.minutesText(offSeconds)),
         )
     }

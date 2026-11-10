@@ -113,7 +113,7 @@ struct CaptionRow: View {
     private var accessibilityLabelText: AttributedString {
         var before = ""
         if isStarred { before += tr("מסומנת כחשובה. ", "Marked as important. ") }
-        if isUncertain { before += tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") }
+        if isUncertain { before += tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ") }
         if let speakerName { before += "\(speakerName): " }
         var after = ""
         let doubtful = UncertainWords.spoken(in: segment.text, words: marksUncertainWords && segment.isCommitted ? segment.uncertainWords : [])

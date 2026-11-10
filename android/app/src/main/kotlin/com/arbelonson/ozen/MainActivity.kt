@@ -761,7 +761,7 @@ private fun CellularDownloadDialog(megabytes: Int?, onDownload: () -> Unit, onWa
         title = { Text(CellularDownloadTexts.title) },
         text = { DialogText(CellularDownloadTexts.body(megabytes)) },
         confirmButton = { TextButton(onClick = onDownload) { Text(tr("להוריד עכשיו", "Download now")) } },
-        dismissButton = { TextButton(onClick = onWait) { Text(tr("לחכות ל־Wi-Fi", "Wait for Wi‑Fi")) } },
+        dismissButton = { TextButton(onClick = onWait) { Text(tr("לחכות ל־Wi‑Fi", "Wait for Wi‑Fi")) } },
     )
 }
 
@@ -788,7 +788,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
             text = {
                 DialogText(
                     tr(
-                        "כדי ליצור כתוביות, הקול יישלח למחשב שאת הקוד שלו סרקתם עכשיו (%1, כמו שכתוב בדף שלו). אשרו רק אם זה מחשב שלכם או של המשפחה.",
+                        "כדי ליצור כתוביות, הקול יישלח למחשב שאת הקוד שלו סרקתם עכשיו (%1, כמו שכתוב בדף שלו). התחברו רק אם זה מחשב שלכם או של המשפחה.",
                         "For captions, the audio will go to the computer whose code you just scanned (%1, as shown on its page). Only connect if it’s your own or your family’s computer.",
                         listOf(shown.computerName),
                     ),
@@ -837,7 +837,7 @@ private fun PairingDialogs(pairing: PairingRequests) {
     if (paired && pending == null) {
         AlertDialog(
             onDismissRequest = { pairing.paired.value = false },
-            text = { DialogText(tr("החיבור נעשה בעזרת הקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home.")) },
+            text = { DialogText(tr("התחברתם בעזרת הקוד שסרקתם. הכתוביות מגיעות מהמחשב בבית.", "Connected with the code you scanned. Captions come from the computer at home.")) },
             confirmButton = { TextButton(onClick = { pairing.paired.value = false }) { Text(tr("סגירה", "Close")) } },
         )
     }
@@ -1905,7 +1905,7 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: L
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
                     Text(
-                        tr("המודל \"\u2068%1\u2069\" (%2) קל יותר ועומד בקצב טוב יותר בטלפון הזה.", "%1 (%2) is lighter and keeps up better here.", listOf(model.displayName, ByteSize.text(model.bytes))),
+                        tr("המודל ״\u2068%1\u2069״ (%2) קל יותר ועומד בקצב טוב יותר בטלפון הזה.", "%1 (%2) is lighter and keeps up better here.", listOf(model.displayName, ByteSize.text(model.bytes))),
                         color = colors.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -1913,7 +1913,7 @@ private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: L
             }
             ReplacedModelLine(inUseBytes)
             if (waiting) Text(
-                tr("ממתינים ל־Wi‑Fi כדי להוריד. אפשר לאשר בהגדרות הורדה בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings."),
+                tr("ממתינים ל־Wi‑Fi כדי להוריד. בהגדרות אפשר לאשר הורדה גם בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings."),
                 color = colors.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp, bottom = OzenSpacing.Unit).testTag("model-fit-waiting"),
@@ -1934,7 +1934,7 @@ private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, inUseByte
     val colors = MaterialTheme.colorScheme
     val title = tr("אוזן נסגרה בזמן שהכינה את מודל הדיבור", "Ozen closed while setting up the speech model")
     val body = tr(
-        "ייתכן שאין בטלפון הזה מספיק זיכרון בשביל המודל \"\u2068%1\u2069\". המודל \"\u2068%2\u2069\" (%3) קל יותר.",
+        "ייתכן שאין בטלפון הזה מספיק זיכרון בשביל המודל ״\u2068%1\u2069״. המודל ״\u2068%2\u2069״ (%3) קל יותר.",
         "This phone may not have enough memory for %1. %2 (%3) is lighter.",
         listOf(model.displayName, lighter.displayName, ByteSize.text(lighter.bytes)),
     )
@@ -2007,7 +2007,7 @@ private fun ListeningCutCard(text: String, onDismiss: () -> Unit) {
 private fun ReplacedModelLine(bytes: Long?) {
     if (bytes == null) return
     Text(
-        tr("אחרי ההחלפה, המודל שפועל עכשיו (%1) יימחק מהטלפון כדי לפנות מקום.", "The model in use now (%1) is then removed from the phone to free room.", listOf(ByteSize.text(bytes))),
+        tr("אחרי ההחלפה, המודל שפועל עכשיו (%1) יימחק מהטלפון כדי לפנות מקום.", "The model in use now (%1) is then removed from the phone to free up space.", listOf(ByteSize.text(bytes))),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.padding(top = 8.dp).testTag("model-replaced-line"),
@@ -2099,7 +2099,7 @@ private fun StarMark(fontSize: Double, colour: Color) {
 
 @Composable
 internal fun UnsureMark(fontSize: Double, colour: Color) {
-    val label = tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ").trim()
+    val label = tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ").trim()
     val side = maxOf(14.0, fontSize * 0.6)
     val inset = with(LocalDensity.current) { ((fontSize * 1.25 - side) / 2).sp.toDp() }
     val diameter = with(LocalDensity.current) { side.sp.toDp() }

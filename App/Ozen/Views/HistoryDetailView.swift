@@ -76,7 +76,7 @@ struct HistoryDetailView: View {
         } header: {
             Text(tr("מספרים שנאמרו", "Numbers mentioned"))
         } footer: {
-            Text(tr("שעות, כמויות ומספרי טלפון מהשיחה. הקשה על שורה מובילה אליה.", "Times, amounts, and phone numbers from the conversation. Tap a line to jump to it."))
+            Text(tr("שעות, כמויות ומספרי טלפון מהשיחה. הקישו על שורה כדי לעבור אליה.", "Times, amounts, and phone numbers from the conversation. Tap a line to jump to it."))
         }
     }
 
@@ -427,7 +427,7 @@ private struct NumberLineLabel: View {
                 if isUncertain {
                     Image(systemName: "questionmark.circle")
                         .foregroundStyle(.secondary)
-                        .accessibilityLabel(tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. "))
+                        .accessibilityLabel(tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. "))
                 }
                 Text(
                     caption: CaptionLayout.directed(segment.text),

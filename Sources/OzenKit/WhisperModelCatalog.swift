@@ -74,8 +74,8 @@ public struct WhisperModelOption: Sendable, Equatable, Identifiable {
         case "large-v3-v20240930_626MB": return tr("טורבו (דחוס)", "Turbo (compressed)", in: language)
         case "large-v3-v20240930": return tr("טורבו", "Turbo", in: language)
         case "medium": return tr("בינוני", "Medium", in: language)
-        case "large-v3_947MB": return tr("גדול 3 (דחוס)", "Large v3 (compressed)", in: language)
-        case "large-v3": return tr("גדול 3", "Large v3", in: language)
+        case "large-v3_947MB": return tr("גדול v3 (דחוס)", "Large v3 (compressed)", in: language)
+        case "large-v3": return tr("גדול v3", "Large v3", in: language)
         default: return englishName
         }
     }
@@ -160,7 +160,7 @@ public enum WhisperModelCatalog {
         WhisperModelOption(
             variant: "ozen-turbo-hebrew-a3-8bit", displayName: "Ozen Turbo Hebrew", sizeMB: 819,
             hebrewQuality: 5, speed: 3,
-            note: "Turbo Hebrew trained further by Ozen on speech from across a room, in noise and over a TV: about a tenth fewer wrong words there, the same up close. As quick, the same download.",
+            note: "Turbo Hebrew trained further by Ozen on speech from across a room, in noise and over a TV: about a tenth fewer wrong words there, the same up close. Just as quick, and the same download size.",
             isRecommended: true,
             source: .ozenRelease(tag: "model-ozen-turbo-hebrew-a3-8bit-1"),
             folderName: "ozen_whisper-large-v3-turbo-hebrew-a3_8bit",

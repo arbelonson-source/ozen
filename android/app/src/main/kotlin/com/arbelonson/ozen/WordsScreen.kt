@@ -79,7 +79,7 @@ internal fun WordsScreen(words: List<String>, speakerNames: List<String>, onChan
             TonalButton(tr("הוספה", "Add"), onClick = add, enabled = canAdd)
         }
         val note = when {
-            listed != null -> tr("\"%1\" כבר ברשימה.", "“%1” is already in the list.", listOf(listed))
+            listed != null -> tr("״%1״ כבר ברשימה.", "“%1” is already in the list.", listOf(listed))
             full -> tr("הרשימה מלאה. מחקו מילה כדי להוסיף אחרת.", "The list is full. Delete a word to add another.")
             else -> null
         }

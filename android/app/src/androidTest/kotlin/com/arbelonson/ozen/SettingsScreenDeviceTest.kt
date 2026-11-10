@@ -513,7 +513,7 @@ class SettingsScreenDeviceTest {
         compose.waitUntil(5_000) { book.asked.size == 2 }
         book.finish(false)
         compose.onNodeWithText("The recording is too short or too quiet").assertExists()
-        compose.onNodeWithText("We couldn’t produce a voiceprint", substring = true).assertExists()
+        compose.onNodeWithText("A voiceprint couldn’t be made", substring = true).assertExists()
         compose.onNodeWithText("Try again").performClick()
         compose.onNodeWithText("The recording is too short or too quiet").assertDoesNotExist()
         assertFalse(closed.isCompleted)
@@ -894,7 +894,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Black on white").performScrollTo().performClick()
         assertEquals(DisplayPreferences.Theme.Light, app.settings.current.value.display.theme)
         val layouts = mutableListOf<TextLayoutResult>()
-        compose.onNodeWithText("Hello grandma", substring = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        compose.onNodeWithText("Hello, Grandma", substring = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
         assertEquals(Color.Black, layouts.single().layoutInput.style.color)
         compose.onNodeWithText("Yellow on black").performScrollTo().performClick()
         assertEquals(DisplayPreferences.Theme.HighContrast, app.settings.current.value.display.theme)
@@ -2095,13 +2095,13 @@ class SettingsScreenDeviceTest {
             app.settings.change { it.saveHistory = false }
             compose.onNodeWithText("Settings").performClick()
             compose.onNodeWithText("Clear captions from the screen").performScrollTo().performClick()
-            compose.onNodeWithText("History is off, so they won't be saved.").assertExists()
+            compose.onNodeWithText("History is off, so they won’t be saved.").assertExists()
             compose.onNodeWithText("Cancel").performClick()
 
             app.settings.change { it.saveHistory = true }
             compose.onNodeWithText("Clear captions from the screen").performScrollTo().performClick()
             compose.onNodeWithText("Delete all captions from the screen?").assertExists()
-            compose.onNodeWithText("won't be saved", substring = true).assertDoesNotExist()
+            compose.onNodeWithText("won’t be saved", substring = true).assertDoesNotExist()
             compose.onNodeWithText("Cancel").performClick()
         } finally {
             app.settings.change { it.saveHistory = savingBefore }
@@ -2109,7 +2109,7 @@ class SettingsScreenDeviceTest {
 
         compose.runOnUiThread { compose.activity.setContent { Column { ClearCaptionsRow(saving = true, saveFailing = { true }, onClear = {}) } } }
         compose.onNodeWithText("Clear captions from the screen").performClick()
-        compose.onNodeWithText("Saving to History isn't working right now, so they won't be saved.").assertExists()
+        compose.onNodeWithText("Saving to History isn’t working right now, so they won’t be saved.").assertExists()
     }
 
     @Test

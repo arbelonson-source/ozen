@@ -987,7 +987,7 @@ private fun SummaryRow(label: String, value: String) {
 private fun NumbersSection(numbers: NumbersMentioned, isUncertain: (SavedSegment) -> Boolean, onJump: (SavedSegment) -> Unit) {
     val jump = tr("מעבר לשורה בשיחה", "Jump to this line in the conversation")
     val copy = tr("העתקה", "Copy")
-    val unsureLabel = tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ").trim()
+    val unsureLabel = tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ").trim()
     val context = LocalContext.current
     GroupCard(tr("מספרים שנאמרו", "Numbers mentioned")) {
         // As on the iPhone: each copies from a hold or the screen reader, and
@@ -1026,7 +1026,7 @@ private fun NumbersSection(numbers: NumbersMentioned, isUncertain: (SavedSegment
         }
         numbers.moreText?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Text(
-            tr("שעות, כמויות ומספרי טלפון מהשיחה. הקשה על שורה מובילה אליה.", "Times, amounts, and phone numbers from the conversation. Tap a line to jump to it."),
+            tr("שעות, כמויות ומספרי טלפון מהשיחה. הקישו על שורה כדי לעבור אליה.", "Times, amounts, and phone numbers from the conversation. Tap a line to jump to it."),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

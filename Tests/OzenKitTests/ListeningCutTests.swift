@@ -75,7 +75,7 @@ struct ListeningCutTests {
         #expect(text.contains("1:10"), Comment(rawValue: text))
         #expect(text.contains("3 hours 10 minutes"), Comment(rawValue: text))
         #expect(text.hasPrefix("Listening stopped at about "))
-        #expect(text.hasSuffix("Alerts couldn't come during that time."))
+        #expect(text.hasSuffix("No alerts could come through during that time."))
     }
 
     @Test("a gap of two minutes or less is a quick restart and says nothing")

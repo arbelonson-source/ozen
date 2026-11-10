@@ -60,7 +60,7 @@ class MicPickerDeviceTest {
         compose.onNodeWithContentDescription("Choose microphone").performClick()
         compose.onNodeWithText("Available microphones").assertExists()
         compose.runOnUiThread { CaptionState.phoneSoundStopped(true) }
-        compose.onNodeWithText("Stopped listening to the phone's sound. Back to the microphone.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Stopped listening to the phone’s sound. Back to the microphone.").performScrollTo().assertIsDisplayed()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
     }
 
@@ -82,7 +82,7 @@ class MicPickerDeviceTest {
     fun thePhonesTwoMicrophonesShowAsOneRowNamedForThePhone() {
         show(listOf(bottom, back), back, listening = true)
         compose.onAllNodes(isSelectable()).assertCountEquals(1)
-        compose.onNode(isSelectable()).assert(hasText("This phone's microphone")).assertIsSelected()
+        compose.onNode(isSelectable()).assert(hasText("This phone’s microphone")).assertIsSelected()
         compose.onAllNodes(hasText("SM-X")).assertCountEquals(0)
     }
 }

@@ -140,8 +140,8 @@ class ModelDownloadService : Service() {
                         builder.setContentText(tr("מורידים… %1%", "Downloading… %1%", listOf("$percent"))).setProgress(100, percent, false)
                     }
                 }
-                is PhoneModelSwitch.Retrying -> builder.setContentText(tr("ההורדה נעצרה. ננסה שוב אוטומטית.", "The download stopped. Trying again on its own."))
-                is PhoneModelSwitch.WaitingForWiFi -> builder.setContentText(tr("ממתינים ל־Wi‑Fi כדי להוריד. אפשר לאשר בהגדרות הורדה בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on cellular data can be allowed in Settings."))
+                is PhoneModelSwitch.Retrying -> builder.setContentText(tr("ההורדה נעצרה. מנסים שוב אוטומטית.", "The download stopped. Trying again on its own."))
+                is PhoneModelSwitch.WaitingForWiFi -> builder.setContentText(tr("ממתינים ל־Wi‑Fi כדי להוריד. בהגדרות אפשר לאשר הורדה גם בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings."))
                 is PhoneModelSwitch.Offline -> builder.setContentText(tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד.", "There is no internet connection to download it."))
                 else -> Unit
             }

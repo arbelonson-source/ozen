@@ -157,13 +157,13 @@ object HistoryTexts {
 
     /** Said before clearing the captions when the lines would be lost: with History off, or saving to it failing. */
     fun clearWarning(saving: Boolean, failing: Boolean): String? = when {
-        !saving -> tr("היסטוריית השיחות כבויה, ולכן הן לא יישמרו.", "History is off, so they won't be saved.")
-        failing -> tr("השמירה בהיסטוריה לא עובדת כרגע, ולכן הן לא יישמרו.", "Saving to History isn't working right now, so they won't be saved.")
+        !saving -> tr("שמירת שיחות כבויה, ולכן הן לא יישמרו.", "History is off, so they won’t be saved.")
+        failing -> tr("השמירה בהיסטוריה לא עובדת כרגע, ולכן הן לא יישמרו.", "Saving to History isn’t working right now, so they won’t be saved.")
         else -> null
     }
 
     fun emptyMessage(query: String, saving: Boolean, speakerFilter: String? = null): String = when {
-        query.isNotBlank() -> tr("לא נמצא כלום עבור \"%1\".", "Nothing found for “%1”.", listOf(query.trim()))
+        query.isNotBlank() -> tr("לא נמצא כלום עבור ״%1״.", "Nothing found for “%1”.", listOf(query.trim()))
         speakerFilter != null -> tr("אין שיחות עם %1.", "No conversations with %1.", listOf(speakerFilter))
         saving -> tr("עדיין אין שיחות שמורות.", "No saved conversations yet.")
         else -> tr("שמירת שיחות כבויה.", "Saving conversations is off.")

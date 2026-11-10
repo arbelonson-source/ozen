@@ -93,7 +93,7 @@ struct TranscribeRecordingView: View {
             }
             if ready.captionsRunning {
                 Section {
-                    Text(tr("אותו מודל לא יכול לעבוד בבת אחת על כתוביות חיות ועל הקלטה. לעצור את הכתוביות?", "One model can’t run live captions and a recording at the same time. Stop the captions?"))
+                    Text(tr("מודל אחד לא יכול לעבוד במקביל על כתוביות בזמן אמת ועל הקלטה. לעצור את הכתוביות?", "One model can’t run live captions and a recording at the same time. Stop the captions?"))
                     Button(tr("עצירת הכתוביות", "Stop captions")) {
                         Task { await model.stopCaptions() }
                     }
@@ -128,7 +128,7 @@ struct TranscribeRecordingView: View {
             Text(tr("מודל: %1", "Model: %1", args: ["\(chosen.displayName)"]))
         } else {
             Text(tr(
-                "אין בטלפון מודל לשפה %1. לפני ההמרה לטקסט, אוזן תוריד את \"%2\" (%3 MB).",
+                "אין בטלפון מודל לשפה %1. לפני ההמרה לטקסט, אוזן תוריד את ״%2״ (%3 MB).",
                 "There is no model for %1 on this phone. Ozen will download “%2” (%3 MB) before turning the recording into text.",
                 args: ["\(ready.language.spokenName)", "\(ready.toDownload.displayName)", "\(ready.toDownload.sizeMB)"]
             ))

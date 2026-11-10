@@ -13,8 +13,8 @@ struct WhisperModelNamesTests {
         ("large-v3-v20240930_626MB", "טורבו (דחוס)", "Turbo (compressed)"),
         ("large-v3-v20240930", "טורבו", "Turbo"),
         ("medium", "בינוני", "Medium"),
-        ("large-v3_947MB", "גדול 3 (דחוס)", "Large v3 (compressed)"),
-        ("large-v3", "גדול 3", "Large v3"),
+        ("large-v3_947MB", "גדול v3 (דחוס)", "Large v3 (compressed)"),
+        ("large-v3", "גדול v3", "Large v3"),
     ]
 
     @Test("every catalog model has a name in each of Hebrew and English")

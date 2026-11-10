@@ -63,7 +63,7 @@ internal fun StarredLinesRow(count: Int, onOpen: () -> Unit) {
     SettingsGroup {
         item {
             SettingRow(
-                tr("השורות המסומנות", "Starred lines"),
+                tr("שורות מסומנות", "Starred lines"),
                 icon = Icons.Rounded.Star,
                 onClick = onOpen,
                 trailing = { TrailingValue("$count") },

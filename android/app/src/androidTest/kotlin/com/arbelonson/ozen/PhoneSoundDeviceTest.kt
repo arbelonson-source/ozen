@@ -99,7 +99,7 @@ class PhoneSoundDeviceTest {
         assertEquals(savedBefore, app.settings.current.value.preferredInputUID)
         compose.onNodeWithText("Close").performClick()
         compose.waitUntil(5_000) {
-            compose.onAllNodesWithText("Stopped listening to the phone's sound. Back to the microphone.").fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithText("Stopped listening to the phone’s sound. Back to the microphone.").fetchSemanticsNodes().isNotEmpty()
         }
     }
 }

@@ -104,20 +104,20 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
         switch cause {
         case .callEnded:
             return tr(
-                "אחרי השיחה הכתוביות לא חזרו לבד. פתחו את אוזן כדי להמשיך.",
-                "After the call, captions didn't come back on their own. Open Ozen to continue."
+                "אחרי שיחת הטלפון הכתוביות לא חזרו לבד. פתחו את אוזן כדי להמשיך.",
+                "After the call, captions didn’t come back on their own. Open Ozen to continue."
             )
         case .failed(let failure):
             switch (failure.kind, failure.engineUnavailability?.kind) {
             case (.microphonePermissionDenied, _), (_, .permissionDenied?):
                 return tr(
                     "לאוזן אין הרשאה להשתמש במיקרופון. פתחו את האפליקציה כדי לתקן את זה.",
-                    "Ozen doesn't have permission to listen. Open the app to fix it."
+                    "Ozen doesn’t have permission to listen. Open the app to fix it."
                 )
             case (_, .notEnoughStorage?):
                 return tr(
                     "אין מספיק מקום בטלפון. פתחו את אוזן כדי לראות פרטים.",
-                    "There isn't enough space on the phone. Open Ozen for details."
+                    "There isn’t enough space on the phone. Open Ozen for details."
                 )
             case (.noAudioInputs, _):
                 return tr(
@@ -127,22 +127,22 @@ public struct StoppedCaptionsNotice: Sendable, Equatable {
             case (_, .cloudKeyNeeded?):
                 return tr(
                     "יש בעיה במפתח של התמלול בענן. פתחו את אוזן כדי לראות פרטים.",
-                    "There's a problem with the cloud transcription key. Open Ozen for details."
+                    "There’s a problem with the cloud transcription key. Open Ozen for details."
                 )
             case (_, .cloudLanguageNotCovered?):
                 return tr(
                     "השירות הזה לא מתמלל את השפה הזו. פתחו את אוזן ובחרו שירות אחר.",
-                    "This service can't caption this language. Open Ozen and choose another service."
+                    "This service can’t caption this language. Open Ozen and choose another service."
                 )
             case (_, .cloudOutOfCredit?):
                 return tr(
-                    "נגמר התקציב לתמלול בענן. פתחו את אוזן כדי לראות פרטים.",
+                    "נגמר הקרדיט לתמלול בענן. פתחו את אוזן כדי לראות פרטים.",
                     "Cloud transcription’s budget ran out. Open Ozen for details."
                 )
             case (_, .noInternet?):
                 return tr(
                     "אין חיבור לאינטרנט, והתמלול בענן לא יכול לעבוד בלעדיו. פתחו את אוזן ונסו שוב, או בקשו ממי שהגדיר את הטלפון לעבור לזיהוי הדיבור שבטלפון.",
-                    "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition."
+                    "There’s no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone’s own speech recognition."
                 )
             case (_, .homeServerUnreachable?) where HomeServer.refusedPlainAddress(failure.engineUnavailability):
                 return tr(

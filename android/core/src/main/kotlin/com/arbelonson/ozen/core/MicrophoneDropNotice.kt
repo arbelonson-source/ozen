@@ -43,12 +43,12 @@ class MicrophoneDropNotice {
             if (!listening) {
                 return tr(
                     "כשהכתוביות יחזרו, הקול ייקלט דרך המיקרופון של הטלפון עצמו, וייתכן שהכתוביות יהיו פחות מדויקות. כדי לחזור למיקרופון הקודם, חברו אותו שוב.",
-                    "When captions start again they will use the phone's own microphone and may be less accurate. Reconnect it to go back to it.",
+                    "When captions start again they will use the phone’s own microphone and may be less accurate. Reconnect the microphone to switch back.",
                 )
             }
             return tr(
                 "הכתוביות ממשיכות עם המיקרופון של הטלפון עצמו, וייתכן שיהיו פחות מדויקות. כדי לחזור למיקרופון הקודם, חברו אותו שוב.",
-                "Captions carry on through the phone's own microphone and may be less accurate. Reconnect it to go back to it.",
+                "Captions carry on through the phone’s own microphone and may be less accurate. Reconnect the microphone to switch back.",
             )
         }
     }

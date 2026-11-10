@@ -12,7 +12,7 @@ public struct RoutedElsewhere: Sendable, Equatable {
     }
 
     public var title: String {
-        tr("המיקרופון ⁨%1⁩ לא מקליט", "%1 isn't recording", args: ["\(picked.portName)"])
+        tr("המיקרופון ⁨%1⁩ לא מקליט", "%1 isn’t recording", args: ["\(picked.portName)"])
     }
 
     public var detail: String {

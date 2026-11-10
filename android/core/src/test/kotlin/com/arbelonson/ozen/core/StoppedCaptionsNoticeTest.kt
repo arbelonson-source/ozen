@@ -44,7 +44,7 @@ class StoppedCaptionsNoticeTest {
         assertEquals(StoppedCaptionsNotice.Cause.SoundAlertsStopped, StoppedCaptionsNotice.cause(PipelinePhase.Idle, false, false, false, soundsOnlyStopped = true))
         val content = StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.SoundAlertsStopped)
         assertEquals("Sound alerts stopped", content.title)
-        assertEquals("The microphone stopped and didn't come back. Open Ozen to turn sound alerts on again.", content.body)
+        assertEquals("The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.", content.body)
         assertEquals("Captions stopped", StoppedCaptionsNotice.content(StoppedCaptionsNotice.Cause.EndedByPhone).title)
     }
 
@@ -165,7 +165,7 @@ class StoppedCaptionsNoticeTest {
         val offline = StoppedCaptionsNotice.content(failed(engineFailure(EngineUnavailability.Kind.NoInternet))).body
         val computer = StoppedCaptionsNotice.content(failed(engineFailure(EngineUnavailability.Kind.HomeServerUnreachable))).body
 
-        assertTrue(callEnded.contains("אחרי השיחה"))
+        assertTrue(callEnded.contains("אחרי שיחת הטלפון"))
         assertEquals(speechPermission, permission)
         assertTrue(permission.contains("הרשאה"))
         assertTrue(storage.contains("מקום"))
@@ -173,7 +173,7 @@ class StoppedCaptionsNoticeTest {
         // Running out of credit is not a key to check: whoever helps her
         // tops up the account instead.
         assertTrue(cloudKey != cloudCredit)
-        assertTrue(cloudCredit.contains("התקציב") && !cloudCredit.contains("מפתח"))
+        assertTrue(cloudCredit.contains("הקרדיט") && !cloudCredit.contains("מפתח"))
         assertTrue(offline.contains("אינטרנט"))
         assertTrue(offline.contains("זיהוי הדיבור שבטלפון") && !offline.contains("Whisper"))
         // Opening the app doesn't wake the computer; captions come back by

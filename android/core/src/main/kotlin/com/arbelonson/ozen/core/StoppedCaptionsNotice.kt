@@ -134,11 +134,11 @@ class StoppedCaptionsNotice {
             Cause.EndedByPhone -> tr("פתחו את אוזן כדי להמשיך.", "Open Ozen to continue.")
             Cause.SoundAlertsStopped -> tr(
                 "המיקרופון הפסיק לפעול ולא חזר. פתחו את אוזן כדי להפעיל שוב את ההתראות על צלילים.",
-                "The microphone stopped and didn't come back. Open Ozen to turn sound alerts on again.",
+                "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.",
             )
             Cause.CallEnded -> tr(
-                "אחרי השיחה הכתוביות לא חזרו לבד. פתחו את אוזן כדי להמשיך.",
-                "After the call, captions didn't come back on their own. Open Ozen to continue.",
+                "אחרי שיחת הטלפון הכתוביות לא חזרו לבד. פתחו את אוזן כדי להמשיך.",
+                "After the call, captions didn’t come back on their own. Open Ozen to continue.",
             )
             is Cause.Failed -> {
                 val failure = cause.failure
@@ -147,11 +147,11 @@ class StoppedCaptionsNotice {
                     failure.kind == PipelineFailure.Kind.MicrophonePermissionDenied ||
                         why == EngineUnavailability.Kind.PermissionDenied -> tr(
                         "לאוזן אין הרשאה להשתמש במיקרופון. פתחו את האפליקציה כדי לתקן את זה.",
-                        "Ozen doesn't have permission to listen. Open the app to fix it.",
+                        "Ozen doesn’t have permission to listen. Open the app to fix it.",
                     )
                     why == EngineUnavailability.Kind.NotEnoughStorage -> tr(
                         "אין מספיק מקום בטלפון. פתחו את אוזן כדי לראות פרטים.",
-                        "There isn't enough space on the phone. Open Ozen for details.",
+                        "There isn’t enough space on the phone. Open Ozen for details.",
                     )
                     failure.kind == PipelineFailure.Kind.NoAudioInputs -> tr(
                         "לא נמצא מיקרופון. פתחו את אוזן כדי להמשיך.",
@@ -159,19 +159,19 @@ class StoppedCaptionsNotice {
                     )
                     why == EngineUnavailability.Kind.CloudKeyNeeded -> tr(
                         "יש בעיה במפתח של התמלול בענן. פתחו את אוזן כדי לראות פרטים.",
-                        "There's a problem with the cloud transcription key. Open Ozen for details.",
+                        "There’s a problem with the cloud transcription key. Open Ozen for details.",
                     )
                     why == EngineUnavailability.Kind.CloudLanguageNotCovered -> tr(
                         "השירות הזה לא מתמלל את השפה הזו. פתחו את אוזן ובחרו שירות אחר.",
-                        "This service can't caption this language. Open Ozen and choose another service.",
+                        "This service can’t caption this language. Open Ozen and choose another service.",
                     )
                     why == EngineUnavailability.Kind.CloudOutOfCredit -> tr(
-                        "נגמר התקציב לתמלול בענן. פתחו את אוזן כדי לראות פרטים.",
+                        "נגמר הקרדיט לתמלול בענן. פתחו את אוזן כדי לראות פרטים.",
                         "Cloud transcription’s budget ran out. Open Ozen for details.",
                     )
                     why == EngineUnavailability.Kind.NoInternet -> tr(
                         "אין חיבור לאינטרנט, והתמלול בענן לא יכול לעבוד בלעדיו. פתחו את אוזן ונסו שוב, או בקשו ממי שהגדיר את הטלפון לעבור לזיהוי הדיבור שבטלפון.",
-                        "There's no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone's own speech recognition.",
+                        "There’s no internet, and cloud transcription needs it. Open Ozen and try again, or ask whoever set up the phone to switch to the phone’s own speech recognition.",
                     )
                     HomeServer.refusedPlainAddress(failure.engineUnavailability) -> tr(
                         "מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://",

@@ -143,7 +143,7 @@ private fun DonationRow(donation: DonationAddress) {
         }
     }
     if (donation == SupportOzen.ethereum) {
-        GroupFootnote(tr("רשת את׳ריום בלבד. אפשר לשלוח גם USDC ו־USDT ברשת את׳ריום.", "Ethereum network only. USDC and USDT on Ethereum are welcome too."))
+        GroupFootnote(tr("רשת אתריום בלבד. אפשר לשלוח גם USDC ו־USDT ברשת אתריום.", "Ethereum network only. USDC and USDT on Ethereum are welcome too."))
     }
 }
 

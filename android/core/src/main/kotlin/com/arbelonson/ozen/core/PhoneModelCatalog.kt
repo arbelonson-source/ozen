@@ -56,7 +56,7 @@ object PhoneModelCatalog {
             file = OZEN_HEBREW_FILE,
             variant = "ozen-turbo-hebrew-a3-8bit",
             nameText = { tr("טורבו עברית של אוזן", "Ozen Turbo Hebrew") },
-            noteText = { tr("אומן גם על דיבור מרחוק, ברעש וליד טלוויזיה. המדויק ביותר בעברית.", "Trained further on speech from across a room, in noise and over a TV. The most accurate in Hebrew.") },
+            noteText = { tr("אומן גם על דיבור מרחוק, ברעש וכשטלוויזיה פועלת ברקע. המדויק ביותר בעברית.", "Trained further on speech from across a room, in noise and over a TV. The most accurate in Hebrew.") },
             source = PhoneModelSource(URI("$OZEN_MODELS/model-ozen-turbo-hebrew-a3-ggml-q5_0-1/$OZEN_HEBREW_FILE"), 574_041_195, "c74b66691f8f97b4a38d43b5d8ee4ec1b32b3951a99520250f36883822c910af"),
             isHebrewOnly = true, hebrewQuality = 5, otherQuality = 0, passGflop = 470.0,
         ),

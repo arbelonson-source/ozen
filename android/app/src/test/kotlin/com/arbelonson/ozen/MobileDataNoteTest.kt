@@ -60,7 +60,7 @@ class MobileDataNoteTest {
         CaptionState.clear()
         val network = FakeNetwork(NetworkConditions.cellular)
         val shown = detail(TranscriptionEngineKind.WhisperKit, network, covering = true, covered = TranscriptionEngineKind.HomeServer)
-        assertEquals("Can’t reach the home computer, carrying on with the phone’s own · Tap to pause", shown)
+        assertEquals("Can’t reach the home computer, so the phone carries on by itself · Tap to pause", shown)
         CaptionState.clear()
     }
 

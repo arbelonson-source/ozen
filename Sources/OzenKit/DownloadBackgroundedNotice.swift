@@ -57,9 +57,9 @@ public struct DownloadBackgroundedNotice: Sendable, Equatable {
     static var content: AlertNotificationContent {
         AlertNotificationContent(
             identifier: identifier,
-            title: tr("ההורדה נעצרה", "The download paused"),
+            title: tr("ההורדה הושהתה", "The download paused"),
             body: tr(
-                "ההורדה החד־פעמית של קובץ השפה ממשיכה רק כשאוזן פתוחה על המסך. פתחו אותה שוב כדי להמשיך בהורדה.",
+                "ההורדה החד־פעמית של מודל הדיבור ממשיכה רק כשאוזן פתוחה על המסך. פתחו אותה שוב כדי להמשיך בהורדה.",
                 "For the one-time language file download to continue, Ozen needs to stay open on screen. Open it again to continue."
             ),
             threadIdentifier: "status",

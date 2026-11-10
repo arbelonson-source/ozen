@@ -5,7 +5,7 @@ import com.arbelonson.ozen.core.tr
 object CaptionLineSpeech {
     fun label(text: String, speaker: String?, starred: Boolean, unsure: Boolean): String {
         var line = if (speaker != null) "$speaker: $text" else text
-        if (unsure) line = tr("ייתכן שלא נשמע נכון. ", "May not have been heard correctly. ") + line
+        if (unsure) line = tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ") + line
         return if (starred) tr("מסומנת כחשובה. %1", "Marked as important. %1", listOf(line)) else line
     }
 

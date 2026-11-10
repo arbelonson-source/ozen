@@ -1738,7 +1738,7 @@ public final class CaptionPipeline {
                 id: UUID(),
                 text: tr(
                     "די טוב, תודה. יש לי תור לרופא ב־10:30, ואני צריכה לקחת שני כדורים לפני כן.",
-                    "Pretty good, thanks. I have a doctor's appointment at 10:30 and I need to take two pills before."
+                    "Pretty good, thanks. I have a doctor’s appointment at 10:30 and I need to take two pills before."
                 ),
                 isCommitted: true, speakerClusterID: strangerID,
                 startTimestamp: now + 4, lastUpdateTimestamp: now + 4, confidence: 0.3
@@ -1749,7 +1749,7 @@ public final class CaptionPipeline {
                 startTimestamp: now + 9, lastUpdateTimestamp: now + 9, confidence: 0.9
             ),
             TranscriptSegment(
-                id: UUID(), text: tr("עוד לא ברור לי אם", "I'm still not sure if"),
+                id: UUID(), text: tr("עוד לא ברור לי אם", "I’m still not sure if"),
                 isCommitted: false, speakerClusterID: strangerID,
                 startTimestamp: now + 13, lastUpdateTimestamp: now + 13, confidence: nil
             ),

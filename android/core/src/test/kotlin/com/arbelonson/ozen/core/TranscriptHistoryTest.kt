@@ -701,7 +701,7 @@ class TranscriptHistoryTest {
         val unsure = segment(text = "שני כדורים בעשר וחצי", speakerName = "רופא", startTimestamp = 3_661.0).copy(confidence = 0.7f)
         val session = record(startedAt = 3_661.0, segments = listOf(unsure))
         assertEquals(
-            "כל השיחות מתוך אוזן\n\nשיחה מתאריך 01.01.1970\n\n[01:01:01] ייתכן שלא נשמע נכון. רופא: שני כדורים בעשר וחצי",
+            "כל השיחות מתוך אוזן\n\nשיחה מתאריך 01.01.1970\n\n[01:01:01] ייתכן שלא נשמעה נכון. רופא: שני כדורים בעשר וחצי",
             TranscriptHistoryStore.exportAllText(listOf(session), utcOffsetAt = { 0 }, marksUncertain = true),
         )
         assertEquals(
@@ -728,7 +728,7 @@ class TranscriptHistoryTest {
         val session = record(startedAt = 3_661.0, segments = listOf(unsure, sure))
         val offset: (Double) -> Int = { 0 }
         assertEquals(
-            "שיחה מתאריך 01.01.1970\n\n[01:01:01] ייתכן שלא נשמע נכון. רופא: שני כדורים בעשר וחצי\n[01:01:05] ולחזור בעוד חודש",
+            "שיחה מתאריך 01.01.1970\n\n[01:01:01] ייתכן שלא נשמעה נכון. רופא: שני כדורים בעשר וחצי\n[01:01:05] ולחזור בעוד חודש",
             TranscriptHistoryStore.exportText(session, utcOffsetAt = offset, marksUncertain = true),
         )
         assertEquals(
@@ -1384,7 +1384,7 @@ class TranscriptHistoryAllStarredTest {
             )
 
             assertEquals(listOf(true, false), store.starredLines().map { it.isUncertain })
-            assertTrue(TranscriptHistoryStore.exportText(a3Record, utcOffsetAt = { 0 }, marksUncertain = true).contains("ייתכן שלא נשמע נכון."))
+            assertTrue(TranscriptHistoryStore.exportText(a3Record, utcOffsetAt = { 0 }, marksUncertain = true).contains("ייתכן שלא נשמעה נכון."))
         }
     }
 
@@ -1408,7 +1408,7 @@ class TranscriptHistoryAllStarredTest {
             assertEquals(listOf(before.scoredBy, null), loaded.segments.map { it.scoredBy })
             assertEquals(listOf(false, true), store.starredLines().map { it.isUncertain })
             val exported = TranscriptHistoryStore.exportText(loaded, utcOffsetAt = { 0 }, marksUncertain = true)
-            assertEquals(2, exported.split("ייתכן שלא נשמע נכון.").size)
+            assertEquals(2, exported.split("ייתכן שלא נשמעה נכון.").size)
         }
     }
 
@@ -1455,7 +1455,7 @@ class TranscriptHistoryStarredExportTest {
         val lines = listOf(StarredLine(UUID.randomUUID(), september, doubtful, engine = TranscriptionEngineKind.WhisperKit))
         val offset: (Double) -> Int = { 0 }
         assertEquals(
-            "14.09.2026\n[09:05:00] ייתכן שלא נשמע נכון. ד״ר כהן: שני כדורים בעשר וחצי",
+            "14.09.2026\n[09:05:00] ייתכן שלא נשמעה נכון. ד״ר כהן: שני כדורים בעשר וחצי",
             TranscriptHistoryStore.exportStarredText(lines, utcOffsetAt = offset, marksUncertain = true),
         )
         assertEquals(
@@ -1713,6 +1713,6 @@ class TranscriptSourceLineTest {
         assertEquals("Cloud transcription · Google Gemini · Transcribe", record(cloud, GeminiSpeech.MODEL, null).sourceLine(english))
         assertEquals("Cloud transcription · Speechmatics · Enhanced", record(cloud, SpeechmaticsSpeech.model, null).sourceLine(english))
         assertEquals("Cloud transcription · AssemblyAI · Universal-3.6 Pro", record(cloud, AssemblyAISpeech.model, null).sourceLine(english))
-        assertEquals("Apple's speech recognition", record(TranscriptionEngineKind.AppleSpeech, null, null).sourceLine(english))
+        assertEquals("Apple’s speech recognition", record(TranscriptionEngineKind.AppleSpeech, null, null).sourceLine(english))
     }
 }

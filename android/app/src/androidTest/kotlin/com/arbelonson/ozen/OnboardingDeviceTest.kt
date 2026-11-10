@@ -495,6 +495,6 @@ class OnboardingDeviceTest {
     }
 
     private companion object {
-        fun downloadNote(model: String, bytes: Long = 574_041_195) = "The first time it runs, Ozen will download the language model: $model, ${ByteSize.text(bytes)}. This takes a few minutes and shows on the screen. After that — instantly."
+        fun downloadNote(model: String, bytes: Long = 574_041_195) = "The first time it runs, Ozen will download the language model: $model, ${ByteSize.text(bytes)}. This takes a few minutes and shows on the screen. After that, it starts instantly."
     }
 }
