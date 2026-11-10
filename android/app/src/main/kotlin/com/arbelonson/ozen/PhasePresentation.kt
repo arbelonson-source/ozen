@@ -139,6 +139,26 @@ class PhasePresentation private constructor(
     val detailFitsInStatus: Boolean
         get() = (detail?.let(::characterCount) ?: 0) <= STATUS_DETAIL_CAPACITY
 
+    /**
+     * The detail beside the status button, as on the iPhone: the "Tap to
+     * pause" the button's own words now say is left out, alone or after a
+     * " · ", so the state line reads "Listening · Can't reach the home
+     * computer, so the phone carries on by itself" under "Pause captions".
+     */
+    val stateDetail: String?
+        get() {
+            val detail = detail ?: return null
+            if (action == Action.None) return detail
+            val hints = listOf(
+                tr("הקישו כדי להשהות", "Tap to pause"),
+                tr("הקישו כדי להמשיך", "Tap to continue"),
+                tr("הקישו כדי להתחיל", "Tap to start"),
+                tr("הקישו כדי להחזיר כתוביות", "Tap to bring captions back"),
+            )
+            if (detail in hints) return null
+            return hints.firstOrNull { detail.endsWith(" · $it") }?.let { detail.dropLast(it.length + 3) } ?: detail
+        }
+
     companion object {
         /**
          * About what two lines of the status button hold on an ordinary

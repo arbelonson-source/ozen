@@ -2245,8 +2245,7 @@ private fun StatusLine(status: PhasePresentation, look: CaptionTheme, live: Bool
     // a green "Listening" with "Tap to pause" in small print didn't look
     // like a button, and the hint went away with large text.
     val button = statusAction(status.action)
-    val tapHints = setOf(tr("הקישו כדי להשהות", "Tap to pause"), tr("הקישו כדי להמשיך", "Tap to continue"), tr("הקישו כדי להתחיל", "Tap to start"))
-    val detail = status.detail?.takeUnless { button != null && it in tapHints }
+    val detail = status.stateDetail
     val state = @Composable { modifier: Modifier ->
         Column(
             // A download's bar is read with the state, in one stop: the bar
