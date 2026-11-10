@@ -669,6 +669,39 @@ class OtherLettersTest {
     }
 
     @Test
+    fun `a Russian or Ukrainian name alerts in its case forms, above all the Ukrainian form she is called by`() {
+        assertEquals(1, hits("Оксана", "Оксано, йди сюди"))
+        assertEquals(1, hits("Іван", "Іване, де ти?"))
+        assertEquals(1, hits("Марія", "Маріє!"))
+        assertEquals(1, hits("Андрій", "Андрію, допоможи"))
+        assertEquals(1, hits("Петро", "Петре, ходи"))
+        assertEquals(1, hits("Маша", "скажи Маше"))
+        assertEquals(1, hits("Иван", "у Ивана"))
+        assertEquals(1, hits("Игорь", "с Игорем"))
+        assertEquals(1, hits("Дарья", "у Дарьи"))
+        assertEquals(1, hits("Наталія", "з Наталією"))
+    }
+
+    @Test
+    fun `a case form that spells a common word, a short name or a longer word does not alert`() {
+        assertEquals(0, hits("Алла", "алло, слушаю"))
+        assertEquals(0, hits("Коля", "коли прийдеш"))
+        assertEquals(0, hits("Тома", "год тому назад"))
+        assertEquals(0, hits("Мила", "это мило"))
+        assertEquals(0, hits("Лев", "на левом берегу"))
+        assertEquals(0, hits("Маша", "новая машина"))
+        assertEquals(0, hits("Ян", "пришла Яна"))
+        assertEquals(0, hits("Dan", "dance"))
+    }
+
+    @Test
+    fun `an Amharic word alerts with to, in, from or of glued on, as the Important words help promises`() {
+        assertEquals(1, hits("አያት", "ለአያት ንገሩ"))
+        assertEquals(1, hits("ሐኪም", "ከሐኪም ጋር"))
+        assertEquals(0, hits("ሰው", "የሰው"))
+    }
+
+    @Test
     fun `hamza on waw and ya is folded like the one on alef, and a longer word stays apart`() {
         assertEquals(1, hits("مومن", "قال مؤمن"))
         assertEquals(1, hits("رايد", "قال رائد"))

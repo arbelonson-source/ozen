@@ -307,7 +307,18 @@ public enum HebrewText {
         for prefix in attachedPrefixes where word == prefix + stem {
             return true
         }
-        return hasArabicPrefix(word, leaving: stem)
+        return hasArabicPrefix(word, leaving: stem) || hasAmharicPrefix(word, leaving: stem)
+    }
+
+    /// Amharic glues "to", "in", "from" and "of" onto the next word the same
+    /// way: "ለአያት" ("to grandma"), "ከሐኪም" ("from the doctor"). The
+    /// Important words help promises these count. Only onto a stem of three
+    /// Ethiopic letters or more, for the same reason as Arabic.
+    public static let amharicAttachedPrefixes: Set<String> = ["ለ", "በ", "ከ", "የ"]
+
+    static func hasAmharicPrefix(_ word: String, leaving stem: String) -> Bool {
+        guard stem.count >= 3, stem.unicodeScalars.allSatisfy({ (0x1200...0x137F).contains($0.value) || (0x2D80...0x2DDF).contains($0.value) || (0xAB00...0xAB2F).contains($0.value) }) else { return false }
+        return amharicAttachedPrefixes.contains { word == $0 + stem }
     }
 
     /// Short names that, with a prefix glued on, spell an everyday word far
@@ -360,6 +371,14 @@ public enum HebrewText {
         "حسن": ["بحسن"],
         "الياس": ["للياس"],
         "الهام": ["للهام"],
+        // Russian and Ukrainian names whose case forms spell a common word:
+        // "hello" on the phone (Alla), "when" (Kolya), "ago" and "that's
+        // why" (Toma), "cute" and "dear" (Mila), "on the left" (Lev).
+        "алла": ["алло"],
+        "коля": ["коли"],
+        "тома": ["тому"],
+        "мила": ["мило", "милой"],
+        "лев": ["левом"],
     ]
 
     /// The Hebrew geresh, and the plain and typographic apostrophes a
@@ -460,6 +479,32 @@ public enum HebrewText {
         var stem = phrase
         if let last = stem.last, vowels.contains(last) { stem.removeLast() }
         return word.hasPrefix(stem) && word.count - stem.count <= 2
+    }
+
+    /// The endings a Russian or Ukrainian name takes in a sentence: "Маше"
+    /// ("to Masha"), "Ивана" ("Ivan's"), and above all the Ukrainian
+    /// vocative, the form she is called by: "Оксано!", "Іване!", "Маріє!".
+    /// A saved name stayed silent on all of them. Grouped by how the name
+    /// ends: its last vowel, soft sign or й gives way to the ending; a name
+    /// ending in a consonant keeps it. A closed list, so "машина" ("car")
+    /// is never "Маша".
+    static let cyrillicNameEndings: [(drops: Set<Character>, endings: Set<String>)] = [
+        (["а", "я"], ["а", "я", "ы", "и", "і", "ї", "е", "є", "у", "ю", "о", "ой", "ей", "ою", "ею", "єю"]),
+        (["ь", "й"], ["я", "ю", "е", "и", "і", "ї", "ем", "єм", "єві"]),
+        (["о"], ["а", "у", "е", "ом", "ові"]),
+    ]
+
+    static let consonantNameEndings: Set<String> = ["а", "у", "е", "і", "ом", "ові", "еві"]
+
+    static func isNameCaseForm(_ word: String, of name: String) -> Bool {
+        guard word != name, name.count >= 3, name.unicodeScalars.allSatisfy({ (0x0400...0x04FF).contains($0.value) }), let last = name.last else { return false }
+        if everydayWordsNotNames[name]?.contains(word) == true { return false }
+        if let group = cyrillicNameEndings.first(where: { $0.drops.contains(last) }) {
+            let stem = String(name.dropLast())
+            return stem.count >= 2 && group.endings.contains { word == stem + $0 }
+        }
+        guard !"еиуыэюіїє".contains(last) else { return false }
+        return consonantNameEndings.contains { word == name + $0 }
     }
 
     static let wordsThatTakeNoName: Set<String> = ["לי", "לו", "לה", "לך"]
@@ -581,6 +626,12 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
                 let variants = HebrewText.spellingVariants[phraseWords[0]] ?? []
                 for index in normalizedWords.indices
                 where variants.contains(normalizedWords[index]) || HebrewText.isInflectedForm(normalizedWords[index], of: phraseWords[0]) {
+                    let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: trimmedWords[index], wordIndex: index)
+                    unordered.append((match, sequence))
+                    sequence += 1
+                }
+            } else if phraseWords.count == 1 {
+                for index in normalizedWords.indices where HebrewText.isNameCaseForm(normalizedWords[index], of: phraseWords[0]) {
                     let match = KeywordMatch(alertID: alert.id, phrase: alert.phrase, matchedText: trimmedWords[index], wordIndex: index)
                     unordered.append((match, sequence))
                     sequence += 1
