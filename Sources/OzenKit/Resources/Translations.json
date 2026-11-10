@@ -1112,7 +1112,8 @@
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "ድምፅ ለመቅዳት የማይክሮፎን መዳረሻ ያስፈልጋል። በስልኩ ቅንብሮች ውስጥ ሊፈቀድ ይችላል።",
   "Pause captions": "ካፕሽን ለአፍታ አቁም",
   "Continue captions": "ካፕሽን ቀጥል",
-  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "ሞዴሉ %1 ገደማ ነው። በሞባይል ዳታ ይህ ገንዘብ ሊያስወጣ ወይም የዳታ ጥቅልዎን ሊጨርስ ይችላል።"
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "ሞዴሉ %1 ገደማ ነው። በሞባይል ዳታ ይህ ገንዘብ ሊያስወጣ ወይም የዳታ ጥቅልዎን ሊጨርስ ይችላል።",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "ጥያቄዎቹ በእንግሊዝኛ ናቸው፤ ቤት ውስጥ ለሁሉም “አዎ” (Yes) ይመልሱ። ለመጨረሻው “አይ” (No) መመለስም ይቻላል፤ በኋላ ማዋቀሩን እንደገና በማስኬድ ማከል ይቻላል።"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2227,7 +2228,8 @@
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "تسجيل صوت يحتاج إلى الوصول إلى الميكروفون. يمكن السماح به في إعدادات الهاتف.",
   "Pause captions": "إيقاف الترجمة النصية مؤقتًا",
   "Continue captions": "متابعة الترجمة النصية",
-  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "حجم النموذج نحو %1. عبر بيانات الجوال قد يكلف هذا مالًا أو يستهلك باقة البيانات."
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "حجم النموذج نحو %1. عبر بيانات الجوال قد يكلف هذا مالًا أو يستهلك باقة البيانات.",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "أسئلته بالإنجليزية: في البيت أجيبوا عنها كلها بـ‏“نعم”‏ (Yes). وعن السؤال الأخير تصلح الإجابة بـ‏“لا”‏ (No) أيضًا: يمكن إضافة ذلك لاحقًا بتشغيل الإعداد مرة أخرى."
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3342,7 +3344,8 @@
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "录制声音需要使用麦克风。可以在手机的设置中允许它。",
   "Pause captions": "暂停字幕",
   "Continue captions": "继续字幕",
-  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "这个模型大约 %1。使用蜂窝网络下载可能会花钱或消耗流量套餐。"
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "这个模型大约 %1。使用蜂窝网络下载可能会花钱或消耗流量套餐。",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "它的问题是英文的：在家时全部选“是”（Yes）。最后一个问题选“否”（No）也可以：以后再运行一次安装程序就能加上。"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4457,7 +4460,8 @@
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "Pour enregistrer une voix, l’accès au microphone est nécessaire. Il peut être autorisé dans les Réglages du téléphone.",
   "Pause captions": "Mettre les sous-titres en pause",
   "Continue captions": "Reprendre les sous-titres",
-  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Le modèle pèse environ %1. En données cellulaires, cela peut coûter de l’argent ou entamer votre forfait."
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Le modèle pèse environ %1. En données cellulaires, cela peut coûter de l’argent ou entamer votre forfait.",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Ses questions sont en anglais : à la maison, répondez « Oui » (Yes) à chacune. À la dernière, « Non » (No) convient aussi : relancer l’installation plus tard permet de l’ajouter."
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5572,7 +5576,8 @@
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "Zum Aufnehmen einer Stimme ist Mikrofonzugriff nötig. Er kann in den Telefoneinstellungen erlaubt werden.",
   "Pause captions": "Untertitel anhalten",
   "Continue captions": "Untertitel fortsetzen",
-  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Das Modell ist etwa %1 groß. Über Mobilfunkdaten kann dies Geld kosten oder Ihren Datentarif aufbrauchen."
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Das Modell ist etwa %1 groß. Über Mobilfunkdaten kann dies Geld kosten oder Ihren Datentarif aufbrauchen.",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Seine Fragen sind auf Englisch: Zu Hause beantworten Sie alle mit „Ja“ (Yes). Bei der letzten geht auch „Nein“ (No): Wer die Einrichtung später noch einmal startet, kann es nachholen."
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6687,7 +6692,8 @@
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "आवाज़ रिकॉर्ड करने के लिए माइक्रोफ़ोन तक पहुंच चाहिए। फ़ोन की सेटिंग्स में इसकी अनुमति दी जा सकती है।",
   "Pause captions": "कैप्शन को विराम दें",
   "Continue captions": "कैप्शन जारी रखें",
-  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "मॉडल का आकार लगभग %1 है। मोबाइल डेटा पर इसमें पैसे लग सकते हैं या आपका डेटा प्लान ख़त्म हो सकता है।"
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "मॉडल का आकार लगभग %1 है। मोबाइल डेटा पर इसमें पैसे लग सकते हैं या आपका डेटा प्लान ख़त्म हो सकता है।",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "इसके सवाल अंग्रेज़ी में हैं: घर पर सभी का जवाब “हां” (Yes) दें। आख़िरी सवाल का जवाब “नहीं” (No) भी ठीक है: बाद में सेटअप दोबारा चलाकर इसे जोड़ा जा सकता है।"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7802,7 +7808,8 @@
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "Para gravar uma voz é preciso acesso ao microfone. Pode ser autorizado nas Definições do telemóvel.",
   "Pause captions": "Pausar legendas",
   "Continue captions": "Continuar legendas",
-  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "O modelo tem cerca de %1. Com dados móveis isto pode custar dinheiro ou gastar o seu plano de dados."
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "O modelo tem cerca de %1. Com dados móveis isto pode custar dinheiro ou gastar o seu plano de dados.",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "As perguntas estão em inglês: em casa, responda “Sim” (Yes) a todas. À última, “Não” (No) também serve: pode acrescentá-lo mais tarde executando a instalação de novo."
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8917,7 +8924,8 @@
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "Чтобы записать голос, нужен доступ к микрофону. Его можно разрешить в настройках телефона.",
   "Pause captions": "Приостановить субтитры",
   "Continue captions": "Продолжить субтитры",
-  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Модель весит около %1. По мобильной сети это может стоить денег или израсходовать ваш пакет данных."
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Модель весит около %1. По мобильной сети это может стоить денег или израсходовать ваш пакет данных.",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Вопросы установщика на английском: дома на все отвечайте «Да» (Yes). На последний можно ответить и «Нет» (No): это можно добавить позже, запустив установку ещё раз."
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -10032,7 +10040,8 @@
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "Para grabar una voz hace falta acceso al micrófono. Se puede permitir en los Ajustes del teléfono.",
   "Pause captions": "Pausar subtítulos",
   "Continue captions": "Continuar subtítulos",
-  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "El modelo pesa unos %1. Con datos móviles esto puede costar dinero o agotar tu plan de datos."
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "El modelo pesa unos %1. Con datos móviles esto puede costar dinero o agotar tu plan de datos.",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Sus preguntas están en inglés: en casa, responde “Sí” (Yes) a todas. A la última también vale “No”: se puede añadir más tarde ejecutando de nuevo la instalación."
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11147,6 +11156,7 @@
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "Щоб записати голос, потрібен доступ до мікрофона. Його можна дозволити в налаштуваннях телефону.",
   "Pause captions": "Призупинити субтитри",
   "Continue captions": "Продовжити субтитри",
-  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Модель важить близько %1. Через мобільні дані це може коштувати грошей або вичерпати ваш пакет даних."
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Модель важить близько %1. Через мобільні дані це може коштувати грошей або вичерпати ваш пакет даних.",
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Запитання програми англійською: удома на всі відповідайте «Так» (Yes). На останнє можна відповісти й «Ні» (No): це можна додати пізніше, запустивши встановлення ще раз."
  }
 }
