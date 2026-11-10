@@ -475,13 +475,6 @@ struct LiveCaptionView: View {
             typeSize: dynamicTypeSize,
             action: scrollToLatestIfPinned
         ))
-        // VoiceOver moved back to an earlier line: stop following, as a
-        // finger's scroll up does; the jump-to-newest button brings it back.
-        .onChange(of: focusedLine) { _, line in
-            guard isPinnedToBottom, CaptionLayout.readsBack(focusedLineID: line, newestLineID: viewModel.segments.last?.id) else { return }
-            lineCountWhenUnpinned = viewModel.segments.count
-            withAnimation { isPinnedToBottom = false }
-        }
         .onChange(of: viewModel.segments.isEmpty) { _, _ in
             announceNewLines()
         }
@@ -705,6 +698,15 @@ struct LiveCaptionView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 24)
+                // VoiceOver moved back to an earlier line: stop following, as
+                // a finger's scroll up does; the jump-to-newest button brings
+                // it back. Here rather than on the screen's long chain, which
+                // the compiler could no longer type-check.
+                .onChange(of: focusedLine) { _, line in
+                    guard isPinnedToBottom, CaptionLayout.readsBack(focusedLineID: line, newestLineID: viewModel.segments.last?.id) else { return }
+                    lineCountWhenUnpinned = viewModel.segments.count
+                    withAnimation { isPinnedToBottom = false }
+                }
                 .frame(maxWidth: horizontalSizeClass == .regular ? 800 : .infinity)
                 .frame(maxWidth: .infinity)
                 .accessibilityIdentifier("transcriptScroll")
