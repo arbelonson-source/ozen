@@ -140,19 +140,20 @@ class TranscriptHistoryWriter(
      *
      * A version still waiting for room takes the name too: never written
      * before, it had no file for the name to go into, and it was written
-     * later without one.
+     * later without one. False when the name was lost: the disk refused it
+     * and no waiting version keeps it, so the screen must say so.
      */
-    fun renameNow(id: UUID, title: String) {
-        queue.sync {
-            lastWritten.record = null
-            failure.capture { store.rename(id, title) }
-            val waiting = pendingSaves.records[id]
-            if (waiting != null) {
-                val trimmed = historyTrimmed(title)
-                pendingSaves.records[id] = waiting.copy(title = trimmed.ifEmpty { null })
-            }
-            catchUp(null)
+    fun renameNow(id: UUID, title: String): Boolean = queue.sync {
+        lastWritten.record = null
+        var kept = failure.capture { store.rename(id, title) }
+        val waiting = pendingSaves.records[id]
+        if (waiting != null) {
+            val trimmed = historyTrimmed(title)
+            pendingSaves.records[id] = waiting.copy(title = trimmed.ifEmpty { null })
+            kept = true
         }
+        catchUp(null)
+        kept
     }
 
     /**
@@ -279,13 +280,18 @@ class TranscriptHistoryWriter(
      * same state: starring only the older file on disk was undone when the
      * waiting one was written over it. The tap follows the file, which is
      * what History shows; a line only the waiting version has follows that.
+     * A file the disk still refuses gives the waiting version the star when
+     * [keepingRefused] (the caption screen, whose star shows from memory and
+     * is saved once there is room). History passes false: the person is told
+     * the star didn't change, so it mustn't turn up once there is room, or
+     * be undone by the tap that tries again.
      */
-    fun toggleStarNow(sessionID: UUID, segmentID: UUID): Boolean? = queue.sync {
+    fun toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Boolean = true): Boolean? = queue.sync {
         lastWritten.record = null
         var result: Boolean? = null
-        failure.capture { result = store.toggleStar(segmentID, sessionID) }
+        val reached = failure.capture { result = store.toggleStar(segmentID, sessionID) }
         val waiting = pendingSaves.records[sessionID]
-        if (waiting != null) {
+        if ((reached || keepingRefused) && waiting != null) {
             val index = waiting.segments.indexOfFirst { it.id == segmentID }
             if (index >= 0) {
                 val line = waiting.segments[index]

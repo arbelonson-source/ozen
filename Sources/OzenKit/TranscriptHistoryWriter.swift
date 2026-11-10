@@ -77,17 +77,21 @@ public final class TranscriptHistoryWriter: Sendable {
     ///
     /// A version still waiting for room takes the name too: never written
     /// before, it had no file for the name to go into, and it was written
-    /// later without one.
-    public func renameNow(id: UUID, title: String) {
+    /// later without one. False when the name was lost: the disk refused
+    /// it and no waiting version keeps it, so the screen must say so.
+    @discardableResult
+    public func renameNow(id: UUID, title: String) -> Bool {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
-            failure.capture { try store.rename(id: id, title: title) }
+            var kept = failure.capture { try store.rename(id: id, title: title) }
             if var waiting = pendingSaves.records[id] {
                 let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
                 waiting.title = trimmed.isEmpty ? nil : trimmed
                 pendingSaves.records[id] = waiting
+                kept = true
             }
             Self.catchUp(pendingSaves, other: nil, pendingRenames, store: store, failure: failure)
+            return kept
         }
     }
 
@@ -188,13 +192,18 @@ public final class TranscriptHistoryWriter: Sendable {
     /// same state: starring only the older file on disk was undone when the
     /// waiting one was written over it. The tap follows the file, which is
     /// what History shows; a line only the waiting version has follows that.
+    /// A file the disk still refuses gives the waiting version the star when
+    /// `keepingRefused` (the caption screen, whose star shows from memory and
+    /// is saved once there is room). History passes false: the person is
+    /// told the star didn't change, so it mustn't turn up once there is room,
+    /// or be undone by the tap that tries again.
     @discardableResult
-    public func toggleStarNow(sessionID: UUID, segmentID: UUID) -> Bool? {
+    public func toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Bool = true) -> Bool? {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
             var result: Bool?
-            failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID) }
-            if var waiting = pendingSaves.records[sessionID],
+            let reached = failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID) }
+            if reached || keepingRefused, var waiting = pendingSaves.records[sessionID],
                let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
                 waiting.segments[index].isStarred = result ?? !waiting.segments[index].isStarred
                 pendingSaves.records[sessionID] = waiting

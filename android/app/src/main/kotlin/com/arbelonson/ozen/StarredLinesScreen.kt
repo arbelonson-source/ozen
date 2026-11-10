@@ -107,6 +107,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
     // A line whose star is coming off can't be asked again before the list
     // is read back: the second ask would have put the star back.
     val removing = remember { mutableSetOf<UUID>() }
+    var starRefused by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) { reload() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -153,7 +154,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
                                     if (removing.add(line.id)) {
                                         lines = lines?.filterNot { it.id == line.id }
                                         scope.launch {
-                                            conversations.toggleStar(line.sessionID, line.id)
+                                            if (conversations.toggleStar(line.sessionID, line.id) == null) starRefused = true
                                             reload()
                                             removing.remove(line.id)
                                         }
@@ -166,6 +167,7 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
             }
         }
     }
+    if (starRefused) StarNotChanged(onClose = { starRefused = false })
 }
 
 /** A named conversation's heading says its name over its day and time, read as one heading, as on the iPhone. */

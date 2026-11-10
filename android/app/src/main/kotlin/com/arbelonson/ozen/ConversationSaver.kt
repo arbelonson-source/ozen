@@ -88,7 +88,11 @@ class ConversationSaver(
      * A save after captions stopped keeps the end the stop wrote; without
      * it the conversation turned open again, or ended at that later save.
      */
-    fun save(ended: Boolean, endedAt: Double? = null, inBackground: Boolean = false): TranscriptSessionRecord? {
+    fun save(ended: Boolean, endedAt: Double? = null, inBackground: Boolean = false): TranscriptSessionRecord? =
+        write(ended, endedAt, inBackground)?.first
+
+    /** [save], and whether this conversation reached the disk: another one still waiting for room may fail meanwhile. */
+    private fun write(ended: Boolean, endedAt: Double?, inBackground: Boolean): Pair<TranscriptSessionRecord, Boolean>? {
         if (!settings().saveHistory) return null
         val startedAt = conversationStart ?: return null
         val kept = end?.takeIf { it.first == id && !isListening() }?.second
@@ -105,9 +109,14 @@ class ConversationSaver(
             inputName = inputName(),
             starred = starred.toSet(),
         )
-        if (inBackground) writer.saveInBackground(record) else writer.saveNow(record)
+        val written = if (inBackground) {
+            writer.saveInBackground(record)
+            true
+        } else {
+            writer.saveNow(record)
+        }
         deleteExpiredIfDue()
-        return record
+        return record to written
     }
 
     /**
@@ -236,22 +245,35 @@ class ConversationSaver(
      * queued with the saves so an autosave of the one still being captioned
      * can't write it back without the name.
      */
-    fun rename(id: UUID, title: String) = writer.renameNow(id, title)
+    fun rename(id: UUID, title: String): Boolean = writer.renameNow(id, title)
 
     /**
-     * Stars a saved line, or takes its star away; the line's new state, or
-     * null when it is gone. A line of the conversation still being captioned
-     * keeps its star here, since every autosave writes that conversation
-     * afresh, and it is saved at once so it reads back starred.
+     * Stars a saved line from History, or takes its star away; the line's
+     * new state, or null when it is gone or could not be saved. A line of
+     * the conversation still being captioned keeps its star here, since
+     * every autosave writes that conversation afresh, and it is saved at
+     * once so it reads back starred. When that save fails the star goes back
+     * to what History shows, and is saved that way, so the waiting save and
+     * a second tap don't bring back a star the person was told was not
+     * changed.
      */
     fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean? {
         if (sessionID != id || currentLines.none { it.id == segmentID }) {
-            return writer.toggleStarNow(sessionID, segmentID)?.also { mark(segmentID, it) }
+            return writer.toggleStarNow(sessionID, segmentID, keepingRefused = false)?.also { mark(segmentID, it) }
         }
+        val (starring, written) = starCurrentLine(segmentID)
+        if (!written) {
+            starCurrentLine(segmentID)
+            return null
+        }
+        return starring
+    }
+
+    /** Stars a line of the conversation being captioned, or takes its star away, and saves it: its new state, and whether the save reached the disk. */
+    private fun starCurrentLine(segmentID: UUID): Pair<Boolean, Boolean> {
         val starring = segmentID !in starred
         mark(segmentID, starring)
-        save(ended = false)
-        return starring
+        return starring to (write(ended = false, endedAt = null, inBackground = false)?.second ?: true)
     }
 
     fun fixLiveLine(segmentID: UUID, text: String) {
@@ -285,7 +307,7 @@ class ConversationSaver(
      * still shows on the line.
      */
     fun toggleLiveStar(segmentID: UUID): Boolean {
-        if (currentLines.any { it.id == segmentID }) return toggleStar(id, segmentID) ?: false
+        if (currentLines.any { it.id == segmentID }) return starCurrentLine(segmentID).first
         for (conversation in closed.keys.reversed()) {
             writer.toggleStarNow(conversation, segmentID)?.let { starring ->
                 mark(segmentID, starring)

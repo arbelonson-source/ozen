@@ -30,6 +30,8 @@ struct HistoryDetailView: View {
     @State private var focusTask: Task<Void, Never>?
     @State private var confirmingDelete = false
     @State private var deleteError: String?
+    @State private var starRefused = false
+    @State private var nameRefused = false
     @State private var renaming = false
     @State private var fixingLine: SavedSegment?
     @State private var newTitle = ""
@@ -158,7 +160,7 @@ struct HistoryDetailView: View {
     /// the conversation from being cleared out automatically.
     private func starButton(_ segment: SavedSegment) -> some View {
         Button {
-            viewModel.toggleStarInHistory(sessionID: sessionID, segmentID: segment.id)
+            if !viewModel.toggleStarInHistory(sessionID: sessionID, segmentID: segment.id) { starRefused = true }
             onHistoryChanged()
             Task { await refresh() }
         } label: {
@@ -274,7 +276,10 @@ struct HistoryDetailView: View {
         .alert(tr("שם השיחה", "Conversation name"), isPresented: $renaming) {
             TextField(tr("למשל: ביקור אצל הרופא", "For example: doctor’s visit"), text: $newTitle)
             Button(tr("שמירה", "Save")) {
-                viewModel.renameConversation(id: sessionID, title: newTitle)
+                guard viewModel.renameConversation(id: sessionID, title: newTitle) else {
+                    nameRefused = true
+                    return
+                }
                 let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
                 record?.title = trimmed.isEmpty ? nil : trimmed
                 // The list behind this screen shows the name too.
@@ -284,6 +289,8 @@ struct HistoryDetailView: View {
         } message: {
             Text(tr("השם יופיע ברשימת השיחות, ואפשר יהיה לחפש לפיו.", "The name will appear in the conversations list, and you’ll be able to search by it."))
         }
+        .starNotChangedAlert(isPresented: $starRefused)
+        .nameNotSavedAlert(isPresented: $nameRefused)
         .alert(tr("המחיקה נכשלה", "Deletion failed"), isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
             Button(tr("סגירה", "Close"), role: .cancel) {}
         } message: {
