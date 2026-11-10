@@ -3,12 +3,14 @@ import Foundation
 /// Warns her, once, that leaving the app pauses the first-time model
 /// download.
 ///
-/// The model download runs over a foreground URLSession (see
-/// `WhisperModelStore.download`), so putting the phone away or switching
-/// to another app while the file is still arriving stops it mid-transfer;
-/// nothing moves the progress bar again until Ozen is back on screen, and
-/// nothing else says so. Compiling the model afterwards needs no network
-/// and isn't affected, so this only watches the download step itself.
+/// A model from WhisperKit's hub downloads over a foreground URLSession
+/// (see `WhisperModelStore.download`), so putting the phone away or
+/// switching to another app while the file is still arriving stops it
+/// mid-transfer; nothing moves the progress bar again until Ozen is back on
+/// screen, and nothing else says so. A model from Ozen's own releases
+/// downloads in the background and carries on, so nothing is said about it
+/// (`pausesWhenAway`). Compiling the model afterwards needs no network and
+/// isn't affected, so this only watches the download step itself.
 public struct DownloadBackgroundedNotice: Sendable, Equatable {
     public enum Update: Sendable, Equatable {
         case post(AlertNotificationContent)
@@ -28,6 +30,14 @@ public struct DownloadBackgroundedNotice: Sendable, Equatable {
     /// checks and compiling steps around it.
     public static func isDownloading(_ phase: PipelinePhase) -> Bool {
         phase.preparationProgress?.stage == .downloadingModel
+    }
+
+    /// Whether the download of `variant` stops while she is away from the
+    /// app: every model but those from Ozen's own releases, which iOS goes
+    /// on fetching in the background.
+    public static func pausesWhenAway(variant: String) -> Bool {
+        if case .ozenRelease = WhisperModelCatalog.option(for: variant)?.source { return false }
+        return true
     }
 
     /// What to do with the phone's notifications given whether a download

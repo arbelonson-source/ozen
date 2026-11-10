@@ -193,5 +193,11 @@ struct OzenApp: App {
             // language draws everything again.
             .id(viewModel.uiLanguage)
         }
+        // A speech model file that finished downloading while she was in
+        // another app, or with the phone locked, wakes Ozen for a moment to
+        // put it in place and ask for the next (see ReleaseDownloadSession).
+        .backgroundTask(.urlSession(ReleaseDownloadSession.identifier)) {
+            await ReleaseDownloadSession.shared.deliverBackgroundEvents()
+        }
     }
 }
