@@ -1084,7 +1084,8 @@
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "ቪዲዮዎች እና በዚህ ስልክ ላይ የሚጫወት ሌላ ማንኛውም ድምፅ። አንዳንድ መተግበሪያዎች ይህን አይፈቅዱም፣ ለምሳሌ ጥሪዎች። ስልኩ ስክሪኑን ለማጋራት ፈቃድ ይጠይቃል፤ Ozen የሚወስደው ድምፁን ብቻ ነው። ይህ ካፕሽን እስኪቆም ድረስ ይቆያል።",
   "This phone’s microphone": "የዚህ ስልክ ማይክሮፎን",
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "ማይክሮፎኑ ቆሞ አልተመለሰም። የድምጽ ማንቂያዎችን እንደገና ለማብራት ኦዘንን ክፈት።",
-  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "ሁሉም የተቀመጡ ውይይቶች ይሰረዛሉ፤ ኮከብ ወይም ስም ያለባቸውም፣ አሁን ያለውም ውይይት ጭምር። ይህን መመለስ አይቻልም።"
+  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "ሁሉም የተቀመጡ ውይይቶች ይሰረዛሉ፤ ኮከብ ወይም ስም ያለባቸውም፣ አሁን ያለውም ውይይት ጭምር። ይህን መመለስ አይቻልም።",
+  "The download failed. To try again, choose the model again in Settings.": "ማውረዱ አልተሳካም። እንደገና ለመሞከር በቅንብሮች ውስጥ ሞዴሉን እንደገና ይምረጡ።"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2171,7 +2172,8 @@
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "مقاطع الفيديو وأي صوت آخر يُشغَّل على هذا الهاتف. بعض التطبيقات لا تسمح بذلك، مثل المكالمات. سيطلب الهاتف الإذن بمشاركة الشاشة، ولا يأخذ Ozen سوى الصوت. يستمر ذلك حتى تتوقف الترجمة النصية.",
   "This phone’s microphone": "ميكروفون هذا الهاتف",
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "توقف الميكروفون ولم يعد. افتحوا Ozen لتشغيل تنبيهات الصوت من جديد.",
-  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "ستُحذف كل المحادثات المحفوظة، ومنها المحادثات التي فيها سطر مميز بنجمة أو اسم، والمحادثة الحالية أيضًا. لا يمكن التراجع عن ذلك."
+  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "ستُحذف كل المحادثات المحفوظة، ومنها المحادثات التي فيها سطر مميز بنجمة أو اسم، والمحادثة الحالية أيضًا. لا يمكن التراجع عن ذلك.",
+  "The download failed. To try again, choose the model again in Settings.": "فشل التنزيل. للمحاولة من جديد، اختاروا النموذج مرة أخرى في الإعدادات."
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3258,7 +3260,8 @@
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "视频以及本机播放的其他声音。有些应用不允许这样做，例如通话。手机会请求允许共享屏幕；Ozen 只获取声音。此选择持续到字幕停止。",
   "This phone’s microphone": "本机麦克风",
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "麦克风停止了，且没有恢复。打开 Ozen 以重新开启声音提醒。",
-  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "所有已保存的对话都会被删除，包括带星标或姓名的对话，以及当前这段对话。此操作无法撤销。"
+  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "所有已保存的对话都会被删除，包括带星标或姓名的对话，以及当前这段对话。此操作无法撤销。",
+  "The download failed. To try again, choose the model again in Settings.": "下载失败。如需重试，请在设置中再次选择该模型。"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4345,7 +4348,8 @@
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "Vidéos et autres sons lus sur ce téléphone. Certaines applications ne le permettent pas, par exemple les appels. Le téléphone demandera l’autorisation de partager l’écran ; Ozen ne prend que le son. Cela dure jusqu’à l’arrêt des sous-titres.",
   "This phone’s microphone": "Microphone de ce téléphone",
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Le microphone s’est arrêté et n’est pas revenu. Ouvrez Ozen pour réactiver les alertes sonores.",
-  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Toutes les conversations enregistrées seront supprimées, y compris celles avec une ligne marquée d’une étoile ou un nom, ainsi que la conversation en cours. Impossible d’annuler."
+  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Toutes les conversations enregistrées seront supprimées, y compris celles avec une ligne marquée d’une étoile ou un nom, ainsi que la conversation en cours. Impossible d’annuler.",
+  "The download failed. To try again, choose the model again in Settings.": "Le téléchargement a échoué. Pour réessayer, choisissez à nouveau le modèle dans Réglages."
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5432,7 +5436,8 @@
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "Videos und andere Töne, die auf diesem Telefon abgespielt werden. Manche Apps erlauben das nicht, zum Beispiel Anrufe. Das Telefon fragt nach der Erlaubnis, den Bildschirm zu teilen; Ozen nimmt nur den Ton. Das gilt, bis die Untertitel stoppen.",
   "This phone’s microphone": "Mikrofon dieses Telefons",
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Das Mikrofon hat aufgehört und kam nicht zurück. Öffnen Sie Ozen, um die Klanghinweise wieder einzuschalten.",
-  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Alle gespeicherten Gespräche werden gelöscht, auch die mit einer markierten Zeile oder einem Namen und das aktuelle Gespräch. Das lässt sich nicht rückgängig machen."
+  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Alle gespeicherten Gespräche werden gelöscht, auch die mit einer markierten Zeile oder einem Namen und das aktuelle Gespräch. Das lässt sich nicht rückgängig machen.",
+  "The download failed. To try again, choose the model again in Settings.": "Der Download ist fehlgeschlagen. Wählen Sie das Modell in den Einstellungen erneut, um es noch einmal zu versuchen."
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6519,7 +6524,8 @@
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "वीडियो और इस फ़ोन पर चल रही दूसरी हर आवाज़। कुछ ऐप्स इसकी अनुमति नहीं देते, जैसे कॉल। फ़ोन स्क्रीन शेयर करने की अनुमति मांगेगा; Ozen सिर्फ़ आवाज़ लेता है। यह कैप्शन रुकने तक चलता है।",
   "This phone’s microphone": "इस फ़ोन का माइक्रोफ़ोन",
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "माइक्रोफ़ोन रुक गया और फिर चालू नहीं हुआ। आवाज़ के अलर्ट फिर से चालू करने के लिए Ozen खोलें।",
-  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "सारी सहेजी गई बातचीत मिट जाएगी, तारांकित लाइन या नाम वाली भी, और अभी की बातचीत भी। इसे वापस नहीं लाया जा सकता।"
+  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "सारी सहेजी गई बातचीत मिट जाएगी, तारांकित लाइन या नाम वाली भी, और अभी की बातचीत भी। इसे वापस नहीं लाया जा सकता।",
+  "The download failed. To try again, choose the model again in Settings.": "डाउनलोड नहीं हो सका। दोबारा कोशिश करने के लिए सेटिंग्स में मॉडल फिर से चुनें।"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7606,7 +7612,8 @@
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "Vídeos e outros sons que tocam neste telemóvel. Algumas aplicações não o permitem, como as chamadas. O telemóvel vai pedir autorização para partilhar o ecrã; o Ozen usa apenas o som. Isto dura até as legendas pararem.",
   "This phone’s microphone": "Microfone deste telemóvel",
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "O microfone parou e não voltou. Abra o Ozen para ligar os avisos sonoros de novo.",
-  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Todas as conversas guardadas serão eliminadas, incluindo as que têm uma linha assinalada ou um nome, e a conversa atual. Não é possível anular."
+  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Todas as conversas guardadas serão eliminadas, incluindo as que têm uma linha assinalada ou um nome, e a conversa atual. Não é possível anular.",
+  "The download failed. To try again, choose the model again in Settings.": "A transferência falhou. Para tentar outra vez, escolha o modelo de novo nas Definições."
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8693,7 +8700,8 @@
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "Видео и любой другой звук, воспроизводимый на этом телефоне. Некоторые приложения этого не разрешают, например звонки. Телефон попросит разрешения поделиться экраном; Ozen берёт только звук. Это действует, пока не остановятся субтитры.",
   "This phone’s microphone": "Микрофон этого телефона",
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Микрофон перестал работать и не включился снова. Откройте Ozen, чтобы снова включить звуковые оповещения.",
-  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Все сохранённые разговоры будут удалены, в том числе с отмеченной строкой или именем, и текущий разговор тоже. Это нельзя отменить."
+  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Все сохранённые разговоры будут удалены, в том числе с отмеченной строкой или именем, и текущий разговор тоже. Это нельзя отменить.",
+  "The download failed. To try again, choose the model again in Settings.": "Не удалось загрузить. Чтобы повторить, выберите модель ещё раз в настройках."
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -9780,7 +9788,8 @@
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "Vídeos y cualquier otro sonido que se reproduce en este teléfono. Algunas aplicaciones no lo permiten, por ejemplo las llamadas. El teléfono pedirá permiso para compartir la pantalla; Ozen solo toma el sonido. Esto dura hasta que se detengan los subtítulos.",
   "This phone’s microphone": "Micrófono de este teléfono",
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "El micrófono se detuvo y no volvió. Abre Ozen para volver a activar las alertas de sonido.",
-  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Se eliminarán todas las conversaciones guardadas, incluidas las que tienen una línea marcada o un nombre, y la conversación actual. No se puede deshacer."
+  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Se eliminarán todas las conversaciones guardadas, incluidas las que tienen una línea marcada o un nombre, y la conversación actual. No se puede deshacer.",
+  "The download failed. To try again, choose the model again in Settings.": "La descarga ha fallado. Para intentarlo de nuevo, elige el modelo otra vez en Ajustes."
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -10867,6 +10876,7 @@
   "Videos and other sound playing on this phone. Some apps don’t allow it, and neither do calls. The phone will ask to share the screen; Ozen takes only the sound. This lasts until captions stop.": "Відео та будь-який інший звук, що відтворюється на цьому телефоні. Деякі застосунки цього не дозволяють, наприклад дзвінки. Телефон попросить дозволу поділитися екраном; Ozen бере лише звук. Це діє, доки не зупиняться субтитри.",
   "This phone’s microphone": "Мікрофон цього телефону",
   "The microphone stopped and didn’t come back. Open Ozen to turn sound alerts on again.": "Мікрофон перестав працювати й не відновився. Відкрийте Ozen, щоб знову ввімкнути звукові сповіщення.",
-  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Усі збережені розмови буде видалено, зокрема з позначеним рядком або іменем, і поточну розмову теж. Це неможливо скасувати."
+  "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.": "Усі збережені розмови буде видалено, зокрема з позначеним рядком або іменем, і поточну розмову теж. Це неможливо скасувати.",
+  "The download failed. To try again, choose the model again in Settings.": "Не вдалося завантажити. Щоб повторити, виберіть модель ще раз у налаштуваннях."
  }
 }
