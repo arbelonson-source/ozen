@@ -1169,6 +1169,44 @@ class WrongCode(unittest.TestCase):
         self.assertIn("unauthorized", ws.sent[0])
 
 
+class SilentSocket:
+    remote_address = ("203.0.113.9", 4444)
+
+    def __init__(self):
+        self.sent = []
+        self.spoke = asyncio.Event()
+
+    async def recv(self):
+        await self.spoke.wait()
+        return S.json.dumps({"type": "hello", "token": "wrong-code-789"})
+
+    async def send(self, text):
+        self.sent.append(text)
+
+
+class WaitingHellos(unittest.TestCase):
+    def test_a_flood_of_silent_connections_is_turned_away_at_once_and_the_door_opens_again(self):
+        async def flood():
+            silent = [SilentSocket() for _ in range(S.MAX_WAITING_HELLOS)]
+            waiting = [asyncio.create_task(S.handle(ws, None, "real-code-456", 1.0)) for ws in silent]
+            await asyncio.sleep(0)
+            extra = HelloSocket(S.json.dumps({"type": "hello", "token": "wrong-code-789"}))
+            await asyncio.wait_for(S.handle(extra, None, "real-code-456", 1.0), 1)
+            self.assertEqual(len(extra.sent), 1)
+            self.assertIn("busy", extra.sent[0])
+            self.assertTrue(all(not ws.sent for ws in silent))
+            for ws in silent:
+                ws.spoke.set()
+            await asyncio.gather(*waiting)
+            self.assertTrue(all("unauthorized" in ws.sent[0] for ws in silent))
+            again = HelloSocket(S.json.dumps({"type": "hello", "token": "wrong-code-789"}))
+            await S.handle(again, None, "real-code-456", 1.0)
+            self.assertIn("unauthorized", again.sent[0])
+
+        with self.assertLogs(S.log, "WARNING"):
+            asyncio.run(flood())
+
+
 class BadHello(unittest.TestCase):
     def test_a_first_message_that_is_not_a_hello_is_told_why_before_the_line_closes(self):
         for first in ["not json", "[1, 2]", "null"]:
