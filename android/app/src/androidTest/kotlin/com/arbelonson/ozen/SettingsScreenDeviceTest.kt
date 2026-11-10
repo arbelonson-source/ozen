@@ -514,8 +514,10 @@ class SettingsScreenDeviceTest {
         book.finish(false)
         compose.onNodeWithText("The recording is too short or too quiet").assertExists()
         compose.onNodeWithText("A voiceprint couldn’t be made", substring = true).assertExists()
-        compose.onNodeWithText("Try again").performClick()
+        compose.onNodeWithText("Try again").assertDoesNotExist()
+        compose.onNode(hasText("OK") and hasAnyAncestor(isDialog())).performClick()
         compose.onNodeWithText("The recording is too short or too quiet").assertDoesNotExist()
+        assertEquals("closing the message started a recording", 2, book.asked.size)
         assertFalse(closed.isCompleted)
 
         record.performClick()
