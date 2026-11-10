@@ -1,6 +1,8 @@
 name: Android device tests
 
 on:
+  push:
+    branches: [trial-ci-android-device-tests]
   workflow_dispatch:
   schedule:
     - cron: "17 2 * * *"
