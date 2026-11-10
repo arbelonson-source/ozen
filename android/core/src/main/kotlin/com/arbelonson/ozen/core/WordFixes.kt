@@ -7,54 +7,90 @@ object WordFixes {
     const val MAXIMUM_LENGTH = 40
     private const val MAXIMUM_WORDS = 4
     private const val PREFIX_LETTERS = "והבלמשכ"
+    private const val MINIMUM_PREFIXED_LETTERS = 3
+    private const val MAQAF = 0x05BE
+    private const val FINAL_SIGMA = 0x03C2
+    private const val SIGMA = 0x03C3
 
-    private class Word(val start: Int, val end: Int, val key: String, val bases: List<Pair<Int, Int>>)
+    /** A run of text between spaces (or a maqaf): [start] to [end] is its part from the first letter or digit to the last. */
+    private class Word(val tokenStart: Int, val tokenEnd: Int, val start: Int, val end: Int, val key: String, val bases: List<Pair<Int, Int>>)
     private class Compiled(val words: List<String>, val written: String)
 
-    private fun isMark(c: Int) = c in 0x0591..0x05C7 && c != 0x05BE && c != 0x05C0 && c != 0x05C3 && c != 0x05C6
+    private fun isMark(c: Int) = c in 0x0591..0x05C7 && c != MAQAF && c != 0x05C0 && c != 0x05C3 && c != 0x05C6
 
-    private fun isCombining(c: Int) = when (Character.getType(c).toByte()) {
-        Character.NON_SPACING_MARK, Character.COMBINING_SPACING_MARK, Character.ENCLOSING_MARK -> true
+    private fun isLetter(c: Int) = Character.isLetterOrDigit(c)
+
+    private fun isCore(c: Int) = isLetter(c) || Character.isAlphabetic(c) || isMark(c) || when (Character.getType(c).toByte()) {
+        Character.LETTER_NUMBER, Character.OTHER_NUMBER -> true
         else -> false
     }
 
-    private fun isLetter(c: Int) = Character.isLetterOrDigit(c)
-    private fun isJoiner(c: Int) = c == '\''.code || c == '’'.code || c == '׳'.code || c == '״'.code
+    /** Lowercase, with the Greek final sigma made a plain sigma, so a Greek fix typed in capitals finds the word ending in a final sigma. */
+    private fun folded(c: Int) = Character.toLowerCase(c).let { if (it == FINAL_SIGMA) SIGMA else it }
 
-    private fun keyOf(text: String) =
-        text.filterNot { isMark(it.code) }.trim().replace(Regex("\\s+"), " ").lowercase()
+    private fun isSpace(c: Int) = Character.isWhitespace(c) || Character.isSpaceChar(c)
 
-    private fun words(text: String): List<Word> {
+    /** The iPhone's key: words split at spaces only, so two words and the same two joined by a maqaf stay different keys. */
+    private fun keyOf(text: String): String {
+        val core = words(text, bare = true, atMaqaf = false).joinToString(" ") { it.key }
+        return if (core.isBlank()) text.filterNot { isMark(it.code) }.trim().lowercase().replace(FINAL_SIGMA.toChar(), SIGMA.toChar()) else core
+    }
+
+    /**
+     * The words of [text], split only at spaces and, when [atMaqaf], at a
+     * maqaf: "3.5", "e-mail" and "10:30" are one word each, as on the iPhone.
+     * A run with no letter or digit is a word only when [bare] asks for it.
+     */
+    private fun words(text: String, bare: Boolean = false, atMaqaf: Boolean = true): List<Word> {
+        fun isBreak(c: Int) = isSpace(c) || (atMaqaf && c == MAQAF)
         val out = ArrayList<Word>()
-        fun inWord(at: Int): Boolean {
-            val c = text.codePointAt(at)
-            if (isLetter(c) || isMark(c) || isCombining(c)) return true
-            if (!isJoiner(c) || at == 0) return false
-            val next = at + Character.charCount(c)
-            return next < text.length && isLetter(text.codePointBefore(at)) && isLetter(text.codePointAt(next))
-        }
         var i = 0
         while (i < text.length) {
-            if (!inWord(i)) { i += Character.charCount(text.codePointAt(i)); continue }
+            val head = text.codePointAt(i)
+            if (isBreak(head)) { i += Character.charCount(head); continue }
             var j = i
-            while (j < text.length && inWord(j)) j += Character.charCount(text.codePointAt(j))
+            var start = -1
+            var end = -1
+            while (j < text.length) {
+                val c = text.codePointAt(j)
+                if (isBreak(c)) break
+                val next = j + Character.charCount(c)
+                if (isCore(c)) {
+                    if (start < 0) start = j
+                    end = next
+                }
+                j = next
+            }
+            if (start < 0) { start = j; end = j }
             val bases = ArrayList<Pair<Int, Int>>()
-            var k = i
-            while (k < j) {
+            var k = start
+            while (k < end) {
                 val c = text.codePointAt(k)
-                if (!isMark(c)) bases.add(Character.toLowerCase(c) to k)
+                if (!isMark(c)) bases.add(folded(c) to k)
                 k += Character.charCount(c)
             }
             val key = StringBuilder()
             for ((c, _) in bases) key.appendCodePoint(c)
-            out.add(Word(i, j, key.toString(), bases))
+            if (bare || start < end) out.add(Word(i, j, start, end, key.toString(), bases))
             i = j
         }
         return out
     }
 
-    private fun prefixEnd(word: Word, heard: String): Int? {
+    /** Whether [next] follows [word] after one plain space, with no punctuation on either side of that space. */
+    private fun joined(text: String, word: Word, next: Word) =
+        word.end == word.tokenEnd && next.start == next.tokenStart && next.tokenStart == word.tokenEnd + 1 && text[word.tokenEnd] == ' '
+
+    /**
+     * Where the heard word starts inside [word], or null when it is not
+     * there. Hebrew prefix letters may come before a Hebrew heard word; a
+     * [lone] heard word of two letters takes none, because it ends too many
+     * other words.
+     */
+    private fun prefixEnd(word: Word, heard: String, lone: Boolean): Int? {
         if (word.key == heard) return word.start
+        if (heard.isEmpty() || heard.codePointAt(0) !in 0x05D0..0x05EA) return null
+        if (lone && heard.codePointCount(0, heard.length) < MINIMUM_PREFIXED_LETTERS) return null
         for (n in 1..3) {
             if (word.bases.size <= n) return null
             if (word.bases[n - 1].first.toChar() !in PREFIX_LETTERS) return null
@@ -120,7 +156,7 @@ object WordFixes {
     /** Whether word [first] and the next one in [text] are one plain space apart, so a phrase can cover both. */
     fun joinedBySpace(text: String, first: Int): Boolean {
         val all = words(text)
-        return first + 1 < all.size && text.substring(all[first].end, all[first + 1].start) == " "
+        return first + 1 < all.size && joined(text, all[first], all[first + 1])
     }
 
     fun tapped(selection: IntRange?, index: Int, joined: (Int) -> Boolean = { true }): IntRange? = when {
@@ -140,7 +176,7 @@ object WordFixes {
             if (heard.isEmpty() || written.isEmpty() || keyOf(heard) == keyOf(written)) continue
             val parts = words(heard)
             if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) continue
-            if (parts.zipWithNext().any { (a, b) -> heard.substring(a.end, b.start) != " " }) continue
+            if (parts.zipWithNext().any { (a, b) -> !joined(heard, a, b) }) continue
             if (!seen.add(keyOf(heard))) continue
             out.add(WordFix(heard, written))
             if (out.size == MAXIMUM_FIXES) break
@@ -237,12 +273,10 @@ object WordFixes {
             for (c in compiled) {
                 if (best != null && c.words.size <= best.words.size) continue
                 if (index + c.words.size > all.size) continue
-                val first = prefixEnd(all[index], c.words[0]) ?: continue
+                val first = prefixEnd(all[index], c.words[0], lone = c.words.size == 1) ?: continue
                 var ok = true
                 for (k in 1 until c.words.size) {
-                    if (all[index + k].key != c.words[k] || all[index + k].start != all[index + k - 1].end + 1 ||
-                        text[all[index + k - 1].end] != ' '
-                    ) { ok = false; break }
+                    if (all[index + k].key != c.words[k] || !joined(text, all[index + k - 1], all[index + k])) { ok = false; break }
                 }
                 if (ok) { best = c; keep = first }
             }

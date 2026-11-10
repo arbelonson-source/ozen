@@ -17,6 +17,7 @@ public enum WordFixes {
     public static let maximumLength = 40
     static let maximumPhraseWords = 4
     static let prefixLetters: Set<Character> = ["ו", "ה", "ב", "ל", "מ", "ש", "כ"]
+    static let minimumPrefixedLetters = 3
 
     public static func normalized(_ fixes: [WordFix]) -> [WordFix] {
         var seen = Set<String>()
@@ -256,6 +257,8 @@ public enum WordFixes {
         let first = tokens[index]
         if first.key == fix.words[0] { return Hit(count: count, prefixEnd: first.coreStart, written: fix.written) }
         guard let heard = fix.words[0].unicodeScalars.first, (0x5D0...0x5EA).contains(heard.value) else { return nil }
+        // A lone two-letter word takes no prefix: it ends too many other words.
+        guard count > 1 || fix.words[0].unicodeScalars.count >= minimumPrefixedLetters else { return nil }
         for length in 1...3 where first.key.count > length {
             let head = first.key.prefix(length)
             guard head.allSatisfy(prefixLetters.contains), String(first.key.dropFirst(length)) == fix.words[0] else { continue }
@@ -274,8 +277,16 @@ public enum WordFixes {
 
     static func key(_ text: String) -> String {
         let core = Token.split(Array(text.unicodeScalars)).map(\.key).joined(separator: " ")
-        return core.isEmpty ? HebrewText.stripNiqqud(text).lowercased() : core
+        return core.isEmpty ? folded(HebrewText.stripNiqqud(text)) : core
     }
+
+    /// Lowercase, with the Greek final sigma made a plain sigma, so a Greek fix
+    /// typed in capitals finds the word ending in a final sigma.
+    static func folded(_ text: String) -> String {
+        String(String.UnicodeScalarView(text.lowercased().unicodeScalars.map { $0.value == 0x03C2 ? sigma : $0 }))
+    }
+
+    private static let sigma = Unicode.Scalar(UInt32(0x03C3))!
 
     struct Token {
         let scalars: [Unicode.Scalar]
@@ -285,7 +296,7 @@ public enum WordFixes {
 
         var key: String {
             let base = scalars[coreStart..<coreEnd].filter { !Token.isNiqqud($0) }
-            return String(String.UnicodeScalarView(base)).lowercased()
+            return WordFixes.folded(String(String.UnicodeScalarView(base)))
         }
 
         func endOfLetters(_ count: Int) -> Int {
