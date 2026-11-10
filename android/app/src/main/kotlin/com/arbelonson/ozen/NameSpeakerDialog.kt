@@ -27,6 +27,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,11 +37,12 @@ import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.tr
 
 @Composable
-internal fun NameSpeakerDialog(shown: String, hasVoice: Boolean, savedNames: List<String>, onSave: (String) -> Unit, onDismiss: () -> Unit) {
+internal fun NameSpeakerDialog(shown: String, hasVoice: Boolean, savedNames: List<String>, onSave: (String) -> Boolean, onDismiss: () -> Unit) {
     var name by rememberSaveable { mutableStateOf("") }
+    var tooOld by rememberSaveable { mutableStateOf(false) }
     val typing = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (hasVoice && savedNames.isEmpty()) typing.requestFocus() }
-    val save = { if (hasVoice && name.isNotBlank()) onSave(name.trim()) }
+    val save = { if (hasVoice && name.isNotBlank()) tooOld = !onSave(name.trim()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.PersonAdd, contentDescription = null) },
@@ -57,15 +61,24 @@ internal fun NameSpeakerDialog(shown: String, hasVoice: Boolean, savedNames: Lis
                     keyboardActions = KeyboardActions(onDone = { save() }),
                     modifier = Modifier.fillMaxWidth().focusRequester(typing),
                 )
-                Text(
-                    if (hasVoice) {
-                        tr("מעכשיו כל מה שהקול הזה יגיד יופיע עם השם הזה.", "From now on, everything this voice says will show with this name.")
-                    } else {
-                        tr("עדיין לא זוהה קול לשורה הזו. נסו שוב אחרי שהאדם ידבר עוד קצת.", "No voice has been identified for this line yet. Try again after the person talks a bit more.")
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (tooOld) {
+                    Text(
+                        tr("השורה הזו ישנה מדי כדי לזהות ממנה את הקול. אפשר ללחוץ לחיצה ארוכה על שורה חדשה יותר של אותו אדם.", "This line is too old to recognize the voice from. Press and hold a newer line by the same person."),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = cautionOrange(),
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                } else {
+                    Text(
+                        if (hasVoice) {
+                            tr("מעכשיו כל מה שהקול הזה יגיד יופיע עם השם הזה.", "From now on, everything this voice says will show with this name.")
+                        } else {
+                            tr("עדיין לא זוהה קול לשורה הזו. נסו שוב אחרי שהאדם ידבר עוד קצת.", "No voice has been identified for this line yet. Try again after the person talks a bit more.")
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (hasVoice && savedNames.isNotEmpty()) {
                     Text(tr("דוברים שמורים", "Saved speakers"), style = MaterialTheme.typography.labelLarge)
                     savedNames.forEach { saved ->
