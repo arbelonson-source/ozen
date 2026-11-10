@@ -3,4 +3,4 @@ websockets>=13,<18
 numpy>=1.26,<3
 soundfile>=0.12,<0.15
 qrcode>=7,<9
-cryptography>=42,<51
+cryptography>=50.0.2,<51
