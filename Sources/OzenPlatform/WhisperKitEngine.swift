@@ -415,8 +415,15 @@ public actor WhisperKitEngine: TranscriptionEngine {
                 lowPowerMode: ProcessInfo.processInfo.isLowPowerModeEnabled,
                 lastPassSeconds: lastLivePassSeconds
             )
-            let enoughNewAudio = total - samplesAtLastPass >= Int(interval * sampleRate)
-            if !isFinal && !enoughNewAudio {
+            let livePassDue = InferenceCadence.livePassDue(
+                samples: total,
+                samplesAtLastPass: samplesAtLastPass,
+                interval: interval,
+                firstSpeechStart: status.firstSpeechStart,
+                lastSpeechEnd: speechEnd,
+                sampleRate: sampleRate
+            )
+            if !isFinal && !livePassDue {
                 try await Task.sleep(for: .milliseconds(50))
                 continue
             }

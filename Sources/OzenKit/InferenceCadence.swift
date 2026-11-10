@@ -50,4 +50,28 @@ public enum InferenceCadence {
         }
         return interval
     }
+
+    /// Speech a line needs, from where it began to where it was last
+    /// heard, before its first live pass. Without it the first pass ran
+    /// over the half second of lead-in and a syllable: a whole pass of the
+    /// phone's time that came back empty or as a guess, while the person
+    /// had barely started. The Android app waits for the same second.
+    public static let firstPassSpeechSeconds = 1.0
+
+    /// Whether the line still being spoken gets a live pass now: at least
+    /// `interval` seconds of new audio since the last one, in a line with
+    /// at least `firstPassSpeechSeconds` of speech. A line's final pass
+    /// doesn't ask.
+    public static func livePassDue(
+        samples: Int,
+        samplesAtLastPass: Int,
+        interval: Double,
+        firstSpeechStart: Int?,
+        lastSpeechEnd: Int,
+        sampleRate: Double
+    ) -> Bool {
+        let enoughNewAudio = samples - samplesAtLastPass >= Int(interval * sampleRate)
+        let speechSoFar = lastSpeechEnd - (firstSpeechStart ?? lastSpeechEnd)
+        return enoughNewAudio && speechSoFar >= Int(firstPassSpeechSeconds * sampleRate)
+    }
 }
