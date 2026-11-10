@@ -13,12 +13,15 @@ import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MicOff
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PauseCircle
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Warning
@@ -721,4 +724,20 @@ private fun phaseActionLabel(action: PhasePresentation.Action): String? = when (
     PhasePresentation.Action.OpenSystemSettings -> tr("פתיחת הגדרות הטלפון", "Open phone settings")
     PhasePresentation.Action.OpenEngineSettings, PhasePresentation.Action.OpenBackupSettings -> tr("הגדרות", "Settings")
     else -> null
+}
+
+/**
+ * What the caption screen's status button says and shows: what a tap
+ * does, never the state. "Listening" in green read as a label, and Pause
+ * and Continue told apart by colour alone; null while a tap does nothing.
+ */
+internal fun statusAction(action: PhasePresentation.Action): Pair<String, ImageVector>? = when (action) {
+    PhasePresentation.Action.Pause -> tr("השהיית כתוביות", "Pause captions") to Icons.Rounded.Pause
+    PhasePresentation.Action.Resume -> tr("המשך כתוביות", "Continue captions") to Icons.Rounded.PlayArrow
+    PhasePresentation.Action.Start -> tr("התחלת כתוביות", "Start captions") to Icons.Rounded.PlayArrow
+    PhasePresentation.Action.StopSpeaking -> tr("עצירת הדיבור", "Stop speaking") to Icons.Rounded.Stop
+    PhasePresentation.Action.ConfirmCellularDownload -> tr("להוריד עכשיו", "Download now") to Icons.Rounded.Download
+    PhasePresentation.Action.Retry -> tr("נסו שוב", "Try again") to Icons.Rounded.Refresh
+    PhasePresentation.Action.None -> null
+    else -> phaseActionLabel(action)?.let { it to Icons.Rounded.Settings }
 }

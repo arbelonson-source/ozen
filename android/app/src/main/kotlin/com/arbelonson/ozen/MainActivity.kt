@@ -26,14 +26,14 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -49,6 +49,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,8 +58,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -68,16 +71,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.rounded.Speed
-import androidx.compose.material3.AlertDialog
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BatteryAlert
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.ChatBubble
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Hearing
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Keyboard
@@ -87,32 +86,20 @@ import androidx.compose.material.icons.rounded.MicOff
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.neverEqualPolicy
-import androidx.core.content.IntentCompat
-import com.arbelonson.ozen.core.ByteSize
-import com.arbelonson.ozen.core.EnginePreparationProgress
-import com.arbelonson.ozen.core.FileTranscription
-import com.arbelonson.ozen.core.PhoneModel
-import com.arbelonson.ozen.core.PhoneModelSwitch
-import com.arbelonson.ozen.core.PhoneSound
-import com.arbelonson.ozen.core.PipelinePhase
-import com.arbelonson.ozen.core.SharedRecordingLink
-import com.arbelonson.ozen.ui.DialogText
-import com.arbelonson.ozen.ui.IconBadge
-import com.arbelonson.ozen.ui.OzenColors
-import com.arbelonson.ozen.ui.OzenSpacing
-import com.arbelonson.ozen.ui.PrimaryButton
-import com.arbelonson.ozen.ui.ToolbarButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -125,6 +112,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.neverEqualPolicy
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -134,8 +122,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -180,28 +168,43 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.IntentCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arbelonson.ozen.core.AlertVibration
-import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.BackgroundAlertPolicy
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.BatteryWarning
+import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.DisplayPreferences
+import com.arbelonson.ozen.core.EnginePreparationProgress
+import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.HebrewTime
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.MicrophoneAsk
 import com.arbelonson.ozen.core.MicrophoneDropNotice
+import com.arbelonson.ozen.core.PhoneModel
+import com.arbelonson.ozen.core.PhoneModelSwitch
+import com.arbelonson.ozen.core.PhoneSound
+import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.RecentConversation
 import com.arbelonson.ozen.core.SavingTroubleNotice
+import com.arbelonson.ozen.core.SharedRecordingLink
+import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.UncertainWords
 import com.arbelonson.ozen.core.tr
+import com.arbelonson.ozen.ui.DialogText
+import com.arbelonson.ozen.ui.IconBadge
+import com.arbelonson.ozen.ui.OzenColors
+import com.arbelonson.ozen.ui.OzenSpacing
 import com.arbelonson.ozen.ui.OzenTheme
+import com.arbelonson.ozen.ui.PrimaryButton
+import com.arbelonson.ozen.ui.ToolbarButton
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -2238,49 +2241,81 @@ private fun StatusLine(status: PhasePresentation, look: CaptionTheme, live: Bool
         PhaseTint.Inactive -> colors.onSurfaceVariant
         else -> colors.onSurface
     }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = OzenSpacing.MinTouch)
-            .clip(MaterialTheme.shapes.large)
-            // As on the iPhone, no button while a tap would do nothing.
-            .clickable(enabled = status.action != PhasePresentation.Action.None, role = Role.Button, onClick = onTap)
-            // A download's bar is read with the button, in one stop: the
-            // bar alone is an item of its own to TalkBack.
-            .semantics { status.progress?.let { progressBarRangeInfo = ProgressBarRangeInfo(it.toFloat(), 0f..1f) } }
-            .padding(horizontal = OzenSpacing.Page, vertical = OzenSpacing.Unit),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
-            // The title already says what it is busy with; only a download's bar is read out.
-            if (status.isBusy) {
-                CircularProgressIndicator(color = colors.primary, strokeWidth = 2.dp, modifier = Modifier.size(16.dp).testTag(STATUS_BUSY).clearAndSetSemantics {})
-            } else if (live) {
-                LiveDot(OzenColors.statusGood(dark = !look.isLight))
-            } else {
-                Icon(status.icon, contentDescription = null, tint = tone, modifier = Modifier.size(18.dp).testTag(STATUS_ICON))
+    // The state on its own line, what a tap does on a real button beside it:
+    // a green "Listening" with "Tap to pause" in small print didn't look
+    // like a button, and the hint went away with large text.
+    val button = statusAction(status.action)
+    val tapHints = setOf(tr("הקישו כדי להשהות", "Tap to pause"), tr("הקישו כדי להמשיך", "Tap to continue"), tr("הקישו כדי להתחיל", "Tap to start"))
+    val detail = status.detail?.takeUnless { button != null && it in tapHints }
+    val state = @Composable { modifier: Modifier ->
+        Column(
+            // A download's bar is read with the state, in one stop: the bar
+            // alone is an item of its own to TalkBack.
+            modifier = modifier.testTag(STATUS_STATE).semantics(mergeDescendants = true) { status.progress?.let { progressBarRangeInfo = ProgressBarRangeInfo(it.toFloat(), 0f..1f) } },
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
+                // The title already says what it is busy with; only a download's bar is read out.
+                if (status.isBusy) {
+                    CircularProgressIndicator(color = colors.primary, strokeWidth = 2.dp, modifier = Modifier.size(16.dp).testTag(STATUS_BUSY).clearAndSetSemantics {})
+                } else if (live) {
+                    LiveDot(OzenColors.statusGood(dark = !look.isLight))
+                } else {
+                    Icon(status.icon, contentDescription = null, tint = tone, modifier = Modifier.size(18.dp).testTag(STATUS_ICON))
+                }
+                val inline = detail != null && !status.isBusy && status.progress == null
+                Text(
+                    text = status.title,
+                    color = if (quiet) tone else colors.onSurface,
+                    style = if (quiet) MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold) else MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (inline) {
+                    Text(text = "·", color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelLarge, modifier = Modifier.clearAndSetSemantics {})
+                    Text(text = detail.orEmpty(), color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f, fill = false))
+                }
             }
-            val inline = status.detail != null && !status.isBusy && status.progress == null
-            Text(
-                text = status.title,
-                color = if (quiet) tone else colors.onSurface,
-                style = if (quiet) MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold) else MaterialTheme.typography.labelLarge,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            if (inline) {
-                Text(text = "·", color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelLarge, modifier = Modifier.clearAndSetSemantics {})
-                Text(text = status.detail.orEmpty(), color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f, fill = false))
+            if (detail != null && (status.isBusy || status.progress != null)) {
+                Text(text = detail, color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
+            }
+            status.progress?.let { progress ->
+                LinearProgressIndicator(progress = { progress.toFloat() }, color = colors.primary, trackColor = colors.outlineVariant, modifier = Modifier.padding(top = 8.dp).widthIn(max = 200.dp).clearAndSetSemantics {})
             }
         }
-        if (status.detail != null && (status.isBusy || status.progress != null)) {
-            Text(text = status.detail.orEmpty(), color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
+    }
+    val action = @Composable { modifier: Modifier ->
+        button?.let { (label, icon) ->
+            FilledTonalButton(
+                onClick = onTap,
+                modifier = modifier.heightIn(min = STATUS_BUTTON_HEIGHT).testTag(STATUS_BUTTON).semantics { stateDescription = status.title },
+            ) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(OzenSpacing.Unit))
+                Text(label, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+            }
         }
-        status.progress?.let { progress ->
-            LinearProgressIndicator(progress = { progress.toFloat() }, color = colors.primary, trackColor = colors.outlineVariant, modifier = Modifier.padding(top = 8.dp).widthIn(max = 200.dp).clearAndSetSemantics {})
+    }
+    val padding = Modifier.fillMaxWidth().heightIn(min = OzenSpacing.MinTouch).padding(horizontal = OzenSpacing.Page, vertical = OzenSpacing.Unit)
+    // With large text the button gets a row of its own rather than squeezing
+    // its words; it is never only an icon.
+    if (button == null || LocalDensity.current.fontScale > 1.3f) {
+        Column(padding, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit, Alignment.CenterVertically)) {
+            state(Modifier)
+            action(Modifier.fillMaxWidth())
+        }
+    } else {
+        Row(padding, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Page)) {
+            state(Modifier.weight(1f))
+            action(Modifier)
         }
     }
 }
+
+internal val STATUS_BUTTON_HEIGHT = 56.dp
+
+internal const val STATUS_BUTTON = "statusButton"
+
+internal const val STATUS_STATE = "statusState"
 
 internal const val STATUS_BUSY = "statusBusy"
 
