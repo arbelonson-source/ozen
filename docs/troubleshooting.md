@@ -122,8 +122,8 @@ the same.
   so it gets a new number if it speaks again.
   To have someone always called by name, press and hold one of their
   lines, choose "Who is speaking?" (mi medaber?) and type the name.
-- **A line across the captions: "Said while the app was closed · 12 lines"
-  (ne'emar k'she-ha-aplikatzia hayta sgura).** Captions kept coming while
+- **A line across the captions: "Said while the app wasn’t on the screen · 12 lines"
+  (ne'emar k'she-ha-aplikatzia lo hayta al ha-masach).** Captions kept coming while
   the phone was locked or another app was open for 15 seconds or more; the
   line shows where the ones not yet seen begin (when there are at least
   two). The button at the top, "What was said

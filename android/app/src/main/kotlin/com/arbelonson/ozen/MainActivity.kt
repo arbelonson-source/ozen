@@ -1568,14 +1568,14 @@ private fun EarlierLinesNote(earlier: EarlierLines, captionSize: Double, look: C
 @Composable
 private fun AwayDivider(count: Int, captionSize: Double, look: CaptionTheme) {
     val lines = ConversationStats.linesText(count)
-    val spoken = tr("מכאן, מה שנאמר כשהאפליקציה הייתה סגורה: %1", "From here, what was said while the app was closed: %1", listOf(lines))
+    val spoken = tr("מכאן, מה שנאמר כשהאפליקציה לא הייתה על המסך: %1", "From here, what was said while the app wasn’t on the screen: %1", listOf(lines))
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clearAndSetSemantics { contentDescription = spoken },
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = tr("נאמר כשהאפליקציה הייתה סגורה · %1", "Said while the app was closed · %1", listOf(lines)),
+            text = tr("נאמר כשהאפליקציה לא הייתה על המסך · %1", "Said while the app wasn’t on the screen · %1", listOf(lines)),
             color = look.pendingText,
             fontSize = maxOf(15.0, captionSize * 0.5).sp,
             fontWeight = FontWeight.SemiBold,

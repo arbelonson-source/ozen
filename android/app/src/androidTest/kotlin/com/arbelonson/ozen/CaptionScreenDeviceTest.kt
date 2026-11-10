@@ -501,7 +501,7 @@ class CaptionScreenDeviceTest {
             CaptionState.screenReturned(after.startTimestamp + 60)
         }
         compose.waitForIdle()
-        compose.onNodeWithContentDescription("From here, what was said while the app was closed: 2 lines").assertIsDisplayed()
+        compose.onNodeWithContentDescription("From here, what was said while the app wasn’t on the screen: 2 lines").assertIsDisplayed()
         compose.onNodeWithContentDescription(spoken).assertDoesNotExist()
     }
 
@@ -519,7 +519,7 @@ class CaptionScreenDeviceTest {
         assertFalse(displayed("Missed 1 here"))
         compose.onNodeWithText("What was said meanwhile · 30 lines").performClick()
         compose.waitForIdle()
-        compose.onNodeWithContentDescription("From here, what was said while the app was closed: 30 lines").assertIsDisplayed()
+        compose.onNodeWithContentDescription("From here, what was said while the app wasn’t on the screen: 30 lines").assertIsDisplayed()
         assertTrue(displayed("Missed 1 here"))
         compose.onNodeWithText("What was said meanwhile", substring = true).assertDoesNotExist()
         compose.onNodeWithText("To the last line").assertExists()
@@ -534,10 +534,10 @@ class CaptionScreenDeviceTest {
             CaptionState.screenReturned(400.0)
         }
         compose.waitForIdle()
-        compose.onNodeWithContentDescription("From here, what was said while the app was closed: 2 lines").assertIsDisplayed()
+        compose.onNodeWithContentDescription("From here, what was said while the app wasn’t on the screen: 2 lines").assertIsDisplayed()
         compose.onNodeWithText("What was said meanwhile", substring = true).assertDoesNotExist()
         compose.waitUntil(5_000) { CaptionState.screen.value.away?.offersJump == false }
-        compose.onNodeWithContentDescription("From here, what was said while the app was closed: 2 lines").assertIsDisplayed()
+        compose.onNodeWithContentDescription("From here, what was said while the app wasn’t on the screen: 2 lines").assertIsDisplayed()
     }
 
     @Test
@@ -556,7 +556,7 @@ class CaptionScreenDeviceTest {
             compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
         }
         compose.waitForIdle()
-        compose.onNodeWithContentDescription("From here, what was said while the app was closed: 2 lines").assertIsDisplayed()
+        compose.onNodeWithContentDescription("From here, what was said while the app wasn’t on the screen: 2 lines").assertIsDisplayed()
     }
 
     @Test
