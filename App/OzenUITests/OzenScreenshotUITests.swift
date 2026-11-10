@@ -164,7 +164,7 @@ final class OzenScreenshotUITests: XCTestCase {
 
         let transcript = app.descendants(matching: .any)["transcriptScroll"]
         XCTAssertTrue(transcript.waitForExistence(timeout: 10), "banner: the transcript never appeared")
-        let banner = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Saving on the phone failed")).firstMatch
+        let banner = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Saving on the phone failed")).firstMatch
         XCTAssertTrue(banner.waitForExistence(timeout: 10), "banner: the saving-failed banner never appeared")
         capture(app, name: "caption-screen-banner")
 
@@ -172,6 +172,31 @@ final class OzenScreenshotUITests: XCTestCase {
         let window = app.windows.firstMatch.frame
         XCTAssertLessThanOrEqual(banner.frame.maxY, captions.frame.minY + 1, "banner: the banner covers the captions (banner \(banner.frame), captions \(captions.frame))")
         XCTAssertGreaterThan(captions.frame.height, window.height * 0.3, "banner: the banner left the captions too little room (\(captions.frame))")
+    }
+
+    /// A tap on a warning's words is the tap that brings the hidden buttons
+    /// back, so it leaves the warning up; only its own close button puts it
+    /// away. The whole card used to be a close button, and the saving
+    /// warning was gone before the helper it names had seen it.
+    func testWarningCardStaysUpUntilItsCloseButton() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "banner"]
+        app.launch()
+
+        let card = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Saving on the phone failed")).firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 10), "warning card: the saving-failed warning never appeared")
+        let close = app.buttons["savingTroubleClose"]
+        XCTAssertTrue(close.exists, "warning card: no close button")
+        XCTAssertEqual(close.label, "Close", "warning card: the close button says \(close.label)")
+        XCTAssertGreaterThanOrEqual(close.frame.width, 44, "warning card: the close button is \(close.frame.width) points wide")
+
+        card.tap()
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertTrue(card.exists, "warning card: a tap on its words put it away")
+        capture(app, name: "warning-card-after-tap")
+
+        close.tap()
+        XCTAssertTrue(card.waitForNonExistence(timeout: 5), "warning card: the close button left it there")
     }
 
     /// A doorbell heard while the app was away: back on the screen, it is

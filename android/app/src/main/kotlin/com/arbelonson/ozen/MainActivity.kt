@@ -1893,6 +1893,11 @@ internal fun ProblemMarkedDialog(keptSound: Boolean, keptCaptions: Boolean, repo
     )
 }
 
+/**
+ * "Saving failed", as the iPhone's. Only the close button puts it away: a tap
+ * on the screen is how the hidden buttons come back, and when the whole card
+ * closed it, the warning was gone before the helper it names had seen it.
+ */
 @Composable
 private fun SavingTroubleBanner(onDismiss: () -> Unit) {
     NoticeBanner(
@@ -1900,11 +1905,11 @@ private fun SavingTroubleBanner(onDismiss: () -> Unit) {
         NoticeTone.Warning,
         SavingTroubleNotice.title,
         SavingTroubleNotice.detail,
-        Modifier.clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button, onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
-    ) { Icon(Icons.Rounded.Close, contentDescription = null) }
+        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+    ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }
 
-/** The system ended the sharing of the phone's sound; the microphone is back, and a tap puts this away. */
+/** The system ended the sharing of the phone's sound; the microphone is back, and the close button puts this away. */
 @Composable
 private fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
     NoticeBanner(
@@ -1912,11 +1917,11 @@ private fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
         NoticeTone.Warning,
         PhoneSound.stoppedNotice,
         "",
-        Modifier.clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button, onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
-    ) { Icon(Icons.Rounded.Close, contentDescription = null) }
+        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+    ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }
 
-/** "Battery at 19%", as the iPhone's: deeper red when the phone may shut down, a tap anywhere puts it away. */
+/** "Battery at 19%", as the iPhone's: deeper red when the phone may shut down, the close button puts it away. */
 @Composable
 private fun BatteryBanner(warning: BatteryWarning, onDismiss: () -> Unit) {
     val critical = warning is BatteryWarning.Critical
@@ -1929,8 +1934,8 @@ private fun BatteryBanner(warning: BatteryWarning, onDismiss: () -> Unit) {
         } else {
             tr("כדאי לחבר את הטלפון למטען.", "Consider plugging in a charger.")
         },
-        Modifier.clickable(onClickLabel = tr("סגירה", "Close"), role = Role.Button, onClick = onDismiss).semantics { liveRegion = LiveRegionMode.Polite },
-    ) { Icon(Icons.Rounded.Close, contentDescription = null) }
+        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+    ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
 }
 
 /** As the iPhone's: a tap on the words opens the microphone picker, the close button only puts the notice away. */
