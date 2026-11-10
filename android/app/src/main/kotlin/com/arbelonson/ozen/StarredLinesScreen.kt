@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -95,9 +96,18 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
         return
     }
     BackHandler(onBack = onClose)
-    LaunchedEffect(Unit) {
-        lines = withContext(Dispatchers.IO) { conversations.starredLines() }
+    // Reads can finish out of order: only the newest is shown, or an older
+    // read would bring back a line whose star had just come off.
+    var reads by remember { mutableIntStateOf(0) }
+    suspend fun reload() {
+        val read = ++reads
+        val found = withContext(Dispatchers.IO) { conversations.starredLines() }
+        if (read == reads) lines = found
     }
+    // A line whose star is coming off can't be asked again before the list
+    // is read back: the second ask would have put the star back.
+    val removing = remember { mutableSetOf<UUID>() }
+    LaunchedEffect(Unit) { reload() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val shown = lines
@@ -140,9 +150,13 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
                                 emphasizeNumbers,
                                 onOpen = { opened = line.sessionID to line.id },
                                 onUnstar = {
-                                    scope.launch {
-                                        conversations.toggleStar(line.sessionID, line.id)
-                                        lines = withContext(Dispatchers.IO) { conversations.starredLines() }
+                                    if (removing.add(line.id)) {
+                                        lines = lines?.filterNot { it.id == line.id }
+                                        scope.launch {
+                                            conversations.toggleStar(line.sessionID, line.id)
+                                            reload()
+                                            removing.remove(line.id)
+                                        }
                                     }
                                 },
                             )

@@ -11,6 +11,9 @@ struct StarredLinesView: View {
     let onHistoryChanged: () -> Void
     @State private var lines: [StarredLine] = []
     @State private var hasLoaded = false
+    /// Reads can finish out of order: only the newest is shown, or an older
+    /// read would bring back a line whose star had just come off.
+    @State private var reads = 0
     @ScaledMetric(relativeTo: .body) private var bodySize: Double = 17
 
     private var lineSize: Double { DisplayPreferences.savedLineSize(captionSize: viewModel.display.fontSize, bodySize: bodySize) }
@@ -140,6 +143,9 @@ struct StarredLinesView: View {
     /// taking a star away meant finding the line inside its conversation.
     private func unstarButton(_ line: StarredLine) -> some View {
         Button {
+            // Off the list at once, so it can't be asked again (which would put
+            // the star back); the read after brings it back if the star stayed.
+            lines.removeAll { $0.id == line.id }
             viewModel.toggleStarInHistory(sessionID: line.sessionID, segmentID: line.id)
             onHistoryChanged()
             Task { await load() }
@@ -149,8 +155,12 @@ struct StarredLinesView: View {
     }
 
     private func load() async {
+        reads += 1
+        let read = reads
         let store = viewModel.historyStore
-        lines = await Task.detached(priority: .userInitiated) { store.starredLines() }.value
+        let found = await Task.detached(priority: .userInitiated) { store.starredLines() }.value
+        guard read == reads else { return }
+        lines = found
         hasLoaded = true
     }
 }
