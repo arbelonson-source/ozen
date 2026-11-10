@@ -167,6 +167,7 @@ import com.arbelonson.ozen.core.BackgroundAlertPolicy
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.CloudKeyCheck
 import com.arbelonson.ozen.core.CloudProvider
+import com.arbelonson.ozen.core.SpokenLanguageNote
 import com.arbelonson.ozen.core.WordFix
 import com.arbelonson.ozen.core.CloudSpeech
 import com.arbelonson.ozen.core.DisplayPreferences
@@ -342,7 +343,7 @@ fun SettingsScreen(
                         onQuietHours = { hours -> settings.change { it.quietHours = hours } },
                     )
                     SpeechSection(current.speechRate, onRate = { rate -> settings.change { it.speechRate = rate } }, canSay, onSpeak, voiceNotice)
-                    SpokenLanguageSection(current.spokenLanguage, engineSettings::chooseSpokenLanguage)
+                    SpokenLanguageSection(current.spokenLanguage, current.engine, engineSettings::chooseSpokenLanguage)
                     LanguageSection(current.appLanguage, onAppLanguage)
                     EngineSection(engineSettings, current, onCellularDownloads, modelsOnPhone = phoneModels != null)
                     if (phoneModels != null) PhoneModelSection(current, phoneModels)
@@ -1349,9 +1350,13 @@ private fun LanguageSection(chosen: AppLanguage, onChoose: (AppLanguage) -> Unit
     GroupFootnote(tr("השפה של הכפתורים וההגדרות, לא של הכתוביות.", "The language of the buttons and settings, not of the captions."))
 }
 
-/** The language people around her speak, which every engine is given, each named as it is spoken. */
+/**
+ * The language people around her speak, which every engine is given, each named as it is spoken.
+ * Amharic on a Whisper model is mostly wrong for now, and the screen says so rather than let
+ * a deaf user lean on captions she can't check, as on the iPhone.
+ */
 @Composable
-private fun SpokenLanguageSection(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
+private fun SpokenLanguageSection(chosen: UILanguage, engine: TranscriptionEngineKind, onChoose: (UILanguage) -> Unit) {
     SectionHeader(tr("שפת הדיבור", "Spoken language"))
     var open by remember { mutableStateOf(false) }
     SettingsGroup(dividerInset = 56.dp) {
@@ -1379,6 +1384,9 @@ private fun SpokenLanguageSection(chosen: UILanguage, onChoose: (UILanguage) -> 
         }
     }
     GroupFootnote(tr("השפה שמדברים בה סביבכם. הכתוביות נכתבות בשפה הזו.", "The language people around you speak. The captions are written in it."))
+    SpokenLanguageNote.text(chosen, engine)?.let { note ->
+        GroupFootnote(note, Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite })
+    }
 }
 
 @Composable

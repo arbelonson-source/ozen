@@ -198,7 +198,20 @@ struct OnboardingView: View {
             Text(tr("הכתוביות נכתבות בשפה הזו. אפשר לשנות אותה בכל רגע בהגדרות.", "The captions are written in this language. You can change it anytime in Settings."))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            // Picked here, Amharic would otherwise look as good as Hebrew
+            // until the captions showed otherwise.
+            if let note = languageNote {
+                Text(note)
+                    .font(.footnote)
+                    .foregroundStyle(.readable(.orange))
+                    .accessibilityIdentifier("spokenLanguageNote")
+            }
         }
+        .announcing(languageNote ?? "", whenTurningTrue: languageNote != nil)
+    }
+
+    private var languageNote: String? {
+        SpokenLanguageNote.text(for: viewModel.settings.spokenLanguage, engine: viewModel.settings.engine)
     }
 
     private var enginePage: some View {

@@ -103,6 +103,7 @@ import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.MicrophoneAsk
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelSwitch
+import com.arbelonson.ozen.core.SpokenLanguageNote
 import com.arbelonson.ozen.core.StorageSpaceGate
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
@@ -200,7 +201,7 @@ internal fun OnboardingScreen(
                             item { Point(Icons.Rounded.Keyboard, tr("ואפשר גם להקליד תשובה, והטלפון יקריא אותה בקול.", "And you can type a reply, and the phone will speak it aloud.")) }
                         }
                     }
-                    LANGUAGE_PAGE -> LanguagePage(settings.spokenLanguage, onSpokenLanguage)
+                    LANGUAGE_PAGE -> LanguagePage(settings.spokenLanguage, settings.engine, onSpokenLanguage)
                     MODEL_PAGE -> ModelPage(settings, phoneModels) {
                         focusManager.clearFocus()
                         turning.launch { pager.animateScrollToPage(pager.currentPage + 1) }
@@ -454,7 +455,7 @@ private fun ModelPage(settings: AppSettings, models: PhoneModels, onKept: () -> 
 
 /** Before the microphone, as before the iPhone's engine page; Hebrew until she picks another. */
 @Composable
-private fun LanguagePage(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
+private fun LanguagePage(chosen: UILanguage, engine: TranscriptionEngineKind, onChoose: (UILanguage) -> Unit) {
     Page(Icons.Rounded.Translate, pageTitle(2)) {
         SettingsGroup(modifier = Modifier.selectableGroup()) {
             for (language in UILanguage.entries) {
@@ -479,6 +480,16 @@ private fun LanguagePage(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
             }
         }
         Body(tr("הכתוביות נכתבות בשפה הזו. אפשר לשנות אותה בכל רגע בהגדרות.", "The captions are written in this language. You can change it anytime in Settings."))
+        // Picked here, Amharic would otherwise look as good as Hebrew until the captions showed otherwise.
+        SpokenLanguageNote.text(chosen, engine)?.let { note ->
+            Text(
+                note,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
     }
 }
 
