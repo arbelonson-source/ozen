@@ -12,9 +12,10 @@ extension View {
     }
 
     @ViewBuilder
-    func ozenGlassBar() -> some View {
+    func ozenGlassBar(tint: Color = .clear) -> some View {
         if #available(iOS 26.0, *) {
-            glassEffect(.regular, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+            background(tint, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
                 .padding(.horizontal, 10)
         } else {
             background(.ultraThinMaterial)
@@ -42,7 +43,7 @@ extension View {
         background(fallback, in: shape)
     }
 
-    func ozenGlassBar() -> some View {
+    func ozenGlassBar(tint: Color = .clear) -> some View {
         background(.ultraThinMaterial)
     }
 
@@ -56,3 +57,20 @@ extension View {
     }
 }
 #endif
+
+struct OzenGlassGroup<Content: View>: View {
+    var spacing: CGFloat? = nil
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) { content }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}

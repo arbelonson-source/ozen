@@ -1327,7 +1327,7 @@ struct LiveCaptionView: View {
                 .font(.title3.weight(.semibold))
                 // The one control left once the bar hides: at least the
                 // 44-point target a shaky finger needs.
-                .frame(width: 64, height: 44)
+                .frame(width: 64, height: 48)
                 .ozenGlass(in: Capsule(), interactive: true)
         }
         .buttonStyle(.plain)
@@ -1401,7 +1401,15 @@ struct LiveCaptionView: View {
 
     // MARK: - Control bar
 
+    /// One glass group: the bar and its buttons are drawn together, so the
+    /// buttons' glass takes its look from the bar under it.
     private var controlBar: some View {
+        OzenGlassGroup(spacing: 8) {
+            controlBarContent
+        }
+    }
+
+    private var controlBarContent: some View {
         VStack(spacing: 6) {
             // Never its icon alone: where the bar can't give the status
             // button room for its words beside the others, it takes a row.
@@ -1440,7 +1448,10 @@ struct LiveCaptionView: View {
         .padding(.top, 12)
         .padding(.bottom, 8)
         .frame(maxWidth: horizontalSizeClass == .regular ? 720 : .infinity)
-        .ozenGlassBar()
+        // Captions scroll on under the bar: glass alone let their words
+        // show through, blurred, behind the buttons' names. The theme's own
+        // colour over it, as on the jump-to-latest pill, keeps them back.
+        .ozenGlassBar(tint: theme.background.opacity(0.7))
         .foregroundStyle(theme.chrome)
     }
 
@@ -1452,11 +1463,11 @@ struct LiveCaptionView: View {
                 Image(systemName: MicPickerView.icon(for: viewModel.selectedInput?.portType ?? .other))
                     .font(.title2)
                 Text(viewModel.selectedInput.map(MicPickerView.shortName) ?? tr("מיקרופון", "Microphone"))
-                    .font(.caption2)
+                    .font(.caption)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56)
+            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56, minHeight: Self.buttonMinimumHeight)
         }
         .ozenGlassButton()
         .accessibilityLabel(tr("בחירת מיקרופון", "Choose microphone"))
@@ -1482,11 +1493,11 @@ struct LiveCaptionView: View {
                 Image(systemName: viewModel.isSpeaking ? "speaker.wave.3.fill" : "keyboard")
                     .font(.title2)
                 Text(tr("להגיד", "Say"))
-                    .font(.caption2)
+                    .font(.caption)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56)
+            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56, minHeight: Self.buttonMinimumHeight)
         }
         .ozenGlassButton()
         .accessibilityLabel(viewModel.isSpeaking ? tr("עצירת הדיבור", "Stop speaking") : tr("להגיד משהו בקול", "Say something out loud"))
@@ -1510,11 +1521,11 @@ struct LiveCaptionView: View {
                 Image(systemName: "trash")
                     .font(.title2)
                 Text(tr("ניקוי", "Clear"))
-                    .font(.caption2)
+                    .font(.caption)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56)
+            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56, minHeight: Self.buttonMinimumHeight)
         }
         .ozenGlassButton()
         .accessibilityLabel(tr("ניקוי הכתוביות מהמסך", "Clear the captions from the screen"))
@@ -1530,11 +1541,11 @@ struct LiveCaptionView: View {
                 Image(systemName: "gearshape")
                     .font(.title2)
                 Text(tr("הגדרות", "Settings"))
-                    .font(.caption2)
+                    .font(.caption)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56)
+            .frame(minWidth: Self.buttonMinimumWidth, maxWidth: 56, minHeight: Self.buttonMinimumHeight)
         }
         .ozenGlassButton()
         .accessibilityLabel(tr("הגדרות", "Settings"))
@@ -1674,6 +1685,8 @@ struct LiveCaptionView: View {
     /// default text size. Four of them and the gaps then fit a 375-point
     /// phone with room to spare.
     private static let buttonMinimumWidth: CGFloat = 32
+    /// With the glass style's own padding, a target of at least 52 points.
+    private static let buttonMinimumHeight: CGFloat = 44
 
     private var savingTroubleAnnouncement: String {
         SavingTroubleNotice.title + ". " + SavingTroubleNotice.detail
