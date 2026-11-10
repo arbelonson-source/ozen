@@ -251,6 +251,19 @@ object HebrewText {
     }
 
     /**
+     * A saved phrase's words. In a phrase of several words "على" keeps its
+     * alef maqsura, as [normalizeCaptionWord] keeps it in a caption, so
+     * "على الباب" ("at the door") still finds itself; a lone "على" is the name
+     * Ali typed with alef maqsura and folds as before.
+     */
+    internal fun phraseWords(phrase: String): List<String> {
+        val folded = words(phrase)
+        if (folded.size <= 1) return folded
+        val kept = separatingJoiners(phrase).split(Regex("\\s+")).map { normalizeCaptionWord(it) }.filter { it.isNotEmpty() }
+        return if (kept.size == folded.size) kept else folded
+    }
+
+    /**
      * A word typed only in another alphabet ("Sarah" or a Cyrillic name while
      * the captions come out in Hebrew letters, "Dana" or "דנה" while they are
      * in Arabic ones): its alert stays silent, so the screens that add one
@@ -423,13 +436,16 @@ object HebrewText {
      * closed list for the same reason as [affectionateVariants]. A doctor's
      * title is also said and written both in full and as the abbreviation
      * (which normalizes to "dr"), so an alert on "Dr. Cohen" saved one way
-     * stayed silent when the caption used the other.
+     * stayed silent when the caption used the other. "على" inside a saved
+     * phrase may be the name Ali typed with alef maqsura, so it also finds
+     * "علي".
      */
     val otherForms: Map<String, Set<String>> = mapOf(
         "תרופה" to setOf("תרופות", "תרופת"),
         "רופא" to setOf("רופאה", "רופאים", "רופאות", "רופאת"),
         "דר" to setOf("דוקטור"),
         "דוקטור" to setOf("דר"),
+        "على" to setOf("علي"),
     )
 
     internal fun containsHan(text: String): Boolean =
@@ -553,7 +569,7 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>) {
         var sequence = 0
         for (alert in alerts) {
             if (!alert.isEnabled) continue
-            val phraseWords = HebrewText.words(alert.phrase)
+            val phraseWords = HebrewText.phraseWords(alert.phrase)
             // No skipping a line with fewer words than the phrase: a name
             // saved as two words can be the whole line written as one.
             if (phraseWords.isEmpty()) continue

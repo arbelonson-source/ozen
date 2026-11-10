@@ -617,6 +617,9 @@ class OtherLettersTest {
         assertEquals(1, hits("علي", "قال علي"))
         assertEquals(1, hits("على", "قال علي"))
         assertEquals(1, hits("علي", "قال علي، على الطاولة"))
+        assertEquals(1, hits("على الباب", "أحد على الباب"))
+        assertEquals(1, hits("على حسن", "قال علي حسن"))
+        assertEquals(0, hits("علي حسن", "قال على حسن"))
     }
 
     @Test

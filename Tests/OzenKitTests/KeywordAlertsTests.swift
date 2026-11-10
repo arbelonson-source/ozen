@@ -751,6 +751,9 @@ struct KeywordMatchingRound2Tests {
         #expect(count("علي", "قال علي") == 1)
         #expect(count("على", "قال علي") == 1)
         #expect(count("علي", "قال علي، على الطاولة") == 1)
+        #expect(count("على الباب", "أحد على الباب") == 1)
+        #expect(count("على حسن", "قال علي حسن") == 1)
+        #expect(count("علي حسن", "قال على حسن") == 0)
     }
 
     @Test("folding does not merge different words")
