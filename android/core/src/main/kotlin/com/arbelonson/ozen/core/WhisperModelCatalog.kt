@@ -1,8 +1,5 @@
 package com.arbelonson.ozen.core
 
-import java.math.BigDecimal
-import java.math.RoundingMode
-
 /**
  * One Whisper model the app offers. Sizes were measured from the actual
  * `argmaxinc/whisperkit-coreml` repository listing on 2026-09-13 (and
@@ -72,11 +69,7 @@ data class WhisperModelOption(
 
     /** Not an exact byte count - a human-scale label for the picker. */
     val sizeLabel: String
-        get() = if (sizeMB >= 1000) {
-            BigDecimal(sizeMB.toDouble() / 1000).setScale(1, RoundingMode.HALF_EVEN).toPlainString() + " GB"
-        } else {
-            "$sizeMB MB"
-        }
+        get() = ByteSize.text(sizeMB.toLong() * StorageSpaceGate.BYTES_PER_MEGABYTE)
 }
 
 /**

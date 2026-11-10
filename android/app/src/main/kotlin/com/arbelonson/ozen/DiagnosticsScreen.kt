@@ -55,6 +55,7 @@ import androidx.core.content.FileProvider
 import com.arbelonson.ozen.core.AudioLevelHistogram
 import com.arbelonson.ozen.core.ByteSize
 import com.arbelonson.ozen.core.HomeServer
+import com.arbelonson.ozen.core.NumberText
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.OzenSpacing
@@ -172,7 +173,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 item { Note("${input.portName} · ${inputTypeName(input.portType)}") }
             }
             value(tr("חבילות אודיו", "Audio chunks"), "${stats.audioChunksReceived}")
-            value(tr("שניות אודיו", "Audio seconds"), format("%.1f", stats.audioSecondsReceived))
+            value(tr("שניות אודיו", "Audio seconds"), NumberText.decimal(stats.audioSecondsReceived, 1))
             value(tr("החלפות מיקרופון", "Microphone changes"), "${stats.inputChanges}")
             value(tr("תקיעות מיקרופון", "Microphone stalls"), "${stats.audioStalls}")
             value(tr("רמות קול (dBFS)", "Sound levels (dBFS)"), levels(stats.inputLevels))
@@ -202,7 +203,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             value(tr("עדכונים מהמנוע", "Updates from engine"), "${stats.tokensReceived}")
             value(tr("שורות שנסגרו", "Lines closed"), "${stats.segmentsCommitted}")
             value(tr("שורות על המסך", "Lines on screen"), "${now.linesOnScreen}")
-            value(tr("עיכוב בכתוביות", "Caption lag"), stats.captionLagSeconds?.let { format(tr("%.1f שנ׳", "%.1f s"), it) } ?: "—")
+            value(tr("עיכוב בכתוביות", "Caption lag"), stats.captionLagSeconds?.let { tr("%1 שנ׳", "%1 s", listOf(NumberText.decimal(it, 1))) } ?: "—")
             value(tr("הפעלות מחדש", "Restarts"), "${stats.engineRestarts}")
             value(tr("דוברים שזוהו", "Speakers identified"), "${now.speakersIdentified}")
             value(tr("דוברים חדשים מאז שהאפליקציה נפתחה", "New speakers since the app opened"), "${stats.speakerClustersOpened}")

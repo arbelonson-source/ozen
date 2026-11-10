@@ -775,7 +775,7 @@ internal object CellularDownloadTexts {
     val title: String get() = tr("להוריד את מודל הדיבור בחבילת הגלישה?", "Download the language model over mobile data?")
 
     fun body(megabytes: Int?): String {
-        val size = megabytes?.takeIf { it > 0 }?.let { "$it\u00A0MB" } ?: tr("כמה מאות MB", "A few hundred MB")
+        val size = megabytes?.takeIf { it > 0 }?.let { ByteSize.megabytes(it) } ?: tr("כמה מאות MB", "A few hundred MB")
         return tr(
             "בלי מודל הדיבור אין כתוביות. צריך להוריד אותו פעם אחת בלבד, והגודל שלו בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi בלי הגבלת נפח (לא נקודה חמה של טלפון) ההורדה תתחיל מעצמה.",
             "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.",

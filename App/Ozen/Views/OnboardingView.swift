@@ -563,7 +563,7 @@ struct OnboardingView: View {
     }
 
     private var modelSizeText: String {
-        WhisperModelCatalog.option(for: viewModel.settings.whisperModelVariant)?.sizeLabel ?? "500\u{00A0}MB"
+        WhisperModelCatalog.option(for: viewModel.settings.whisperModelVariant)?.sizeLabel ?? ByteSize.megabytes(500)
     }
 
     /// How much room to free before the chosen model fits, said up front

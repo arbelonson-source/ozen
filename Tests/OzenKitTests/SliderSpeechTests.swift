@@ -10,6 +10,13 @@ struct SliderSpeechTests {
         #expect(SliderSpeech.speechRate(0.7, in: .english) == "Fast, 0.70")
     }
 
+    @Test("the number is spoken with the language's decimal comma, as the screen writes it")
+    func decimalComma() {
+        #expect(SliderSpeech.speechRate(0.45, in: .german).hasSuffix(" 0,45"))
+        #expect(SliderSpeech.speakerSeparation(0.6, in: .french).hasSuffix(" 0,60"))
+        #expect(SliderSpeech.speakerSeparation(0.6, in: .english).hasSuffix(" 0.60"))
+    }
+
     @Test("the text size is spoken with its unit")
     func textSizeUnit() {
         #expect(SliderSpeech.textSize(34, in: .english) == "Points: 34")
