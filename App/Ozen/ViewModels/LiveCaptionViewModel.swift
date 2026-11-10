@@ -1277,6 +1277,9 @@ public final class LiveCaptionViewModel {
     /// A pairing link arrived damaged (a copy-paste cut it short, or the
     /// scan misread it): before, nothing at all happened.
     public var pairingLinkBroken = false
+    /// Counts accepted pairings, so a Settings screen already open can show
+    /// what the scan saved.
+    public private(set) var pairingsAccepted = 0
 
     public func openURL(_ url: URL) {
         // A pairing already waiting for a yes stays: a newer link would
@@ -1309,6 +1312,7 @@ public final class LiveCaptionViewModel {
         settings.usePairing(pairing)
         settings.engine = .homeServer
         persist()
+        pairingsAccepted += 1
         beamRestart?.cancel()
         await restartIfRunning()
         return true

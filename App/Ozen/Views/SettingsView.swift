@@ -544,6 +544,8 @@ struct SettingsView: View {
                     if homeServerAddressDraft == saved { homeServerAddressLoaded = saved }
                     hasHomeServerCode = HomeServerCodeStore.hasKey
                 }
+                .onChange(of: viewModel.pairingsAccepted) { followPairing() }
+                .accessibilityIdentifier("homeServerAddressField")
             if homeServerAddressDraft.trimmingCharacters(in: .whitespacesAndNewlines) != viewModel.settings.homeServerAddress {
                 Button(tr("שמירת הכתובת", "Save address"), action: saveHomeServerAddress)
             }
@@ -717,6 +719,19 @@ struct SettingsView: View {
         case .needsEncryptedAddress:
             tr("מחוץ לרשת הביתית צריך להשתמש בכתובת שמתחילה ב־wss://", "Outside the home network, use the address that starts with wss://")
         }
+    }
+
+    /// A code scanned while this screen is open: the boxes take what the
+    /// scan saved. The address box kept the old text, so Settings showed a
+    /// Save button and, closing, saved that text back over the scan, its
+    /// certificate pin with it, and said nothing. The scan is the newer
+    /// choice, so a half-typed address or code gives way to it.
+    private func followPairing() {
+        homeServerAddressDraft = viewModel.settings.homeServerAddress
+        homeServerAddressLoaded = homeServerAddressDraft
+        homeServerCodeDraft = ""
+        hasHomeServerCode = HomeServerCodeStore.hasKey
+        forgetHomeServerCheck()
     }
 
     /// Typed but never saved with Return or the button: kept as Settings

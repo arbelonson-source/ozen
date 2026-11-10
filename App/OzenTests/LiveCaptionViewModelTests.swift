@@ -69,6 +69,7 @@ struct LiveCaptionViewModelTests {
         #expect(viewModel.settings.engine == .homeServer)
         #expect(viewModel.settings.homeServerAddress == "wss://desktop.tail.ts.net")
         #expect(HomeServerCodeStore.read() == "testcode123")
+        #expect(viewModel.pairingsAccepted == 1)
     }
 
     @Test("a home-network pairing link saves the certificate pin with the address, a link without one saves none, and a typed address drops it")
@@ -155,6 +156,7 @@ struct LiveCaptionViewModelTests {
         #expect(!viewModel.pairingSaveFailed)
         #expect(await viewModel.acceptPendingPairing() == false)
         #expect(viewModel.pairingSaveFailed)
+        #expect(viewModel.pairingsAccepted == 0)
         #expect(viewModel.settings.engine == .whisperKit)
         #expect(viewModel.pendingPairing == nil)
     }

@@ -978,6 +978,39 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(shown, "pairing: 'Connect to the home computer?' never appeared with Settings open")
     }
 
+    /// A code scanned while Settings shows the home computer's address box:
+    /// the box kept its old text, showed Save, and closing Settings saved
+    /// that text back over the scan.
+    func testPairingWhileSettingsShowsTheAddress() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "homeServer"]
+        app.launch()
+
+        let settingsButton = app.descendants(matching: .any)["settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10), "pairing in place: the settings button never appeared")
+        let reveal = app.descendants(matching: .any)["showControlsButton"]
+        for _ in 0..<20 where !settingsButton.isHittable {
+            if reveal.exists, reveal.isHittable { reveal.tap() }
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        settingsButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "pairing in place: settings never appeared")
+        let address = scrollDownUntilVisible(app, identifier: "homeServerAddressField", maxSwipes: 20)
+        XCTAssertTrue(address.exists, "pairing in place: the address box never appeared")
+
+        let scanned = "wss://desktop.tail0example.ts.net"
+        app.open(try XCTUnwrap(URL(string: "ozen://pair?address=\(scanned)&code=example-code-123")))
+        let prompt = app.alerts.firstMatch
+        XCTAssertTrue(prompt.waitForExistence(timeout: 10), "pairing in place: 'Connect to the home computer?' never appeared")
+        prompt.buttons.matching(NSPredicate(format: "label IN %@", ["להתחבר", "Connect"])).firstMatch.tap()
+
+        let box = app.descendants(matching: .any)["homeServerAddressField"]
+        let followed = NSPredicate(format: "value == %@", scanned)
+        let shown = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: followed, object: box)], timeout: 10) == .completed
+        capture(app, name: "pairing-in-place")
+        XCTAssertTrue(shown, "pairing in place: the address box still shows \(String(describing: box.value)) after Connect")
+    }
+
     /// The steppers quiet hours reveals once enabled, at this text size --
     /// seeded on at launch (see ScreenshotFixtures.Variant.quietHoursEnabled)
     /// rather than flipped live by the test, since tapping the toggle
