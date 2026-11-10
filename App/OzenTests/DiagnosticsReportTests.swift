@@ -20,6 +20,15 @@ struct DiagnosticsReportTests {
         )
     }
 
+    @Test("a marked problem's sound is listed as a recording from when it was kept, not a bare date")
+    func clipSaysRecordingFrom() {
+        #expect(DiagnosticsView.clipTitle(URL(fileURLWithPath: "/clips/problem-odd.m4a")) == tr("הקלטה מ־%1", "Recording from %1", args: ["odd"]))
+        let dated = DiagnosticsView.clipTitle(URL(fileURLWithPath: "/clips/problem-2026-11-10-132205.m4a"))
+        let kept = DateComponents(calendar: Calendar(identifier: .gregorian), timeZone: .current, year: 2026, month: 11, day: 10, hour: 13, minute: 22, second: 5).date!
+        let keptAt = kept.formatted(inAppLanguage: .abbreviated, time: .standard)
+        #expect(dated == tr("הקלטה מ־%1", "Recording from %1", args: ["\(keptAt)"]))
+    }
+
     @Test("the report both screens send is the one Diagnostics sent: what it was given in its own lines, the journal last")
     func sameReportAsDiagnostics() {
         let lines = DiagnosticsReport(viewModel: viewModel(), journalLines: journal, notificationsAllowed: true, modelState: .missing, tokenizerCached: false)
