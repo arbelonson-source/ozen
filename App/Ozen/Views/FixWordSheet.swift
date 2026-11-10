@@ -4,12 +4,17 @@ import OzenKit
 struct FixWordSheet: View {
     let text: String
     let languageCode: String
+    /// What Save says when the line didn't take the fix.
+    var notSaved = tr("השורה כבר לא על המסך, ולכן התיקון לא נשמר.", "The line is no longer on the screen, so the fix was not saved.")
     /// Returns whether the line changed.
     let onSave: (WordFix, Bool) -> Bool
     @State private var picked: ClosedRange<Int>?
     @State private var heard = ""
     @State private var written = ""
     @State private var always = false
+    /// Save closed the sheet whether or not the line changed, so a fix that
+    /// never landed looked done.
+    @State private var rejected = false
     /// After a word is picked the keyboard opens on how it should be
     /// written: at large text the fields sat below the edge, and a grey
     /// Save was all she had to go on.
@@ -29,6 +34,13 @@ struct FixWordSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                if rejected {
+                    Section {
+                        Text(notSaved)
+                            .foregroundStyle(ReadableColor(color: .red))
+                            .accessibilityIdentifier("fixWordNotSaved")
+                    }
+                }
                 Section {
                     FixWordFlow {
                         ForEach(Array(words.enumerated()), id: \.offset) { index, word in
@@ -68,8 +80,11 @@ struct FixWordSheet: View {
                     Button(tr("שמירה", "Save")) {
                         if onSave(fix, always) {
                             Announcement.post(tr("השורה תוקנה", "Line fixed"))
+                            dismiss()
+                        } else {
+                            rejected = true
+                            Announcement.post(notSaved)
                         }
-                        dismiss()
                     }
                     .disabled(!canSave)
                 }
