@@ -152,6 +152,9 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+        // Beside the buttons that send the report, as on the iPhone: down by
+        // the list of sounds, it was read after the report had already gone.
+        if (now.problemClips.isNotEmpty()) Footnote(DiagnosticsReport.clipsNotInReport())
         SectionHeader(tr("מצב", "Status"))
         SettingsGroup {
             value(tr("שלב", "Stage"), DiagnosticsReport.stage(now.phase))
@@ -281,7 +284,7 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 for (clip in now.problemClips) {
                     item {
                         ClipRow(
-                            DiagnosticsReport.clipTitle(clip.name),
+                            DiagnosticsReport.clipLabel(clip.name),
                             onSend = { context.startActivity(clipSheet(context, clip)) },
                             onDelete = {
                                 source.deleteProblemClip(clip)

@@ -263,6 +263,19 @@ class DiagnosticsReportTest {
     }
 
     @Test
+    fun `a kept sound's row says it is a recording, and the note says the report goes without it, in her language`() {
+        val name = "problem-2026-10-11-130507.wav"
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals("Recording from ${DiagnosticsReport.clipTitle(name)}", DiagnosticsReport.clipLabel(name))
+            assertEquals("Sound clips aren’t sent with the report. To send one, tap it under “Sound from marked problems”.", DiagnosticsReport.clipsNotInReport())
+        }
+        Localization.withLanguage(UILanguage.Hebrew) {
+            assertEquals("הקלטה מ־${DiagnosticsReport.clipTitle(name)}", DiagnosticsReport.clipLabel(name))
+            assertTrue(DiagnosticsReport.clipsNotInReport().startsWith("ההקלטות לא נשלחות עם הדוח."))
+        }
+    }
+
+    @Test
     fun `the phone's own offline recognition goes in the report as Android answered`() {
         val lines = DiagnosticsReport.text(facts(builtInRecognition = "on device he can download, en installed")).lines()
         assertTrue("built-in recognition: on device he can download, en installed" in lines)
