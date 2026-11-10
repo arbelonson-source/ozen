@@ -1101,7 +1101,9 @@
   "Move or delete": "ማንቀሳቀስ ወይም መሰረዝ",
   "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "ከኮምፒዩተሩ ምንም መልስ የለም። ይህ አድራሻ የሚሰራው በቤቱ Wi‑Fi ላይ ብቻ ነው። ቤት ውስጥ፣ ኮምፒዩተሩ መብራቱን እና እንቅልፍ ውስጥ አለመሆኑን ያረጋግጡ። ከቤት ውጭ፣ በwss:// የሚጀምረውን አድራሻ ይጠቀሙ።",
   "This line is too old to recognize the voice from. Press and hold a newer line by the same person.": "ይህ መስመር ድምፁን ለመለየት በጣም የቆየ ነው። የዚያኑ ሰው አዲስ መስመር ተጭነው ይያዙ።",
-  "Selected · downloads when captions start": "ተመርጧል · ካፕሽኑ ሲጀምር ያወርዳል"
+  "Selected · downloads when captions start": "ተመርጧል · ካፕሽኑ ሲጀምር ያወርዳል",
+  "A key is a long code you get from the %1 website after opening an account there.": "ቁልፍ ማለት በ%1 ድረ-ገጽ ላይ መለያ ከከፈቱ በኋላ የሚያገኙት ረጅም ኮድ ነው።",
+  "Open the %1 website": "የ%1 ድረ-ገጽን ይክፈቱ"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2205,7 +2207,9 @@
   "Move or delete": "نقل أو حذف",
   "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "لا يوجد رد من الكمبيوتر. هذا العنوان يعمل فقط على شبكة Wi‑Fi في البيت. في البيت، تأكدوا من أن الكمبيوتر يعمل وليس في وضع السكون. خارج البيت، استخدموا العنوان الذي يبدأ بـ wss://",
   "This line is too old to recognize the voice from. Press and hold a newer line by the same person.": "هذا السطر قديم جدًا للتعرّف على الصوت منه. اضغطوا مطوّلًا على سطر أحدث للشخص نفسه.",
-  "Selected · downloads when captions start": "تم اختياره · يُنزَّل عند بدء الترجمة النصية"
+  "Selected · downloads when captions start": "تم اختياره · يُنزَّل عند بدء الترجمة النصية",
+  "A key is a long code you get from the %1 website after opening an account there.": "المفتاح رمز طويل تحصلون عليه من موقع %1 بعد فتح حساب فيه.",
+  "Open the %1 website": "فتح موقع %1"
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3309,7 +3313,9 @@
   "Move or delete": "移动或删除",
   "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "电脑没有响应。这个地址只能在家里的 Wi‑Fi 下使用。在家时，请确认电脑已开机且未处于睡眠状态。在外面时，请使用以 wss:// 开头的地址。",
   "This line is too old to recognize the voice from. Press and hold a newer line by the same person.": "这一行太早了，已无法从中识别声音。请长按同一个人较新的一行。",
-  "Selected · downloads when captions start": "已选中 · 字幕开始时下载"
+  "Selected · downloads when captions start": "已选中 · 字幕开始时下载",
+  "A key is a long code you get from the %1 website after opening an account there.": "密钥是在 %1 网站开设账户后得到的一串长代码。",
+  "Open the %1 website": "打开 %1 网站"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4413,7 +4419,9 @@
   "Move or delete": "Déplacer ou supprimer",
   "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Pas de réponse de l’ordinateur. Cette adresse ne fonctionne que sur le Wi‑Fi de la maison. À la maison, vérifiez que l’ordinateur est allumé et réveillé. Hors de la maison, utilisez l’adresse qui commence par wss://",
   "This line is too old to recognize the voice from. Press and hold a newer line by the same person.": "Cette ligne est trop ancienne pour reconnaître la voix. Appuyez longuement sur une ligne plus récente de la même personne.",
-  "Selected · downloads when captions start": "Sélectionné · se télécharge quand les sous-titres démarrent"
+  "Selected · downloads when captions start": "Sélectionné · se télécharge quand les sous-titres démarrent",
+  "A key is a long code you get from the %1 website after opening an account there.": "Une clé est un long code que vous obtenez sur le site de %1 après y avoir ouvert un compte.",
+  "Open the %1 website": "Ouvrir le site de %1"
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5517,7 +5525,9 @@
   "Move or delete": "Verschieben oder löschen",
   "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Keine Antwort vom Computer. Diese Adresse funktioniert nur im WLAN zu Hause. Zu Hause prüfen Sie, ob der Computer eingeschaltet und wach ist. Unterwegs verwenden Sie die Adresse, die mit wss:// beginnt",
   "This line is too old to recognize the voice from. Press and hold a newer line by the same person.": "Diese Zeile ist zu alt, um die Stimme daran zu erkennen. Halten Sie eine neuere Zeile derselben Person gedrückt.",
-  "Selected · downloads when captions start": "Ausgewählt · wird heruntergeladen, wenn die Untertitel starten"
+  "Selected · downloads when captions start": "Ausgewählt · wird heruntergeladen, wenn die Untertitel starten",
+  "A key is a long code you get from the %1 website after opening an account there.": "Ein Schlüssel ist ein langer Code, den Sie auf der Website von %1 erhalten, nachdem Sie dort ein Konto eröffnet haben.",
+  "Open the %1 website": "Website von %1 öffnen"
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6621,7 +6631,9 @@
   "Move or delete": "ऊपर-नीचे करें या मिटाएं",
   "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "कंप्यूटर से कोई जवाब नहीं। यह पता सिर्फ़ घर के Wi‑Fi पर काम करता है। घर पर, जांचें कि कंप्यूटर चालू है और स्लीप मोड में नहीं है। घर से बाहर, wss:// से शुरू होने वाला पता इस्तेमाल करें।",
   "This line is too old to recognize the voice from. Press and hold a newer line by the same person.": "यह लाइन बहुत पुरानी है, इससे आवाज़ नहीं पहचानी जा सकती। उसी व्यक्ति की किसी नई लाइन को दबाकर रखें।",
-  "Selected · downloads when captions start": "चुना गया · कैप्शन शुरू होने पर डाउनलोड होगा"
+  "Selected · downloads when captions start": "चुना गया · कैप्शन शुरू होने पर डाउनलोड होगा",
+  "A key is a long code you get from the %1 website after opening an account there.": "कुंजी एक लंबा कोड है, जो %1 की वेबसाइट पर खाता खोलने के बाद मिलता है।",
+  "Open the %1 website": "%1 की वेबसाइट खोलें"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7725,7 +7737,9 @@
   "Move or delete": "Mover ou eliminar",
   "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Sem resposta do computador. Este endereço só funciona na rede Wi‑Fi de casa. Em casa, verifique se o computador está ligado e ativo. Fora de casa, use o endereço que começa por wss://",
   "This line is too old to recognize the voice from. Press and hold a newer line by the same person.": "Esta linha é demasiado antiga para reconhecer a voz. Mantenha premida uma linha mais recente da mesma pessoa.",
-  "Selected · downloads when captions start": "Selecionado · transfere quando as legendas começarem"
+  "Selected · downloads when captions start": "Selecionado · transfere quando as legendas começarem",
+  "A key is a long code you get from the %1 website after opening an account there.": "Uma chave é um código longo que obtém no site de %1 depois de abrir lá uma conta.",
+  "Open the %1 website": "Abrir o site de %1"
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8829,7 +8843,9 @@
   "Move or delete": "Переместить или удалить",
   "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Компьютер не отвечает. Этот адрес работает только в домашней сети Wi‑Fi. Дома проверьте, что компьютер включён и не в спящем режиме. Вне дома используйте адрес, который начинается с wss://",
   "This line is too old to recognize the voice from. Press and hold a newer line by the same person.": "Эта строка слишком старая, чтобы распознать по ней голос. Нажмите и удерживайте более новую строку того же человека.",
-  "Selected · downloads when captions start": "Выбрано · загрузится, когда включатся субтитры"
+  "Selected · downloads when captions start": "Выбрано · загрузится, когда включатся субтитры",
+  "A key is a long code you get from the %1 website after opening an account there.": "Ключ — это длинный код, который выдают на сайте %1 после создания там учётной записи.",
+  "Open the %1 website": "Открыть сайт %1"
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -9933,7 +9949,9 @@
   "Move or delete": "Mover o borrar",
   "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "No hay respuesta del ordenador. Esta dirección solo funciona en el Wi‑Fi de casa. En casa, comprueba que el ordenador esté encendido y activo. Fuera de casa, usa la dirección que empieza por wss://",
   "This line is too old to recognize the voice from. Press and hold a newer line by the same person.": "Esta línea es demasiado antigua para reconocer la voz. Mantén pulsada una línea más reciente de la misma persona.",
-  "Selected · downloads when captions start": "Seleccionado · se descarga al iniciar los subtítulos"
+  "Selected · downloads when captions start": "Seleccionado · se descarga al iniciar los subtítulos",
+  "A key is a long code you get from the %1 website after opening an account there.": "Una clave es un código largo que obtienes en el sitio web de %1 después de abrir una cuenta allí.",
+  "Open the %1 website": "Abrir el sitio web de %1"
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11037,6 +11055,8 @@
   "Move or delete": "Перемістити або видалити",
   "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://": "Комп’ютер не відповідає. Ця адреса працює лише в домашній мережі Wi‑Fi. Удома перевірте, чи комп’ютер увімкнений і не в режимі сну. Поза домом використовуйте адресу, що починається з wss://",
   "This line is too old to recognize the voice from. Press and hold a newer line by the same person.": "Цей рядок надто старий, щоб розпізнати за ним голос. Натисніть і утримуйте новіший рядок тієї самої людини.",
-  "Selected · downloads when captions start": "Вибрано · завантажиться, коли ввімкнуться субтитри"
+  "Selected · downloads when captions start": "Вибрано · завантажиться, коли ввімкнуться субтитри",
+  "A key is a long code you get from the %1 website after opening an account there.": "Ключ — це довгий код, який видають на сайті %1 після створення там облікового запису.",
+  "Open the %1 website": "Відкрити сайт %1"
  }
 }

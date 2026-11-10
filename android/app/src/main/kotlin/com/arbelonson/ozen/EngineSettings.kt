@@ -134,6 +134,19 @@ class EngineSettings(
         }
     }
 
+    /**
+     * After the app starts again a saved key has no check yet: it is checked
+     * once when the cloud section shows, so a key the service refuses says
+     * so instead of reading as a green "Key saved on the phone".
+     */
+    suspend fun checkSavedKeyIfUnchecked() {
+        if (keyCheckState.value != null) return
+        val service = provider
+        val generation = keyCheckGeneration.get()
+        val key = withContext(io) { cloudKeys.read(service) } ?: return
+        checkSavedKey(service, key, generation)
+    }
+
     private fun checkSavedKey(service: CloudProvider, key: String, generation: Int) {
         scope.launch {
             val result = CloudKeyCheck.result(service, key, http)

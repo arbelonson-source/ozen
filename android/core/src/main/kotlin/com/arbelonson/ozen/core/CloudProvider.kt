@@ -27,6 +27,24 @@ enum class CloudProvider(val rawValue: String) {
             OpenRouter -> "OpenRouter"
         }
 
+    /**
+     * Where a key for the service is made, the same pages as
+     * docs/cloud-services.md: nothing in the cloud settings said what a key
+     * is or where to get one.
+     */
+    val keyPage: String
+        get() = when (this) {
+            Soniox -> "https://console.soniox.com/signup"
+            Deepgram -> "https://console.deepgram.com/signup"
+            OpenAI -> "https://platform.openai.com/api-keys"
+            Groq -> "https://console.groq.com/keys"
+            ElevenLabs -> "https://elevenlabs.io"
+            Gemini -> "https://aistudio.google.com/apikey"
+            Speechmatics -> "https://portal.speechmatics.com"
+            AssemblyAI -> "https://www.assemblyai.com/dashboard/signup"
+            OpenRouter -> "https://openrouter.ai/settings/keys"
+        }
+
     val models: List<String>
         get() = if (this == OpenRouter) CloudSpeech.models else listOf(defaultModel)
 
