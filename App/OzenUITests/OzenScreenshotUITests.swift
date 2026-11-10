@@ -1098,9 +1098,15 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(play.waitForExistence(timeout: 5), "say stop: no Play button")
         let before = play.frame
         play.tap()
-        Thread.sleep(forTimeInterval: 0.5)
-        capture(app, name: "say-while-speaking")
+        // Checked while the phone is talking: Stop comes on only then.
+        var talking = false
+        for _ in 0..<40 where !talking {
+            talking = stop.isEnabled
+            if !talking { Thread.sleep(forTimeInterval: 0.1) }
+        }
+        XCTAssertTrue(talking, "say stop: Stop never came on after Play")
         XCTAssertEqual(play.frame, before, "say stop: Play moved once the phone started talking")
+        capture(app, name: "say-while-speaking")
     }
 
     /// Clear in the big letters pad can be undone: a mis-tap must not
