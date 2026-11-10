@@ -86,7 +86,7 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
     when (state) {
         FileTranscription.Idle -> Unit
         is FileTranscription.Ready -> ReadyPage(transcriber, state, close)
-        is FileTranscription.Working -> WorkingPage(transcriber, state)
+        is FileTranscription.Working -> WorkingPage(state, onCancel = { confirmingStop = true })
         is FileTranscription.Done -> DonePage(state, close)
         is FileTranscription.Failed -> OzenScreen(tr("המרת הקלטה לטקסט", "Transcribe a recording"), onClose = close, closeLabel = tr("סגירה", "Close")) {
             Text(state.name, style = MaterialTheme.typography.titleMedium)
@@ -207,7 +207,7 @@ private fun PickDialog(title: String, choices: List<Pair<String, Boolean>>, onPi
 }
 
 @Composable
-private fun WorkingPage(transcriber: FileTranscriber, working: FileTranscription.Working) {
+private fun WorkingPage(working: FileTranscription.Working, onCancel: () -> Unit) {
     val percent = working.fraction?.let(TranscriptionProgress::percent)
     val title = when (working.stage) {
         FileTranscription.Working.Stage.Downloading -> tr("מורידים את המודל", "Downloading the model")
@@ -225,7 +225,7 @@ private fun WorkingPage(transcriber: FileTranscriber, working: FileTranscription
                 percent = percent,
                 detail = detail,
             ) {
-                TonalButton(tr("ביטול", "Cancel"), onClick = transcriber::cancel, modifier = Modifier.testTag(TRANSCRIBE_CANCEL))
+                TonalButton(tr("ביטול", "Cancel"), onClick = onCancel, modifier = Modifier.testTag(TRANSCRIBE_CANCEL))
             }
             Text(PRIVACY_LINE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
