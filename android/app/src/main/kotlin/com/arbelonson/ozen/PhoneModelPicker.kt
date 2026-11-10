@@ -72,10 +72,11 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
     val best = recommendedPhoneModel(language, speed, memory)
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         PhoneTest(check, tested = speed != null, captionsBusy = busy) { models.runCheck(chooseBestAfterTest) }
+        val hidden = PhoneModelShelf.notOffered(language, installed, partial)
+        val listed = PhoneModelCatalog.offered(language) + hidden
         SettingsGroup(modifier = Modifier.selectableGroup().testTag("phone-model-list")) {
-            val hidden = PhoneModelShelf.notOffered(language, installed, partial)
             val downloading = (switching as? PhoneModelSwitch.Downloading)?.file
-            for (model in PhoneModelCatalog.offered(language) + hidden) {
+            for (model in listed) {
                 item {
                     val deletable = PhoneModelShelf.canDelete(model.file, installed, partial, model.file == settings.phoneModel.file, downloading)
                     ModelRow(model, language, speed, memory, best, model.file == chosen, model.file in installed, partial[model.file], model !in hidden, deletable, switching, onDelete = { models.delete(model.file) }) { models.choose(model.file, byHand = true) }
@@ -101,7 +102,10 @@ internal fun PhoneModelPicker(settings: AppSettings, models: PhoneModels, choose
                 modifier = Modifier.testTag("light-model-note"),
             )
         }
-        SwitchNote(switching)
+        // A download that cannot go on says why under its own row; this note
+        // keeps only the one about a running download, or a reason whose
+        // model has no row in this list.
+        if (switching is PhoneModelSwitch.Downloading || listed.none { it.file == switching.fileOrNull }) SwitchNote(switching)
     }
 }
 
@@ -167,48 +171,64 @@ private fun ModelRow(
         else -> tr("מומלץ", "Recommended")
     }
     val progress = (switching as? PhoneModelSwitch.Downloading)?.takeIf { it.file == model.file }
+    val trouble = switching.takeIf { it !is PhoneModelSwitch.Downloading && it.fileOrNull == model.file }?.let(::switchNoteText)
     var asking by rememberSaveable { mutableStateOf(false) }
     var failed by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-    Row(
-        modifier = Modifier
-            .weight(1f)
-            .heightIn(min = 56.dp)
-            .selectable(selected = selected, enabled = choosable, onClick = onSelect, role = Role.RadioButton)
-            .testTag("phone-model-" + model.file)
-            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(model.displayName, style = MaterialTheme.typography.bodyLarge, fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal)
-            tag?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
-            val place = when {
-                progress?.checking == true -> tr("בודקים את הקובץ…", "Checking the file…")
-                progress != null -> tr("מורידים… %1%", "Downloading… %1%", listOf("${(progress.fraction * 100).toInt()}"))
-                onPhone -> tr("כבר בטלפון", "Already on the phone")
-                leftoverBytes != null -> tr("הורדה שלא הושלמה, %1 בטלפון", "Unfinished download, %1 on the phone", listOf(ByteSize.text(leftoverBytes)))
-                else -> tr("הורדה של %1", "Download of %1", listOf(ByteSize.text(model.bytes)))
+    Column {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 56.dp)
+                    .selectable(selected = selected, enabled = choosable, onClick = onSelect, role = Role.RadioButton)
+                    .testTag("phone-model-" + model.file)
+                    .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(model.displayName, style = MaterialTheme.typography.bodyLarge, fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal)
+                    tag?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
+                    val place = when {
+                        progress?.checking == true -> tr("בודקים את הקובץ…", "Checking the file…")
+                        progress != null -> tr("מורידים… %1%", "Downloading… %1%", listOf("${(progress.fraction * 100).toInt()}"))
+                        onPhone -> tr("כבר בטלפון", "Already on the phone")
+                        leftoverBytes != null -> tr("הורדה שלא הושלמה, %1 בטלפון", "Unfinished download, %1 on the phone", listOf(ByteSize.text(leftoverBytes)))
+                        else -> tr("הורדה של %1", "Download of %1", listOf(ByteSize.text(model.bytes)))
+                    }
+                    val hebrewOnly = if (model.isHebrewOnly && choosable) " · " + tr("עברית בלבד", "Hebrew only") else ""
+                    Text(place + hebrewOnly, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (!choosable) {
+                        Text(tr("מתאים לעברית בלבד, ולכן אי אפשר לבחור בו בשפה הזו.", "For Hebrew only, so it can’t be chosen in this language."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("phone-model-hebrew-only-note-" + model.file))
+                    }
+                    Text(model.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (choosable) Rating(if (language == UILanguage.Hebrew) tr("עברית", "Hebrew") else tr("דיוק", "Accuracy"), model.quality(language))
+                    if (choosable) speed?.let { FitLabel(PhoneModelEstimate.fit(model, it, memory)) }
+                }
+                RadioButton(selected = selected, onClick = null, enabled = choosable, modifier = Modifier.padding(12.dp))
             }
-            val hebrewOnly = if (model.isHebrewOnly && choosable) " · " + tr("עברית בלבד", "Hebrew only") else ""
-            Text(place + hebrewOnly, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (!choosable) {
-                Text(tr("מתאים לעברית בלבד, ולכן אי אפשר לבחור בו בשפה הזו.", "For Hebrew only, so it can’t be chosen in this language."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("phone-model-hebrew-only-note-" + model.file))
+            if (deletable) {
+                val action = tr("מחיקת המודל ״\u2068%1\u2069״", "Delete %1", listOf(model.displayName))
+                TextButton(
+                    onClick = { asking = true },
+                    modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).testTag("phone-model-delete-" + model.file).semantics { contentDescription = action },
+                ) { Text(tr("מחיקה", "Delete")) }
             }
-            Text(model.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (choosable) Rating(if (language == UILanguage.Hebrew) tr("עברית", "Hebrew") else tr("דיוק", "Accuracy"), model.quality(language))
-            if (choosable) speed?.let { FitLabel(PhoneModelEstimate.fit(model, it, memory)) }
         }
-        RadioButton(selected = selected, onClick = null, enabled = choosable, modifier = Modifier.padding(12.dp))
-    }
-    if (deletable) {
-        val action = tr("מחיקת המודל ״\u2068%1\u2069״", "Delete %1", listOf(model.displayName))
-        TextButton(
-            onClick = { asking = true },
-            modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).testTag("phone-model-delete-" + model.file).semantics { contentDescription = action },
-        ) { Text(tr("מחיקה", "Delete")) }
-    }
+        // Outside the row's merged radio button, so TalkBack reads it out when
+        // it appears instead of folding it silently into the row.
+        trouble?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = cautionOrange(),
+                modifier = Modifier
+                    .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+                    .testTag("phone-model-trouble-" + model.file)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
     }
     if (asking) {
         AlertDialog(
@@ -256,7 +276,14 @@ private fun FitLabel(fit: PhoneModelFit) {
 
 @Composable
 private fun SwitchNote(switching: PhoneModelSwitch) {
-    val text = when (switching) {
+    switchNoteText(switching)?.let {
+        val cautious = switching !is PhoneModelSwitch.Downloading
+        if (cautious) Caution(it) else Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+    }
+}
+
+private fun switchNoteText(switching: PhoneModelSwitch): String? =
+    when (switching) {
         PhoneModelSwitch.Idle -> null
         is PhoneModelSwitch.Downloading -> tr("הכתוביות ממשיכות עם המודל הנוכחי עד שהחדש יהיה מוכן.", "Captions keep using the current model until the new one is ready.")
         is PhoneModelSwitch.NotEnoughRoom -> tr("אין מקום להורדה. צריך לפנות עוד %1 MB.", "There is no room to download it. Free up %1 MB more.", listOf("${switching.megabytes}"))
@@ -265,8 +292,3 @@ private fun SwitchNote(switching: PhoneModelSwitch) {
         is PhoneModelSwitch.Retrying -> tr("ההורדה נעצרה. מנסים שוב אוטומטית.", "The download stopped. Trying again on its own.")
         is PhoneModelSwitch.Failed -> tr("ההורדה נכשלה. כדי לנסות שוב, בחרו את המודל מחדש.", "The download failed. Choose the model again to try again.")
     }
-    text?.let {
-        val cautious = switching !is PhoneModelSwitch.Downloading
-        if (cautious) Caution(it) else Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-    }
-}

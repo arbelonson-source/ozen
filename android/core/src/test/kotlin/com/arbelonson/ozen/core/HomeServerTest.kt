@@ -54,6 +54,21 @@ class HomeServerTest {
     }
 
     @Test
+    fun `a failed test with an address only the home Wi-Fi reaches says so, instead of sending her to check the computer`() {
+        Localization.withLanguage(UILanguage.English) {
+            for (typed in listOf("192.168.1.20", "ws://10.0.0.5:8765", "wss://172.20.1.4:8765", "grandma-pc.local", "169.254.3.4")) {
+                assertTrue(HomeServer.homeWiFiOnly(typed), typed)
+                assertTrue(HomeServer.unreachableText(typed).contains("works only on the home Wi‑Fi"), typed)
+            }
+            for (typed in listOf("100.64.0.7", "pc.tail0example.ts.net", "wss://example.org", "grandma-pc", "203.0.113.5", "172.32.0.1", "", "two words")) {
+                assertFalse(HomeServer.homeWiFiOnly(typed), typed)
+                assertTrue(HomeServer.unreachableText(typed).startsWith("No answer from the computer. Check that it’s on"), typed)
+            }
+        }
+        assertTrue(HomeServer.unreachableText("192.168.1.20").contains("עובדת רק ב־Wi‑Fi של הבית"))
+    }
+
+    @Test
     fun `a typed address out on the internet must be wss, plain ws would carry the pairing code, the names and the sound unencrypted`() = runTest {
         for (typed in listOf("203.0.113.5", "192.186.1.20", "ws://captions.example.org:8765")) {
             assertNull(HomeServer.url(typed), typed)

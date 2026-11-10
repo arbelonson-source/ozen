@@ -113,8 +113,9 @@ struct NightAlertsView: View {
         Button {
             Task {
                 guard await AlertNotifier.shared.requestAuthorization() else { return }
-                AlertNotifier.shared.schedule(BackgroundAlertPolicy.testNotification, after: 10)
+                AlertNotifier.shared.armLockScreenTest()
                 testSent = true
+                Announcement.post(tr("ההתראה נשלחה. נעלו את הטלפון, והיא תגיע תוך 10 שניות", "Sent. Lock the phone, and it will arrive within 10 seconds"))
             }
         } label: {
             if testSent {
@@ -124,6 +125,9 @@ struct NightAlertsView: View {
             }
         }
         .accessibilityIdentifier("nightAlertsTest")
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { testSent = false }
+        }
     }
 
     private func allowNotifications() {

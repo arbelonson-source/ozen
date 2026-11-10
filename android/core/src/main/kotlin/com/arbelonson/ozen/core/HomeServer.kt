@@ -100,6 +100,35 @@ object HomeServer {
     }
 
     /**
+     * An address only the home Wi‑Fi reaches: a home-network number or a
+     * .local, .lan or .home.arpa name. A tailnet address (100.64/10, .ts.net)
+     * works from anywhere, so it is not one; nor is a bare name, which a
+     * tailnet can answer too.
+     */
+    fun homeWiFiOnly(address: String): Boolean {
+        val host = parsedURL(address)?.let { hostOf(it) }?.lowercase(Locale.ROOT) ?: return false
+        if (host.endsWith(".local") || host.endsWith(".lan") || host.endsWith(".home.arpa")) return true
+        val octets = host.split(".").map { if (it.length > 1 && it.startsWith("0")) null else asciiInteger(it) }
+        if (octets.size != 4 || octets.any { it == null || it !in 0..255 }) return false
+        val a = octets[0]!!
+        val b = octets[1]!!
+        return a == 10 || (a == 192 && b == 168) || (a == 172 && b in 16..31) || (a == 169 && b == 254)
+    }
+
+    /**
+     * What a connection test that got no answer says. Paired at home, the
+     * saved address is often one only the home Wi‑Fi reaches; tested away
+     * from home it never answers, and "check that the computer is on" sent
+     * her to a computer that was fine.
+     */
+    fun unreachableText(address: String): String =
+        if (homeWiFiOnly(address)) {
+            tr("אין תשובה מהמחשב. הכתובת הזאת עובדת רק ב־Wi‑Fi של הבית. בבית, בדקו שהמחשב דלוק ולא במצב שינה. מחוץ לבית, השתמשו בכתובת שמתחילה ב־wss://", "No answer from the computer. This address works only on the home Wi‑Fi. At home, check that the computer is on and awake. Away from home, use the address that starts with wss://")
+        } else {
+            tr("אין תשובה מהמחשב. בדקו שהוא דלוק, לא במצב שינה ומחובר לאינטרנט.", "No answer from the computer. Check that it’s on, awake (not asleep) and connected to the internet.")
+        }
+
+    /**
      * "192.168.1.20", "grandma-pc:8765", "ws://..." or "wss://..." all work;
      * a bare host gets the default port and plain `ws`. Unencrypted audio
      * may only go to a computer on the home network or the family's

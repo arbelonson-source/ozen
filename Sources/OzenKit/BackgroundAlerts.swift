@@ -154,3 +154,30 @@ public struct BackgroundAlertPolicy: Sendable, Equatable {
         return atWord.trimmingCharacters(in: .whitespaces) + "…"
     }
 }
+
+/// The lock-screen test from Settings. Its 10 seconds used to start at the
+/// tap, and iOS shows nothing while Ozen is open, so anyone who locked the
+/// phone after second 10 (a slow reader at large text, Switch Control,
+/// VoiceOver) got nothing and could decide alerts don't work. The tap now
+/// only arms the test; it goes out a few seconds after Ozen leaves the
+/// screen, if that is within two minutes, and only once.
+public struct LockScreenTest: Sendable, Equatable {
+    public static let lockWindow: TimeInterval = 120
+    public static let delayAfterLock: TimeInterval = 3
+
+    public private(set) var armedAt: TimeInterval?
+
+    public init() {}
+
+    public mutating func arm(at now: TimeInterval) {
+        armedAt = now
+    }
+
+    /// How long after leaving the screen at `now` to send the test, or nil
+    /// when none is waiting. Either way it is no longer armed.
+    public mutating func delayOnLeaving(at now: TimeInterval) -> TimeInterval? {
+        defer { armedAt = nil }
+        guard let armedAt, now >= armedAt, now - armedAt <= Self.lockWindow else { return nil }
+        return Self.delayAfterLock
+    }
+}

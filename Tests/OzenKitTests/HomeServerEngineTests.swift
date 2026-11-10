@@ -187,6 +187,21 @@ struct HomeServerEngineTests {
         #expect(await socket.sentTexts.isEmpty)
     }
 
+    @Test("a failed test with an address only the home Wi-Fi reaches says so, instead of sending her to check the computer")
+    func homeWiFiOnlyAddress() {
+        Localization.$override.withValue(.english) {
+            for typed in ["192.168.1.20", "ws://10.0.0.5:8765", "wss://172.20.1.4:8765", "grandma-pc.local", "169.254.3.4"] {
+                #expect(HomeServer.homeWiFiOnly(typed), "\(typed)")
+                #expect(HomeServer.unreachableText(address: typed).contains("works only on the home Wi‑Fi"), "\(typed)")
+            }
+            for typed in ["100.64.0.7", "pc.tail0example.ts.net", "wss://example.org", "grandma-pc", "203.0.113.5", "172.32.0.1", "", "two words"] {
+                #expect(!HomeServer.homeWiFiOnly(typed), "\(typed)")
+                #expect(HomeServer.unreachableText(address: typed).hasPrefix("No answer from the computer. Check that it’s on"), "\(typed)")
+            }
+        }
+        #expect(HomeServer.unreachableText(address: "192.168.1.20").contains("עובדת רק ב־Wi‑Fi של הבית"))
+    }
+
     @Test("an address pasted into one already there is refused, not saved with the host \"wss\"")
     func doubledScheme() {
         #expect(HomeServer.url(from: "wss://wss://desktop.tail.ts.net") == nil)
