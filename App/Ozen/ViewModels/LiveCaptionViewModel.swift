@@ -2130,16 +2130,18 @@ public final class LiveCaptionViewModel {
     /// False when nothing could be saved: the phone no longer has the voice
     /// of a line from before a quiet break or long ago, and leaves it alone.
     /// The sheet then says so instead of closing as if it had worked.
+    /// `onlyThisLine`: the person said the name is someone else's, not a
+    /// spelling fix, so the saved person keeps their name everywhere.
     @discardableResult
-    public func nameSpeaker(of segment: TranscriptSegment, name: String) -> Bool {
+    public func nameSpeaker(of segment: TranscriptSegment, name: String, onlyThisLine: Bool = false) -> Bool {
         // The segment's own cluster may already carry a name (fixing a typo
         // on an earlier tag): rename that saved profile instead of adding a
         // second one for the same voice print.
         let oldName = segment.speakerClusterID.flatMap { id in
             pipeline.speakerClusters.first(where: { $0.id == id })?.name
         }
-        let isRespelling = pipeline.isRespelling(name, ofLine: segment)
-        guard let centroid = pipeline.nameSpeaker(of: segment, name: name) else { return false }
+        let isRespelling = !onlyThisLine && pipeline.isRespelling(name, ofLine: segment)
+        guard let centroid = pipeline.nameSpeaker(of: segment, name: name, onlyThisLine: onlyThisLine) else { return false }
         // A name another saved person already has is not a misspelling:
         // the phone took this voice for the wrong person. Renaming would
         // hand all of that person's prints to this name, and they would
@@ -2156,6 +2158,21 @@ public final class LiveCaptionViewModel {
             speakerLabelsChanged()
         }
         return true
+    }
+
+    /// The saved person a Save of `name` on this line would rename
+    /// everywhere, saved conversations included: the line's voice carries
+    /// their name and `name` looks like a spelling fix of it. One letter
+    /// apart is also Noa and Noam, Dana and Dani, Tal and Gal, so the sheet
+    /// asks which was meant. Nil when Save only names this voice.
+    public func savedPersonRenamed(byNaming segment: TranscriptSegment, as name: String) -> String? {
+        guard let oldName = segment.speakerClusterID.flatMap({ id in pipeline.speakerClusters.first(where: { $0.id == id })?.name }),
+              oldName != name,
+              pipeline.isRespelling(name, ofLine: segment),
+              !settings.speakerProfiles.contains(where: { $0.name == name }),
+              settings.speakerProfiles.contains(where: { $0.name == oldName })
+        else { return nil }
+        return oldName
     }
 
     /// Deletes a person from the saved speakers: every voice print with

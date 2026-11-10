@@ -1113,7 +1113,10 @@
   "Pause captions": "ካፕሽን ለአፍታ አቁም",
   "Continue captions": "ካፕሽን ቀጥል",
   "The model is about %1. Over cellular data this can cost money or use up your data plan.": "ሞዴሉ %1 ገደማ ነው። በሞባይል ዳታ ይህ ገንዘብ ሊያስወጣ ወይም የዳታ ጥቅልዎን ሊጨርስ ይችላል።",
-  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "ጥያቄዎቹ በእንግሊዝኛ ናቸው፤ ቤት ውስጥ ለሁሉም “አዎ” (Yes) ይመልሱ። ለመጨረሻው “አይ” (No) መመለስም ይቻላል፤ በኋላ ማዋቀሩን እንደገና በማስኬድ ማከል ይቻላል።"
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "ጥያቄዎቹ በእንግሊዝኛ ናቸው፤ ቤት ውስጥ ለሁሉም “አዎ” (Yes) ይመልሱ። ለመጨረሻው “አይ” (No) መመለስም ይቻላል፤ በኋላ ማዋቀሩን እንደገና በማስኬድ ማከል ይቻላል።",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "“%1”ን በሁሉም ቦታ፣ በተቀመጡ ውይይቶችም ውስጥ ወደ “%2” ይቀየር?",
+  "Change everywhere": "በሁሉም ቦታ ቀይር",
+  "Only this line": "ይህን መስመር ብቻ"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2229,7 +2232,10 @@
   "Pause captions": "إيقاف الترجمة النصية مؤقتًا",
   "Continue captions": "متابعة الترجمة النصية",
   "The model is about %1. Over cellular data this can cost money or use up your data plan.": "حجم النموذج نحو %1. عبر بيانات الجوال قد يكلف هذا مالًا أو يستهلك باقة البيانات.",
-  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "أسئلته بالإنجليزية: في البيت أجيبوا عنها كلها بـ‏“نعم”‏ (Yes). وعن السؤال الأخير تصلح الإجابة بـ‏“لا”‏ (No) أيضًا: يمكن إضافة ذلك لاحقًا بتشغيل الإعداد مرة أخرى."
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "أسئلته بالإنجليزية: في البيت أجيبوا عنها كلها بـ‏“نعم”‏ (Yes). وعن السؤال الأخير تصلح الإجابة بـ‏“لا”‏ (No) أيضًا: يمكن إضافة ذلك لاحقًا بتشغيل الإعداد مرة أخرى.",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "تغيير ‏“%1”‏ إلى ‏“%2”‏ في كل مكان، وفي المحادثات المحفوظة أيضًا؟",
+  "Change everywhere": "التغيير في كل مكان",
+  "Only this line": "هذا السطر فقط"
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3345,7 +3351,10 @@
   "Pause captions": "暂停字幕",
   "Continue captions": "继续字幕",
   "The model is about %1. Over cellular data this can cost money or use up your data plan.": "这个模型大约 %1。使用蜂窝网络下载可能会花钱或消耗流量套餐。",
-  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "它的问题是英文的：在家时全部选“是”（Yes）。最后一个问题选“否”（No）也可以：以后再运行一次安装程序就能加上。"
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "它的问题是英文的：在家时全部选“是”（Yes）。最后一个问题选“否”（No）也可以：以后再运行一次安装程序就能加上。",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "要在所有地方（包括已保存的对话）把“%1”改成“%2”吗？",
+  "Change everywhere": "全部更改",
+  "Only this line": "仅此行"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4461,7 +4470,10 @@
   "Pause captions": "Mettre les sous-titres en pause",
   "Continue captions": "Reprendre les sous-titres",
   "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Le modèle pèse environ %1. En données cellulaires, cela peut coûter de l’argent ou entamer votre forfait.",
-  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Ses questions sont en anglais : à la maison, répondez « Oui » (Yes) à chacune. À la dernière, « Non » (No) convient aussi : relancer l’installation plus tard permet de l’ajouter."
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Ses questions sont en anglais : à la maison, répondez « Oui » (Yes) à chacune. À la dernière, « Non » (No) convient aussi : relancer l’installation plus tard permet de l’ajouter.",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "Remplacer « %1 » par « %2 » partout, y compris dans les conversations enregistrées ?",
+  "Change everywhere": "Remplacer partout",
+  "Only this line": "Cette ligne seulement"
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5577,7 +5589,10 @@
   "Pause captions": "Untertitel anhalten",
   "Continue captions": "Untertitel fortsetzen",
   "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Das Modell ist etwa %1 groß. Über Mobilfunkdaten kann dies Geld kosten oder Ihren Datentarif aufbrauchen.",
-  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Seine Fragen sind auf Englisch: Zu Hause beantworten Sie alle mit „Ja“ (Yes). Bei der letzten geht auch „Nein“ (No): Wer die Einrichtung später noch einmal startet, kann es nachholen."
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Seine Fragen sind auf Englisch: Zu Hause beantworten Sie alle mit „Ja“ (Yes). Bei der letzten geht auch „Nein“ (No): Wer die Einrichtung später noch einmal startet, kann es nachholen.",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "„%1“ überall in „%2“ ändern, auch in gespeicherten Gesprächen?",
+  "Change everywhere": "Überall ändern",
+  "Only this line": "Nur diese Zeile"
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6693,7 +6708,10 @@
   "Pause captions": "कैप्शन को विराम दें",
   "Continue captions": "कैप्शन जारी रखें",
   "The model is about %1. Over cellular data this can cost money or use up your data plan.": "मॉडल का आकार लगभग %1 है। मोबाइल डेटा पर इसमें पैसे लग सकते हैं या आपका डेटा प्लान ख़त्म हो सकता है।",
-  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "इसके सवाल अंग्रेज़ी में हैं: घर पर सभी का जवाब “हां” (Yes) दें। आख़िरी सवाल का जवाब “नहीं” (No) भी ठीक है: बाद में सेटअप दोबारा चलाकर इसे जोड़ा जा सकता है।"
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "इसके सवाल अंग्रेज़ी में हैं: घर पर सभी का जवाब “हां” (Yes) दें। आख़िरी सवाल का जवाब “नहीं” (No) भी ठीक है: बाद में सेटअप दोबारा चलाकर इसे जोड़ा जा सकता है।",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "“%1” को हर जगह, सहेजी गई बातचीत में भी, “%2” में बदलें?",
+  "Change everywhere": "हर जगह बदलें",
+  "Only this line": "सिर्फ़ यह पंक्ति"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7809,7 +7827,10 @@
   "Pause captions": "Pausar legendas",
   "Continue captions": "Continuar legendas",
   "The model is about %1. Over cellular data this can cost money or use up your data plan.": "O modelo tem cerca de %1. Com dados móveis isto pode custar dinheiro ou gastar o seu plano de dados.",
-  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "As perguntas estão em inglês: em casa, responda “Sim” (Yes) a todas. À última, “Não” (No) também serve: pode acrescentá-lo mais tarde executando a instalação de novo."
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "As perguntas estão em inglês: em casa, responda “Sim” (Yes) a todas. À última, “Não” (No) também serve: pode acrescentá-lo mais tarde executando a instalação de novo.",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "Mudar “%1” para “%2” em todo o lado, também nas conversas guardadas?",
+  "Change everywhere": "Mudar em todo o lado",
+  "Only this line": "Só esta linha"
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8925,7 +8946,10 @@
   "Pause captions": "Приостановить субтитры",
   "Continue captions": "Продолжить субтитры",
   "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Модель весит около %1. По мобильной сети это может стоить денег или израсходовать ваш пакет данных.",
-  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Вопросы установщика на английском: дома на все отвечайте «Да» (Yes). На последний можно ответить и «Нет» (No): это можно добавить позже, запустив установку ещё раз."
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Вопросы установщика на английском: дома на все отвечайте «Да» (Yes). На последний можно ответить и «Нет» (No): это можно добавить позже, запустив установку ещё раз.",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "Заменить «%1» на «%2» везде, в том числе в сохранённых разговорах?",
+  "Change everywhere": "Заменить везде",
+  "Only this line": "Только эта строка"
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -10041,7 +10065,10 @@
   "Pause captions": "Pausar subtítulos",
   "Continue captions": "Continuar subtítulos",
   "The model is about %1. Over cellular data this can cost money or use up your data plan.": "El modelo pesa unos %1. Con datos móviles esto puede costar dinero o agotar tu plan de datos.",
-  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Sus preguntas están en inglés: en casa, responde “Sí” (Yes) a todas. A la última también vale “No”: se puede añadir más tarde ejecutando de nuevo la instalación."
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Sus preguntas están en inglés: en casa, responde “Sí” (Yes) a todas. A la última también vale “No”: se puede añadir más tarde ejecutando de nuevo la instalación.",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "¿Cambiar “%1” por “%2” en todas partes, también en las conversaciones guardadas?",
+  "Change everywhere": "Cambiar en todas partes",
+  "Only this line": "Solo esta línea"
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11157,6 +11184,9 @@
   "Pause captions": "Призупинити субтитри",
   "Continue captions": "Продовжити субтитри",
   "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Модель важить близько %1. Через мобільні дані це може коштувати грошей або вичерпати ваш пакет даних.",
-  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Запитання програми англійською: удома на всі відповідайте «Так» (Yes). На останнє можна відповісти й «Ні» (No): це можна додати пізніше, запустивши встановлення ще раз."
+  "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Запитання програми англійською: удома на всі відповідайте «Так» (Yes). На останнє можна відповісти й «Ні» (No): це можна додати пізніше, запустивши встановлення ще раз.",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "Змінити «%1» на «%2» всюди, зокрема в збережених розмовах?",
+  "Change everywhere": "Змінити всюди",
+  "Only this line": "Лише цей рядок"
  }
 }

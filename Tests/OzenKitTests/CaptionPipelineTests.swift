@@ -3356,6 +3356,21 @@ struct CaptionPipelineNamingLineTests {
         #expect(pipeline.displayName(for: pipeline.segments[1]) == "Dane")
         #expect(!pipeline.speakerClusters.contains { $0.name == "Dana" })
     }
+
+    @Test("a name one letter away, given to this line only, moves the line and leaves the voice its name")
+    func nearNameForThisLineOnlyMovesTheLine() async {
+        let (pipeline, engine, audio) = await listening()
+        await line("שלום", engine: engine, audio: audio, pipeline: pipeline, count: 1)
+        #expect(pipeline.isRespelling("Dane", ofLine: pipeline.segments[0]))
+
+        let print = pipeline.nameSpeaker(of: pipeline.segments[0], name: "Dane", onlyThisLine: true)
+        await line("מה נשמע", engine: engine, audio: audio, pipeline: pipeline, count: 2)
+
+        #expect(print == [1, 0, 0])
+        #expect(pipeline.displayName(for: pipeline.segments[0]) == "Dane")
+        #expect(pipeline.displayName(for: pipeline.segments[1]) == "Dana")
+        #expect(pipeline.speakerClusters.filter { $0.name == "Dana" }.count == 1)
+    }
 }
 
 @Suite("CaptionPipeline alert hooks")
