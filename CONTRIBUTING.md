@@ -18,8 +18,15 @@ Run the same portable checks CI runs:
 scripts/ci-local.sh
 ```
 
-It needs Swift 6.1, Python 3, and Java 21 with the Android SDK and NDK. It
-checks for leftover merge-conflict markers, translations, Siri phrases, the
+It needs Swift 6.1, Java 21 with the Android SDK and NDK, and Python 3 with
+the home server's libraries except faster-whisper, which its tests stand in
+for:
+
+```bash
+pip install -r <(grep -v '^faster-whisper' server/requirements.txt)
+```
+
+It checks for leftover merge-conflict markers, translations, Siri phrases, the
 wording docs quote from the app, real pairing codes or addresses, and pinned
 libraries. Then it runs `swift test`, the home server's tests, and the Android
 core and app tests, and builds the debug APK.
