@@ -1415,6 +1415,7 @@ struct LiveCaptionView: View {
             // button room for its words beside the others, it takes a row.
             if statusOwnRow {
                 statusControl
+                    .accessibilitySortPriority(1)
             }
             HStack(alignment: .center, spacing: 8) {
                 micButton
@@ -1424,6 +1425,7 @@ struct LiveCaptionView: View {
                     statusControl
                         .frame(maxWidth: .infinity)
                         .layoutPriority(-1)
+                        .accessibilitySortPriority(1)
                 }
                 typeToSpeakButton
                 if !viewModel.segments.isEmpty {
@@ -1432,6 +1434,9 @@ struct LiveCaptionView: View {
                 settingsButton
             }
         }
+        // VoiceOver reaches the pause button first, then the others in
+        // their order on screen.
+        .accessibilityElement(children: .contain)
         .onGeometryChange(for: CGFloat.self) { proxy in proxy.size.width } action: { width in barWidth = width }
         // At the accessibility text sizes the buttons' padding grew past
         // their fixed width until the bar was wider than the phone, and
