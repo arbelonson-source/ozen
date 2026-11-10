@@ -214,9 +214,10 @@ class MainActivity : ComponentActivity() {
     private val showingSettings = mutableStateOf(false)
     private val settingsAtBackup = mutableStateOf(false)
     private val confirmingCellular = mutableStateOf(false)
-    // Counts the tile's and the shortcut's start requests, so the screens
-    // held inside the composition close too and the captions are in front.
-    private val captionsAsked = mutableIntStateOf(0)
+    // Set by the tile's and the shortcut's start requests until the screens
+    // held inside the composition have closed, so the captions are in front;
+    // saved, so a rebuild in between doesn't drop it.
+    private val captionsAsked = mutableStateOf(false)
     // Every answer counts, even a second "no" after the first: the walkthrough
     // then looks again at whether the system would still ask.
     internal val microphoneAnswer = mutableStateOf<Boolean?>(null, neverEqualPolicy())
@@ -251,6 +252,7 @@ class MainActivity : ComponentActivity() {
         // Turning the phone or a new theme rebuilds the activity; the
         // screens below Settings are kept by rememberSaveable already.
         showingSettings.value = savedInstanceState?.getBoolean(SHOWING_SETTINGS) == true
+        captionsAsked.value = savedInstanceState?.getBoolean(CAPTIONS_ASKED) == true
         settingsAtBackup.value = savedInstanceState?.getBoolean(SETTINGS_AT_BACKUP) == true
         confirmingCellular.value = savedInstanceState?.getBoolean(CONFIRMING_CELLULAR) == true
         val app = application as OzenApplication
@@ -284,13 +286,14 @@ class MainActivity : ComponentActivity() {
         app.captions.takeFirstAppearance()
         showingSettings.value = false
         settingsAtBackup.value = false
-        captionsAsked.intValue += 1
+        captionsAsked.value = true
         startListening()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putBoolean(SHOWING_SETTINGS, showingSettings.value)
+        outState.putBoolean(CAPTIONS_ASKED, captionsAsked.value)
         outState.putBoolean(SETTINGS_AT_BACKUP, settingsAtBackup.value)
         outState.putBoolean(CONFIRMING_CELLULAR, confirmingCellular.value)
     }
@@ -433,6 +436,7 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val SHOWING_SETTINGS = "showingSettings"
+        const val CAPTIONS_ASKED = "captionsAsked"
         const val SETTINGS_AT_BACKUP = "settingsAtBackup"
         const val CONFIRMING_CELLULAR = "confirmingCellular"
         const val TRANSPARENT = android.graphics.Color.TRANSPARENT
@@ -460,7 +464,7 @@ private fun OzenApp(
     showingSettings: MutableState<Boolean>,
     settingsAtBackup: MutableState<Boolean>,
     confirmingCellular: MutableState<Boolean>,
-    captionsAsked: State<Int>,
+    captionsAsked: MutableState<Boolean>,
     onboarding: OnboardingHooks,
     onStatusTap: () -> Unit,
     onLaunch: () -> Unit,
@@ -485,12 +489,13 @@ private fun OzenApp(
     }
     var namingAlert by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(captionsAsked.value) {
-        if (captionsAsked.value == 0) return@LaunchedEffect
+        if (!captionsAsked.value) return@LaunchedEffect
         showingHistory = false
         reading = null
         saying = false
         choosingMicrophone = false
         namingAlert = false
+        captionsAsked.value = false
     }
     val modelSwitch by app.captions.phoneModels.switching.collectAsStateWithLifecycle()
     var comebacks by remember { mutableIntStateOf(0) }
