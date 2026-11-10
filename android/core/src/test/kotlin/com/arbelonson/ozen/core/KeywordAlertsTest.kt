@@ -619,6 +619,9 @@ class OtherLettersTest {
         assertEquals(1, hits("الطبيب", "والطبيب قال"))
         assertEquals(0, hits("الطبيب", "طبيب جديد"))
         assertEquals(1, hits("علي", "قل لعلي"))
+        assertEquals(1, hits("طبيب", "وكالطبيب"))
+        assertEquals(1, hits("الطبيب", "قولوا للطبيب"))
+        assertEquals(1, hits("إلياس", "قل لإلياس"))
     }
 
     @Test
@@ -629,6 +632,9 @@ class OtherLettersTest {
         assertEquals(0, hits("عمر", "بعمر عشر سنوات"))
         assertEquals(0, hits("نور", "أطفئوا النور"))
         assertEquals(0, hits("سلام", "السلام عليكم"))
+        assertEquals(0, hits("نور", "فالنور"))
+        assertEquals(0, hits("عمر", "وكالعمر"))
+        assertEquals(0, hits("إلياس", "لا مكان لليأس"))
         assertEquals(1, hits("نور", "قولوا لنور"))
         assertEquals(0, hits("Dan", "وDan"))
     }

@@ -228,23 +228,42 @@ public enum HebrewText {
         "כשה", "וכשה", "ומה", "שמה",
     ]
 
-    /// Arabic glues "and", "so", "with", "to", "like" and the article onto
-    /// the next word the same way: "الطبيب" ("the doctor"), "للطبيب" ("to
-    /// the doctor", where the lam of "to" swallows the article's alef),
-    /// "وجدتي" ("and my grandma"). The Important words help promises these
-    /// count. They are glued only onto a stem written in Arabic letters, and
-    /// only one of three letters or more: a two-letter word hides inside too
-    /// many others. A word saved with the article keeps it, so "الطبيب"
-    /// still finds "والطبيب" but not a bare "طبيب"; saved as "طبيب" it finds
-    /// them all.
+    /// Arabic glues "and", "so", "with", "to" and "like" onto the next word
+    /// the same way: "وجدتي" ("and my grandma"), "لجدتي" ("to my grandma").
+    /// The Important words help promises these count. They are glued only
+    /// onto a stem written in Arabic letters, and only one of three letters
+    /// or more: a two-letter word hides inside too many others.
     public static let arabicAttachedPrefixes: Set<String> = [
-        "و", "ف", "ب", "ل", "ك",
-        "وب", "فب", "ول", "فل", "وك", "فك",
-        "ال", "لل", "وال", "فال", "بال", "كال", "ولل", "فلل", "وبال", "فبال",
+        "و", "ف", "ب", "ل", "ك", "وب", "فب", "ول", "فل", "وك", "فك",
+    ]
+
+    /// The article, alone or behind those: "الطبيب" ("the doctor"),
+    /// "للطبيب" ("to the doctor", where the lam of "to" swallows the
+    /// article's alef), "وبالطبيب". A word saved with the article keeps it:
+    /// "الطبيب" finds "والطبيب" and "للطبيب" but not a bare "طبيب"; saved
+    /// as "طبيب" it finds them all.
+    public static let arabicArticlePrefixes: Set<String> = [
+        "ال", "لل", "وال", "فال", "بال", "كال", "وكال", "فكال", "ولل", "فلل", "وبال", "فبال",
+    ]
+
+    /// Arabic names that are everyday words too. A name never takes the
+    /// article, so with it the word is meant: "the age", "the light",
+    /// "peace". "To Ali" still alerts: being called matters more.
+    static let arabicNamesThatAreWords: Set<String> = [
+        "علي", "عمر", "نور", "امل", "سلام", "صالح", "حسن", "جمال", "فرح", "ايمان", "كريم", "رحمه",
     ]
 
     static func isArabicStem(_ stem: String) -> Bool {
         stem.unicodeScalars.count >= 3 && stem.unicodeScalars.allSatisfy { (0x0620...0x064A).contains($0.value) || (0x0671...0x06D3).contains($0.value) }
+    }
+
+    static func hasArabicPrefix(_ word: String, leaving stem: String) -> Bool {
+        guard isArabicStem(stem) else { return false }
+        if arabicAttachedPrefixes.contains(where: { word == $0 + stem }) { return true }
+        if !arabicNamesThatAreWords.contains(stem), arabicArticlePrefixes.contains(where: { word == $0 + stem }) { return true }
+        guard stem.hasPrefix("ال") else { return false }
+        let noun = String(stem.dropFirst(2))
+        return isArabicStem(noun) && ["لل", "ولل", "فلل"].contains { word == $0 + noun }
     }
 
     /// True if `word` is `stem` on its own, or `stem` with one of the
@@ -257,7 +276,7 @@ public enum HebrewText {
         for prefix in attachedPrefixes where word == prefix + stem {
             return true
         }
-        return isArabicStem(stem) && arabicAttachedPrefixes.contains { word == $0 + stem }
+        return hasArabicPrefix(word, leaving: stem)
     }
 
     /// Short names that, with a prefix glued on, spell an everyday word far
@@ -296,22 +315,16 @@ public enum HebrewText {
         "שחר": ["בשחר", "השחר"],
         "נועם": ["בנועם", "הנועם"],
         "דר": ["הדר", "והדר", "שהדר", "להדר", "בהדר", "מהדר", "כשהדר", "וכשהדר", "ושהדר", "שמהדר"],
-        // Arabic names that are everyday words too. A name never takes the
-        // article, so with it the word is meant ("the age", "the light",
-        // "peace"), as in "so Ali" spelling "actual" or "with Omar" spelling
-        // "at the age of". "To Ali" still alerts: being called matters more.
-        "علي": ["فعلي", "العلي"],
-        "عمر": ["العمر", "بعمر", "للعمر", "والعمر"],
-        "نور": ["النور", "بالنور", "للنور", "والنور"],
-        "امل": ["الامل", "بالامل", "للامل", "والامل", "بامل"],
-        "سلام": ["السلام", "والسلام", "بالسلام", "للسلام"],
-        "صالح": ["الصالح", "للصالح"],
-        "حسن": ["الحسن", "بحسن"],
-        "جمال": ["الجمال", "بالجمال", "للجمال", "والجمال"],
-        "فرح": ["الفرح", "بالفرح", "للفرح", "والفرح"],
-        "ايمان": ["الايمان", "بالايمان", "والايمان"],
-        "كريم": ["الكريم"],
-        "رحمه": ["الرحمه", "بالرحمه", "للرحمه", "والرحمه"],
+        // Arabic names hiding in everyday words: "actual" (so Ali), "at the
+        // age of" (with Omar), "with hope", "in good (faith)"; and names that
+        // start with the article's letters: "to despair" (Elias), "for the
+        // important" (Ilham).
+        "علي": ["فعلي"],
+        "عمر": ["بعمر"],
+        "امل": ["بامل"],
+        "حسن": ["بحسن"],
+        "الياس": ["للياس"],
+        "الهام": ["للهام"],
     ]
 
     /// The Hebrew geresh, and the plain and typographic apostrophes a

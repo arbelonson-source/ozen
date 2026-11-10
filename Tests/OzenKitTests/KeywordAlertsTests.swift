@@ -753,6 +753,9 @@ struct KeywordMatchingRound2Tests {
         #expect(count("الطبيب", "والطبيب قال") == 1)
         #expect(count("الطبيب", "طبيب جديد") == 0)
         #expect(count("علي", "قل لعلي") == 1)
+        #expect(count("طبيب", "وكالطبيب") == 1)
+        #expect(count("الطبيب", "قولوا للطبيب") == 1)
+        #expect(count("إلياس", "قل لإلياس") == 1)
     }
 
     @Test("a short Arabic word, or a name that is also an everyday word, does not alert inside another word")
@@ -763,6 +766,9 @@ struct KeywordMatchingRound2Tests {
         #expect(count("عمر", "بعمر عشر سنوات") == 0)
         #expect(count("نور", "أطفئوا النور") == 0)
         #expect(count("سلام", "السلام عليكم") == 0)
+        #expect(count("نور", "فالنور") == 0)
+        #expect(count("عمر", "وكالعمر") == 0)
+        #expect(count("إلياس", "لا مكان لليأس") == 0)
         #expect(count("نور", "قولوا لنور") == 1)
         #expect(count("Dan", "وDan") == 0)
     }
