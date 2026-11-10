@@ -196,3 +196,26 @@ struct ReturnSweepTests {
         #expect(AlertNotificationContent.identifiersToWithdraw(newer, startedAt: start).isEmpty)
     }
 }
+
+@Suite("Lock-screen test")
+struct LockScreenTestTests {
+    @Test("the test goes out a few seconds after the phone locks, however long the tap was before, within two minutes")
+    func sentAfterTheLockNotTheTap() {
+        var test = LockScreenTest()
+        test.arm(at: 1_000)
+        #expect(test.delayOnLeaving(at: 1_045) == LockScreenTest.delayAfterLock)
+        #expect(LockScreenTest.delayAfterLock <= 10)
+    }
+
+    @Test("it goes once, never without a tap, and not when the phone is locked long after")
+    func onceOnlyAndOnlyAfterATap() {
+        var test = LockScreenTest()
+        #expect(test.delayOnLeaving(at: 1_000) == nil)
+        test.arm(at: 1_000)
+        #expect(test.delayOnLeaving(at: 1_005) != nil)
+        #expect(test.delayOnLeaving(at: 1_010) == nil)
+        test.arm(at: 2_000)
+        #expect(test.delayOnLeaving(at: 2_000 + LockScreenTest.lockWindow + 1) == nil)
+        #expect(test.armedAt == nil)
+    }
+}

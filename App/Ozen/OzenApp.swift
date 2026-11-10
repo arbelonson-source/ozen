@@ -174,6 +174,7 @@ struct OzenApp: App {
                 if phase == .active { InstallExpiryStatus.shared.refreshReminder() }
                 if phase == .active && !Self.isRunningTests { viewModel.applyAppLanguage() }
                 if phase != .active { viewModel.flushPendingSettingsSave() }
+                if phase == .background { AlertNotifier.shared.sendLockScreenTestIfArmed() }
             }
             // iOS is about to end apps for memory; see handleMemoryWarning.
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in

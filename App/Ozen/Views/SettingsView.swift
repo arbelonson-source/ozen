@@ -930,7 +930,9 @@ struct SettingsView: View {
     // MARK: - Alerts
 
     /// Sends a sample alert to the lock screen, so whoever sets the phone
-    /// up sees for themselves that alerts get through.
+    /// up sees for themselves that alerts get through. It goes out once the
+    /// phone is locked, however long that takes (`LockScreenTest`); locking
+    /// also puts the button back, ready to try again.
     private var testNotificationButton: some View {
         Button {
             Task {
@@ -938,8 +940,9 @@ struct SettingsView: View {
                     notificationsBlocked = true
                     return
                 }
-                AlertNotifier.shared.schedule(BackgroundAlertPolicy.testNotification, after: 10)
+                AlertNotifier.shared.armLockScreenTest()
                 testNotificationSent = true
+                Announcement.post(tr("ההתראה נשלחה. נעלו את הטלפון, והיא תגיע תוך 10 שניות", "Sent. Lock the phone, and it will arrive within 10 seconds"))
             }
         } label: {
             if testNotificationSent {
@@ -947,6 +950,9 @@ struct SettingsView: View {
             } else {
                 Label(tr("בדיקה שהתראה מגיעה כשהטלפון נעול", "Test that an alert arrives when the phone is locked"), systemImage: "bell.and.waves.left.and.right")
             }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { testNotificationSent = false }
         }
     }
 
@@ -994,6 +1000,10 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label(tr("ההתראות של אוזן כבויות בהגדרות הטלפון, ולכן כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."), systemImage: "bell.slash.fill")
                         .foregroundStyle(.readable(.red))
+                        .announcing(
+                            tr("ההתראות של אוזן כבויות בהגדרות הטלפון, ולכן כשהמסך כבוי לא תגיע שום התראה.", "Ozen’s notifications are turned off in the phone’s settings, so no alert will arrive when the screen is off."),
+                            whenTurningTrue: notificationsBlocked
+                        )
                     Button(tr("פתיחת הגדרות הטלפון", "Open the phone’s settings")) {
                         if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
                             openURL(url)

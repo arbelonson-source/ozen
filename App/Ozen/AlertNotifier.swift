@@ -10,6 +10,7 @@ import OzenKit
 nonisolated final class AlertNotifier: Sendable {
     static let shared = AlertNotifier()
     private let lastPostError = LockedErrorText()
+    private let lockScreenTest = LockedLockScreenTest()
 
     /// Why the most recent notification couldn't be scheduled, or nil when
     /// it was. Shown in diagnostics: a doorbell alert that never reached
@@ -49,6 +50,18 @@ nonisolated final class AlertNotifier: Sendable {
     func schedule(_ content: AlertNotificationContent, after seconds: TimeInterval) {
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(seconds, 1), repeats: false)
         add(UNNotificationRequest(identifier: content.identifier, content: Self.body(for: content), trigger: trigger))
+    }
+
+    /// Arms the lock-screen test from Settings: it goes out once Ozen leaves
+    /// the screen (see `LockScreenTest`).
+    func armLockScreenTest() {
+        lockScreenTest.arm(at: Date().timeIntervalSince1970)
+    }
+
+    /// Called as Ozen goes to the background: sends an armed test.
+    func sendLockScreenTestIfArmed() {
+        guard let delay = lockScreenTest.delayOnLeaving(at: Date().timeIntervalSince1970) else { return }
+        schedule(BackgroundAlertPolicy.testNotification, after: delay)
     }
 
     func cancelScheduled(identifier: String) {
@@ -108,5 +121,22 @@ nonisolated private final class LockedErrorText: @unchecked Sendable {
         lock.lock()
         stored = text
         lock.unlock()
+    }
+}
+
+nonisolated private final class LockedLockScreenTest: @unchecked Sendable {
+    private let lock = NSLock()
+    private var test = LockScreenTest()
+
+    func arm(at now: TimeInterval) {
+        lock.lock()
+        test.arm(at: now)
+        lock.unlock()
+    }
+
+    func delayOnLeaving(at now: TimeInterval) -> TimeInterval? {
+        lock.lock()
+        defer { lock.unlock() }
+        return test.delayOnLeaving(at: now)
     }
 }
