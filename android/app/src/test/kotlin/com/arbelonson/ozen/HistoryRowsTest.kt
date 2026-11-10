@@ -80,6 +80,20 @@ class HistoryRowsTest {
     }
 
     @Test
+    fun `delete all warns that starred and named conversations and the current one go too, for good`() {
+        Localization.withLanguage(UILanguage.English) {
+            assertEquals(
+                "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.",
+                HistoryTexts.deleteAllMessage(),
+            )
+        }
+        Localization.withLanguage(UILanguage.Hebrew) {
+            val message = HistoryTexts.deleteAllMessage()
+            assertTrue(message.contains("שורה מסומנת או עם שם") && message.contains("השיחה הנוכחית") && message.contains("אי אפשר לבטל"))
+        }
+    }
+
+    @Test
     fun `a shorter keeping time says how many old conversations go now`() = Localization.withLanguage(UILanguage.English) {
         assertEquals("1 old conversation will be deleted now", HistoryTexts.expiryWarning(1))
         assertEquals("2 old conversations will be deleted now", HistoryTexts.expiryWarning(2))

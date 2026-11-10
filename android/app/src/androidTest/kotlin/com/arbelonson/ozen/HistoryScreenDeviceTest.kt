@@ -683,6 +683,7 @@ class HistoryScreenDeviceTest {
         waitFor("Delete all test second")
         compose.onNodeWithText("Delete all").performClick()
         compose.onNodeWithText("Delete all saved conversations?").assertExists()
+        compose.onNode(hasText("starred line or a name", substring = true) and hasText("can’t be undone", substring = true) and hasAnyAncestor(isDialog())).assertExists()
         compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
         compose.waitForIdle()
         assertEquals(2, seeded.count { store.load(it) != null })

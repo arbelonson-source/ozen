@@ -155,6 +155,12 @@ object HistoryTexts {
         else -> ConversationStats.oldConversationsDeletedText(count)
     }
 
+    /** Said before Delete all: it takes the conversations the footer promises to keep, and can't be undone. */
+    fun deleteAllMessage(): String = tr(
+        "כל השיחות השמורות יימחקו, גם אלה עם שורה מסומנת או עם שם, וגם השיחה הנוכחית. אי אפשר לבטל את זה.",
+        "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.",
+    )
+
     /** Said before clearing the captions when the lines would be lost: with History off, or saving to it failing. */
     fun clearWarning(saving: Boolean, failing: Boolean): String? = when {
         !saving -> tr("שמירת שיחות כבויה, ולכן הן לא יישמרו.", "History is off, so they won’t be saved.")

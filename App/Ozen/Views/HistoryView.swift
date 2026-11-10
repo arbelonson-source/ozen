@@ -87,6 +87,12 @@ struct HistoryView: View {
         }
     }
 
+    /// Said before Delete all: it takes the conversations the footer promises
+    /// to keep, and can't be undone.
+    static func deleteAllMessage() -> String {
+        tr("כל השיחות השמורות יימחקו, גם אלה עם שורה מסומנת או עם שם, וגם השיחה הנוכחית. אי אפשר לבטל את זה.", "Every saved conversation is deleted, including those with a starred line or a name, and the current one. This can’t be undone.")
+    }
+
     /// Right under the switch, so with the switch off it must not say
     /// conversations are being saved.
     static func savingFooter(saving: Bool, size: String, retention: HistoryRetention) -> String {
@@ -367,6 +373,8 @@ struct HistoryView: View {
                 reload()
             }
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
+        } message: {
+            Text(HistoryView.deleteAllMessage())
         }
     }
 
