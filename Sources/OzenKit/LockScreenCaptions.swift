@@ -275,7 +275,9 @@ public enum HebrewTime {
 ///
 /// A Live Activity gets 160 points of height on the lock screen, however
 /// large she has the captions in the app. Someone who reads them large
-/// gets larger lines there too, and fewer words of the line before.
+/// gets larger lines there too, and fewer words of the line before; so
+/// does someone who set the phone's own text to one of its largest sizes,
+/// even with the captions left at their usual size.
 public enum LockScreenTextSize: String, Sendable, Equatable, Codable {
     /// 21-point lines: about 30 characters a line, three for the newest
     /// line and two for the one before.
@@ -287,8 +289,10 @@ public enum LockScreenTextSize: String, Sendable, Equatable, Codable {
     /// Captions this size or larger in the app make the lock screen large.
     public static let largeFromCaptionSize: Double = 34
 
-    public init(captionSize: Double) {
-        self = captionSize >= Self.largeFromCaptionSize ? .large : .regular
+    /// `largePhoneText`: the phone's text is at one of iOS's larger
+    /// accessibility sizes (Settings → Accessibility → Larger Text).
+    public init(captionSize: Double, largePhoneText: Bool = false) {
+        self = captionSize >= Self.largeFromCaptionSize || largePhoneText ? .large : .regular
     }
 
     /// Characters kept from the end of the newest line. A line longer than

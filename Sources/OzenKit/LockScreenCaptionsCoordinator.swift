@@ -40,14 +40,18 @@ public final class LockScreenCaptionsCoordinator {
         /// A failure the app is already bringing back by itself (see
         /// `CaptionPipeline.isRecoveringByItself`).
         public var recoveringByItself: Bool
+        /// The phone's own text is at one of its accessibility sizes (see
+        /// `LockScreenTextSize`).
+        public var largePhoneText: Bool
 
-        public init(enabled: Bool, phase: PipelinePhase, interruptedByCall: Bool, pausedForSpeech: Bool, captionSize: Double, recoveringByItself: Bool = false) {
+        public init(enabled: Bool, phase: PipelinePhase, interruptedByCall: Bool, pausedForSpeech: Bool, captionSize: Double, recoveringByItself: Bool = false, largePhoneText: Bool = false) {
             self.enabled = enabled
             self.phase = phase
             self.interruptedByCall = interruptedByCall
             self.pausedForSpeech = pausedForSpeech
             self.captionSize = captionSize
             self.recoveringByItself = recoveringByItself
+            self.largePhoneText = largePhoneText
         }
     }
 
@@ -131,7 +135,7 @@ public final class LockScreenCaptionsCoordinator {
             stop()
             return
         }
-        let textSize = LockScreenTextSize(captionSize: situation.captionSize)
+        let textSize = LockScreenTextSize(captionSize: situation.captionSize, largePhoneText: situation.largePhoneText)
         let time = now()
         // Under a note ("paused because of a call") there is room for the
         // newest line only.

@@ -162,6 +162,13 @@ struct LockScreenCaptionsTests {
         #expect(LockScreenTextSize(captionSize: 64) == .large)
     }
 
+    @Test("the phone's own text at an accessibility size makes the lock screen large, even with the captions at their usual size")
+    func largePhoneText() {
+        #expect(LockScreenTextSize(captionSize: DisplayPreferences.default.fontSize, largePhoneText: true) == .large)
+        #expect(LockScreenTextSize(captionSize: DisplayPreferences.minimumFontSize, largePhoneText: true) == .large)
+        #expect(LockScreenTextSize(captionSize: DisplayPreferences.default.fontSize, largePhoneText: false) == .regular)
+    }
+
     @Test("the troubleshooting guide names the caption size where the lock screen's lines grow")
     func guideNamesTheSize() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()

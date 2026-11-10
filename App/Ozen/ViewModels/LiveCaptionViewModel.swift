@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import OzenKit
 import OzenPlatform
+import UIKit
 
 /// What the screens talk to. Owns the persisted settings, the
 /// `CaptionPipeline`, and the transcript history store, and is the one
@@ -337,7 +338,8 @@ public final class LiveCaptionViewModel {
                         interruptedByCall: self.isInterruptedBySystem,
                         pausedForSpeech: self.captionsHeldForSpeech,
                         captionSize: self.settings.display.fontSize,
-                        recoveringByItself: self.pipeline.isRecoveringByItself
+                        recoveringByItself: self.pipeline.isRecoveringByItself,
+                        largePhoneText: UIApplication.shared.preferredContentSizeCategory.isAccessibilityCategory
                     )
                 },
                 lines: { [weak self] count, textSize in

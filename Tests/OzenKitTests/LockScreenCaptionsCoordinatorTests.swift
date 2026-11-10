@@ -392,4 +392,12 @@ struct LockScreenCaptionsCoordinatorTests {
         coordinator.refresh()
         #expect(display.shown.last?.textSize == .large)
     }
+
+    @Test("the phone's text at an accessibility size makes the lock screen large, with the captions at their usual size")
+    func largePhoneText() {
+        let (coordinator, display, captions) = make()
+        captions.situation.largePhoneText = true
+        coordinator.refresh()
+        #expect(display.shown.last?.textSize == .large)
+    }
 }
