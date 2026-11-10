@@ -135,7 +135,10 @@ struct NameSpeakerSheet: View {
     private var canSave: Bool { !trimmedName.isEmpty && segment.speakerClusterID != nil }
 
     /// Someone already saved, split off as a new "speaker 3": one tap puts
-    /// the right name back instead of typing it again.
+    /// the right name in the field instead of typing it again. It used to
+    /// save and close at once, and a near-miss on the next row filed this
+    /// voice under the wrong person, with deleting that person the only way
+    /// back; Save still commits it.
     private var savedNames: [String] {
         SavedSpeaker.grouping(viewModel.settings.speakerProfiles).map(\.name)
     }
@@ -167,10 +170,10 @@ struct NameSpeakerSheet: View {
                         ForEach(savedNames, id: \.self) { saved in
                             Button {
                                 name = saved
-                                save()
                             } label: {
-                                Label(saved, systemImage: "person.wave.2")
+                                Label(saved, systemImage: trimmedName == saved ? "checkmark.circle.fill" : "person.wave.2")
                             }
+                            .accessibilityAddTraits(trimmedName == saved ? .isSelected : [])
                         }
                     }
                 }

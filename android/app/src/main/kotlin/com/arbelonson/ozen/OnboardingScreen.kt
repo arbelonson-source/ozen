@@ -200,7 +200,7 @@ internal fun OnboardingScreen(
                             item { Point(Icons.Rounded.Keyboard, tr("ואפשר גם להקליד תשובה, והטלפון יקריא אותה בקול.", "And you can type a reply, and the phone will speak it aloud.")) }
                         }
                     }
-                    2 -> LanguagePage(settings.spokenLanguage, onSpokenLanguage)
+                    LANGUAGE_PAGE -> LanguagePage(settings.spokenLanguage, onSpokenLanguage)
                     MODEL_PAGE -> ModelPage(settings, phoneModels) {
                         focusManager.clearFocus()
                         turning.launch { pager.animateScrollToPage(pager.currentPage + 1) }
@@ -220,10 +220,27 @@ internal fun OnboardingScreen(
                 }
             }
             Dots(pager)
-            Footer(pager, onFinish = {
-                addDraft()
-                onFinish()
-            })
+            Footer(
+                pager,
+                // On a phone in another language, Skip before the language
+                // page goes to it: the spoken language starts as Hebrew, and
+                // someone who skipped from the first page got their English
+                // or Arabic conversation as Hebrew-letter nonsense, after the
+                // Hebrew model downloaded. From that page on, Skip finishes.
+                onSkip = {
+                    if (pager.currentPage < LANGUAGE_PAGE && Localization.language != settings.spokenLanguage) {
+                        focusManager.clearFocus()
+                        turning.launch { pager.animateScrollToPage(LANGUAGE_PAGE) }
+                    } else {
+                        addDraft()
+                        onFinish()
+                    }
+                },
+                onFinish = {
+                    addDraft()
+                    onFinish()
+                },
+            )
         }
     }
 }
@@ -554,7 +571,7 @@ private fun Dots(pager: PagerState) {
 }
 
 @Composable
-private fun Footer(pager: PagerState, onFinish: () -> Unit) {
+private fun Footer(pager: PagerState, onSkip: () -> Unit, onFinish: () -> Unit) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     Row(
@@ -567,7 +584,7 @@ private fun Footer(pager: PagerState, onFinish: () -> Unit) {
                 start = {
                     // Bare text is too small a target beside Next, and a
                     // slip ends the walkthrough.
-                    TextButton(onClick = onFinish, modifier = Modifier.heightIn(min = 48.dp)) {
+                    TextButton(onClick = onSkip, modifier = Modifier.heightIn(min = 48.dp)) {
                         Text(tr("דילוג", "Skip"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
@@ -634,5 +651,6 @@ private fun pageTitle(page: Int): String = when (page) {
 }
 
 private const val PAGES = 7
+private const val LANGUAGE_PAGE = 2
 private const val MODEL_PAGE = 3
 private const val NAME_PAGE = 5

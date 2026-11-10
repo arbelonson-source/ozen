@@ -10,8 +10,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material3.AssistChip
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -67,7 +68,15 @@ internal fun NameSpeakerDialog(shown: String, hasVoice: Boolean, savedNames: Lis
                 )
                 if (hasVoice && savedNames.isNotEmpty()) {
                     Text(tr("דוברים שמורים", "Saved speakers"), style = MaterialTheme.typography.labelLarge)
-                    savedNames.forEach { saved -> AssistChip(onClick = { onSave(saved) }, label = { Text(saved) }, leadingIcon = { Icon(Icons.Rounded.Person, contentDescription = null) }) }
+                    savedNames.forEach { saved ->
+                        val chosen = name.trim() == saved
+                        FilterChip(
+                            selected = chosen,
+                            onClick = { name = saved },
+                            label = { Text(saved) },
+                            leadingIcon = { Icon(if (chosen) Icons.Rounded.Check else Icons.Rounded.Person, contentDescription = null) },
+                        )
+                    }
                 }
             }
         },
