@@ -2171,6 +2171,25 @@ class SettingsScreenDeviceTest {
     }
 
     @Test
+    fun eachSoundSampleBuzzesWithItsImportanceSoTheEmergencyOneBuzzesAsAnAlarm() {
+        val before = Buzz.play
+        val felt = CopyOnWriteArrayList<SoundEvent.Importance?>()
+        Buzz.play = { _, _, importance -> felt += importance }
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Sounds at home").performScrollTo().performClick()
+            compose.onNodeWithText("Emergency: alarm, smoke detector").performScrollTo().performClick()
+            compose.onNodeWithText("Important: doorbell, knock at the door, baby crying").performScrollTo().performClick()
+            compose.onNodeWithText("A word from the list, like your name").performScrollTo().performClick()
+            compose.waitUntil(5_000) { felt.size == 3 }
+            assertEquals(listOf(SoundEvent.Importance.Critical, SoundEvent.Importance.High, null), felt.toList())
+            assertEquals(Buzz.Usage.Alarm, Buzz.usageFor(felt[0]))
+        } finally {
+            Buzz.play = before
+        }
+    }
+
+    @Test
     fun theSoundsPageLeadsToLettingEmergencyAlertsThroughDoNotDisturbUntilTheyAreLetThrough() {
         val row = "Emergency alerts in Do Not Disturb"
         val overrideBefore = AlertNotifier.alarmsOverrideDoNotDisturb

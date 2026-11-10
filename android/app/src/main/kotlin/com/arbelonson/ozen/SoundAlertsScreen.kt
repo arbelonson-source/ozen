@@ -84,7 +84,7 @@ internal fun SoundAlertsScreen(
     preferences: SoundAlertPreferences,
     onChange: (SoundAlertPreferences) -> Unit,
     nearMiss: (SoundEvent) -> SoundNearMisses.Entry?,
-    onFeel: (AlertVibration) -> Unit,
+    onFeel: (AlertVibration, SoundEvent.Importance?) -> Unit,
     onSoundsOnly: () -> Unit,
     onClose: () -> Unit,
     flashLight: Boolean = false,
@@ -146,18 +146,26 @@ internal fun SoundAlertsScreen(
         CameraLightRows(preferences.isEnabled, flashLight, onFlashLight, onTryLight)
 
         // Each kind of alert buzzes differently, which only helps once
-        // she knows which is which.
+        // she knows which is which. A sample buzzes with its sound's
+        // importance, as the real alert does: an Emergency one buzzes as an
+        // alarm, which a silenced phone still lets through.
         SectionHeader(tr("הרטט של כל התראה", "How each alert feels"))
-        val samples = listOf(
-            Triple(tr("חירום: אזעקה, גלאי עשן", "Emergency: alarm, smoke detector"), AlertVibration.pattern(SoundEvent.Importance.Critical), Icons.Rounded.LocalFireDepartment),
-            Triple(tr("חשוב: צלצול בדלת, דפיקה בדלת, בכי של תינוק", "Important: doorbell, knock at the door, baby crying"), AlertVibration.pattern(SoundEvent.Importance.High), Icons.Rounded.DoorFront),
-            Triple(tr("צליל אחר בבית", "Other sound at home"), AlertVibration.pattern(SoundEvent.Importance.Medium), Icons.Rounded.Home),
-            Triple(tr("מילה מהרשימה, כמו השם שלכם", "A word from the list, like your name"), AlertVibration.keyword, Icons.Rounded.NotificationsActive),
-            Triple(tr("מישהו מתחיל לדבר אחרי שקט", "Someone starts speaking after silence"), AlertVibration.speechResumed, Icons.Rounded.RecordVoiceOver),
+        val sounds = listOf(
+            Triple(tr("חירום: אזעקה, גלאי עשן", "Emergency: alarm, smoke detector"), Icons.Rounded.LocalFireDepartment, SoundEvent.Importance.Critical),
+            Triple(tr("חשוב: צלצול בדלת, דפיקה בדלת, בכי של תינוק", "Important: doorbell, knock at the door, baby crying"), Icons.Rounded.DoorFront, SoundEvent.Importance.High),
+            Triple(tr("צליל אחר בבית", "Other sound at home"), Icons.Rounded.Home, SoundEvent.Importance.Medium),
         )
+        val others = listOf(
+            Triple(tr("מילה מהרשימה, כמו השם שלכם", "A word from the list, like your name"), Icons.Rounded.NotificationsActive, AlertVibration.keyword),
+            Triple(tr("מישהו מתחיל לדבר אחרי שקט", "Someone starts speaking after silence"), Icons.Rounded.RecordVoiceOver, AlertVibration.speechResumed),
+        )
+        val feelIcon: @Composable () -> Unit = { Icon(Icons.Rounded.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
         SettingsGroup(dividerInset = 56.dp) {
-            for ((title, vibration, icon) in samples) {
-                item { SettingRow(title, icon = icon, onClick = { onFeel(vibration) }, trailing = { Icon(Icons.Rounded.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }) }
+            for ((title, icon, importance) in sounds) {
+                item { SettingRow(title, icon = icon, onClick = { onFeel(AlertVibration.pattern(importance), importance) }, trailing = feelIcon) }
+            }
+            for ((title, icon, vibration) in others) {
+                item { SettingRow(title, icon = icon, onClick = { onFeel(vibration, null) }, trailing = feelIcon) }
             }
         }
         Footnote(
