@@ -752,7 +752,13 @@ data class KeywordAlertMatcher(var alerts: List<KeywordAlert>) {
                     sequence += 1
                 }
             } else if (phraseWords.size == 1 && graphemesOf(joinedPhrase).size >= 4) {
+                // A pair is glued only when neither word was the name by
+                // itself: "shel savta" (Grandma's) also glued into a
+                // she-le-savta prefix chain, so one mention was two matches,
+                // two notifications and two buzzes on a locked phone.
+                val alone = unordered.filter { it.first.alertID == alert.id }.map { it.first.wordIndex }.toSet()
                 for (index in 0 until normalizedWords.size - 1) {
+                    if (index in alone || index + 1 in alone) continue
                     if (normalizedWords[index].isEmpty() || normalizedWords[index + 1].isEmpty()) continue
                     if (normalizedWords[index] in HebrewText.wordsThatTakeNoName) continue
                     if (normalizedWords[index + 1] in HebrewText.wordsThatNeverEndAName) continue
