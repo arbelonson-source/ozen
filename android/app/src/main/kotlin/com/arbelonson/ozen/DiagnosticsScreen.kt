@@ -152,6 +152,9 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+        // Beside the buttons that send the report, as on the iPhone: down by
+        // the list of sounds, it was read after the report had already gone.
+        if (now.problemClips.isNotEmpty()) Footnote(DiagnosticsReport.clipsNotInReport())
         SectionHeader(tr("מצב", "Status"))
         SettingsGroup {
             value(tr("שלב", "Stage"), DiagnosticsReport.stage(now.phase))
@@ -274,7 +277,6 @@ internal fun DiagnosticsScreen(source: DiagnosticsSource, onClose: () -> Unit) {
             }
         }
         Footnote(ProblemNotes.diagnostics(now.settings.saveHistory))
-        if (now.problemClips.isNotEmpty()) Footnote(DiagnosticsReport.clipsNotInReport())
 
         if (now.problemClips.isNotEmpty()) {
             SectionHeader(tr("הקלטות של בעיות שסומנו", "Sound from marked problems"))
