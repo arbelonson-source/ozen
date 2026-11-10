@@ -618,17 +618,7 @@ struct LiveCaptionView: View {
             isPresented: $confirmingClear,
             titleVisibility: .visible
         ) {
-            Button(tr("מחיקה", "Delete"), role: .destructive) {
-                if !clearKeepsHistory {
-                    viewModel.clearTranscript()
-                } else if !viewModel.clearTranscriptKeepingHistory() {
-                    // The save failed just now: ask again, now saying so.
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(400))
-                        confirmingClear = true
-                    }
-                }
-            }
+            Button(tr("מחיקה", "Delete"), role: .destructive, action: clearAfterAsking)
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
         } message: {
             Text(clearKeepsHistory
@@ -641,6 +631,20 @@ struct LiveCaptionView: View {
 
     private var clearKeepsHistory: Bool {
         viewModel.settings.saveHistory && viewModel.historySaveFailure == nil
+    }
+
+    /// When the question said the lines stay saved, they are saved first
+    /// and cleared only if that worked; a save failing just now brings the
+    /// question back, now saying saving isn't working.
+    private func clearAfterAsking() {
+        if !clearKeepsHistory {
+            viewModel.clearTranscript()
+        } else if !viewModel.clearTranscriptKeepingHistory() {
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(400))
+                confirmingClear = true
+            }
+        }
     }
 
     // MARK: - Transcript
