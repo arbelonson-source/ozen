@@ -228,6 +228,25 @@ public enum HebrewText {
         "כשה", "וכשה", "ומה", "שמה",
     ]
 
+    /// Arabic glues "and", "so", "with", "to", "like" and the article onto
+    /// the next word the same way: "الطبيب" ("the doctor"), "للطبيب" ("to
+    /// the doctor", where the lam of "to" swallows the article's alef),
+    /// "وجدتي" ("and my grandma"). The Important words help promises these
+    /// count. They are glued only onto a stem written in Arabic letters, and
+    /// only one of three letters or more: a two-letter word hides inside too
+    /// many others. A word saved with the article keeps it, so "الطبيب"
+    /// still finds "والطبيب" but not a bare "طبيب"; saved as "طبيب" it finds
+    /// them all.
+    public static let arabicAttachedPrefixes: Set<String> = [
+        "و", "ف", "ب", "ل", "ك",
+        "وب", "فب", "ول", "فل", "وك", "فك",
+        "ال", "لل", "وال", "فال", "بال", "كال", "ولل", "فلل", "وبال", "فبال",
+    ]
+
+    static func isArabicStem(_ stem: String) -> Bool {
+        stem.unicodeScalars.count >= 3 && stem.unicodeScalars.allSatisfy { (0x0620...0x064A).contains($0.value) || (0x0671...0x06D3).contains($0.value) }
+    }
+
     /// True if `word` is `stem` on its own, or `stem` with one of the
     /// attached prefixes glued to the front. Deliberately does not touch
     /// the end of the word, so a *suffix* change ("savta'ot") is correctly
@@ -238,7 +257,7 @@ public enum HebrewText {
         for prefix in attachedPrefixes where word == prefix + stem {
             return true
         }
-        return false
+        return isArabicStem(stem) && arabicAttachedPrefixes.contains { word == $0 + stem }
     }
 
     /// Short names that, with a prefix glued on, spell an everyday word far
@@ -277,6 +296,22 @@ public enum HebrewText {
         "שחר": ["בשחר", "השחר"],
         "נועם": ["בנועם", "הנועם"],
         "דר": ["הדר", "והדר", "שהדר", "להדר", "בהדר", "מהדר", "כשהדר", "וכשהדר", "ושהדר", "שמהדר"],
+        // Arabic names that are everyday words too. A name never takes the
+        // article, so with it the word is meant ("the age", "the light",
+        // "peace"), as in "so Ali" spelling "actual" or "with Omar" spelling
+        // "at the age of". "To Ali" still alerts: being called matters more.
+        "علي": ["فعلي", "العلي"],
+        "عمر": ["العمر", "بعمر", "للعمر", "والعمر"],
+        "نور": ["النور", "بالنور", "للنور", "والنور"],
+        "امل": ["الامل", "بالامل", "للامل", "والامل", "بامل"],
+        "سلام": ["السلام", "والسلام", "بالسلام", "للسلام"],
+        "صالح": ["الصالح", "للصالح"],
+        "حسن": ["الحسن", "بحسن"],
+        "جمال": ["الجمال", "بالجمال", "للجمال", "والجمال"],
+        "فرح": ["الفرح", "بالفرح", "للفرح", "والفرح"],
+        "ايمان": ["الايمان", "بالايمان", "والايمان"],
+        "كريم": ["الكريم"],
+        "رحمه": ["الرحمه", "بالرحمه", "للرحمه", "والرحمه"],
     ]
 
     /// The Hebrew geresh, and the plain and typographic apostrophes a

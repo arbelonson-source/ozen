@@ -297,6 +297,25 @@ object HebrewText {
     )
 
     /**
+     * Arabic glues "and", "so", "with", "to", "like" and the article onto the
+     * next word the same way: "الطبيب" ("the doctor"), "للطبيب" ("to the
+     * doctor", where the lam of "to" swallows the article's alef), "وجدتي"
+     * ("and my grandma"). The Important words help promises these count. They
+     * are glued only onto a stem written in Arabic letters, and only one of
+     * three letters or more: a two-letter word hides inside too many others.
+     * A word saved with the article keeps it, so "الطبيب" still finds
+     * "والطبيب" but not a bare "طبيب"; saved as "طبيب" it finds them all.
+     */
+    val arabicAttachedPrefixes: Set<String> = setOf(
+        "و", "ف", "ب", "ل", "ك",
+        "وب", "فب", "ول", "فل", "وك", "فك",
+        "ال", "لل", "وال", "فال", "بال", "كال", "ولل", "فلل", "وبال", "فبال",
+    )
+
+    internal fun isArabicStem(stem: String): Boolean =
+        stem.codePointCount(0, stem.length) >= 3 && stem.codePoints().allMatch { it in 0x0620..0x064A || it in 0x0671..0x06D3 }
+
+    /**
      * True if [word] is [stem] on its own, or [stem] with one of the attached
      * prefixes glued to the front. Deliberately does not touch the end of the
      * word, so a suffix change ("savta'ot") is correctly left unmatched.
@@ -304,7 +323,8 @@ object HebrewText {
     fun stripAttachedPrefix(word: String, stem: String): Boolean {
         if (word == stem) return true
         if (everydayWordsNotNames[stem]?.contains(word) == true) return false
-        return attachedPrefixes.any { word == it + stem }
+        if (attachedPrefixes.any { word == it + stem }) return true
+        return isArabicStem(stem) && arabicAttachedPrefixes.any { word == it + stem }
     }
 
     /**
@@ -344,6 +364,22 @@ object HebrewText {
         // A doctor's abbreviated title after the article spells the name
         // Hadar, which is said far more often than "the Dr.".
         "דר" to setOf("הדר", "והדר", "שהדר", "להדר", "בהדר", "מהדר", "כשהדר", "וכשהדר", "ושהדר", "שמהדר"),
+        // Arabic names that are everyday words too. A name never takes the
+        // article, so with it the word is meant ("the age", "the light",
+        // "peace"), as in "so Ali" spelling "actual" or "with Omar" spelling
+        // "at the age of". "To Ali" still alerts: being called matters more.
+        "علي" to setOf("فعلي", "العلي"),
+        "عمر" to setOf("العمر", "بعمر", "للعمر", "والعمر"),
+        "نور" to setOf("النور", "بالنور", "للنور", "والنور"),
+        "امل" to setOf("الامل", "بالامل", "للامل", "والامل", "بامل"),
+        "سلام" to setOf("السلام", "والسلام", "بالسلام", "للسلام"),
+        "صالح" to setOf("الصالح", "للصالح"),
+        "حسن" to setOf("الحسن", "بحسن"),
+        "جمال" to setOf("الجمال", "بالجمال", "للجمال", "والجمال"),
+        "فرح" to setOf("الفرح", "بالفرح", "للفرح", "والفرح"),
+        "ايمان" to setOf("الايمان", "بالايمان", "والايمان"),
+        "كريم" to setOf("الكريم"),
+        "رحمه" to setOf("الرحمه", "بالرحمه", "للرحمه", "والرحمه"),
     )
 
     /**

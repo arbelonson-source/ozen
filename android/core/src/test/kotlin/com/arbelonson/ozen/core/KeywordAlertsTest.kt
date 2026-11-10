@@ -609,6 +609,38 @@ class OtherLettersTest {
     }
 
     @Test
+    fun `an Arabic word alerts with the article or a preposition glued on, as the Important words help promises`() {
+        assertEquals(1, hits("طبيب", "ذهبت إلى الطبيب"))
+        assertEquals(1, hits("طبيب", "قولوا للطبيب"))
+        assertEquals(1, hits("طبيب", "وبالطبيب"))
+        assertEquals(1, hits("جدتي", "قل لجدتي"))
+        assertEquals(1, hits("جدتي", "أنا وجدتي"))
+        assertEquals(1, hits("ماما", "قولوا لماما"))
+        assertEquals(1, hits("الطبيب", "والطبيب قال"))
+        assertEquals(0, hits("الطبيب", "طبيب جديد"))
+        assertEquals(1, hits("علي", "قل لعلي"))
+    }
+
+    @Test
+    fun `a short Arabic word, or a name that is also an everyday word, does not alert inside another word`() {
+        assertEquals(0, hits("ام", "كام"))
+        assertEquals(0, hits("ام", "لام"))
+        assertEquals(0, hits("علي", "هذا فعلي"))
+        assertEquals(0, hits("عمر", "بعمر عشر سنوات"))
+        assertEquals(0, hits("نور", "أطفئوا النور"))
+        assertEquals(0, hits("سلام", "السلام عليكم"))
+        assertEquals(1, hits("نور", "قولوا لنور"))
+        assertEquals(0, hits("Dan", "وDan"))
+    }
+
+    @Test
+    fun `the suggested Arabic doctor and medicine are the bare words, so every glued form alerts`() {
+        assertTrue("طبيب" in AlertSuggestions.offeredWords(UILanguage.Arabic))
+        assertTrue("دواء" in AlertSuggestions.offeredWords(UILanguage.Arabic))
+        assertEquals(1, hits("دواء", "خذ الدواء"))
+    }
+
+    @Test
     fun `hamza on waw and ya is folded like the one on alef, and a longer word stays apart`() {
         assertEquals(1, hits("مومن", "قال مؤمن"))
         assertEquals(1, hits("رايد", "قال رائد"))
