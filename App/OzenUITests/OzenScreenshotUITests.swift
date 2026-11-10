@@ -798,6 +798,37 @@ final class OzenScreenshotUITests: XCTestCase {
         }
     }
 
+    /// Picking Amharic on the walkthrough's language page says its
+    /// captions are often wrong for now (Whisper barely knows it), and
+    /// another language takes the note away again.
+    func testOnboardingAmharicSaysCaptionsAreOftenWrong() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTestScreenshots", "onboardingEnglish"]
+        app.launch()
+
+        let next = app.descendants(matching: .any)["onboardingNextButton"]
+        XCTAssertTrue(next.waitForExistence(timeout: 10), "amharic note: the walkthrough never appeared")
+        next.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+        next.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        let amharic = app.buttons["አማርኛ"]
+        XCTAssertTrue(amharic.waitForExistence(timeout: 10), "amharic note: the language page has no Amharic")
+        if !amharic.isHittable { app.swipeUp() }
+        amharic.tap()
+        let note = app.descendants(matching: .any)["spokenLanguageNote"]
+        XCTAssertTrue(note.waitForExistence(timeout: 5), "amharic note: picking Amharic said nothing about its captions")
+        XCTAssertEqual(note.label, "Captions in Amharic are often wrong for now. Check anything important with the person speaking.")
+        capture(app, name: "onboarding-amharic-note")
+        XCTAssertTrue(next.isHittable, "amharic note: Next went out of reach")
+
+        let english = app.buttons["English"]
+        if !english.isHittable { app.swipeDown() }
+        english.tap()
+        XCTAssertTrue(note.waitForNonExistence(timeout: 5), "amharic note: the note stayed after English was picked")
+    }
+
     /// German's words run longest of Ozen's languages. On Android at the
     /// largest text, "Weiter" broke in the middle beside "Überspringen" and
     /// "Hinzufügen" left the name field a few letters wide.
