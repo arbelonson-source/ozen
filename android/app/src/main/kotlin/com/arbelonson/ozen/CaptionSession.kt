@@ -716,10 +716,21 @@ class CaptionSession(
     fun stopCameraLight() = light.stop()
 
     /** Settings' "Clear captions from the screen": the conversation so far is saved first. */
-    fun clearCaptions() {
+    /**
+     * When the question before this promised the lines stay in History
+     * ([keepingHistory]) and saving them fails now, they stay on screen and
+     * false comes back, as on the iPhone. What the question said counts, not
+     * how saving stands now: an autosave failing while it was open otherwise
+     * let the lines go unsaved under the promise.
+     */
+    fun clearCaptions(keepingHistory: Boolean = false): Boolean {
+        if (!conversations.clear(keepingHistory, pipeline::clearTranscript)) {
+            publish()
+            return false
+        }
         dismissRecentConversation()
-        conversations.clear(pipeline::clearTranscript)
         publish()
+        return true
     }
 
     /**
