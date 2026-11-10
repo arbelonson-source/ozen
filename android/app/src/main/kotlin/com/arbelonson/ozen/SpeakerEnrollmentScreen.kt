@@ -115,6 +115,10 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
         )
         SectionHeader(tr("הקלטה", "Recording"))
+        // Read before Record is pressed, not after: the half minute is
+        // running by then, and a screen reader reading it out goes into the
+        // recording.
+        GroupFootnote(tr("בקשו מהאדם לדבר בטבעיות, במרחק רגיל מהמיקרופון שנבחר. אם הפס לא זז כשמדברים, המיקרופון לא קולט כלום. הכתוביות מושהות בזמן ההקלטה.", "Ask the person to speak naturally, at a normal distance from the selected microphone. If the bar doesn’t move while the person speaks, the microphone isn’t hearing anything. Captions are paused during recording."))
         if (recording) {
             val seconds = ((progress ?: 0.0) * RECORDING_SECONDS).toInt()
             ProgressCard(
@@ -125,7 +129,6 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
                 LevelMeter(level = { speakers.inputLevel }, active = true)
                 TonalButton(tr("עצירה בלי לשמור", "Stop without saving"), { SpeakerRecordings.stop() }, Modifier.fillMaxWidth(), icon = Icons.Rounded.Stop)
             }
-            GroupFootnote(tr("בקשו מהאדם לדבר בטבעיות, במרחק רגיל מהמיקרופון שנבחר. אם הפס לא זז כשמדברים, המיקרופון לא קולט כלום. הכתוביות מושהות בזמן ההקלטה.", "Ask the person to speak naturally, at a normal distance from the selected microphone. If the bar doesn’t move while the person speaks, the microphone isn’t hearing anything. Captions are paused during recording."))
         } else {
             PrimaryButton(
                 tr("הקלטה ושמירה (%1 שניות)", "Record and save (%1 seconds)", listOf("$RECORDING_SECONDS")),

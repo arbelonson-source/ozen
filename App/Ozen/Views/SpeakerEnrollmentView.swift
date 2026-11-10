@@ -23,15 +23,15 @@ struct SpeakerEnrollmentView: View {
                 }
 
                 Section {
+                    Text(tr("בקשו מהאדם לדבר בטבעיות, במרחק רגיל מהמיקרופון שנבחר. אם הפס לא זז כשמדברים, המיקרופון לא קולט כלום. הכתוביות מושהות בזמן ההקלטה.", "Ask the person to speak naturally, at a normal distance from the selected microphone. If the bar doesn’t move while the person speaks, the microphone isn’t hearing anything. Captions are paused during recording."))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                     if isRecording {
                         ProgressView(value: progress) {
                             Text(tr("מקליטים… %1/%2 שניות", "Recording… %1/%2 seconds", args: ["\(Int(progress * targetSeconds))", "\(Int(targetSeconds))"]))
                         }
                         .accessibilityValue(ConversationStats.secondsText(Int(progress * targetSeconds)))
                         LevelMeter(level: viewModel.inputLevel, isActive: true)
-                        Text(tr("בקשו מהאדם לדבר בטבעיות, במרחק רגיל מהמיקרופון שנבחר. אם הפס לא זז כשמדברים, המיקרופון לא קולט כלום. הכתוביות מושהות בזמן ההקלטה.", "Ask the person to speak naturally, at a normal distance from the selected microphone. If the bar doesn’t move while the person speaks, the microphone isn’t hearing anything. Captions are paused during recording."))
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
                         Button(tr("עצירה בלי לשמור", "Stop without saving"), role: .destructive) {
                             recording?.cancel()
                         }
