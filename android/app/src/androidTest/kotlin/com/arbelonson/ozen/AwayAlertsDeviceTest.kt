@@ -121,6 +121,20 @@ class AwayAlertsDeviceTest {
         val public = checkNotNull(notification.publicVersion) { "no lock-screen version" }
         assertEquals("Said: Dana", public.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
         assertNull(public.extras.getCharSequence(Notification.EXTRA_TEXT))
+        assertTrue("the lock-screen version hides when it was said", public.extras.getBoolean(Notification.EXTRA_SHOW_WHEN))
+        assertEquals(notification.`when`, public.`when`)
+    }
+
+    // Android shows no time unless asked: a doorbell found on the lock screen
+    // an hour later still read "Heard just now", with nothing saying when.
+    @Test
+    fun anAlertShowsTheTimeItWasHeard() {
+        for (identifier in listOf("door_bell", "smoke_detector")) {
+            val before = System.currentTimeMillis()
+            val notification = postedWhileAway(identifier)
+            assertTrue("$identifier hides its time", notification.extras.getBoolean(Notification.EXTRA_SHOW_WHEN))
+            assertTrue("$identifier: ${notification.`when`} is not the moment it was posted", notification.`when` in (before - 1_000)..System.currentTimeMillis())
+        }
     }
 
     @Test
