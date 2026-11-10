@@ -90,10 +90,10 @@ import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
@@ -2285,7 +2285,7 @@ private fun StatusLine(status: PhasePresentation, look: CaptionTheme, live: Bool
     }
     val action = @Composable { modifier: Modifier ->
         button?.let { (label, icon) ->
-            FilledTonalButton(
+            Button(
                 onClick = onTap,
                 modifier = modifier.heightIn(min = STATUS_BUTTON_HEIGHT).testTag(STATUS_BUTTON).semantics { stateDescription = status.title },
             ) {
