@@ -398,7 +398,7 @@ public final class AVAudioInputManager: AudioCapturing {
     }
 
     /// The listed input the session is recording from right now, if any.
-    private var inputInUse: String? {
+    public var inputInUse: String? {
         session.currentRoute.inputs
             .map(\.uid)
             .first { uid in availableInputs.contains { $0.uid == uid } }

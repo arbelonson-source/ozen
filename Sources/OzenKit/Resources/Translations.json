@@ -1056,7 +1056,8 @@
   "This word is not in the line": "ይህ ቃል በመስመሩ ውስጥ የለም",
   "Press and hold a line to mark it as important, copy it or fix a word.": "መስመርን ተጭነው በመያዝ እንደ አስፈላጊ ምልክት ማድረግ፣ መቅዳት ወይም ቃል ማስተካከል ይችላሉ።",
   "Captions paused for a call or another app": "ካፕሽን በጥሪ ወይም በሌላ መተግበሪያ ምክንያት ተቋርጧል",
-  "They’ll continue on their own once the microphone is free · Tap to try now": "ማይክሮፎኑ ሲለቀቅ ራሳቸውን ችለው ይቀጥላሉ · አሁን ለመሞከር ይንኩ"
+  "They’ll continue on their own once the microphone is free · Tap to try now": "ማይክሮፎኑ ሲለቀቅ ራሳቸውን ችለው ይቀጥላሉ · አሁን ለመሞከር ይንኩ",
+  "%1 isn’t responding": "%1 ምላሽ አይሰጥም"
  },
  "arabic": {
   "Added: %1": "أُضيف: %1",
@@ -2115,7 +2116,8 @@
   "This word is not in the line": "هذه الكلمة غير موجودة في السطر",
   "Press and hold a line to mark it as important, copy it or fix a word.": "اضغطوا مطوّلًا على سطر لتمييزه كمهم أو نسخه أو تصحيح كلمة فيه.",
   "Captions paused for a call or another app": "توقفت الترجمة النصية مؤقتًا بسبب مكالمة أو تطبيق آخر",
-  "They’ll continue on their own once the microphone is free · Tap to try now": "ستستمر من تلقاء نفسها عندما يصبح الميكروفون متاحًا · المسوا للمحاولة الآن"
+  "They’ll continue on their own once the microphone is free · Tap to try now": "ستستمر من تلقاء نفسها عندما يصبح الميكروفون متاحًا · المسوا للمحاولة الآن",
+  "%1 isn’t responding": "%1 لا يستجيب"
  },
  "chineseSimplified": {
   "Added: %1": "已添加：%1",
@@ -3174,7 +3176,8 @@
   "This word is not in the line": "这个词不在这一行中",
   "Press and hold a line to mark it as important, copy it or fix a word.": "长按一行可将其标记为重要、复制，或修正其中的词。",
   "Captions paused for a call or another app": "因通话或其他应用，字幕已暂停",
-  "They’ll continue on their own once the microphone is free · Tap to try now": "麦克风空闲后会自动继续 · 点一下立即尝试"
+  "They’ll continue on their own once the microphone is free · Tap to try now": "麦克风空闲后会自动继续 · 点一下立即尝试",
+  "%1 isn’t responding": "%1 没有响应"
  },
  "french": {
   "Added: %1": "Ajouté : %1",
@@ -4233,7 +4236,8 @@
   "This word is not in the line": "Ce mot ne figure pas dans la ligne",
   "Press and hold a line to mark it as important, copy it or fix a word.": "Appuyez longuement sur une ligne pour la marquer comme importante, la copier ou corriger un mot.",
   "Captions paused for a call or another app": "Sous-titres en pause pour un appel ou une autre application",
-  "They’ll continue on their own once the microphone is free · Tap to try now": "Ils reprendront seuls dès que le microphone sera libre · Touchez pour réessayer maintenant"
+  "They’ll continue on their own once the microphone is free · Tap to try now": "Ils reprendront seuls dès que le microphone sera libre · Touchez pour réessayer maintenant",
+  "%1 isn’t responding": "%1 ne répond pas"
  },
  "german": {
   "Added: %1": "Hinzugefügt: %1",
@@ -5292,7 +5296,8 @@
   "This word is not in the line": "Dieses Wort steht nicht in der Zeile",
   "Press and hold a line to mark it as important, copy it or fix a word.": "Halten Sie eine Zeile gedrückt, um sie als wichtig zu markieren, sie zu kopieren oder ein Wort zu korrigieren.",
   "Captions paused for a call or another app": "Untertitel für einen Anruf oder eine andere App angehalten",
-  "They’ll continue on their own once the microphone is free · Tap to try now": "Sie machen von allein weiter, sobald das Mikrofon frei ist · Zum sofortigen Versuch tippen"
+  "They’ll continue on their own once the microphone is free · Tap to try now": "Sie machen von allein weiter, sobald das Mikrofon frei ist · Zum sofortigen Versuch tippen",
+  "%1 isn’t responding": "%1 reagiert nicht"
  },
  "hindi": {
   "Added: %1": "जोड़ा गया: %1",
@@ -6351,7 +6356,8 @@
   "This word is not in the line": "यह शब्द इस लाइन में नहीं है",
   "Press and hold a line to mark it as important, copy it or fix a word.": "किसी लाइन को दबाकर रखें, ताकि आप उसे ज़रूरी के रूप में चिह्नित कर सकें, कॉपी कर सकें या कोई शब्द ठीक कर सकें।",
   "Captions paused for a call or another app": "कॉल या किसी दूसरे ऐप की वजह से कैप्शन रुके हुए हैं",
-  "They’ll continue on their own once the microphone is free · Tap to try now": "माइक्रोफ़ोन खाली होने पर ये खुद जारी हो जाएंगे · अभी कोशिश के लिए छुएं"
+  "They’ll continue on their own once the microphone is free · Tap to try now": "माइक्रोफ़ोन खाली होने पर ये खुद जारी हो जाएंगे · अभी कोशिश के लिए छुएं",
+  "%1 isn’t responding": "%1 जवाब नहीं दे रहा है"
  },
  "portuguese": {
   "Added: %1": "Adicionado: %1",
@@ -7410,7 +7416,8 @@
   "This word is not in the line": "Esta palavra não está na linha",
   "Press and hold a line to mark it as important, copy it or fix a word.": "Mantenha uma linha premida para a assinalar como importante, copiá-la ou corrigir uma palavra.",
   "Captions paused for a call or another app": "Legendas em pausa por causa de uma chamada ou de outra aplicação",
-  "They’ll continue on their own once the microphone is free · Tap to try now": "Vão continuar sozinhas quando o microfone ficar livre · Toque para tentar agora"
+  "They’ll continue on their own once the microphone is free · Tap to try now": "Vão continuar sozinhas quando o microfone ficar livre · Toque para tentar agora",
+  "%1 isn’t responding": "%1 não está a responder"
  },
  "russian": {
   "Added: %1": "Добавлено: %1",
@@ -8469,7 +8476,8 @@
   "This word is not in the line": "Этого слова нет в строке",
   "Press and hold a line to mark it as important, copy it or fix a word.": "Нажмите и удерживайте строку, чтобы отметить её как важную, скопировать или исправить слово.",
   "Captions paused for a call or another app": "Субтитры приостановлены из-за звонка или другого приложения",
-  "They’ll continue on their own once the microphone is free · Tap to try now": "Они продолжат сами, когда микрофон освободится · Нажмите, чтобы попробовать сейчас"
+  "They’ll continue on their own once the microphone is free · Tap to try now": "Они продолжат сами, когда микрофон освободится · Нажмите, чтобы попробовать сейчас",
+  "%1 isn’t responding": "%1 не отвечает"
  },
  "spanish": {
   "Added: %1": "Añadido: %1",
@@ -9528,7 +9536,8 @@
   "This word is not in the line": "Esta palabra no está en la línea",
   "Press and hold a line to mark it as important, copy it or fix a word.": "Mantén pulsada una línea para marcarla como importante, copiarla o corregir una palabra.",
   "Captions paused for a call or another app": "Subtítulos en pausa por una llamada u otra aplicación",
-  "They’ll continue on their own once the microphone is free · Tap to try now": "Continuarán solos cuando el micrófono quede libre · Toca para intentarlo ahora"
+  "They’ll continue on their own once the microphone is free · Tap to try now": "Continuarán solos cuando el micrófono quede libre · Toca para intentarlo ahora",
+  "%1 isn’t responding": "%1 no responde"
  },
  "ukrainian": {
   "Added: %1": "Додано: %1",
@@ -10587,6 +10596,7 @@
   "This word is not in the line": "Цього слова немає в рядку",
   "Press and hold a line to mark it as important, copy it or fix a word.": "Натисніть і утримуйте рядок, щоб позначити його як важливий, скопіювати або виправити слово.",
   "Captions paused for a call or another app": "Субтитри призупинено через дзвінок або інший застосунок",
-  "They’ll continue on their own once the microphone is free · Tap to try now": "Вони продовжать самі, коли мікрофон звільниться · Натисніть, щоб спробувати зараз"
+  "They’ll continue on their own once the microphone is free · Tap to try now": "Вони продовжать самі, коли мікрофон звільниться · Натисніть, щоб спробувати зараз",
+  "%1 isn’t responding": "%1 не відповідає"
  }
 }

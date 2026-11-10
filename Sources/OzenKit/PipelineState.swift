@@ -19,11 +19,15 @@ public struct PipelineFailure: Sendable, Equatable, Error {
     /// diagnostics screen. Never shown as the primary message.
     public var detail: String
     public var engineUnavailability: EngineUnavailability?
+    /// The person's own picked microphone that stopped sending sound, when
+    /// it was one, so the status line can name it.
+    public var inputName: String?
 
-    public init(kind: Kind, detail: String, engineUnavailability: EngineUnavailability? = nil) {
+    public init(kind: Kind, detail: String, engineUnavailability: EngineUnavailability? = nil, inputName: String? = nil) {
         self.kind = kind
         self.detail = detail
         self.engineUnavailability = engineUnavailability
+        self.inputName = inputName
     }
 
     /// True when a "try again" button inside the app can plausibly help.

@@ -17,6 +17,8 @@ data class PipelineFailure(
      */
     val detail: String,
     val engineUnavailability: EngineUnavailability? = null,
+    /** The person's own picked microphone that stopped sending sound, when it was one. */
+    val inputName: String? = null,
 ) : Exception() {
     enum class Kind(val rawValue: String) {
         MicrophonePermissionDenied("microphonePermissionDenied"),

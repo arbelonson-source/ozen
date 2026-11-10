@@ -463,7 +463,8 @@ class PhasePresentation private constructor(
                 )
 
                 PipelineFailure.Kind.AudioSessionFailed -> PhasePresentation(
-                    title = tr("המיקרופון לא מגיב", "The microphone isn’t responding"),
+                    title = failure.inputName?.let { tr("המיקרופון ⁨%1⁩ לא מגיב", "%1 isn’t responding", listOf(it)) }
+                        ?: tr("המיקרופון לא מגיב", "The microphone isn’t responding"),
                     detail = tr("הקישו כדי לנסות שוב", "Tap to try again"),
                     systemImage = "exclamationmark.triangle",
                     tint = PhaseTint.Problem,

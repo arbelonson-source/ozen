@@ -47,6 +47,16 @@ struct PhasePresentationTests {
         #expect(retrying.title == call.title)
     }
 
+    @Test("a picked microphone that stopped sending sound is named; any other stays the microphone")
+    func namedMicrophoneFailure() {
+        let named = PhasePresentation(phase: .failed(PipelineFailure(kind: .audioSessionFailed, detail: "", inputName: "Lapel Pro")), engine: .whisperKit, interruptedBySystem: false)
+        let unnamed = PhasePresentation(phase: .failed(PipelineFailure(kind: .audioSessionFailed, detail: "")), engine: .whisperKit, interruptedBySystem: false)
+        #expect(named.title == tr("המיקרופון \u{2068}%1\u{2069} לא מגיב", "%1 isn’t responding", args: ["Lapel Pro"]))
+        #expect(named.title.contains("Lapel Pro"))
+        #expect(unnamed.title == tr("המיקרופון לא מגיב", "The microphone isn’t responding"))
+        #expect(named.action == .retry)
+    }
+
     @Test("waiting for Wi-Fi says the size, and a tap asks before using cellular data")
     func waitingForWiFi() {
         let presentation = PhasePresentation(

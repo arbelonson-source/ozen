@@ -14,6 +14,7 @@ final class FakeAudioCapturer: AudioCapturing {
         AudioInputDescriptor(uid: "builtin", portName: "iPhone Microphone", portType: .builtInMic),
     ]
     var selectedInputUID: String?
+    var inputInUse: String?
     var inputLevel: Float = 0
     var onInputsChanged: (@MainActor () -> Void)?
     var onCaptureLost: (@MainActor () -> Void)?
@@ -49,8 +50,12 @@ final class FakeAudioCapturer: AudioCapturing {
         heldPrepare = nil
     }
 
+    /// The input each `prepareSession` asked for, in order.
+    var preparedFor: [String?] = []
+
     func prepareSession(preferredInputUID: String?) async throws {
         calls.append("prepareSession")
+        preparedFor.append(preferredInputUID)
         if holdPrepare {
             await withCheckedContinuation { heldPrepare = $0 }
         }

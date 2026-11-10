@@ -24,6 +24,7 @@ public final class CaptionPipeline {
             // Download progress moves many times a second; only a change
             // of step is news.
             noteStep(from: oldValue)
+            reviewRouting()
             guard oldValue.preparationProgress == nil || phase.preparationProgress == nil else { return }
             onPhaseChange?(phase)
         }
@@ -68,6 +69,25 @@ public final class CaptionPipeline {
     /// own took over: said on screen, since captions get worse quietly.
     public private(set) var microphoneDrop = MicrophoneDropNotice()
     private var lastSelectedInput: AudioInputDescriptor?
+    /// Her own pick is listed but the recording comes from another input
+    /// for longer than `RoutedElsewhere.settleSeconds`, or captions fell
+    /// back to the phone's own microphone after the pick stopped sending
+    /// sound. Said on screen, since the captions then come from somewhere
+    /// else.
+    public private(set) var routedElsewhere: RoutedElsewhere?
+    @ObservationIgnored private var routingCandidate: RoutedElsewhere?
+    @ObservationIgnored private var routingTask: Task<Void, Never>?
+    /// Her own pick stopped sending sound `fallbackAfterFailures` times in
+    /// a row, so captions listen through the phone's own microphone until
+    /// she picks one, the pick comes back after going away, or captions
+    /// stop. The saved pick is never changed.
+    @ObservationIgnored private var fallback: RoutedElsewhere?
+    @ObservationIgnored private var failingPick: String?
+    @ObservationIgnored private var pickFailures = 0
+    @ObservationIgnored private var pickLeftTheList = false
+    /// Watchdog failures of her pick in a row before the phone's own
+    /// microphone takes over.
+    public static let fallbackAfterFailures = 2
     /// Doorbell/siren/kettle alerts that passed `soundPolicy`, newest last.
     public private(set) var soundAlerts: [SoundAlert] = []
     /// The alert the caption screen shows, buzzes for and reads out: the
@@ -529,8 +549,9 @@ public final class CaptionPipeline {
         // hearing aid still connecting) left nothing to hear the aid
         // arrive, and captions stayed stopped until someone tapped Retry.
         audio.onInputsChanged = { [weak self] in self?.inputsChanged() }
+        if let failingPick, failingPick != settings.preferredInputUID { endFallback() }
         do {
-            try await audio.prepareSession(preferredInputUID: settings.preferredInputUID)
+            try await audio.prepareSession(preferredInputUID: fallback?.inUse.uid ?? settings.preferredInputUID)
         } catch {
             guard runID == run else {
                 releaseSessionOfStoppedStart()
@@ -791,6 +812,7 @@ public final class CaptionPipeline {
         retryAfterTranscription = nil
         recovery.reset()
         listeningSince = nil
+        endFallback()
         microphoneDrop.dismiss()
         tearDownSession()
         phase = .idle
@@ -1127,6 +1149,7 @@ public final class CaptionPipeline {
     /// in use afterwards: the system can refuse it, or settle on another.
     @discardableResult
     public func selectInput(uid: String) -> Bool {
+        endFallback()
         activeSettings?.preferredInputUID = uid
         coveredSettings?.preferredInputUID = uid
         do {
@@ -1195,6 +1218,7 @@ public final class CaptionPipeline {
 
     private func syncInputs() {
         availableInputs = audio.availableInputs
+        returnToPickIfBack()
         let previous = selectedInputUID
         selectedInputUID = audio.selectedInputUID
         let current = availableInputs.first(where: { $0.uid == selectedInputUID })
@@ -1210,6 +1234,108 @@ public final class CaptionPipeline {
         // Remembered apart from the list: the one that just went away is
         // no longer in it.
         if let current { lastSelectedInput = current }
+        reviewRouting()
+        // Still listed, the pick was not disconnected: the phone records
+        // from another input, which the routing notice says. One event,
+        // one notice.
+        if let lost = microphoneDrop.lost, lost.uid == activeSettings?.preferredInputUID,
+           availableInputs.contains(where: { $0.uid == lost.uid }) {
+            microphoneDrop.dismiss()
+        }
+    }
+
+    /// Her own pick, listed, while the system records from another listed
+    /// input (or, after the pick stopped sending sound, the phone's own
+    /// microphone took over). Compared with the saved pick, not
+    /// `selectedInputUID`, which already follows the route on the iPhone.
+    private func routingNow() -> RoutedElsewhere? {
+        guard phase == .listening else { return nil }
+        if let fallback {
+            return availableInputs.contains(where: { $0.uid == fallback.picked.uid }) ? fallback : nil
+        }
+        guard let preferred = activeSettings?.preferredInputUID,
+              let picked = availableInputs.first(where: { $0.uid == preferred }),
+              let usedUID = audio.inputInUse,
+              let used = availableInputs.first(where: { $0.uid == usedUID })
+        else { return nil }
+        // Phones list more than one microphone of their own and record
+        // from either.
+        if picked.portType == .builtInMic, used.portType == .builtInMic { return nil }
+        return used.uid != picked.uid ? RoutedElsewhere(picked: picked, inUse: used) : nil
+    }
+
+    /// Arms the settle timer for a new mismatch, and takes the notice down
+    /// once the mismatch is over.
+    private func reviewRouting() {
+        let candidate = routingNow()
+        guard candidate != routingCandidate else { return }
+        routingCandidate = candidate
+        routingTask?.cancel()
+        routingTask = nil
+        routedElsewhere = nil
+        guard let candidate else { return }
+        routingTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(RoutedElsewhere.settleSeconds))
+            guard !Task.isCancelled, let self, self.routingCandidate == candidate else { return }
+            self.routedElsewhere = candidate
+        }
+    }
+
+    /// Hides the routing notice until the routing changes again: the same
+    /// mismatch is not armed twice.
+    public func dismissRoutedElsewhere() {
+        routedElsewhere = nil
+    }
+
+    /// Her own pick, when it is the input listening and not one of the
+    /// phone's own microphones. A pick the system accepted while it records
+    /// from another input is not listening: a stall there is not the pick's.
+    private func pickInUse() -> AudioInputDescriptor? {
+        guard fallback == nil, let preferred = activeSettings?.preferredInputUID, selectedInputUID == preferred,
+              audio.inputInUse.map({ $0 == preferred }) ?? true else { return nil }
+        return availableInputs.first { $0.uid == preferred && $0.portType != .builtInMic }
+    }
+
+    /// Counts a failure of the watchdog against her pick. The second in a
+    /// row hands the next start to the phone's own microphone: retrying the
+    /// same silent pick only failed again until the retries ran out.
+    /// Returns the pick's name for the failure, or nil when it was not her
+    /// pick.
+    private func countPickFailure() -> String? {
+        guard let pick = pickInUse() else { return nil }
+        if failingPick != pick.uid || listeningSince.map({ now() - $0 >= recovery.healthyListeningSeconds }) == true {
+            pickFailures = 0
+        }
+        failingPick = pick.uid
+        pickFailures += 1
+        if pickFailures >= Self.fallbackAfterFailures, let builtIn = availableInputs.first(where: { $0.portType == .builtInMic }) {
+            fallback = RoutedElsewhere(picked: pick, inUse: builtIn)
+            pickLeftTheList = false
+            logEvent(.note("the picked microphone sent no sound twice, trying the phone's own"))
+        }
+        return pick.portName
+    }
+
+    private func endFallback() {
+        fallback = nil
+        failingPick = nil
+        pickFailures = 0
+        pickLeftTheList = false
+    }
+
+    /// The pick went away and came back (reconnected): it is tried again,
+    /// at once while listening.
+    private func returnToPickIfBack() {
+        guard let held = fallback else { return }
+        guard availableInputs.contains(where: { $0.uid == held.picked.uid }) else {
+            pickLeftTheList = true
+            return
+        }
+        guard pickLeftTheList else { return }
+        endFallback()
+        guard phase.isListening else { return }
+        // Refused: captions carry on through the phone's own microphone.
+        try? audio.selectInput(uid: held.picked.uid)
     }
 
     /// Hides the notice until another microphone drops.
@@ -2116,7 +2242,7 @@ public final class CaptionPipeline {
         guard audioWatchdog.tick(chunksReceived: chunksArrived, systemInterrupted: systemInterrupted) else { return }
         stats.audioStalls += 1
         logEvent(.microphoneStalled)
-        fail(.audioSessionFailed, detail: "no audio from the microphone for \(Int(audioWatchdog.stallSeconds)) s")
+        fail(.audioSessionFailed, detail: "no audio from the microphone for \(Int(audioWatchdog.stallSeconds)) s", inputName: countPickFailure())
     }
 
     /// The failure the audio watchdog would report, as soon as the phone
@@ -2149,12 +2275,12 @@ public final class CaptionPipeline {
         guard runID == run, phase.isListening || earlyCaptureRun == run, !systemInterrupted else { return }
         stats.audioStalls += 1
         logEvent(.microphoneStalled)
-        fail(.audioSessionFailed, detail: "the microphone never settled after it changed")
+        fail(.audioSessionFailed, detail: "the microphone never settled after it changed", inputName: countPickFailure())
     }
 
-    private func fail(_ kind: PipelineFailure.Kind, detail: String, engineUnavailability: EngineUnavailability? = nil) {
+    private func fail(_ kind: PipelineFailure.Kind, detail: String, engineUnavailability: EngineUnavailability? = nil, inputName: String? = nil) {
         tearDownSession()
-        let failure = PipelineFailure(kind: kind, detail: detail, engineUnavailability: engineUnavailability)
+        let failure = PipelineFailure(kind: kind, detail: detail, engineUnavailability: engineUnavailability, inputName: inputName)
         let onPhone = activeSettings.flatMap { CloudCover.phoneSettings(replacing: $0, after: failure) }
         // Set before the phase: whoever reacts to the failure looks before
         // the cover has had a turn to start.
