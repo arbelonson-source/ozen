@@ -2934,6 +2934,44 @@ struct LiveCaptionViewModelSavingTroubleTests {
         #expect(viewModel.savedConversationID(holdingLineAt: 0) == nil)
     }
 
+    @Test("Clear after 'they stay saved' saves first, and clears nothing when that save fails")
+    func clearKeepingHistoryClearsOnlyWhenSaved() async throws {
+        let blocker = try blockedFolder()
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-settings-\(UUID()).json")),
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: blocker.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "בוקר טוב", isFinal: true, timestamp: 1))
+        await eventually { !viewModel.segments.isEmpty }
+
+        #expect(!viewModel.clearTranscriptKeepingHistory())
+        #expect(!viewModel.segments.isEmpty)
+        #expect(viewModel.historySaveFailure != nil)
+    }
+
+    @Test("Clear after 'they stay saved' clears once the save works")
+    func clearKeepingHistoryClearsWhenSaved() async {
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-clear-\(UUID())", isDirectory: true)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathComponent("settings.json")),
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "בוקר טוב", isFinal: true, timestamp: 1))
+        await eventually { !viewModel.segments.isEmpty }
+
+        #expect(viewModel.clearTranscriptKeepingHistory())
+        #expect(viewModel.segments.isEmpty)
+        #expect(viewModel.historyStore.listSummaries().count == 1)
+    }
+
     @Test("deleting every conversation takes the saving banner down at once, not at the next save")
     func deleteAllTakesTheBannerDown() async throws {
         let blocker = try blockedFolder()

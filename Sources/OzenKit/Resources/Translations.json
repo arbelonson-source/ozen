@@ -1108,7 +1108,8 @@
   "Saving the voiceprint…": "የድምጽ አሻራውን በማስቀመጥ ላይ…",
   "Line fixed": "መስመሩ ተስተካክሏል",
   "A key is a long code you get from the %1 website after opening an account there.": "ቁልፍ ማለት በ%1 ድረ-ገጽ ላይ መለያ ከከፈቱ በኋላ የሚያገኙት ረጅም ኮድ ነው።",
-  "Open the %1 website": "የ%1 ድረ-ገጽን ይክፈቱ"
+  "Open the %1 website": "የ%1 ድረ-ገጽን ይክፈቱ",
+  "They stay saved in Settings, under “Previous conversations”.": "በቅንብሮች ውስጥ፣ በ“ያለፉ ውይይቶች” ስር ተቀምጠው ይቆያሉ።"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2219,7 +2220,8 @@
   "Saving the voiceprint…": "جارٍ حفظ البصمة الصوتية…",
   "Line fixed": "تم تصحيح السطر",
   "A key is a long code you get from the %1 website after opening an account there.": "المفتاح رمز طويل تحصلون عليه من موقع %1 بعد فتح حساب فيه.",
-  "Open the %1 website": "فتح موقع %1"
+  "Open the %1 website": "فتح موقع %1",
+  "They stay saved in Settings, under “Previous conversations”.": "تبقى محفوظة في الإعدادات، ضمن ‏“المحادثات السابقة”‏."
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3330,7 +3332,8 @@
   "Saving the voiceprint…": "正在保存声纹…",
   "Line fixed": "这一行已更正",
   "A key is a long code you get from the %1 website after opening an account there.": "密钥是在 %1 网站开设账户后得到的一串长代码。",
-  "Open the %1 website": "打开 %1 网站"
+  "Open the %1 website": "打开 %1 网站",
+  "They stay saved in Settings, under “Previous conversations”.": "它们会保存在“设置”的“以往的对话”中。"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4441,7 +4444,8 @@
   "Saving the voiceprint…": "Sauvegarde de l’empreinte vocale…",
   "Line fixed": "Ligne corrigée",
   "A key is a long code you get from the %1 website after opening an account there.": "Une clé est un long code que vous obtenez sur le site de %1 après y avoir ouvert un compte.",
-  "Open the %1 website": "Ouvrir le site de %1"
+  "Open the %1 website": "Ouvrir le site de %1",
+  "They stay saved in Settings, under “Previous conversations”.": "Elles restent enregistrées dans Réglages, sous « Conversations précédentes »."
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5552,7 +5556,8 @@
   "Saving the voiceprint…": "Stimmabdruck wird gespeichert …",
   "Line fixed": "Zeile korrigiert",
   "A key is a long code you get from the %1 website after opening an account there.": "Ein Schlüssel ist ein langer Code, den Sie auf der Website von %1 erhalten, nachdem Sie dort ein Konto eröffnet haben.",
-  "Open the %1 website": "Website von %1 öffnen"
+  "Open the %1 website": "Website von %1 öffnen",
+  "They stay saved in Settings, under “Previous conversations”.": "Sie bleiben in den Einstellungen unter „Frühere Gespräche“ gespeichert."
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6663,7 +6668,8 @@
   "Saving the voiceprint…": "वॉइसप्रिंट सेव हो रहा है…",
   "Line fixed": "पंक्ति ठीक कर दी गई",
   "A key is a long code you get from the %1 website after opening an account there.": "कुंजी एक लंबा कोड है, जो %1 की वेबसाइट पर खाता खोलने के बाद मिलता है।",
-  "Open the %1 website": "%1 की वेबसाइट खोलें"
+  "Open the %1 website": "%1 की वेबसाइट खोलें",
+  "They stay saved in Settings, under “Previous conversations”.": "ये सेटिंग्स में “पिछली बातचीत” के अंतर्गत सहेजे रहेंगे।"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7774,7 +7780,8 @@
   "Saving the voiceprint…": "A guardar a impressão de voz…",
   "Line fixed": "Linha corrigida",
   "A key is a long code you get from the %1 website after opening an account there.": "Uma chave é um código longo que obtém no site de %1 depois de abrir lá uma conta.",
-  "Open the %1 website": "Abrir o site de %1"
+  "Open the %1 website": "Abrir o site de %1",
+  "They stay saved in Settings, under “Previous conversations”.": "Ficam guardadas nas Definições, em “Conversas anteriores”."
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8885,7 +8892,8 @@
   "Saving the voiceprint…": "Сохранение голосового отпечатка…",
   "Line fixed": "Строка исправлена",
   "A key is a long code you get from the %1 website after opening an account there.": "Ключ — это длинный код, который выдают на сайте %1 после создания там учётной записи.",
-  "Open the %1 website": "Открыть сайт %1"
+  "Open the %1 website": "Открыть сайт %1",
+  "They stay saved in Settings, under “Previous conversations”.": "Они сохранятся в настройках, в разделе «Предыдущие разговоры»."
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -9996,7 +10004,8 @@
   "Saving the voiceprint…": "Guardando la huella de voz…",
   "Line fixed": "Línea corregida",
   "A key is a long code you get from the %1 website after opening an account there.": "Una clave es un código largo que obtienes en el sitio web de %1 después de abrir una cuenta allí.",
-  "Open the %1 website": "Abrir el sitio web de %1"
+  "Open the %1 website": "Abrir el sitio web de %1",
+  "They stay saved in Settings, under “Previous conversations”.": "Se quedan guardados en Ajustes, en “Conversaciones anteriores”."
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11107,6 +11116,7 @@
   "Saving the voiceprint…": "Збереження голосового відбитка…",
   "Line fixed": "Рядок виправлено",
   "A key is a long code you get from the %1 website after opening an account there.": "Ключ — це довгий код, який видають на сайті %1 після створення там облікового запису.",
-  "Open the %1 website": "Відкрити сайт %1"
+  "Open the %1 website": "Відкрити сайт %1",
+  "They stay saved in Settings, under “Previous conversations”.": "Вони збережуться в налаштуваннях, у розділі «Попередні розмови»."
  }
 }
