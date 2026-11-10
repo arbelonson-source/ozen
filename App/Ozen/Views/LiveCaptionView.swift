@@ -30,7 +30,7 @@ struct LiveCaptionView: View {
     @State private var controlsHidden = false
     @State private var lastTouchAt = Date().timeIntervalSince1970
     @State private var controlBarHeight: CGFloat = 96
-    @State private var statusWidth: CGFloat = .infinity
+    @State private var barWidth: CGFloat = 0
     /// How many lines there were when she scrolled up, so the way back down
     /// can say how many came since.
     @State private var lineCountWhenUnpinned = 0
@@ -1403,22 +1403,28 @@ struct LiveCaptionView: View {
 
     private var controlBar: some View {
         VStack(spacing: 6) {
+            // Never its icon alone: where the bar can't give the status
+            // button room for its words beside the others, it takes a row.
+            if statusOwnRow {
+                statusControl
+            }
             HStack(alignment: .center, spacing: 8) {
                 micButton
-                statusControl
-                    .frame(maxWidth: .infinity)
-                    .onGeometryChange(for: CGFloat.self) { proxy in proxy.size.width } action: { width in statusWidth = width }
-                    // The buttons are measured first and the status button
-                    // takes what is left, its icon at least.
-                    .layoutPriority(-1)
+                if statusOwnRow {
+                    Spacer(minLength: 0)
+                } else {
+                    statusControl
+                        .frame(maxWidth: .infinity)
+                        .layoutPriority(-1)
+                }
                 typeToSpeakButton
                 if !viewModel.segments.isEmpty {
                     clearButton
                 }
                 settingsButton
             }
-            statusDetailLine
         }
+        .onGeometryChange(for: CGFloat.self) { proxy in proxy.size.width } action: { width in barWidth = width }
         // At the accessibility text sizes the buttons' padding grew past
         // their fixed width until the bar was wider than the phone, and
         // took the captions with it: both edges of every line were cut
@@ -1536,124 +1542,127 @@ struct LiveCaptionView: View {
         .accessibilityIdentifier("settingsButton")
     }
 
+    /// The one filled button in the bar, saying what a tap does ("Pause
+    /// captions", "Continue captions", "Start captions"), with the state on
+    /// a small line under it beside a dot of its colour. It used to be
+    /// coloured words and an icon with no button shape between four glass
+    /// buttons, the state ("Listening") as its big words and the action
+    /// only in small type that dropped off at large text (#275).
     private var statusControl: some View {
         let current = presentation
-        return Button {
-            perform(current.action)
-        } label: {
-            VStack(spacing: 4) {
-                statusTitleLayout {
-                    if current.isBusy {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(current.tint.readable(on: theme.colorScheme))
-                    } else {
-                        // Starting, pausing or a fault: the icon changes shape
-                        // in place and gives one hop, so the change is seen.
-                        Image(systemName: current.systemImage)
-                            .contentTransition(.symbolEffect(.replace))
-                            .symbolEffect(.bounce, value: reduceMotion ? "" : current.systemImage)
-                    }
-                    if !statusIsNarrow {
-                        Text(current.title)
-                            .font(.subheadline.weight(.semibold))
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.75)
-                            .multilineTextAlignment(.center)
-                    }
+        return VStack(spacing: 4) {
+            if current.action == .none {
+                // Starting the microphone or loading the model: nothing to
+                // press, so no button shape, and none of a disabled
+                // button's faded grey on words she has to read.
+                statusButtonLabel(current, color: current.tint.readable(on: theme.colorScheme))
+                    .frame(maxWidth: .infinity, minHeight: Self.statusButtonHeight)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityHint(current.stateDetail ?? "")
+            } else {
+                Button {
+                    perform(current.action)
+                } label: {
+                    statusButtonLabel(current, color: .white)
+                        .frame(maxWidth: .infinity, minHeight: Self.statusButtonHeight - 14)
                 }
-                // "Loading the model" in plain yellow is close to invisible
-                // on the white theme.
-                .foregroundStyle(current.tint.readable(on: theme.colorScheme))
-
-                if let detail = current.detail, !statusDetailGoesBelow(current) {
-                    // The theme's own dim colour: the system's secondary grey
-                    // is about 3.4:1 on the white theme, too faint for text
-                    // this small.
-                    Text(detail)
-                        .font(.caption2)
-                        .foregroundStyle(theme.pendingText)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                        .multilineTextAlignment(.center)
-                }
-
-                if let progress = current.progress {
-                    ProgressView(value: progress)
-                        .tint(current.tint.readable(on: theme.colorScheme))
-                        .frame(maxWidth: 160)
-                }
+                .ozenGlassButton(prominent: true)
+                .tint(statusButtonFill(current))
+                .accessibilityLabel(current.actionLabel ?? current.title)
+                .accessibilityValue(current.actionLabel == nil ? "" : current.title)
+                .accessibilityHint(current.stateDetail ?? "")
+                .accessibilityShowsLargeContentViewer()
             }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
+            statusStateLine(current)
+                .accessibilityHidden(true)
+            if let progress = current.progress {
+                ProgressView(value: progress)
+                    .tint(current.tint.readable(on: theme.colorScheme))
+                    .frame(maxWidth: 160)
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(current.action == .none)
-        .accessibilityLabel(current.title)
-        .accessibilityHint(current.detail ?? "")
+        .frame(maxWidth: .infinity)
     }
 
-    /// From the larger text sizes up the status button is only about as
-    /// wide as the others: its title went missing beside the icon and even
-    /// "tap to pause" was cut to a few letters. The icon then sits above
-    /// the title, as on the other buttons, and every detail goes below.
-    ///
-    /// The same happened at the default size on iOS 26: the four other
-    /// buttons are 80 pt each with the glass style's padding, and on a
-    /// 402 pt iPhone the status button was left about 40 pt (the
-    /// 2026-09-29 screenshots show "Tap to p…" and no title, in Hebrew and
-    /// in English). Too narrow for its title, it takes the same layout.
-    private var statusIsNarrow: Bool { dynamicTypeSize >= .xxLarge || statusWidth < Self.statusWideMinimumWidth }
+    /// Room for two lines of the button's words at the bar's largest text
+    /// size; the glass style adds about 7 points above and below.
+    private static let statusButtonHeight: CGFloat = 58
 
-    /// Room for the icon, a short title such as "Listening" and the gap
-    /// between them at the default text size.
-    private static let statusWideMinimumWidth: CGFloat = 100
-
-    /// How narrow a bar button's icon and name may get, before the glass
-    /// style's padding: room for the widest icon, the keyboard, at the
-    /// default text size. Four of them, the status icon and the gaps then
-    /// fit a 375-point phone with room to spare.
-    private static let buttonMinimumWidth: CGFloat = 32
-
-    private var statusTitleLayout: AnyLayout {
-        statusIsNarrow ? AnyLayout(VStackLayout(spacing: 2)) : AnyLayout(HStackLayout(spacing: 6))
+    /// The deep shades stay at least 5:1 under white words on every theme.
+    /// The grey of "Captions are off" gives way to blue, which reads as
+    /// something to press.
+    private func statusButtonFill(_ current: PhasePresentation) -> Color {
+        current.tint == .secondary ? Color.blue.deepShade : current.tint.deepShade
     }
 
-    /// Narrow, the status button is its icon alone and this line says what
-    /// it means ("Listening · tap to pause"): even shrunk, the title only
-    /// fit as its first two letters.
-    private func statusLineText(_ current: PhasePresentation) -> Text {
-        let detail = Text(current.detail ?? "").foregroundStyle(theme.pendingText)
-        guard statusIsNarrow else { return detail }
-        let title = Text(current.title).fontWeight(.semibold).foregroundStyle(current.tint.readable(on: theme.colorScheme))
-        return current.detail == nil ? title : title + Text(" · ").foregroundStyle(theme.pendingText) + detail
-    }
-
-    private func statusDetailGoesBelow(_ current: PhasePresentation) -> Bool {
-        current.detail != nil && (statusIsNarrow || !current.detailFitsInStatus)
-    }
-
-    /// A detail too long for the status button, in full, across the bar.
-    /// VoiceOver already reads it as the status button's hint.
     @ViewBuilder
-    private var statusDetailLine: some View {
-        let current = presentation
-        if statusIsNarrow || statusDetailGoesBelow(current) {
-            Button {
-                perform(current.action)
-            } label: {
-                statusLineText(current)
+    private func statusButtonLabel(_ current: PhasePresentation, color: Color) -> some View {
+        HStack(spacing: 8) {
+            if current.isBusy {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(color)
+            } else {
+                // Starting, pausing or a fault: the icon changes shape in
+                // place and gives one hop, so the change is seen.
+                Image(systemName: current.actionImage)
+                    .contentTransition(.symbolEffect(.replace))
+                    .symbolEffect(.bounce, value: reduceMotion ? "" : current.actionImage)
+            }
+            Text(current.actionLabel ?? current.title)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.center)
+        }
+        .font(.headline)
+        .foregroundStyle(color)
+    }
+
+    /// "● Listening", and what else the state has to say, in the state's
+    /// colour; under a retry or a setting the title is on the button and
+    /// this holds only the detail.
+    @ViewBuilder
+    private func statusStateLine(_ current: PhasePresentation) -> some View {
+        let detail = current.stateDetail
+        if current.actionLabel != nil || detail != nil {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                if current.actionLabel != nil {
+                    Circle()
+                        .fill(current.tint.readable(on: theme.colorScheme))
+                        .frame(width: 8, height: 8)
+                }
+                statusStateText(current, detail: detail)
                     .font(.footnote)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .disabled(current.action == .none)
-            .accessibilityHidden(true)
+            .frame(maxWidth: .infinity)
         }
     }
+
+    private func statusStateText(_ current: PhasePresentation, detail: String?) -> Text {
+        let dim = Text(detail ?? "").foregroundStyle(theme.pendingText)
+        guard current.actionLabel != nil else { return dim }
+        let state = Text(current.title).fontWeight(.semibold).foregroundStyle(current.tint.readable(on: theme.colorScheme))
+        return detail == nil ? state : state + Text(" · ").foregroundStyle(theme.pendingText) + dim
+    }
+
+    /// From the larger text sizes up, or wherever the bar is narrower than
+    /// a wide iPhone in landscape, the status button takes a row of its
+    /// own above the others: between four glass buttons on a 402-point
+    /// iPhone it was left about 40 points, its icon alone. Measured on the
+    /// whole bar, which doesn't change with where the button goes.
+    private var statusOwnRow: Bool { dynamicTypeSize >= .xxLarge || barWidth < Self.statusInlineMinimumBarWidth }
+
+    /// Room for the four other buttons and a status button wide enough for
+    /// "Continue captions" beside them.
+    private static let statusInlineMinimumBarWidth: CGFloat = 600
+
+    /// How narrow a bar button's icon and name may get, before the glass
+    /// style's padding: room for the widest icon, the keyboard, at the
+    /// default text size. Four of them and the gaps then fit a 375-point
+    /// phone with room to spare.
+    private static let buttonMinimumWidth: CGFloat = 32
 
     private var savingTroubleAnnouncement: String {
         SavingTroubleNotice.title + ". " + SavingTroubleNotice.detail
