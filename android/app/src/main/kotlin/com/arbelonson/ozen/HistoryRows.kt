@@ -11,6 +11,7 @@ import com.arbelonson.ozen.core.PhoneNumbers
 import com.arbelonson.ozen.core.SavedLineSpeech
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.StarredLine
+import com.arbelonson.ozen.core.TimeArticle
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
 import com.arbelonson.ozen.core.tr
@@ -123,7 +124,8 @@ fun clockTime(at: Double, zone: ZoneId = ZoneId.systemDefault()): String =
 /** A conversation's day and the time it started, over its lines and over each group of starred lines, as on the iPhone. */
 fun conversationHeading(startedAt: Double, now: Double, zone: ZoneId = ZoneId.systemDefault()): String {
     val offset = { at: Double -> zone.rules.getOffset(Instant.ofEpochMilli((at * 1_000).toLong())).totalSeconds }
-    return tr("%1 בשעה %2", "%1 at %2", listOf(HistoryDays.title(startedAt, now, offset), clockTime(startedAt, zone)))
+    val time = clockTime(startedAt, zone)
+    return TimeArticle.agreeing(tr("%1 בשעה %2", "%1 at %2", listOf(HistoryDays.title(startedAt, now, offset), time)), time)
 }
 
 /** The time above talk that picked up after a break, as on the iPhone: with the day when the words before it were on another day. */

@@ -268,7 +268,7 @@ struct SoundAlertBanner: View {
     }
 
     static func heardWhileAway(at time: String) -> String {
-        tr("נשמע ב־%1, כשהאפליקציה לא הייתה על המסך", "Heard at %1, while the app wasn’t on the screen", args: ["\(time)"])
+        TimeArticle.agreeing(tr("נשמע ב־%1, כשהאפליקציה לא הייתה על המסך", "Heard at %1, while the app wasn’t on the screen", args: ["\(time)"]), time: time)
     }
 
     var body: some View {

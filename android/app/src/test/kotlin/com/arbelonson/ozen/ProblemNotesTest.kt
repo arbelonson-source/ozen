@@ -48,6 +48,19 @@ class ProblemNotesTest {
     }
 
     @Test
+    fun `in Spanish and Portuguese a problem marked at one o'clock takes the singular article`() {
+        val oneOClock = 3_900.0
+        val tenOClock = 36_300.0
+        Localization.withLanguage(UILanguage.Spanish) {
+            assertTrue(ProblemNotes.reportLine(oneOClock, ZoneOffset.UTC).endsWith(" a la ${clockTime(oneOClock, ZoneOffset.UTC)}."))
+            assertTrue(ProblemNotes.reportLine(tenOClock, ZoneOffset.UTC).endsWith(" a las ${clockTime(tenOClock, ZoneOffset.UTC)}."))
+        }
+        Localization.withLanguage(UILanguage.Portuguese) {
+            assertTrue(ProblemNotes.reportLine(oneOClock, ZoneOffset.UTC).endsWith(" à ${clockTime(oneOClock, ZoneOffset.UTC)}."))
+        }
+    }
+
+    @Test
     fun `the diagnostics note claims the caption lines only when they are kept`() = english {
         assertTrue(ProblemNotes.diagnostics(keptCaptions = true).contains("last few caption lines"))
         assertFalse(ProblemNotes.diagnostics(keptCaptions = false).contains("caption lines"))
