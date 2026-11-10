@@ -36,14 +36,17 @@ def server_requirement_errors(text):
     """The home server installs with whatever Python the computer has, so
     an exact pin can leave no wheel for a newer Python; a library may range
     over releases the tests have seen, but a release past the cap waits for
-    a change that raises it (and the tests that run with it)."""
+    a change that raises it (and the tests that run with it). Only the
+    version part counts: a marker such as `; python_version < "3.12"` says
+    when to install, not which release."""
     errors = []
     for line in text.splitlines():
         line = line.split("#", 1)[0].strip()
         if not line:
             continue
-        if "==" not in line and "<" not in line:
-            errors.append(f"server/requirements.txt: '{line}' has no upper bound; pin it (==) or cap it (<)")
+        versions = line.split(";", 1)[0]
+        if not any(cap in versions for cap in ("==", "<", "~=")):
+            errors.append(f"server/requirements.txt: '{line}' has no upper bound; pin it (==) or cap it (< or ~=)")
     return errors
 
 
