@@ -1121,6 +1121,53 @@ class HistoryScreenDeviceTest {
         assertTrue(compose.onAllNodesWithContentDescription("Starred list test the bus at seven", substring = true).fetchSemanticsNodes().isEmpty())
     }
 
+    private fun historyRefusingWrites(during: () -> Unit) {
+        val folder = File(app.filesDir, CaptionSession.HISTORY_FOLDER)
+        assertTrue(folder.setWritable(false))
+        try {
+            during()
+        } finally {
+            folder.setWritable(true)
+        }
+    }
+
+    @Test
+    fun aStarHistoryCannotSaveSaysSoAndTheLineStaysWithoutIt() {
+        val id = seed("Unsaved star test opening line" to null, "Unsaved star test the pharmacy closes at nine" to null)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Unsaved star test opening line")
+        compose.onNodeWithText("Unsaved star test opening line", substring = true).performClick()
+        compose.waitUntil(5_000) { shownLine("Unsaved star test the pharmacy closes at nine") }
+        historyRefusingWrites {
+            compose.onNodeWithContentDescription("Unsaved star test the pharmacy closes at nine", substring = true).performTouchInput { longClick() }
+            compose.onNodeWithText("Mark as important").performClick()
+            waitFor("The star wasn’t changed")
+            compose.onNode(hasText("Saving to History isn’t working right now. Try again in a moment.") and hasAnyAncestor(isDialog())).assertIsDisplayed()
+        }
+        compose.onNode(hasText("Close") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(5_000) { compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty() }
+        assertTrue(store.load(id)!!.segments.none { it.isStarred })
+        assertTrue(compose.onAllNodesWithContentDescription("Marked as important", substring = true).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun aStarStarredLinesCannotTakeOffSaysSoAndTheLineComesBack() {
+        val id = starredConversation("Starred list test the dentist at four", System.currentTimeMillis() / 1_000.0 - 60)
+        compose.onNodeWithText("History").performClick()
+        waitFor("Opening line of the dentist at four")
+        val total = store.listSummaries().sumOf { it.starredCount }
+        compose.onNode(hasText("Starred lines") and hasText("$total")).performClick()
+        compose.waitUntil(5_000) { shownLine("Starred list test the dentist at four") }
+        historyRefusingWrites {
+            val line = compose.onNodeWithContentDescription("Starred list test the dentist at four", substring = true).fetchSemanticsNode()
+            val remove = line.config[SemanticsActions.CustomActions].single { it.label == "Remove the star" }
+            compose.runOnUiThread { remove.action() }
+            waitFor("The star wasn’t changed")
+        }
+        compose.waitUntil(5_000) { shownLine("Starred list test the dentist at four") }
+        assertTrue(store.load(id)!!.segments.any { it.isStarred })
+    }
+
     @Test
     fun aConversationOpenedAtAStarredLineMarksItForAMomentAndNextStarredGoesOnFromIt() {
         val startedAt = System.currentTimeMillis() / 1_000.0 - 300

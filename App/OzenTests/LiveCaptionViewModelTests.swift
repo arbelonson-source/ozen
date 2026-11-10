@@ -3034,6 +3034,48 @@ struct LiveCaptionViewModelSavingTroubleTests {
         #expect(viewModel.historyStore.listSummaries().count == 1)
     }
 
+    @Test("a star History can't save says so and leaves the line as it was, still on screen or long gone")
+    func starThatCannotBeSaved() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-history-\(UUID())", isDirectory: true)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let history = TranscriptHistoryStore(directoryURL: folder)
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-settings-\(UUID()).json")),
+            pipeline: pipeline,
+            historyStore: history
+        )
+        await viewModel.start()
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "בוקר טוב", isFinal: true, timestamp: 1))
+        await eventually { !viewModel.segments.isEmpty }
+        viewModel.persistHistory(ended: true)
+        let earlier = try #require(history.listSummaries().first)
+        let earlierLine = try #require(history.load(id: earlier.id)?.segments.first)
+        viewModel.clearTranscript()
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "ערב טוב", isFinal: true, timestamp: 2))
+        await eventually { !viewModel.segments.isEmpty }
+        viewModel.persistHistory(ended: false)
+        viewModel.waitForHistorySaves()
+        let current = try #require(history.listSummaries().first { $0.id != earlier.id })
+        let line = try #require(viewModel.segments.last)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: folder.path)
+        #expect(!viewModel.toggleStarInHistory(sessionID: current.id, segmentID: line.id))
+        #expect(!viewModel.starredSegmentIDs.contains(line.id))
+        #expect(!viewModel.toggleStarInHistory(sessionID: earlier.id, segmentID: earlierLine.id))
+        #expect(viewModel.savingTrouble.shouldShow)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+
+        #expect(viewModel.toggleStarInHistory(sessionID: earlier.id, segmentID: earlierLine.id))
+        #expect(history.load(id: current.id)?.segments.last?.isStarred == false, "the save left waiting carries no star either")
+        #expect(viewModel.toggleStarInHistory(sessionID: current.id, segmentID: line.id))
+        #expect(history.load(id: current.id)?.segments.last?.isStarred == true)
+    }
+
     @Test("deleting every conversation takes the saving banner down at once, not at the next save")
     func deleteAllTakesTheBannerDown() async throws {
         let blocker = try blockedFolder()

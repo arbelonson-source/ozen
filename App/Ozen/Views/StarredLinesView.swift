@@ -11,6 +11,7 @@ struct StarredLinesView: View {
     let onHistoryChanged: () -> Void
     @State private var lines: [StarredLine] = []
     @State private var hasLoaded = false
+    @State private var starRefused = false
     /// Reads can finish out of order: only the newest is shown, or an older
     /// read would bring back a line whose star had just come off.
     @State private var reads = 0
@@ -112,6 +113,7 @@ struct StarredLinesView: View {
             }
         }
         .task { await load() }
+        .starNotChangedAlert(isPresented: $starRefused)
     }
 
     private func copyButton(_ text: String) -> some View {
@@ -146,7 +148,7 @@ struct StarredLinesView: View {
             // Off the list at once, so it can't be asked again (which would put
             // the star back); the read after brings it back if the star stayed.
             lines.removeAll { $0.id == line.id }
-            viewModel.toggleStarInHistory(sessionID: line.sessionID, segmentID: line.id)
+            if !viewModel.toggleStarInHistory(sessionID: line.sessionID, segmentID: line.id) { starRefused = true }
             onHistoryChanged()
             Task { await load() }
         } label: {

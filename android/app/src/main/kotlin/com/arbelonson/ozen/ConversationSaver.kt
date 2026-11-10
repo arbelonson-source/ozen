@@ -240,9 +240,12 @@ class ConversationSaver(
 
     /**
      * Stars a saved line, or takes its star away; the line's new state, or
-     * null when it is gone. A line of the conversation still being captioned
-     * keeps its star here, since every autosave writes that conversation
-     * afresh, and it is saved at once so it reads back starred.
+     * null when it is gone or could not be saved. A line of the conversation
+     * still being captioned keeps its star here, since every autosave writes
+     * that conversation afresh, and it is saved at once so it reads back
+     * starred. When that save fails the star goes back to what History
+     * shows, and is saved that way, so the waiting save and a second tap
+     * don't bring back a star the person was told was not changed.
      */
     fun toggleStar(sessionID: UUID, segmentID: UUID): Boolean? {
         if (sessionID != id || currentLines.none { it.id == segmentID }) {
@@ -250,7 +253,11 @@ class ConversationSaver(
         }
         val starring = segmentID !in starred
         mark(segmentID, starring)
-        save(ended = false)
+        if (save(ended = false) != null && writer.lastFailure != null) {
+            mark(segmentID, !starring)
+            save(ended = false)
+            return null
+        }
         return starring
     }
 

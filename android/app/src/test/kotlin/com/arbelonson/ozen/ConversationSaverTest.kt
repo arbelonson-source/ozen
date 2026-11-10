@@ -577,6 +577,33 @@ class ConversationSaverTest {
     }
 
     @Test
+    fun `a star History cannot save leaves the line as it was, still being captioned or not`() {
+        val earlier = oldConversation(clock - 3_600)
+        val earlierLine = store.load(earlier)!!.segments.single().id
+        start()
+        say("Take two pills after dinner")
+        saver.save(ended = false)
+        val conversation = saved().single { it.id != earlier }.id
+        val pills = lines[0].id
+
+        assertTrue(folder.setWritable(false))
+        try {
+            assertNull(saver.toggleStar(conversation, pills))
+            assertFalse(saver.isStarred(pills))
+            assertNull(saver.toggleStar(earlier, earlierLine))
+            assertNotNull(saver.lastSaveFailure)
+        } finally {
+            folder.setWritable(true)
+        }
+
+        assertFalse(store.load(earlier)!!.segments.single().isStarred)
+        assertEquals(true, saver.toggleStar(earlier, earlierLine))
+        assertEquals(listOf(false), store.load(conversation)!!.segments.map { it.isStarred }, "the save left waiting carries no star either")
+        assertEquals(true, saver.toggleStar(conversation, pills))
+        assertEquals(listOf(true), store.load(conversation)!!.segments.map { it.isStarred })
+    }
+
+    @Test
     fun `a conversation open for reading is not deleted as old until it is closed`() {
         settings.historyRetention = HistoryRetention.Week
         val reading = oldConversation(clock - 30 * 86_400)

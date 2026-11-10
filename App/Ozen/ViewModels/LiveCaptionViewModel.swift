@@ -2379,17 +2379,26 @@ public final class LiveCaptionViewModel {
     /// Stars or unstars a line of a saved conversation. A line still on
     /// the caption screen goes through `toggleStar`, whose starred set the
     /// next autosave writes; one gone from the screen is changed on disk.
-    public func toggleStarInHistory(sessionID: UUID, segmentID: UUID) {
-        if let segment = pipeline.segments.first(where: { $0.id == segmentID }) {
-            toggleStar(segment)
-            // The opened conversation reads its file straight back: before
-            // the queued save landed, the star looked untouched and a
-            // second tap took it off.
-            historyWriter.waitUntilIdle()
-        } else {
-            historyWriter.toggleStarNow(sessionID: sessionID, segmentID: segmentID)
+    /// False when the star could not be saved and stayed as it was.
+    @discardableResult
+    public func toggleStarInHistory(sessionID: UUID, segmentID: UUID) -> Bool {
+        defer { refreshSavingTrouble() }
+        guard let segment = pipeline.segments.first(where: { $0.id == segmentID }) else {
+            return historyWriter.toggleStarNow(sessionID: sessionID, segmentID: segmentID) != nil
         }
-        refreshSavingTrouble()
+        toggleStar(segment)
+        // The opened conversation reads its file straight back: before
+        // the queued save landed, the star looked untouched and a
+        // second tap took it off.
+        historyWriter.waitUntilIdle()
+        let saved = historyStore.load(id: sessionID)?.segments.first { $0.id == segmentID }?.isStarred
+        guard let saved, saved != starredSegmentIDs.contains(segmentID) else { return true }
+        // The save failed: the line goes back to the star History shows,
+        // and is saved that way, so neither the save left waiting nor a
+        // second tap brings back a star the person was told didn't change.
+        toggleStar(segment)
+        historyWriter.waitUntilIdle()
+        return false
     }
 
     /// Names a saved conversation, in order with any autosave in flight.
