@@ -64,7 +64,11 @@ struct MicPickerView: View {
                 } header: {
                     Text(tr("מיקרופונים זמינים", "Available microphones"))
                 } footer: {
-                    Text(tr("המיקרופון המסומן הוא זה שמקליט עכשיו. אוזניות או מיקרופון שיתחברו יופיעו כאן אוטומטית.", "The marked microphone is the one recording now. Headphones or a microphone that connect will appear here automatically."))
+                    // With none listed, nothing is marked or recording; the
+                    // message above already says what to connect.
+                    if !viewModel.availableInputs.isEmpty {
+                        Text(tr("המיקרופון המסומן הוא זה שמקליט עכשיו. אוזניות או מיקרופון שיתחברו יופיעו כאן אוטומטית.", "The marked microphone is the one recording now. Headphones or a microphone that connect will appear here automatically."))
+                    }
                 }
 
                 Section(tr("עוצמת קליטה", "Input level")) {
