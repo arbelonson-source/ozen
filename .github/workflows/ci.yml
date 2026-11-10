@@ -46,7 +46,7 @@ jobs:
         run: python3 -m unittest discover -s scripts/model-release -p "test_*.py"
       - name: Cloud trial script
         run: python3 -m unittest discover -s scripts/cloud-trial -p "test_*.py"
-      - uses: swift-actions/setup-swift@v2
+      - uses: swift-actions/setup-swift@v3
         with:
           swift-version: "6.1"
       - run: swift build
