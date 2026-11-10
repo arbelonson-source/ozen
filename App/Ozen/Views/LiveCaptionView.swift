@@ -318,6 +318,12 @@ struct LiveCaptionView: View {
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }
+            if visibleSoundAlert == nil, let away = viewModel.awaySoundShown {
+                AwaySoundBanner(heard: away) {
+                    withAnimation { viewModel.closeAwaySound() }
+                }
+                .transition(.banner(from: .top, reduceMotion: reduceMotion))
+            }
             if let hit = visibleKeywordHit {
                 KeywordHitPill(hit: hit, speakerName: viewModel.speakerName(for: hit)) {
                     withAnimation(reduceMotion ? nil : .default) { visibleKeywordHit = nil }
@@ -374,7 +380,7 @@ struct LiveCaptionView: View {
     }
 
     private var hasTopBanner: Bool {
-        visibleSoundAlert != nil || visibleKeywordHit != nil || installExpiryToWarn != nil
+        visibleSoundAlert != nil || viewModel.awaySoundShown != nil || visibleKeywordHit != nil || installExpiryToWarn != nil
             || viewModel.savingTrouble.shouldShow || viewModel.microphoneDrop.title != nil || battery.notice != nil
             || viewModel.routedElsewhere != nil
             || viewModel.listeningCut != nil

@@ -46,9 +46,21 @@ public final class LiveCaptionViewModel {
         settings.deviceModelCheck = DeviceModelCheck(deviceName: DeviceModelTable.currentDeviceName, supported: supported, measurement: measurement)
         persist()
     }
+    /// A screenshot fixture's doorbell, heard while the app was away.
+    func seedAwaySoundForScreenshots(_ alert: SoundAlert, heardAt: TimeInterval) {
+        awaySound.heard(alert, at: heardAt, appIsActive: false)
+        awaySound.screenReturned { _ in false }
+    }
     #endif
     /// Where the lines said while the screen was away begin.
     var awayCatchUp = AwayCatchUp()
+    /// The sound heard while the screen was away, shown when she is back.
+    private var awaySound = AwaySound()
+    public var awaySoundShown: AwaySound.Heard? { awaySound.shown }
+
+    public func closeAwaySound() {
+        awaySound.close()
+    }
     @ObservationIgnored private var keywordAttention = KeywordAttentionPolicy()
     @ObservationIgnored private var handledKeywordHitIDs: Set<UUID> = []
     @ObservationIgnored private var batteryNoticePosted = false
@@ -464,6 +476,8 @@ public final class LiveCaptionViewModel {
         let now = Date().timeIntervalSince1970
         if isActive {
             keywordsNotifiedWhileAway.removeAll()
+            // Its notification goes below, and its banner time may be over.
+            awaySound.screenReturned { pipeline.currentScreenSoundAlert?.id == $0.id }
             for identifier in postedAlertNotificationIDs { withdrawNotification?(identifier) }
             postedAlertNotificationIDs.removeAll()
             withdrawDeliveredAlerts?()
@@ -745,6 +759,7 @@ public final class LiveCaptionViewModel {
 
     private func alertRaised(sound alert: SoundAlert) {
         let now = Date().timeIntervalSince1970
+        awaySound.heard(alert, at: now, appIsActive: isAppActive)
         guard let content = backgroundAlerts.notification(
             for: alert, appIsActive: isAppActive, now: now, utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: now))
         ) else { return }

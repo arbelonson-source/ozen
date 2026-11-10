@@ -229,9 +229,20 @@ struct NameSpeakerSheet: View {
 /// stay longer; everything else is calm.
 struct SoundAlertBanner: View {
     let alert: SoundAlert
+    /// The time a sound heard while the app was away was heard: said
+    /// instead of "Heard just now", and it doesn't hop.
+    var heardAt: String? = nil
     let onDismiss: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var rung = false
+
+    private var heardWhileAway: String? {
+        heardAt.map(Self.heardWhileAway(at:))
+    }
+
+    static func heardWhileAway(at time: String) -> String {
+        tr("נשמע ב־%1, כשהאפליקציה לא הייתה על המסך", "Heard at %1, while the app wasn’t on the screen", args: ["\(time)"])
+    }
 
     var body: some View {
         Button(action: onDismiss) {
@@ -240,11 +251,11 @@ struct SoundAlertBanner: View {
                 Image(systemName: alert.event.systemImage)
                     .font(.system(size: 30, weight: .semibold))
                     .symbolEffect(.bounce, value: rung)
-                    .onAppear { if !reduceMotion { rung = true } }
+                    .onAppear { if !reduceMotion, heardAt == nil { rung = true } }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(alert.event.name)
                         .font(.title3.weight(.bold))
-                    Text(alert.event.importance == .critical ? tr("שימו לב!", "Attention!") : tr("נשמע עכשיו", "Heard just now"))
+                    Text(heardWhileAway ?? (alert.event.importance == .critical ? tr("שימו לב!", "Attention!") : tr("נשמע עכשיו", "Heard just now")))
                         .font(.subheadline)
                         .opacity(BannerPalette.subtitleOpacity)
                 }
@@ -263,8 +274,26 @@ struct SoundAlertBanner: View {
             .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(tr("התראה: %1", "Alert: %1", args: ["\(alert.event.name)"]))
+        .accessibilityLabel(heardWhileAway.map { "\(alert.event.name). \($0)" } ?? tr("התראה: %1", "Alert: %1", args: ["\(alert.event.name)"]))
         .accessibilityHint(tr("הקישו לסגירה", "Tap to close"))
+    }
+}
+
+/// A sound heard while the app was away, on the caption screen once she is
+/// back (see `AwaySound`): when it was heard, read to a screen reader once,
+/// with no hop, buzz or flash.
+struct AwaySoundBanner: View {
+    let heard: AwaySound.Heard
+    let onDismiss: () -> Void
+
+    private var time: String {
+        Date(timeIntervalSince1970: heard.at).formatted(inAppLanguage: .omitted, time: .shortened)
+    }
+
+    var body: some View {
+        SoundAlertBanner(alert: heard.alert, heardAt: time, onDismiss: onDismiss)
+            .accessibilityIdentifier("awaySoundBanner")
+            .announcing("\(heard.alert.event.name). \(SoundAlertBanner.heardWhileAway(at: time))", whenTurningTrue: true, alsoWhenFirstShown: true)
     }
 }
 
