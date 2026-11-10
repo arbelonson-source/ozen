@@ -53,6 +53,8 @@ struct SettingsView: View {
     @State private var confirmingHomeServerCodeDelete = false
     @State private var confirmingCloudKeyDelete = false
     @State private var askingCloudConsent = false
+    /// The question was asked by Close, so either answer closes Settings.
+    @State private var closingAfterCloudConsent = false
     @State private var confirmingWalkthrough = false
     @State private var homeServerCodeSaveFailed = false
     @Environment(\.dismiss) private var dismiss
@@ -125,6 +127,17 @@ struct SettingsView: View {
                 aboutSection
             }
             .accessibilityIdentifier("settingsScreen")
+            // On the Form, not the key field: asked by Close with the
+            // field scrolled away, the question never appeared.
+            .alert(tr("לשלוח את הקול ל־%1?", "Send the audio to %1?", args: ["\(viewModel.settings.cloudProvider.name)"]), isPresented: $askingCloudConsent) {
+                Button(tr("לאשר ולשמור", "Allow and save"), action: allowAndSaveCloudKey)
+                Button(tr("ביטול", "Cancel"), role: .cancel) {
+                    if closingAfterCloudConsent { dismiss() }
+                    closingAfterCloudConsent = false
+                }
+            } message: {
+                Text(tr("כשהכתוביות מגיעות מ־%1, הקול מהמיקרופון נשלח לשירות דרך האינטרנט, יחד עם השמות, המילים המיוחדות והמילים החשובות. על מה שנשלח חלים תנאי השימוש ומדיניות הפרטיות של %1. בלי אישור שלכם, המפתח לא יישמר ושום דבר לא יישלח.", "While captions come from %1, the audio from the microphone is sent to it over the internet, together with the names and special words and the important words. %1’s own terms and privacy policy apply to what it receives. Without your OK, the key isn’t saved and nothing is sent.", args: ["\(viewModel.settings.cloudProvider.name)"]))
+            }
             // Choosing another engine, or turning quiet hours on, slides its
             // rows in and out rather than having the form jump.
             .animation(reduceMotion ? nil : .default, value: viewModel.settings.engine)
@@ -132,11 +145,13 @@ struct SettingsView: View {
             .modifier(ScrollsToFocus(focus: focus, proxy: proxy))
             }
             .onDisappear(perform: saveUnsavedEntries)
+            // Swiped down, a pasted key was dropped as well; Close asks.
+            .interactiveDismissDisabled(hasUnsavedCloudKey)
             .navigationTitle(tr("הגדרות", "Settings"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(tr("סגירה", "Close")) { dismiss() }
+                    Button(tr("סגירה", "Close"), action: close)
                 }
             }
             .sheet(isPresented: $showingEnrollment) {
@@ -424,13 +439,7 @@ struct SettingsView: View {
                 .autocorrectionDisabled()
                 .onSubmit(askCloudConsent)
                 .accessibilityIdentifier("cloudKeyField")
-                .alert(tr("לשלוח את הקול ל־%1?", "Send the audio to %1?", args: ["\(viewModel.settings.cloudProvider.name)"]), isPresented: $askingCloudConsent) {
-                    Button(tr("לאשר ולשמור", "Allow and save"), action: saveCloudKey)
-                    Button(tr("ביטול", "Cancel"), role: .cancel) {}
-                } message: {
-                    Text(tr("כשהכתוביות מגיעות מ־%1, הקול מהמיקרופון נשלח לשירות דרך האינטרנט, יחד עם השמות, המילים המיוחדות והמילים החשובות. על מה שנשלח חלים תנאי השימוש ומדיניות הפרטיות של %1. בלי אישור שלכם, המפתח לא יישמר ושום דבר לא יישלח.", "While captions come from %1, the audio from the microphone is sent to it over the internet, together with the names and special words and the important words. %1’s own terms and privacy policy apply to what it receives. Without your OK, the key isn’t saved and nothing is sent.", args: ["\(viewModel.settings.cloudProvider.name)"]))
-                }
-            if !cloudKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if hasUnsavedCloudKey {
                 Button(tr("שמירת המפתח", "Save key"), action: askCloudConsent)
             }
             if cloudKeySaveFailed {
@@ -726,16 +735,47 @@ struct SettingsView: View {
     /// only after a plain yes to sending it there (App Review guideline
     /// 5.1.2(i): name who gets the data and what, and ask first).
     private func askCloudConsent() {
-        guard !cloudKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard hasUnsavedCloudKey else { return }
         askingCloudConsent = true
     }
 
-    private func saveCloudKey() {
+    private var hasUnsavedCloudKey: Bool {
+        !cloudKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// A key pasted but not saved with Return or the button can't be kept
+    /// without a yes to sending the audio to that service, and Settings
+    /// closed dropping it without a word: she believed the cloud was set
+    /// up while captions kept coming from the phone. Close asks the same
+    /// question as the button: allowed, the key is saved and Settings
+    /// closes; cancelled, it closes without the key.
+    private func close() {
+        if hasUnsavedCloudKey {
+            closingAfterCloudConsent = true
+            askingCloudConsent = true
+        } else {
+            dismiss()
+        }
+    }
+
+    /// If the phone can't store the key, Settings stays open with the
+    /// reason, also when Close asked, and VoiceOver hears it.
+    private func allowAndSaveCloudKey() {
+        let closing = closingAfterCloudConsent
+        closingAfterCloudConsent = false
+        if saveCloudKey() {
+            if closing { dismiss() }
+        } else {
+            Announcement.post(tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again."))
+        }
+    }
+
+    private func saveCloudKey() -> Bool {
         let key = cloudKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty else { return }
+        guard !key.isEmpty else { return false }
         let saved = CloudKeyStore.save(key, for: viewModel.settings.cloudProvider)
         cloudKeySaveFailed = !saved
-        guard saved else { return }
+        guard saved else { return false }
         cloudKeyDraft = ""
         hasCloudKey = true
         cloudKeyCheck = nil
@@ -749,6 +789,7 @@ struct SettingsView: View {
             cloudKeyCheck = result
             UIAccessibility.post(notification: .announcement, argument: result.message)
         }
+        return true
     }
 
     @ViewBuilder
