@@ -2052,7 +2052,11 @@ public final class LiveCaptionViewModel {
 
     /// The "who is this?" flow: tag an already-inferred cluster by name
     /// using one of its own segments, after the fact.
-    public func nameSpeaker(of segment: TranscriptSegment, name: String) {
+    /// False when nothing could be saved: the phone no longer has the voice
+    /// of a line from before a quiet break or long ago, and leaves it alone.
+    /// The sheet then says so instead of closing as if it had worked.
+    @discardableResult
+    public func nameSpeaker(of segment: TranscriptSegment, name: String) -> Bool {
         // The segment's own cluster may already carry a name (fixing a typo
         // on an earlier tag): rename that saved profile instead of adding a
         // second one for the same voice print.
@@ -2060,7 +2064,7 @@ public final class LiveCaptionViewModel {
             pipeline.speakerClusters.first(where: { $0.id == id })?.name
         }
         let isRespelling = pipeline.isRespelling(name, ofLine: segment)
-        guard let centroid = pipeline.nameSpeaker(of: segment, name: name) else { return }
+        guard let centroid = pipeline.nameSpeaker(of: segment, name: name) else { return false }
         // A name another saved person already has is not a misspelling:
         // the phone took this voice for the wrong person. Renaming would
         // hand all of that person's prints to this name, and they would
@@ -2076,6 +2080,7 @@ public final class LiveCaptionViewModel {
             persist()
             speakerLabelsChanged()
         }
+        return true
     }
 
     /// Deletes a person from the saved speakers: every voice print with

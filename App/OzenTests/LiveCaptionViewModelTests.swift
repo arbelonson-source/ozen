@@ -2404,6 +2404,30 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(viewModel.settings.speakerProfiles.first?.name == "Danna")
     }
 
+    @Test("naming a line whose voice the phone no longer has says it saved nothing, and a line it knows says it saved")
+    func namingALineTooOldSaysSo() async throws {
+        let engine = FakeEngine()
+        let audio = FakeAudioCapturer()
+        let pipeline = CaptionPipeline(audio: audio, engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-rename-\(UUID())", isDirectory: true)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathComponent("settings.json")),
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { pipeline.speakerClusters.count == 1 })
+        await say("שלום", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        var forgotten = viewModel.segments[0]
+        forgotten.speakerClusterID = 9_999
+
+        #expect(!viewModel.nameSpeaker(of: forgotten, name: "Rivka"))
+        #expect(viewModel.settings.speakerProfiles.isEmpty)
+        #expect(viewModel.nameSpeaker(of: viewModel.segments[0], name: "Dana"))
+        #expect(viewModel.settings.speakerProfiles.map(\.name) == ["Dana"])
+    }
+
     @Test("naming a line with another saved person's name gives that person a voice print, and the one it was taken for keeps theirs")
     func namingAsAnotherSavedPersonKeepsBoth() async throws {
         let engine = FakeEngine()
