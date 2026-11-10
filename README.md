@@ -665,16 +665,29 @@ Sources/OzenKit/        (builds + tests on Linux — no Mac needed for this half
 Sources/OzenPlatform/  WhisperKit/Speech/AVFoundation/Accelerate integration
                         (Apple-only; built and tested via CI's macOS runner)
 Tests/                  Unit tests for both of the above
+Tests/Fixtures/         Test cases read by both phones' test suites (Swift and Kotlin)
+Sources/OzenKit/Resources/Translations.json
+                        Every on-screen text in the languages besides Hebrew and English
 App/Ozen/               The SwiftUI app itself (generated via XcodeGen)
+App/OzenTests/          The iPhone app's tests; App/OzenUITests/ drives the screens
 App/OzenWidget/         Widget extension: lock screen captions, Control Center button
 App/Shared/             Code compiled into both the app and the widget extension
 project.yml             XcodeGen config — run `xcodegen generate` to get Ozen.xcodeproj
+docs/                   Guides: getting started, home computer, cloud services, privacy, troubleshooting
 docs/superpowers/specs/ Design doc with the full rationale and open questions
 docs/design/            Design docs for newer work: the Android app, the cloud services
 android/core/           The Android app's portable core in Kotlin (tests run on the JVM)
 android/app/            The Android app: microphone, whisper.cpp, background service, screens
+android/app/src/androidTest/
+                        Android device tests (run on an emulator or a phone)
+server/                 The home computer server (Python), its setup scripts and pairing page
+scripts/                The checks CI runs (scripts/ci-local.sh runs them all), model releases
+.github/workflows/      CI, releases, TestFlight, screenshots, model checks
 training/               Training the speech model to hear across a room, and its exam
 ```
+
+How to send a change: [CONTRIBUTING.md](CONTRIBUTING.md). Security problems:
+[SECURITY.md](SECURITY.md).
 
 ## Building
 
