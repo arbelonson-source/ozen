@@ -2384,7 +2384,7 @@ public final class LiveCaptionViewModel {
     public func toggleStarInHistory(sessionID: UUID, segmentID: UUID) -> Bool {
         defer { refreshSavingTrouble() }
         guard let segment = pipeline.segments.first(where: { $0.id == segmentID }) else {
-            return historyWriter.toggleStarNow(sessionID: sessionID, segmentID: segmentID) != nil
+            return historyWriter.toggleStarNow(sessionID: sessionID, segmentID: segmentID, keepingRefused: false) != nil
         }
         toggleStar(segment)
         // The opened conversation reads its file straight back: before

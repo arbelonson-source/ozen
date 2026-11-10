@@ -501,6 +501,24 @@ class TranscriptHistoryWriterTest {
     }
 
     @Test
+    fun `a star History cannot save stays out of the waiting version, while one from the caption screen waits with it`() = withWriterDirectory { dir ->
+        val store = TranscriptHistoryStore(dir)
+        val writer = TranscriptHistoryWriter(store, SerialQueue("test.refused-star-waiting"))
+        val early = record(UUID.randomUUID(), 2, false)
+        writer.saveNow(early)
+        val later = early.copy(endedAt = 200.0)
+        permissions(dir, "r-x------")
+        writer.saveNow(later)
+
+        assertNull(writer.toggleStarNow(early.id, early.segments[0].id, keepingRefused = false))
+        assertEquals(true, writer.toggleStarNow(early.id, early.segments[1].id))
+        permissions(dir, "rwx------")
+        writer.saveNow(record(UUID.randomUUID(), 1, false))
+        assertEquals(200.0, store.load(early.id)?.endedAt)
+        assertEquals(listOf(false, true), store.load(early.id)?.segments?.map { it.isStarred }, "the caption screen's star waits with the version waiting for room")
+    }
+
+    @Test
     fun `deleting everything also drops a conversation still waiting for room, and its warning`() = withWriterDirectory { dir ->
         val store = TranscriptHistoryStore(dir)
         val writer = TranscriptHistoryWriter(store, SerialQueue("test.delete-all-waiting"))

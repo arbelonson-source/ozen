@@ -604,6 +604,43 @@ class ConversationSaverTest {
     }
 
     @Test
+    fun `a star saved on a line being captioned counts as saved while another conversation still waits for room`() {
+        val earlier = oldConversation(clock - 3_600)
+        val waiting = store.load(earlier)!!.copy(endedAt = clock - 3_500)
+        val earlierFile = folder.listFiles()!!.single { it.name.equals("$earlier.json", ignoreCase = true) }
+        earlierFile.delete()
+        File(earlierFile, "in-the-way").apply { parentFile.mkdirs() }.writeText("x")
+        assertFalse(writer.saveNow(waiting))
+        start()
+        say("Take two pills after dinner")
+        saver.save(ended = false)
+        val conversation = saved().single { it.id != earlier }.id
+        assertNotNull(saver.lastSaveFailure)
+
+        assertEquals(true, saver.toggleStar(conversation, lines[0].id))
+        assertTrue(saver.isStarred(lines[0].id))
+        assertEquals(listOf(true), store.load(conversation)!!.segments.map { it.isStarred })
+    }
+
+    @Test
+    fun `a star given on the caption screen while saves fail still shows, and is saved once there is room`() {
+        start()
+        say("Take two pills after dinner")
+        saver.save(ended = false)
+        val conversation = saved().single().id
+        val pills = lines[0].id
+        assertTrue(folder.setWritable(false))
+        try {
+            assertTrue(saver.toggleLiveStar(pills))
+            assertTrue(saver.isStarred(pills))
+        } finally {
+            folder.setWritable(true)
+        }
+        saver.save(ended = false)
+        assertEquals(listOf(true), store.load(conversation)!!.segments.map { it.isStarred })
+    }
+
+    @Test
     fun `a conversation open for reading is not deleted as old until it is closed`() {
         settings.historyRetention = HistoryRetention.Week
         val reading = oldConversation(clock - 30 * 86_400)

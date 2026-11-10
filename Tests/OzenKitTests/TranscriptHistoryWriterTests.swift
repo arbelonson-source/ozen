@@ -437,6 +437,29 @@ struct TranscriptHistoryWriterTests {
         #expect(writer.lastFailure == nil)
     }
 
+    @Test("a star History can't save stays out of the waiting version, while one from the caption screen waits with it")
+    func refusedStarLeavesTheWaitingVersion() throws {
+        let (store, dir) = makeStore()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let writer = TranscriptHistoryWriter(store: store, queue: DispatchQueue(label: "test.refused-star-waiting"))
+        let early = record(id: UUID(), lines: 2, ended: false)
+        writer.saveNow(early)
+        var later = early
+        later.endedAt = 200
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: dir.path)
+        writer.saveNow(later)
+
+        #expect(writer.toggleStarNow(sessionID: early.id, segmentID: early.segments[0].id, keepingRefused: false) == nil)
+        #expect(writer.toggleStarNow(sessionID: early.id, segmentID: early.segments[1].id) == true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
+        writer.saveNow(record(id: UUID(), lines: 1, ended: false))
+        #expect(store.load(id: early.id)?.endedAt == 200)
+        #expect(store.load(id: early.id)?.segments.map(\.isStarred) == [false, true], "the caption screen's star waits with the version waiting for room")
+    }
+
     @Test("deleting everything also drops a conversation still waiting for room, and its warning")
     func deleteAllDropsTheWaiting() throws {
         let (store, dir) = makeStore()

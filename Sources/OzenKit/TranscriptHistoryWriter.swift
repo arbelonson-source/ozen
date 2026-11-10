@@ -188,13 +188,18 @@ public final class TranscriptHistoryWriter: Sendable {
     /// same state: starring only the older file on disk was undone when the
     /// waiting one was written over it. The tap follows the file, which is
     /// what History shows; a line only the waiting version has follows that.
+    /// A file the disk still refuses gives the waiting version the star when
+    /// `keepingRefused` (the caption screen, whose star shows from memory and
+    /// is saved once there is room). History passes false: the person is
+    /// told the star didn't change, so it mustn't turn up once there is room,
+    /// or be undone by the tap that tries again.
     @discardableResult
-    public func toggleStarNow(sessionID: UUID, segmentID: UUID) -> Bool? {
+    public func toggleStarNow(sessionID: UUID, segmentID: UUID, keepingRefused: Bool = true) -> Bool? {
         queue.sync { [store, failure, lastWritten, pendingRenames, pendingSaves] in
             lastWritten.record = nil
             var result: Bool?
-            failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID) }
-            if var waiting = pendingSaves.records[sessionID],
+            let reached = failure.capture { result = try store.toggleStar(segmentID: segmentID, inSession: sessionID) }
+            if reached || keepingRefused, var waiting = pendingSaves.records[sessionID],
                let index = waiting.segments.firstIndex(where: { $0.id == segmentID }) {
                 waiting.segments[index].isStarred = result ?? !waiting.segments[index].isStarred
                 pendingSaves.records[sessionID] = waiting
