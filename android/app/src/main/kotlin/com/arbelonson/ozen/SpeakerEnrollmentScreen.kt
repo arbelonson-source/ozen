@@ -120,12 +120,19 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
     // says what is missing and where to allow it.
     val context = LocalContext.current
     var noMicrophone by rememberSaveable { mutableStateOf(false) }
-    val answered = { granted: Boolean -> if (granted) start() else noMicrophone = true }
+    // A second tap while the phone's question is on its way would ask again
+    // and start a second recording over the first once both are answered.
+    var askingMicrophone by rememberSaveable { mutableStateOf(false) }
+    val answered = { granted: Boolean ->
+        askingMicrophone = false
+        if (granted) start() else noMicrophone = true
+    }
     val askMicrophone = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission(), answered)
     val record = {
         if (SpeakerRecordings.microphoneAllowed(context)) {
             start()
-        } else {
+        } else if (!askingMicrophone) {
+            askingMicrophone = true
             SpeakerRecordings.askForMicrophone({ askMicrophone.launch(Manifest.permission.RECORD_AUDIO) }, answered)
         }
     }

@@ -454,10 +454,15 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("The recording is too short or too quiet").assertDoesNotExist()
             assertEquals(0, book.asked.size)
 
-            SpeakerRecordings.askForMicrophone = { _, answer -> answer(true) }
             compose.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
             compose.onNodeWithText("No microphone access").assertDoesNotExist()
+            val pending = CopyOnWriteArrayList<(Boolean) -> Unit>()
+            SpeakerRecordings.askForMicrophone = { _, answer -> pending += answer }
             compose.onNodeWithText("Record and save (30 seconds)").performClick()
+            compose.onNodeWithText("Record and save (30 seconds)").performClick()
+            compose.waitForIdle()
+            assertEquals("a second tap asked again while the first question was open", 1, pending.size)
+            compose.runOnUiThread { pending.single()(true) }
             compose.waitUntil(5_000) { book.asked.size == 1 }
             compose.runOnUiThread { SpeakerRecordings.stop() }
         } finally {
