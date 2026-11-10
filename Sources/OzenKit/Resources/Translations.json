@@ -1109,7 +1109,10 @@
   "Line fixed": "መስመሩ ተስተካክሏል",
   "A key is a long code you get from the %1 website after opening an account there.": "ቁልፍ ማለት በ%1 ድረ-ገጽ ላይ መለያ ከከፈቱ በኋላ የሚያገኙት ረጅም ኮድ ነው።",
   "Open the %1 website": "የ%1 ድረ-ገጽን ይክፈቱ",
-  "They stay saved in Settings, under “Previous conversations”.": "በቅንብሮች ውስጥ፣ በ“ያለፉ ውይይቶች” ስር ተቀምጠው ይቆያሉ።"
+  "They stay saved in Settings, under “Previous conversations”.": "በቅንብሮች ውስጥ፣ በ“ያለፉ ውይይቶች” ስር ተቀምጠው ይቆያሉ።",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "“%1”ን በሁሉም ቦታ፣ በተቀመጡ ውይይቶችም ውስጥ ወደ “%2” ይቀየር?",
+  "Change everywhere": "በሁሉም ቦታ ቀይር",
+  "Only this line": "ይህን መስመር ብቻ"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2221,7 +2224,10 @@
   "Line fixed": "تم تصحيح السطر",
   "A key is a long code you get from the %1 website after opening an account there.": "المفتاح رمز طويل تحصلون عليه من موقع %1 بعد فتح حساب فيه.",
   "Open the %1 website": "فتح موقع %1",
-  "They stay saved in Settings, under “Previous conversations”.": "تبقى محفوظة في الإعدادات، ضمن ‏“المحادثات السابقة”‏."
+  "They stay saved in Settings, under “Previous conversations”.": "تبقى محفوظة في الإعدادات، ضمن ‏“المحادثات السابقة”‏.",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "تغيير ‏“%1”‏ إلى ‏“%2”‏ في كل مكان، وفي المحادثات المحفوظة أيضًا؟",
+  "Change everywhere": "التغيير في كل مكان",
+  "Only this line": "هذا السطر فقط"
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3333,7 +3339,10 @@
   "Line fixed": "这一行已更正",
   "A key is a long code you get from the %1 website after opening an account there.": "密钥是在 %1 网站开设账户后得到的一串长代码。",
   "Open the %1 website": "打开 %1 网站",
-  "They stay saved in Settings, under “Previous conversations”.": "它们会保存在“设置”的“以往的对话”中。"
+  "They stay saved in Settings, under “Previous conversations”.": "它们会保存在“设置”的“以往的对话”中。",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "要在所有地方（包括已保存的对话）把“%1”改成“%2”吗？",
+  "Change everywhere": "全部更改",
+  "Only this line": "仅此行"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4445,7 +4454,10 @@
   "Line fixed": "Ligne corrigée",
   "A key is a long code you get from the %1 website after opening an account there.": "Une clé est un long code que vous obtenez sur le site de %1 après y avoir ouvert un compte.",
   "Open the %1 website": "Ouvrir le site de %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Elles restent enregistrées dans Réglages, sous « Conversations précédentes »."
+  "They stay saved in Settings, under “Previous conversations”.": "Elles restent enregistrées dans Réglages, sous « Conversations précédentes ».",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "Remplacer « %1 » par « %2 » partout, y compris dans les conversations enregistrées ?",
+  "Change everywhere": "Remplacer partout",
+  "Only this line": "Cette ligne seulement"
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5557,7 +5569,10 @@
   "Line fixed": "Zeile korrigiert",
   "A key is a long code you get from the %1 website after opening an account there.": "Ein Schlüssel ist ein langer Code, den Sie auf der Website von %1 erhalten, nachdem Sie dort ein Konto eröffnet haben.",
   "Open the %1 website": "Website von %1 öffnen",
-  "They stay saved in Settings, under “Previous conversations”.": "Sie bleiben in den Einstellungen unter „Frühere Gespräche“ gespeichert."
+  "They stay saved in Settings, under “Previous conversations”.": "Sie bleiben in den Einstellungen unter „Frühere Gespräche“ gespeichert.",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "„%1“ überall in „%2“ ändern, auch in gespeicherten Gesprächen?",
+  "Change everywhere": "Überall ändern",
+  "Only this line": "Nur diese Zeile"
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6669,7 +6684,10 @@
   "Line fixed": "पंक्ति ठीक कर दी गई",
   "A key is a long code you get from the %1 website after opening an account there.": "कुंजी एक लंबा कोड है, जो %1 की वेबसाइट पर खाता खोलने के बाद मिलता है।",
   "Open the %1 website": "%1 की वेबसाइट खोलें",
-  "They stay saved in Settings, under “Previous conversations”.": "ये सेटिंग्स में “पिछली बातचीत” के अंतर्गत सहेजे रहेंगे।"
+  "They stay saved in Settings, under “Previous conversations”.": "ये सेटिंग्स में “पिछली बातचीत” के अंतर्गत सहेजे रहेंगे।",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "“%1” को हर जगह, सहेजी गई बातचीत में भी, “%2” में बदलें?",
+  "Change everywhere": "हर जगह बदलें",
+  "Only this line": "सिर्फ़ यह पंक्ति"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7781,7 +7799,10 @@
   "Line fixed": "Linha corrigida",
   "A key is a long code you get from the %1 website after opening an account there.": "Uma chave é um código longo que obtém no site de %1 depois de abrir lá uma conta.",
   "Open the %1 website": "Abrir o site de %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Ficam guardadas nas Definições, em “Conversas anteriores”."
+  "They stay saved in Settings, under “Previous conversations”.": "Ficam guardadas nas Definições, em “Conversas anteriores”.",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "Mudar “%1” para “%2” em todo o lado, também nas conversas guardadas?",
+  "Change everywhere": "Mudar em todo o lado",
+  "Only this line": "Só esta linha"
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8893,7 +8914,10 @@
   "Line fixed": "Строка исправлена",
   "A key is a long code you get from the %1 website after opening an account there.": "Ключ — это длинный код, который выдают на сайте %1 после создания там учётной записи.",
   "Open the %1 website": "Открыть сайт %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Они сохранятся в настройках, в разделе «Предыдущие разговоры»."
+  "They stay saved in Settings, under “Previous conversations”.": "Они сохранятся в настройках, в разделе «Предыдущие разговоры».",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "Заменить «%1» на «%2» везде, в том числе в сохранённых разговорах?",
+  "Change everywhere": "Заменить везде",
+  "Only this line": "Только эта строка"
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -10005,7 +10029,10 @@
   "Line fixed": "Línea corregida",
   "A key is a long code you get from the %1 website after opening an account there.": "Una clave es un código largo que obtienes en el sitio web de %1 después de abrir una cuenta allí.",
   "Open the %1 website": "Abrir el sitio web de %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Se quedan guardados en Ajustes, en “Conversaciones anteriores”."
+  "They stay saved in Settings, under “Previous conversations”.": "Se quedan guardados en Ajustes, en “Conversaciones anteriores”.",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "¿Cambiar “%1” por “%2” en todas partes, también en las conversaciones guardadas?",
+  "Change everywhere": "Cambiar en todas partes",
+  "Only this line": "Solo esta línea"
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11117,6 +11144,9 @@
   "Line fixed": "Рядок виправлено",
   "A key is a long code you get from the %1 website after opening an account there.": "Ключ — це довгий код, який видають на сайті %1 після створення там облікового запису.",
   "Open the %1 website": "Відкрити сайт %1",
-  "They stay saved in Settings, under “Previous conversations”.": "Вони збережуться в налаштуваннях, у розділі «Попередні розмови»."
+  "They stay saved in Settings, under “Previous conversations”.": "Вони збережуться в налаштуваннях, у розділі «Попередні розмови».",
+  "Change “%1” to “%2” everywhere, also in saved conversations?": "Змінити «%1» на «%2» всюди, зокрема в збережених розмовах?",
+  "Change everywhere": "Змінити всюди",
+  "Only this line": "Лише цей рядок"
  }
 }
