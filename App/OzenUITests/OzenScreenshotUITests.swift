@@ -970,7 +970,7 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 10), "pairing: settings never appeared")
 
         let link = try XCTUnwrap(URL(string: "ozen://pair?address=wss://desktop.tail0example.ts.net&code=example-code-123"))
-        app.open(link)
+        openInRunningApp(link)
 
         let prompt = app.alerts.firstMatch
         let shown = prompt.waitForExistence(timeout: 10)
@@ -999,10 +999,11 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertTrue(address.exists, "pairing in place: the address box never appeared")
 
         let scanned = "wss://desktop.tail0example.ts.net"
-        app.open(try XCTUnwrap(URL(string: "ozen://pair?address=\(scanned)&code=example-code-123")))
+        openInRunningApp(try XCTUnwrap(URL(string: "ozen://pair?address=\(scanned)&code=example-code-123")))
         let prompt = app.alerts.firstMatch
         XCTAssertTrue(prompt.waitForExistence(timeout: 10), "pairing in place: 'Connect to the home computer?' never appeared")
         prompt.buttons.matching(NSPredicate(format: "label IN %@", ["להתחבר", "Connect"])).firstMatch.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 5), "pairing in place: Settings closed on Connect")
 
         let box = app.descendants(matching: .any)["homeServerAddressField"]
         let followed = NSPredicate(format: "value == %@", scanned)
@@ -1046,10 +1047,11 @@ final class OzenScreenshotUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: gone, object: app.descendants(matching: .any)["homeServerAddressField"])], timeout: 10), .completed, "pairing from another engine: the address box stayed after choosing the cloud")
 
         let scanned = "wss://desktop.tail0example.ts.net"
-        app.open(try XCTUnwrap(URL(string: "ozen://pair?address=\(scanned)&code=example-code-123")))
+        openInRunningApp(try XCTUnwrap(URL(string: "ozen://pair?address=\(scanned)&code=example-code-123")))
         let prompt = app.alerts.firstMatch
         XCTAssertTrue(prompt.waitForExistence(timeout: 10), "pairing from another engine: 'Connect to the home computer?' never appeared")
         prompt.buttons.matching(NSPredicate(format: "label IN %@", ["להתחבר", "Connect"])).firstMatch.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["settingsScreen"].waitForExistence(timeout: 5), "pairing from another engine: Settings closed on Connect")
 
         let box = scrollDownUntilVisible(app, identifier: "homeServerAddressField", maxSwipes: 20)
         let followed = NSPredicate(format: "value == %@", scanned)
@@ -1519,6 +1521,16 @@ final class OzenScreenshotUITests: XCTestCase {
     /// `type` narrows the query: matching `.any` walks every element on
     /// every check, and at the largest text size a long Form took XCTest
     /// past its own query timeout ("Timed out while evaluating UI query").
+    /// Hands a link to the app already running, as a scan with the Camera
+    /// does. `XCUIApplication.open` launches the app afresh with the link,
+    /// which closed every screen that was open: the tests of a link arriving
+    /// while Settings is open never had Settings open.
+    private func openInRunningApp(_ url: URL) {
+        XCUIDevice.shared.system.open(url)
+        let confirm = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Open"]
+        if confirm.waitForExistence(timeout: 3) { confirm.tap() }
+    }
+
     private func scrollDownUntilVisible(_ app: XCUIApplication, identifier: String, type: XCUIElement.ElementType = .any, maxSwipes: Int = 15) -> XCUIElement {
         let element = app.descendants(matching: type)[identifier]
         var attempts = 0
