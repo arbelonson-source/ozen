@@ -27,6 +27,7 @@ struct DiagnosticsView: View {
     /// notification without reporting an error, so it read "OK" while no
     /// background alert was ever shown.
     @State private var notificationsAllowed: Bool?
+    @State private var builtInRecognition: String?
 
     private static func clipTitle(_ clip: URL) -> String {
         let stamp = clip.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "problem-", with: "")
@@ -224,6 +225,7 @@ struct DiagnosticsView: View {
             reloadJournal()
             problemClips = viewModel.problemAudio?.clips() ?? []
             notificationsAllowed = await AlertNotifier.shared.isAllowed()
+            builtInRecognition = await AppleSpeechEngine.onDeviceReport(languageCodes: ["he", viewModel.settings.languageCode])
             reportText = report
             // "Send report" shares this text as it stands: kept current
             // while the screen is open, not frozen at the moment it opened.
@@ -305,7 +307,7 @@ struct DiagnosticsView: View {
     }
 
     private var report: String {
-        DiagnosticsReport(viewModel: viewModel, journalLines: journalLines, notificationsAllowed: notificationsAllowed, modelState: modelState, tokenizerCached: store.hasCachedTokenizer()).text
+        DiagnosticsReport(viewModel: viewModel, journalLines: journalLines, notificationsAllowed: notificationsAllowed, modelState: modelState, tokenizerCached: store.hasCachedTokenizer(), builtInRecognition: builtInRecognition).text
     }
 
     /// Alert sounds the classifier heard, but not surely enough to alert:

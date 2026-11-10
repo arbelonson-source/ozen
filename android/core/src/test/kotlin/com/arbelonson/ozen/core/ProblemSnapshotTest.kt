@@ -33,6 +33,40 @@ class ProblemSnapshotTest {
     }
 
     @Test
+    fun `a line held to mark the problem goes in too, after the newest four, marked as held`() {
+        val segments = (1..8).map { segment("line $it", committed = true) }
+        val lines = ProblemSnapshot.lines(
+            settings = AppSettings.default, activeEngine = null, input = null, stats = PipelineStats(),
+            segments = segments, device = "-", utcOffsetSeconds = 0, held = segments[1],
+        )
+        assertEquals(3 + ProblemSnapshot.lineCount + 1, lines.size)
+        assertEquals("  line (held, final, sure -, 00:00:00): line 2", lines.last())
+        assertTrue(ProblemSnapshot.isCaptionLine(lines.last()))
+        assertTrue(lines[3].endsWith("line 5"))
+    }
+
+    @Test
+    fun `a held line among the newest four is marked where it is, not added twice`() {
+        val segments = (1..6).map { segment("line $it", committed = true) }
+        val lines = ProblemSnapshot.lines(
+            settings = AppSettings.default, activeEngine = null, input = null, stats = PipelineStats(),
+            segments = segments, device = "-", utcOffsetSeconds = 0, held = segments[4],
+        )
+        assertEquals(3 + ProblemSnapshot.lineCount, lines.size)
+        assertEquals(listOf("  line (held, final, sure -, 00:00:00): line 5"), lines.filter { "held" in it })
+    }
+
+    @Test
+    fun `with saving conversations off, a held line is not kept either`() {
+        val segments = (1..6).map { segment("line $it", committed = true) }
+        val lines = ProblemSnapshot.lines(
+            settings = AppSettings.default, activeEngine = null, input = null, stats = PipelineStats(),
+            segments = segments, device = "-", utcOffsetSeconds = 0, includeCaptions = false, held = segments[0],
+        )
+        assertTrue(lines.none { ProblemSnapshot.isCaptionLine(it) })
+    }
+
+    @Test
     fun `each line carries its own last-update clock time, at her offset, not the moment the problem was marked`() {
         val segments = (1..4).map { segment("line $it", committed = true, updated = (it * 60).toDouble()) }
         val lines = ProblemSnapshot.lines(

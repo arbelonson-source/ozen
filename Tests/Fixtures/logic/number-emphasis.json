@@ -1,0 +1,831 @@
+{
+ "about": "Cases for NumberEmphasis, run by both OzenKitTests (Swift) and core NumberEmphasisSharedCasesTest (Kotlin). kind=emphasized: expected is the list of highlighted substrings of input. kind=listable: expected is hasListableNumber. knownDifference: skipped on both sides with the note printed. only: run on that platform only.",
+ "cases": [
+  {
+   "kind": "emphasized",
+   "input": "לקחתי את זה רק פעם",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "נשאר רק כדור אחד ",
+   "expected": [
+    "אחד"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "נשארה רק אחת ",
+   "expected": [
+    "אחת"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "ניפגש ב-10:30 אצל הרופא",
+   "expected": [
+    "10:30"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "המספר הוא 050-1234567.",
+   "expected": [
+    "050-1234567"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "הנחה של 20% על 3/4 מהמחיר",
+   "expected": [
+    "20%",
+    "3/4"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "בין 10:30-11:00, (בערך)",
+   "expected": [
+    "10:30-11:00"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "150₪",
+   "expected": [
+    "150₪"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "מחיר הבדיקה 150 ₪",
+   "expected": [
+    "150 ₪"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "המחיר הוא 1,234 שקל",
+   "expected": [
+    "1,234 שקל"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "יש לי 1,234,567 שקל בבנק",
+   "expected": [
+    "1,234,567 שקל"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "קח כדורים 1,2,3 ותנוח",
+   "expected": [
+    "1",
+    "2",
+    "3"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "050-1234567,03-1234567",
+   "expected": [
+    "050-1234567",
+    "03-1234567"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "3 כדורים היום",
+   "expected": [
+    "3 כדורים"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "שילמתי 150 ₪ היום",
+   "expected": [
+    "150 ₪"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "שלושת רבעי היום",
+   "expected": [
+    "שלושת רבעי היום"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "כן,שלושה כדורים",
+   "expected": [
+    "שלושה כדורים"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "בסך הכל,250 שקל",
+   "expected": [
+    "250 שקל"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "לקחת שלושה כדורים, ובשש בערב עוד חצי.",
+   "expected": [
+    "שלושה כדורים",
+    "ובשש",
+    "חצי"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "שלושה-עשר אנשים",
+   "expected": [
+    "שלושה-עשר"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "‏\"לשניים\"",
+   "expected": [
+    "לשניים"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "קחי שָׁלוֹשׁ כדורים",
+   "expected": [
+    "שָׁלוֹשׁ כדורים"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "בְּשֵׁשׁ בערב",
+   "expected": [
+    "בְּשֵׁשׁ"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "לקחת עשרים ושלושה כדורים",
+   "expected": [
+    "עשרים ושלושה כדורים"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "חמש עשרה דקות",
+   "expected": [
+    "חמש עשרה דקות"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "ניפגש בעשר וחצי",
+   "expected": [
+    "בעשר וחצי"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "מאה ועשרים שקל",
+   "expected": [
+    "מאה ועשרים שקל"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "אלפיים וחמש מאות שקל",
+   "expected": [
+    "אלפיים וחמש מאות שקל"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "ביום שני בשלוש",
+   "expected": [
+    "שני",
+    "בשלוש"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "לקחת 3 כדורים ביום",
+   "expected": [
+    "3 כדורים"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "חצי כדור בערב, ו-500 מ״ג בבוקר",
+   "expected": [
+    "חצי כדור",
+    "500 מ״ג"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "שלוש פעמים ביום",
+   "expected": [
+    "שלוש פעמים"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "בשעה 10:30, דקות ספורות",
+   "expected": [
+    "10:30"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "פעם אחת ביום",
+   "expected": [
+    "אחת"
+   ]
+  },
+  {
+   "kind": "listable",
+   "input": "חצי כדור בערב",
+   "expected": true
+  },
+  {
+   "kind": "listable",
+   "input": "שני ימים",
+   "expected": true
+  },
+  {
+   "kind": "emphasized",
+   "input": "פעמיים ביום, אחרי האוכל",
+   "expected": [
+    "פעמיים"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "נתראה בעוד שבועיים, ולפני זה יומיים בלי",
+   "expected": [
+    "שבועיים",
+    "יומיים"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "תוך שעתיים, לחודשיים ובשנתיים האחרונות",
+   "expected": [
+    "שעתיים",
+    "לחודשיים",
+    "ובשנתיים"
+   ]
+  },
+  {
+   "kind": "listable",
+   "input": "כדור פעמיים ביום",
+   "expected": true
+  },
+  {
+   "kind": "listable",
+   "input": "ביקורת בעוד שבועיים",
+   "expected": true
+  },
+  {
+   "kind": "emphasized",
+   "input": "בדיקה שבועית וכדור יומי, תשלום חודשי",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "לקחת 500 mg בבוקר",
+   "expected": [
+    "500 mg"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "לקחת 500 MG בבוקר",
+   "expected": [
+    "500 MG"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "10 ml פעמיים ביום",
+   "expected": [
+    "10 ml",
+    "פעמיים"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "קח שתי טבליות ושתי קפסולות",
+   "expected": [
+    "שתי טבליות",
+    "ושתי קפסולות"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "שתי שאיפות מהמשאף",
+   "expected": [
+    "שתי שאיפות"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "שלוש מנות ביום",
+   "expected": [
+    "שלוש מנות"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "חום 38 מעלות",
+   "expected": [
+    "38 מעלות"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "עולה 150 ש״ח",
+   "expected": [
+    "150 ש״ח"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "זה עולה 20 דולר",
+   "expected": [
+    "20 דולר"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "שלושים מיליגרם בבוקר ועשר יחידות אינסולין",
+   "expected": [
+    "שלושים מיליגרם",
+    "ועשר יחידות"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "חמישה מיליליטר, שתי כפות ושלושת רבעי כוס",
+   "expected": [
+    "חמישה מיליליטר",
+    "שתי כפות",
+    "ושלושת רבעי כוס"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "לחכות שלושים שניות",
+   "expected": [
+    "שלושים שניות"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "רבעי הירח משתנים כל שבוע",
+   "expected": []
+  },
+  {
+   "kind": "listable",
+   "input": "הדוח יוצא בכל רבעי השנה",
+   "expected": false
+  },
+  {
+   "kind": "emphasized",
+   "input": "שתיתי כבר שלושת רבעי הכוס",
+   "expected": [
+    "שלושת רבעי הכוס"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "חצי הכוס, ורבע השעה הראשונה",
+   "expected": [
+    "חצי הכוס",
+    "ורבע השעה"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "ממיסים חצי הכף במים",
+   "expected": [
+    "חצי הכף"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "שלושת רבעי, כוס",
+   "expected": [
+    "שלושת רבעי"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "שלושת, רבעי כוס",
+   "expected": [
+    "שלושת"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "כדור פעם ביום, אחרי האוכל",
+   "expected": [
+    "פעם"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "ביקורת פעם בשבוע ופעם בחודש בדיקת דם",
+   "expected": [
+    "פעם",
+    "ופעם"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "זריקה פעם בשלושה ימים",
+   "expected": [
+    "פעם",
+    "בשלושה ימים"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "כדור פעם בשש שעות",
+   "expected": [
+    "פעם",
+    "בשש שעות"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "אף פעם ביום כזה, עוד פעם בבוקר, פעם הייתי שם",
+   "expected": []
+  },
+  {
+   "kind": "listable",
+   "input": "כדור פעם ביום",
+   "expected": true
+  },
+  {
+   "kind": "listable",
+   "input": "פעם הייתי שם",
+   "expected": false
+  },
+  {
+   "kind": "emphasized",
+   "input": "לחץ הדם 120/80 היום",
+   "expected": [
+    "120/80"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "קיבלתי שלושה השבוע ו-200 השנה",
+   "expected": [
+    "שלושה",
+    "200"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "חצי היום ורבע השנה",
+   "expected": [
+    "חצי היום",
+    "ורבע השנה"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "אף אחד לא בא, כל אחד לבד, הכול בבת אחת",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "רק פעם אחת ביום",
+   "expected": [
+    "אחת"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "קחי שקית אחת בבוקר",
+   "expected": [
+    "אחת"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "חכו שעה אחת אחרי האוכל",
+   "expected": [
+    "אחת"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "התרופה למשך שבוע אחד",
+   "expected": [
+    "אחד"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "אני מבקש שכל אחד מכם יקשיב",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "וכדי שלאף אחד לא יהיה ספק",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "היה לאחר ביקור אצל אחד הרופאים.",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "אחד הבנים יבוא מחר",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "אחת הבעיות העיקריות של החילונים",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "הוא הפך אותה לאחת הקלפטוקרטיות המושחתות",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "מצד אחד להסתכל על זה, ומצד שני, זה לא רע.",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "שכל שלושה ילדים יקבלו כדור אחד",
+   "expected": [
+    "שלושה",
+    "אחד"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "באחת בלילה ההר הפסיק לרקוד.",
+   "expected": [
+    "באחת"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "אחד, הרופאים אמרו, זה מספיק",
+   "expected": [
+    "אחד"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "בשעה אחת הילדים יוצאים",
+   "expected": [
+    "אחת"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "קיבלתי שני כדורים בצד אחד",
+   "expected": [
+    "שני כדורים",
+    "אחד"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "הם עוזרים אחד לשני, אחת את השנייה",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "בצד השני, והשני לא בא",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "ביום שני בשלוש, השניים באו עם שני ילדים",
+   "expected": [
+    "שני",
+    "בשלוש",
+    "השניים",
+    "שני"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "נתראה בשני, זה מספיק לשני אנשים",
+   "expected": [
+    "בשני",
+    "לשני"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "לפני שנים, בעוד שבוע, המונה",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "   ",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "שש משש",
+   "expected": [
+    "שש",
+    "משש"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "מש הש",
+   "expected": []
+  },
+  {
+   "kind": "listable",
+   "input": "ניפגש ב-10:30",
+   "expected": true
+  },
+  {
+   "kind": "listable",
+   "input": "לקחת שלושה כדורים",
+   "expected": true
+  },
+  {
+   "kind": "listable",
+   "input": "ובערב חצי כדור",
+   "expected": true
+  },
+  {
+   "kind": "listable",
+   "input": "רק פעם אחת",
+   "expected": false
+  },
+  {
+   "kind": "listable",
+   "input": "נתראה ביום שני",
+   "expected": false
+  },
+  {
+   "kind": "listable",
+   "input": "כל אחד לבד",
+   "expected": false
+  },
+  {
+   "kind": "listable",
+   "input": "",
+   "expected": false
+  },
+  {
+   "kind": "listable",
+   "input": "נתראה באחת עשרה בלילה",
+   "expected": true
+  },
+  {
+   "kind": "listable",
+   "input": "התור באחת וחצי בצהריים",
+   "expected": true
+  },
+  {
+   "kind": "listable",
+   "input": "לקחת שני כדורים",
+   "expected": true
+  },
+  {
+   "kind": "listable",
+   "input": "עד אחת-עשרה בלילה",
+   "expected": true
+  },
+  {
+   "kind": "listable",
+   "input": "נתראה ביום שני בבוקר",
+   "expected": false
+  },
+  {
+   "kind": "listable",
+   "input": "אחת ולתמיד, רק פעם אחת",
+   "expected": false
+  },
+  {
+   "kind": "emphasized",
+   "input": "ניפגש בשעה 8:15 ליד הקופה",
+   "expected": [
+    "8:15"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "קחו ארבעה כדורים ואחד וחצי",
+   "expected": [
+    "ארבעה כדורים",
+    "ואחד וחצי"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "שלוש מאות וחמישים אלף שקל",
+   "expected": [
+    "שלוש מאות וחמישים אלף שקל"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "الساعة 10:30 في العيادة",
+   "expected": [
+    "10:30"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "موعدنا الساعة 3 مساءً",
+   "expected": [
+    "3"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "خذ ثلاثة أقراص يوميا",
+   "expected": []
+  },
+  {
+   "kind": "emphasized",
+   "input": "رقم الهاتف 050-1234567",
+   "expected": [
+    "050-1234567"
+   ]
+  },
+  {
+   "kind": "emphasized",
+   "input": "السعر 150 شيكل",
+   "expected": [
+    "150"
+   ]
+  },
+  {
+   "kind": "listable",
+   "input": "الساعة 10:30 في العيادة",
+   "expected": true
+  },
+  {
+   "kind": "listable",
+   "input": "خذ ثلاثة أقراص يوميا",
+   "expected": false
+  },
+  {
+   "kind": "listable",
+   "input": "مرحبا كيف حالك",
+   "expected": false
+  },
+  {
+   "kind": "listable",
+   "input": "תודה רבה על העזרה",
+   "expected": false
+  },
+  {
+   "kind": "emphasized",
+   "input": "nimm 2,5 mg täglich",
+   "decimalComma": true,
+   "expected": [
+    "2,5 mg"
+   ],
+   "only": "kotlin",
+   "note": "decimalComma is an Android-only option"
+  },
+  {
+   "kind": "emphasized",
+   "input": "fièvre 37,5 hier",
+   "decimalComma": true,
+   "expected": [
+    "37,5"
+   ],
+   "only": "kotlin",
+   "note": "decimalComma is an Android-only option"
+  },
+  {
+   "kind": "emphasized",
+   "input": "nimm 2,5 mg täglich",
+   "expected": [
+    "2",
+    "5 mg"
+   ]
+  }
+ ]
+}

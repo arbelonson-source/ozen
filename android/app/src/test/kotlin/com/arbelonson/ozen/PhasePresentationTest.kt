@@ -292,7 +292,7 @@ class PhasePresentationTest {
         val refused = covering(EngineUnavailability.Kind.HomeServerRejected)
         assertTrue(unreachable.detail?.contains("אין חיבור למחשב בבית") == true)
         assertTrue(refused.detail?.contains("קוד הצימוד") == true)
-        assertTrue(refused.action == Action.OpenEngineSettings && refused.tint == PhaseTint.Active)
+        assertTrue(refused.action == Action.Pause && refused.tint == PhaseTint.Active)
         assertTrue(refused.detail?.contains("ממי שהגדיר את הטלפון") == true)
         assertTrue(!refused.detailFitsInStatus && !unreachable.detailFitsInStatus)
     }
@@ -319,7 +319,7 @@ class PhasePresentationTest {
     }
 
     @Test
-    fun `covering for the cloud sends the family to Settings when only they can fix it, and offers nothing to fix for no internet`() {
+    fun `covering for the cloud names what only the family can fix, and the button still pauses as on the iPhone`() {
         fun covering(reason: EngineUnavailability.Kind) = present(
             PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
             coveringForCloud = true, coveredEngine = TranscriptionEngineKind.Cloud, coverReason = reason,
@@ -328,9 +328,9 @@ class PhasePresentationTest {
         val noCredit = covering(EngineUnavailability.Kind.CloudOutOfCredit)
         val offline = covering(EngineUnavailability.Kind.NoInternet)
         assertTrue(noKey.detail?.contains("OpenRouter") == false && noKey.detail?.contains("ממי שהגדיר את הטלפון") == true)
-        assertTrue(noKey.action == Action.OpenEngineSettings && noKey.tint == PhaseTint.Active)
+        assertTrue(noKey.action == Action.Pause && noKey.tint == PhaseTint.Active)
         assertTrue(noCredit.detail?.contains("הקרדיט") == true)
-        assertTrue(noCredit.action == Action.OpenEngineSettings && noCredit.tint == PhaseTint.Active)
+        assertTrue(noCredit.action == Action.Pause && noCredit.tint == PhaseTint.Active)
         assertEquals(Action.Pause, offline.action)
         assertTrue(offline.detail?.contains("בענן") == true)
     }
@@ -502,7 +502,7 @@ class PhasePresentationTest {
             coverReason = EngineUnavailability.Kind.CloudLanguageNotCovered,
         )
         assertEquals("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", covering.detail)
-        assertEquals(Action.OpenEngineSettings, covering.action)
+        assertEquals(Action.Pause, covering.action)
         assertEquals(PhaseTint.Active, covering.tint)
     }
 
@@ -530,5 +530,25 @@ class PhasePresentationTest {
     @Test
     fun `the phone talking over sounds-only still says so`() = Localization.withLanguage(UILanguage.English) {
         assertEquals("The phone is talking", present(PipelinePhase.Paused, null, pausedForSpeech = true, soundsOnly = true).title)
+    }
+
+    @Test
+    fun `beside the status button the state line leaves out the tap hint the button already says`() = Localization.withLanguage(UILanguage.English) {
+        val listening = present(PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit)
+        val paused = present(PipelinePhase.Paused, TranscriptionEngineKind.WhisperKit)
+        val off = present(PipelinePhase.Idle, TranscriptionEngineKind.WhisperKit)
+        val soundsOnly = present(PipelinePhase.Idle, null, soundsOnly = true)
+        for (shown in listOf(listening, paused, off, soundsOnly)) {
+            assertTrue(shown.detail?.startsWith("Tap to") == true, "${shown.detail}")
+            assertEquals(null, shown.stateDetail, "${shown.detail}")
+        }
+        val covering = present(
+            PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit,
+            coveringForCloud = true, coveredEngine = TranscriptionEngineKind.HomeServer, coverReason = EngineUnavailability.Kind.HomeServerUnreachable,
+        )
+        assertEquals("Can’t reach the home computer, so the phone carries on by itself · Tap to pause", covering.detail)
+        assertEquals("Can’t reach the home computer, so the phone carries on by itself", covering.stateDetail)
+        val settings = present(failure(unavailable(EngineUnavailability.Kind.CloudLanguageNotCovered)), TranscriptionEngineKind.Cloud)
+        assertEquals(settings.detail, settings.stateDetail)
     }
 }

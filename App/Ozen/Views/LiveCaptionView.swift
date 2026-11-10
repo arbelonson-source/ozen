@@ -15,6 +15,9 @@ struct LiveCaptionView: View {
     @State private var settingsFocus: SettingsView.Focus?
     @State private var showingTypeToSpeak = false
     @State private var confirmingClear = false
+    /// The better model, tapped while captions listen: switching would stop
+    /// them for its download, so it waits for a yes.
+    @State private var pendingBetterModel: WhisperModelOption?
     /// The banners' own height, which their strip above the captions is sized to.
     @State private var bannerHeight: CGFloat = 0
     @State private var namingSegment: TranscriptSegment?
@@ -34,6 +37,8 @@ struct LiveCaptionView: View {
     /// How many lines there were when she scrolled up, so the way back down
     /// can say how many came since.
     @State private var lineCountWhenUnpinned = 0
+    /// The line VoiceOver is on (see `CaptionLayout.readsBack`).
+    @AccessibilityFocusState private var focusedLine: UUID?
     @State private var speechResume = SpeechResume()
     /// Advanced every half minute, so a long quiet can let the phone lock
     /// (see `ScreenAwakePolicy`) and the install-expiry warning appears on
@@ -604,7 +609,7 @@ struct LiveCaptionView: View {
         }
         .sheet(item: $fixingWordFromSegment) { segment in
             FixWordSheet(text: segment.text, languageCode: viewModel.settings.languageCode) { fix, always in
-                viewModel.applyWordFix(fix, always: always, toLine: segment)
+                return viewModel.applyWordFix(fix, always: always, toLine: segment)
             }
                 .alertOverlay(for: viewModel)
                 .pageSized()
@@ -626,15 +631,18 @@ struct LiveCaptionView: View {
         } message: {
             Text(cellularDownloadMessage)
         }
+        .asksBeforeSwitchingModel($pendingBetterModel, viewModel: viewModel)
         .confirmationDialog(
             tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?"),
             isPresented: $confirmingClear,
             titleVisibility: .visible
         ) {
-            Button(tr("מחיקה", "Delete"), role: .destructive) { viewModel.clearTranscript() }
+            Button(tr("מחיקה", "Delete"), role: .destructive, action: clearAfterAsking)
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
         } message: {
-            Text(viewModel.settings.saveHistory
+            Text(clearKeepsHistory
+                 ? tr("הן נשארות שמורות בהגדרות, תחת ״שיחות קודמות״.", "They stay saved in Settings, under “Previous conversations”.")
+                 : viewModel.settings.saveHistory
                  ? tr("השמירה בהיסטוריה לא עובדת כרגע, ולכן הן לא יישמרו.", "Saving to History isn’t working right now, so they won’t be saved.")
                  : tr("שמירת שיחות כבויה, ולכן הן לא יישמרו.", "History is off, so they won’t be saved."))
         }
@@ -642,6 +650,20 @@ struct LiveCaptionView: View {
 
     private var clearKeepsHistory: Bool {
         viewModel.settings.saveHistory && viewModel.historySaveFailure == nil
+    }
+
+    /// When the question said the lines stay saved, they are saved first
+    /// and cleared only if that worked; a save failing just now brings the
+    /// question back, now saying saving isn't working.
+    private func clearAfterAsking() {
+        if !clearKeepsHistory {
+            viewModel.clearTranscript()
+        } else if !viewModel.clearTranscriptKeepingHistory() {
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(400))
+                confirmingClear = true
+            }
+        }
     }
 
     // MARK: - Transcript
@@ -719,6 +741,15 @@ struct LiveCaptionView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 24)
+                // VoiceOver moved back to an earlier line: stop following, as
+                // a finger's scroll up does; the jump-to-newest button brings
+                // it back. Here rather than on the screen's long chain, which
+                // the compiler could no longer type-check.
+                .onChange(of: focusedLine) { _, line in
+                    guard isPinnedToBottom, CaptionLayout.readsBack(focusedLineID: line, newestLineID: viewModel.segments.last?.id) else { return }
+                    lineCountWhenUnpinned = viewModel.segments.count
+                    withAnimation { isPinnedToBottom = false }
+                }
                 .frame(maxWidth: horizontalSizeClass == .regular ? 800 : .infinity)
                 .frame(maxWidth: .infinity)
                 .accessibilityIdentifier("transcriptScroll")
@@ -760,6 +791,7 @@ struct LiveCaptionView: View {
             languageCode: viewModel.settings.languageCode
         )
         .id(segment.id)
+        .accessibilityFocused($focusedLine, equals: segment.id)
         // No plain-tap action: a finger brushing the text while reading, or
         // handing the phone over, used to open the naming sheet and its
         // keyboard mid-conversation. Naming lives in the hold menu below.
@@ -803,7 +835,7 @@ struct LiveCaptionView: View {
                 }
             }
             Button {
-                viewModel.markProblem()
+                viewModel.markProblem(heldLine: segment)
                 showingProblemMarked = true
             } label: {
                 Label(tr("הכתוביות לא טובות? לסמן בעיה", "Captions not good? Mark a problem"), systemImage: "exclamationmark.bubble")
@@ -836,7 +868,7 @@ struct LiveCaptionView: View {
                 }
             }
             Button(tr("הכתוביות לא טובות? לסמן בעיה", "Captions not good? Mark a problem")) {
-                viewModel.markProblem()
+                viewModel.markProblem(heldLine: segment)
                 showingProblemMarked = true
             }
         }
@@ -1063,7 +1095,9 @@ struct LiveCaptionView: View {
     private func betterModelOfferCard(_ option: WhisperModelOption) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Button {
-                Task { await viewModel.acceptBetterModelOffer() }
+                Task {
+                    if await viewModel.acceptBetterModelOffer() { pendingBetterModel = option }
+                }
             } label: {
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "sparkles")
@@ -1428,9 +1462,7 @@ struct LiveCaptionView: View {
                         .accessibilitySortPriority(1)
                 }
                 typeToSpeakButton
-                if !viewModel.segments.isEmpty {
-                    clearButton
-                }
+                clearButton
                 settingsButton
             }
         }
@@ -1510,17 +1542,16 @@ struct LiveCaptionView: View {
         .accessibilityIdentifier("typeToSpeakButton")
     }
 
-    /// Wipes the captions off the screen and starts fresh. What was said is
-    /// kept in History first when saving is on, so nothing is lost with a tap;
-    /// with saving off, or saving failing, it asks before throwing the lines
-    /// away. Shown only when there is something to clear.
+    /// Wipes the captions off the screen and starts fresh, after asking;
+    /// what was said is kept in History first when saving is on, and the
+    /// question says where. It used to appear only once there were lines,
+    /// between Say and Settings, so the first words moved Say inward and
+    /// put the trash exactly where Say had been, and with History on one
+    /// tap there wiped the screen without a word. Now it stays put, greyed
+    /// while there is nothing to clear, and always asks, as on Android.
     private var clearButton: some View {
         Button {
-            if clearKeepsHistory {
-                viewModel.clearTranscript()
-            } else {
-                confirmingClear = true
-            }
+            confirmingClear = true
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: "trash")
@@ -1535,6 +1566,7 @@ struct LiveCaptionView: View {
         .ozenGlassButton()
         .accessibilityLabel(tr("ניקוי הכתוביות מהמסך", "Clear the captions from the screen"))
         .accessibilityShowsLargeContentViewer()
+        .disabled(viewModel.segments.isEmpty)
         .accessibilityIdentifier("clearButton")
     }
 

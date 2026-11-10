@@ -8,6 +8,8 @@ enum class CloudKeyCheck {
     NoCredit,
     Unreachable;
 
+    val refusesKey: Boolean get() = this == Rejected || this == NoCredit
+
     val message: String
         get() = when (this) {
             Accepted -> tr("המפתח נבדק והשירות קיבל אותו", "The key was checked and the service accepted it")

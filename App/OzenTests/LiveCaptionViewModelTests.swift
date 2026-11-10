@@ -371,11 +371,27 @@ struct LiveCaptionViewModelTests {
     func betterModelOfferFollowsTheLanguage() async {
         let store = temporaryStore()
         let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: fakePipeline())
-        await viewModel.start()
         await viewModel.setWhisperModel("small")
         await viewModel.setSpokenLanguage(.english)
 
-        await viewModel.acceptBetterModelOffer()
+        let waits = await viewModel.acceptBetterModelOffer()
+        #expect(!waits)
+        #expect(store.load().whisperModelVariant == WhisperModelCatalog.generalVariant)
+    }
+
+    @Test("the model offer taken while captions listen asks first, and switches only after the yes")
+    func betterModelOfferWhileListeningAsksFirst() async {
+        let store = temporaryStore()
+        let viewModel = LiveCaptionViewModel(settingsStore: store, pipeline: fakePipeline())
+        await viewModel.start()
+        await viewModel.setWhisperModel("small")
+        await viewModel.setSpokenLanguage(.english)
+        #expect(viewModel.isListening)
+
+        let waits = await viewModel.acceptBetterModelOffer()
+        #expect(waits)
+        #expect(store.load().whisperModelVariant == "small")
+        await viewModel.chooseModel(viewModel.settings.recommendedWhisperVariant)
         #expect(store.load().whisperModelVariant == WhisperModelCatalog.generalVariant)
     }
 
@@ -874,6 +890,17 @@ struct LiveCaptionViewModelOnboardingTests {
         #expect(SettingsStore(fileURL: file).load().hasCompletedOnboarding)
         viewModel.showOnboardingAgain()
         #expect(SettingsStore(fileURL: file).load().hasCompletedOnboarding == false)
+    }
+
+    @Test("the walkthrough counts as run before once it checked the phone, also after the app is opened again")
+    func walkthroughRanBefore() async {
+        let (viewModel, file) = makeViewModel()
+        #expect(!viewModel.walkthroughRanBefore)
+        await viewModel.checkPhoneIfNeverChecked()
+        viewModel.completeOnboarding()
+        viewModel.showOnboardingAgain()
+        #expect(viewModel.walkthroughRanBefore)
+        #expect(SettingsStore(fileURL: file).load().deviceModelCheck != nil)
     }
 
     @Test("skipping the walkthrough checks the phone and settles on the model recommended for it")
@@ -2428,6 +2455,28 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(viewModel.settings.speakerProfiles.map(\.name) == ["Dana"])
     }
 
+    @Test("fixing a word says whether the line changed: not once the captions were cleared under the sheet")
+    func wordFixSaysWhetherTheLineChanged() async throws {
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-fixword-\(UUID())", isDirectory: true)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathComponent("settings.json")),
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        await say("I saw aval today", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        pipeline.commitStaleSegments(now: Date().timeIntervalSince1970 + 1_000_000)
+        #expect(await eventually { pipeline.segments.first?.isCommitted == true })
+        let line = viewModel.segments[0]
+
+        #expect(viewModel.applyWordFix(WordFix(heard: "aval", written: "Avi"), always: false, toLine: line))
+        #expect(viewModel.segments[0].text.contains("Avi"))
+        viewModel.clearTranscript()
+        #expect(!viewModel.applyWordFix(WordFix(heard: "today", written: "now"), always: false, toLine: line))
+    }
+
     @Test("naming a line with another saved person's name gives that person a voice print, and the one it was taken for keeps theirs")
     func namingAsAnotherSavedPersonKeepsBoth() async throws {
         let engine = FakeEngine()
@@ -2894,6 +2943,44 @@ struct LiveCaptionViewModelSavingTroubleTests {
         #expect(viewModel.historySaveFailure != nil)
         #expect(viewModel.savingTrouble.shouldShow)
         #expect(viewModel.savedConversationID(holdingLineAt: 0) == nil)
+    }
+
+    @Test("Clear after 'they stay saved' saves first, and clears nothing when that save fails")
+    func clearKeepingHistoryClearsOnlyWhenSaved() async throws {
+        let blocker = try blockedFolder()
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-settings-\(UUID()).json")),
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: blocker.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "בוקר טוב", isFinal: true, timestamp: 1))
+        await eventually { !viewModel.segments.isEmpty }
+
+        #expect(!viewModel.clearTranscriptKeepingHistory())
+        #expect(!viewModel.segments.isEmpty)
+        #expect(viewModel.historySaveFailure != nil)
+    }
+
+    @Test("Clear after 'they stay saved' clears once the save works")
+    func clearKeepingHistoryClearsWhenSaved() async {
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-clear-\(UUID())", isDirectory: true)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: directory.appendingPathComponent("settings.json")),
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "בוקר טוב", isFinal: true, timestamp: 1))
+        await eventually { !viewModel.segments.isEmpty }
+
+        #expect(viewModel.clearTranscriptKeepingHistory())
+        #expect(viewModel.segments.isEmpty)
+        #expect(viewModel.historyStore.listSummaries().count == 1)
     }
 
     @Test("deleting every conversation takes the saving banner down at once, not at the next save")

@@ -408,14 +408,20 @@ public final class LiveCaptionViewModel {
     /// "Something went wrong" on the caption screen: what was running and
     /// what the captions last said goes into the journal, where the next
     /// diagnostics report finds it even if the app is closed first.
-    public func markProblem() {
+    ///
+    /// From a line's hold menu the held line goes in too: she held the line
+    /// she had scrolled back to as wrong, and only the newest four went in,
+    /// so whoever read the report couldn't find it.
+    public func markProblem(heldLine: TranscriptSegment? = nil) {
         let now = Date().timeIntervalSince1970
+        let held = heldLine.map { line in pipeline.segments.last { $0.id == line.id } ?? line }
         let lines = ProblemSnapshot.lines(
             settings: settings,
             activeEngine: pipeline.activeEngineKind,
             input: selectedInput,
             stats: pipeline.stats,
             segments: pipeline.segments,
+            held: held,
             device: Self.deviceStateText,
             utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: now))
         )
@@ -865,6 +871,14 @@ public final class LiveCaptionViewModel {
         persist()
     }
 
+    /// The walkthrough has run on this phone before: its model page, or
+    /// Skip, checked the phone, and the check is saved. Shown again, the
+    /// model in use is one the person settled on, and the model page keeps
+    /// it (`WhisperModelCatalog.walkthroughReplaces`). Read from the saved
+    /// settings rather than kept in memory, so it still holds when the app
+    /// ended halfway through the walkthrough shown again.
+    public var walkthroughRanBefore: Bool { settings.deviceModelCheck != nil }
+
     /// Leaving the caption screen for the walkthrough: captions stop (and
     /// the conversation so far is saved) rather than keep the microphone
     /// open behind a screen that isn't showing them. Its Start button then
@@ -1129,6 +1143,21 @@ public final class LiveCaptionViewModel {
         awayCatchUp.acknowledge()
     }
 
+    /// Clear after a question that said the lines stay saved in History:
+    /// they are saved first, and if that save fails nothing is cleared, so
+    /// the question can be asked again saying saving isn't working. Without
+    /// this the promise held only for saves before the question. Returns
+    /// whether it cleared.
+    @discardableResult
+    public func clearTranscriptKeepingHistory() -> Bool {
+        if settings.saveHistory {
+            persistHistory(ended: false)
+            if historySaveFailure != nil { return false }
+        }
+        clearTranscript()
+        return true
+    }
+
     public func clearTranscript() {
         recentConversation = nil
         awayCatchUp.clear()
@@ -1217,6 +1246,11 @@ public final class LiveCaptionViewModel {
             await restartIfRunning()
         }
     }
+
+    /// The last check of each service's saved key while the app runs.
+    /// Kept in Settings' own state it was gone once Settings closed, and a
+    /// refused key then read as a green "Key saved on the phone" alone.
+    public var cloudKeyChecks: [CloudProvider: CloudKeyCheck] = [:]
 
     /// A cloud key was saved or removed in Settings. The engine reads
     /// it at every start, so a running or failed session just starts again.
@@ -1372,10 +1406,13 @@ public final class LiveCaptionViewModel {
     /// A backup for a model picked earlier may still be downloading: this
     /// one starts beside it (the tap did nothing for the whole of that
     /// download), and the rows follow the newest.
-    public func downloadBackupModel() {
-        guard BackupModel.canStart(backupModelStatus) else { return }
+    ///
+    /// `overCellular`: this one download goes over cellular data, which the
+    /// backup row asks about first; the setting for every model stays as it is.
+    public func downloadBackupModel(overCellular: Bool = false) {
+        guard BackupModel.canStart(backupModelStatus, overCellular: overCellular) else { return }
         let variant = settings.whisperModelVariant
-        let allowCellular = settings.allowCellularModelDownload
+        let allowCellular = overCellular || settings.allowCellularModelDownload
         backupModelFailedVariant = nil
         backupModelProgress = 0
         backupModelVariant = variant
@@ -1736,9 +1773,15 @@ public final class LiveCaptionViewModel {
     }
 
     /// The caption screen's offer of the recommended Whisper model, taken:
-    /// the model switches (and downloads, on Wi-Fi) like a pick in Settings.
-    public func acceptBetterModelOffer() async {
-        await setWhisperModel(settings.recommendedWhisperVariant)
+    /// the model switches (and downloads, on Wi-Fi) like a pick in Settings,
+    /// and like there, a model not on the phone waits for a yes while
+    /// captions are listening: switching stops them until it has
+    /// downloaded, and one slip of the thumb on the card at the start of a
+    /// lesson stopped them with no warning. Returns true while it waits.
+    @discardableResult
+    public func acceptBetterModelOffer() async -> Bool {
+        let variant = settings.recommendedWhisperVariant
+        return await modelRowTapped(variant, isInstalled: WhisperModelStore().isInstalled(variant))
     }
 
     /// "Not now" on that offer: it comes back later, see
@@ -1852,12 +1895,17 @@ public final class LiveCaptionViewModel {
 
     /// One tap of "Fix a word": the line changes now, the written form
     /// joins the names list, and with `always` the fix is kept for later.
-    public func applyWordFix(_ fix: WordFix, always: Bool, toLine segment: TranscriptSegment) {
+    /// Returns whether the line changed: one cleared from the screen while
+    /// the sheet was open is no longer there to fix, and the sheet must not
+    /// tell VoiceOver it was.
+    @discardableResult
+    public func applyWordFix(_ fix: WordFix, always: Bool, toLine segment: TranscriptSegment) -> Bool {
         applyWordFix(fix, always: always, lineID: segment.id, text: segment.text, sessionID: nil)
     }
 
-    public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, text current: String, sessionID: UUID?) {
-        guard let fixed = WordFixes.normalized([fix]).first else { return }
+    @discardableResult
+    public func applyWordFix(_ fix: WordFix, always: Bool, lineID: UUID, text current: String, sessionID: UUID?) -> Bool {
+        guard let fixed = WordFixes.normalized([fix]).first else { return false }
         addVocabularyTerm(fixed.written)
         if always { addWordFix(fixed) }
         let before = pipeline.segments.last { $0.id == lineID }?.text
@@ -1868,6 +1916,7 @@ public final class LiveCaptionViewModel {
             historyWriter.replaceTextNow(sessionID: sessionID, segmentID: lineID, text: text)
         }
         refreshSavingTrouble()
+        return (live.map { $0 != before } ?? false) || (sessionID != nil && text != current)
     }
 
     private func correctedLine(_ id: UUID, text: String) {

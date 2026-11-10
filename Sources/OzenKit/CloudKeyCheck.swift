@@ -23,6 +23,10 @@ public enum CloudKeyCheck: Sendable, Equatable {
 }
 
 extension CloudKeyCheck {
+    public var refusesKey: Bool {
+        self == .rejected || self == .noCredit
+    }
+
     public var message: String {
         switch self {
         case .accepted:

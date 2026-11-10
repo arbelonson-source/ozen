@@ -11,6 +11,24 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
     case assemblyAI
     case openRouter
 
+    /// Where a key for the service is made, the same pages as
+    /// docs/cloud-services.md: nothing in the cloud settings said what a
+    /// key is or where to get one, and the section had no link at all.
+    public var keyPage: URL {
+        let address = switch self {
+        case .soniox: "https://console.soniox.com/signup"
+        case .deepgram: "https://console.deepgram.com/signup"
+        case .openAI: "https://platform.openai.com/api-keys"
+        case .groq: "https://console.groq.com/keys"
+        case .elevenLabs: "https://elevenlabs.io"
+        case .gemini: "https://aistudio.google.com/apikey"
+        case .speechmatics: "https://portal.speechmatics.com"
+        case .assemblyAI: "https://www.assemblyai.com/dashboard/signup"
+        case .openRouter: "https://openrouter.ai/settings/keys"
+        }
+        return URL(string: address)!
+    }
+
     public var name: String {
         switch self {
         case .soniox: "Soniox"

@@ -54,13 +54,15 @@ struct ProblemMarkedSheet: View {
                 kept?.reportLines(utcOffsetAt: { DiagnosticsReport.utcOffset(at: $0) }) ?? []
             }.value
             let notificationsAllowed = await AlertNotifier.shared.isAllowed()
+            let builtInRecognition = await AppleSpeechEngine.onDeviceReport(languageCodes: ["he", viewModel.settings.languageCode])
             let store = WhisperModelStore()
             report = DiagnosticsReport(
                 viewModel: viewModel,
                 journalLines: journal,
                 notificationsAllowed: notificationsAllowed,
                 modelState: store.state(of: viewModel.settings.whisperModelVariant),
-                tokenizerCached: store.hasCachedTokenizer()
+                tokenizerCached: store.hasCachedTokenizer(),
+                builtInRecognition: builtInRecognition
             ).forHelper(markedAt: viewModel.problemMarkedAt ?? Date().timeIntervalSince1970)
         }
     }

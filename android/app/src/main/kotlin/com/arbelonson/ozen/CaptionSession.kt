@@ -1024,6 +1024,7 @@ class CaptionSession(
         // The sticky broadcast, not BatteryManager's properties: it is what
         // Android itself shows, test overrides included.
         val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val memory = ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java).getMemoryInfo(it) }
         return DiagnosticsFacts(
             phase = pipeline.phase,
             activeEngine = pipeline.activeEngineKind,
@@ -1039,7 +1040,7 @@ class CaptionSession(
             settingsSaveFailed = settings.saveFailed.value,
             historySaveFailure = conversations.lastSaveFailure,
             events = pipeline.eventLog.reportLines(::utcOffsetAt),
-            device = "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE}",
+            device = "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE}, ${chip()}",
             appVersion = appVersion(),
             journal = read.lines,
             hasMarkedCaptionLines = read.hasMarkedCaptionLines,
@@ -1053,7 +1054,9 @@ class CaptionSession(
             charging = (battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0,
             freeBytes = context.filesDir.usableSpace,
             memoryInUseBytes = Debug.getPss() * 1_024,
-            memoryAvailableBytes = ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java).getMemoryInfo(it) }.availMem,
+            memoryAvailableBytes = memory.availMem,
+            memoryTotalBytes = memory.totalMem,
+            builtInRecognition = BuiltInRecognition.answer,
             problemClips = problemAudio.clips(),
             inputLevel = pipeline.inputLevel,
             speakersIdentified = pipeline.speakerClusters.size,
@@ -1065,7 +1068,20 @@ class CaptionSession(
         )
     }
 
-    override fun markProblem(): Boolean {
+    override fun markProblem(): Boolean = markProblem(heldLine = null)
+
+    override fun checkBuiltInRecognition() = BuiltInRecognition.check(context, listOf("he", settings.current.value.languageCode))
+
+    /** The phone's chip and core count, which decide which model keeps up on a cheap phone. */
+    private fun chip(): String {
+        val cores = "${Runtime.getRuntime().availableProcessors()} cores"
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return cores
+        return "chip ${Build.SOC_MANUFACTURER} ${Build.SOC_MODEL} $cores"
+    }
+
+    /** From a line's hold menu: that line goes in the report too, marked as the one held. */
+    fun markProblem(heldLine: UUID?): Boolean {
+        checkBuiltInRecognition()
         val now = System.currentTimeMillis() / 1_000.0
         val lines = ProblemSnapshot.lines(
             settings = settings.current.value,
@@ -1076,6 +1092,7 @@ class CaptionSession(
             device = deviceState(),
             utcOffsetSeconds = utcOffsetAt(now),
             includeCaptions = settings.current.value.saveHistory,
+            held = heldLine?.let { id -> pipeline.segments.firstOrNull { it.id == id } },
         )
         lines.forEach { journal.append(it, now) }
         // With saving conversations off, the room's sound isn't kept either.

@@ -4,14 +4,16 @@ import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -24,6 +26,7 @@ import com.arbelonson.ozen.core.UILanguage
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -55,6 +58,62 @@ class TranscribeDoneDeviceTest {
     fun aSaveThePhoneRefusedIsShownOnTheDonePageAndNotCalledSavingOff() {
         assertNotEquals(HistorySave.Off.message, HistorySave.Failed.message)
         noteAfter(HistorySave.Failed)
+    }
+
+    private fun leaveAfter(history: HistorySave): AtomicInteger {
+        val closed = AtomicInteger()
+        val model = FileModelChoice.toDownload(UILanguage.English)
+        val done = FileTranscription.Done("Lecture.wav", UILanguage.English, model, listOf(TranscribedLine(0.0, 2.0, "Good morning")), history)
+        compose.runOnUiThread { compose.activity.setContent { TranscribeScreen(app.transcriber, done, onClose = { closed.incrementAndGet() }) } }
+        compose.onNodeWithText("Done").performClick()
+        compose.waitForIdle()
+        return closed
+    }
+
+    @Test
+    fun textThatHistoryDoesNotHoldAsksBeforeDoneOrBackThrowsItAway() {
+        for (history in listOf(HistorySave.Off, HistorySave.Failed)) {
+            val closed = leaveAfter(history)
+            compose.onNodeWithText("Close without sharing the text?").assertExists()
+            compose.onNodeWithText("The text isn’t saved anywhere else, so it will be lost.").assertExists()
+            assertEquals(0, closed.get())
+            compose.onNodeWithText("Cancel").performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText("Close without sharing the text?").assertDoesNotExist()
+            compose.onNodeWithTag("transcribe-name").assertIsDisplayed()
+            compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+            compose.waitForIdle()
+            assertEquals(0, closed.get())
+            compose.onNodeWithText("Close").performClick()
+            compose.waitForIdle()
+            assertEquals(1, closed.get())
+        }
+    }
+
+    @Test
+    fun aRecordingSharedWhileTheQuestionIsOpenTakesTheQuestionAwayInsteadOfClosingTheNewOne() {
+        val closed = AtomicInteger()
+        val model = FileModelChoice.toDownload(UILanguage.English)
+        val done = FileTranscription.Done("Lecture.wav", UILanguage.English, model, listOf(TranscribedLine(0.0, 2.0, "Good morning")), HistorySave.Off)
+        val next = FileTranscription.Ready("Interview.m4a", UILanguage.English, model, listOf(model), model, 60.0, captionsRunning = false)
+        val state = mutableStateOf<FileTranscription>(done)
+        compose.runOnUiThread { compose.activity.setContent { TranscribeScreen(app.transcriber, state.value, onClose = { closed.incrementAndGet() }) } }
+        compose.onNodeWithText("Done").performClick()
+        compose.onNodeWithText("Close without sharing the text?").assertExists()
+        compose.runOnUiThread { state.value = next }
+        compose.waitForIdle()
+        compose.onNodeWithText("Close without sharing the text?").assertDoesNotExist()
+        compose.runOnUiThread { state.value = done }
+        compose.waitForIdle()
+        compose.onNodeWithText("Close without sharing the text?").assertDoesNotExist()
+        assertEquals(0, closed.get())
+    }
+
+    @Test
+    fun textSavedInHistoryClosesOnDoneWithoutAsking() {
+        val closed = leaveAfter(HistorySave.Saved(UUID.randomUUID()))
+        compose.onNodeWithText("Close without sharing the text?").assertDoesNotExist()
+        assertEquals(1, closed.get())
     }
 
     @Test

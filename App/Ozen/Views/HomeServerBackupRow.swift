@@ -3,6 +3,7 @@ import OzenKit
 
 struct HomeServerBackupRow: View {
     @Bindable var viewModel: LiveCaptionViewModel
+    @State private var confirmingCellular = false
 
     var body: some View {
         let status = viewModel.backupModelStatus
@@ -21,7 +22,14 @@ struct HomeServerBackupRow: View {
                     Text(tr("מורידים את הגיבוי · %1%", "Downloading the backup · %1%", args: ["\(Int((fraction * 100).rounded()))"]))
                 }
                 .accessibilityLabel(Text(Self.message(status) ?? ""))
-            case .waitingForWiFi, .offline:
+            case .waitingForWiFi:
+                note(Self.message(status) ?? "")
+                Button {
+                    confirmingCellular = true
+                } label: {
+                    Label(tr("להוריד עכשיו בחבילת הגלישה", "Download now over cellular data"), systemImage: "antenna.radiowaves.left.and.right")
+                }
+            case .offline:
                 note(Self.message(status) ?? "")
             case .notEnoughRoom:
                 Label(Self.message(status) ?? "", systemImage: "externaldrive.badge.exclamationmark")
@@ -33,6 +41,14 @@ struct HomeServerBackupRow: View {
             }
         }
         .accessibilityIdentifier("homeServerBackupRow")
+        .confirmationDialog(tr("להוריד את המודל בחבילת הגלישה?", "Download the model over cellular data?"), isPresented: $confirmingCellular, titleVisibility: .visible) {
+            Button(tr("להוריד עכשיו בחבילת הגלישה", "Download now over cellular data")) {
+                viewModel.downloadBackupModel(overCellular: true)
+            }
+            Button(tr("ביטול", "Cancel"), role: .cancel) {}
+        } message: {
+            Text(tr("גודל המודל הוא בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לגמור את נפח הגלישה.", "The model is about %1. Over cellular data this can cost money or use up your data plan.", args: ["\(PhasePresentation.sizeText(megabytes: WhisperModelCatalog.option(for: viewModel.settings.whisperModelVariant)?.sizeMB ?? 0))"]))
+        }
         .onChange(of: status) { previous, now in
             guard BackupModel.announces(now, after: previous), let text = Self.message(now) else { return }
             Announcement.post(text)

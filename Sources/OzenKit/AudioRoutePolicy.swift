@@ -97,3 +97,22 @@ public enum AudioRoutePolicy {
         return fallback?.uid ?? current?.uid ?? available.first?.uid
     }
 }
+
+/// What the microphone list says after a tap the phone hasn't followed,
+/// worked out from the microphone recording now rather than from the
+/// answer at the tap. A microphone still connecting is switched to seconds
+/// later, and the warning stayed, saying the phone hadn't switched to the
+/// one now marked; a Bluetooth switch the phone accepted and took back two
+/// seconds later showed none, and the caption screen then said AirPods
+/// that never connected had disconnected. It names the microphone still
+/// recording: "the marked microphone" sent a VoiceOver user searching the
+/// list for the row read as selected.
+public enum MicSwitchCheck {
+    public static func warning(tapped: AudioInputDescriptor?, recording: AudioInputDescriptor?) -> String? {
+        guard let tapped, tapped.uid != recording?.uid else { return nil }
+        guard let recording else {
+            return tr("הטלפון לא עבר ל״%1״, והמיקרופון המסומן עדיין מקליט. נסו לנתק ולחבר אותו שוב.", "The phone did not switch to “%1”, and the marked microphone is still recording. Try unplugging and reconnecting it.", args: ["\(tapped.portName)"])
+        }
+        return tr("הטלפון לא עבר ל״%1״, ו״%2״ עדיין מקליט. נסו לנתק את ״%1״ ולחבר אותו שוב.", "The phone did not switch to “%1”, and “%2” is still recording. Try unplugging and reconnecting “%1”.", args: ["\(tapped.portName)", "\(recording.portName)"])
+    }
+}

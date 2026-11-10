@@ -252,6 +252,16 @@ struct CaptionLayoutOnScreenTests {
         #expect(CaptionLayout.firstOnScreenIndex(lineCount: 20_000) == 20_000 - CaptionLayout.onScreenLineLimit)
     }
 
+    @Test("VoiceOver on any line but the newest is reading back; on the newest, or nowhere, it isn't")
+    func voiceOverReadsBack() {
+        let older = UUID()
+        let newest = UUID()
+        #expect(CaptionLayout.readsBack(focusedLineID: older, newestLineID: newest))
+        #expect(!CaptionLayout.readsBack(focusedLineID: newest, newestLineID: newest))
+        #expect(!CaptionLayout.readsBack(focusedLineID: nil, newestLineID: newest))
+        #expect(CaptionLayout.readsBack(focusedLineID: older, newestLineID: nil))
+    }
+
     @Test("while she reads back, a new line no longer takes the top one away, until twice the limit are drawn")
     func heldWhileReadingBack() {
         let limit = CaptionLayout.onScreenLineLimit

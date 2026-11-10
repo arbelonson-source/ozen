@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,9 +10,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
@@ -23,12 +23,17 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -39,7 +44,6 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.CaptionLayout
@@ -62,8 +66,23 @@ internal fun FixWordDialog(shown: String, languageCode: String, error: String? =
     val note = FixWordForm.note(shown, typed, heard, written)
     val direction = if (CaptionLayout.readsRightToLeft(shown, languageCode)) LayoutDirection.Rtl else LayoutDirection.Ltr
     val everyTimeLabel = tr("תיקון בכל פעם", "Fix it every time")
+    // Said as the dialog closes on a Save, as on the iPhone, not on the tap:
+    // a conversation's fix can still be refused, and then the dialog stays
+    // open with the error instead. Before, the dialog just went away.
+    val context = LocalContext.current
+    var saving by remember { mutableStateOf(false) }
+    val refused by rememberUpdatedState(error != null)
+    DisposableEffect(Unit) {
+        onDispose {
+            if (saving && !refused && ScreenReader.isOn(context)) ScreenReader.announce(context, tr("השורה תוקנה", "Line fixed"))
+        }
+    }
+    val dismiss = {
+        saving = false
+        onDismiss()
+    }
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = dismiss,
         icon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
         title = { Text(tr("תיקון מילה", "Fix a word")) },
         text = {
@@ -139,8 +158,8 @@ internal fun FixWordDialog(shown: String, languageCode: String, error: String? =
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(heard, written.trim(), everyTime) }, enabled = ready) { Text(tr("שמירה", "Save")) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("ביטול", "Cancel")) } },
+        confirmButton = { TextButton(onClick = { saving = true; onSave(heard, written.trim(), everyTime) }, enabled = ready) { Text(tr("שמירה", "Save")) } },
+        dismissButton = { TextButton(onClick = dismiss) { Text(tr("ביטול", "Cancel")) } },
     )
 }
 

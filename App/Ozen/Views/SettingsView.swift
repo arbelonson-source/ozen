@@ -35,7 +35,6 @@ struct SettingsView: View {
     @State private var cloudKeyDraft = ""
     @State private var hasCloudKey = CloudKeyStore.hasKey()
     @State private var cloudKeySaveFailed = false
-    @State private var cloudKeyCheck: CloudKeyCheck?
     @State private var homeServerAddressDraft = ""
     /// The saved address last put in the field (see `HomeServer.addressField`).
     @State private var homeServerAddressLoaded = ""
@@ -49,10 +48,19 @@ struct SettingsView: View {
     /// its way for the old address, code or setting is thrown away.
     @State private var homeServerCheckGeneration = 0
     @State private var cloudKeyCheckGeneration = 0
+    /// The current service's last key check, kept by the view model so it
+    /// is still there when Settings opens again.
+    private var cloudKeyCheck: CloudKeyCheck? {
+        get { viewModel.cloudKeyChecks[viewModel.settings.cloudProvider] }
+        nonmutating set { viewModel.cloudKeyChecks[viewModel.settings.cloudProvider] = newValue }
+    }
     @State private var isCheckingHomeServer = false
     @State private var confirmingHomeServerCodeDelete = false
     @State private var confirmingCloudKeyDelete = false
     @State private var askingCloudConsent = false
+    /// The better model, tapped while captions listen: switching would stop
+    /// them for its download, so it waits for a yes, as in the model list.
+    @State private var pendingBetterModel: WhisperModelOption?
     /// The question was asked by Close, so either answer closes Settings.
     @State private var closingAfterCloudConsent = false
     @State private var confirmingWalkthrough = false
@@ -127,6 +135,7 @@ struct SettingsView: View {
                 aboutSection
             }
             .accessibilityIdentifier("settingsScreen")
+            .asksBeforeSwitchingModel($pendingBetterModel, viewModel: viewModel)
             // On the Form, not the key field: asked by Close with the
             // field scrolled away, the question never appeared.
             .alert(tr("לשלוח את הקול ל־%1?", "Send the audio to %1?", args: ["\(viewModel.settings.cloudProvider.name)"]), isPresented: $askingCloudConsent) {
@@ -309,7 +318,9 @@ struct SettingsView: View {
             .accessibilityIdentifier("modelManagerRow")
             if viewModel.settings.runsWeakerModel, let recommended = WhisperModelCatalog.option(for: viewModel.settings.recommendedWhisperVariant) {
                 Button {
-                    Task { await viewModel.acceptBetterModelOffer() }
+                    Task {
+                        if await viewModel.acceptBetterModelOffer() { pendingBetterModel = recommended }
+                    }
                 } label: {
                     Label(viewModel.settings.spokenLanguage == .hebrew
                           ? tr("המודל הזה טועה בהרבה מילים בעברית. הקישו כדי לעבור למודל ״\u{2068}%1\u{2069}״, %2", "This model gets many Hebrew words wrong. Tap to switch to %1, %2", args: ["\(recommended.displayName)", "\(recommended.sizeLabel)"])
@@ -373,7 +384,6 @@ struct SettingsView: View {
             set: { provider in
                 cloudKeyDraft = ""
                 cloudKeySaveFailed = false
-                cloudKeyCheck = nil
                 cloudKeyCheckGeneration += 1
                 hasCloudKey = CloudKeyStore.hasKey(for: provider)
                 Task { await viewModel.setCloudProvider(provider) }
@@ -425,13 +435,25 @@ struct SettingsView: View {
             }
             .accessibilityIdentifier("cloudServicePicker")
             .onAppear { hasCloudKey = CloudKeyStore.hasKey(for: viewModel.settings.cloudProvider) }
+            .task(id: viewModel.settings.cloudProvider) { await checkSavedKeyIfUnchecked() }
             if !viewModel.settings.cloudProvider.covers(languageCode: viewModel.settings.languageCode) {
                 Label(tr("השירות הזה לא מתמלל את השפה שמדברים בה. בחרו שירות אחר.", "This service can’t caption the language being spoken. Choose another service."), systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.readable(.red))
             }
+            // A refused key isn't shown as a green "saved" with the refusal
+            // a scroll further down: the refusal takes the green line's place.
             if hasCloudKey {
-                Label(tr("מפתח שמור בטלפון", "Key saved on the phone"), systemImage: "key.fill")
-                    .foregroundStyle(.readable(.green))
+                if let cloudKeyCheck, cloudKeyCheck.refusesKey {
+                    cloudKeyCheckLabel(cloudKeyCheck)
+                } else {
+                    Label(tr("מפתח שמור בטלפון", "Key saved on the phone"), systemImage: "key.fill")
+                        .foregroundStyle(.readable(.green))
+                }
+            } else {
+                Text(tr("המפתח הוא קוד ארוך שמקבלים באתר של %1 אחרי שפותחים שם חשבון.", "A key is a long code you get from the %1 website after opening an account there.", args: ["\(viewModel.settings.cloudProvider.name)"]))
+                Link(destination: viewModel.settings.cloudProvider.keyPage) {
+                    Label(tr("פתיחת האתר של %1", "Open the %1 website", args: ["\(viewModel.settings.cloudProvider.name)"]), systemImage: "safari")
+                }
             }
             SecureField(hasCloudKey ? tr("מפתח חדש במקום השמור", "New key instead of the saved one") : tr("הדביקו כאן את המפתח של %1", "Paste your %1 key here", args: ["\(viewModel.settings.cloudProvider.name)"]), text: $cloudKeyDraft)
                 .textContentType(.password)
@@ -446,7 +468,7 @@ struct SettingsView: View {
                 Label(tr("המפתח לא נשמר. נסו שוב.", "The key wasn’t saved. Try again."), systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.readable(.red))
             }
-            if let cloudKeyCheck {
+            if let cloudKeyCheck, !cloudKeyCheck.refusesKey {
                 cloudKeyCheckLabel(cloudKeyCheck)
             }
             if hasCloudKey {
@@ -790,6 +812,21 @@ struct SettingsView: View {
             UIAccessibility.post(notification: .announcement, argument: result.message)
         }
         return true
+    }
+
+    /// After the app starts again a saved key has no check yet: it is
+    /// checked once when the section shows, so a key the service refuses
+    /// says so instead of reading as a green "Key saved on the phone".
+    private func checkSavedKeyIfUnchecked() async {
+        let provider = viewModel.settings.cloudProvider
+        guard cloudKeyCheck == nil, let key = CloudKeyStore.read(for: provider) else { return }
+        let generation = cloudKeyCheckGeneration
+        let result = await CloudKeyCheck.result(for: provider, key: key, http: URLSessionCloudHTTP())
+        guard generation == cloudKeyCheckGeneration, viewModel.settings.cloudProvider == provider, CloudKeyStore.read(for: provider) == key else { return }
+        cloudKeyCheck = result
+        if result.refusesKey {
+            UIAccessibility.post(notification: .announcement, argument: result.message)
+        }
     }
 
     @ViewBuilder

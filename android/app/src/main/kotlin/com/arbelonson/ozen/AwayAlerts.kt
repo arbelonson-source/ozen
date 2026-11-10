@@ -73,7 +73,13 @@ class AlertNotifier(private val context: Context) {
         // doorbell. A word alert's line can be private: on such a phone it
         // shows only "Said: <word>".
         val words = content.threadIdentifier == KEYWORDS_THREAD
+        // The time it was heard, in the header: Android leaves it out unless
+        // asked, so a doorbell found on the lock screen an hour later still
+        // read "Heard just now", and an old alarm looked like a new one.
+        val heard = System.currentTimeMillis()
         val notification = Notification.Builder(context, channel.id)
+            .setWhen(heard)
+            .setShowWhen(true)
             .apply { if (alarm) setCategory(Notification.CATEGORY_ALARM) }
             .setSmallIcon(R.drawable.ic_listening)
             .setContentTitle(content.title)
@@ -87,6 +93,8 @@ class AlertNotifier(private val context: Context) {
                 if (words) {
                     setPublicVersion(
                         Notification.Builder(context, channel.id)
+                            .setWhen(heard)
+                            .setShowWhen(true)
                             .setSmallIcon(R.drawable.ic_listening)
                             .setContentTitle(content.title)
                             .build(),

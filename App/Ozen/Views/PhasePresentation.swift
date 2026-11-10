@@ -151,23 +151,26 @@ struct PhasePresentation {
             self.init(title: tr("מפעילים את המיקרופון", "Starting the microphone"), detail: nil, systemImage: "mic", tint: .yellow, isBusy: true)
 
         case .listening where coveringForCloud && coveredEngine == .homeServer && coverReason == .homeServerRejected:
-            self.init(title: tr("מאזינה", "Listening"), detail: tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, so the phone carries on by itself · Ask whoever set up the phone for help"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("המחשב בבית לא קיבל את קוד הצימוד, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "The home computer didn’t accept the pairing code, so the phone carries on by itself · Ask whoever set up the phone for help") + " · " + tr("הקישו כדי להשהות", "Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
         case .listening where coveringForCloud && coveredEngine == .homeServer:
             self.init(title: tr("מאזינה", "Listening"), detail: tr("אין חיבור למחשב בבית, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Can’t reach the home computer, so the phone carries on by itself · Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
         // Cloud problems only a person can fix (no key, no credit) get their
-        // own detail and a way to Settings, same as the failed-outright
-        // screen for these two reasons; a generic "unavailable" here would
-        // leave the family with no clue what to actually go fix.
+        // own detail; a generic "unavailable" here would leave the family
+        // with no clue what to actually go fix. While the phone covers, the
+        // button still pauses: it used to open Settings in these four
+        // cases, which can last days until someone fixes them, and nothing
+        // else on the caption screen pauses, so she couldn't turn captions
+        // off for a private moment. Settings is one tap away on its button.
         case .listening where coveringForCloud && coveredEngine == .cloud && coverReason == .cloudKeyNeeded:
-            self.init(title: tr("מאזינה", "Listening"), detail: tr("התמלול בענן לא מוגדר, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription isn’t set up, so the phone carries on by itself · Ask whoever set up the phone for help"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("התמלול בענן לא מוגדר, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription isn’t set up, so the phone carries on by itself · Ask whoever set up the phone for help") + " · " + tr("הקישו כדי להשהות", "Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
         case .listening where coveringForCloud && coveredEngine == .cloud && coverReason == .cloudOutOfCredit:
-            self.init(title: tr("מאזינה", "Listening"), detail: tr("נגמר הקרדיט לתמלול בענן, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription’s budget ran out, so the phone carries on by itself · Ask whoever set up the phone for help"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("נגמר הקרדיט לתמלול בענן, ממשיכים בזיהוי שבטלפון · בקשו עזרה ממי שהגדיר את הטלפון", "Cloud transcription’s budget ran out, so the phone carries on by itself · Ask whoever set up the phone for help") + " · " + tr("הקישו כדי להשהות", "Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
         case .listening where coveringForCloud && coveredEngine == .cloud && coverReason == .cloudLanguageNotCovered:
-            self.init(title: tr("מאזינה", "Listening"), detail: tr("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", "This service can’t caption this language, so the phone carries on by itself · Choose another service in Settings"), systemImage: "waveform", tint: .green, action: .openEngineSettings)
+            self.init(title: tr("מאזינה", "Listening"), detail: tr("השירות הזה לא מתמלל את השפה הזו, ממשיכים בזיהוי שבטלפון · בחרו שירות אחר בהגדרות", "This service can’t caption this language, so the phone carries on by itself · Choose another service in Settings") + " · " + tr("הקישו כדי להשהות", "Tap to pause"), systemImage: "waveform", tint: .green, action: .pause)
 
         // The phone's built-in recognition writes the captions until the
         // chosen model, still to download, is ready (see `BuiltInWhileWaiting`).

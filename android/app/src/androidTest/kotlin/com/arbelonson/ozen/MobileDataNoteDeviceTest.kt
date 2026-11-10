@@ -42,13 +42,13 @@ class MobileDataNoteDeviceTest {
         compose.onNodeWithText("Over mobile data", substring = true).assertExists()
         listeningOn(TranscriptionEngineKind.HomeServer, NetworkConditions.wifi)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("Over mobile data", substring = true).fetchSemanticsNodes().isEmpty() }
-        compose.onNodeWithText("Tap to pause", substring = true).assertExists()
+        compose.onNodeWithText("Pause captions").assertExists()
     }
 
     @Test
     fun thePhonesOwnModelOnAMeteredNetworkDoesNotMentionMobileData() {
         listeningOn(TranscriptionEngineKind.WhisperKit, NetworkConditions.cellular)
-        waitForStatus("Tap to pause")
+        waitForStatus("Pause captions")
         compose.onNodeWithText("Over mobile data", substring = true).assertDoesNotExist()
     }
 }

@@ -3,6 +3,7 @@ package com.arbelonson.ozen.core
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -56,6 +57,17 @@ class FileTranscriptionTest {
         assertEquals(id, done(HistorySave.Saved(id)).recordId)
         assertNull(done(HistorySave.Off).recordId)
         assertNull(done(HistorySave.Failed).recordId)
+    }
+
+    @Test
+    fun leavingLosesTheTextOnlyWhenFinishedTextIsNotInHistory() {
+        val model = FileModelChoice.toDownload(UILanguage.Hebrew)
+        fun done(history: HistorySave) = FileTranscription.Done("note.wav", UILanguage.Hebrew, model, emptyList(), history)
+        assertTrue(done(HistorySave.Off).leavingLosesText)
+        assertTrue(done(HistorySave.Failed).leavingLosesText)
+        assertFalse(done(HistorySave.Saved(UUID.randomUUID())).leavingLosesText)
+        assertFalse(FileTranscription.Failed("note.wav", problem(EngineUnavailability.Kind.ModelLoadFailed)).leavingLosesText)
+        assertFalse(FileTranscription.Idle.leavingLosesText)
     }
 
     @Test

@@ -9,12 +9,12 @@ import android.app.NotificationManager
 import android.app.UiModeManager
 import android.content.ClipboardManager
 import android.content.Intent
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.speech.tts.TextToSpeech
-import android.media.AudioManager
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -26,7 +26,9 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -34,76 +36,76 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.isSelected
-import androidx.compose.ui.test.hasScrollAction
-import androidx.compose.ui.test.hasScrollToIndexAction
-import androidx.compose.ui.test.isDisplayed
-import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onParent
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextInputSelection
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pinch
 import androidx.compose.ui.test.swipeDown
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithContentDescription
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onFirst
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.onParent
-import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performScrollToIndex
-import androidx.compose.ui.test.performTextClearance
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.arbelonson.ozen.core.AlertFlash
 import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppLanguage
-import com.arbelonson.ozen.core.SoundAlert
-import com.arbelonson.ozen.core.SoundEvent
-import com.arbelonson.ozen.core.SoundEventCatalog
-import com.arbelonson.ozen.core.SpeakerProfile
-import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.core.AppSettings
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.DisplayPreferences
-import com.arbelonson.ozen.core.Localization
-import com.arbelonson.ozen.core.KeywordHit
-import com.arbelonson.ozen.core.KeywordMatch
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.EngineUnavailability
+import com.arbelonson.ozen.core.KeywordHit
+import com.arbelonson.ozen.core.KeywordMatch
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PipelineFailure
 import com.arbelonson.ozen.core.PipelinePhase
 import com.arbelonson.ozen.core.SavedSegment
 import com.arbelonson.ozen.core.SessionJournal
+import com.arbelonson.ozen.core.SoundAlert
+import com.arbelonson.ozen.core.SoundEvent
+import com.arbelonson.ozen.core.SoundEventCatalog
+import com.arbelonson.ozen.core.SpeakerProfile
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSegment
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
+import com.arbelonson.ozen.core.tr
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
@@ -1686,6 +1688,48 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    @Test
+    fun savingAFixedWordTellsTheScreenReaderTheLineWasFixedAndCancelSaysNothing() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val vocabularyBefore = app.settings.current.value.vocabulary
+        val fixesBefore = app.settings.current.value.wordFixes
+        val readerBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        val announced = CopyOnWriteArrayList<String>()
+        val dialogGone = { compose.onAllNodesWithText("Tap the words that came out wrong").fetchSemanticsNodes().isEmpty() }
+        try {
+            ScreenReader.isOn = { true }
+            ScreenReader.announce = { _, text -> announced += text }
+            showLines(listOf(committed("I spoke with Shera yesterday")))
+            val fix = { lineText("Shera").fetchSemanticsNode().config[SemanticsActions.CustomActions].single { it.label == "Fix a word" } }
+
+            val first = fix()
+            compose.runOnUiThread { first.action() }
+            compose.onAllNodes(hasSetTextAction())[1].performTextInput("Shai")
+            compose.onNodeWithText("Cancel").performClick()
+            compose.waitUntil(5_000) { dialogGone() }
+            compose.waitForIdle()
+            assertEquals("said $announced", 0, announced.count { it == "Line fixed" })
+
+            val second = fix()
+            compose.runOnUiThread { second.action() }
+            compose.onNodeWithContentDescription("Shera").performClick()
+            compose.onAllNodes(hasSetTextAction())[1].performTextInput("Shira")
+            compose.onNodeWithText("Save").performClick()
+            compose.waitUntil(5_000) { "Line fixed" in announced }
+            compose.waitForIdle()
+            assertTrue(dialogGone())
+            assertEquals("said $announced", 1, announced.count { it == "Line fixed" })
+        } finally {
+            ScreenReader.isOn = readerBefore
+            ScreenReader.announce = announceBefore
+            app.settings.change {
+                it.vocabulary = vocabularyBefore
+                it.wordFixes = fixesBefore
+            }
+        }
+    }
+
     // TalkBack has no priority for an announcement: the next one cuts off
     // the one being spoken, and "Attention! Smoke detector" went unheard.
     @Test
@@ -1760,6 +1804,36 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithText("Heard just now", useUnmergedTree = true).assertExists()
         compose.runOnUiThread { CaptionState.clear() }
         compose.onNodeWithContentDescription("Alert: Doorbell").assertDoesNotExist()
+    }
+
+    @Test
+    fun withTalkBackOnASoundBannerAndAWordPillStayPastTheirTimeUntilClosed() {
+        val isOnBefore = ScreenReader.isOn
+        try {
+            ScreenReader.isOn = { true }
+            compose.activityRule.scenario.recreate()
+            val now = System.currentTimeMillis() / 1_000.0
+            val door = SoundAlert(event = SoundEventCatalog.event("door_bell")!!, confidence = 0.7, timestamp = now)
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.sound(door)
+                CaptionState.heard(HeardWord(UUID.randomUUID(), "Doctor", now))
+            }
+            compose.onNodeWithContentDescription("Alert: Doorbell").assertIsDisplayed()
+            compose.onNodeWithText("Said: Doctor").assertIsDisplayed()
+            compose.mainClock.autoAdvance = false
+            compose.mainClock.advanceTimeBy(20_000)
+            compose.mainClock.autoAdvance = true
+            compose.waitForIdle()
+            compose.onNodeWithContentDescription("Alert: Doorbell").assertIsDisplayed()
+            compose.onNodeWithText("Said: Doctor").assertIsDisplayed().performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Doctor").fetchSemanticsNodes().isEmpty() }
+            compose.onNodeWithContentDescription("Alert: Doorbell").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Alert: Doorbell").fetchSemanticsNodes().isEmpty() }
+        } finally {
+            compose.mainClock.autoAdvance = true
+            ScreenReader.isOn = isOnBefore
+        }
     }
 
     private fun heardSmoke() = SoundAlert(event = SoundEventCatalog.event("smoke_detector")!!, confidence = 0.9, timestamp = System.currentTimeMillis() / 1_000.0)
@@ -2344,20 +2418,50 @@ class CaptionScreenDeviceTest {
             compose.runOnUiThread { CaptionState.show(phase, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
             compose.waitForIdle()
         }
-        fun status() = compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction())
+        fun status() = compose.onNodeWithTag(STATUS_STATE).assert(hasText(CaptionState.screen.value.status.title))
+        val button = compose.onNodeWithTag(STATUS_BUTTON)
         val busy = compose.onNodeWithTag(STATUS_BUSY, useUnmergedTree = true)
 
         show(PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.DownloadingModel, fraction = 0.42, detail = "small")))
-        status().assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(0.42f, 0f..1f))).assertIsNotEnabled()
+        status().assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(0.42f, 0f..1f)))
+        button.assertDoesNotExist()
+        compose.onAllNodes(hasClickAction() and hasText(CaptionState.screen.value.status.title, substring = true)).assertCountEquals(0)
         busy.assertExists()
 
         show(PipelinePhase.PreparingEngine(EnginePreparationProgress(EnginePreparationProgress.Stage.LoadingModel, detail = "small")))
-        status().assertIsNotEnabled()
+        status().assertExists()
+        button.assertDoesNotExist()
         busy.assertExists()
 
         show(PipelinePhase.Listening)
-        status().assertIsEnabled().assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        button.assertIsEnabled().assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
         busy.assertDoesNotExist()
+    }
+
+    @Test
+    fun theStatusButtonSaysWhatATapDoesWithTheStateOnItsOwnLineAndIsATallFilledButton() {
+        fun show(phase: PipelinePhase) {
+            compose.runOnUiThread { CaptionState.show(phase, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
+            compose.waitForIdle()
+        }
+        val button = compose.onNodeWithTag(STATUS_BUTTON)
+        fun says(words: String) = button.assert(hasText(words)).assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, CaptionState.screen.value.status.title))
+        try {
+            show(PipelinePhase.Listening)
+            says("Pause captions").assertIsEnabled().assertHeightIsAtLeast(STATUS_BUTTON_HEIGHT)
+            compose.onNodeWithTag(STATUS_STATE).assert(hasText("Listening")).assert(!hasClickAction())
+            compose.onNodeWithText("Tap to pause").assertDoesNotExist()
+
+            show(PipelinePhase.Paused)
+            says("Continue captions").assertIsEnabled().assertHeightIsAtLeast(STATUS_BUTTON_HEIGHT)
+            button.assert(!hasText("Pause captions"))
+            compose.onNodeWithText("Tap to continue").assertDoesNotExist()
+
+            show(PipelinePhase.Idle)
+            says("Start captions").assertHeightIsAtLeast(STATUS_BUTTON_HEIGHT)
+        } finally {
+            compose.runOnUiThread { CaptionState.clear() }
+        }
     }
 
     @Test

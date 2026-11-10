@@ -34,7 +34,14 @@ dependencies.append(
     // empty transcriptions whenever promptTokens are set, which is every
     // pass once the names list has an entry. 1.1.1 makes a cancelled hub
     // download throw instead of returning the half-fetched folder.
-    .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", from: "1.1.1")
+    // Exact, not "from": no Package.resolved is committed (the app project
+    // is generated on CI), so a range let the CI, sideload and App Store
+    // builds each take whatever release was newest that day, and captions
+    // could change with no commit to blame. WhisperKit itself depends on
+    // nothing else, so this one pin fixes all of its code. A newer release
+    // comes in by changing this line and the tag in verify-model.yml,
+    // which scripts/check-pinned-libraries.py keeps in step.
+    .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", exact: "1.1.1")
 )
 products.append(.library(name: "OzenPlatform", targets: ["OzenPlatform"]))
 targets.append(contentsOf: [

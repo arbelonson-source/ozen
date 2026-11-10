@@ -14,6 +14,7 @@ public enum ProblemSnapshot {
         input: AudioInputDescriptor?,
         stats: PipelineStats,
         segments: [TranscriptSegment],
+        held: TranscriptSegment? = nil,
         device: String,
         utcOffsetSeconds: Int
     ) -> [String] {
@@ -23,12 +24,20 @@ public enum ProblemSnapshot {
             "  lag \(number(stats.captionLagSeconds, "%.2f"))s levels \(stats.inputLevels.summary ?? "-") speech \(number(stats.speechShare.map { $0 * 100 }, "%.0f"))% floor \(number(stats.noiseFloorDecibels, "%.1f")) margin \(number(stats.noiseMarginDecibels, "%.1f"))dB restarts \(stats.engineRestarts) stalls \(stats.audioStalls) updates \(stats.tokensReceived) lines \(stats.segmentsCommitted)",
             "  \(device)",
         ]
-        for segment in segments.suffix(lineCount) {
-            let sureness = segment.confidence.map { String(format: "%.2f", $0) } ?? "-"
-            let time = TranscriptHistoryStore.formattedClockTime(segment.lastUpdateTimestamp, utcOffsetSeconds: utcOffsetSeconds)
-            lines.append("\(captionLinePrefix)\(segment.isCommitted ? "final" : "live"), sure \(sureness), \(time)): \(segment.text)")
+        let newest = segments.suffix(lineCount)
+        for segment in newest {
+            lines.append(line(segment, held: segment.id == held?.id, utcOffsetSeconds: utcOffsetSeconds))
+        }
+        if let held, !newest.contains(where: { $0.id == held.id }) {
+            lines.append(line(held, held: true, utcOffsetSeconds: utcOffsetSeconds))
         }
         return lines
+    }
+
+    private static func line(_ segment: TranscriptSegment, held: Bool, utcOffsetSeconds: Int) -> String {
+        let sureness = segment.confidence.map { String(format: "%.2f", $0) } ?? "-"
+        let time = TranscriptHistoryStore.formattedClockTime(segment.lastUpdateTimestamp, utcOffsetSeconds: utcOffsetSeconds)
+        return "\(captionLinePrefix)\(held ? "held, " : "")\(segment.isCommitted ? "final" : "live"), sure \(sureness), \(time)): \(segment.text)"
     }
 
     private static func number(_ value: Double?, _ format: String) -> String {

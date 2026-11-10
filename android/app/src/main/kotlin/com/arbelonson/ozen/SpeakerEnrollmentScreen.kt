@@ -1,10 +1,19 @@
 package com.arbelonson.ozen
 
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.MicOff
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
@@ -20,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.DialogText
@@ -76,6 +86,12 @@ internal object SpeakerRecordings {
     fun stop() {
         job?.cancel()
     }
+
+    /** Whether Ozen may use the microphone; device tests stand in for a refusal. */
+    var microphoneAllowed: (Context) -> Boolean = { it.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED }
+
+    /** Asks the phone for the microphone; device tests give the answer themselves. */
+    var askForMicrophone: (ask: () -> Unit, answer: (Boolean) -> Unit) -> Unit = { ask, _ -> ask() }
 }
 
 @Composable
@@ -98,7 +114,28 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
         if ((SpeakerRecordings.progress.value ?: 0.0) < 1.0) SpeakerRecordings.stop()
         onClose()
     }
-    val record = { SpeakerRecordings.start(screen, speakers, name.trim()) }
+    val start = { SpeakerRecordings.start(screen, speakers, name.trim()) }
+    // Without the microphone the half minute recorded nothing and ended as
+    // "too short or too quiet". The phone is asked first, and a refusal
+    // says what is missing and where to allow it.
+    val context = LocalContext.current
+    var noMicrophone by rememberSaveable { mutableStateOf(false) }
+    // A second tap while the phone's question is on its way would ask again
+    // and start a second recording over the first once both are answered.
+    var askingMicrophone by rememberSaveable { mutableStateOf(false) }
+    val answered = { granted: Boolean ->
+        askingMicrophone = false
+        if (granted) start() else noMicrophone = true
+    }
+    val askMicrophone = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission(), answered)
+    val record = {
+        if (SpeakerRecordings.microphoneAllowed(context)) {
+            start()
+        } else if (!askingMicrophone) {
+            askingMicrophone = true
+            SpeakerRecordings.askForMicrophone({ askMicrophone.launch(Manifest.permission.RECORD_AUDIO) }, answered)
+        }
+    }
     // As the iPhone's sheet, which can't be swiped away mid-recording: a
     // stray back gesture would throw away half a minute of her voice. Read
     // as it is now, not as last drawn: a gesture right after the tap on
@@ -151,6 +188,21 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
         }
         GroupFootnote(tr("כדי לשפר את הזיהוי, הקליטו כל אדם 3–4 פעמים תחת אותו שם, בימים שונים ובמקומות שונים: בחדר שקט, כשהטלוויזיה פועלת ברקע ומהצד השני של החדר.", "For better recognition, record each person 3–4 times under the same name, on different days and in different places: a quiet room, with the TV on, from across the room."))
         GroupFootnote(tr("ההקלטה עצמה לא נשמרת — רק ״טביעת קול״ מספרית קצרה שממנה אי אפשר לשחזר את הדיבור.", "The recording itself isn’t saved — only a short numeric “voiceprint” that the speech can’t be reconstructed from."))
+    }
+    if (noMicrophone) {
+        AlertDialog(
+            onDismissRequest = { noMicrophone = false },
+            icon = { Icon(Icons.Rounded.MicOff, contentDescription = null) },
+            title = { Text(tr("אין גישה למיקרופון", "No microphone access")) },
+            text = { DialogText(tr("כדי להקליט קול צריך גישה למיקרופון. אפשר לאשר אותה בהגדרות הטלפון.", "Recording a voice needs microphone access. You can allow it in the phone’s Settings.")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    noMicrophone = false
+                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
+                }) { Text(tr("פתיחת הגדרות הטלפון", "Open the phone’s settings")) }
+            },
+            dismissButton = { TextButton(onClick = { noMicrophone = false }) { Text(tr("ביטול", "Cancel")) } },
+        )
     }
     if (mine?.saved == false) {
         AlertDialog(
