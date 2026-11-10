@@ -144,7 +144,7 @@ fun SpeakerEnrollmentScreen(speakers: SpeakerBook, onClose: () -> Unit) {
             icon = { Icon(Icons.Rounded.Warning, contentDescription = null) },
             title = { Text(tr("ההקלטה קצרה או שקטה מדי", "The recording is too short or too quiet")) },
             text = { DialogText(tr("לא הצלחנו להפיק טביעת קול. ודאו שהמיקרופון הנכון נבחר ושהאדם מדבר לאורך כל ההקלטה.", "A voiceprint couldn’t be made. Make sure the right microphone is selected and the person speaks throughout the recording.")) },
-            confirmButton = { TextButton(onClick = { SpeakerRecordings.outcome.value = null }) { Text(tr("נסו שוב", "Try again")) } },
+            confirmButton = { TextButton(onClick = { SpeakerRecordings.outcome.value = null }) { Text(tr("אישור", "OK")) } },
         )
     }
 }

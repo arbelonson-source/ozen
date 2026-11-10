@@ -66,7 +66,7 @@ struct SpeakerEnrollmentView: View {
                 }
             }
             .alert(tr("ההקלטה קצרה או שקטה מדי", "The recording is too short or too quiet"), isPresented: $failed) {
-                Button(tr("נסו שוב", "Try again"), role: .cancel) {}
+                Button(tr("אישור", "OK"), role: .cancel) {}
             } message: {
                 Text(tr("לא הצלחנו להפיק טביעת קול. ודאו שהמיקרופון הנכון נבחר ושהאדם מדבר לאורך כל ההקלטה.", "A voiceprint couldn’t be made. Make sure the right microphone is selected and the person speaks throughout the recording."))
             }
