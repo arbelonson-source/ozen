@@ -15,6 +15,8 @@ struct DiagnosticsReport {
     let notificationsAllowed: Bool?
     let modelState: ModelFolderState
     let tokenizerCached: Bool
+    /// `AppleSpeechEngine.onDeviceReport`, which waits on iOS; nil until it answers.
+    var builtInRecognition: String? = nil
 
     /// The report as the caption screen sends it: "Ozen on this phone: a
     /// captions problem was marked at 14:02." above the report itself.
@@ -43,8 +45,9 @@ struct DiagnosticsReport {
         settings save error: \(viewModel.settingsSaveError ?? "-") history save error: \(viewModel.historySaveFailure ?? "-") notifications allowed: \(notificationsAllowed.map { $0 ? "yes" : "no" } ?? "not asked") notification error: \(AlertNotifier.shared.lastFailure ?? "-") haptics: \(AlertHapticPlayer.shared.supportsHaptics ? (AlertHapticPlayer.shared.lastFailure ?? "ok") : "unsupported") network: \(Self.describe(viewModel.pipeline.networkConditions)) cellular downloads: \(viewModel.allowCellularModelDownload)
         model state: \(String(describing: modelState)) tokenizer cached: \(tokenizerCached) vocabulary: \(viewModel.vocabulary.count)
         thermal: \(ProcessInfo.processInfo.thermalState.rawValue) low power: \(ProcessInfo.processInfo.isLowPowerModeEnabled) battery: \(Self.batteryText) free space: \(Self.freeSpaceText)
-        memory: used \(DeviceMemory.footprintBytes().map(Self.format(bytes:)) ?? "-") left \(DeviceMemory.availableBytes().map(Self.format(bytes:)) ?? "-")
-        device: \(UIDevice.current.model) iOS \(UIDevice.current.systemVersion) app \(SettingsView.versionString) install expires: \(InstallExpiryStatus.shared.expiresAt.map { $0.formatted(inAppLanguage: .abbreviated, time: .shortened) } ?? "-")
+        memory: used \(DeviceMemory.footprintBytes().map(Self.format(bytes:)) ?? "-") left \(DeviceMemory.availableBytes().map(Self.format(bytes:)) ?? "-") phone \(Self.format(bytes: Int64(clamping: ProcessInfo.processInfo.physicalMemory)))
+        built-in recognition: \(builtInRecognition ?? "-")
+        device: \(UIDevice.current.model) \(DeviceModelTable.currentDeviceName) iOS \(UIDevice.current.systemVersion) app \(SettingsView.versionString) install expires: \(InstallExpiryStatus.shared.expiresAt.map { $0.formatted(inAppLanguage: .abbreviated, time: .shortened) } ?? "-")
         events (oldest first):
         \(eventLines)
         journal, previous runs included (oldest first):

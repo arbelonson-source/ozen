@@ -47,4 +47,17 @@ struct InferenceCadenceTests {
         #expect(InferenceCadence.secondsBetweenLivePasses(heat: .nominal, lowPowerMode: false, lastPassSeconds: .infinity) == InferenceCadence.baseSeconds)
         #expect(InferenceCadence.secondsBetweenLivePasses(heat: .nominal, lowPowerMode: false, lastPassSeconds: -3) == InferenceCadence.baseSeconds)
     }
+
+    @Test("the first live pass of a line waits for a second of speech, however much lead-in came before it")
+    func firstPassWaitsForSpeech() {
+        let rate = 16_000.0
+        func due(samples: Int, start: Int?, end: Int, lastPass: Int = 0) -> Bool {
+            InferenceCadence.livePassDue(samples: samples, samplesAtLastPass: lastPass, interval: InferenceCadence.baseSeconds, firstSpeechStart: start, lastSpeechEnd: end, sampleRate: rate)
+        }
+        #expect(!due(samples: 24_000, start: 8_000, end: 23_000))
+        #expect(due(samples: 25_000, start: 8_000, end: 24_000))
+        #expect(!due(samples: 40_000, start: nil, end: 40_000))
+        #expect(!due(samples: 40_000, start: 8_000, end: 30_000, lastPass: 35_000))
+        #expect(due(samples: 45_000, start: 8_000, end: 44_600, lastPass: 35_000))
+    }
 }

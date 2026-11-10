@@ -35,6 +35,12 @@ struct DiagnosticsReportTests {
         #expect(Array(nothingYet.suffix(2)) == ["journal, previous runs included (oldest first):", "-"])
         #expect(nothingYet.contains(where: { $0.contains(" notifications allowed: not asked ") }))
         #expect(nothingYet.contains(where: { $0.hasPrefix("model state: verified tokenizer cached: true vocabulary: ") }))
+        #expect(nothingYet.contains("built-in recognition: -"))
+        #expect(nothingYet.contains(where: { $0.hasPrefix("memory: used ") && $0.contains(" phone ") }))
+
+        let answered = DiagnosticsReport(viewModel: viewModel(), journalLines: [], notificationsAllowed: nil, modelState: .verified, tokenizerCached: true, builtInRecognition: "on device he-IL yes transcriber -")
+            .text.components(separatedBy: "\n")
+        #expect(answered.contains("built-in recognition: on device he-IL yes transcriber -"))
     }
 
     @Test("the caption screen's report is a line saying when the problem was marked, then that same report")

@@ -120,6 +120,35 @@ public final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
         return SFSpeechRecognizer(locale: locale)?.supportsOnDeviceRecognition == true
     }
 
+    /// For the diagnostics report: whether each language's built-in
+    /// recognition runs with nothing sent to Apple on this phone, and
+    /// whether iOS 26's newer SpeechTranscriber offers it. Hebrew is listed
+    /// on Apple's page for on-device dictation, but nobody had checked it
+    /// in these two interfaces; this answers it from a real phone (#274).
+    public static func onDeviceReport(languageCodes: [String]) async -> String {
+        let identifiers = languageCodes.map(localeIdentifier(for:)).reduce(into: [String]()) { kept, identifier in
+            if !kept.contains(identifier) { kept.append(identifier) }
+        }
+        let recognizer = identifiers.map { identifier in
+            let answer = SFSpeechRecognizer(locale: Locale(identifier: identifier)).map { $0.supportsOnDeviceRecognition ? "yes" : "no" } ?? "none"
+            return "\(identifier) \(answer)"
+        }
+        return "on device \(recognizer.joined(separator: ", ")) transcriber \(await transcriberReport(identifiers))"
+    }
+
+    private static func transcriberReport(_ identifiers: [String]) async -> String {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, macOS 26.0, *) {
+            let supported = await SpeechTranscriber.supportedLocales.map { $0.language.languageCode }
+            return identifiers.map { identifier in
+                let offered = supported.contains(Locale(identifier: identifier).language.languageCode)
+                return "\(identifier) \(offered ? "yes" : "no")"
+            }.joined(separator: ", ")
+        }
+        #endif
+        return "-"
+    }
+
     static func localeIdentifier(for languageCode: String) -> String {
         guard !languageCode.contains("-"), let language = UILanguage.match(languageTag: languageCode) else { return languageCode }
         return language.speechVoiceCode
