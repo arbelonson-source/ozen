@@ -69,6 +69,13 @@ sealed interface FileTranscription {
     }
 
     data class Failed(val name: String, val problem: FileTranscriptionProblem) : FileTranscription
+
+    /**
+     * Finished text that History doesn't hold (saving off, or the save
+     * failed) lives only on the screen showing it: one tap on Done or Back
+     * threw it away after a long wait, so leaving asks first.
+     */
+    val leavingLosesText: Boolean get() = this is Done && history !is HistorySave.Saved
 }
 
 sealed interface HistorySave {

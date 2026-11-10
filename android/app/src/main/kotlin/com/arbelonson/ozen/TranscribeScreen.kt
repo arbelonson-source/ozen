@@ -80,9 +80,16 @@ private val PRIVACY_LINE get() = tr("ההקלטה נשארת בטלפון. שו�
 @Composable
 internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscription, onClose: () -> Unit) {
     var confirmingStop by rememberSaveable { mutableStateOf(false) }
+    var confirmingLeave by rememberSaveable { mutableStateOf(false) }
     val working = state is FileTranscription.Working
-    BackHandler { if (working) confirmingStop = true else onClose() }
-    val close = { if (working) confirmingStop = true else onClose() }
+    val close = {
+        when {
+            working -> confirmingStop = true
+            state.leavingLosesText -> confirmingLeave = true
+            else -> onClose()
+        }
+    }
+    BackHandler(onBack = close)
     when (state) {
         FileTranscription.Idle -> Unit
         is FileTranscription.Ready -> ReadyPage(transcriber, state, close)
@@ -104,6 +111,20 @@ internal fun TranscribeScreen(transcriber: FileTranscriber, state: FileTranscrip
             text = { DialogText(tr("הטקסט שכבר נוצר לא יישמר.", "What was already turned into text won’t be saved.")) },
             confirmButton = { TextButton(onClick = { confirmingStop = false; transcriber.cancel() }) { Text(tr("עצירה", "Stop")) } },
             dismissButton = { TextButton(onClick = { confirmingStop = false }) { Text(tr("להמשיך", "Keep going")) } },
+        )
+    }
+    if (confirmingLeave) {
+        AlertDialog(
+            onDismissRequest = { confirmingLeave = false },
+            title = { Text(tr("לסגור בלי לשתף את הטקסט?", "Close without sharing the text?")) },
+            text = { DialogText(tr("הטקסט לא נשמר בשום מקום אחר, ולכן הוא יאבד.", "The text isn’t saved anywhere else, so it will be lost.")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmingLeave = false
+                    onClose()
+                }) { Text(tr("סגירה", "Close"), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmingLeave = false }) { Text(tr("ביטול", "Cancel")) } },
         )
     }
 }
@@ -273,7 +294,7 @@ private fun DonePage(done: FileTranscription.Done, close: () -> Unit) {
                 modifier = Modifier.testTag(TRANSCRIBE_SUBTITLES),
             )
         }
-        val notSaved = done.history == HistorySave.Failed
+        val notSaved = done.history !is HistorySave.Saved
         Text(
             done.history.message,
             style = if (notSaved) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
