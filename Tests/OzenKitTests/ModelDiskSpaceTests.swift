@@ -4,8 +4,8 @@ import Testing
 
 @Suite("ModelDiskSpace")
 struct ModelDiskSpaceTests {
-    private let root = FileManager.default.temporaryDirectory
-        .appendingPathComponent("ozen-space-\(UUID().uuidString)", isDirectory: true)
+    private let temporary = TemporaryFolder("ozen-space")
+    private var root: URL { temporary.url }
 
     private var folder: URL { root.appendingPathComponent("openai_whisper-small", isDirectory: true) }
     private var partial: URL { root.appendingPathComponent(".cache/huggingface/download/openai_whisper-small", isDirectory: true) }

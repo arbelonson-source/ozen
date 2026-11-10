@@ -57,10 +57,17 @@ public final class LiveCaptionViewModel {
     var awayCatchUp = AwayCatchUp()
     /// The sound heard while the screen was away, shown when she is back.
     private var awaySound = AwaySound()
+    /// Where that sound is kept meanwhile: the system may end the app
+    /// before she is back, and coming back takes its notification away.
+    @ObservationIgnored private let awaySoundStore: (any AwaySoundRecordStore)?
     public var awaySoundShown: AwaySound.Heard? { awaySound.shown }
 
     public func closeAwaySound() {
         awaySound.close()
+    }
+
+    private func keepAwaySound() {
+        awaySoundStore?.write(awaySound.waitingRecord)
     }
     @ObservationIgnored private var keywordAttention = KeywordAttentionPolicy()
     @ObservationIgnored private var handledKeywordHitIDs: Set<UUID> = []
@@ -229,7 +236,8 @@ public final class LiveCaptionViewModel {
             lockScreen: LockScreenCaptionsActivity(),
             journal: SessionJournal(fileURL: support.appendingPathComponent("ozen-journal.log")),
             problemAudio: ProblemAudioStore(directory: support.appendingPathComponent("problem-audio", isDirectory: true)),
-            listeningRecorder: ListeningRecords.makeRecorder()
+            listeningRecorder: ListeningRecords.makeRecorder(),
+            awaySoundStore: UserDefaultsAwaySoundStore()
         )
         builtInWorksOnDevice = { AppleSpeechEngine.worksOnDevice(languageCode: $0) }
     }
@@ -252,10 +260,12 @@ public final class LiveCaptionViewModel {
         lockScreen: (any LockScreenCaptionsDisplaying)? = nil,
         journal: SessionJournal? = nil,
         problemAudio: ProblemAudioStore? = nil,
-        listeningRecorder: ListeningRecorder? = nil
+        listeningRecorder: ListeningRecorder? = nil,
+        awaySoundStore: (any AwaySoundRecordStore)? = nil
     ) {
         self.settingsStore = settingsStore
         self.listeningRecorder = listeningRecorder
+        self.awaySoundStore = awaySoundStore
         self.pipeline = pipeline
         self.journal = journal
         self.problemAudio = problemAudio
@@ -375,6 +385,7 @@ public final class LiveCaptionViewModel {
             await self?.deleteExpiredHistory()
             await self?.loadRecentConversation()
         }
+        awaySound.restore(awaySoundStore?.read(), now: Date().timeIntervalSince1970)
     }
 
     // MARK: - Journal
@@ -480,6 +491,7 @@ public final class LiveCaptionViewModel {
             keywordsNotifiedWhileAway.removeAll()
             // Its notification goes below, and its banner time may be over.
             awaySound.screenReturned { pipeline.currentScreenSoundAlert?.id == $0.id }
+            keepAwaySound()
             for identifier in postedAlertNotificationIDs { withdrawNotification?(identifier) }
             postedAlertNotificationIDs.removeAll()
             withdrawDeliveredAlerts?()
@@ -763,6 +775,7 @@ public final class LiveCaptionViewModel {
     private func alertRaised(sound alert: SoundAlert) {
         let now = Date().timeIntervalSince1970
         awaySound.heard(alert, at: now, appIsActive: isAppActive)
+        keepAwaySound()
         guard let content = backgroundAlerts.notification(
             for: alert, appIsActive: isAppActive, now: now, utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: now))
         ) else { return }

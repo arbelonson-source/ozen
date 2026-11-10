@@ -3,6 +3,7 @@ package com.arbelonson.ozen.core
 import java.io.File
 import java.util.UUID
 import kotlin.math.abs
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -10,7 +11,14 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class HubDownloadMeterTest {
-    private val root = File(System.getProperty("java.io.tmpdir"), "ozen-hub-${UUID.randomUUID()}")
+    private val temporary = TemporaryFolders()
+
+    @AfterTest
+    fun deleteTemporaryFolders() {
+        temporary.deleteAll()
+    }
+
+    private val root = temporary.keep(File(System.getProperty("java.io.tmpdir"), "ozen-hub-${UUID.randomUUID()}"))
     private val folder = File(root, "openai_whisper-small")
     private val partial = File(root, ".cache/huggingface/download/openai_whisper-small")
 

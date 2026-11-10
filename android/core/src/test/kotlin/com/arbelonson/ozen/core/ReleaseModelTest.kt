@@ -3,11 +3,10 @@ package com.arbelonson.ozen.core
 import java.io.File
 import java.io.RandomAccessFile
 import java.net.URI
-import java.nio.file.Files
-import java.util.UUID
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -57,8 +56,6 @@ private class FakeReleaseFetcher(private val assets: Map<String, ByteArray>) : R
     }
 }
 
-private fun temporaryFolder(): File = Files.createTempDirectory("ozen-release-${UUID.randomUUID()}").toFile()
-
 private fun manifestData(files: List<ReleaseModelFile>): ByteArray {
     val array = JsonArray(
         files.map {
@@ -89,6 +86,15 @@ private class ReleaseProgressLog {
 }
 
 class ReleaseModelTest {
+    private val temporary = TemporaryFolders()
+
+    @AfterTest
+    fun deleteTemporaryFolders() {
+        temporary.deleteAll()
+    }
+
+    private fun temporaryFolder(): File = temporary.make("ozen-release-")
+
     private val good = ReleaseModelFile(
         path = "AudioEncoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
         asset = "AudioEncoder.mlpackage__Data__com.apple.CoreML__weights__weight.bin",
