@@ -1111,7 +1111,8 @@
   "They stay saved in Settings, under “Previous conversations”.": "በቅንብሮች ውስጥ፣ በ“ያለፉ ውይይቶች” ስር ተቀምጠው ይቆያሉ።",
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "ድምፅ ለመቅዳት የማይክሮፎን መዳረሻ ያስፈልጋል። በስልኩ ቅንብሮች ውስጥ ሊፈቀድ ይችላል።",
   "Pause captions": "ካፕሽን ለአፍታ አቁም",
-  "Continue captions": "ካፕሽን ቀጥል"
+  "Continue captions": "ካፕሽን ቀጥል",
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "ሞዴሉ %1 ገደማ ነው። በሞባይል ዳታ ይህ ገንዘብ ሊያስወጣ ወይም የዳታ ጥቅልዎን ሊጨርስ ይችላል።"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2225,7 +2226,8 @@
   "They stay saved in Settings, under “Previous conversations”.": "تبقى محفوظة في الإعدادات، ضمن ‏“المحادثات السابقة”‏.",
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "تسجيل صوت يحتاج إلى الوصول إلى الميكروفون. يمكن السماح به في إعدادات الهاتف.",
   "Pause captions": "إيقاف الترجمة النصية مؤقتًا",
-  "Continue captions": "متابعة الترجمة النصية"
+  "Continue captions": "متابعة الترجمة النصية",
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "حجم النموذج نحو %1. عبر بيانات الجوال قد يكلف هذا مالًا أو يستهلك باقة البيانات."
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3339,7 +3341,8 @@
   "They stay saved in Settings, under “Previous conversations”.": "它们会保存在“设置”的“以往的对话”中。",
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "录制声音需要使用麦克风。可以在手机的设置中允许它。",
   "Pause captions": "暂停字幕",
-  "Continue captions": "继续字幕"
+  "Continue captions": "继续字幕",
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "这个模型大约 %1。使用蜂窝网络下载可能会花钱或消耗流量套餐。"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4453,7 +4456,8 @@
   "They stay saved in Settings, under “Previous conversations”.": "Elles restent enregistrées dans Réglages, sous « Conversations précédentes ».",
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "Pour enregistrer une voix, l’accès au microphone est nécessaire. Il peut être autorisé dans les Réglages du téléphone.",
   "Pause captions": "Mettre les sous-titres en pause",
-  "Continue captions": "Reprendre les sous-titres"
+  "Continue captions": "Reprendre les sous-titres",
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Le modèle pèse environ %1. En données cellulaires, cela peut coûter de l’argent ou entamer votre forfait."
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5567,7 +5571,8 @@
   "They stay saved in Settings, under “Previous conversations”.": "Sie bleiben in den Einstellungen unter „Frühere Gespräche“ gespeichert.",
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "Zum Aufnehmen einer Stimme ist Mikrofonzugriff nötig. Er kann in den Telefoneinstellungen erlaubt werden.",
   "Pause captions": "Untertitel anhalten",
-  "Continue captions": "Untertitel fortsetzen"
+  "Continue captions": "Untertitel fortsetzen",
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Das Modell ist etwa %1 groß. Über Mobilfunkdaten kann dies Geld kosten oder Ihren Datentarif aufbrauchen."
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6681,7 +6686,8 @@
   "They stay saved in Settings, under “Previous conversations”.": "ये सेटिंग्स में “पिछली बातचीत” के अंतर्गत सहेजे रहेंगे।",
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "आवाज़ रिकॉर्ड करने के लिए माइक्रोफ़ोन तक पहुंच चाहिए। फ़ोन की सेटिंग्स में इसकी अनुमति दी जा सकती है।",
   "Pause captions": "कैप्शन को विराम दें",
-  "Continue captions": "कैप्शन जारी रखें"
+  "Continue captions": "कैप्शन जारी रखें",
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "मॉडल का आकार लगभग %1 है। मोबाइल डेटा पर इसमें पैसे लग सकते हैं या आपका डेटा प्लान ख़त्म हो सकता है।"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7795,7 +7801,8 @@
   "They stay saved in Settings, under “Previous conversations”.": "Ficam guardadas nas Definições, em “Conversas anteriores”.",
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "Para gravar uma voz é preciso acesso ao microfone. Pode ser autorizado nas Definições do telemóvel.",
   "Pause captions": "Pausar legendas",
-  "Continue captions": "Continuar legendas"
+  "Continue captions": "Continuar legendas",
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "O modelo tem cerca de %1. Com dados móveis isto pode custar dinheiro ou gastar o seu plano de dados."
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -8909,7 +8916,8 @@
   "They stay saved in Settings, under “Previous conversations”.": "Они сохранятся в настройках, в разделе «Предыдущие разговоры».",
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "Чтобы записать голос, нужен доступ к микрофону. Его можно разрешить в настройках телефона.",
   "Pause captions": "Приостановить субтитры",
-  "Continue captions": "Продолжить субтитры"
+  "Continue captions": "Продолжить субтитры",
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Модель весит около %1. По мобильной сети это может стоить денег или израсходовать ваш пакет данных."
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -10023,7 +10031,8 @@
   "They stay saved in Settings, under “Previous conversations”.": "Se quedan guardados en Ajustes, en “Conversaciones anteriores”.",
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "Para grabar una voz hace falta acceso al micrófono. Se puede permitir en los Ajustes del teléfono.",
   "Pause captions": "Pausar subtítulos",
-  "Continue captions": "Continuar subtítulos"
+  "Continue captions": "Continuar subtítulos",
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "El modelo pesa unos %1. Con datos móviles esto puede costar dinero o agotar tu plan de datos."
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11137,6 +11146,7 @@
   "They stay saved in Settings, under “Previous conversations”.": "Вони збережуться в налаштуваннях, у розділі «Попередні розмови».",
   "Recording a voice needs microphone access. You can allow it in the phone’s Settings.": "Щоб записати голос, потрібен доступ до мікрофона. Його можна дозволити в налаштуваннях телефону.",
   "Pause captions": "Призупинити субтитри",
-  "Continue captions": "Продовжити субтитри"
+  "Continue captions": "Продовжити субтитри",
+  "The model is about %1. Over cellular data this can cost money or use up your data plan.": "Модель важить близько %1. Через мобільні дані це може коштувати грошей або вичерпати ваш пакет даних."
  }
 }

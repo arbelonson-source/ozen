@@ -39,9 +39,13 @@ public enum BackupModel {
         }
     }
 
-    public static func canStart(_ status: BackupModelStatus) -> Bool {
+    /// `overCellular`: the person asked for this one download over cellular
+    /// data, past a wait for Wi-Fi, without allowing every model download
+    /// there.
+    public static func canStart(_ status: BackupModelStatus, overCellular: Bool = false) -> Bool {
         switch status {
         case .missing, .failed: return true
+        case .waitingForWiFi: return overCellular
         default: return false
         }
     }
