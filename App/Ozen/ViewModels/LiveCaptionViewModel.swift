@@ -408,14 +408,20 @@ public final class LiveCaptionViewModel {
     /// "Something went wrong" on the caption screen: what was running and
     /// what the captions last said goes into the journal, where the next
     /// diagnostics report finds it even if the app is closed first.
-    public func markProblem() {
+    ///
+    /// From a line's hold menu the held line goes in too: she held the line
+    /// she had scrolled back to as wrong, and only the newest four went in,
+    /// so whoever read the report couldn't find it.
+    public func markProblem(heldLine: TranscriptSegment? = nil) {
         let now = Date().timeIntervalSince1970
+        let held = heldLine.map { line in pipeline.segments.last { $0.id == line.id } ?? line }
         let lines = ProblemSnapshot.lines(
             settings: settings,
             activeEngine: pipeline.activeEngineKind,
             input: selectedInput,
             stats: pipeline.stats,
             segments: pipeline.segments,
+            held: held,
             device: Self.deviceStateText,
             utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: now))
         )

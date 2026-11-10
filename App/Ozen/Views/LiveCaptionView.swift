@@ -780,7 +780,7 @@ struct LiveCaptionView: View {
                 }
             }
             Button {
-                viewModel.markProblem()
+                viewModel.markProblem(heldLine: segment)
                 showingProblemMarked = true
             } label: {
                 Label(tr("הכתוביות לא טובות? לסמן בעיה", "Captions not good? Mark a problem"), systemImage: "exclamationmark.bubble")
@@ -813,7 +813,7 @@ struct LiveCaptionView: View {
                 }
             }
             Button(tr("הכתוביות לא טובות? לסמן בעיה", "Captions not good? Mark a problem")) {
-                viewModel.markProblem()
+                viewModel.markProblem(heldLine: segment)
                 showingProblemMarked = true
             }
         }
