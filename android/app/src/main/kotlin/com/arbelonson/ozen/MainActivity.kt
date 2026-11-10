@@ -912,8 +912,8 @@ private fun CaptionScreen(
     onOpenConversation: (UUID) -> Unit,
     onDismissRecent: () -> Unit,
     onDismissBattery: () -> Unit,
-    onClear: () -> Unit,
-    clearWarning: () -> String?,
+    onClear: () -> Boolean,
+    clearWarning: () -> String,
 ) {
     val list = rememberLazyListState()
     // As on the iPhone: the text grows under the fingers and only the
@@ -1254,6 +1254,7 @@ private fun CaptionScreen(
             }
         }
         var askingToClear by rememberSaveable { mutableStateOf(false) }
+        var clearTries by remember { mutableIntStateOf(0) }
         AnimatedVisibility(visible = !hidden) {
             val microphone = state.selectedInput?.let(::inputShortName)?.takeIf { it.length <= 12 } ?: tr("מיקרופון", "Microphone")
             val choose = tr("בחירת מיקרופון", "Choose microphone")
@@ -1294,13 +1295,19 @@ private fun CaptionScreen(
             }
         }
         if (askingToClear) {
-            val warning = remember { clearWarning() }
+            val warning = remember(clearTries) { clearWarning() }
             AlertDialog(
                 onDismissRequest = { askingToClear = false },
                 title = { Text(tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?")) },
-                text = warning?.let { { Text(it) } },
+                text = { Text(warning) },
                 confirmButton = {
-                    TextButton(onClick = { askingToClear = false; onClear() }) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
+                    // A save that fails now asks again, saying the lines won't be kept.
+                    TextButton(
+                        onClick = {
+                            askingToClear = !onClear()
+                            if (askingToClear) clearTries += 1
+                        },
+                    ) { Text(tr("מחיקה", "Delete"), color = MaterialTheme.colorScheme.error) }
                 },
                 dismissButton = { TextButton(onClick = { askingToClear = false }) { Text(tr("ביטול", "Cancel")) } },
             )

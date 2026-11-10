@@ -2250,14 +2250,44 @@ class SettingsScreenDeviceTest {
             compose.onNodeWithText("Clear captions from the screen").performScrollTo().performClick()
             compose.onNodeWithText("Delete all captions from the screen?").assertExists()
             compose.onNodeWithText("won’t be saved", substring = true).assertDoesNotExist()
+            compose.onNodeWithText("They stay saved in History.").assertExists()
             compose.onNodeWithText("Cancel").performClick()
         } finally {
             app.settings.change { it.saveHistory = savingBefore }
         }
 
-        compose.runOnUiThread { compose.activity.setContent { Column { ClearCaptionsRow(saving = true, saveFailing = { true }, onClear = {}) } } }
+        compose.runOnUiThread { compose.activity.setContent { Column { ClearCaptionsRow(saving = true, saveFailing = { true }, onClear = { true }) } } }
         compose.onNodeWithText("Clear captions from the screen").performClick()
         compose.onNodeWithText("Saving to History isn’t working right now, so they won’t be saved.").assertExists()
+    }
+
+    // The question said the lines stay in History; a save failing just then
+    // cleared them anyway, so what was said was gone after all.
+    @Test
+    fun aClearWhoseSaveFailsKeepsTheLinesAndAsksAgainSayingTheyWontBeSaved() {
+        var failing = false
+        var clears = 0
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                Column {
+                    ClearCaptionsRow(saving = true, saveFailing = { failing }, onClear = {
+                        clears += 1
+                        failing = true
+                        clears > 1
+                    })
+                }
+            }
+        }
+        compose.onNodeWithText("Clear captions from the screen").performClick()
+        compose.onNodeWithText("They stay saved in History.").assertExists()
+        compose.onNodeWithText("Delete").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Saving to History isn’t working right now, so they won’t be saved.").assertExists()
+        compose.onNodeWithText("They stay saved in History.").assertDoesNotExist()
+        compose.onNodeWithText("Delete").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Delete all captions from the screen?").assertDoesNotExist()
+        assertEquals(2, clears)
     }
 
     @Test

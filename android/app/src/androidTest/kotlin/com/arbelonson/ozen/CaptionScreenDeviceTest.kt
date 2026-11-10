@@ -2826,6 +2826,26 @@ class CaptionScreenDeviceTest {
     private fun said(text: String, at: Double) =
         TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, startTimestamp = at, lastUpdateTimestamp = at)
 
+    // Without a word when saving worked, some didn't clear mid-lesson for
+    // fear of losing what was said, and others thought it gone for good.
+    @Test
+    fun theClearQuestionSaysTheLinesStayInHistoryWhileSavingWorks() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val savingBefore = app.settings.current.value.saveHistory
+        try {
+            app.settings.change { it.saveHistory = true }
+            assertNull("an earlier save failed, so the question says so instead", app.captions.savedConversations.lastSaveFailure)
+            showLines(finishedLines)
+            compose.onNodeWithText("Clear").performClick()
+            compose.onNodeWithText("Delete all captions from the screen?").assertExists()
+            compose.onNodeWithText("They stay saved in History.").assertExists()
+            compose.onNodeWithText("Cancel").performClick()
+            compose.onNodeWithText("Delete all captions from the screen?").assertDoesNotExist()
+        } finally {
+            app.settings.change { it.saveHistory = savingBefore }
+        }
+    }
+
     private fun showLines(lines: List<TranscriptSegment>, conversation: (Int) -> UUID? = { null }) {
         compose.runOnUiThread {
             CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = lines, conversation = conversation)

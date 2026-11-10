@@ -120,11 +120,11 @@ class HistoryRowsTest {
     }
 
     @Test
-    fun `clearing the captions warns they will not be saved only while History is off or saving is failing`() = Localization.withLanguage(UILanguage.English) {
+    fun `clearing the captions says they stay in History, or that they will not be saved while History is off or saving is failing`() = Localization.withLanguage(UILanguage.English) {
         assertEquals("History is off, so they won’t be saved.", HistoryTexts.clearWarning(saving = false, failing = false))
         assertEquals("History is off, so they won’t be saved.", HistoryTexts.clearWarning(saving = false, failing = true))
         assertEquals("Saving to History isn’t working right now, so they won’t be saved.", HistoryTexts.clearWarning(saving = true, failing = true))
-        assertNull(HistoryTexts.clearWarning(saving = true, failing = false))
+        assertEquals("They stay saved in History.", HistoryTexts.clearWarning(saving = true, failing = false))
     }
 
     @Test
