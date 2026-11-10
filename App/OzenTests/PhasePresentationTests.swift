@@ -173,8 +173,9 @@ struct PhasePresentationTests {
         let refused = covering(.homeServerRejected)
         #expect(unreachable.detail?.contains("אין חיבור למחשב בבית") == true)
         #expect(refused.detail?.contains("קוד הצימוד") == true)
-        #expect(refused.action == .openEngineSettings && refused.tint == .green)
+        #expect(refused.action == .pause && refused.tint == .green)
         #expect(refused.detail?.contains("ממי שהגדיר את הטלפון") == true)
+        #expect(refused.detail?.hasSuffix("הקישו כדי להשהות") == true)
         #expect(!refused.detailFitsInStatus && !unreachable.detailFitsInStatus)
     }
 
@@ -189,7 +190,7 @@ struct PhasePresentationTests {
         #expect(nothing.detail == nil && nothing.detailFitsInStatus)
     }
 
-    @Test("covering for the cloud sends the family to Settings when only they can fix it, and offers nothing to fix for no internet")
+    @Test("covering for the cloud says what only the family can fix, and the button still pauses, as it does for no internet")
     func coveringForCloudActionableReasons() {
         func covering(_ reason: EngineUnavailability.Kind) -> PhasePresentation {
             PhasePresentation(phase: .listening, engine: .whisperKit, interruptedBySystem: false, coveringForCloud: true, coveredEngine: .cloud, coverReason: reason)
@@ -198,12 +199,15 @@ struct PhasePresentationTests {
         let noCredit = covering(.cloudOutOfCredit)
         let offline = covering(.noInternet)
         #expect(noKey.detail?.contains("OpenRouter") == false && noKey.detail?.contains("ממי שהגדיר את הטלפון") == true)
-        #expect(noKey.action == .openEngineSettings && noKey.tint == .green)
+        #expect(noKey.action == .pause && noKey.tint == .green)
         #expect(noCredit.detail?.contains("הקרדיט") == true)
-        #expect(noCredit.action == .openEngineSettings && noCredit.tint == .green)
+        #expect(noCredit.action == .pause && noCredit.tint == .green)
         let wrongLanguage = covering(.cloudLanguageNotCovered)
         #expect(wrongLanguage.detail?.contains("שירות אחר") == true)
-        #expect(wrongLanguage.action == .openEngineSettings && wrongLanguage.tint == .green)
+        #expect(wrongLanguage.action == .pause && wrongLanguage.tint == .green)
+        for shown in [noKey, noCredit, wrongLanguage] {
+            #expect(shown.detail?.hasSuffix("הקישו כדי להשהות") == true)
+        }
         // No internet still just says so and lets her keep going: nothing
         // in Settings would fix a dropped connection.
         #expect(offline.action == .pause)
