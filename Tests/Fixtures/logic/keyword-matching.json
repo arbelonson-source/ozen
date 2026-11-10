@@ -1,0 +1,952 @@
+{
+ "about": "Cases for name and word alert matching (KeywordAlertMatcher), run by both OzenKitTests (Swift) and core KeywordMatchingSharedCasesTest (Kotlin). alerts: the saved alerts (isEnabled defaults to true). text: one caption line. live: matched as live text, whose last word may still be cut off. matches: in order, each found alert's phrase, the text as it appeared, and the index of its first word. knownDifference: skipped on both sides with the note printed. note: what the case is about.",
+ "cases": [
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "סבתא בואי לאכול",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "סבתא",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "תגידו לסבתא שהגענו",
+   "note": "attached prefix",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "לסבתא",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "והסבתא שלי כבר כאן",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "והסבתא",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "מסבתא קיבלנו מתנה",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "מסבתא",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "כשסבתא באה הביתה",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "כשסבתא",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "סָבְתָא בואי",
+   "note": "niqqud",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "סָבְתָא",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "הוא הלך של־סבתא",
+   "note": "maqaf: one mention is one match, not also 'shel savta' glued",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "סבתא",
+     "wordIndex": 3
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "נלך לבית של סבתא",
+   "note": "Grandma's: one mention, one match",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "סבתא",
+     "wordIndex": 3
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "סב תא בואי",
+   "note": "a name the recognizer split in two still matches",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "סב תא",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "סבתא! (סבתא)",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "סבתא",
+     "wordIndex": 0
+    },
+    {
+     "phrase": "סבתא",
+     "matchedText": "סבתא",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "סבתא סבתא",
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "סבתא",
+     "wordIndex": 0
+    },
+    {
+     "phrase": "סבתא",
+     "matchedText": "סבתא",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    },
+    {
+     "phrase": "דנה"
+    }
+   ],
+   "text": "דנה וסבתא באות",
+   "matches": [
+    {
+     "phrase": "דנה",
+     "matchedText": "דנה",
+     "wordIndex": 0
+    },
+    {
+     "phrase": "סבתא",
+     "matchedText": "וסבתא",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "דנה",
+     "isEnabled": false
+    }
+   ],
+   "text": "דנה בואי",
+   "note": "a switched-off alert",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "דנה"
+    }
+   ],
+   "text": "דנה, את שומעת?",
+   "matches": [
+    {
+     "phrase": "דנה",
+     "matchedText": "דנה",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "דנה"
+    }
+   ],
+   "text": "דנהלה בואי",
+   "note": "nickname",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "אמא"
+    }
+   ],
+   "text": "אמאל׳ה איפה את",
+   "matches": [
+    {
+     "phrase": "אמא",
+     "matchedText": "אמאל׳ה",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "אמא"
+    }
+   ],
+   "text": "אימא בואי",
+   "matches": [
+    {
+     "phrase": "אמא",
+     "matchedText": "אימא",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "בר"
+    }
+   ],
+   "text": "כבר הגענו",
+   "note": "a name inside another word",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "בר"
+    }
+   ],
+   "text": "בר בוא הנה",
+   "matches": [
+    {
+     "phrase": "בר",
+     "matchedText": "בר",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "ליאור"
+    }
+   ],
+   "text": "תן לי אור",
+   "note": "split into other words",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "ליאור"
+    }
+   ],
+   "text": "ליאור בוא",
+   "matches": [
+    {
+     "phrase": "ליאור",
+     "matchedText": "ליאור",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "שני"
+    }
+   ],
+   "text": "פעם שנייה אמרתי",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "שני"
+    }
+   ],
+   "text": "שני בואי",
+   "matches": [
+    {
+     "phrase": "שני",
+     "matchedText": "שני",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "נועם"
+    }
+   ],
+   "text": "הוא דיבר בנועם",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "אדם"
+    }
+   ],
+   "text": "כל אדם יודע",
+   "matches": [
+    {
+     "phrase": "אדם",
+     "matchedText": "אדם",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "רופא"
+    }
+   ],
+   "text": "הרופא אמר לבוא מחר",
+   "matches": [
+    {
+     "phrase": "רופא",
+     "matchedText": "הרופא",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "תרופה"
+    }
+   ],
+   "text": "קחי את התרופות",
+   "matches": [
+    {
+     "phrase": "תרופה",
+     "matchedText": "התרופות",
+     "wordIndex": 2
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "קופת חולים"
+    }
+   ],
+   "text": "התקשרו מקופת חולים",
+   "matches": [
+    {
+     "phrase": "קופת חולים",
+     "matchedText": "מקופת חולים",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "מכבי"
+    }
+   ],
+   "text": "ממכבי התקשרו",
+   "matches": [
+    {
+     "phrase": "מכבי",
+     "matchedText": "ממכבי",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": " "
+    }
+   ],
+   "text": "סבתא בואי",
+   "note": "a blank alert",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "תגידו לסבת",
+   "live": true,
+   "note": "live: a word still being said",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "תגידו לסבתא",
+   "live": true,
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "לסבתא",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "תגידו לסבתא ",
+   "live": true,
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "לסבתא",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "סבתא"
+    }
+   ],
+   "text": "סבתא, בואי",
+   "live": true,
+   "matches": [
+    {
+     "phrase": "סבתא",
+     "matchedText": "סבתא",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Dana"
+    }
+   ],
+   "text": "Dana, are you coming?",
+   "matches": [
+    {
+     "phrase": "Dana",
+     "matchedText": "Dana",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Dana"
+    }
+   ],
+   "text": "dana's bag is here",
+   "matches": [
+    {
+     "phrase": "Dana",
+     "matchedText": "dana's",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Dana"
+    }
+   ],
+   "text": "Danaher called",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Mom"
+    }
+   ],
+   "text": "MOM! come here",
+   "matches": [
+    {
+     "phrase": "Mom",
+     "matchedText": "MOM",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "José"
+    }
+   ],
+   "text": "jose come here",
+   "note": "accents",
+   "matches": [
+    {
+     "phrase": "José",
+     "matchedText": "jose",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Zoë"
+    }
+   ],
+   "text": "Zoe is late",
+   "matches": [
+    {
+     "phrase": "Zoë",
+     "matchedText": "Zoe",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "New York"
+    }
+   ],
+   "text": "we flew to new york today",
+   "matches": [
+    {
+     "phrase": "New York",
+     "matchedText": "new york",
+     "wordIndex": 3
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Lior"
+    }
+   ],
+   "text": "give me li or that",
+   "matches": [
+    {
+     "phrase": "Lior",
+     "matchedText": "li or",
+     "wordIndex": 2
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "doctor"
+    }
+   ],
+   "text": "the doctors said",
+   "matches": [
+    {
+     "phrase": "doctor",
+     "matchedText": "doctors",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "علي"
+    }
+   ],
+   "text": "يا علي تعال",
+   "matches": [
+    {
+     "phrase": "علي",
+     "matchedText": "علي",
+     "wordIndex": 1
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "علي"
+    }
+   ],
+   "text": "على الطاولة",
+   "note": "على means on",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "أحمد"
+    }
+   ],
+   "text": "احمد تعال",
+   "note": "hamza",
+   "matches": [
+    {
+     "phrase": "أحمد",
+     "matchedText": "احمد",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "أحمد"
+    }
+   ],
+   "text": "وأحمد ولأحمد وبأحمد",
+   "matches": [
+    {
+     "phrase": "أحمد",
+     "matchedText": "وأحمد",
+     "wordIndex": 0
+    },
+    {
+     "phrase": "أحمد",
+     "matchedText": "ولأحمد",
+     "wordIndex": 1
+    },
+    {
+     "phrase": "أحمد",
+     "matchedText": "وبأحمد",
+     "wordIndex": 2
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "سارة"
+    }
+   ],
+   "text": "ساره تعالي",
+   "note": "ta marbuta",
+   "matches": [
+    {
+     "phrase": "سارة",
+     "matchedText": "ساره",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "مصطفى"
+    }
+   ],
+   "text": "مصطفي هنا",
+   "note": "alef maqsura",
+   "matches": [
+    {
+     "phrase": "مصطفى",
+     "matchedText": "مصطفي",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "طبيب"
+    }
+   ],
+   "text": "الطبيب قال",
+   "matches": [
+    {
+     "phrase": "طبيب",
+     "matchedText": "الطبيب",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "طبيب"
+    }
+   ],
+   "text": "وكالطبيب تماما",
+   "matches": [
+    {
+     "phrase": "طبيب",
+     "matchedText": "وكالطبيب",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "الطبيب"
+    }
+   ],
+   "text": "والطبيب قال",
+   "matches": [
+    {
+     "phrase": "الطبيب",
+     "matchedText": "والطبيب",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Алёна"
+    }
+   ],
+   "text": "Алена иди сюда",
+   "note": "ё",
+   "matches": [
+    {
+     "phrase": "Алёна",
+     "matchedText": "Алена",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Саша"
+    }
+   ],
+   "text": "Саше скажи",
+   "matches": [
+    {
+     "phrase": "Саша",
+     "matchedText": "Саше",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Саша"
+    }
+   ],
+   "text": "Сашу позови",
+   "matches": [
+    {
+     "phrase": "Саша",
+     "matchedText": "Сашу",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Саша"
+    }
+   ],
+   "text": "Сашенька иди",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "Олена"
+    }
+   ],
+   "text": "Олено, ходи сюди",
+   "matches": [
+    {
+     "phrase": "Олена",
+     "matchedText": "Олено",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "мама"
+    }
+   ],
+   "text": "мамочка пришла",
+   "matches": []
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "врач"
+    }
+   ],
+   "text": "врачу позвони",
+   "matches": [
+    {
+     "phrase": "врач",
+     "matchedText": "врачу",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "አበበ"
+    }
+   ],
+   "text": "ለአበበ ንገረው",
+   "matches": [
+    {
+     "phrase": "አበበ",
+     "matchedText": "ለአበበ",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "አበበ"
+    }
+   ],
+   "text": "አበበ ና",
+   "matches": [
+    {
+     "phrase": "አበበ",
+     "matchedText": "አበበ",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "小明"
+    }
+   ],
+   "text": "小明你好",
+   "matches": [
+    {
+     "phrase": "小明",
+     "matchedText": "小明",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "医生"
+    }
+   ],
+   "text": "我去看医生了",
+   "matches": [
+    {
+     "phrase": "医生",
+     "matchedText": "医生",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "राहुल"
+    }
+   ],
+   "text": "राहुल यहाँ आओ",
+   "matches": [
+    {
+     "phrase": "राहुल",
+     "matchedText": "राहुल",
+     "wordIndex": 0
+    }
+   ]
+  },
+  {
+   "alerts": [
+    {
+     "phrase": "दवा"
+    }
+   ],
+   "text": "दवाई ले लो",
+   "matches": []
+  }
+ ]
+}

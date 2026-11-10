@@ -684,8 +684,14 @@ public struct KeywordAlertMatcher: Sendable, Equatable {
                     sequence += 1
                 }
             } else if phraseWords.count == 1, joinedPhrase.count >= 4 {
+                // A pair is glued only when neither word was the name by
+                // itself: "shel savta" (Grandma's) also glued into a
+                // she-le-savta prefix chain, so one mention was two matches,
+                // two notifications and two buzzes on a locked phone.
+                let alone = Set(unordered.filter { $0.0.alertID == alert.id }.map { $0.0.wordIndex })
                 for index in normalizedWords.indices.dropLast()
-                where !normalizedWords[index].isEmpty && !normalizedWords[index + 1].isEmpty
+                where !alone.contains(index) && !alone.contains(index + 1)
+                    && !normalizedWords[index].isEmpty && !normalizedWords[index + 1].isEmpty
                     && !HebrewText.wordsThatTakeNoName.contains(normalizedWords[index])
                     && !HebrewText.wordsThatNeverEndAName.contains(normalizedWords[index + 1])
                     && HebrewText.stripAttachedPrefix(
