@@ -100,6 +100,7 @@ import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.SoundEvent
 import com.arbelonson.ozen.core.SoundEventCatalog
+import com.arbelonson.ozen.core.SpeakerColorSlots
 import com.arbelonson.ozen.core.SpeakerProfile
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSegment
@@ -114,6 +115,7 @@ import kotlin.math.abs
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -2877,8 +2879,11 @@ class CaptionScreenDeviceTest {
             val label = dana.onFirst().fetchSemanticsNode().boundsInRoot
             val first = lineText("Good morning").fetchSemanticsNode().boundsInRoot
             assertTrue("label $label, line $first", label.bottom <= first.top + 1f)
-            assertEquals(SpeakerColour.of(0, "Dana", light = false), labelColour("Dana"))
-            assertEquals(SpeakerColour.of(1, "Speaker 2", light = false), labelColour("Speaker 2"))
+            // Each person on screen gets a colour of their own (see SpeakerColorSlots).
+            val slots = SpeakerColorSlots.of(listOf(0 to "Dana", 1 to "Speaker 2"))
+            assertEquals(SpeakerColour.of(0, "Dana", light = false, slots.slot(0, "Dana")), labelColour("Dana"))
+            assertEquals(SpeakerColour.of(1, "Speaker 2", light = false, slots.slot(1, "Speaker 2")), labelColour("Speaker 2"))
+            assertNotEquals(labelColour("Dana"), labelColour("Speaker 2"))
             lineText("How did you sleep").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Dana: How did you sleep")))
             lineText("Fine thanks").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Speaker 2: Fine thanks")))
 
