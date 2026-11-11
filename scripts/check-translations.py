@@ -616,6 +616,43 @@ def check_system_names_in_help(keys):
     return problems
 
 
+# What iOS 26 calls Siri's wake phrase and the Shortcuts app in each language,
+# from Apple's iPhone User Guide in that language (iOS has no Amharic, so an
+# Amharic reader sees the English names).
+APPLE_NAMES = {
+    "Hey Siri": {
+        "hebrew": "היי Siri", "amharic": "Hey Siri", "arabic": "يا Siri", "chineseSimplified": "嘿 Siri",
+        "french": "Dis Siri", "german": "Hey Siri", "hindi": "Hey Siri", "portuguese": "Ei Siri",
+        "russian": "Привет, Siri", "spanish": "Oye Siri", "ukrainian": "Hey Siri",
+    },
+    "Shortcuts app": {
+        "hebrew": "קיצורים", "amharic": "Shortcuts", "arabic": "الاختصارات", "chineseSimplified": "快捷指令",
+        "french": "Raccourcis", "german": "Kurzbefehle", "hindi": "शॉर्टकट", "portuguese": "Atalhos",
+        "russian": "Быстрые команды", "spanish": "Atajos", "ukrainian": "Швидкі команди",
+    },
+}
+
+
+def check_apple_names(keys):
+    """Siri's wake phrase and the Shortcuts app read as iOS writes them in
+    each language, and Siri keeps its Latin letters everywhere, or the
+    reader is told to say or open something the phone never shows."""
+    table = json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))
+    languages = {"hebrew": hebrew_texts()} | {language: table[language] for language in TRANSLATED_LANGUAGES}
+    problems = []
+    for key in sorted(keys):
+        for english, names in APPLE_NAMES.items():
+            if english not in key:
+                continue
+            for language, entries in languages.items():
+                if key in entries and names[language] not in entries[key]:
+                    problems.append(f"{language}: {key[:50]!r} doesn't say {names[language]!r}, as iOS does there: {entries[key]!r}")
+        for language, entries in languages.items():
+            if key in entries and entries[key].count("Siri") < key.count("Siri"):
+                problems.append(f"{language}: {key[:50]!r} doesn't write Siri as iOS does, in Latin letters: {entries[key]!r}")
+    return problems
+
+
 def main():
     list_untranslated = "--untranslated" in sys.argv
     skip_table = "--no-table" in sys.argv
@@ -644,6 +681,7 @@ def main():
         all_problems += check_quoted_labels(keys)
         all_problems += check_siri_examples(keys)
         all_problems += check_system_names_in_help(keys)
+        all_problems += check_apple_names(keys)
     for problem in all_problems:
         print(problem)
     sys.exit(1 if all_problems else 0)

@@ -1393,21 +1393,21 @@ struct SettingsView: View {
                 SiriTipView(intent: StartCaptionsIntent())
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text(tr("״היי סירי, התחל כתוביות באוזן״", "Hey Siri, start captions in Ozen"))
-                Text(tr("״היי סירי, עצור כתוביות באוזן״", "Hey Siri, stop captions in Ozen"))
-                Text(tr("״היי סירי, תגיד באוזן״ (סירי תשאל מה להגיד)", "Hey Siri, say with Ozen (Siri then asks what to say)"))
+                Text(tr("״היי Siri, התחל כתוביות באוזן״", "Hey Siri, start captions in Ozen"))
+                Text(tr("״היי Siri, עצור כתוביות באוזן״", "Hey Siri, stop captions in Ozen"))
+                Text(tr("״היי Siri, תגיד באוזן״ (Siri תשאל מה להגיד)", "Hey Siri, say with Ozen (Siri then asks what to say)"))
             }
             .font(.callout)
             ShortcutsLink()
         } header: {
-            Text(tr("סירי וקיצורי דרך", "Siri and shortcuts"))
+            Text(tr("Siri וקיצורים", "Siri and shortcuts"))
         } footer: {
             if #available(iOS 18.0, *) {
                 // The Control Center button (StartCaptionsControl) is only
                 // found by someone who knows to look for it.
-                Text(tr("הפקודות עובדות גם ממסך הנעילה, וגם באוטומציות של אפליקציית קיצורי דרך. יש גם כפתור ״התחלת כתוביות״ למרכז הבקרה או לתחתית מסך הנעילה, במקום הפנס או המצלמה: לחיצה ארוכה על מקום ריק במרכז הבקרה, ואז חיפוש ״Ozen״.", "The commands also work from the lock screen, and in automations in the Shortcuts app. There’s also a “Start captions” button for Control Center or the bottom of the lock screen, instead of the flashlight or camera: long-press an empty spot in Control Center, then search for “Ozen”."))
+                Text(tr("הפקודות עובדות גם ממסך הנעילה, וגם באוטומציות של אפליקציית ״קיצורים״. יש גם כפתור ״התחלת כתוביות״ למרכז הבקרה או לתחתית מסך הנעילה, במקום הפנס או המצלמה: לחיצה ארוכה על מקום ריק במרכז הבקרה, ואז חיפוש ״Ozen״.", "The commands also work from the lock screen, and in automations in the Shortcuts app. There’s also a “Start captions” button for Control Center or the bottom of the lock screen, instead of the flashlight or camera: long-press an empty spot in Control Center, then search for “Ozen”."))
             } else {
-                Text(tr("הפקודות עובדות גם ממסך הנעילה, וגם באוטומציות של אפליקציית קיצורי דרך.", "The commands also work from the lock screen, and in automations in the Shortcuts app."))
+                Text(tr("הפקודות עובדות גם ממסך הנעילה, וגם באוטומציות של אפליקציית ״קיצורים״.", "The commands also work from the lock screen, and in automations in the Shortcuts app."))
             }
         }
     }
