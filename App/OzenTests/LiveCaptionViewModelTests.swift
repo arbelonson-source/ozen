@@ -2977,6 +2977,7 @@ struct LiveCaptionViewModelSavingTroubleTests {
     @Test("a settings save that can't reach the disk puts the banner up, and a working save takes it down")
     func settingsSaveFailure() throws {
         let blocker = try blockedFolder()
+        defer { try? FileManager.default.removeItem(at: blocker) }
         let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in FakeEngine() }, embedder: FakeEmbedder())
         let viewModel = LiveCaptionViewModel(
             settingsStore: SettingsStore(fileURL: blocker.appendingPathComponent("settings.json")),
@@ -3034,6 +3035,7 @@ struct LiveCaptionViewModelSavingTroubleTests {
     @Test("a conversation that can't be saved puts the banner up, and isn't offered for reading back")
     func historySaveFailure() async throws {
         let blocker = try blockedFolder()
+        defer { try? FileManager.default.removeItem(at: blocker) }
         let engine = FakeEngine()
         let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
         let viewModel = LiveCaptionViewModel(
@@ -3054,6 +3056,7 @@ struct LiveCaptionViewModelSavingTroubleTests {
     @Test("Clear after 'they stay saved' saves first, and clears nothing when that save fails")
     func clearKeepingHistoryClearsOnlyWhenSaved() async throws {
         let blocker = try blockedFolder()
+        defer { try? FileManager.default.removeItem(at: blocker) }
         let engine = FakeEngine()
         let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
         let viewModel = LiveCaptionViewModel(
@@ -3092,6 +3095,7 @@ struct LiveCaptionViewModelSavingTroubleTests {
     @Test("Delete keeps to what the clear question said when it opened, even after a save failed while it was up, as on Android")
     func clearKeepsToItsQuestion() async throws {
         let blocker = try blockedFolder()
+        defer { try? FileManager.default.removeItem(at: blocker) }
         let engine = FakeEngine()
         let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
         let viewModel = LiveCaptionViewModel(
@@ -3193,6 +3197,7 @@ struct LiveCaptionViewModelSavingTroubleTests {
     @Test("deleting every conversation takes the saving banner down at once, not at the next save")
     func deleteAllTakesTheBannerDown() async throws {
         let blocker = try blockedFolder()
+        defer { try? FileManager.default.removeItem(at: blocker) }
         let engine = FakeEngine()
         let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
         let viewModel = LiveCaptionViewModel(
@@ -3214,6 +3219,7 @@ struct LiveCaptionViewModelSavingTroubleTests {
     @Test("an autosave that fails in the background puts the banner up by itself, without waiting for the next save")
     func backgroundSaveFailure() async throws {
         let blocker = try blockedFolder()
+        defer { try? FileManager.default.removeItem(at: blocker) }
         let engine = FakeEngine()
         let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
         let viewModel = LiveCaptionViewModel(

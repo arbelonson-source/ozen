@@ -17,11 +17,14 @@ struct ClearQuestionTests {
         #expect(!ClearQuestion.asked(saving: false, failing: true, in: .english).keepsHistory)
     }
 
-    @Test("its words come in every interface language")
+    @Test("all three of its answers come in every interface language")
     func translated() {
-        for language in UILanguage.allCases where language != .english {
-            let text = ClearQuestion.asked(saving: true, failing: false, in: language).text
-            #expect(text != "They stay saved in Settings, under “Previous conversations”.", "\(language)")
+        for (saving, failing) in [(true, false), (true, true), (false, false)] {
+            let english = ClearQuestion.asked(saving: saving, failing: failing, in: .english).text
+            for language in UILanguage.allCases where language != .english {
+                let text = HebrewText.removingDirectionMarks(ClearQuestion.asked(saving: saving, failing: failing, in: language).text)
+                #expect(text != english, "\(language), saving \(saving), failing \(failing)")
+            }
         }
     }
 }

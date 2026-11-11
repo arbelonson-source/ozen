@@ -22,6 +22,7 @@ struct SettingsView: View {
     /// and Delete keeps to it (see `ClearQuestion`). It used to say nothing
     /// and clear even when the save made on clearing failed.
     @State private var clearQuestion: ClearQuestion?
+    @State private var isOnScreen = false
     @State private var renamingProfile: SpeakerProfile?
     @State private var renameText = ""
     /// A saved speaker swiped away, waiting for a yes: getting them back
@@ -174,7 +175,11 @@ struct SettingsView: View {
             .animation(reduceMotion ? nil : .default, value: viewModel.quietHours.isEnabled)
             .modifier(ScrollsToFocus(focus: focus, proxy: proxy))
             }
-            .onDisappear(perform: saveUnsavedEntries)
+            .onAppear { isOnScreen = true }
+            .onDisappear {
+                isOnScreen = false
+                saveUnsavedEntries()
+            }
             // Swiped down, a pasted key was dropped as well; Close asks.
             .interactiveDismissDisabled(hasUnsavedCloudKey)
             .navigationTitle(tr("הגדרות", "Settings"))
@@ -240,8 +245,12 @@ struct SettingsView: View {
             ) { question in
                 Button(tr("מחיקה", "Delete"), role: .destructive) {
                     guard !viewModel.clear(after: question) else { return }
+                    // Asked again with what is true now, unless the person
+                    // has moved on meanwhile: opened History in those
+                    // 400 ms, the question came up over it.
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(400))
+                        guard isOnScreen else { return }
                         clearQuestion = viewModel.clearQuestion
                     }
                 }
