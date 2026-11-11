@@ -11,11 +11,12 @@ object PhoneNumbers {
 
     fun matches(text: String): List<Match> {
         val found = ArrayList<Match>()
-        val services = servicePattern.matcher(text)
+        val read = asciiDigits(text)
+        val services = servicePattern.matcher(read)
         while (services.find()) {
             found.add(Match(services.start(), services.end(), digitsOf(services.group())))
         }
-        val phones = pattern.matcher(text)
+        val phones = pattern.matcher(read)
         while (phones.find()) {
             val written = phones.group()
             val digits = digitsOf(written)
@@ -26,6 +27,16 @@ object PhoneNumbers {
             }
         }
         return found.sortedBy { it.start }
+    }
+
+    /**
+     * [text] with every digit of another script (Arabic-Indic, Persian,
+     * Devanagari, full-width) written as 0-9, as on the iPhone, so a number
+     * said in Arabic is found whatever its first digits look like. Each such
+     * digit is one UTF-16 unit either way, so a match's place is the same in [text].
+     */
+    internal fun asciiDigits(text: String): String = buildString(text.length) {
+        for (c in text) append(if (Character.getType(c) == Character.DECIMAL_DIGIT_NUMBER.toInt()) '0' + Character.digit(c, 10) else c)
     }
 
     private fun digitsOf(written: String): String = written.codePoints().map { Character.digit(it, 10) }.filter { it >= 0 }.toArray().joinToString("")
