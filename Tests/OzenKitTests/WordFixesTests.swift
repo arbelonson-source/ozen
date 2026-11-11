@@ -90,6 +90,16 @@ struct WordFixesTests {
         #expect(WordFixes.apply([fix("mail", "post")], to: "my e-mail") == "my e-mail")
     }
 
+    @Test("heard words may be joined by one maqaf, a different fix from the same words with a space")
+    func heardWordsJoinedByAMaqaf() {
+        let maqaf = fix("תל\u{05BE}אביב", "Tel Aviv")
+        let space = fix("תל אביב", "TLV")
+        #expect(WordFixes.normalized([maqaf, space]) == [maqaf, space])
+        for heard in ["תל \u{05BE}אביב", "תל\u{05BE}\u{05BE}אביב", "א\u{05BE}ב\u{05BE}ג\u{05BE}ד\u{05BE}ה"] {
+            #expect(WordFixes.refusal(fix(heard, "x"), to: []) == .heardWords, "\(heard)")
+        }
+    }
+
     @Test("a Greek fix finds its word in capitals or small letters, final sigma and all")
     func greekFinalSigmaMatchesCapitals() {
         #expect(WordFixes.apply([fix("ΛΟΓΟΣ", "Logos")], to: "ο λογος μας") == "ο Logos μας")

@@ -27,7 +27,7 @@ public enum WordFixes {
             let written = clip(raw.written.trimmingCharacters(in: .whitespacesAndNewlines))
             let key = key(heard)
             guard !heard.isEmpty, !written.isEmpty, key != Self.key(written) else { continue }
-            guard heard.split(separator: " ").count <= maximumPhraseWords, hasCleanJoints(heard), seen.insert(key).inserted else { continue }
+            guard Token.split(Array(heard.unicodeScalars)).count <= maximumPhraseWords, hasCleanJoints(heard), seen.insert(key).inserted else { continue }
             result.append(WordFix(heard: heard, written: written))
             if result.count == maximumFixes { break }
         }
@@ -84,14 +84,18 @@ public enum WordFixes {
         return normalized([fix] + carried)
     }
 
+    /// Heard words are joined by one space or one maqaf, with no
+    /// punctuation on either side of it.
     private static func hasCleanJoints(_ heard: String) -> Bool {
-        let words = heard.split(separator: " ").map { Token.split(Array($0.unicodeScalars)) }.compactMap(\.first)
+        let words = Token.split(Array(heard.unicodeScalars))
         for (index, word) in words.enumerated() {
             if index > 0, word.coreStart != 0 { return false }
-            if index < words.count - 1, word.coreEnd != word.scalars.count { return false }
+            if index < words.count - 1, word.coreEnd != word.scalars.count || !plainJoints.contains(word.gap) { return false }
         }
         return true
     }
+
+    private static let plainJoints: [[Unicode.Scalar]] = [[" "], ["\u{05BE}"]]
 
     public static func canJoin(_ left: String, _ right: String) -> Bool {
         guard let end = left.unicodeScalars.last, let start = right.unicodeScalars.first else { return false }
@@ -113,21 +117,32 @@ public enum WordFixes {
     private static func rewrite(_ fixes: [WordFix], _ text: String) -> Rewrite {
         guard !fixes.isEmpty, !text.isEmpty else { return Rewrite(text: text, tokens: [], spans: []) }
         let prepared = normalized(fixes).compactMap { fix -> Prepared? in
-            let words = fix.heard.split(separator: " ").map { key(String($0)) }
+            let words = Token.split(Array(fix.heard.unicodeScalars))
             guard (1...maximumPhraseWords).contains(words.count) else { return nil }
-            return Prepared(words: words, written: fix.written)
+            return Prepared(words: words.map { key(String(String.UnicodeScalarView($0.scalars))) }, joints: words.dropLast().map(\.gap), written: fix.written)
         }.sorted { $0.words.count > $1.words.count }
         let han = prepared.filter { $0.words.count == 1 && isHan($0.words[0]) }
             .map { (heard: Array($0.words[0].unicodeScalars), written: $0.written) }
             .sorted { $0.heard.count > $1.heard.count }
         guard !prepared.isEmpty else { return Rewrite(text: text, tokens: [], spans: []) }
-        let tokens = Token.split(Array(text.unicodeScalars))
+        let all = Array(text.unicodeScalars)
+        let tokens = Token.split(all)
+        var starts: [Int] = []
+        var start = 0
+        for token in tokens {
+            starts.append(start)
+            start += token.scalars.count + token.gap.count
+        }
         var spans: [(first: Int, last: Int, replacement: String)] = []
         var out = String.UnicodeScalarView()
         var index = 0
         var cursor = 0
         while index < tokens.count {
             if let hit = firstMatch(prepared, tokens, at: index) {
+                if readsAlready(all, from: starts[index] + hit.prefixEnd, hit.written) {
+                    index += hit.count
+                    continue
+                }
                 out.append(contentsOf: tokens[cursor..<index].isEmpty ? [] : slice(tokens, cursor, index))
                 let first = tokens[index]
                 let last = tokens[index + hit.count - 1]
@@ -221,7 +236,30 @@ public enum WordFixes {
 
     private struct Prepared {
         let words: [String]
+        let joints: [[Unicode.Scalar]]
         let written: String
+    }
+
+    /// Whether `text` from `start` already reads `written`, case, niqqud and
+    /// a maqaf against a hyphen aside, up to the end of a word: a fix that
+    /// only adds words ("dana" written "Dana Cohen") would otherwise write
+    /// them twice on a line that has them.
+    private static func readsAlready(_ text: [Unicode.Scalar], from start: Int, _ written: String) -> Bool {
+        var at = start
+        func skipMarks() {
+            while at < text.count, Token.isNiqqud(text[at]) { at += 1 }
+        }
+        for scalar in written.unicodeScalars where !Token.isNiqqud(scalar) {
+            skipMarks()
+            guard at < text.count, (isDash(scalar) && isDash(text[at])) || folded(String(scalar)) == folded(String(text[at])) else { return false }
+            at += 1
+        }
+        skipMarks()
+        return at == text.count || !Token.isCore(text[at])
+    }
+
+    private static func isDash(_ scalar: Unicode.Scalar) -> Bool {
+        [0x2D, 0x05BE, 0x2010, 0x2011].contains(scalar.value)
     }
 
     private struct Hit {
@@ -276,7 +314,7 @@ public enum WordFixes {
         guard index + count <= tokens.count else { return nil }
         for offset in 0..<count {
             let token = tokens[index + offset]
-            if offset > 0, tokens[index + offset - 1].gap != [" "] { return nil }
+            if offset > 0, tokens[index + offset - 1].gap != fix.joints[offset - 1] { return nil }
             if offset > 0, token.coreStart != 0 { return nil }
             if offset < count - 1, token.coreEnd != token.scalars.count { return nil }
         }
@@ -302,8 +340,10 @@ public enum WordFixes {
         String(text.prefix(maximumLength)).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// Words split at spaces only, so two words and the same two joined by
+    /// a maqaf stay different fixes.
     static func key(_ text: String) -> String {
-        let core = Token.split(Array(text.unicodeScalars)).map(\.key).joined(separator: " ")
+        let core = Token.split(Array(text.unicodeScalars), atMaqaf: false).map(\.key).joined(separator: " ")
         return core.isEmpty ? folded(HebrewText.stripNiqqud(text)) : core
     }
 
@@ -347,14 +387,19 @@ public enum WordFixes {
             scalar.properties.isAlphabetic || scalar.properties.numericType != nil || isNiqqud(scalar)
         }
 
-        static func split(_ all: [Unicode.Scalar]) -> [Token] {
+        /// Words between spaces and, unless `atMaqaf` is false, a maqaf, as
+        /// on Android: two words joined by a maqaf each take their own fixes.
+        static func split(_ all: [Unicode.Scalar], atMaqaf: Bool = true) -> [Token] {
+            func isBreak(_ scalar: Unicode.Scalar) -> Bool {
+                scalar.properties.isWhitespace || (atMaqaf && scalar.value == 0x05BE)
+            }
             var tokens: [Token] = []
             var position = 0
             while position < all.count {
                 var end = position
-                while end < all.count, !all[end].properties.isWhitespace { end += 1 }
+                while end < all.count, !isBreak(all[end]) { end += 1 }
                 var gapEnd = end
-                while gapEnd < all.count, all[gapEnd].properties.isWhitespace { gapEnd += 1 }
+                while gapEnd < all.count, isBreak(all[gapEnd]) { gapEnd += 1 }
                 let word = Array(all[position..<end])
                 let start = word.firstIndex(where: isCore) ?? word.count
                 let stop = (word.lastIndex(where: isCore).map { $0 + 1 }) ?? word.count
