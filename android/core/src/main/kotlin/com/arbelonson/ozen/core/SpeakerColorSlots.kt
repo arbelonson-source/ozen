@@ -1,13 +1,5 @@
 package com.arbelonson.ozen.core
 
-/**
- * One colour slot per person on a screen, handed out in order of first
- * appearance, so two people talking never share a colour while up to
- * [SLOT_COUNT] are present; the same as the iPhone's SpeakerColorSlots. A
- * colour from a name's hash alone gave Mom and Dad the same one. A saved
- * name keeps the slot its name hashes to when it is free, a stranger takes
- * the first free one.
- */
 class SpeakerColorSlots(speakers: List<Speaker>) {
     sealed interface Speaker {
         data class Named(val name: String) : Speaker
@@ -39,7 +31,6 @@ class SpeakerColorSlots(speakers: List<Speaker>) {
     companion object {
         const val SLOT_COUNT = 5
 
-        /** The people of a screen or a conversation, each as its voice and the name it was saved under. */
         fun of(people: List<Pair<Int?, String?>>): SpeakerColorSlots =
             SpeakerColorSlots(people.mapNotNull { (clusterID, name) -> speaker(clusterID, name) })
 
@@ -48,7 +39,6 @@ class SpeakerColorSlots(speakers: List<Speaker>) {
             return clusterID?.let { Speaker.Stranger(it) }
         }
 
-        /** Outside any screen: a name by its hash, a stranger by its voice number. */
         fun aloneSlot(speaker: Speaker): Int = when (speaker) {
             is Speaker.Named -> stableIndex(speaker.name, SLOT_COUNT)
             is Speaker.Stranger -> Math.floorMod(speaker.id, SLOT_COUNT)
@@ -69,7 +59,6 @@ class SpeakerColorSlots(speakers: List<Speaker>) {
             }
         }
 
-        /** FNV-1a over the name's UTF-8 bytes, as on the iPhone, so a name gets the same colour on both phones. */
         private fun stableIndex(name: String, count: Int): Int {
             var hash = -3_750_763_034_362_895_579L
             for (byte in name.toByteArray(Charsets.UTF_8)) {
