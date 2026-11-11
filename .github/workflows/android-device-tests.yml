@@ -35,7 +35,9 @@ env:
     com.arbelonson.ozen.CaptionScreenDeviceTest#theStatusShowsWhenItIsBusyAndHowFarADownloadIsAndIsNoButtonWhenATapWouldDoNothing,
     com.arbelonson.ozen.CaptionScreenDeviceTest#aStoppedPausedOrOffStatusShowsItsIconInItsOwnColourWhileListeningShowsOnlyTheLiveDot,
     com.arbelonson.ozen.CaptionScreenDeviceTest#aWordTheCaptionsGotWrongGoesFirstInTheWordListFromTheLinesHoldMenuOrTheScreenReader,
-    com.arbelonson.ozen.CaptionScreenDeviceTest#savingAFixedWordTellsTheScreenReaderTheLineWasFixedAndCancelSaysNothing
+    com.arbelonson.ozen.CaptionScreenDeviceTest#savingAFixedWordTellsTheScreenReaderTheLineWasFixedAndCancelSaysNothing,
+    com.arbelonson.ozen.CaptionScreenDeviceTest#withThePhonesBuiltInRecognitionOnOfferTheWaitForWiFiOffersCaptionsNowFirst,
+    com.arbelonson.ozen.CaptionScreenDeviceTest#aSpeakersNameHeadsTheirRunOfLinesInTheirColourIsSaidOnEveryLineAndGoesWithNamesOff
 
 jobs:
   smoke:
