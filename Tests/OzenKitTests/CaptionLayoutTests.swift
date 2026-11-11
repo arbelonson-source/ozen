@@ -122,9 +122,9 @@ struct CaptionLayoutNumberDirectionTests {
         #expect(CaptionLayout.directed("המוקד 1-700-50-50-50 פתוח") == mark + "המוקד " + open + "1-700-50-50-50" + close + " פתוח")
     }
 
-    @Test("times, doses and English lines are left as they were, and the numbers still dial from the shown line")
+    @Test("times, doses and English lines are not isolated, a dose is held together, and the numbers still dial from the shown line")
     func otherTextUntouched() {
-        #expect(CaptionLayout.displayText("בשעה 10:30, 3 כדורים") == mark + "בשעה 10:30, 3 כדורים")
+        #expect(CaptionLayout.displayText("בשעה 10:30, 3 כדורים") == mark + "בשעה 10:30, 3\u{00A0}כדורים")
         #expect(CaptionLayout.displayText("call 050 123 4567", languageCode: "en") == "call 050\u{00A0}123\u{00A0}4567")
         let shown = CaptionLayout.displayText("תתקשרי 050 123 4567 או +972-3-1234567 מחר")
         #expect(PhoneNumbers.matches(in: shown).map(\.dialable) == ["0501234567", "+97231234567"])

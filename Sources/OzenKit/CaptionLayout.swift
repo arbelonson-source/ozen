@@ -48,20 +48,35 @@ public enum CaptionLayout {
         directed(keepingNumbersTogether(readableText(text)), languageCode: languageCode)
     }
 
-    /// A phone number or a dose drawn on a line must not wrap in the
-    /// middle: its spaces become no-break spaces, its hyphens non-breaking
-    /// hyphens. For display only; the digits are the same.
+    /// A phone number, a dose, or an amount and what it counts ("3
+    /// pills") drawn on a line must not wrap in the middle: their spaces
+    /// become no-break spaces, a phone number's hyphens non-breaking
+    /// hyphens. A longer run of number words still wraps at its spaces:
+    /// held as one, it would not fit a line at the largest text size.
+    /// For display only; the digits are the same.
     static func keepingNumbersTogether(_ text: String) -> String {
-        var result = text
-        for match in PhoneNumbers.matches(in: text).reversed() {
-            let bound = String(text[match.range])
-                .replacingOccurrences(of: " ", with: "\u{00A0}")
-                .replacingOccurrences(of: "-", with: "\u{2011}")
-            result.replaceSubrange(match.range.clamped(to: result.startIndex..<result.endIndex), with: bound)
+        var joined = Set<String.Index>()
+        var hyphens = Set<String.Index>()
+        for match in PhoneNumbers.matches(in: text) {
+            for index in text[match.range].indices {
+                if text[index] == " " { joined.insert(index) }
+                if text[index] == "-" { hyphens.insert(index) }
+            }
+        }
+        for range in NumberEmphasis.ranges(in: text) {
+            let spaces = text[range].indices.filter { text[$0] == " " }
+            if spaces.count == 1 { joined.formUnion(spaces) }
+        }
+        var result = ""
+        for index in text.indices {
+            result.append(joined.contains(index) ? noBreakSpace : hyphens.contains(index) ? nonBreakingHyphen : text[index])
         }
         let whole = NSRange(result.startIndex..., in: result)
-        return doseSpace?.stringByReplacingMatches(in: result, range: whole, withTemplate: "\u{00A0}") ?? result
+        return doseSpace?.stringByReplacingMatches(in: result, range: whole, withTemplate: String(noBreakSpace)) ?? result
     }
+
+    private static let noBreakSpace: Character = "\u{00A0}"
+    private static let nonBreakingHyphen: Character = "\u{2011}"
 
     private static let doseSpace = try? NSRegularExpression(
         pattern: #"(?<=\d) (?=(?:מיליגרם|מיליליטר|מ״ג|מ״ל|גרם|ליטר|mg|ml)(?![\p{L}]))"#
