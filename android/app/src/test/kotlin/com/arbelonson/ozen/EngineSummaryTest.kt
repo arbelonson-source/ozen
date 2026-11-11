@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import com.arbelonson.ozen.core.HebrewText
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.TranscriptionEngineKind
 import com.arbelonson.ozen.core.UILanguage
@@ -24,9 +25,10 @@ class EngineSummaryTest {
     @Test
     fun `the summaries for another spoken language are translated, not left in English`() {
         for (kind in described) {
-            val english = Localization.withLanguage(UILanguage.English) { engineSummary(kind, UILanguage.Spanish) }
+            val english = Localization.withLanguage(UILanguage.English) { engineSummary(kind, UILanguage.Spanish) }!!
             for (shown in UILanguage.entries.filter { it != UILanguage.English }) {
-                assertNotEquals(english, Localization.withLanguage(shown) { engineSummary(kind, UILanguage.Spanish) }, "$kind in $shown")
+                val summary = Localization.withLanguage(shown) { engineSummary(kind, UILanguage.Spanish) }!!
+                assertNotEquals(english, HebrewText.removingDirectionMarks(summary), "$kind in $shown")
             }
         }
     }
