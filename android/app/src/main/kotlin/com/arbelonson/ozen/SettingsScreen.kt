@@ -168,6 +168,7 @@ import com.arbelonson.ozen.core.BackgroundAlertPolicy
 import com.arbelonson.ozen.core.BackupModelStatus
 import com.arbelonson.ozen.core.CloudKeyCheck
 import com.arbelonson.ozen.core.CloudProvider
+import com.arbelonson.ozen.core.SliderSpeech
 import com.arbelonson.ozen.core.SpokenLanguageNote
 import com.arbelonson.ozen.core.WordFix
 import com.arbelonson.ozen.core.CloudSpeech
@@ -412,7 +413,7 @@ private fun DisplaySection(settings: SettingsHolder, display: DisplayPreferences
                         steps = ((DisplayPreferences.maximumFontSize - DisplayPreferences.minimumFontSize) / 2).toInt() - 1,
                         modifier = Modifier.weight(1f).semantics {
                             contentDescription = sizeLabel
-                            stateDescription = "${size.roundToInt()}"
+                            stateDescription = SliderSpeech.textSize(size.roundToInt().toDouble())
                         },
                     )
                     Text("A", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clearAndSetSemantics {})
@@ -1304,7 +1305,7 @@ private fun SpeechSection(rate: Float, onRate: (Float) -> Unit, canSay: (String)
                     steps = SliderStops.speechRate.steps,
                     modifier = Modifier.semantics {
                         contentDescription = label
-                        stateDescription = value
+                        stateDescription = SliderSpeech.speechRate(shown.toDouble())
                     },
                 )
                 Row(modifier = Modifier.clearAndSetSemantics {}) {
