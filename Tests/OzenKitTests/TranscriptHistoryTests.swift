@@ -568,6 +568,61 @@ struct TranscriptHistoryTests {
         #expect(TranscriptHistoryStore.exportAllText(records.reversed(), utcOffsetAt: { _ in 0 }, marksUncertain: false) == expected)
     }
 
+    @Test("the file of everything holds exactly the text of everything, oldest first, ties in History's order")
+    func exportAllFileMatchesTheText() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        for saved in threeConversationsNewestFirst() + [record(startedAt: 90_000, segments: [segment(text: "עוד אחת באותה שעה", startTimestamp: 90_000)])] {
+            try store.save(saved)
+        }
+        let file = dir.appendingPathComponent("everything.txt")
+
+        #expect(try store.writeExportAll(to: file, utcOffsetAt: { _ in 7_200 }, marksUncertain: true))
+
+        let records = store.listSummaries().compactMap { store.load(id: $0.id) }
+        let expected = try #require(TranscriptHistoryStore.exportAllText(records, utcOffsetAt: { _ in 7_200 }, marksUncertain: true))
+        #expect(try Data(contentsOf: file) == Data(expected.utf8))
+    }
+
+    @Test("the file of everything takes one conversation at a time: each is written before the next is loaded")
+    func exportAllWritesOneConversationAtATime() throws {
+        let records = threeConversationsNewestFirst()
+        let summaries = records.map(TranscriptSessionSummary.init(summarizing:))
+        var events: [String] = []
+        let wrote = try TranscriptHistoryStore.writeExportAll(
+            summaries,
+            load: { id in
+                events.append("load \(records.firstIndex { $0.id == id }!)")
+                return records.first { $0.id == id }
+            },
+            utcOffsetAt: { _ in 0 },
+            marksUncertain: false,
+            write: { _ in events.append("write") }
+        )
+        #expect(wrote)
+        #expect(events == ["load 2", "write", "write", "load 1", "write", "write", "load 0", "write", "write"])
+    }
+
+    @Test("with no conversation that can be read, the file of everything is not left behind")
+    func exportAllWithNothingReadable() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let file = dir.appendingPathComponent("everything.txt")
+        #expect(try !store.writeExportAll(to: file, utcOffsetAt: { _ in 0 }, marksUncertain: false))
+        #expect(!FileManager.default.fileExists(atPath: file.path))
+        let skipped = try TranscriptHistoryStore.writeExportAll(
+            threeConversationsNewestFirst().map(TranscriptSessionSummary.init(summarizing:)),
+            load: { _ in nil },
+            utcOffsetAt: { _ in 0 },
+            marksUncertain: false,
+            write: { _ in Issue.record("wrote with nothing loaded") }
+        )
+        #expect(!skipped)
+    }
+
     @Test("sharing everything marks the lines the screen was unsure of, unless the marks are turned off")
     func exportAllTextPassesUncertainMarkingThrough() {
         var unsure = segment(text: "שני כדורים בעשר וחצי", speakerName: "רופא", startTimestamp: 3_661)
