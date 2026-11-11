@@ -70,4 +70,48 @@ struct CaptionsStopAnnouncerTests {
         #expect(announcer.phaseChanged(to: stalled, active: false) == nil)
         #expect(announcer.comingBack(to: stalled) == .stopped)
     }
+
+    @Test("captions paused by a phrase right as they came on are still said ready, from the steps reached in order")
+    func readyBeforeTheHold() {
+        var steps = CaptionStepsReached()
+        steps.reached(preparing, at: 100)
+        steps.reached(.startingAudio, at: 112)
+        steps.reached(.listening, at: 112.5)
+        steps.reached(.paused, at: 112.6)
+        var announcer = CaptionsStopAnnouncer()
+        #expect(announcer.stepsReached(steps.take()) == .ready)
+        #expect(steps.take().isEmpty)
+
+        var lastOnly = CaptionsStopAnnouncer()
+        _ = lastOnly.phaseChanged(to: preparing, at: 100)
+        #expect(lastOnly.phaseChanged(to: .paused, at: 112.6) == nil)
+    }
+
+    @Test("several steps at once say only the last news: back after a stop, stopped after a return")
+    func lastNewsOfSeveral() {
+        var announcer = CaptionsStopAnnouncer()
+        let stopAndBack = [CaptionStepsReached.Step(stalled, at: 1), .init(.startingAudio, at: 2), .init(.listening, at: 3)]
+        #expect(announcer.stepsReached(stopAndBack) == .back)
+        #expect(announcer.stepsReached([.init(stalled, at: 4), .init(preparing, at: 5)]) == .stopped)
+        #expect(announcer.stepsReached([]) == nil)
+    }
+
+    @Test("away, the steps are kept for the return, as a single step was")
+    func awaySteps() {
+        var announcer = CaptionsStopAnnouncer()
+        _ = announcer.stepsReached([.init(preparing, at: 0), .init(.listening, at: 30), .init(.listening, at: 31)], active: false)
+        #expect(announcer.comingBack(to: .listening) == .ready)
+        #expect(announcer.comingBack(to: .listening) == nil)
+    }
+
+    @Test("the steps keep a preparation without its fraction, and only the newest few")
+    func stepsKept() {
+        var steps = CaptionStepsReached()
+        steps.reached(.preparingEngine(EnginePreparationProgress(stage: .downloadingModel, fraction: 0.4)), at: 0)
+        #expect(steps.take() == [.init(.preparingEngine(EnginePreparationProgress(stage: .downloadingModel)), at: 0)])
+        for second in 0..<(CaptionStepsReached.kept + 5) { steps.reached(.listening, at: Double(second)) }
+        let kept = steps.take()
+        #expect(kept.count == CaptionStepsReached.kept)
+        #expect(kept.first?.at == 5)
+    }
 }

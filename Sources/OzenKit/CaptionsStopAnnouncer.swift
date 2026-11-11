@@ -59,6 +59,14 @@ public struct CaptionsStopAnnouncer: Sendable, Equatable {
         }
     }
 
+    public mutating func stepsReached(_ steps: [CaptionStepsReached.Step], active: Bool = true) -> Event? {
+        var last: Event?
+        for step in steps {
+            if let event = phaseChanged(to: step.phase, active: active, at: step.at) { last = event }
+        }
+        return last
+    }
+
     public mutating func comingBack(to phase: PipelinePhase) -> Event? {
         switch phase {
         case .failed:

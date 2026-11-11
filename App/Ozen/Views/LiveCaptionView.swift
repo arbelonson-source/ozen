@@ -464,10 +464,13 @@ struct LiveCaptionView: View {
                 withAnimation(reduceMotion ? nil : .default) { visibleKeywordHit = nil }
             }
         }
-        .onChange(of: viewModel.phase.step) { _, phase in
-            announceStopOrReturn(phase)
-            updateControlsVisibility()
-        }
+        .modifier(PhaseNews(
+            step: viewModel.phase.step,
+            stepsReached: viewModel.stepsReachedCount,
+            stepChanged: { updateControlsVisibility() },
+            discardSteps: { _ = viewModel.takeStepsReached() },
+            announceSteps: { announceStepsReached() }
+        ))
         .modifier(ModelReadyNotice(handOvers: viewModel.pipeline.builtInHandOvers, showing: $showingModelReady) {
             announceAlert(tr("המודל מוכן, הכתוביות ממשיכות איתו", "The model is ready, captions continue with it"))
         })
@@ -559,7 +562,10 @@ struct LiveCaptionView: View {
                 awakeClock = Date().timeIntervalSince1970
                 installExpiryDismissed = false
                 // Before the retry below changes the phase: a stop seen
-                // on the way back is said as it was.
+                // on the way back is said as it was. Steps reached while
+                // away count as away, even when the screen hears of them
+                // only now.
+                _ = stopAnnouncer.stepsReached(viewModel.takeStepsReached(), active: false)
                 sayStopOrReturn(stopAnnouncer.comingBack(to: viewModel.phase.step))
             }
             if phase == .active, case .failed(let failure) = viewModel.phase,
@@ -1300,9 +1306,15 @@ struct LiveCaptionView: View {
     /// background, "Captions are ready" after a first download of several
     /// minutes was never heard, and she came back to silence. A stop or a
     /// "ready" that happens away is said when Ozen comes back instead.
-    private func announceStopOrReturn(_ phase: PipelinePhase) {
+    ///
+    /// Read from the steps the view model recorded as they happened, not
+    /// from the phase when the screen next draws: captions that came on
+    /// during a quick phrase were already paused again by then, and
+    /// "Captions are ready" was never said. Several steps at once say only
+    /// the last news.
+    private func announceStepsReached() {
         let active = scenePhase == .active
-        let event = stopAnnouncer.phaseChanged(to: phase, active: active, at: ProcessInfo.processInfo.systemUptime)
+        let event = stopAnnouncer.stepsReached(viewModel.takeStepsReached(), active: active)
         if active { sayStopOrReturn(event) }
     }
 
@@ -1879,6 +1891,25 @@ private struct ModelReadyNotice: ViewModifier {
                 try? await Task.sleep(for: .seconds(8))
                 if !Task.isCancelled { showing = false }
             }
+    }
+}
+
+/// The phase moving on and the steps captions reached, in a modifier of
+/// its own so the caption screen's long chain stays within what the
+/// compiler can type-check in time.
+private struct PhaseNews: ViewModifier {
+    let step: PipelinePhase
+    let stepsReached: Int
+    let stepChanged: () -> Void
+    let discardSteps: () -> Void
+    let announceSteps: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: step) { _, _ in stepChanged() }
+            // Steps from before the screen was there are not news to say now.
+            .onAppear { discardSteps() }
+            .onChange(of: stepsReached) { _, _ in announceSteps() }
     }
 }
 

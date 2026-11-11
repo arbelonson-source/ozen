@@ -175,6 +175,18 @@ public final class LiveCaptionViewModel {
     private var launchHousekeeping: Task<Void, Never>?
     private var soundIdentifiersLoad: Task<Void, Never>?
     @ObservationIgnored private var announcer = CaptionAnnouncer()
+    /// Each step captions reached, in order, for the caption screen to say
+    /// they are ready, back or stopped. The screen read the phase only when
+    /// it next drew, and captions that came on during a quick phrase were
+    /// paused again by `holdCaptionsIfStillSpeaking` before that: "Captions
+    /// are ready" was never said. Recorded as the pipeline reports each
+    /// step, before the hold, as Android does since 6128eab4.
+    @ObservationIgnored private var stepsReached = CaptionStepsReached()
+    /// Moves with every step recorded, for the screen to read them.
+    public private(set) var stepsReachedCount = 0
+    /// The clock a step is recorded at; the screen measured a long
+    /// preparation with the same one.
+    @ObservationIgnored var stepClock: () -> Double = { ProcessInfo.processInfo.systemUptime }
     @ObservationIgnored private var lockScreen: LockScreenCaptionsCoordinator?
     private static let retentionCheckIntervalSeconds: TimeInterval = 6 * 60 * 60
 
@@ -316,7 +328,8 @@ public final class LiveCaptionViewModel {
         pipeline.onKeywordHits = { [weak self] hits, segment in
             self?.alertRaised(keywords: hits, in: segment)
         }
-        pipeline.onPhaseChange = { [weak self] _ in
+        pipeline.onPhaseChange = { [weak self] phase in
+            self?.stepReached(phase)
             // A failure's automatic retry is lined up right after its phase
             // is set, so look once the pipeline has finished reacting.
             Task { @MainActor [weak self] in
@@ -2049,6 +2062,16 @@ public final class LiveCaptionViewModel {
 
     public func stopSpeaking() {
         synthesizer?.stop()
+    }
+
+    /// The steps captions reached since the screen last asked, oldest first.
+    public func takeStepsReached() -> [CaptionStepsReached.Step] {
+        stepsReached.take()
+    }
+
+    private func stepReached(_ phase: PipelinePhase) {
+        stepsReached.reached(phase, at: stepClock())
+        stepsReachedCount += 1
     }
 
     /// Captions that come on while the phone is still talking (they were
