@@ -238,11 +238,11 @@ class FileTranscriber(
         fun score(chunk: FloatArray) = planner.add(scorer.frames(chunk) ?: throw Problem(FileTranscriptionProblem.ModelFailed))
         suspend fun handle(stretches: List<SpeechStretch>) {
             for (stretch in stretches) {
-                val window = audio.between(stretch.startSeconds - PAD_SECONDS, stretch.endSeconds + PAD_SECONDS) ?: continue
+                val window = audio.between(stretch.startSeconds - FileLinePass.PAD_SECONDS, stretch.endSeconds + FileLinePass.PAD_SECONDS) ?: continue
                 val text = linePass.text(window, voicedChunks = (stretch.voicedFrames + FRAMES_PER_CHUNK - 1) / FRAMES_PER_CHUNK)
                 if (text.isNotEmpty()) lines.add(TranscribedLine(stretch.startSeconds, stretch.endSeconds, text))
             }
-            audio.keepFrom((planner.openStartSeconds ?: audio.endSeconds) - PAD_SECONDS)
+            audio.keepFrom((planner.openStartSeconds ?: audio.endSeconds) - FileLinePass.PAD_SECONDS)
         }
         fun report() {
             val done = heard.toDouble() / SAMPLE_RATE
@@ -288,7 +288,6 @@ class FileTranscriber(
         const val SAMPLE_RATE = 16_000
         const val CHUNK_SAMPLES = 4_096
         const val FRAMES_PER_CHUNK = CHUNK_SAMPLES / 512
-        const val PAD_SECONDS = 0.2
         const val PIECES_AHEAD = 4
     }
 }

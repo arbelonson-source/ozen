@@ -105,7 +105,17 @@ class FileLinePassTest {
     fun theLongestStretchShrinksWhenTheNamesTakeRoom() {
         val none = FileLinePass(RecordingPasses { said("x") }, "en", emptyList(), Dispatchers.Default)
         val many = FileLinePass(RecordingPasses { said("x") }, "en", List(30) { "Name number $it" }, Dispatchers.Default)
-        assertEquals(WhisperKitDecodeRoom.longestLineSeconds(0, 28.0), none.longestStretchSeconds)
-        assertTrue(many.longestStretchSeconds < 28.0)
+        assertEquals(WhisperKitDecodeRoom.longestLineSeconds(0, 28.0) - 2 * FileLinePass.PAD_SECONDS, none.longestStretchSeconds, 1e-9)
+        assertTrue(many.longestStretchSeconds < none.longestStretchSeconds - 1)
+    }
+
+    @Test
+    fun aLongestStretchWithItsPaddingOnBothSidesStillFitsTheRoomTheEngineHas() {
+        for (names in listOf(emptyList(), List(30) { "Name number $it" })) {
+            val pass = FileLinePass(RecordingPasses { said("x") }, "en", names, Dispatchers.Default)
+            val room = WhisperKitDecodeRoom.longestLineSeconds(pass.promptTokenCount, FileLinePass.MAXIMUM_STRETCH_SECONDS)
+            assertTrue(pass.longestStretchSeconds + 2 * FileLinePass.PAD_SECONDS <= room + 1e-9, "${pass.longestStretchSeconds} + padding > $room")
+            assertTrue(pass.longestStretchSeconds > room - 2 * FileLinePass.PAD_SECONDS - 0.05)
+        }
     }
 }

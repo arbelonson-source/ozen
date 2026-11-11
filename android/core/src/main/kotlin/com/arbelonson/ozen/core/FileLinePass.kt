@@ -23,7 +23,7 @@ class FileLinePass(
 
     val promptTokenCount: Int get() = prompt?.size ?: 0
 
-    val longestStretchSeconds: Double get() = WhisperKitDecodeRoom.longestLineSeconds(promptTokenCount, MAXIMUM_STRETCH_SECONDS)
+    val longestStretchSeconds: Double get() = WhisperKitDecodeRoom.longestLineSeconds(promptTokenCount, MAXIMUM_STRETCH_SECONDS) - 2 * PAD_SECONDS
 
     suspend fun text(stretch: FloatArray, voicedChunks: Int?): String {
         val heard = SpeechGain.normalized(stretch)
@@ -72,6 +72,7 @@ class FileLinePass(
 
     companion object {
         const val MAXIMUM_STRETCH_SECONDS = 28.0
+        const val PAD_SECONDS = 0.2
     }
 }
 
