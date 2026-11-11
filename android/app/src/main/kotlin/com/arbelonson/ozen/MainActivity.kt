@@ -1055,6 +1055,7 @@ private fun CaptionScreen(
             }
     }
     LaunchedEffect(state.lines.isEmpty()) { if (state.lines.isEmpty()) following = true }
+    LaunchedEffect(following, countWhenLeft) { CaptionState.readingBack(countWhenLeft.takeIf { !following }) }
     val scope = rememberCoroutineScope()
     val awayLine by rememberUpdatedState(state.away?.line)
     // Seen once it has stayed on screen a moment: coming back, the list can

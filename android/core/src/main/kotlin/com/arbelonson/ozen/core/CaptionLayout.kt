@@ -257,6 +257,19 @@ object CaptionLayout {
     fun firstOnScreenIndex(lineCount: Int): Int = maxOf(0, lineCount - ON_SCREEN_LINE_LIMIT)
 
     /**
+     * Where the drawn lines start while she reads back, [heldAt] being where
+     * they started when she scrolled up (null at the newest line), as on the
+     * iPhone. Each new line used to take the top one away, and the line she
+     * was reading went once it was the oldest drawn. Held, nothing above her
+     * goes; once twice [limit] are drawn, the oldest go again.
+     */
+    fun firstOnScreenIndex(lineCount: Int, heldAt: Int?, limit: Int = ON_SCREEN_LINE_LIMIT): Int {
+        val usual = maxOf(0, lineCount - limit)
+        if (heldAt == null) return usual
+        return maxOf(minOf(heldAt, usual), lineCount - 2 * limit)
+    }
+
+    /**
      * Whether a line shows its speaker's name above it.
      *
      * Like a chat, the name appears when the speaker changes, not on every
