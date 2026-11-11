@@ -652,18 +652,43 @@ public struct TranscriptHistoryStore: Sendable {
 
     static let saidMark = "§"
 
-    /// A conversation's prepared search text, split back into its two halves.
+    /// A conversation's prepared search text, split back into its two
+    /// halves. The as-said half stays one string until a result's preview
+    /// needs its lines: every search used to split it for every saved
+    /// conversation, matching or not, as Android stopped doing in 360995cf.
     struct PreparedSearch {
         let words: String
-        let said: [String]
+        let saidText: Substring
+
+        var said: [String] {
+            Self.splits?.add()
+            return saidText.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        }
+
+        /// Counts the splits while a test looks; nil otherwise.
+        @TaskLocal static var splits: SplitCount?
+    }
+
+    final class SplitCount: @unchecked Sendable {
+        private let lock = NSLock()
+        private var count = 0
+
+        var value: Int {
+            lock.lock()
+            defer { lock.unlock() }
+            return count
+        }
+
+        func add() {
+            lock.lock()
+            count += 1
+            lock.unlock()
+        }
     }
 
     static func preparedSearch(_ text: String) -> PreparedSearch? {
         guard let mark = text.range(of: "\n" + saidMark + "\n") else { return nil }
-        return PreparedSearch(
-            words: String(text[..<mark.lowerBound]),
-            said: text[mark.upperBound...].split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-        )
+        return PreparedSearch(words: String(text[..<mark.lowerBound]), saidText: text[mark.upperBound...])
     }
 
     /// Turns saved or typed text into the form both sides of a search are
