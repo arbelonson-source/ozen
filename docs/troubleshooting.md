@@ -16,18 +16,18 @@ with a timeline of what happened to the captions, with clock times
 never sends conversations anywhere; like any app's data they are in the
 phone's own iCloud or computer backup when that is on.
 
-Nothing in the report is what was said, with one exception. **Mark a problem
-now** (in the same screen) adds the last few caption lines around the moment
-it was tapped, so the wrong words can be seen; the screen says so. While
-saving conversations is on, it also keeps the last 30 seconds of sound on
-the phone, never in a backup. Diagnostics lists these clips, and one is only
-sent if someone taps it and shares it.
+Nothing in the report is what was said, with one exception. While saving
+conversations is on, **Mark a problem now** (in the same screen) adds the last
+few caption lines around the moment it was tapped, so the wrong words can be
+seen, and keeps the last 30 seconds of sound on the phone, never in a backup;
+the screen says so. With saving off it keeps neither. Diagnostics lists
+these clips, and one is only sent if someone taps it and shares it.
 
 To delete them: "Delete all saved conversations" deletes the clips and the
-caption lines kept with each marked problem. With saving off there is
-nothing to delete there, so Diagnostics has its own **Delete the caption
-lines kept here** under the journal, which removes those lines and leaves the
-rest of the journal.
+caption lines kept with each marked problem. Once saving is turned off there
+is nothing to delete there, so Diagnostics has its own **Delete the caption
+lines kept here** under the journal, which removes the lines kept before and
+leaves the rest of the journal.
 
 ## What the status button says
 

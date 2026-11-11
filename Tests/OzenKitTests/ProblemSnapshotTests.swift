@@ -86,4 +86,19 @@ struct ProblemSnapshotTests {
         #expect(lines.count == 3)
         #expect(lines[0].hasSuffix("microphone -"))
     }
+
+    @Test("with saving conversations off no caption line goes in, the held one included, as on Android")
+    func noCaptionsWithSavingOff() {
+        let segments = (1...6).map { index in
+            TranscriptSegment(id: UUID(), text: "secret words \(index)", isCommitted: true, speakerClusterID: nil, startTimestamp: 0, lastUpdateTimestamp: 0)
+        }
+        let lines = ProblemSnapshot.lines(
+            settings: .default, activeEngine: nil, input: nil, stats: PipelineStats(), segments: segments, held: segments[0],
+            device: "-", utcOffsetSeconds: 0, includeCaptions: false
+        )
+        #expect(!lines.contains { ProblemSnapshot.isCaptionLine($0) })
+        #expect(!lines.contains { $0.contains("secret words") })
+        #expect(lines.count == 4)
+        #expect(lines.last == "  caption lines not kept (saving conversations is off)")
+    }
 }

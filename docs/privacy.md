@@ -92,8 +92,9 @@ backups like the conversations.
 
 The journal is a short list of what happened to the captions (started,
 stopped, the microphone changed, an error). It stays out of backups, and
-nothing sends it anywhere by itself. When you mark a problem it also keeps
-the last 4 caption lines, so someone can see the words that were wrong.
+nothing sends it anywhere by itself. When you mark a problem while **Save
+conversations** is on, it also keeps the last 4 caption lines, so someone can
+see the words that were wrong. With saving off it keeps no caption lines.
 
 ### Cloud keys and the pairing code
 

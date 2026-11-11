@@ -401,6 +401,9 @@ public final class LiveCaptionViewModel {
     /// Whether the last marked problem also kept the last 30 s of sound,
     /// for the confirmation to say so.
     public private(set) var problemKeptSound = false
+    /// Whether the last marked problem kept caption lines: not with saving
+    /// conversations off.
+    public private(set) var problemKeptCaptions = true
     @ObservationIgnored private var journalObservers: [NSObjectProtocol] = []
 
     private func note(_ text: String) {
@@ -448,8 +451,10 @@ public final class LiveCaptionViewModel {
             segments: pipeline.segments,
             held: held,
             device: Self.deviceStateText,
-            utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: now))
+            utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: now)),
+            includeCaptions: settings.saveHistory
         )
+        problemKeptCaptions = settings.saveHistory
         for line in lines {
             journal?.append(line, at: now)
         }
