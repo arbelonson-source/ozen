@@ -136,6 +136,8 @@ class BuiltInSpeechEngine(private val context: Context, private val refusal: Bui
         // question: Android drops the session and answers "server
         // disconnected". That is a race, not a refusal of Ozen's audio, so
         // a fresh recognizer is asked after a moment, a few times at most.
+        // Audio that ended meanwhile ends the captions instead: nothing
+        // would ever close a new session's audio.
         fun reconnect(error: Int) {
             if (sessionEnded == session) return
             sessionEnded = session
@@ -151,6 +153,10 @@ class BuiltInSpeechEngine(private val context: Context, private val refusal: Bui
             launch(Dispatchers.Main) {
                 delay(RECONNECT_MILLIS)
                 if (isClosedForSend) return@launch
+                if (audioEnded.get()) {
+                    close()
+                    return@launch
+                }
                 recognizer.destroy()
                 connect()
                 startSession()
