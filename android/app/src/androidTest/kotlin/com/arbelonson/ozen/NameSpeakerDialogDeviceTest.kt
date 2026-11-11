@@ -4,10 +4,13 @@ import androidx.activity.compose.setContent
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -29,7 +32,7 @@ class NameSpeakerDialogDeviceTest {
         val saved = CopyOnWriteArrayList<String>()
         compose.runOnUiThread {
             compose.activity.setContent {
-                NameSpeakerDialog(shown = "Good evening", hasVoice = true, savedNames = listOf("Dana", "Shira"), onSave = { saved += it; true }, onDismiss = {})
+                NameSpeakerDialog(shown = "Good evening", hasVoice = true, savedNames = listOf("Dana", "Shira"), onSave = { name, _ -> saved += name; true }, onDismiss = {})
             }
         }
         chip("Shira").performClick()
@@ -45,5 +48,68 @@ class NameSpeakerDialogDeviceTest {
         compose.onNodeWithText("Save").performClick()
         compose.waitForIdle()
         assertEquals(listOf("Dana"), saved.toList())
+    }
+
+    private val question = "Change “Noa” to “Noam” everywhere, also in saved conversations?"
+
+    private fun inQuestion(label: String) = compose.onNode(hasText(label) and hasClickAction() and hasAnyAncestor(hasAnyDescendant(hasText(question))))
+
+    private fun askedToRename(): CopyOnWriteArrayList<Pair<String, Boolean>> {
+        val saved = CopyOnWriteArrayList<Pair<String, Boolean>>()
+        compose.runOnUiThread {
+            compose.activity.setContent {
+                NameSpeakerDialog(
+                    shown = "Good evening",
+                    hasVoice = true,
+                    savedNames = listOf("Noam", "Dana"),
+                    onSave = { name, onlyThisLine -> saved += name to onlyThisLine; true },
+                    onDismiss = {},
+                    renames = { if (it == "Noam") "Noa" else null },
+                )
+            }
+        }
+        chip("Noam").performClick()
+        compose.onNodeWithText("Save").performClick()
+        compose.waitForIdle()
+        assertEquals(emptyList<Pair<String, Boolean>>(), saved.toList())
+        compose.onNodeWithText(question).assertExists()
+        return saved
+    }
+
+    @Test
+    fun aNameThatWouldRenameASavedPersonAsksAndOnlyThisLineKeepsThemAsTheyAre() {
+        val saved = askedToRename()
+        inQuestion("Only this line").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("Noam" to true), saved.toList())
+        assertEquals(0, compose.onAllNodesWithText("Change everywhere").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun changeEverywhereRenamesTheSavedPerson() {
+        val saved = askedToRename()
+        inQuestion("Change everywhere").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("Noam" to false), saved.toList())
+    }
+
+    @Test
+    fun cancelSavesNothingAndLeavesTheNameToEdit() {
+        val saved = askedToRename()
+        inQuestion("Cancel").performClick()
+        compose.waitForIdle()
+        assertEquals(emptyList<Pair<String, Boolean>>(), saved.toList())
+        assertEquals(0, compose.onAllNodesWithText("Only this line").fetchSemanticsNodes().size)
+        compose.onNode(hasSetTextAction()).assert(hasText("Noam"))
+    }
+
+    @Test
+    fun aNameThatRenamesNobodySavesWithoutAsking() {
+        val saved = askedToRename()
+        inQuestion("Cancel").performClick()
+        chip("Dana").performClick()
+        compose.onNodeWithText("Save").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("Dana" to false), saved.toList())
     }
 }

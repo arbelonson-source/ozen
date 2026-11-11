@@ -16,5 +16,8 @@ internal sealed interface SpeakerNaming {
 
         fun movesOnlyTheLine(oldName: String?, name: String, savedNames: Set<String>, asked: Boolean): Boolean =
             asked || (oldName != null && name != oldName && name in savedNames)
+
+        fun renamedEverywhere(oldName: String?, name: String, savedNames: Set<String>, isRespelling: Boolean): String? =
+            oldName?.takeIf { it != name && isRespelling && name !in savedNames && it in savedNames }
     }
 }

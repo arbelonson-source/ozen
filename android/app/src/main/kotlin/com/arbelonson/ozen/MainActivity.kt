@@ -686,6 +686,7 @@ private fun OzenApp(
                                     }
                                 },
                                 onNameSpeaker = app.captions::nameSpeaker,
+                                savedPersonRenamed = app.captions::savedPersonRenamed,
                                 savedSpeakerNames = { app.captions.savedSpeakerNames },
                                 onAskToRepeat = { app.captions.askToRepeat() }.takeIf { app.captions.canAskToRepeat() },
                                 onSay = { if (state.speaking) app.captions.stopSpeaking() else saying = true },
@@ -887,7 +888,8 @@ private fun CaptionScreen(
     onStar: (UUID) -> Unit,
     onOpen: (conversation: UUID, line: UUID) -> Unit,
     onFixWord: (UUID, String, String, Boolean) -> Boolean,
-    onNameSpeaker: (line: UUID, name: String) -> Boolean,
+    onNameSpeaker: (line: UUID, name: String, onlyThisLine: Boolean) -> Boolean,
+    savedPersonRenamed: (line: UUID, name: String) -> String?,
     savedSpeakerNames: () -> List<String>,
     onAskToRepeat: (() -> Unit)?,
     onSay: () -> Unit,
@@ -1012,7 +1014,8 @@ private fun CaptionScreen(
             namingText,
             hasVoice = namingHasVoice,
             savedNames = remember(id) { savedSpeakerNames() },
-            onSave = { name -> onNameSpeaker(id, name).also { saved -> if (saved) naming = null } },
+            renames = { name -> savedPersonRenamed(id, name) },
+            onSave = { name, onlyThisLine -> onNameSpeaker(id, name, onlyThisLine).also { saved -> if (saved) naming = null } },
             onDismiss = { naming = null },
         )
     }

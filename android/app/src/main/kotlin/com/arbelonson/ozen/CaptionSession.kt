@@ -1212,8 +1212,7 @@ class CaptionSession(
      * wrong person, so only the line moves and the new name gets a print
      * of the line's own voice, as on the iPhone. [onlyThisLine] moves the
      * line even for a name one letter away (Noa and Noam).
-     */
-    /**
+     *
      * False when nothing could be saved: the line, or the voice it was
      * heard in, is from too long ago for the phone to still have. The
      * sheet then says so instead of closing as if it had worked.
@@ -1242,6 +1241,21 @@ class CaptionSession(
             }
         }
         return true
+    }
+
+    /**
+     * The saved person a Save of [name] on this line would rename
+     * everywhere, saved conversations included: the line's voice carries
+     * their name and [name] looks like a spelling fix of it. One letter
+     * apart is also Noa and Noam, Dana and Dani, so the dialog asks which
+     * was meant, as on the iPhone. Null when Save only names this voice.
+     */
+    fun savedPersonRenamed(lineID: UUID, name: String): String? {
+        val trimmed = name.trim()
+        val line = pipeline.segments.firstOrNull { it.id == lineID }?.takeIf { pipeline.hasVoice(it) } ?: return null
+        val oldName = line.speakerClusterID?.let { voice -> pipeline.speakerClusters.firstOrNull { it.id == voice }?.name }
+        val savedNames = settings.current.value.speakerProfiles.map { it.name }.toSet()
+        return SpeakerNaming.renamedEverywhere(oldName, trimmed, savedNames, pipeline.isRespelling(trimmed, line))
     }
 
     private fun renamePerson(from: String, to: String) {
