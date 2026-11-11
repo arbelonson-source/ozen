@@ -36,7 +36,10 @@ core and app tests, and builds the debug APK.
   requests from forks get no CI run, so a maintainer pushes the branch here
   to test it.
 - **Android device tests** (`android/app/src/androidTest`) run on an emulator
-  or a phone: `./gradlew :app:connectedDebugAndroidTest` in `android/`.
+  or a phone: `./gradlew :app:connectedDebugAndroidTest` in `android/`. On
+  GitHub, the "Android device tests" workflow runs a smoke subset every night.
+  Run it by hand from the Actions tab with `classes` set to `all` for every
+  device test, or to class names separated by commas.
 
 ## How changes are written
 

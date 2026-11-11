@@ -2,9 +2,19 @@ name: Android device tests
 
 # Nightly and by hand from the Actions tab, not on every push: the device
 # tests change far less often than the code, and the run holds a runner
-# for about ten minutes with a warm cache.
+# for about ten minutes with a warm cache. By hand, "classes" can name other
+# tests, or "all" runs every device test but the whisper package (it needs
+# model files) and the screen tour (it takes the screenshots), so a full run
+# doesn't need a computer with an emulator.
 on:
   workflow_dispatch:
+    inputs:
+      classes:
+        description: >-
+          Empty for the smoke subset; "all" for every device test; or
+          classes and class#method names, separated by commas
+        required: false
+        default: ""
   schedule:
     - cron: "17 2 * * *"
 
@@ -47,7 +57,7 @@ jobs:
   smoke:
     name: Android device tests (emulator smoke subset)
     runs-on: ubuntu-24.04
-    timeout-minutes: 50
+    timeout-minutes: ${{ inputs.classes != '' && 150 || 50 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
@@ -55,6 +65,19 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - name: Choose the tests
+        env:
+          CLASSES: ${{ inputs.classes }}
+        run: |
+          classes=$(printf '%s' "$CLASSES" | tr -d ' ')
+          case "$classes" in
+            "") selectors=$(echo $SMOKE | tr -d ' ') ;;
+            all) selectors=all ;;
+            *[!A-Za-z0-9_.,#]*) echo "Only class names, # and commas, or all: $CLASSES"; exit 1 ;;
+            *) selectors=$classes ;;
+          esac
+          echo "Device tests: $selectors"
+          echo "SELECTORS=$selectors" >> "$GITHUB_ENV"
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -83,7 +106,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           script: echo "Emulator snapshot created."
-      - name: Run the smoke subset
+      - name: Run the device tests
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: ${{ env.API_LEVEL }}
@@ -94,7 +117,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           working-directory: android
-          script: classes=$(echo $SMOKE | tr -d ' '); echo "Device test classes $classes"; ./gradlew -q :app:installDebug :app:installDebugAndroidTest -Pandroid.injected.build.abi=x86_64 && adb shell am instrument -w -r -e class "$classes" com.arbelonson.ozen.test/com.arbelonson.ozen.OzenTestRunner > app/build/instrument.txt; status=$?; adb logcat -d > app/build/logcat.txt; exit $status
+          script: if [ "$SELECTORS" = all ]; then filter="-e package com.arbelonson.ozen -e notPackage com.arbelonson.ozen.whisper,com.arbelonson.ozen.tour"; else filter="-e class $SELECTORS"; fi; ./gradlew -q :app:installDebug :app:installDebugAndroidTest -Pandroid.injected.build.abi=x86_64 && adb shell am instrument -w -r $filter com.arbelonson.ozen.test/com.arbelonson.ozen.OzenTestRunner > app/build/instrument.txt; status=$?; adb logcat -d > app/build/logcat.txt; exit $status
       - name: Count the tests that ran
         if: always()
         working-directory: android
@@ -125,14 +148,15 @@ jobs:
               sys.exit("No device test ran: the class filter matched nothing or the run never started.")
           ran = {(cls, test) for cls, test, code in results}
           missing = []
-          for selector in (s.strip() for s in os.environ["SMOKE"].split(",")):
+          chosen = os.environ["SELECTORS"]
+          for selector in ([] if chosen == "all" else chosen.split(",")):
               cls, _, method = selector.partition("#")
               if selector and not any(c == cls and (not method or t == method) for c, t in ran):
                   missing.append(selector)
           for selector in missing:
               print(f"no test ran for {selector}")
           if missing:
-              sys.exit(f"{len(missing)} entries of the smoke list ran no test: renamed or removed?")
+              sys.exit(f"{len(missing)} of the chosen tests ran none: renamed or removed?")
           if not finished or "INSTRUMENTATION_FAILED" in text:
               sys.exit("The test run did not finish: the app or the runner crashed (see logcat).")
           if failed:
