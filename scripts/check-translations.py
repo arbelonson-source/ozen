@@ -656,11 +656,22 @@ ANDROID_NAMES = {
 
 
 def says_name(text, name):
-    """Whether text carries name whole, not as the start of a longer word
-    ("Speicher" inside "Speicherplatz" is a different screen)."""
+    """Whether text carries name whole, not as part of a longer word
+    ("Speicher" inside "Speicherplatz" or "Arbeitsspeicher" is a different
+    screen). A letter in another script may touch it, as the Amharic "in"
+    does in "በShortcuts"."""
+    def script(char):
+        if not char or not (char.isalnum() or unicodedata.category(char).startswith("M")):
+            return None
+        return unicodedata.name(char, "").split(" ")[0]
+
+    def joined(neighbour, edge):
+        return script(neighbour) is not None and script(neighbour) == script(edge)
+
     for found in re.finditer(re.escape(name), text):
+        before = text[found.start() - 1:found.start()]
         after = text[found.end():found.end() + 1]
-        if not after or not (after.isalnum() or unicodedata.category(after).startswith("M")):
+        if not joined(before, name[0]) and not joined(after, name[-1]):
             return True
     return False
 
