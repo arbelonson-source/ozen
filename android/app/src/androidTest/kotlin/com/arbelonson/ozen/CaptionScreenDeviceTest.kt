@@ -1404,13 +1404,23 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Flip").performClick()
             compose.onNode(hasSetTextAction()).assertDoesNotExist()
             // In some full runs, and never alone, the ink came out mid-picture
-            // (rows 83-100, then 104-121, of 197). Where the words were and
-            // whether the keyboard was still up, either side of the picture,
-            // is what the next such failure needs to say.
+            // (rows 83-100, then 104-121, then 102-119, of 197). The last
+            // time the words were at top 881 just before the picture and
+            // 1033 just after, with no keyboard either time: the flipped
+            // layout was still moving when the picture was taken. It is
+            // taken once the words have held still for twenty looks in a row.
             val window = compose.activity.window
             val scene = {
                 val keyboard = compose.runOnUiThread { ViewCompat.getRootWindowInsets(window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0 }
                 "words at ${compose.onNodeWithText(underline).fetchSemanticsNode().boundsInWindow}, keyboard $keyboard px"
+            }
+            var lastSeen = compose.onNodeWithText(underline).fetchSemanticsNode().boundsInWindow
+            var stillFor = 0
+            compose.waitUntil(5_000) {
+                val now = compose.onNodeWithText(underline).fetchSemanticsNode().boundsInWindow
+                stillFor = if (now == lastSeen) stillFor + 1 else 0
+                lastSeen = now
+                stillFor >= 20
             }
             val before = scene()
             val flipped = compose.onNodeWithText(underline).captureToImage()
