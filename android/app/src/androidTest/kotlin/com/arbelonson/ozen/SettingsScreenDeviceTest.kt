@@ -2016,7 +2016,7 @@ class SettingsScreenDeviceTest {
             }
             compose.waitForIdle()
             assertEquals(PhasePresentation.Action.OpenBackupSettings, CaptionState.screen.value.status.action)
-            compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction()).performClick()
+            compose.onNodeWithTag(STATUS_BUTTON).performClick()
             compose.onNodeWithText("Show the initial walkthrough again").performScrollTo().performClick()
             compose.onNodeWithText("Show it").performClick()
             compose.waitUntil(5_000) { !app.settings.current.value.hasCompletedOnboarding }
@@ -2032,7 +2032,7 @@ class SettingsScreenDeviceTest {
             }
             compose.waitForIdle()
             assertEquals(PhasePresentation.Action.OpenEngineSettings, CaptionState.screen.value.status.action)
-            compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction()).performClick()
+            compose.onNodeWithTag(STATUS_BUTTON).performClick()
             compose.waitUntil(5_000) { compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() }
             compose.waitForIdle()
             compose.onNode(offer).assertIsNotDisplayed()
@@ -2147,7 +2147,7 @@ class SettingsScreenDeviceTest {
             }
             compose.waitForIdle()
             assertEquals(PhasePresentation.Action.OpenBackupSettings, CaptionState.screen.value.status.action)
-            compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction()).performClick()
+            compose.onNodeWithTag(STATUS_BUTTON).performClick()
             compose.waitUntil(5_000) { compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() }
             compose.waitUntil(5_000) { compose.onNode(offer).isDisplayed() }
 
@@ -2184,7 +2184,7 @@ class SettingsScreenDeviceTest {
                 CaptionState.show(unreachable, engine = TranscriptionEngineKind.HomeServer, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), offerBackup = true)
             }
             compose.waitForIdle()
-            compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction()).performClick()
+            compose.onNodeWithTag(STATUS_BUTTON).performClick()
             val first = compose.activity
             compose.activityRule.scenario.recreate()
             compose.waitUntil(5_000) { first.isDestroyed }
@@ -2221,7 +2221,7 @@ class SettingsScreenDeviceTest {
                 CaptionState.show(unreachable, engine = TranscriptionEngineKind.HomeServer, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), offerBackup = true)
             }
             compose.waitForIdle()
-            compose.onNode(hasText(CaptionState.screen.value.status.title) and hasClickAction()).performClick()
+            compose.onNodeWithTag(STATUS_BUTTON).performClick()
             compose.waitUntil(5_000) { compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() }
             compose.waitUntil(5_000) { compose.onNode(offer).isDisplayed() }
 
@@ -2486,7 +2486,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Settings").performClick()
         compose.onNodeWithText("Alerts through the night").performScrollTo().performClick()
         val battery = compose.onNode(
-            hasText("Battery") and hasText("To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it.") and hasStateDescription("Needs checking"),
+            hasText("Battery") and hasText("To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it. In the list that opens, choose All apps at the top, find Ozen and choose Don’t optimize.") and hasStateDescription("Needs checking"),
         )
         battery.performScrollTo().assert(!hasClickAction())
         compose.onNode(hasText("Open the battery list") and hasClickAction()).performScrollTo().assertExists()

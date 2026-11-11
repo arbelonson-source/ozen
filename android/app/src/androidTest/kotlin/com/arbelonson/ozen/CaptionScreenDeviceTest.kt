@@ -206,7 +206,7 @@ class CaptionScreenDeviceTest {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val before = app.settings.current.value.display
         try {
-            app.settings.change { it.display = it.display.copy(emphasizeNumbers = true) }
+            app.settings.change { it.display = it.display.copy(theme = DisplayPreferences.Theme.Dark, emphasizeNumbers = true) }
             showLine("Meet at 10:30 by the door")
             val numbers = layoutOf("Meet at").layoutInput.text.spanStyles
             assertEquals(1, numbers.size)
@@ -425,7 +425,7 @@ class CaptionScreenDeviceTest {
             ),
         )
         compose.runOnUiThread { CaptionState.show(waiting, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
-        compose.onNodeWithText("Waiting for Wi", substring = true).performClick()
+        compose.onNodeWithTag(STATUS_BUTTON).performClick()
         compose.onNodeWithText("Download the language model over mobile data?").assertExists()
 
         val first = compose.activity
@@ -452,7 +452,7 @@ class CaptionScreenDeviceTest {
         val clearWaiting = { compose.runOnUiThread { CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) } }
         try {
             showWaiting()
-            compose.onNodeWithText("Waiting for Wi", substring = true).performClick()
+            compose.onNodeWithTag(STATUS_BUTTON).performClick()
             compose.onNodeWithText(question).assertExists()
             clearWaiting()
             compose.waitForIdle()
@@ -462,7 +462,7 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("Waiting for Wi", substring = true).assertExists()
             compose.onNodeWithText(question).assertDoesNotExist()
 
-            compose.onNodeWithText("Waiting for Wi", substring = true).performClick()
+            compose.onNodeWithTag(STATUS_BUTTON).performClick()
             compose.onNodeWithText(question).assertExists()
             val first = compose.activity
             compose.activityRule.scenario.recreate()
@@ -1903,7 +1903,8 @@ class CaptionScreenDeviceTest {
         )
         try {
             compose.runOnUiThread { CaptionState.show(waiting, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList()) }
-            val status = compose.onNodeWithText("Waiting for Wi", substring = true)
+            compose.onNodeWithText("Waiting for Wi", substring = true).assertExists()
+            val status = compose.onNodeWithTag(STATUS_BUTTON)
             status.performClick()
             compose.onNodeWithText("Download the language model over mobile data?").assertExists()
             compose.onNodeWithText("Captions need the language model", substring = true).assertExists()
@@ -1914,7 +1915,7 @@ class CaptionScreenDeviceTest {
             assertFalse(compose.runOnUiThread { app.captions.pipeline.cellularDownloadApproved })
 
             status.performClick()
-            compose.onNodeWithText("Download now").performClick()
+            compose.onNode(hasText("Download now") and hasAnyAncestor(isDialog())).performClick()
             compose.onNodeWithText("Download the language model over mobile data?").assertDoesNotExist()
             compose.waitUntil(5_000) { compose.runOnUiThread { app.captions.pipeline.cellularDownloadApproved } }
         } finally {
@@ -2278,7 +2279,8 @@ class CaptionScreenDeviceTest {
             compose.runOnUiThread {
                 CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), pausedForSpeech = true)
             }
-            compose.onNodeWithText("The phone is talking").performClick()
+            compose.onNodeWithText("The phone is talking").assertExists()
+            compose.onNodeWithTag(STATUS_BUTTON).performClick()
             compose.waitUntil(3_000) { !CaptionState.screen.value.speaking }
             Thread.sleep(2_000)
             assertEquals(PipelinePhase.Idle, app.captions.pipeline.phase)
