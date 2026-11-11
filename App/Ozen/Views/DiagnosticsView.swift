@@ -219,7 +219,7 @@ struct DiagnosticsView: View {
 
             Section(tr("מכשיר", "Device")) {
                 DiagnosticsRow(tr("טמפרטורה", "Temperature"), Self.describe(ProcessInfo.processInfo.thermalState))
-                DiagnosticsRow(tr("מצב חיסכון בסוללה", "Low Power Mode"), ProcessInfo.processInfo.isLowPowerModeEnabled ? tr("פעיל", "On") : tr("כבוי", "Off"))
+                DiagnosticsRow(tr("מצב סוללה חלשה", "Low Power Mode"), ProcessInfo.processInfo.isLowPowerModeEnabled ? tr("פעיל", "On") : tr("כבוי", "Off"))
                 DiagnosticsRow(tr("סוללה", "Battery"), DiagnosticsReport.batteryText)
                 DiagnosticsRow(tr("מקום פנוי", "Free space"), DiagnosticsReport.freeSpaceText)
                 DiagnosticsRow(tr("זיכרון", "Memory"), Self.memoryText)

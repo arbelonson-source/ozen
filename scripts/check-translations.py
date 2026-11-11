@@ -686,11 +686,23 @@ APPLE_NAMES = {
         "hindi": "लाइव ऐक्टिविटी", "portuguese": "atividades em tempo real", "russian": "Эфир активности",
         "spanish": "Actividades en directo", "ukrainian": "Дії наживо",
     },
+    "Low Power Mode": {
+        "hebrew": "מצב סוללה חלשה", "amharic": "Low Power Mode", "arabic": "نمط الطاقة المنخفضة", "chineseSimplified": "低电量模式",
+        "french": "Mode économie d’énergie", "german": "Stromsparmodus", "hindi": "निम्न पावर मोड",
+        "portuguese": "Modo de baixo consumo", "russian": "Режим энергосбережения", "spanish": "Modo de bajo consumo",
+        "ukrainian": "Режим економії заряду",
+    },
 }
 
 # What Android's own Settings app calls its screens in each language
-# (settings_label and storage_settings in its strings).
+# (settings_label, storage_settings and battery_saver in its strings).
 ANDROID_NAMES = {
+    "Battery Saver": {
+        "hebrew": "חיסכון בסוללה", "amharic": "ባትሪ ቆጣቢ", "arabic": "توفير شحن البطارية", "chineseSimplified": "省电模式",
+        "french": "Économiseur batterie", "german": "Energiesparmodus", "hindi": "बैटरी सेवर",
+        "portuguese": "Poupança de bateria", "russian": "Режим энергосбережения", "spanish": "Ahorro de batería",
+        "ukrainian": "Режим енергозбереження",
+    },
     "(Settings → Storage)": {
         "hebrew": "הגדרות ← אחסון", "amharic": "ቅንብሮች → ማከማቻ", "arabic": "الإعدادات ← التخزين",
         "chineseSimplified": "设置 → 存储空间", "french": "Paramètres → Stockage", "german": "Einstellungen → Speicher",
