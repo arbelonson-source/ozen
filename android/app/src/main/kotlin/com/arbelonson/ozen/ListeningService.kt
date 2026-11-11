@@ -240,7 +240,14 @@ class ListeningService : Service() {
             // show sensitive content when locked, the usual setting, shows a
             // private notification in full.
             if (public) {
-                builder.setContentText(ListeningNotice.glance(content)).setSubText(content.ageNote)
+                // Closed, the notification is one row and the system cuts the
+                // end off a longer line: the newest words, the ones a glance
+                // at the locked phone is for. The row is filled from the end
+                // instead, as much as fits the phone's narrow side at its text
+                // size; opened, the lines show whole.
+                val screen = context.resources.configuration
+                val row = ListeningNotice.rowCharacters(minOf(screen.screenWidthDp, screen.screenHeightDp), screen.fontScale)
+                builder.setContentText(ListeningNotice.glance(content, row)).setSubText(content.ageNote)
                 ListeningNotice.opened(content)?.let { builder.setStyle(Notification.BigTextStyle().bigText(it)) }
             }
             return builder.build()

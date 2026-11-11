@@ -11,6 +11,7 @@ import com.arbelonson.ozen.core.tr
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -38,15 +39,22 @@ class ListeningNotificationDeviceTest {
         assertEquals(Notification.VISIBILITY_PUBLIC, shown.visibility)
     }
 
+    // Closed, the notification is one row: it ends with the newest words
+    // and fits this phone's row, and opened the line is whole.
     @Test
-    fun aSingleLongLineOnTheLockScreenOpensToTheWholeLineWithItsNewestWords() {
+    fun aSingleLongLineOnTheLockScreenShowsItsNewestWordsClosedAndOpensToTheWholeLine() {
         val said = "The doctor said to take the new pills twice a day with food and to come back next Tuesday"
         val content = LockScreenCaptionContent(
             lines = listOf(LockScreenCaptionLine(speaker = "Dana", text = said, isFinal = true)),
             status = "Listening",
         )
+        val screen = context.resources.configuration
+        val row = ListeningNotice.rowCharacters(minOf(screen.screenWidthDp, screen.screenHeightDp), screen.fontScale)
         val shown = ListeningService.notification(context, content, public = true)
-        assertEquals("Dana: $said", shown.text(Notification.EXTRA_TEXT))
+        val closed = shown.text(Notification.EXTRA_TEXT).orEmpty()
+        val words = closed.removePrefix("Dana: ").removePrefix("…")
+        assertTrue(closed, closed.contains("…") && words.endsWith("Tuesday") && said.endsWith(words))
+        assertTrue(closed, closed.length <= row)
         assertEquals("Dana: $said", shown.text(Notification.EXTRA_BIG_TEXT))
     }
 
