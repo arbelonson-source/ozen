@@ -52,6 +52,11 @@ jobs:
       # on 2026-11-11 failed this job on every pull request. The refresh,
       # which finds a revoked key, is still tried here for a minute; a
       # server that doesn't answer leaves a warning instead of a red job.
+      # The keys themselves are kept in .github/swift-all-keys.asc, a copy
+      # of swift.org/keys/all-keys.asc taken 2026-11-11: fetched from
+      # GitHub's runners the same day, it twice came back as something
+      # other than keys. A Swift release signed by a newer key needs the
+      # copy refreshed.
       - name: Install Swift 6.1.3
         run: |
           base=https://download.swift.org/swift-6.1.3-release/ubuntu2404/swift-6.1.3-RELEASE
@@ -59,8 +64,7 @@ jobs:
           fetch() { curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "$@"; }
           fetch "$RUNNER_TEMP/$file" "$base/$file"
           fetch "$RUNNER_TEMP/$file.sig" "$base/$file.sig"
-          fetch "$RUNNER_TEMP/all-keys.asc" https://www.swift.org/keys/all-keys.asc
-          gpg --import "$RUNNER_TEMP/all-keys.asc"
+          gpg --import .github/swift-all-keys.asc
           timeout 60 gpg --keyserver hkp://keyserver.ubuntu.com --refresh-keys Swift \
             || echo "::warning::keyserver.ubuntu.com didn't answer: Swift's signing keys were not checked for revocation"
           gpg --verify "$RUNNER_TEMP/$file.sig" "$RUNNER_TEMP/$file"
