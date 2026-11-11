@@ -187,7 +187,9 @@ struct DiagnosticsView: View {
             } header: {
                 Text(tr("יומן, כולל הפעלות קודמות", "Journal, previous runs included"))
             } footer: {
-                Text(tr("נשמר בטלפון גם כשהאפליקציה נסגרת, ונשלח רק עם הדוח. כשמסמנים בעיה נשמרות גם השורות האחרונות של הכתוביות.", "Kept on the phone even when the app closes, and sent only with the report. Marking a problem also keeps the last few caption lines."))
+                Text(viewModel.saveHistory
+                    ? tr("נשמר בטלפון גם כשהאפליקציה נסגרת, ונשלח רק עם הדוח. כשמסמנים בעיה נשמרות גם השורות האחרונות של הכתוביות.", "Kept on the phone even when the app closes, and sent only with the report. Marking a problem also keeps the last few caption lines.")
+                    : tr("נשמר בטלפון גם כשהאפליקציה נסגרת, ונשלח רק עם הדוח.", "Kept on the phone even when the app closes, and sent only with the report."))
             }
 
             if !problemClips.isEmpty {

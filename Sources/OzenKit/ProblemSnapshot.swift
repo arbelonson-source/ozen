@@ -16,7 +16,8 @@ public enum ProblemSnapshot {
         segments: [TranscriptSegment],
         held: TranscriptSegment? = nil,
         device: String,
-        utcOffsetSeconds: Int
+        utcOffsetSeconds: Int,
+        includeCaptions: Bool = true
     ) -> [String] {
         let engine = activeEngine ?? settings.engine
         var lines = [
@@ -24,6 +25,10 @@ public enum ProblemSnapshot {
             "  lag \(number(stats.captionLagSeconds, "%.2f"))s levels \(stats.inputLevels.summary ?? "-") speech \(number(stats.speechShare.map { $0 * 100 }, "%.0f"))% floor \(number(stats.noiseFloorDecibels, "%.1f")) margin \(number(stats.noiseMarginDecibels, "%.1f"))dB restarts \(stats.engineRestarts) stalls \(stats.audioStalls) updates \(stats.tokensReceived) lines \(stats.segmentsCommitted)",
             "  \(device)",
         ]
+        guard includeCaptions else {
+            lines.append("  caption lines not kept (saving conversations is off)")
+            return lines
+        }
         let newest = segments.suffix(lineCount)
         for segment in newest {
             lines.append(line(segment, held: segment.id == held?.id, utcOffsetSeconds: utcOffsetSeconds))
