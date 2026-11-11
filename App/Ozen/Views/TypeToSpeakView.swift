@@ -15,6 +15,11 @@ struct TypeToSpeakView: View {
     @State private var lastTyped: String?
     @State private var editingPhrases = false
     @State private var showingBigText = false
+    /// Read once a second while the screen is open: phrases are said on
+    /// the media volume, which a deaf person's phone often keeps at zero,
+    /// and Play then looks exactly as if it had worked.
+    @State private var mediaVolume: Float?
+    private var silentNotice: String? { mediaVolume.flatMap { SpeakingVolume.notice(outputVolume: $0) } }
     @FocusState private var isTyping: Bool
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -104,6 +109,10 @@ struct TypeToSpeakView: View {
                 }
             }
             .onAppear { isTyping = true }
+            // Left to the big-letters view while it is up, so the warning
+            // isn't announced twice.
+            .watchingMediaVolume(while: !showingBigText) { mediaVolume = $0 }
+            .announcing(silentNotice ?? "", whenTurningTrue: silentNotice != nil)
         }
         .presentationDetents([.medium, .large])
         .fullScreenCover(isPresented: $showingBigText) {
@@ -158,6 +167,10 @@ struct TypeToSpeakView: View {
                 .controlSize(.large)
                 .disabled(!viewModel.isSpeaking)
                 .accessibilityIdentifier("stopSpeakingButton")
+            }
+
+            if let silentNotice {
+                MediaVolumeNotice(notice: silentNotice)
             }
 
             if let lastTyped {

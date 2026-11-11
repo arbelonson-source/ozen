@@ -15,6 +15,9 @@ struct BigTextView: View {
 
     @State private var isFlipped = false
     @State private var clearedText: String?
+    /// Speak uses the media volume, as the Say screen does.
+    @State private var mediaVolume: Float?
+    private var silentNotice: String? { canSpeak ? mediaVolume.flatMap { SpeakingVolume.notice(outputVolume: $0) } : nil }
     @FocusState private var isTyping: Bool
     @Environment(\.dismiss) private var dismiss
 
@@ -31,9 +34,15 @@ struct BigTextView: View {
         VStack(spacing: 0) {
             words
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            if let silentNotice {
+                MediaVolumeNotice(notice: silentNotice)
+                    .padding([.horizontal, .top], 16)
+            }
             controls
         }
         .accessibilityIdentifier("bigTextScreen")
+        .watchingMediaVolume { mediaVolume = $0 }
+        .announcing(silentNotice ?? "", whenTurningTrue: silentNotice != nil)
         .background(theme.background.ignoresSafeArea())
         .preferredColorScheme(theme.preferredScheme)
         .onAppear { isTyping = !isFlipped }
