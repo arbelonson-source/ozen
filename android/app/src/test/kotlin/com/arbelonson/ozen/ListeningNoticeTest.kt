@@ -79,4 +79,18 @@ class ListeningNoticeTest {
         assertEquals(18, ListeningNotice.rowCharacters(shortSideDp = 411, fontScale = 2f))
         assertEquals(31, ListeningNotice.rowCharacters(shortSideDp = 360, fontScale = 1f))
     }
+
+    @Test
+    fun `wide letters take two places in the row, so a Chinese line still ends with its newest words`() {
+        val said = "今天下午三点我们在医院门口见面然后一起去药店买新的眼药水"
+        val content = LockScreenCaptionContent(listOf(line(said, "张伟")))
+        assertEquals("张伟: …" + said.takeLast(15), ListeningNotice.glance(content, rowCharacters = 37))
+    }
+
+    @Test
+    fun `an Amharic line keeps fewer of its wider letters`() {
+        val said = "ነገ ጠዋት በሶስት ሰዓት ወደ ሆስፒታሉ እንሄዳለን እና መድሃኒቱን እንገዛለን"
+        val glance = ListeningNotice.glance(LockScreenCaptionContent(listOf(line(said))), rowCharacters = 37)
+        assertEquals("…እና መድሃኒቱን እንገዛለን", glance)
+    }
 }
