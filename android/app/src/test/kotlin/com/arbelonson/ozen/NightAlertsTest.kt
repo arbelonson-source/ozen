@@ -72,6 +72,13 @@ class NightAlertsTest {
     }
 
     @Test
+    fun `Ozen's notifications turned off in the phone's settings are one more to check, as on the iPhone`() {
+        assertEquals(1, NightAlerts.openItems(batteryExempt = true, dndThrough = true, soundsOn = true, notificationsAllowed = false))
+        assertEquals("1 to check", Localization.withLanguage(UILanguage.English) { NightAlerts.summary(NightAlerts.openItems(batteryExempt = true, dndThrough = true, soundsOn = true, notificationsAllowed = false)) })
+        assertEquals(4, NightAlerts.openItems(batteryExempt = false, dndThrough = false, soundsOn = false, notificationsAllowed = false))
+    }
+
+    @Test
     fun `sounds at home turned off is one more to check`() {
         assertEquals(1, NightAlerts.openItems(batteryExempt = true, dndThrough = true, soundsOn = false))
         assertEquals(3, NightAlerts.openItems(batteryExempt = false, dndThrough = false, soundsOn = false))

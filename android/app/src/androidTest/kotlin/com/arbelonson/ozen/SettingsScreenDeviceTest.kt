@@ -1450,6 +1450,27 @@ class SettingsScreenDeviceTest {
         }
     }
 
+    // It said "All set" right under the warning that no alert will arrive.
+    @Test
+    fun theNightRowCountsOzensNotificationsTurnedOffAsOneMoreToCheck() {
+        val allowedBefore = AlertNotifier.allowed
+        app.settings.change { it.notifyWhenInBackground = true }
+        val others = NightAlerts.openItems(
+            NightAlerts.batteryExempt(app),
+            AlertNotifier.alarmsOverrideDoNotDisturb(app),
+            app.settings.current.value.soundAlerts.isEnabled,
+        )
+        AlertNotifier.allowed = { false }
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithText("Alerts through the night").performScrollTo()
+            compose.onNodeWithText(NightAlerts.summary(others + 1)).assertExists()
+            compose.onNodeWithText("All set").assertDoesNotExist()
+        } finally {
+            AlertNotifier.allowed = allowedBefore
+        }
+    }
+
     @Test
     fun notificationsTurnedOffInThePhoneAreSaidLeadToItsSettingsAndAreCheckedAgainOnReturn() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()

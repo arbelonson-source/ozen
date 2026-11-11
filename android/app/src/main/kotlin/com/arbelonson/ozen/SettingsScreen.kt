@@ -1085,7 +1085,10 @@ private fun AlertsSection(
         toCheck = nightItemsToCheck(context, sounds.isEnabled)
         onPauseOrDispose { }
     }
-    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { blocked = !AlertNotifier.allowed(context) }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        blocked = !AlertNotifier.allowed(context)
+        toCheck = nightItemsToCheck(context, sounds.isEnabled)
+    }
     SectionHeader(tr("התראות", "Alerts"))
     SettingsGroup(dividerInset = 56.dp) {
         item {
@@ -1186,8 +1189,11 @@ internal fun TestAlertButton(sent: Boolean, content: AlertNotificationContent = 
     }
 }
 
+// Ozen's notifications turned off in the phone's settings stop every
+// alert with the screen off: the night row said "All set" right under the
+// warning that says so. As on the iPhone, that is one more to check.
 private fun nightItemsToCheck(context: android.content.Context, soundsOn: Boolean): Int =
-    NightAlerts.openItems(NightAlerts.batteryExempt(context), AlertNotifier.alarmsOverrideDoNotDisturb(context), soundsOn)
+    NightAlerts.openItems(NightAlerts.batteryExempt(context), AlertNotifier.alarmsOverrideDoNotDisturb(context), soundsOn, AlertNotifier.allowed(context))
 
 internal fun openNotificationSettings(context: android.content.Context) {
     context.startActivity(
