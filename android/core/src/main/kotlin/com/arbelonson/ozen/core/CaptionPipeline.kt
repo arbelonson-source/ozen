@@ -723,6 +723,7 @@ class CaptionPipeline(
             homeServerRecheck = null
             cloudRecheck?.cancel()
             cloudRecheck = null
+            endWaitingModel()
         }
         storageNeededMegabytes = null
         // The stored threshold is the person's own choice once they've
@@ -850,20 +851,8 @@ class CaptionPipeline(
         engine.setCellularDownloadAllowed(allowCellular)
         val availability = engine.prepare(settings.languageCode) { progress ->
             scope.launch {
-                // Abandoned, with a later start waiting for it to finish:
-                // that start shows what is really happening (the rest of a
-                // download, a first set-up) instead of "loading" for as
-                // long as it takes.
-                val waiting = waitingShown
-                if (runID != run && waiting != null && phase == PipelinePhase.PreparingEngine(waiting)) {
-                    val time = now()
-                    if (!progress.isNews(waiting, progressShownAt, time)) return@launch
-                    progressShownAt = time
-                    waitingShown = progress
-                    phase = PipelinePhase.PreparingEngine(progress)
-                    trackDownload(progress, time)
-                    return@launch
-                }
+                // Abandoned, with a later start waiting for it to finish.
+                if (runID != run && showToWaitingStart(progress)) return@launch
                 val current = phase
                 if (runID != run || current !is PipelinePhase.PreparingEngine) return@launch
                 val time = now()
@@ -1004,6 +993,7 @@ class CaptionPipeline(
 
     fun stop() {
         stopCount += 1
+        endWaitingModel()
         recentAudio.clear()
         pendingReplay = FloatArray(0)
         pendingReplayDedupe = emptyList()
@@ -1066,6 +1056,7 @@ class CaptionPipeline(
     /** The recording is done or was cancelled: a retry that came due meanwhile runs now. */
     fun endRecordingTranscription() {
         isTranscribingRecording = false
+        getWaitingModelReadyIfAllowed()
         val held = retryAfterTranscription ?: return
         retryAfterTranscription = null
         scope.launch { retry(held.settings) }
@@ -1147,13 +1138,12 @@ class CaptionPipeline(
      */
     suspend fun resume(settings: AppSettings? = null) {
         if (phase != PipelinePhase.Paused || isRecordingVoice) return
-        val effective = (settings ?: settingsInUse)?.copy() ?: return
         // A pause is not a new start: the phone's model that was covering
         // for the cloud or the home computer (the caller's settings still
         // say so) carries on, rather than trying it again with nothing
         // buffered and then reloading the model. The recheck brings it
         // back once it answers.
-        keepCovering(effective)
+        val effective = keepCovering((settings ?: settingsInUse)?.copy() ?: return)
         phase = PipelinePhase.Idle
         start(effective)
     }
@@ -1164,13 +1154,24 @@ class CaptionPipeline(
      * recheck keeps trying what was chosen. Started from the phone's own
      * settings, as a retry or a plain resume is, the cover was dropped
      * and the home computer or the cloud was never tried again.
+     *
+     * The phone's built-in recognition standing in for a model that waits
+     * for Wi-Fi goes on likewise, from her settings or its own, until that
+     * model is ready; then the start is the model itself.
      */
-    private fun keepCovering(settings: AppSettings) {
-        if (!isCoveringForCloud) return
+    private fun keepCovering(settings: AppSettings): AppSettings {
+        if (!isCoveringForCloud) return settings
+        if (coverReason == EngineUnavailability.Kind.WaitingForWiFi) {
+            val chosen = if (settings.engine == TranscriptionEngineKind.AppleSpeech) coveredSettings?.copy() ?: settings else settings
+            val resumed = BuiltInWhileWaiting.resumeSettings(chosen, waitingModelReady)
+            nextStartCoversCloud = resumed.keepsBuiltIn
+            return resumed.settings
+        }
         if (settings.engine == TranscriptionEngineKind.Cloud || settings.engine == TranscriptionEngineKind.HomeServer) {
             settings.engine = TranscriptionEngineKind.WhisperKit
         }
         nextStartCoversCloud = true
+        return settings
     }
 
     /**
@@ -1186,6 +1187,7 @@ class CaptionPipeline(
         nextStartCoversCloud = false
         coverReason = null
         coveredSettings = null
+        endWaitingModel()
         homeServerRecheck?.cancel()
         homeServerRecheck = null
         cloudRecheck?.cancel()
@@ -1237,11 +1239,10 @@ class CaptionPipeline(
         }
         cancelScheduledRetry()
         tearDownSession()
-        keepCovering(effective)
         // Straight from the failure to starting, never through .idle, which
         // means stopped on purpose (the "captions came back" announcement
         // forgets the failure there).
-        start(effective)
+        start(keepCovering(effective))
     }
 
     /**
@@ -2487,6 +2488,24 @@ class CaptionPipeline(
      * The same for a start waiting on an earlier load, which says nothing
      * more either (a model changed during a set-up of minutes).
      */
+    /**
+     * A start waiting for a preparation it didn't begin shows what is
+     * really happening (the rest of a download, a first set-up) instead of
+     * "loading" for as long as it takes. False when no start waits on
+     * screen.
+     */
+    private fun showToWaitingStart(progress: EnginePreparationProgress): Boolean {
+        val waiting = waitingShown ?: return false
+        if (phase != PipelinePhase.PreparingEngine(waiting)) return false
+        val time = now()
+        if (!progress.isNews(waiting, progressShownAt, time)) return true
+        progressShownAt = time
+        waitingShown = progress
+        phase = PipelinePhase.PreparingEngine(progress)
+        trackDownload(progress, time)
+        return true
+    }
+
     private suspend fun sayWaitIsSlow(waiter: UUID) {
         slowLoadWait()
         val current = waitingShown
@@ -2765,9 +2784,215 @@ class CaptionPipeline(
 
     // region Downloads and the network
 
+    /** While the phone's built-in recognition captions for a model that waits for Wi-Fi: that model is being downloaded or loaded behind it. */
+    var waitingModelGettingReady = false
+        private set
+
+    /** How many times captions went over from the built-in recognition to the model once it was ready, for the screen to say so. */
+    var builtInHandOvers = 0
+        private set
+
+    /** How often a ready model looks for its moment to take over. */
+    var handOverCheckSeconds = 1.0
+
+    /**
+     * A model that didn't get ready behind the built-in recognition (a
+     * download cut off on Wi-Fi) is tried again this often, besides at
+     * every change of connection.
+     */
+    var waitingModelRetrySeconds = 60.0
+
+    private var waitingModelJob: Job? = null
+    private var waitingModelRetry: Job? = null
+    private var waitingModelReady = false
+    private var waitingModelLacksRoom = false
+
+    /**
+     * The engine getting the waiting model ready, kept out of the engine
+     * cache until it is: a restart of the built-in recognition empties the
+     * cache, and on Android that releases what it drops, mid-download.
+     */
+    private var waitingModelEngine: TranscriptionEngine? = null
+    private var waitingModelKey: String? = null
+
+    /**
+     * "Captions now with the phone's built-in recognition": while her
+     * model waits for Wi-Fi, the phone's own recognizer captions on the
+     * phone alone, through the same cover as for the cloud, as on the
+     * iPhone. Her settings stay the ones covered, and the model takes over
+     * once it has downloaded (see `BuiltInWhileWaiting`). The recognizer is
+     * asked first, so one that can't run here leaves captions waiting as
+     * they were, sounds still listened for, instead of a failure about an
+     * engine she never chose.
+     */
+    suspend fun captionWithBuiltInWhileWaiting(settings: AppSettings? = null) {
+        val waiting = phase.failure ?: return
+        if (!isWaitingForWiFi || isRecordingVoice || isTranscribingRecording) return
+        val chosen = (settings ?: settingsInUse)?.copy() ?: return
+        if (chosen.engine != TranscriptionEngineKind.WhisperKit) return
+        val builtIn = BuiltInWhileWaiting.captionSettings(chosen)
+        val answer = probeEngine(builtIn).checkAvailability(builtIn.languageCode)
+        if (phase != PipelinePhase.Failed(waiting)) return
+        answer.unavailability?.let { why ->
+            logEvent(PipelineEvent.Kind.Note("the built-in recognition can't caption while the model waits: ${why.kind.rawValue}"))
+            return
+        }
+        logEvent(PipelineEvent.Kind.Note("the built-in recognition captions while the model waits for Wi-Fi"))
+        nextStartCoversCloud = true
+        coverReason = EngineUnavailability.Kind.WaitingForWiFi
+        coveredSettings = chosen
+        start(builtIn)
+        getWaitingModelReadyIfAllowed()
+    }
+
+    /**
+     * See [captionWithBuiltInWhileWaiting]: the model is downloaded and
+     * loaded behind the built-in recognition as soon as the connection
+     * allows. It counts as the engine being prepared, so a start of the
+     * phone's model meanwhile waits for it instead of preparing the same
+     * engine twice, and a recording being transcribed stops its download.
+     */
+    private fun getWaitingModelReadyIfAllowed(conditions: NetworkConditions? = null) {
+        val chosen = coveredSettings?.copy() ?: return
+        if (!isCoveringForCloud || coverReason != EngineUnavailability.Kind.WaitingForWiFi || phase == PipelinePhase.Idle) return
+        if (waitingModelJob != null || waitingModelReady || isPreparingEngine || isTranscribingRecording) return
+        val allowCellular = chosen.allowCellularModelDownload || cellularDownloadApproved
+        if (ModelDownloadGate.decide(conditions ?: network?.current, allowCellular) != ModelDownloadGate.Decision.Proceed) return
+        waitingModelRetry?.cancel()
+        waitingModelRetry = null
+        val key = engineCacheKey(chosen)
+        val engine = waitingModelEngine?.takeIf { waitingModelKey == key } ?: run {
+            waitingModelEngine?.let { old -> if (engineCache.values.none { it === old }) old.release() }
+            engineFactory(chosen).also {
+                waitingModelEngine = it
+                waitingModelKey = key
+            }
+        }
+        isPreparingEngine = true
+        preparing = Preparing(chosen.whisperModelVariant, engine)
+        waitingModelGettingReady = true
+        logEvent(PipelineEvent.Kind.Note("the waiting model gets ready behind the built-in recognition"))
+        waitingModelJob = scope.launch {
+            var availability: EngineAvailability? = null
+            try {
+                // The room it needs, checked as a start checks it: a phone too
+                // full for the model doesn't begin a download that can't finish.
+                val megabytes = engine.pendingDownloadMegabytes()
+                if (megabytes != null) {
+                    val needed = engine.pendingInstallMegabytes() ?: megabytes
+                    storageShortfall(needed)?.let { missing ->
+                        storageNeededMegabytes = needed
+                        availability = EngineAvailability.Unavailable(
+                            EngineUnavailability(EngineUnavailability.Kind.NotEnoughStorage, "checked before download", megabytes, missing),
+                        )
+                    }
+                }
+                if (availability == null) {
+                    engine.setCellularDownloadAllowed(allowCellular)
+                    availability = engine.prepare(chosen.languageCode) { progress -> scope.launch { showToWaitingStart(progress) } }
+                }
+            } finally {
+                if (preparing?.engine === engine) {
+                    isPreparingEngine = false
+                    preparing = null
+                    val waiters = preparationWaiters.toList()
+                    preparationWaiters.clear()
+                    waiters.forEach { it.complete(Unit) }
+                }
+                if (waitingModelEngine === engine) {
+                    waitingModelGettingReady = false
+                } else if (engineCache.values.none { it === engine }) {
+                    engine.release()
+                }
+            }
+            waitingModelPrepared(availability ?: return@launch, engine, key)
+        }
+    }
+
+    private suspend fun waitingModelPrepared(availability: EngineAvailability, engine: TranscriptionEngine, key: String) {
+        val chosen = coveredSettings
+        if (!isCoveringForCloud || coverReason != EngineUnavailability.Kind.WaitingForWiFi || chosen == null ||
+            engineCacheKey(chosen) != key || waitingModelEngine !== engine
+        ) {
+            waitingModelJob = null
+            return
+        }
+        val why = availability.unavailability
+        if (why != null) {
+            waitingModelJob = null
+            logEvent(PipelineEvent.Kind.Note("the waiting model didn't get ready, the built-in recognition carries on: ${why.detail}"))
+            // Retrying on a timer can't free up space: a return to the app
+            // tries again once there is room (`appDidBecomeActive`).
+            waitingModelLacksRoom = why.kind == EngineUnavailability.Kind.NotEnoughStorage
+            if (!waitingModelLacksRoom) retryWaitingModelLater()
+            return
+        }
+        waitingModelReady = true
+        engineCache[key] = engine
+        logEvent(PipelineEvent.Kind.Note("the waiting model is ready"))
+        handOverWhenTheMomentComes(key)
+    }
+
+    /**
+     * A model ready behind the built-in recognition takes over at the
+     * next pause in the speech, as the home computer does when it answers
+     * again, or at once if the built-in itself stopped. Not while captions
+     * are paused or starting: a resume then starts the model directly.
+     */
+    private suspend fun handOverWhenTheMomentComes(key: String) {
+        while (currentCoroutineContext().isActive) {
+            val covered = coveredSettings
+            if (!isCoveringForCloud || coverReason != EngineUnavailability.Kind.WaitingForWiFi || covered == null || engineCacheKey(covered) != key) return
+            val decision = BuiltInWhileWaiting.handOver(waitingModelReady, phase, isRecordingVoice || systemInterrupted)
+            var moment = decision == BuiltInWhileWaiting.HandOver.Now
+            if (decision == BuiltInWhileWaiting.HandOver.AtNextPause) moment = switchBackMomentCame(switchBackAfterAnsweredChecks)
+            // Read again after the wait: a name or a word added meanwhile
+            // reached `coveredSettings`, not a copy taken before it.
+            val latest = coveredSettings
+            if (moment && currentCoroutineContext().isActive && isCoveringForCloud && latest != null && engineCacheKey(latest) == key) {
+                waitingModelJob = null
+                logEvent(PipelineEvent.Kind.Note("the model is ready, captions go over to it from the built-in recognition"))
+                switchBack(latest.copy())
+                if (phase.isListening && activeEngineKind == latest.engine) builtInHandOvers += 1
+                return
+            }
+            delay((handOverCheckSeconds * 1_000).toLong().milliseconds)
+        }
+    }
+
+    private fun retryWaitingModelLater() {
+        waitingModelRetry?.cancel()
+        waitingModelRetry = scope.launch {
+            delay((waitingModelRetrySeconds * 1_000).toLong().milliseconds)
+            waitingModelRetry = null
+            getWaitingModelReadyIfAllowed()
+        }
+    }
+
+    private fun endWaitingModel() {
+        val job = waitingModelJob
+        waitingModelJob = null
+        val running = job?.isActive == true
+        job?.cancel()
+        waitingModelRetry?.cancel()
+        waitingModelRetry = null
+        val engine = waitingModelEngine
+        waitingModelEngine = null
+        waitingModelKey = null
+        if (engine != null && engineCache.values.none { it === engine }) {
+            // Still getting ready: its download is stopped, and the job's
+            // end lets the engine go once preparing has let go of it.
+            if (running) scope.launch { engine.cancelDownload() } else engine.release()
+        }
+        waitingModelReady = false
+        waitingModelLacksRoom = false
+        waitingModelGettingReady = false
+    }
+
     /** "Download now anyway": this session's model may use cellular data. */
     suspend fun approveCellularDownload() {
         cellularDownloadApproved = true
+        getWaitingModelReadyIfAllowed()
         if (!isWaitingForWiFi) return
         retry()
     }
@@ -2776,6 +3001,7 @@ class CaptionPipeline(
     suspend fun setAllowCellularModelDownload(allowed: Boolean) {
         settingsInUse?.allowCellularModelDownload = allowed
         coveredSettings?.allowCellularModelDownload = allowed
+        getWaitingModelReadyIfAllowed()
         if (!allowed || !isWaitingForWiFi) return
         retry()
     }
@@ -2786,6 +3012,12 @@ class CaptionPipeline(
      * app), the download starts without anyone having to tap.
      */
     suspend fun appDidBecomeActive() {
+        if (waitingModelLacksRoom && isCoveringForCloud && coverReason == EngineUnavailability.Kind.WaitingForWiFi) {
+            storageNeededMegabytes?.let { if (storageShortfall(it) != null) return }
+            waitingModelLacksRoom = false
+            getWaitingModelReadyIfAllowed()
+            return
+        }
         val why = phase.failure?.engineUnavailability ?: return
         if (why.kind != EngineUnavailability.Kind.NotEnoughStorage || phase.isTransitioning) return
         val megabytes = storageNeededMegabytes ?: why.downloadMegabytes
@@ -2815,6 +3047,7 @@ class CaptionPipeline(
         val previous = lastNetwork
         lastNetwork = conditions
         onNetworkChanged?.invoke()
+        getWaitingModelReadyIfAllowed(conditions)
         if (networkRetryTask != null || systemInterrupted) return
         val kind = phase.failure?.engineUnavailability?.kind ?: return
         val returned = when (kind) {
