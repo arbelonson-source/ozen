@@ -14,14 +14,6 @@ struct AllConversationsExport: Transferable, Sendable {
     }
 
     func writeFile(now: Date = Date(), in directory: URL = FileManager.default.temporaryDirectory) throws -> URL {
-        let records = store.listSummaries().compactMap { store.load(id: $0.id) }
-        guard let text = TranscriptHistoryStore.exportAllText(
-            records,
-            utcOffsetAt: { TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: $0)) },
-            marksUncertain: marksUncertain
-        ) else {
-            throw CocoaError(.fileNoSuchFile)
-        }
         let folder = directory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let name = TranscriptHistoryStore.exportAllFileName(
@@ -29,7 +21,15 @@ struct AllConversationsExport: Transferable, Sendable {
             utcOffsetSeconds: TimeZone.current.secondsFromGMT(for: now)
         )
         let url = folder.appendingPathComponent(name)
-        try Data(text.utf8).write(to: url, options: .atomic)
+        let wrote = try store.writeExportAll(
+            to: url,
+            utcOffsetAt: { TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: $0)) },
+            marksUncertain: marksUncertain
+        )
+        guard wrote else {
+            try? FileManager.default.removeItem(at: folder)
+            throw CocoaError(.fileNoSuchFile)
+        }
         return url
     }
 }

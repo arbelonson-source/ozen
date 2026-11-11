@@ -1144,7 +1144,56 @@ public struct TranscriptHistoryStore: Sendable {
         return "\(tr("כל השיחות מתוך אוזן", "All conversations from Ozen"))\n\n\(body)"
     }
 
+    /// Every saved conversation as `exportAllText` gives them, but taken
+    /// one at a time: each is loaded, handed to `write` and let go before
+    /// the next is loaded. Sharing everything used to hold every record,
+    /// every text, the joined text and its bytes at once, so a long
+    /// history could close the app with nothing said, as Android stopped
+    /// doing in 289bcecc. Returns false, having written nothing, when no
+    /// conversation could be loaded.
+    public static func writeExportAll(
+        _ summaries: [TranscriptSessionSummary],
+        load: (UUID) -> TranscriptSessionRecord?,
+        utcOffsetAt offset: (TimeInterval) -> Int,
+        marksUncertain: Bool,
+        write: (String) throws -> Void
+    ) rethrows -> Bool {
+        let oldestFirst = summaries.enumerated()
+            .sorted { ($0.element.startedAt, $0.offset) < ($1.element.startedAt, $1.offset) }
+            .map(\.element.id)
+        var wroteAny = false
+        for id in oldestFirst {
+            guard let record = load(id) else { continue }
+            try write(wroteAny ? "\n\n──────────\n\n" : "\(tr("כל השיחות מתוך אוזן", "All conversations from Ozen"))\n\n")
+            try write(exportText(record, utcOffsetAt: offset, marksUncertain: marksUncertain))
+            wroteAny = true
+        }
+        return wroteAny
+    }
+
+    /// The file of every saved conversation at `url`, written one
+    /// conversation at a time (see the static `writeExportAll`). Returns
+    /// false, leaving no file, when there is nothing to share.
+    public func writeExportAll(to url: URL, utcOffsetAt offset: (TimeInterval) -> Int, marksUncertain: Bool) throws -> Bool {
+        guard FileManager.default.createFile(atPath: url.path, contents: nil) else { throw CocoaError(.fileWriteUnknown) }
+        let handle = try FileHandle(forWritingTo: url)
+        let wrote: Bool
+        do {
+            wrote = try Self.writeExportAll(listSummaries(), load: { load(id: $0) }, utcOffsetAt: offset, marksUncertain: marksUncertain) {
+                try handle.write(contentsOf: Data($0.utf8))
+            }
+            try handle.close()
+        } catch {
+            try? handle.close()
+            try? FileManager.default.removeItem(at: url)
+            throw error
+        }
+        if !wrote { try? FileManager.default.removeItem(at: url) }
+        return wrote
+    }
+
     /// "Conversations from Ozen 2026-11-07.txt": the date is the phone's
+    /// own at `now`.    /// "Conversations from Ozen 2026-11-07.txt": the date is the phone's
     /// own at `now`.
     public static func exportAllFileName(now: TimeInterval, utcOffsetSeconds: Int) -> String {
         let date = CivilDate(daysSinceEpoch: CivilDate.localDay(of: now, utcOffsetSeconds: utcOffsetSeconds))
