@@ -20,6 +20,54 @@ class EmbeddingClustererTest {
     }
 
     @Test
+    fun `enrolling someone already heard as an unnamed speaker names that voice instead of opening a rival`() {
+        val clusterer = EmbeddingClusterer()
+        var heard = 0
+        repeat(8) { heard = clusterer.assign(floatArrayOf(1f, 0.3f, 0f)) }
+        val enrolled = clusterer.enroll("Dana", floatArrayOf(1f, 0.5f, 0f))
+        val next = clusterer.assign(floatArrayOf(1f, 0.4f, 0f))
+        assertEquals(heard, enrolled)
+        assertEquals(heard, next)
+        assertEquals("Dana", clusterer.displayName(next))
+        assertEquals(1, clusterer.clusters.size)
+    }
+
+    @Test
+    fun `enrolling a voice nobody unnamed resembles still adds a cluster`() {
+        val clusterer = EmbeddingClusterer()
+        clusterer.assign(floatArrayOf(1f, 0.3f, 0f))
+        clusterer.enroll("Dana", floatArrayOf(0f, 1f, 0f))
+        assertEquals(2, clusterer.clusters.size)
+    }
+
+    @Test
+    fun `enrolling never merges into a cluster that already has a name`() {
+        val clusterer = EmbeddingClusterer()
+        val first = clusterer.enroll("Dana", floatArrayOf(1f, 0f, 0f))
+        val second = clusterer.enroll("Yossi", floatArrayOf(1f, 0f, 0f))
+        assertNotEquals(first, second)
+        assertEquals(listOf("Dana", "Yossi"), clusterer.clusters.map { it.name })
+    }
+
+    @Test
+    fun `enrolling a print of another length is not merged into a heard voice`() {
+        val clusterer = EmbeddingClusterer()
+        clusterer.assign(floatArrayOf(1f, 0f, 0f))
+        clusterer.enroll("Dana", floatArrayOf(1f, 0f))
+        assertEquals(2, clusterer.clusters.size)
+        assertNull(clusterer.clusters.first().name)
+    }
+
+    @Test
+    fun `a line's own voice said to be someone new opens a named cluster beside the voice it sounded like`() {
+        val clusterer = EmbeddingClusterer()
+        val heard = clusterer.assign(floatArrayOf(1f, 0f, 0f))
+        val moved = clusterer.enrollWithoutMerging("Moshe", floatArrayOf(1f, 0f, 0f))
+        assertNotEquals(heard, moved)
+        assertEquals(listOf(null, "Moshe"), clusterer.clusters.map { it.name })
+    }
+
+    @Test
     fun `the very first embedding opens a new, unnamed cluster`() {
         val clusterer = EmbeddingClusterer()
         val id = clusterer.assign(floatArrayOf(1f, 0f, 0f))

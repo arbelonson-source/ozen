@@ -2176,13 +2176,17 @@ public final class LiveCaptionViewModel {
         let oldName = segment.speakerClusterID.flatMap { id in
             pipeline.speakerClusters.first(where: { $0.id == id })?.name
         }
-        let isRespelling = !onlyThisLine && pipeline.isRespelling(name, ofLine: segment)
-        guard let centroid = pipeline.nameSpeaker(of: segment, name: name, onlyThisLine: onlyThisLine) else { return false }
         // A name another saved person already has is not a misspelling:
         // the phone took this voice for the wrong person. Renaming would
         // hand all of that person's prints to this name, and they would
         // vanish from the saved speakers; this voice gets a print instead.
+        // Only the line moves, even when the phone can't listen for that
+        // person (a print from an older voice model): the voice it was
+        // taken for keeps its name on its other lines.
         let isAnotherSavedPerson = name != oldName && settings.speakerProfiles.contains(where: { $0.name == name })
+        let lineOnly = onlyThisLine || (oldName != nil && isAnotherSavedPerson)
+        let isRespelling = !lineOnly && pipeline.isRespelling(name, ofLine: segment)
+        guard let centroid = pipeline.nameSpeaker(of: segment, name: name, onlyThisLine: lineOnly) else { return false }
         if let oldName, isRespelling, !isAnotherSavedPerson, settings.speakerProfiles.contains(where: { $0.name == oldName }) {
             // Fixed here, a spelling stayed wrong in the names list and in
             // every earlier saved conversation, which the same fix made in

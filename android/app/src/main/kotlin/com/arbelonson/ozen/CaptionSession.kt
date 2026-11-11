@@ -1206,23 +1206,34 @@ class CaptionSession(
     /**
      * "Who is speaking?" on a line, as on the iPhone: its voice shows
      * [name] from now on, and the lines on screen and their saved
-     * conversations follow. A saved person's voice given a new name is a
-     * spelling fixed, everywhere; the name of another saved person means
-     * the phone took this voice for the wrong one, so it gets a print of
-     * its own instead of taking that person's.
+     * conversations follow. A name that only fixes the spelling of the
+     * saved person's name (see CaptionPipeline.isRespelling) renames them
+     * everywhere; any other name means the phone took this line for the
+     * wrong person, so only the line moves and the new name gets a print
+     * of the line's own voice, as on the iPhone. [onlyThisLine] moves the
+     * line even for a name one letter away (Noa and Noam).
      */
     /**
      * False when nothing could be saved: the line, or the voice it was
      * heard in, is from too long ago for the phone to still have. The
      * sheet then says so instead of closing as if it had worked.
      */
-    fun nameSpeaker(lineID: UUID, name: String): Boolean {
+    fun nameSpeaker(lineID: UUID, name: String, onlyThisLine: Boolean = false): Boolean {
         val trimmed = name.trim()
         val line = pipeline.segments.firstOrNull { it.id == lineID } ?: return false
         if (trimmed.isEmpty() || !pipeline.hasVoice(line)) return false
         val oldName = line.speakerClusterID?.let { voice -> pipeline.speakerClusters.firstOrNull { it.id == voice }?.name }
-        val print = pipeline.nameSpeaker(line, trimmed) ?: return true
-        when (val naming = SpeakerNaming.of(oldName, trimmed, settings.current.value.speakerProfiles.map { it.name }.toSet())) {
+        // Only a spelling fix renames the saved person everywhere; any other
+        // name moves this line alone, as on the iPhone.
+        // Another saved person's name moves only the line even when the
+        // phone can't listen for them (a print from an older voice model):
+        // the voice it was taken for keeps its name on its other lines.
+        val savedNames = settings.current.value.speakerProfiles.map { it.name }.toSet()
+        val lineOnly = SpeakerNaming.movesOnlyTheLine(oldName, trimmed, savedNames, asked = onlyThisLine)
+        val isRespelling = !lineOnly && pipeline.isRespelling(trimmed, line)
+        val print = pipeline.nameSpeaker(line, trimmed, lineOnly)
+            ?: return pipeline.segments.firstOrNull { it.id == lineID }?.let { pipeline.displayName(it) == trimmed } == true
+        when (val naming = SpeakerNaming.of(oldName, trimmed, savedNames, isRespelling)) {
             is SpeakerNaming.Rename -> renamePerson(naming.from, trimmed)
             SpeakerNaming.Unchanged -> Unit
             SpeakerNaming.NewPrint -> {
