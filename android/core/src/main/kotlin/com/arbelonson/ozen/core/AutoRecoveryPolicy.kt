@@ -22,10 +22,22 @@ class AutoRecoveryPolicy(
      * problem, not the same one again, so the attempt count starts over.
      */
     var healthyListeningSeconds: Double = 60.0,
+    /**
+     * After the glitch delays, how long a busy or missing microphone waits
+     * between further tries, the last one repeating up to [maxMicrophoneAttempts].
+     */
+    var microphoneTailDelays: List<Double> = listOf(30.0, 60.0, 120.0, 300.0, 300.0),
 ) {
     enum class Schedule {
         /** Audio or recognizer glitch: retry quickly a few times. */
         Glitch,
+
+        /**
+         * The microphone is busy or missing, often because another app holds
+         * it (on Android 8 and 9 a recording can't start at all then): retry
+         * quickly, then keep trying slowly for a long while, as on the iPhone.
+         */
+        Microphone,
 
         /** Download failed, usually no connection: retry for a long while. */
         Download,
@@ -45,6 +57,7 @@ class AutoRecoveryPolicy(
      * many different schedules it passes through.
      */
     var maxAttemptsAcrossSchedules: Int = 10
+    var maxMicrophoneAttempts: Int = 40
     var attempts: Int = 0
         private set
     var overallAttempts: Int = 0
@@ -70,6 +83,17 @@ class AutoRecoveryPolicy(
         }
         val delays = when (schedule) {
             Schedule.Never -> return null
+            Schedule.Microphone -> {
+                val all = glitchDelays + microphoneTailDelays
+                if (microphoneTailDelays.isEmpty()) {
+                    all
+                } else {
+                    val delay = if (attempts < all.size) all[attempts] else microphoneTailDelays.last()
+                    if (attempts >= maxMicrophoneAttempts) return null
+                    attempts += 1
+                    return delay
+                }
+            }
             Schedule.Glitch -> glitchDelays
             Schedule.Download -> downloadDelays
             Schedule.LoadFailure -> glitchDelays.take(2)
@@ -88,8 +112,9 @@ class AutoRecoveryPolicy(
     }
 
     fun copy(): AutoRecoveryPolicy {
-        val other = AutoRecoveryPolicy(glitchDelays, downloadDelays, healthyListeningSeconds)
+        val other = AutoRecoveryPolicy(glitchDelays, downloadDelays, healthyListeningSeconds, microphoneTailDelays)
         other.maxAttemptsAcrossSchedules = maxAttemptsAcrossSchedules
+        other.maxMicrophoneAttempts = maxMicrophoneAttempts
         other.attempts = attempts
         other.overallAttempts = overallAttempts
         other.lastSchedule = lastSchedule
@@ -101,26 +126,29 @@ class AutoRecoveryPolicy(
             glitchDelays == other.glitchDelays &&
             downloadDelays == other.downloadDelays &&
             healthyListeningSeconds == other.healthyListeningSeconds &&
+            microphoneTailDelays == other.microphoneTailDelays &&
             maxAttemptsAcrossSchedules == other.maxAttemptsAcrossSchedules &&
+            maxMicrophoneAttempts == other.maxMicrophoneAttempts &&
             attempts == other.attempts &&
             overallAttempts == other.overallAttempts &&
             lastSchedule == other.lastSchedule
 
     override fun hashCode(): Int = listOf(
-        glitchDelays, downloadDelays, healthyListeningSeconds, maxAttemptsAcrossSchedules,
+        glitchDelays, downloadDelays, healthyListeningSeconds, microphoneTailDelays, maxAttemptsAcrossSchedules, maxMicrophoneAttempts,
         attempts, overallAttempts, lastSchedule,
     ).hashCode()
 
     companion object {
         /** Never retries. For tests that want a failure to stay put. */
-        fun disabled(): AutoRecoveryPolicy = AutoRecoveryPolicy(glitchDelays = emptyList(), downloadDelays = emptyList())
+        fun disabled(): AutoRecoveryPolicy =
+            AutoRecoveryPolicy(glitchDelays = emptyList(), downloadDelays = emptyList(), microphoneTailDelays = emptyList())
 
         fun schedule(failure: PipelineFailure): Schedule = when (failure.kind) {
             PipelineFailure.Kind.MicrophonePermissionDenied -> Schedule.Never
             PipelineFailure.Kind.AudioSessionFailed,
             PipelineFailure.Kind.NoAudioInputs,
-            PipelineFailure.Kind.TranscriptionStopped,
-            -> Schedule.Glitch
+            -> Schedule.Microphone
+            PipelineFailure.Kind.TranscriptionStopped -> Schedule.Glitch
             PipelineFailure.Kind.EngineUnavailable -> when (failure.engineUnavailability?.kind) {
                 EngineUnavailability.Kind.PermissionDenied,
                 EngineUnavailability.Kind.LanguageNotSupportedOnDevice,

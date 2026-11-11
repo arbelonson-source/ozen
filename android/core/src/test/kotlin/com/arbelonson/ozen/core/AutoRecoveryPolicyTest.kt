@@ -18,8 +18,8 @@ class AutoRecoveryPolicyTest {
         assertEquals(S.Never, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.PermissionDenied)))
         assertEquals(S.Never, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.LanguageNotSupportedOnDevice)))
         assertEquals(S.Glitch, AutoRecoveryPolicy.schedule(failure(K.TranscriptionStopped)))
-        assertEquals(S.Glitch, AutoRecoveryPolicy.schedule(failure(K.AudioSessionFailed)))
-        assertEquals(S.Glitch, AutoRecoveryPolicy.schedule(failure(K.NoAudioInputs)))
+        assertEquals(S.Microphone, AutoRecoveryPolicy.schedule(failure(K.AudioSessionFailed)))
+        assertEquals(S.Microphone, AutoRecoveryPolicy.schedule(failure(K.NoAudioInputs)))
         assertEquals(S.Glitch, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.TemporarilyUnavailable)))
         assertEquals(S.Download, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.ModelDownloadFailed)))
         assertEquals(S.LoadFailure, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.ModelLoadFailed)))
@@ -39,6 +39,30 @@ class AutoRecoveryPolicyTest {
     @Test
     fun `a model that is not on the phone is not retried on a timer, which cannot put it there`() {
         assertEquals(S.Never, AutoRecoveryPolicy.schedule(failure(K.EngineUnavailable, E.ModelNotOnDevice)))
+    }
+
+    @Test
+    fun `a microphone another app holds is retried on a slow tail, not given up on, as on the iPhone`() {
+        for (kind in listOf(K.AudioSessionFailed, K.NoAudioInputs)) {
+            val policy = AutoRecoveryPolicy()
+            val held = failure(kind)
+            val delays = (0 until 12).map { policy.nextDelay(held) }
+            assertEquals(listOf(1.0, 3.0, 8.0, 20.0), delays.take(4))
+            assertTrue((delays[4] ?: 0.0) >= 30)
+            assertTrue(delays[11] != null)
+            var count = 12
+            while (policy.nextDelay(held) != null) count++
+            assertEquals(40, count)
+        }
+    }
+
+    @Test
+    fun `a busy microphone's long wait leaves the budget for other trouble untouched, and with no tail it stops like a glitch`() {
+        val policy = AutoRecoveryPolicy()
+        repeat(12) { policy.nextDelay(failure(K.AudioSessionFailed)) }
+        assertEquals(0, policy.overallAttempts)
+        val noTail = AutoRecoveryPolicy(glitchDelays = listOf(1.0, 3.0), downloadDelays = emptyList(), microphoneTailDelays = emptyList())
+        assertEquals(listOf(1.0, 3.0, null), (0 until 3).map { noTail.nextDelay(failure(K.NoAudioInputs)) })
     }
 
     @Test
