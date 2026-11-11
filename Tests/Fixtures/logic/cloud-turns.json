@@ -21,7 +21,7 @@
   {"transcript": "**A:** hello", "turns": ["**A:** hello"]},
   {"transcript": "- A: hello", "turns": ["- A: hello"]},
   {"transcript": "1. A: hello", "turns": ["1. A: hello"]},
-  {"transcript": "[laughter] A: hello", "turns": ["A: hello"]},
+  {"transcript": "[laughter] A: hello", "turns": ["hello"]},
   {"transcript": "A: [music] hello", "turns": ["hello"]},
   {"transcript": "(cough) hello", "turns": ["hello"]},
   {"transcript": "A: hello (laughs)", "turns": ["hello"]},
@@ -47,7 +47,7 @@
   {"transcript": "Person A: hi", "turns": ["Person A: hi"]},
   {"transcript": "Interviewer: hi", "turns": ["Interviewer: hi"]},
   {"transcript": "Q: question\nA: answer", "turns": ["question", "answer"]},
-  {"transcript": "A: שלום [צחוק] לכולם", "turns": ["שלום [צחוק] לכולם"]},
+  {"transcript": "A: שלום [צחוק] לכולם", "turns": ["שלום לכולם"]},
   {"transcript": "A: hello… ", "turns": ["hello…"]},
   {"transcript": "A: hello...", "turns": ["hello..."]},
   {"transcript": "A: — hello", "turns": ["— hello"]},
@@ -57,6 +57,15 @@
   {"transcript": "Speaker A: hi\nSpeaker A: again", "turns": ["hi again"]},
   {"transcript": "A: 10:30", "turns": ["10:30"]},
   {"transcript": "10:30: A: hi", "turns": ["10:30: A: hi"]},
-  {"transcript": "A: B: hi", "turns": ["B: hi"]}
+  {"transcript": "A: B: hi", "turns": ["B: hi"]},
+  {"transcript": "A: hi\n[laughter] B: there", "turns": ["hi", "there"]},
+  {"transcript": "A: hi\n(laughs) A: again", "turns": ["hi again"]},
+  {"transcript": "<noise> B: yes", "turns": ["yes"]},
+  {"transcript": "[מוזיקה]", "turns": []},
+  {"transcript": "A: נו [צוחקת] באמת", "turns": ["נו באמת"]},
+  {"transcript": "A: כן [צְחוֹק]", "turns": ["כן"]},
+  {"transcript": "A: привет [смех]", "turns": ["привет"]},
+  {"transcript": "A: مرحبا [موسيقى]", "turns": ["مرحبا"]},
+  {"transcript": "[10:30] A: hello", "turns": ["[10:30] A: hello"]}
  ]
 }

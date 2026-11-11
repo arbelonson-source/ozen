@@ -153,7 +153,9 @@ public enum CloudSpeech {
         var turns: [String] = []
         var lastLabel: String?
         for rawLine in transcript.split(whereSeparator: \.isNewline) {
-            var line = Substring(rawLine).trimmingCharacters(in: .whitespaces)[...]
+            // Notes go before the label is read: one can come first
+            // ("[laughter] A: hi"), and would hide the label.
+            var line = withoutAnnotations(String(rawLine))[...]
             var label: String?
             if let match = line.firstMatch(of: speakerLabel) {
                 label = (match.output.1 ?? match.output.2).map { $0.lowercased() }
@@ -182,10 +184,12 @@ public enum CloudSpeech {
     /// like "10:30" keeps its hour.
     private nonisolated(unsafe) static let speakerLabel = /^(?:(?:speaker|דוברת|דובר)[\s_]*(\d{1,3}|[A-Za-z0-9]{1,2}|[א-ת])|([A-Za-z]\d?|\d{1,2}|[א-ת]))\s*[:：](?!\d)\s*/.ignoresCase()
 
-    /// Square and angle brackets hold only notes. Parentheses can hold real
-    /// words ("(HSBC)", "(a)"), so there only a known sound note goes, alone
-    /// or with one more word, or a note that names the language spoken.
-    private nonisolated(unsafe) static let bracketedNote = /\[[A-Za-z _-]*\]|<[A-Za-z _-]*>/
+    /// Square and angle brackets hold only notes, in any script ("[music]",
+    /// or the same word in Hebrew or Arabic), never digits, so a time like
+    /// "[10:30]" stays. Parentheses can hold real words ("(HSBC)", "(a)"),
+    /// so there only a known sound note goes, alone or with one more word,
+    /// or a note that names the language spoken.
+    private nonisolated(unsafe) static let bracketedNote = /\[[\p{L}\p{M} _-]*\]|<[\p{L}\p{M} _-]*>/
     private nonisolated(unsafe) static let soundNoteInParentheses = /\((?:(?:[a-z]+[ _-])?(?:music|inaudible|unintelligible|indistinct|laughter|laughs|laughing|applause|clapping|noise|silence|crosstalk|cough(?:s|ing)?|sighs?|static|beep|chatter|foreign language|no speech)(?:[ _-][a-z]+)?|(?:speaking in|speaking|in) (?:(?:an? )?foreign language|Hebrew|English|Arabic|Russian|French|Spanish|Amharic|German|Italian|Portuguese|Ukrainian|Chinese|Hindi))\)/.ignoresCase()
 
     private static func withoutAnnotations(_ text: String) -> String {
