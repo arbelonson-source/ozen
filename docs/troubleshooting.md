@@ -67,12 +67,28 @@ leaves the rest of the journal.
 
 ## Sound alerts at night
 
-A locked phone in Sleep or Do Not Disturb holds back Ozen's notifications,
-including a smoke detector or siren: Ozen can't mark them urgent enough to
-break through (that needs an Apple permission a free account doesn't get).
-Add Ozen to each Focus's allowed apps: iPhone Settings → Focus → (Sleep, Do
-Not Disturb, …) → Allowed Apps → Add → Ozen. The Sounds at home screen says
-the same.
+Both phones have a checklist for this, **Alerts through the night**
+(hatra'ot be-mahalach ha-layla). On an iPhone it is in Settings → Alerts →
+Sounds at home, once Sounds at home is on; on Android it is in Settings →
+Alerts, once "Alert on phone when the screen is off" (hatra'a ba-telefon
+kshe-ha-masach kavuy) is on. It lists each step and, where the phone lets
+Ozen check, whether it is done; its buttons open the right page of the
+phone's settings.
+
+On an iPhone, a locked phone in Sleep or Do Not Disturb holds back Ozen's
+notifications, including a smoke detector or siren: Ozen can't mark them
+urgent enough to break through (that needs an Apple permission a free
+account doesn't get). Add Ozen to each Focus's allowed apps: iPhone Settings
+→ Focus → (Sleep, Do Not Disturb, …) → Apps → Allow Notifications From →
+Add → Ozen. The Sounds at home screen says the same.
+
+On Android, two things stop alerts at night. Battery saving can stop Ozen
+while the phone sleeps: the checklist's battery step opens the list where
+Ozen is set to Don't optimize (from Android 15: Allow background usage →
+Unrestricted). And Do Not Disturb lets Ozen's Emergency alerts through only
+once Override Do Not Disturb is on for them: that step opens the page with
+the switch. Some phone makers add their own battery manager; the checklist
+says where to look on the common ones.
 
 ## Things that are working as intended
 
