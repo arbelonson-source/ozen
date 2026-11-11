@@ -2152,7 +2152,9 @@ class SettingsScreenDeviceTest {
             compose.waitUntil(5_000) { compose.onNode(offer).isDisplayed() }
 
             compose.onNodeWithText("Close").performScrollTo().performClick()
-            compose.onNodeWithText("Settings").performClick()
+            // The status button reads "Settings" too, as it opens them at the
+            // backup; this is the bar's own button.
+            compose.onNode(hasText("Settings") and !hasTestTag(STATUS_BUTTON)).performClick()
             compose.waitUntil(5_000) { compose.onAllNodes(offer).fetchSemanticsNodes().isNotEmpty() }
             compose.onNode(offer).assertIsNotDisplayed()
         } finally {
