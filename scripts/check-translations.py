@@ -16,6 +16,7 @@ must keep the same placeholder numbers in translation.
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 HEBREW = re.compile(r"[֐-׿]")
@@ -477,7 +478,7 @@ def check_chinese_punctuation():
             for path, key, value in texts if ASCII_BESIDE_CHINESE.search(value)]
 
 
-TR_PAIR = re.compile(r'tr\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"')
+TR_PAIR = re.compile(r'tr\(\s*"((?:[^"\\]|\\.)*)",\s*"((?:[^"\\]|\\.)*)"')
 
 
 def arrow_labels(key, keys):
@@ -505,7 +506,9 @@ def hebrew_texts():
     """English key -> Hebrew text, from the tr("he", "en") calls whose
     arguments are plain literals."""
     hebrew = {}
-    for path in sorted(p for root in ROOTS for p in Path(root).rglob("*.swift")):
+    sources = [p for root in ROOTS for p in Path(root).rglob("*.swift")]
+    sources += [p for root in KOTLIN_ROOTS for p in Path(root).rglob("*.kt")]
+    for path in sorted(sources):
         for he, en in TR_PAIR.findall(path.read_text(encoding="utf-8")):
             hebrew[unescape(en)] = unescape(he)
     return hebrew
@@ -630,23 +633,54 @@ APPLE_NAMES = {
         "french": "Raccourcis", "german": "Kurzbefehle", "hindi": "शॉर्टकट", "portuguese": "Atalhos",
         "russian": "Быстрые команды", "spanish": "Atajos", "ukrainian": "Швидкі команди",
     },
+    "(Settings → General → %1 Storage)": {
+        "hebrew": "הגדרות ← כללי ← אחסון ב-%1", "amharic": "Settings → General → %1 Storage",
+        "arabic": "الإعدادات ← عام ← تخزين %1", "chineseSimplified": "设置 → 通用 → %1 储存空间",
+        "french": "Réglages → Général → Stockage de l’%1", "german": "Einstellungen → Allgemein → %1\u2011Speicher",
+        "hindi": "सेटिंग → सामान्य → %1 स्टोरेज", "portuguese": "Definições → Geral → Armazenamento no %1",
+        "russian": "Настройки → Основные → Хранилище %1", "spanish": "Ajustes → General → Almacenamiento del %1",
+        "ukrainian": "Параметри → Загальні → Сховище %1",
+    },
+}
+
+# What Android's own Settings app calls its screens in each language
+# (settings_label and storage_settings in its strings).
+ANDROID_NAMES = {
+    "(Settings → Storage)": {
+        "hebrew": "הגדרות ← אחסון", "amharic": "ቅንብሮች → ማከማቻ", "arabic": "الإعدادات ← التخزين",
+        "chineseSimplified": "设置 → 存储空间", "french": "Paramètres → Stockage", "german": "Einstellungen → Speicher",
+        "hindi": "सेटिंग → स्टोरेज", "portuguese": "Definições → Armazenamento", "russian": "Настройки → Хранилище",
+        "spanish": "Ajustes → Almacenamiento", "ukrainian": "Налаштування → Сховище",
+    },
 }
 
 
+def says_name(text, name):
+    """Whether text carries name whole, not as the start of a longer word
+    ("Speicher" inside "Speicherplatz" is a different screen)."""
+    for found in re.finditer(re.escape(name), text):
+        after = text[found.end():found.end() + 1]
+        if not after or not (after.isalnum() or unicodedata.category(after).startswith("M")):
+            return True
+    return False
+
+
 def check_apple_names(keys):
-    """Siri's wake phrase and the Shortcuts app read as iOS writes them in
-    each language, and Siri keeps its Latin letters everywhere, or the
-    reader is told to say or open something the phone never shows."""
+    """Siri's wake phrase, the Shortcuts app and the Storage screens read as
+    iOS and Android write them in each language, and Siri keeps its Latin
+    letters everywhere, or the reader is told to say or open something the
+    phone never shows."""
     table = json.loads(TRANSLATIONS_PATH.read_text(encoding="utf-8"))
     languages = {"hebrew": hebrew_texts()} | {language: table[language] for language in TRANSLATED_LANGUAGES}
     problems = []
     for key in sorted(keys):
-        for english, names in APPLE_NAMES.items():
-            if english not in key:
-                continue
-            for language, entries in languages.items():
-                if key in entries and names[language] not in entries[key]:
-                    problems.append(f"{language}: {key[:50]!r} doesn't say {names[language]!r}, as iOS does there: {entries[key]!r}")
+        for system, table_names in (("iOS", APPLE_NAMES), ("Android", ANDROID_NAMES)):
+            for english, names in table_names.items():
+                if english not in key:
+                    continue
+                for language, entries in languages.items():
+                    if key in entries and not says_name(entries[key], names[language]):
+                        problems.append(f"{language}: {key[:50]!r} doesn't say {names[language]!r}, as {system} does there: {entries[key]!r}")
         for language, entries in languages.items():
             if key in entries and entries[key].count("Siri") < key.count("Siri"):
                 problems.append(f"{language}: {key[:50]!r} doesn't write Siri as iOS does, in Latin letters: {entries[key]!r}")
