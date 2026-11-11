@@ -308,6 +308,19 @@ class CaptionStateTest {
     }
 
     @Test
+    fun `captions cleared from Settings, an empty list, leave nothing held for the next ones`() {
+        CaptionState.clear()
+        val segments = (1..230).map { line("line $it", committed = true) }
+        show(PipelinePhase.Listening, segments.take(210))
+        CaptionState.readingBack(lineCountWhenLeft = 210)
+        show(PipelinePhase.Listening, emptyList())
+        show(PipelinePhase.Listening, segments)
+        assertEquals(segments[30].id, CaptionState.screen.value.lines.first().id)
+        assertEquals(200, CaptionState.screen.value.lines.size)
+        CaptionState.clear()
+    }
+
+    @Test
     fun `cleared lines leave nothing held for the next ones`() {
         CaptionState.clear()
         val segments = (1..230).map { line("line $it", committed = true) }

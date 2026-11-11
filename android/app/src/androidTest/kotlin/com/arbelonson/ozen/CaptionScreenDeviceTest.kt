@@ -410,11 +410,11 @@ class CaptionScreenDeviceTest {
             compose.onNodeWithText("10 new lines").performClick()
             compose.waitForIdle()
             assertTrue(displayed("Line 210 here"))
-            showLines(lines + (201..211).map { committed("Line $it here") })
-            assertTrue(
-                "back at the newest line, the oldest lines were still drawn",
-                compose.onAllNodesWithText("Line 1 here").fetchSemanticsNodes().isEmpty(),
-            )
+            val all = lines + (201..211).map { committed("Line $it here") }
+            showLines(all)
+            val drawn = CaptionState.screen.value.lines
+            assertEquals("back at the newest line, the usual 200 lines did not return", 200, drawn.size)
+            assertEquals(all[11].id, drawn.first().id)
         } finally {
             compose.runOnUiThread { CaptionState.clear() }
         }

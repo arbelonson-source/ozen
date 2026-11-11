@@ -212,6 +212,9 @@ object CaptionState {
         soundsOnly: Boolean = false,
     ) {
         val resumed = speechResume.noteCaptions(segments, now)
+        // Cleared captions come as an empty list, not through clear(): no
+        // hold from the lines before may keep the next ones past the limit.
+        if (segments.isEmpty()) heldFirstLine = null
         segmentsShown = segments
         val firstShown = firstDrawn(segments.size)
         val named = { segment: TranscriptSegment -> segment.takeIf { it.speakerClusterID != null }?.let(speakerName) }
