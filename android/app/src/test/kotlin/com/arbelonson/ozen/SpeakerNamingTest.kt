@@ -31,4 +31,13 @@ class SpeakerNamingTest {
         assertEquals(SpeakerNaming.NewPrint, SpeakerNaming.of(oldName = "Dana", name = "Yossi", savedNames = setOf("Dana", "Yossi"), isRespelling = false))
         assertEquals(SpeakerNaming.NewPrint, SpeakerNaming.of(oldName = "Dana", name = "Yossi", savedNames = setOf("Dana", "Yossi"), isRespelling = true))
     }
+
+    @Test
+    fun `another saved person's name moves only the line, even one the phone cannot listen for, so the voice it was taken for keeps its name`() {
+        assertEquals(true, SpeakerNaming.movesOnlyTheLine(oldName = "Noa", name = "Noam", savedNames = setOf("Noa", "Noam"), asked = false))
+        assertEquals(true, SpeakerNaming.movesOnlyTheLine(oldName = "Noa", name = "Noam", savedNames = setOf("Noa"), asked = true))
+        assertEquals(false, SpeakerNaming.movesOnlyTheLine(oldName = "Noa", name = "Noam", savedNames = setOf("Noa"), asked = false))
+        assertEquals(false, SpeakerNaming.movesOnlyTheLine(oldName = "Noa", name = "Noa", savedNames = setOf("Noa"), asked = false))
+        assertEquals(false, SpeakerNaming.movesOnlyTheLine(oldName = null, name = "Noam", savedNames = setOf("Noam"), asked = false))
+    }
 }

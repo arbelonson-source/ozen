@@ -13,5 +13,8 @@ internal sealed interface SpeakerNaming {
             if (oldName == null || !isRespelling || anotherSavedPerson || oldName !in savedNames) return NewPrint
             return if (name == oldName) Unchanged else Rename(oldName)
         }
+
+        fun movesOnlyTheLine(oldName: String?, name: String, savedNames: Set<String>, asked: Boolean): Boolean =
+            asked || (oldName != null && name != oldName && name in savedNames)
     }
 }

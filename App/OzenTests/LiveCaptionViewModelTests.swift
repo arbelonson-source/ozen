@@ -2551,6 +2551,35 @@ struct LiveCaptionViewModelDeleteConversationTests {
         #expect(viewModel.settings.speakerProfiles.map(\.name).sorted() == ["Dana", "Ruti", "Ruti"])
     }
 
+    @Test("naming a line after a saved person whose old voice print the phone can't use moves only that line, and the voice keeps its name")
+    func namingAsASavedPersonWithAnOldPrintMovesOnlyTheLine() async throws {
+        let engine = FakeEngine()
+        let audio = FakeAudioCapturer()
+        let pipeline = CaptionPipeline(audio: audio, engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-rename-\(UUID())", isDirectory: true)
+        let store = SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-vm-test-\(UUID()).json"))
+        var saved = AppSettings.default
+        saved.speakerProfiles = [SpeakerProfile(name: "Noam", embedding: [1, 0])]
+        try store.save(saved)
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: store,
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: directory.appendingPathComponent("history", isDirectory: true))
+        )
+        #expect(!pipeline.speakerClusters.contains { $0.name == "Noam" })
+        await viewModel.start()
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { pipeline.speakerClusters.count == 1 })
+        await say("שלום", at: Date().timeIntervalSince1970, into: engine, until: viewModel, count: 1)
+        viewModel.nameSpeaker(of: viewModel.segments[0], name: "Noa")
+
+        #expect(viewModel.nameSpeaker(of: viewModel.segments[0], name: "Noam"))
+
+        #expect(pipeline.speakerClusters.contains { $0.name == "Noa" })
+        #expect(pipeline.speakerClusters.contains { $0.name == "Noam" })
+        #expect(viewModel.settings.speakerProfiles.map(\.name).sorted() == ["Noa", "Noam", "Noam"])
+    }
+
     @Test("naming one line as a new person leaves the saved person's voice and name on screen alone")
     func namingOneLineAsSomeoneNewKeepsTheOtherVoice() async throws {
         let engine = FakeEngine()
