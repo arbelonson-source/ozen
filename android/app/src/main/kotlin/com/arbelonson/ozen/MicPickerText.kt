@@ -3,6 +3,7 @@ package com.arbelonson.ozen
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.PhoneSound
+import com.arbelonson.ozen.core.RoutedElsewhere
 import com.arbelonson.ozen.core.tr
 
 internal object MicPickerText {
@@ -27,10 +28,14 @@ internal object MicPickerText {
         else -> tr("דברו ובדקו שהפס זז. אם הוא לא זז, המיקרופון שנבחר לא קולט כלום.", "Speak and watch the bar move. If it doesn’t move, the selected microphone isn’t hearing anything.")
     }
 
-    fun notices(refused: String?, phoneSoundStopped: Boolean): List<String> = listOfNotNull(
+    fun refusal(refused: String?, refusedUid: String?, marked: AudioInputDescriptor?): String? = refused?.takeIf { refusedUid != marked?.uid }
+
+    fun notices(refused: String?, phoneSoundStopped: Boolean, routed: RoutedElsewhere? = null): List<String> = listOfNotNull(
         refused?.let { name ->
             tr("הטלפון לא עבר ל־״%1״. נסו לחבר אותו מחדש. המיקרופון המסומן עדיין בשימוש.", "The phone did not switch to “%1”. Try reconnecting it. The marked microphone is still the one in use.", listOf(name))
         },
+        routed?.title,
+        routed?.detail,
         PhoneSound.stoppedNotice.takeIf { phoneSoundStopped },
     )
 }
