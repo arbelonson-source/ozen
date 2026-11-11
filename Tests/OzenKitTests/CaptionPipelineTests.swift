@@ -639,6 +639,22 @@ struct CaptionPipelineTokenTests {
         #expect(pipeline.recentAudioSamples.isEmpty)
     }
 
+    @Test("sound heard while the voice reader works on a voice is kept at once, for a marked problem and the home computer's replay")
+    func recentAudioDoesNotWaitForTheVoiceReader() async {
+        let audio = FakeAudioCapturer()
+        let embedder = GatedEmbedder()
+        let pipeline = CaptionPipeline(audio: audio, engineFactory: { _ in FakeEngine() }, embedder: embedder, recovery: .disabled, now: { 1_000 })
+        await pipeline.start(settings: .default)
+        #expect(await eventually { pipeline.phase == .listening })
+        audio.push([Float](repeating: 0.5, count: 24_000))
+        #expect(await eventually { embedder.callsStarted == 1 })
+        audio.push([0.25, -0.5, 0.75])
+        #expect(await eventually(within: .seconds(2)) { pipeline.recentAudioSamples.count == 24_003 })
+        #expect(Array(pipeline.recentAudioSamples.suffix(3)) == [0.25, -0.5, 0.75])
+        embedder.release()
+        pipeline.stop()
+    }
+
     @Test("only the last 30 seconds of sound are kept, as the troubleshooting guide tells her")
     func keepsOnlyTheLastHalfMinute() async throws {
         let audio = FakeAudioCapturer()

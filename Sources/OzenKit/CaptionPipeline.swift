@@ -202,7 +202,7 @@ public final class CaptionPipeline {
     /// The last half-minute of microphone sound, in memory only, so that
     /// "mark a problem" can keep what was actually heard. Cleared when
     /// captions stop.
-    private var recentAudio = RecentAudio(seconds: 30, sampleRate: 16_000)
+    private let recentAudio = SharedRecentAudio(seconds: 30, sampleRate: 16_000)
     public var recentAudioSamples: [Float] { recentAudio.samples() }
     private var sessionAudioStart = 0
     private var lastFinalHeard: (position: Int, text: String)?
@@ -706,8 +706,9 @@ public final class CaptionPipeline {
                 guard let self, self.runID == run else { return }
                 self.stats.glitchedAudioChunks += 1
             }
-        } onChunk: { [counter = chunksArrivedCounter] in
+        } onChunk: { [counter = chunksArrivedCounter, recentAudio, writer = recentAudio.newWriter()] chunk in
             counter.increment()
+            recentAudio.append(chunk, writer: writer)
         }
         fanOut = fan
         let engineAudio = replay.isEmpty ? fan.outputs[0] : replaying(replay, then: fan.outputs[0])
@@ -2016,7 +2017,6 @@ public final class CaptionPipeline {
             stats.audioChunksReceived += 1
             stats.audioSecondsReceived += Double(chunk.count) / Self.sampleRate
             stats.lastAudioAt = now()
-            recentAudio.append(chunk)
 
             buffer.append(contentsOf: chunk)
             let isSpeech = embeddingVoiceDetector.isSpeech(chunk)
