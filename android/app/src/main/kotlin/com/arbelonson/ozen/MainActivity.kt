@@ -1132,13 +1132,16 @@ private fun CaptionScreen(
                         .onSizeChanged { bannersOverflow = it.height >= bannerRoomPixels - 1 },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    ArrivingBanner(shownSound) { alert ->
+                    // The same sound once: as heard while away, with its
+                    // time. An older banner, kept up by TalkBack, stays
+                    // beside it instead of hiding it, as on the iPhone.
+                    ArrivingBanner(shownSound?.takeIf { it.id != state.missedSound?.alert?.id }) { alert ->
                         SoundAlertBanner(alert) {
                             shownSound = null
                             onDismissSound(alert.id)
                         }
                     }
-                    ArrivingBanner(state.missedSound?.takeIf { shownSound == null }) { missed ->
+                    ArrivingBanner(state.missedSound) { missed ->
                         MissedSoundBanner(missed, onDismissMissedSound)
                     }
                     ArrivingBanner(shownWord) { word ->
