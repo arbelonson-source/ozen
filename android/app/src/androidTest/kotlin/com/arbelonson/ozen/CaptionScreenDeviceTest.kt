@@ -2100,6 +2100,87 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithText("pinch with two fingers", substring = true).assertDoesNotExist()
     }
 
+    // Captions start by themselves at launch, so the card went with the
+    // empty screen at the first new line, before it was read.
+    @Test
+    fun theSavedConversationCardStaysAboveTheFirstLineWhenNewLinesArriveUntilItsX() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val store = TranscriptHistoryStore(File(app.filesDir, CaptionSession.HISTORY_FOLDER))
+        val endedAt = System.currentTimeMillis() / 1_000.0 - 150
+        val record = TranscriptSessionRecord(
+            startedAt = endedAt - 60,
+            endedAt = endedAt,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = null,
+            inputName = null,
+            segments = listOf(SavedSegment(UUID.randomUUID(), "The pharmacy closes at nine tonight", null, null, endedAt - 60, true)),
+        )
+        store.save(record)
+        try {
+            val summary = store.listSummaries().single { it.id == record.id }
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList())
+                CaptionState.recentConversation(summary)
+            }
+            compose.onNodeWithText("Tap to read it").assertExists()
+
+            showLines(listOf(said("Good morning everyone", at = 10.0), said("Today we start chapter four", at = 14.0)))
+
+            compose.onNodeWithText("Today we start chapter four").assertExists()
+            compose.onNodeWithText("The conversation from 2 minutes ago was saved").assertExists()
+            compose.onNodeWithText("Tap to read it").assertExists()
+            compose.onNodeWithContentDescription("Close").performClick()
+            compose.waitUntil(5_000) { CaptionState.screen.value.recentConversation == null }
+            compose.onNodeWithText("Tap to read it").assertDoesNotExist()
+            compose.onNodeWithText("Good morning everyone").assertExists()
+        } finally {
+            store.delete(record.id)
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    private fun inSight(text: String) =
+        compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() && compose.onNodeWithText(text).isDisplayed()
+
+    @Test
+    fun aSavedConversationCardArrivingAfterTheLinesStillLeavesTheNewestLineInSight() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val store = TranscriptHistoryStore(File(app.filesDir, CaptionSession.HISTORY_FOLDER))
+        val endedAt = System.currentTimeMillis() / 1_000.0 - 150
+        val record = TranscriptSessionRecord(
+            startedAt = endedAt - 60,
+            endedAt = endedAt,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = null,
+            inputName = null,
+            segments = listOf(SavedSegment(UUID.randomUUID(), "The pharmacy closes at nine tonight", null, null, endedAt - 60, true)),
+        )
+        store.save(record)
+        try {
+            val summary = store.listSummaries().single { it.id == record.id }
+            compose.runOnUiThread { CaptionState.clear() }
+            var fitting = emptyList<TranscriptSegment>()
+            for (count in 1..40) {
+                val more = fitting + said("Line number $count of the lesson", at = 10.0 + count)
+                showLines(more)
+                if (!inSight("Line number 1 of the lesson")) break
+                fitting = more
+            }
+            showLines(fitting)
+            assertTrue(inSight("Line number 1 of the lesson"))
+
+            compose.runOnUiThread { CaptionState.recentConversation(summary) }
+            compose.waitForIdle()
+
+            assertTrue(compose.onAllNodesWithText("Tap to read it").fetchSemanticsNodes().isNotEmpty())
+            assertTrue(inSight("Line number ${fitting.size} of the lesson"))
+        } finally {
+            store.delete(record.id)
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
     @Test
     fun aConversationCutOffMinutesAgoIsOfferedOnTheEmptyScreenOpensWithATapAndCanBeTakenAway() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication

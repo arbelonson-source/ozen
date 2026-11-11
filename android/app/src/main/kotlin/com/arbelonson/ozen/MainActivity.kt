@@ -1245,6 +1245,16 @@ private fun CaptionScreen(
                             }
                         }
                     } else {
+                        // Captions start by themselves at launch, so after the
+                        // system ended the app mid-conversation the card went
+                        // with the empty screen at the first new line, before
+                        // it was read. Above the first line it stays until its
+                        // X, until it is opened or the captions are cleared, as
+                        // on the iPhone.
+                        val recent = state.recentConversation
+                        val leading: (@Composable () -> Unit)? = recent?.let {
+                            { RecentConversationCard(recent, look, onOpen = { onOpenConversation(recent.id) }, onDismiss = onDismissRecent) }
+                        }
                         val trailing: (@Composable () -> Unit)? = if (offer == null && loadCrashCard == null && listeningCutCard == null) null else {
                             {
                                 loadCrashCard?.invoke()
@@ -1252,7 +1262,7 @@ private fun CaptionScreen(
                                 if (offer != null) LighterModelOffer(offer, modelOfferWaiting, inUseModelBytes, { onSwitchModel(offer) }, { onDismissModelOffer(offer) })
                             }
                         }
-                        CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, marks, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id; fixRefused = false }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { line -> markedWithCaptions = savesConversations; problemMarkedAt = secondsNow(); problemMarked = onMarkProblem(line) })
+                        CaptionLines(state.lines, state.away, state.earlier, linesDisplay, look, list, following, marks, Modifier.nestedScroll(rereading), trailing, onStar, onOpen, onFix = { fixing = it.text; fixingLine = it.id; fixRefused = false }, onName = nameSpeakerOf, onAskToRepeat = onAskToRepeat, onMarkProblem = { line -> markedWithCaptions = savesConversations; problemMarkedAt = secondsNow(); problemMarked = onMarkProblem(line) }, leading = leading)
                         if (!following) {
                             JumpToLatest(jumpToLatestTitle(linesSince(state.lineCount, countWhenLeft)), look, Modifier.align(Alignment.BottomCenter)) {
                                 following = true
@@ -1448,9 +1458,12 @@ private fun CaptionLines(
     onName: (CaptionLine) -> Unit,
     onAskToRepeat: (() -> Unit)?,
     onMarkProblem: (line: UUID) -> Unit,
+    leading: (@Composable () -> Unit)? = null,
 ) {
     val lastIndex = if (trailing != null) lines.size else lines.lastIndex
-    LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize, trailing != null) {
+    // The saved-conversation card can arrive after the lines (it is looked
+    // up while captions start), and above them it pushes the newest down.
+    LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize, trailing != null, leading != null) {
         if (following) list.follow(lastIndex, marks)
     }
     // The buttons coming back, or a turn of the phone, change the room the
@@ -1479,13 +1492,16 @@ private fun CaptionLines(
                 )
             }
             val gap = line.afterQuiet
-            val note = earlier?.takeIf { line.id == lines.first().id }
+            val first = line.id == lines.first().id
+            val card = leading?.takeIf { first }
+            val note = earlier?.takeIf { first }
             val missed = away?.takeIf { line.id == it.line }
             // A new line fades in where it lands; the lines already there
             // stay still, as moving them would move what she is reading.
             Box(Modifier.animateItem(fadeInSpec = tween(250), placementSpec = null, fadeOutSpec = null)) {
-                if (note != null || missed != null || gap != null) {
+                if (card != null || note != null || missed != null || gap != null) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        card?.invoke()
                         if (note != null) EarlierLinesNote(note, display.fontSize, look) { conversation -> onOpen(conversation, note.line) }
                         if (missed != null) AwayDivider(missed.count, display.fontSize, look) else if (gap != null) QuietGapDivider(gap, display.fontSize, look)
                         row()
