@@ -40,4 +40,19 @@ class SpeakerNamingTest {
         assertEquals(false, SpeakerNaming.movesOnlyTheLine(oldName = "Noa", name = "Noa", savedNames = setOf("Noa"), asked = false))
         assertEquals(false, SpeakerNaming.movesOnlyTheLine(oldName = null, name = "Noam", savedNames = setOf("Noam"), asked = false))
     }
+
+    @Test
+    fun `Save asks first only when a spelling fix would rename a saved person everywhere, as on the iPhone`() {
+        assertEquals("Noa", SpeakerNaming.renamedEverywhere(oldName = "Noa", name = "Noam", savedNames = setOf("Noa"), isRespelling = true))
+        assertEquals(null, SpeakerNaming.renamedEverywhere(oldName = "Noa", name = "Noam", savedNames = setOf("Noa"), isRespelling = false))
+        assertEquals(null, SpeakerNaming.renamedEverywhere(oldName = "Noa", name = "Noa", savedNames = setOf("Noa"), isRespelling = true))
+        assertEquals(null, SpeakerNaming.renamedEverywhere(oldName = "Noa", name = "Noam", savedNames = setOf("Noa", "Noam"), isRespelling = true))
+        assertEquals(null, SpeakerNaming.renamedEverywhere(oldName = "Noa", name = "Noam", savedNames = emptySet(), isRespelling = true))
+        assertEquals(null, SpeakerNaming.renamedEverywhere(oldName = null, name = "Noam", savedNames = setOf("Noa"), isRespelling = true))
+    }
+
+    @Test
+    fun `whenever Save would ask, saving everywhere renames the saved person`() {
+        assertEquals(SpeakerNaming.Rename(from = "Noa"), SpeakerNaming.of(oldName = "Noa", name = "Noam", savedNames = setOf("Noa"), isRespelling = true))
+    }
 }

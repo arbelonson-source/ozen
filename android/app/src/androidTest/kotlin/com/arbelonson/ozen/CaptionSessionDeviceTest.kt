@@ -1266,6 +1266,9 @@ class CaptionSessionDeviceTest {
             assertEquals(listOf("Dana"), withContext(Dispatchers.Main) { session.savedSpeakerNames })
             assertEquals("Dana", CaptionState.screen.value.lines.single { it.id == voiced!!.id }.speaker)
 
+            assertEquals("Dana", withContext(Dispatchers.Main) { session.savedPersonRenamed(voiced!!.id, " Dahna ") })
+            assertEquals(null, withContext(Dispatchers.Main) { session.savedPersonRenamed(voiced!!.id, "Moshe") })
+            assertEquals(null, withContext(Dispatchers.Main) { session.savedPersonRenamed(voiced!!.id, "Dana") })
             withContext(Dispatchers.Main) { session.nameSpeaker(voiced!!.id, "Dahna") }
             assertEquals(listOf("Dahna"), settings.current.value.speakerProfiles.map { it.name })
             assertEquals(saved.single().id, settings.current.value.speakerProfiles.single().id)

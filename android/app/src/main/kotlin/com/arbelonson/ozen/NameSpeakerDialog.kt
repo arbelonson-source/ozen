@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -37,12 +38,54 @@ import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.tr
 
 @Composable
-internal fun NameSpeakerDialog(shown: String, hasVoice: Boolean, savedNames: List<String>, onSave: (String) -> Boolean, onDismiss: () -> Unit) {
+internal fun NameSpeakerDialog(
+    shown: String,
+    hasVoice: Boolean,
+    savedNames: List<String>,
+    onSave: (name: String, onlyThisLine: Boolean) -> Boolean,
+    onDismiss: () -> Unit,
+    renames: (String) -> String? = { null },
+) {
     var name by rememberSaveable { mutableStateOf("") }
     var tooOld by rememberSaveable { mutableStateOf(false) }
+    var asking by rememberSaveable { mutableStateOf<String?>(null) }
     val typing = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (hasVoice && savedNames.isEmpty()) typing.requestFocus() }
-    val save = { if (hasVoice && name.isNotBlank()) tooOld = !onSave(name.trim()) }
+    val commit = { onlyThisLine: Boolean ->
+        asking = null
+        tooOld = !onSave(name.trim(), onlyThisLine)
+    }
+    // A name one letter from the saved person's this voice carries (Noa and
+    // Noam) would rename that person in every saved conversation. Only the
+    // person typing knows which was meant, so the dialog asks, as on the
+    // iPhone, in a question TalkBack reads out.
+    val save = {
+        if (hasVoice && name.isNotBlank()) {
+            val renamed = renames(name.trim())
+            if (renamed != null) asking = renamed else commit(false)
+        }
+    }
+    // The line's voice can change while the question is open (it is worked
+    // out again as more of the line is heard), and Save reads it again:
+    // checked again here, "Change everywhere" never renames someone the
+    // question didn't name. Another saved person now is asked about anew.
+    val changeEverywhere = {
+        val now = renames(name.trim())
+        if (now == null || now == asking) commit(false) else asking = now
+    }
+    asking?.let { saved ->
+        AlertDialog(
+            onDismissRequest = { asking = null },
+            title = { Text(tr("לשנות את ״%1״ ל־״%2״ בכל מקום, גם בשיחות השמורות?", "Change “%1” to “%2” everywhere, also in saved conversations?", listOf(saved, name.trim()))) },
+            confirmButton = {
+                Column(horizontalAlignment = Alignment.End) {
+                    TextButton(onClick = changeEverywhere) { Text(tr("לשנות בכל מקום", "Change everywhere")) }
+                    TextButton(onClick = { commit(true) }) { Text(tr("רק בשורה הזו", "Only this line")) }
+                }
+            },
+            dismissButton = { TextButton(onClick = { asking = null }) { Text(tr("ביטול", "Cancel")) } },
+        )
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.PersonAdd, contentDescription = null) },
