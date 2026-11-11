@@ -2,6 +2,8 @@ package com.arbelonson.ozen.core
 
 import java.math.BigDecimal
 import java.math.MathContext
+import java.text.BreakIterator
+import java.util.Locale
 import java.util.UUID
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -507,6 +509,10 @@ class CaptionPipeline(
     private var staleCommitTask: Job? = null
     private var utteranceClusterAssignments = HashMap<UUID, Int>()
     private var correctedUtterances = HashSet<UUID>()
+
+    /** The newest voice print heard for each recent line, so a line said to be someone else can seed that person's voice. */
+    private var utteranceEmbeddings = HashMap<UUID, FloatArray>()
+    private var utteranceEmbeddingOrder = ArrayDeque<UUID>()
 
     /**
      * Decides whether an embedding window holds a voice at all. Silence
@@ -1890,29 +1896,58 @@ class CaptionPipeline(
 
     /**
      * Tags an inferred cluster with a real name after the fact, returning
-     * the cluster centroid so the caller can persist it as a profile; null
-     * when the line only moved to a voice that is already known.
+     * the voice print the caller should save for it.
+     *
+     * A name typed on a line whose voice already carries a different name
+     * is a spelling fix only when it looks like one (see [isRespelling]).
+     * Otherwise the phone took this line for the wrong person: only this
+     * line moves, to the voice already named so, or to a new one seeded
+     * from the line's own voice, and the other person's voice keeps their
+     * name, as on the iPhone. Renaming the whole voice renamed every earlier
+     * and later line of the first person. [onlyThisLine] moves the line even
+     * when the name looks like a spelling fix: the person said it was
+     * someone else (Noa and Noam).
      */
-    fun nameSpeaker(of: TranscriptSegment, name: String): FloatArray? {
+    fun nameSpeaker(of: TranscriptSegment, name: String, onlyThisLine: Boolean = false): FloatArray? {
         val clusterID = of.speakerClusterID ?: return null
-        // A line wrongly placed in one person's voice and corrected to
-        // another known person is that line's mistake: renaming the whole
-        // voice renamed every earlier and later line of the first person.
-        val currentName = clusterer.cluster(clusterID)?.name
-        val holder = if (currentName != null && currentName != name) clusterer.clusterNamed(name, clusterID) else null
-        if (holder != null) {
-            utteranceClusterAssignments[of.id] = holder.id
-            correctedUtterances.add(of.id)
-            val index = segments.indexOfFirst { it.id == of.id }
-            if (index >= 0) {
-                setSegment(index, segments[index].copy(speakerClusterID = holder.id))
-                onCaptionsChanged?.invoke()
-            }
-            return null
-        }
+        val cluster = clusterer.clusters.firstOrNull { it.id == clusterID }
+        if (cluster != null && (onlyThisLine || !isRespelling(name, of))) return moveLine(of, name, cluster)
         clusterer.nameCluster(clusterID, name)
         speakerClusters = clusterer.clusters
         return clusterer.clusters.firstOrNull { it.id == clusterID }?.centroid
+    }
+
+    private fun moveLine(line: TranscriptSegment, name: String, from: SpeakerCluster): FloatArray? {
+        val ownVoice = utteranceEmbeddings[line.id] ?: if (utteranceClusterAssignments[line.id] == from.id) from.centroid else null
+        val target = clusterer.clusters.firstOrNull { it.name == name }?.id
+            ?: ownVoice?.let { clusterer.enrollWithoutMerging(name, it) }
+            ?: return null
+        utteranceClusterAssignments[line.id] = target
+        correctedUtterances.add(line.id)
+        val index = segments.indexOfLast { it.id == line.id }
+        if (index >= 0) {
+            setSegment(index, segments[index].copy(speakerClusterID = target))
+            onCaptionsChanged?.invoke()
+        }
+        speakerClusters = clusterer.clusters
+        return ownVoice
+    }
+
+    /**
+     * Whether [name], typed on [ofLine], fixes the spelling of the name its
+     * voice already has (or names a voice that has none), rather than
+     * calling someone else: close to the old name, about one letter in four
+     * at most, and no other voice called so. As on the iPhone.
+     */
+    fun isRespelling(name: String, ofLine: TranscriptSegment): Boolean {
+        val clusterID = ofLine.speakerClusterID ?: return false
+        val cluster = clusterer.clusters.firstOrNull { it.id == clusterID } ?: return true
+        val old = cluster.name
+        if (old == null || old == name) return true
+        if (clusterer.clusters.any { it.name == name }) return false
+        val before = letters(old.lowercase())
+        val after = letters(name.lowercase())
+        return editDistance(before, after) <= maxOf(1, minOf(letters(old).size, letters(name).size) / 4)
     }
 
     /** Whether the phone still has the voice of [of]: one heard long ago has been let go, and naming it would do nothing. */
@@ -1930,6 +1965,8 @@ class CaptionPipeline(
         speakerClusters = clusterer.clusters
         recentSpeechCluster = null
         utteranceClusterAssignments = HashMap()
+        utteranceEmbeddings = HashMap()
+        utteranceEmbeddingOrder = ArrayDeque()
         correctedUtterances = HashSet()
     }
 
@@ -2169,6 +2206,15 @@ class CaptionPipeline(
                     recentSpeechCluster = RecentSpeechCluster(clusterID, now())
                     return@collect
                 }
+                if (utteranceEmbeddings.put(heardDuring, computed) == null) {
+                    utteranceEmbeddingOrder.addLast(heardDuring)
+                    if (utteranceEmbeddingOrder.size > UTTERANCE_EMBEDDING_LIMIT) {
+                        val evicted = utteranceEmbeddingOrder.removeFirst()
+                        utteranceEmbeddings.remove(evicted)
+                        utteranceClusterAssignments.remove(evicted)
+                    }
+                }
+                // A line the person moved to someone else stays there.
                 if (heardDuring in correctedUtterances) return@collect
                 utteranceClusterAssignments[heardDuring] = clusterID
                 // Writing an unchanged value still tells every observer the
@@ -3332,6 +3378,36 @@ class CaptionPipeline(
         private const val MAX_SOUND_ALERTS = 30
         private const val MINIMUM_SPEECH_FRACTION_FOR_EMBEDDING = 0.4
         private const val RECENT_SPEECH_CLUSTER_SECONDS = 4.0
+        private const val UTTERANCE_EMBEDDING_LIMIT = 64
+
+        /** The letters of [text] as a reader counts them, so a niqqud mark is part of its letter, as Swift counts Characters. */
+        private fun letters(text: String): List<String> {
+            val breaks = BreakIterator.getCharacterInstance(Locale.ROOT)
+            breaks.setText(text)
+            val found = ArrayList<String>()
+            var start = breaks.first()
+            var end = breaks.next()
+            while (end != BreakIterator.DONE) {
+                found.add(text.substring(start, end))
+                start = end
+                end = breaks.next()
+            }
+            return found
+        }
+
+        private fun editDistance(a: List<String>, b: List<String>): Int {
+            val row = IntArray(b.size + 1) { it }
+            for (i in a.indices) {
+                var diagonal = row[0]
+                row[0] = i + 1
+                for (j in b.indices) {
+                    val above = row[j + 1]
+                    row[j + 1] = minOf(above + 1, row[j] + 1, diagonal + if (a[i] == b[j]) 0 else 1)
+                    diagonal = above
+                }
+            }
+            return row[b.size]
+        }
 
         /**
          * How long after a sound the classifier may still be reporting it: its

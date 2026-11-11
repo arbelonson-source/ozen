@@ -176,10 +176,36 @@ class EmbeddingClusterer(
      * The reference counts as several samples: it was recorded on purpose,
      * close to the microphone, in a quiet moment, while live windows carry
      * room noise and cross-talk. Counting it as one would let the very
-     * first live window move the profile halfway.
+     * first live window move the profile halfway. When that person was
+     * already heard as an unnamed speaker, that cluster is named instead of
+     * a second one opened, as on the iPhone: two rival voices split the
+     * person's lines between a number and the name.
      */
-    fun enroll(name: String, embedding: FloatArray, weight: Int = ENROLLMENT_WEIGHT): Int =
-        openCluster(direction(embedding), name = name, sampleCount = max(1, weight))
+    fun enroll(name: String, embedding: FloatArray, weight: Int = ENROLLMENT_WEIGHT): Int {
+        val direction = direction(embedding)
+        val added = max(1, weight)
+        var best = -1
+        var bestSimilarity = -2f
+        for (index in clusterList.indices) {
+            val cluster = clusterList[index]
+            if (cluster.name != null || cluster.centroid.size != direction.size) continue
+            val similarity = cosineSimilarity(direction, cluster.centroid)
+            if (similarity >= similarityThreshold && similarity > bestSimilarity) {
+                best = index
+                bestSimilarity = similarity
+            }
+        }
+        if (best < 0) return openCluster(direction, name = name, sampleCount = added)
+        val cluster = clusterList[best]
+        val heard = cluster.sampleCount.toFloat()
+        val weightAdded = added.toFloat()
+        val centroid = FloatArray(direction.size) { (cluster.centroid[it] * heard + direction[it] * weightAdded) / (heard + weightAdded) }
+        clusterList[best] = cluster.copy(centroid = centroid, sampleCount = cluster.sampleCount + added, name = name)
+        return cluster.id
+    }
+
+    /** A named cluster seeded from one line's own voice, never merged into a voice heard before: the line was just said to be somebody else. */
+    fun enrollWithoutMerging(name: String, embedding: FloatArray): Int = openCluster(direction(embedding), name = name, sampleCount = 1)
 
     /**
      * Tags an existing (already-inferred) cluster with a name after the
@@ -218,10 +244,6 @@ class EmbeddingClusterer(
 
     fun cluster(id: Int): SpeakerCluster? =
         clusterList.firstOrNull { it.id == id } ?: retired.lastOrNull { it.id == id }
-
-    /** The voice, still heard, that already carries [name], other than [excluding]. */
-    fun clusterNamed(name: String, excluding: Int): SpeakerCluster? =
-        clusterList.firstOrNull { it.name == name && it.id != excluding }
 
     fun displayName(forClusterID: Int?): String {
         val cluster = forClusterID?.let { id ->

@@ -13,6 +13,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 
 private fun token(id: UUID, text: String, final: Boolean = false, at: Double = 1_000.0) =
@@ -543,7 +544,7 @@ class CaptionPipelineTokenTest {
         val print = pipeline.nameSpeaker(pipeline.segments[0], "Yossi")
 
         assertEquals("Yossi", pipeline.displayName(pipeline.segments[0]))
-        assertNull(print)
+        assertContentEquals(floatArrayOf(1f, 0f, 0f), print)
         engine.emit(token(UUID.randomUUID(), "again"))
         assertTrue(eventually { pipeline.segments.size == 2 })
         audio.push(FloatArray(24_000) { 0.5f })
@@ -592,6 +593,77 @@ class CaptionPipelineTokenTest {
         assertEquals("Dahna", pipeline.displayName(pipeline.segments[0]))
         assertEquals(listOf("Dahna"), pipeline.speakerClusters.mapNotNull { it.name })
         assertEquals(1f, print?.get(0))
+    }
+
+    private suspend fun TestScope.namingTwoKnownVoices(): Triple<CaptionPipeline, FakeEngine, FakeAudioCapturer> {
+        val engine = FakeEngine()
+        val (pipeline, audio, _) = makePipeline(engines = mapOf(whisper to engine))
+        pipeline.enroll(SpeakerProfile(name = "Dana", embedding = floatArrayOf(1f, 0f, 0f)))
+        pipeline.enroll(SpeakerProfile(name = "Yossi", embedding = floatArrayOf(0f, 1f, 0f)))
+        pipeline.start(AppSettings.default)
+        return Triple(pipeline, engine, audio)
+    }
+
+    private suspend fun TestScope.heardLine(text: String, engine: FakeEngine, audio: FakeAudioCapturer, pipeline: CaptionPipeline, count: Int) {
+        engine.emit(token(UUID.randomUUID(), text))
+        assertTrue(eventually { pipeline.segments.size == count })
+        audio.push(FloatArray(24_000) { 0.5f })
+        assertTrue(eventually { pipeline.segments[count - 1].speakerClusterID != null })
+    }
+
+    @Test
+    fun `a new name typed on a named voice's line opens a cluster from that line's own voice, as on the iPhone`() = runTest {
+        val (pipeline, engine, audio) = namingTwoKnownVoices()
+        heardLine("hello", engine, audio, pipeline, 1)
+
+        val print = pipeline.nameSpeaker(pipeline.segments[0], "Moshe")
+        heardLine("again", engine, audio, pipeline, 2)
+
+        assertContentEquals(floatArrayOf(1f, 0f, 0f), print)
+        assertEquals("Moshe", pipeline.displayName(pipeline.segments[0]))
+        assertEquals("Dana", pipeline.displayName(pipeline.segments[1]))
+        assertEquals(1, pipeline.speakerClusters.count { it.name == "Dana" })
+    }
+
+    @Test
+    fun `a name one letter away, given to this line only, moves the line and leaves the voice its name, as on the iPhone`() = runTest {
+        val (pipeline, engine, audio) = namingTwoKnownVoices()
+        heardLine("hello", engine, audio, pipeline, 1)
+        assertTrue(pipeline.isRespelling("Dane", pipeline.segments[0]))
+
+        val print = pipeline.nameSpeaker(pipeline.segments[0], "Dane", onlyThisLine = true)
+        heardLine("again", engine, audio, pipeline, 2)
+
+        assertContentEquals(floatArrayOf(1f, 0f, 0f), print)
+        assertEquals("Dane", pipeline.displayName(pipeline.segments[0]))
+        assertEquals("Dana", pipeline.displayName(pipeline.segments[1]))
+        assertEquals(1, pipeline.speakerClusters.count { it.name == "Dana" })
+    }
+
+    @Test
+    fun `fixing a spelling on a named voice's line still renames that voice everywhere, as on the iPhone`() = runTest {
+        val (pipeline, engine, audio) = namingTwoKnownVoices()
+        heardLine("hello", engine, audio, pipeline, 1)
+
+        pipeline.nameSpeaker(pipeline.segments[0], "Dane")
+        heardLine("again", engine, audio, pipeline, 2)
+
+        assertEquals("Dane", pipeline.displayName(pipeline.segments[0]))
+        assertEquals("Dane", pipeline.displayName(pipeline.segments[1]))
+        assertFalse(pipeline.speakerClusters.any { it.name == "Dana" })
+    }
+
+    @Test
+    fun `a name is a spelling fix only when it is close to the voice's own name and nobody else has it`() = runTest {
+        val (pipeline, engine, audio) = namingTwoKnownVoices()
+        heardLine("hello", engine, audio, pipeline, 1)
+        val line = pipeline.segments[0]
+
+        assertTrue(pipeline.isRespelling("Dana", line))
+        assertTrue(pipeline.isRespelling("dane", line))
+        assertFalse(pipeline.isRespelling("Moshe", line))
+        assertFalse(pipeline.isRespelling("Yossi", line))
+        assertFalse(pipeline.isRespelling("Dana", line.copy(speakerClusterID = null)))
     }
 
     @Test
