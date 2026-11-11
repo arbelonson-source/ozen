@@ -464,6 +464,20 @@ struct HomeServerEngineTests {
         }
     }
 
+    @Test("a link cut off after its pin's name doesn't pair without the pin it asked for")
+    func pinCutOff() throws {
+        for link in [
+            "ozen://pair?address=wss://192.168.1.20:8766&code=example-code-123&pin",
+            "ozen:pair?address=wss://192.168.1.20:8766&code=example-code-123&pin",
+            "ozen://pair?address=wss://192.168.1.20:8766&pin&code=example-code-123",
+        ] {
+            let url = try #require(URL(string: link))
+            #expect(HomeServerPairing(url: url) == nil, "\(link)")
+            #expect(HomeServerPairing.isPairingLink(url), "\(link)")
+        }
+        #expect(HomeServerPairing(url: try #require(URL(string: "ozen://pair?address=wss://192.168.1.20:8766&code=example-code-123")))?.pin == nil)
+    }
+
     @Test("the address field keeps what was typed when its row comes back, and otherwise shows the saved address")
     func addressFieldOnReturn() {
         #expect(HomeServer.addressField(draft: "", loaded: "", saved: "10.0.0.5") == "10.0.0.5")

@@ -245,7 +245,11 @@ public struct HomeServerPairing: Sendable, Equatable {
               let address = parts.queryItems?.first(where: { $0.name == "address" })?.value,
               let code = parts.queryItems?.first(where: { $0.name == "code" })?.value
         else { return nil }
-        self.init(address: address, code: code, pin: parts.queryItems?.first(where: { $0.name == "pin" })?.value)
+        // A "pin" with nothing after it was cut short: pairing without it
+        // would drop the check the link asked for. As on Android.
+        let pin = parts.queryItems?.first(where: { $0.name == "pin" })
+        if let pin, pin.value == nil { return nil }
+        self.init(address: address, code: code, pin: pin?.value)
     }
 
     /// The computer's name as a person would recognise it: its host.
