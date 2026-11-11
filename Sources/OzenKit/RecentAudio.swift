@@ -62,24 +62,33 @@ public struct RecentAudio: Sendable {
 /// problem's clip and from the home computer's replay, and was never kept
 /// at all when the session ended first. The audio fan-out appends on its own
 /// task while the pipeline reads on the main actor, hence the lock.
+///
+/// Each fan-out appends as a writer of its own. Only the newest writer is
+/// kept: a fan-out that a pause, a failure or a stop cancelled can still be
+/// handing over a chunk, which must not land among the next session's audio.
 public final class SharedRecentAudio: @unchecked Sendable {
     private let lock = NSLock()
     private var audio: RecentAudio
-    private var clears = 0
+    private var writers = 0
 
     public init(seconds: Double, sampleRate: Double) {
         audio = RecentAudio(seconds: seconds, sampleRate: sampleRate)
     }
 
-    /// What a session's fan-out appends under. A clear moves past it, so a
-    /// chunk of an ended session arriving late is not kept.
-    public var generation: Int { lock.withLock { clears } }
+    /// A new writer, for a fan-out about to start: from now on only its
+    /// chunks are kept. The next writer, or a clear, moves past it.
+    public func newWriter() -> Int {
+        lock.withLock {
+            writers += 1
+            return writers
+        }
+    }
 
     public var totalAppended: Int { lock.withLock { audio.totalAppended } }
 
-    public func append(_ samples: [Float], generation: Int) {
+    public func append(_ samples: [Float], writer: Int) {
         lock.withLock {
-            guard generation == clears else { return }
+            guard writer == writers else { return }
             audio.append(samples)
         }
     }
@@ -93,7 +102,7 @@ public final class SharedRecentAudio: @unchecked Sendable {
     public func clear() {
         lock.withLock {
             audio.clear()
-            clears += 1
+            writers += 1
         }
     }
 }

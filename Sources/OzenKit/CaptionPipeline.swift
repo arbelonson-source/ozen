@@ -706,9 +706,9 @@ public final class CaptionPipeline {
                 guard let self, self.runID == run else { return }
                 self.stats.glitchedAudioChunks += 1
             }
-        } onChunk: { [counter = chunksArrivedCounter, recentAudio, generation = recentAudio.generation] chunk in
+        } onChunk: { [counter = chunksArrivedCounter, recentAudio, writer = recentAudio.newWriter()] chunk in
             counter.increment()
-            recentAudio.append(chunk, generation: generation)
+            recentAudio.append(chunk, writer: writer)
         }
         fanOut = fan
         let engineAudio = replay.isEmpty ? fan.outputs[0] : replaying(replay, then: fan.outputs[0])
