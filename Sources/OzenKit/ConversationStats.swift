@@ -39,6 +39,31 @@ public struct ConversationStats: Sendable, Equatable {
         totalWords > 0 ? Double(speaker.words) / Double(totalWords) : 0
     }
 
+    /// A Chinese line has no spaces between its words: each Han character
+    /// counts as one, plus any spaced words beside them, as on Android.
+    /// Counted by spaces alone, a whole Chinese line was one word, and the
+    /// totals, each speaker's share, the longest turn and the pace with it.
+    static func wordCount(_ text: String) -> Int {
+        var han = 0
+        var rest = String.UnicodeScalarView()
+        for scalar in text.unicodeScalars {
+            if isHan(scalar) {
+                han += 1
+                rest.append(" ")
+            } else {
+                rest.append(scalar)
+            }
+        }
+        guard han > 0 else { return HebrewText.words(text).count }
+        // `words` already drops punctuation and symbols, so "，" and "。"
+        // left between the characters are no words.
+        return han + HebrewText.words(String(rest)).count
+    }
+
+    private static func isHan(_ scalar: Unicode.Scalar) -> Bool {
+        (0x3400...0x4DBF).contains(scalar.value) || (0x4E00...0x9FFF).contains(scalar.value) || (0x20000...0x323AF).contains(scalar.value)
+    }
+
     public static func compute(from record: TranscriptSessionRecord) -> ConversationStats {
         compute(segments: record.segments, startedAt: record.startedAt, endedAt: record.endedAt)
     }
@@ -70,7 +95,7 @@ public struct ConversationStats: Sendable, Equatable {
 
         for segment in segments {
             let name = speakerName(of: segment)
-            let words = HebrewText.words(segment.text).count
+            let words = Self.wordCount(segment.text)
             if wordsBySpeaker[name] == nil {
                 order.append(name)
                 wordsBySpeaker[name] = 0
