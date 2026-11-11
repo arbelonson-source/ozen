@@ -865,9 +865,30 @@ public final class CaptionPipeline {
         // say so) carries on, rather than trying it again with nothing
         // buffered and then reloading the model. The recheck brings it
         // back once it answers.
-        keepCovering(&effective)
+        let instead = await insteadOfARefusingBuiltIn()
+        guard phase == .paused, !isRecordingVoice else { return }
+        if let instead {
+            effective = instead
+        } else {
+            keepCovering(&effective)
+        }
         phase = .idle
         await start(settings: effective)
+    }
+
+    /// Asked again before the built-in recognition starts anew (a resume,
+    /// a retry): one that refuses now (its language left the phone, or it
+    /// no longer works on the phone alone) gives way to the model it stood
+    /// in for, which waits for Wi-Fi as before or downloads if it can,
+    /// instead of a failure about an engine nobody chose. The settings to
+    /// start with in its place, or nil to carry on as before.
+    private func insteadOfARefusingBuiltIn() async -> AppSettings? {
+        guard isCoveringForCloud, coverReason == .waitingForWiFi, !waitingModelReady, let chosen = coveredSettings else { return nil }
+        let builtInSettings = BuiltInWhileWaiting.captionSettings(for: chosen)
+        guard let why = await probeEngine(for: builtInSettings).checkAvailability(languageCode: builtInSettings.languageCode).unavailability
+        else { return nil }
+        logEvent(.note("the built-in recognition can't caption any more (\(why.kind.rawValue)), back to the model it stood in for"))
+        return chosen
     }
 
     /// Starting again while the phone's model covers (a resume, or a retry
@@ -939,6 +960,9 @@ public final class CaptionPipeline {
     /// so a change made while failed isn't silently dropped on retry.
     public func retry(settings: AppSettings? = nil) async {
         guard case .failed = phase, var effective = settings ?? activeSettings else { return }
+        let failedAs = phase
+        let instead = await insteadOfARefusingBuiltIn()
+        guard phase == failedAs else { return }
         // A voice sample holds the microphone. Tearing the session down cut
         // it short, and `start` then refused to run, so captions stayed
         // stopped with no retry left to bring them back.
@@ -952,7 +976,11 @@ public final class CaptionPipeline {
         }
         cancelScheduledRetry()
         tearDownSession()
-        keepCovering(&effective)
+        if let instead {
+            effective = instead
+        } else {
+            keepCovering(&effective)
+        }
         // Straight from the failure to starting, never through .idle, which
         // means stopped on purpose (the "captions came back" announcement
         // forgets the failure there).

@@ -99,6 +99,35 @@ class BuiltInWhileWaitingPipelineTest {
     }
 
     @Test
+    fun `a built-in recognition that refuses when tried again gives way to the waiting model, not a failure about it`() = runTest {
+        val builtIn = builtInEngine()
+        val pipeline = pipeline(FakeNetworkMonitor(NetworkConditions.cellular), waitingModel(), builtIn)
+        onBuiltIn(pipeline)
+        builtIn.availability = EngineAvailability.Unavailable(EngineUnavailability(EngineUnavailability.Kind.LanguageNotSupportedOnDevice, "refused Ozen's audio"))
+        builtIn.endStream(IllegalStateException("the built-in recognition stopped with error 13"))
+        assertTrue(eventually { pipeline.phase.failure?.kind == PipelineFailure.Kind.TranscriptionStopped })
+
+        pipeline.retryAfterTap()
+        assertEquals(EngineUnavailability.Kind.WaitingForWiFi, pipeline.phase.failure?.engineUnavailability?.kind)
+        assertFalse(pipeline.isCoveringForCloud)
+        assertEquals(TranscriptionEngineKind.WhisperKit, pipeline.activeSettings?.engine)
+    }
+
+    @Test
+    fun `a built-in recognition whose language left the phone during a pause gives way to the waiting model on resume`() = runTest {
+        val builtIn = builtInEngine()
+        val pipeline = pipeline(FakeNetworkMonitor(NetworkConditions.cellular), waitingModel(), builtIn)
+        onBuiltIn(pipeline)
+        pipeline.pause()
+        builtIn.availability = EngineAvailability.Unavailable(EngineUnavailability(EngineUnavailability.Kind.LanguageNotSupportedOnDevice, "no on-device Hebrew"))
+
+        pipeline.resume()
+        assertEquals(EngineUnavailability.Kind.WaitingForWiFi, pipeline.phase.failure?.engineUnavailability?.kind)
+        assertFalse(pipeline.isCoveringForCloud)
+        assertEquals(TranscriptionEngineKind.WhisperKit, pipeline.activeSettings?.engine)
+    }
+
+    @Test
     fun `once Wi-Fi is back the model gets ready behind the built-in, then captions switch to it by themselves`() = runTest {
         val network = FakeNetworkMonitor(NetworkConditions.cellular)
         val model = waitingModel()

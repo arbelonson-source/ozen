@@ -96,6 +96,35 @@ struct BuiltInWhileWaitingPipelineTests {
         #expect(pipeline.isListeningForSoundsOnly)
     }
 
+    @Test("a built-in recognition that refuses when tried again gives way to the waiting model, not a failure about it", .timeLimit(.minutes(1)))
+    func refusingOnRetryGoesBackToWaiting() async {
+        let builtIn = FakeEngine(kind: .appleSpeech)
+        let pipeline = makePipeline(network: FakeNetworkMonitor(.cellular), model: waitingModel(), builtIn: builtIn)
+        await onBuiltIn(pipeline)
+        builtIn.availability = .unavailable(.languageNotSupportedOnDevice, "no on-device Hebrew any more")
+        builtIn.endStream(throwing: NSError(domain: "kAFAssistantErrorDomain", code: 1101))
+        #expect(await eventually { pipeline.phase.failure?.kind == .transcriptionStopped })
+
+        await pipeline.retryAfterTap()
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == .waitingForWiFi)
+        #expect(!pipeline.isCoveringForCloud)
+        #expect(pipeline.activeSettings?.engine == .whisperKit)
+    }
+
+    @Test("a built-in recognition whose language left the phone during a pause gives way to the waiting model on resume", .timeLimit(.minutes(1)))
+    func refusingOnResumeGoesBackToWaiting() async {
+        let builtIn = FakeEngine(kind: .appleSpeech)
+        let pipeline = makePipeline(network: FakeNetworkMonitor(.cellular), model: waitingModel(), builtIn: builtIn)
+        await onBuiltIn(pipeline)
+        pipeline.pause()
+        builtIn.availability = .unavailable(.languageNotSupportedOnDevice, "no on-device Hebrew any more")
+
+        await pipeline.resume()
+        #expect(pipeline.phase.failure?.engineUnavailability?.kind == .waitingForWiFi)
+        #expect(!pipeline.isCoveringForCloud)
+        #expect(pipeline.activeSettings?.engine == .whisperKit)
+    }
+
     @Test("once Wi-Fi is back the model gets ready behind the built-in, then captions switch to it by themselves", .timeLimit(.minutes(1)))
     func handsOverWhenTheModelIsReady() async {
         let network = FakeNetworkMonitor(.cellular)
