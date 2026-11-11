@@ -1,5 +1,8 @@
 package com.arbelonson.ozen.core
 
+import java.text.BreakIterator
+import java.util.Locale
+
 /** One caption line as the lock screen shows it. */
 data class LockScreenCaptionLine(
     /** Set on the first line of a run by one named speaker. */
@@ -96,7 +99,24 @@ object LockScreenCaptions {
     private fun lineRoom(budget: Int, speaker: String?): Int =
         maxOf(MINIMUM_CHARACTERS, budget - (speaker?.let { characters(it) + 2 } ?: 0))
 
-    private fun characters(text: String) = text.codePointCount(0, text.length)
+    // Letters as a reader sees them, as on the iPhone: a Hindi syllable
+    // with its vowel sign, a letter with its vowel points or accent, or an
+    // emoji is one. Counting the code points under them cut a Hindi,
+    // pointed Hebrew or Arabic line on the lock screen well short of what
+    // the iPhone shows, and could start it in the middle of a syllable.
+    private fun characters(text: String) = letterStarts(text).size
+
+    private fun letterStarts(text: String): List<Int> {
+        val letters = BreakIterator.getCharacterInstance(Locale.ROOT)
+        letters.setText(text)
+        val starts = ArrayList<Int>(text.length)
+        var boundary = letters.first()
+        while (boundary != BreakIterator.DONE && boundary < text.length) {
+            starts += boundary
+            boundary = letters.next()
+        }
+        return starts
+    }
 
     /**
      * The end of [text], at most [maximumCharacters] long, starting at a
@@ -105,8 +125,9 @@ object LockScreenCaptions {
      */
     fun tail(text: String, maximumCharacters: Int): String {
         val trimmed = text.trim()
-        if (characters(trimmed) <= maximumCharacters || maximumCharacters <= 1) return trimmed
-        val cutPoint = trimmed.offsetByCodePoints(trimmed.length, -(maximumCharacters - 1))
+        val starts = letterStarts(trimmed)
+        if (starts.size <= maximumCharacters || maximumCharacters <= 1) return trimmed
+        val cutPoint = starts[starts.size - (maximumCharacters - 1)]
         var kept = trimmed.substring(cutPoint)
         // Whether the cut landed inside a word is what matters: a cut right
         // after a space already starts at a real word, however short, and a
