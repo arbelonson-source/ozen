@@ -501,7 +501,7 @@ private fun EngineSection(engineSettings: EngineSettings, current: AppSettings, 
     val chosen = if (current.engine == TranscriptionEngineKind.AppleSpeech) TranscriptionEngineKind.WhisperKit else current.engine
     SettingsGroup(modifier = Modifier.selectableGroup()) {
         for (kind in engineSettings.engines) {
-            item { ChoiceRow(kind.displayName, engineSummary(kind), selected = chosen == kind) { engineSettings.chooseEngine(kind) } }
+            item { ChoiceRow(kind.displayName, engineSummary(kind, current.spokenLanguage), selected = chosen == kind) { engineSettings.chooseEngine(kind) } }
         }
     }
     GroupFootnote(tr("שינוי המנוע מפעיל מחדש את ההאזנה. הכתוביות שכבר על המסך נשארות.", "Changing the engine restarts listening. Captions already on screen stay."))
@@ -534,16 +534,35 @@ private fun PhoneModelSection(current: AppSettings, models: PhoneModels) {
 
 // The iPhone's summary of its own model offers a choice of model size,
 // which Android doesn't have yet, so the phone's model goes without one.
-private fun engineSummary(kind: TranscriptionEngineKind): String? = when (kind) {
-    TranscriptionEngineKind.Cloud -> tr(
-        "מודל שפועל באינטרנט, לטלפון שאיטי מדי בשביל המודל הפנימי. בעברית הוא טועה יותר מהמודל שבטלפון. דרושים חיבור לאינטרנט ומפתח של שירות ענן.",
-        "A model online, for a phone too slow for the one inside it. It gets more Hebrew wrong than the phone’s own model. Needs internet and a key for a cloud service.",
-    )
-    TranscriptionEngineKind.HomeServer -> tr(
-        "מחשב של המשפחה עם כרטיס מסך כותב את הכתוביות: אותו מודל עברית, מהר בהרבה, והטלפון לא מתחמם. כשאין אליו חיבור, הטלפון ממשיך לבד אם יש בו גיבוי.",
-        "A family computer with a graphics card writes the captions: the same Hebrew model, much faster, and the phone stays cool. When it can’t be reached, the phone carries on by itself if it has the backup.",
-    )
-    TranscriptionEngineKind.WhisperKit, TranscriptionEngineKind.AppleSpeech -> null
+// Hebrew is named only while it is the spoken language, as on the iPhone
+// (7500e489): someone captioning Spanish was told about Hebrew.
+internal fun engineSummary(kind: TranscriptionEngineKind, spokenLanguage: UILanguage): String? {
+    val hebrew = spokenLanguage == UILanguage.Hebrew
+    return when (kind) {
+        TranscriptionEngineKind.Cloud -> if (hebrew) {
+            tr(
+                "מודל שפועל באינטרנט, לטלפון שאיטי מדי בשביל המודל הפנימי. בעברית הוא טועה יותר מהמודל שבטלפון. דרושים חיבור לאינטרנט ומפתח של שירות ענן.",
+                "A model online, for a phone too slow for the one inside it. It gets more Hebrew wrong than the phone’s own model. Needs internet and a key for a cloud service.",
+            )
+        } else {
+            tr(
+                "מודל שפועל באינטרנט, לטלפון שאיטי מדי בשביל המודל הפנימי. הוא טועה יותר מהמודל שבטלפון. דרושים חיבור לאינטרנט ומפתח של שירות ענן.",
+                "A model online, for a phone too slow for the one inside it. It gets more words wrong than the phone’s own model. Needs internet and a key for a cloud service.",
+            )
+        }
+        TranscriptionEngineKind.HomeServer -> if (hebrew) {
+            tr(
+                "מחשב של המשפחה עם כרטיס מסך כותב את הכתוביות: אותו מודל עברית, מהר בהרבה, והטלפון לא מתחמם. כשאין אליו חיבור, הטלפון ממשיך לבד אם יש בו גיבוי.",
+                "A family computer with a graphics card writes the captions: the same Hebrew model, much faster, and the phone stays cool. When it can’t be reached, the phone carries on by itself if it has the backup.",
+            )
+        } else {
+            tr(
+                "מחשב של המשפחה עם כרטיס מסך כותב את הכתוביות: אותו מודל, מהר בהרבה, והטלפון לא מתחמם. כשאין אליו חיבור, הטלפון ממשיך לבד אם יש בו גיבוי.",
+                "A family computer with a graphics card writes the captions: the same model, much faster, and the phone stays cool. When it can’t be reached, the phone carries on by itself if it has the backup.",
+            )
+        }
+        TranscriptionEngineKind.WhisperKit, TranscriptionEngineKind.AppleSpeech -> null
+    }
 }
 
 @Composable
