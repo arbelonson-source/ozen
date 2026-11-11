@@ -368,7 +368,7 @@ class AndroidAudioCapture(private val context: Context) : AudioCapturing {
         return AudioInputDescriptor(
             uid = "${type.rawValue}:${place.ifEmpty { name }}",
             portName = name.ifEmpty { type.rawValue },
-            portType = type,
+            portType = AudioPortType.named(name) ?: type,
         )
     }
 

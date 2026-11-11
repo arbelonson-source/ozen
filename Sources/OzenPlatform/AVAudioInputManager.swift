@@ -479,25 +479,12 @@ public final class AVAudioInputManager: AudioCapturing {
         })
     }
 
-    /// Maps a real `AVAudioSession.Port` to Ozen's own category. Note:
-    /// `AVAudioSession.Port` has no dedicated hearing-aid case — MFi
-    /// hearing aids surface as `.bluetoothLE`, same as some other BLE
-    /// accessories. The `.hearingAid` name-based heuristic below is a best
-    /// guess that genuinely needs verification against a real Made-for-
-    /// iPhone hearing aid accessory; until that's tested on real hardware,
-    /// treat it as informational labeling only, not a functional switch.
+    /// Maps a real `AVAudioSession.Port` to Ozen's own category: what its
+    /// name says first (`AudioPortType.named`, shared with Android), then
+    /// its connection. `AVAudioSession.Port` has no hearing-aid case; MFi
+    /// hearing aids surface as `.bluetoothLE`, like other BLE accessories.
     static func portType(for port: AVAudioSessionPortDescription) -> AudioPortType {
-        let name = port.portName.lowercased()
-        // A Roger (Phonak Roger On/Select/Table Mic) is a remote microphone
-        // placed near whoever is talking, not worn on the listener's own
-        // ear like the rest of this heuristic — checked first so it isn't
-        // shadowed by the general "phonak" match below.
-        if name.contains("roger") {
-            return .remoteMic
-        }
-        if name.contains("hearing") || name.contains("phonak") || name.contains("oticon") {
-            return .hearingAid
-        }
+        if let named = AudioPortType.named(port.portName) { return named }
         switch port.portType {
         case .builtInMic: return .builtInMic
         case .bluetoothHFP, .bluetoothLE, .bluetoothA2DP: return .bluetooth

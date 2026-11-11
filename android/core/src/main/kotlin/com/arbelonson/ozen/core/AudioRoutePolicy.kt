@@ -14,6 +14,18 @@ enum class AudioPortType(val rawValue: String) {
 
     companion object {
         fun fromRawValue(rawValue: String): AudioPortType? = entries.firstOrNull { it.rawValue == rawValue }
+
+        fun named(name: String): AudioPortType? {
+            val lowered = name.lowercase()
+            return when {
+                rogerName.containsMatchIn(lowered) -> RemoteMic
+                hearingAidMaker.containsMatchIn(lowered) -> HearingAid
+                else -> null
+            }
+        }
+
+        private val rogerName = Regex("""^[\p{Z}\t]*(?:phonak[\p{Z}\t]+)?roger(?![\p{L}\p{M}'\u2019\u02BC])""")
+        private val hearingAidMaker = Regex("hearing|phonak|oticon|signia|resound|starkey|widex|unitron|bernafon")
     }
 }
 

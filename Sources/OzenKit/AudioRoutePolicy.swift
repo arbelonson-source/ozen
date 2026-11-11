@@ -1,8 +1,8 @@
 import Foundation
 
-/// The broad category of an audio input, used only to label it sensibly in
-/// the picker UI (e.g. showing a Bluetooth icon) — selection logic itself
-/// doesn't care which kind is picked.
+/// The broad category of an audio input: it labels the input in the
+/// picker (e.g. a Bluetooth icon), and decides whether an input nobody
+/// picked is kept (`isOnTheListenersEar`).
 public enum AudioPortType: String, Sendable, Equatable, Codable {
     case builtInMic
     case bluetooth
@@ -21,6 +21,25 @@ public enum AudioPortType: String, Sendable, Equatable, Codable {
     public var isOnTheListenersEar: Bool {
         self == .bluetooth || self == .hearingAid
     }
+
+    /// What a microphone's own name says it is, when its connection alone
+    /// can't tell, on both phones. A Phonak Roger is a remote microphone
+    /// near the talker, and its name starts with "Roger" ("Roger On",
+    /// "Phonak Roger Select"); "Roger's AirPods" or "Rogers AirPods" are
+    /// someone's earbuds, which must not be kept as a microphone near the
+    /// talker. Hearing aids connect like any Bluetooth headset and go by
+    /// their makers' names. Not checked against real accessories: one the
+    /// names miss shows as Bluetooth and can still be picked by hand.
+    public static func named(_ name: String) -> AudioPortType? {
+        let lowered = name.lowercased()
+        let whole = NSRange(lowered.startIndex..., in: lowered)
+        if rogerName?.firstMatch(in: lowered, range: whole) != nil { return .remoteMic }
+        if hearingAidMaker?.firstMatch(in: lowered, range: whole) != nil { return .hearingAid }
+        return nil
+    }
+
+    private static let rogerName = try? NSRegularExpression(pattern: #"^[\p{Z}\t]*(?:phonak[\p{Z}\t]+)?roger(?![\p{L}\p{M}'\u2019\u02BC])"#)
+    private static let hearingAidMaker = try? NSRegularExpression(pattern: "hearing|phonak|oticon|signia|resound|starkey|widex|unitron|bernafon")
 }
 
 /// A microphone Ozen could record from, described independently of
