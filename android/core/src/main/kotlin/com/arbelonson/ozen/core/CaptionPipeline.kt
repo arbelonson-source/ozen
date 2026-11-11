@@ -2927,6 +2927,16 @@ class CaptionPipeline(
             if (!waitingModelLacksRoom) retryWaitingModelLater()
             return
         }
+        // A recording being transcribed loads a model of its own and waited
+        // for this load to end, so that two are never in memory at once:
+        // kept, this one stayed loaded beside it. It loads again, from the
+        // phone now, once the recording is done.
+        if (isTranscribingRecording) {
+            waitingModelJob = null
+            engine.release()
+            logEvent(PipelineEvent.Kind.Note("the waiting model is let go while a recording is transcribed"))
+            return
+        }
         waitingModelReady = true
         engineCache[key] = engine
         logEvent(PipelineEvent.Kind.Note("the waiting model is ready"))

@@ -271,6 +271,44 @@ class BuiltInWhileWaitingPipelineTest {
         gate.open()
     }
 
+    private class LoadingEngine(val inner: FakeEngine) : TranscriptionEngine by inner {
+        override suspend fun cancelDownload() {}
+    }
+
+    @Test
+    fun `a model that finishes loading while a recording is transcribed is let go, then loaded again after it`() = runTest {
+        val network = FakeNetworkMonitor(NetworkConditions.cellular)
+        val model = waitingModel()
+        val gate = PrepareGate()
+        model.prepareGate = gate
+        val loading = LoadingEngine(model)
+        val builtIn = builtInEngine()
+        val pipeline = captionPipeline(
+            audio = FakeAudioCapturer(),
+            engineFactory = { settings -> if (settings.engine == TranscriptionEngineKind.AppleSpeech) builtIn else loading },
+            recovery = AutoRecoveryPolicy.disabled(),
+            network = network,
+        )
+        pipeline.networkFirstReportWaitSeconds = 0.3
+        pipeline.handOverCheckSeconds = 0.02
+        onBuiltIn(pipeline)
+        pipeline.pause()
+        network.change(NetworkConditions.wifi)
+        assertTrue(eventually { model.heldPrepares == 1 })
+
+        pipeline.beginRecordingTranscription()
+        val waiting = async { pipeline.waitOutAbandonedLoad() }
+        gate.open()
+        waiting.await()
+        assertEquals(0, pipeline.loadedModelCount, "the captions' model stayed loaded beside the recording's")
+        assertFalse(model.holdsModel)
+
+        pipeline.endRecordingTranscription()
+        assertTrue(eventually { model.prepareCount == 2 && model.holdsModel })
+        pipeline.resume(chosen)
+        assertEquals(TranscriptionEngineKind.WhisperKit, pipeline.activeEngineKind)
+    }
+
     @Test
     fun `a pause and resume keep the built-in while the model is not ready`() = runTest {
         val pipeline = pipeline(FakeNetworkMonitor(NetworkConditions.cellular), waitingModel(), builtInEngine())

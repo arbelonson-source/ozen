@@ -224,6 +224,30 @@ struct BuiltInWhileWaitingPipelineTests {
         #expect(pipeline.phase == .idle)
     }
 
+    @Test("a model that finishes loading while a recording is transcribed isn't kept beside it, and loads again after it", .timeLimit(.minutes(1)))
+    func recordingLetsTheLoadGo() async throws {
+        let network = FakeNetworkMonitor(.cellular)
+        let model = waitingModel()
+        let gate = PrepareGate()
+        model.prepareGate = gate
+        let pipeline = makePipeline(network: network, model: model, builtIn: FakeEngine(kind: .appleSpeech))
+        await onBuiltIn(pipeline)
+        pipeline.pause(releasingAudio: true)
+        network.change(to: .wifi)
+        #expect(await eventually { model.heldPrepares == 1 })
+
+        pipeline.beginRecordingTranscription()
+        await gate.open()
+        #expect(await eventually { !pipeline.waitingModelGettingReady })
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(model.prepareCount == 1)
+
+        pipeline.endRecordingTranscription()
+        #expect(await eventually { model.prepareCount == 2 && !pipeline.waitingModelGettingReady }, "the model loaded during the recording was kept")
+        await pipeline.resume(settings: chosen)
+        #expect(pipeline.activeEngineKind == .whisperKit)
+    }
+
     @Test("a pause and resume keep the built-in while the model is not ready", .timeLimit(.minutes(1)))
     func resumeKeepsTheBuiltIn() async {
         let pipeline = makePipeline(network: FakeNetworkMonitor(.cellular), model: waitingModel(), builtIn: FakeEngine(kind: .appleSpeech))
