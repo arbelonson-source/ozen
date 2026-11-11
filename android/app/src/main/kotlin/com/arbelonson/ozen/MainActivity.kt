@@ -1774,7 +1774,7 @@ private fun CaptionLineContent(
     val speaker = line.speaker?.takeIf { display.showSpeakerNames }
     CompositionLocalProvider(LocalLayoutDirection provides if (line.rightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr) {
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (speaker != null && line.showsSpeaker) SpeakerLabel(speaker, line.speakerCluster, display.fontSize, look)
+            if (speaker != null && line.showsSpeaker) SpeakerLabel(speaker, line.speakerCluster, line.speakerSlot, display.fontSize, look)
             CaptionLineWords(line, display, look, doubtful, spoken, colour, onLayout, layout, actions, speaker)
         }
     }
@@ -1786,8 +1786,8 @@ private fun CaptionLineContent(
  * every line instead, so the label itself is skipped.
  */
 @Composable
-private fun SpeakerLabel(name: String, cluster: Int?, captionSize: Double, look: CaptionTheme) {
-    val colour = SpeakerColour.of(cluster, name, look.isLight)
+private fun SpeakerLabel(name: String, cluster: Int?, slot: Int?, captionSize: Double, look: CaptionTheme) {
+    val colour = SpeakerColour.of(cluster, name, look.isLight, slot)
     Row(
         modifier = Modifier.semantics { hideFromAccessibility() },
         horizontalArrangement = Arrangement.spacedBy(8.dp),

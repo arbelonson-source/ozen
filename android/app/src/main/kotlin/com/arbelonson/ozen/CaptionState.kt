@@ -11,6 +11,7 @@ import com.arbelonson.ozen.core.KeywordHit
 import com.arbelonson.ozen.core.LockScreenCaptionLine
 import com.arbelonson.ozen.core.LockScreenCaptions
 import com.arbelonson.ozen.core.LockScreenTextSize
+import com.arbelonson.ozen.core.SpeakerColorSlots
 import com.arbelonson.ozen.core.SoundAlert
 import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.PhoneNumbers
@@ -50,6 +51,8 @@ data class CaptionLine(
     val speaker: String? = null,
     /** The voice it was matched to, which colours an unnamed speaker. */
     val speakerCluster: Int? = null,
+    /** Its speaker's colour among everyone in the captions, so two people never share one (see `SpeakerColorSlots`). */
+    val speakerSlot: Int? = null,
     /** Heads a run of lines by one person, as in a chat: the name shows above it. */
     val showsSpeaker: Boolean = false,
     /** Laid out from the right, as `CaptionLayout.readsRightToLeft` says for its words, as on the iPhone. */
@@ -214,6 +217,9 @@ object CaptionState {
         segmentsShown = segments
         val firstShown = segments.size - minOf(segments.size, MAXIMUM_LINES)
         val named = { segment: TranscriptSegment -> segment.takeIf { it.speakerClusterID != null }?.let(speakerName) }
+        // Everyone in the captions, in order of first appearance, as on the
+        // iPhone; a name follows its voice, so one look per voice will do.
+        val slots = SpeakerColorSlots.of(segments.distinctBy { it.speakerClusterID }.map { it.speakerClusterID to named(it) })
         val recent = recentlyHeard.takeLast(10).reversed()
         // Only a changed line is shaped again, and an unchanged one keeps
         // its object so the list skips redrawing it: rebuilding all 200
@@ -258,6 +264,7 @@ object CaptionState {
                         ?.let { previous -> QuietGap(previous.lastUpdateTimestamp, it.startTimestamp) },
                     speaker = named(it),
                     speakerCluster = it.speakerClusterID,
+                    speakerSlot = slots.slot(it.speakerClusterID, named(it)),
                     showsSpeaker = named(it) != null &&
                         CaptionLayout.showsSpeakerLabel(it, segments.getOrNull(firstShown + at - 1)) { other -> named(other) ?: "" },
                     rightToLeft = shape.rightToLeft,

@@ -21,6 +21,7 @@ import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotSame
 import kotlin.test.assertNull
 import kotlin.test.assertSame
@@ -109,6 +110,24 @@ class CaptionStateTest {
         assertEquals(listOf(0, 2, 1, null, 0, 0), shown.map { it.speakerCluster })
         show(PipelinePhase.Listening, lines)
         assertTrue(CaptionState.screen.value.lines.all { it.speaker == null && !it.showsSpeaker })
+    }
+
+    @Test
+    fun `two people whose names share a colour by hash each get their own on the caption screen, as on the iPhone`() {
+        fun said(text: String, voice: Int, at: Double) =
+            TranscriptSegment(id = UUID.randomUUID(), text = text, isCommitted = true, speakerClusterID = voice, startTimestamp = at, lastUpdateTimestamp = at)
+        val names = mapOf(0 to "Mom", 1 to "Dad")
+        CaptionState.show(
+            PipelinePhase.Listening, engine = null, interruptedBySystem = false, scheduledRetry = null,
+            segments = listOf(said("Good morning", 0, 0.0), said("Morning", 1, 1.0), said("Tea?", 0, 2.0)),
+            speakerName = { names.getValue(it.speakerClusterID!!) },
+        )
+        val shown = CaptionState.screen.value.lines
+        assertNotEquals(shown[0].speakerSlot, shown[1].speakerSlot)
+        assertEquals(shown[0].speakerSlot, shown[2].speakerSlot)
+        for (light in listOf(false, true)) {
+            assertNotEquals(SpeakerColour.of(0, "Mom", light, shown[0].speakerSlot), SpeakerColour.of(1, "Dad", light, shown[1].speakerSlot))
+        }
     }
 
     @Test

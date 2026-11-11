@@ -4,6 +4,7 @@ import com.arbelonson.ozen.core.CaptionLayout
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.SavedSegment
+import com.arbelonson.ozen.core.SpeakerColorSlots
 import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptSessionSummary
@@ -14,6 +15,7 @@ import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -245,6 +247,27 @@ class HistoryRowsTest {
         assertFalse(SavedLine.of(starred, jerusalem, languageCode = "en").rightToLeft)
         assertEquals("10:30", SavedLine.of(starred, jerusalem, languageCode = "en").text)
         assertTrue(SavedLine.of(starred, jerusalem, languageCode = "he").rightToLeft)
+    }
+
+    @Test
+    fun `two people whose names share a colour by hash each get their own in a saved conversation and on the starred list`() {
+        val mom = SavedSegment(UUID.randomUUID(), "Good morning", "Mom", 1, morning, true, isStarred = true)
+        val dad = SavedSegment(UUID.randomUUID(), "Morning", "Dad", 2, morning + 5, true, isStarred = true)
+        val record = TranscriptSessionRecord(
+            startedAt = morning,
+            endedAt = morning + 60,
+            engine = TranscriptionEngineKind.WhisperKit,
+            modelVariant = null,
+            inputName = null,
+            segments = listOf(mom, dad),
+        )
+        val lines = SavedLine.of(record, jerusalem)
+        assertNotEquals(lines[0].slot, lines[1].slot)
+        val starred = listOf(mom, dad).map { StarredLine(record.id, morning, it) }
+        val slots = SpeakerColorSlots.of(starred.map { it.segment.speakerClusterID to it.segment.speakerName })
+        val shown = starred.map { SavedLine.of(it, jerusalem, slots = slots) }
+        assertNotEquals(shown[0].slot, shown[1].slot)
+        assertEquals(lines.map { it.slot }, shown.map { it.slot })
     }
 
     @Test

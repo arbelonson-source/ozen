@@ -48,11 +48,21 @@ struct SpeakerColorSlotsTests {
         #expect(result.slot(for: .named("Mom")) != result.slot(for: .stranger(2)))
     }
 
-    @Test("generic labels count as strangers")
+    @Test("generic labels and blank names count as strangers")
     func genericIsStranger() {
         let generic = EmbeddingClusterer.genericName(number: 3)
         #expect(SpeakerColorSlots.speaker(clusterID: 3, name: generic) == .stranger(3))
+        #expect(SpeakerColorSlots.speaker(clusterID: 3, name: "") == .stranger(3))
+        #expect(SpeakerColorSlots.speaker(clusterID: 3, name: "  ") == .stranger(3))
+        #expect(SpeakerColorSlots.speaker(clusterID: nil, name: " ") == nil)
         #expect(SpeakerColorSlots.speaker(clusterID: nil, name: nil) == nil)
+    }
+
+    @Test("a name is kept without the spaces around it, as the conversation summary counts it")
+    func trimmedName() {
+        #expect(SpeakerColorSlots.speaker(clusterID: 0, name: " Mom ") == .named("Mom"))
+        let slots = SpeakerColorSlots([(clusterID: 1, name: "Dad"), (clusterID: 0, name: " Mom ")])
+        #expect(slots.slot(for: .named("Mom")) == slots.slot(for: SpeakerColorSlots.speaker(clusterID: 0, name: " Mom ")!))
     }
 
     @Test("outside any screen a stranger keeps its id-based slot and a name its hashed one")
