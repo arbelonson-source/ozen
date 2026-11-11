@@ -416,9 +416,17 @@ class AppSettings(
             }
         }
 
+    /**
+     * The phone test taken on [device], or before the phone was recorded;
+     * null for one taken on another phone, whose settings came over with a
+     * move to this one. Counted as checked, that phone's speed kept this
+     * one from ever being tested.
+     */
+    fun phoneSpeedOn(device: String): PhoneSpeed? = phoneSpeed?.takeIf { it.device == null || it.device == device }
+
     /** The speed of the phone test or live timing taken on [device] (or before the phone was recorded), the later of the two. */
     fun gflopsOn(device: String): Double? {
-        val test = phoneSpeed?.takeIf { it.device == null || it.device == device }
+        val test = phoneSpeedOn(device)
         val live = phoneLiveMeasurement?.takeIf { it.device == null || it.device == device }
         return when {
             test == null -> live?.gflops

@@ -141,6 +141,20 @@ class ModelFitSettingsTest {
     }
 
     @Test
+    fun `a phone test counts as this phone's only when taken on it or before phones were recorded`() {
+        val settings = behind()
+        settings.phoneSpeed = null
+        assertNull(settings.phoneSpeedOn(phone))
+        val elsewhere = PhoneSpeed(900.0, 4, 600.0, device = "Galaxy S10")
+        settings.phoneSpeed = elsewhere
+        assertNull(settings.phoneSpeedOn(phone))
+        assertEquals(elsewhere, settings.phoneSpeedOn("Galaxy S10"))
+        val unrecorded = PhoneSpeed(900.0, 4, 600.0)
+        settings.phoneSpeed = unrecorded
+        assertEquals(unrecorded, settings.phoneSpeedOn(phone))
+    }
+
+    @Test
     fun `the battery saver flag survives saving and loading and an old file reads false`() {
         val settings = behind()
         settings.phoneLiveMeasurement = ModelFitWatch.measurement(settings.phoneModel, 20, 48.0, now = 500.0, device = phone, lowPower = true)

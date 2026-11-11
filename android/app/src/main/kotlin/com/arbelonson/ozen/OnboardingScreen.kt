@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -54,6 +55,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -102,6 +104,7 @@ import com.arbelonson.ozen.core.FirstRunNote
 import com.arbelonson.ozen.core.HebrewText
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.MicrophoneAsk
+import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.SpokenLanguageNote
@@ -118,6 +121,7 @@ import com.arbelonson.ozen.ui.SettingsGroup
 import com.arbelonson.ozen.ui.TonalButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.lifecycle.Lifecycle
@@ -165,6 +169,30 @@ internal fun OnboardingScreen(
     val addDraft = {
         if (nameDraft.value.isNotBlank()) addName(nameDraft.value.trim())
         nameDraft.value = ""
+    }
+    // As on the iPhone, finishing by any route, Skip from the first page
+    // included, first checks a phone never checked: only the model page
+    // ran the check, so a phone too weak for the default model kept it.
+    // The check leaves a model picked on purpose alone. It takes about ten
+    // seconds, shown and said above the buttons; taps meanwhile do nothing.
+    // A check made on another phone, whose settings came over with a move to
+    // this one, does not count.
+    var finishing by remember { mutableStateOf(false) }
+    val phoneCheck by phoneModels.check.collectAsStateWithLifecycle()
+    val latestSettings by rememberUpdatedState(settings)
+    val finishNow by rememberUpdatedState(onFinish)
+    val finish = {
+        if (!finishing) {
+            finishing = true
+            addDraft()
+            turning.launch {
+                if (latestSettings.phoneSpeedOn(Build.MODEL.orEmpty()) == null) {
+                    phoneModels.runCheck(thenChooseBest = true)
+                    phoneModels.check.first { it !is PhoneCheckState.Running }
+                }
+                finishNow()
+            }
+        }
     }
     // A name typed and then "Next" or a swipe instead of "Add" was dropped
     // on the iPhone, and the name alert never came.
@@ -221,6 +249,19 @@ internal fun OnboardingScreen(
                     }
                 }
             }
+            (phoneCheck as? PhoneCheckState.Running)?.takeIf { finishing }?.let { running ->
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = OzenSpacing.Page),
+                ) {
+                    LinearProgressIndicator(progress = { running.fraction }, modifier = Modifier.fillMaxWidth())
+                    Text(
+                        tr("בודקים את הטלפון… %1%", "Testing this phone… %1%", listOf("${(running.fraction * 100).toInt()}")),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
+            }
             Dots(pager)
             Footer(
                 pager,
@@ -234,14 +275,10 @@ internal fun OnboardingScreen(
                         focusManager.clearFocus()
                         turning.launch { pager.animateScrollToPage(LANGUAGE_PAGE) }
                     } else {
-                        addDraft()
-                        onFinish()
+                        finish()
                     }
                 },
-                onFinish = {
-                    addDraft()
-                    onFinish()
-                },
+                onFinish = { finish() },
             )
         }
     }
@@ -438,7 +475,7 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
 /** The speech model for the phone's own engine: the list, the phone test and a recommended model already chosen. */
 @Composable
 private fun ModelPage(settings: AppSettings, models: PhoneModels, onKept: () -> Unit) {
-    LaunchedEffect(Unit) { if (settings.phoneSpeed == null) models.runCheck(thenChooseBest = true) }
+    LaunchedEffect(Unit) { if (settings.phoneSpeedOn(Build.MODEL.orEmpty()) == null) models.runCheck(thenChooseBest = true) }
     val installed by models.installed.collectAsStateWithLifecycle()
     val partial by models.partial.collectAsStateWithLifecycle()
     val switching by models.switching.collectAsStateWithLifecycle()
