@@ -235,9 +235,13 @@ public struct HomeServerPairing: Sendable, Equatable {
         return url.host?.lowercased() == "pair" || (url.host == nil && url.absoluteString.lowercased().hasPrefix("\(scheme):pair"))
     }
 
+    /// A link that lost its "//" on the way ("ozen:pair?address=…") still
+    /// pairs: everything it needs is there, and the computer still checks
+    /// the code.
     public init?(url: URL) {
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              parts.scheme?.lowercased() == Self.scheme, parts.host?.lowercased() == "pair",
+              parts.scheme?.lowercased() == Self.scheme,
+              parts.host?.lowercased() == "pair" || (parts.host == nil && ["pair", "pair/"].contains(parts.path.lowercased())),
               let address = parts.queryItems?.first(where: { $0.name == "address" })?.value,
               let code = parts.queryItems?.first(where: { $0.name == "code" })?.value
         else { return nil }

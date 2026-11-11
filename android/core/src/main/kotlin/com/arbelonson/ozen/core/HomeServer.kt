@@ -335,9 +335,18 @@ class HomeServerPairing private constructor(val address: String, val code: Strin
             return host?.lowercase(Locale.ROOT) == "pair" || (host == null && url.toString().lowercase(Locale.ROOT).startsWith("$SCHEME:pair"))
         }
 
+        /** A link that lost its "//" on the way ("ozen:pair?address=...") still pairs, as on the iPhone. */
         fun from(url: URI): HomeServerPairing? {
-            if (url.scheme?.lowercase(Locale.ROOT) != SCHEME || hostOf(url)?.lowercase(Locale.ROOT) != "pair") return null
-            val items = (url.rawQuery ?: return null).split("&").map { pair ->
+            if (url.scheme?.lowercase(Locale.ROOT) != SCHEME) return null
+            val host = hostOf(url)
+            val query = when {
+                host?.lowercase(Locale.ROOT) == "pair" -> url.rawQuery
+                host == null && url.isOpaque -> url.rawSchemeSpecificPart.takeIf { part ->
+                    part.substringBefore('?').lowercase(Locale.ROOT) in setOf("pair", "pair/") && part.contains('?')
+                }?.substringAfter('?')
+                else -> null
+            }
+            val items = (query ?: return null).split("&").map { pair ->
                 val parts = pair.split("=", limit = 2)
                 percentDecoded(parts[0]) to parts.getOrNull(1)?.let { percentDecoded(it) }
             }
