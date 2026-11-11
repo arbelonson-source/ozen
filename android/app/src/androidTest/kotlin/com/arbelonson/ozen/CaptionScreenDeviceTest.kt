@@ -2382,6 +2382,57 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun aTapClosesTheSaidPillAlsoWithoutTalkBackAsOnTheIPhone() {
+        val line = committed("Grandma, dinner is ready")
+        try {
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line))
+                CaptionState.heard(HeardWord(UUID.randomUUID(), "Grandma", System.currentTimeMillis() / 1_000.0, line = line.id))
+            }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Said: Grandma").fetchSemanticsNodes().isNotEmpty() }
+            compose.mainClock.autoAdvance = false
+            compose.onNodeWithText("Said: Grandma").performClick()
+            compose.mainClock.advanceTimeBy(1_000)
+            assertTrue("the pill stayed after a tap", compose.onAllNodesWithText("Said: Grandma").fetchSemanticsNodes().isEmpty())
+        } finally {
+            compose.mainClock.autoAdvance = true
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
+    fun atTheLargestTextALongSaidPillStaysLongEnoughToReadAsOnTheIPhone() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
+        val said = "Grandma, the doctor called about tomorrow"
+        val pill = "Said: $said"
+        val line = committed(said)
+        try {
+            shell("settings put system font_scale 2.0")
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f }
+            compose.runOnUiThread {
+                CaptionState.clear()
+                CaptionState.show(PipelinePhase.Paused, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = listOf(line))
+            }
+            compose.waitForIdle()
+            compose.mainClock.autoAdvance = false
+            compose.runOnUiThread { CaptionState.heard(HeardWord(UUID.randomUUID(), said, System.currentTimeMillis() / 1_000.0, line = line.id)) }
+            compose.mainClock.advanceTimeBy(500)
+            assertTrue("the pill never showed", compose.onAllNodesWithText(pill).fetchSemanticsNodes().isNotEmpty())
+            compose.mainClock.advanceTimeBy(6_000)
+            assertTrue("gone after the usual five seconds at the largest text", compose.onAllNodesWithText(pill).fetchSemanticsNodes().isNotEmpty())
+            compose.mainClock.advanceTimeBy(5_000)
+            assertTrue("still there past its 9.7 s", compose.onAllNodesWithText(pill).fetchSemanticsNodes().isEmpty())
+        } finally {
+            compose.mainClock.autoAdvance = true
+            shell("settings put system font_scale 1.0")
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
     fun whileThePhoneTalksTheStatusSaysSoAndATapStopsItInsteadOfOpeningTheMicrophone() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         compose.runOnUiThread { if (app.captions.pipeline.phase != PipelinePhase.Idle) app.captions.pipeline.stop() }
