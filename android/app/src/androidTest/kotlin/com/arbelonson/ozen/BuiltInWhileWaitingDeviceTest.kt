@@ -46,6 +46,7 @@ class BuiltInWhileWaitingDeviceTest {
     private val fetcherBefore = app.captions.modelFetcher
     private val modelFiles = ModelFilesAside(app.filesDir)
     private val release = CountDownLatch(1)
+    private var wifiTurnedOff = false
 
     private fun shell(command: String) =
         ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() }
@@ -108,7 +109,10 @@ class BuiltInWhileWaitingDeviceTest {
             it.spokenLanguage = UILanguage.English
             it.allowCellularModelDownload = false
         }
-        shell("svc wifi disable")
+        if (String(shell("settings get global wifi_on")).trim() != "0") {
+            shell("svc wifi disable")
+            wifiTurnedOff = true
+        }
         assumeTrue("no mobile network on this phone once Wi-Fi is off", staysOnMobileData())
     }
 
@@ -116,8 +120,10 @@ class BuiltInWhileWaitingDeviceTest {
     fun putBack() {
         release.countDown()
         compose.runOnUiThread { app.captions.pipeline.stop() }
-        shell("svc wifi enable")
-        within(20_000) { onWiFi() }
+        if (wifiTurnedOff) {
+            shell("svc wifi enable")
+            within(20_000) { onWiFi() }
+        }
         app.captions.modelFetcher = fetcherBefore
         modelFiles.putBack()
         app.settings.change {
