@@ -61,7 +61,7 @@ class CaptionAnnouncer {
             val tail = grownTail(before, words)
             if (tail != null) {
                 val name = speakerName(segment)
-                parts += if (name != null && name != lastSpeaker) "$name: $tail" else tail
+                if (tail.isNotEmpty()) parts += if (name != null && name != lastSpeaker) "$name: $tail" else tail
                 lastSpeaker = name
                 lastLine = segment
                 continue

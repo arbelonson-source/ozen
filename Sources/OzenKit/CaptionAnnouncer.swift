@@ -11,7 +11,8 @@ import Foundation
 /// Only finished lines are announced, since a line that is still changing
 /// would be read five times over. Each is announced once, several finished
 /// together go out as one announcement, and the speaker's name leads a
-/// line when the speaker changes, the way the screen shows it.
+/// line when the speaker changes, the way the screen shows it. A line
+/// that only grew after it was read out reads just its new words.
 public struct CaptionAnnouncer: Sendable, Equatable {
     /// What each line said when it was last announced (or skipped),
     /// without a cut-off mark.
@@ -61,10 +62,26 @@ public struct CaptionAnnouncer: Sendable, Equatable {
             // afterwards (a slow engine correcting one of the last lines),
             // not when a dropped connection only marked it cut off.
             let words = Self.words(of: text)
-            guard announced[segment.id] != words else { continue }
+            let before = announced[segment.id]
+            guard before != words else { continue }
             announced[segment.id] = words
             guard !text.isEmpty else { continue }
             let name = speakerName(segment)
+            // A line that only grew since it was read out (a slow engine
+            // adding the rest of the sentence) reads just the new words, as
+            // on Android: the name only if the speaker is new, no second
+            // warning, and not the whole line again each time it grows.
+            if let tail = Self.grownTail(before: before, now: words) {
+                if !tail.isEmpty {
+                    var part: [Piece] = []
+                    if let name, name != lastSpeaker { part.append(Piece(text: "\(name): ", isCaption: false)) }
+                    part.append(Piece(text: tail, isCaption: true))
+                    parts.append(part)
+                }
+                lastSpeaker = name
+                lastLine = segment
+                continue
+            }
             // After a quiet stretch the name comes again, as on screen.
             var part: [Piece] = []
             if isUncertain(segment) { part.append(Piece(text: tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. "), isCaption: false)) }
@@ -89,6 +106,17 @@ public struct CaptionAnnouncer: Sendable, Equatable {
         for segment in segments[start...] where segment.isCommitted {
             announced[segment.id] = Self.words(of: segment.text.trimmingCharacters(in: .whitespacesAndNewlines))
         }
+    }
+
+    /// The words a line gained since it was read out, when it only grew:
+    /// the same words, then a space and more. Nil when an earlier word
+    /// changed, or the last one only got longer ("pill" to "pills").
+    private static func grownTail(before: String?, now: String) -> String? {
+        guard let before, !before.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        let old = Array(before.utf16), new = Array(now.utf16)
+        guard new.starts(with: old) else { return nil }
+        if new.count > old.count, !(Unicode.Scalar(new[old.count])?.properties.isWhitespace ?? false) { return nil }
+        return String(decoding: new[old.count...], as: UTF16.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func words(of text: String) -> String {
