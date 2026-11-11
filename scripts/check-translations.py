@@ -619,7 +619,8 @@ def check_system_names_in_help(keys):
     return problems
 
 
-# What iOS 26 calls Siri's wake phrase and the Shortcuts app in each language,
+# What iOS 26 calls Siri's wake phrase, the Shortcuts app and the Settings
+# screens the app sends people to, in each language,
 # from Apple's iPhone User Guide in that language (iOS has no Amharic, so an
 # Amharic reader sees the English names).
 APPLE_NAMES = {
@@ -640,6 +641,44 @@ APPLE_NAMES = {
         "hindi": "सेटिंग → सामान्य → %1 स्टोरेज", "portuguese": "Definições → Geral → Armazenamento no %1",
         "russian": "Настройки → Основные → Хранилище %1", "spanish": "Ajustes → General → Almacenamiento del %1",
         "ukrainian": "Параметри → Загальні → Сховище %1",
+    },
+    "in both Sleep and Do Not Disturb, tap": {
+        "hebrew": "נא לא להפריע", "amharic": "Do Not Disturb", "arabic": "عدم الإزعاج", "chineseSimplified": "勿扰模式",
+        "french": "Ne pas déranger", "german": "Nicht stören", "hindi": "डू नॉट डिस्टर्ब", "portuguese": "Não incomodar",
+        "russian": "Не беспокоить", "spanish": "No molestar", "ukrainian": "Не турбувати",
+    },
+    "in both Sleep and": {
+        "hebrew": "שינה", "amharic": "Sleep", "arabic": "النوم", "chineseSimplified": "睡眠",
+        "french": "Repos", "german": "Schlafen", "hindi": "स्लीप", "portuguese": "Dormir",
+        "russian": "Сон", "spanish": "Descanso", "ukrainian": "Сон",
+    },
+    "Settings > Focus,": {
+        "hebrew": "ריכוז", "amharic": "Focus", "arabic": "التركيز", "chineseSimplified": "专注模式",
+        "french": "Concentration", "german": "Fokus", "hindi": "फ़ोकस", "portuguese": "Concentração",
+        "russian": "Фокусирование", "spanish": "Modos de concentración", "ukrainian": "Зосередження",
+    },
+    "tap Apps and add Ozen": {
+        "hebrew": "יישומים", "amharic": "Apps", "arabic": "التطبيقات", "chineseSimplified": "App",
+        "french": "Apps", "german": "Apps", "hindi": "ऐप्स", "portuguese": "Aplicações",
+        "russian": "Приложения", "spanish": "Apps", "ukrainian": "Програми",
+    },
+    "Settings > Sounds & Haptics > Haptics": {
+        "hebrew": "צלילים ורטט אינטראקטיבי", "amharic": "Sounds & Haptics", "arabic": "الأصوات والحس اللمسي",
+        "chineseSimplified": "声效与触感反馈", "french": "Sons et vibrations", "german": "Töne & Haptik",
+        "hindi": "ध्वनि और हैप्टिक", "portuguese": "Sons e háptica", "russian": "Звуки и вибрация",
+        "spanish": "Sonidos y vibraciones", "ukrainian": "Звуки і вібровідгуки",
+    },
+    "> Haptics, choose": {
+        "hebrew": "רטט אינטראקטיבי", "amharic": "> Haptics", "arabic": "الحس اللمسي", "chineseSimplified": "触感反馈",
+        "french": "Vibrations", "german": "> „Haptik“", "hindi": "> “हैप्टिक”", "portuguese": "Háptica",
+        "russian": "Тактильные сигналы", "spanish": "Vibraciones", "ukrainian": "Вібровідгуки",
+    },
+    "choose Play in Silent Mode": {
+        "hebrew": "להשמיע במצב שקט", "amharic": "Play in Silent Mode", "arabic": "تشغيل في النمط الصامت",
+        "chineseSimplified": "静音模式下提供", "french": "Vibrer en mode Silence", "german": "Im Stummmodus wiedergeben",
+        "hindi": "मौन मोड में चलाएँ", "portuguese": "Reproduzir no modo sem som",
+        "russian": "Воспроизводить в бесшумном режиме", "spanish": "Vibrar en el modo Silencio",
+        "ukrainian": "Відтворювати в режимі тиші",
     },
 }
 
