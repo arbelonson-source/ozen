@@ -1,5 +1,6 @@
 package com.arbelonson.ozen
 
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -174,6 +175,8 @@ internal fun OnboardingScreen(
     // ran the check, so a phone too weak for the default model kept it.
     // The check leaves a model picked on purpose alone. It takes about ten
     // seconds, shown and said above the buttons; taps meanwhile do nothing.
+    // A check made on another phone, whose settings came over with a move to
+    // this one, does not count.
     var finishing by remember { mutableStateOf(false) }
     val phoneCheck by phoneModels.check.collectAsStateWithLifecycle()
     val latestSettings by rememberUpdatedState(settings)
@@ -183,7 +186,7 @@ internal fun OnboardingScreen(
             finishing = true
             addDraft()
             turning.launch {
-                if (latestSettings.phoneSpeed == null) {
+                if (latestSettings.phoneSpeedOn(Build.MODEL.orEmpty()) == null) {
                     phoneModels.runCheck(thenChooseBest = true)
                     phoneModels.check.first { it !is PhoneCheckState.Running }
                 }
@@ -472,7 +475,7 @@ internal fun NameAlertForm(settings: AppSettings, draft: MutableState<String>, a
 /** The speech model for the phone's own engine: the list, the phone test and a recommended model already chosen. */
 @Composable
 private fun ModelPage(settings: AppSettings, models: PhoneModels, onKept: () -> Unit) {
-    LaunchedEffect(Unit) { if (settings.phoneSpeed == null) models.runCheck(thenChooseBest = true) }
+    LaunchedEffect(Unit) { if (settings.phoneSpeedOn(Build.MODEL.orEmpty()) == null) models.runCheck(thenChooseBest = true) }
     val installed by models.installed.collectAsStateWithLifecycle()
     val partial by models.partial.collectAsStateWithLifecycle()
     val switching by models.switching.collectAsStateWithLifecycle()

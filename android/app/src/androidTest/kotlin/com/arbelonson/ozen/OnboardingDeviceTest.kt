@@ -610,6 +610,27 @@ class OnboardingDeviceTest {
     }
 
     @Test
+    fun skippingTheWalkthroughOnAPhoneCheckedOnlyOnAnotherPhoneChecksThisOne() {
+        app.settings.change {
+            it.phoneSpeed = PhoneSpeed(gflops = 50.0, threads = 4, measuredAt = 1_000.0, device = "another phone")
+            it.languageCode = "en"
+        }
+        val models = FakePhoneModels(app.settings)
+        models.checkRuns = true
+        val finished = AtomicInteger()
+        showTheWalkthroughWith(models) { finished.incrementAndGet() }
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitUntil(5_000) { models.checks.isNotEmpty() }
+        compose.waitForIdle()
+        assertEquals("the other phone's check counted for this one", listOf(true), models.checks.toList())
+        assertEquals("finished before the phone check", 0, finished.get())
+
+        compose.runOnUiThread { models.check.value = PhoneCheckState.Idle }
+        compose.waitUntil(5_000) { finished.get() > 0 }
+        assertEquals(1, finished.get())
+    }
+
+    @Test
     fun skippingTheWalkthroughOnAPhoneAlreadyCheckedFinishesAtOnce() {
         app.settings.change { it.phoneSpeed = PhoneSpeed(gflops = 50.0, threads = 4, measuredAt = 1_000.0) }
         val models = FakePhoneModels(app.settings)
