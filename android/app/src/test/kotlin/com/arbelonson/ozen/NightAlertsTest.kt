@@ -97,13 +97,18 @@ class NightAlertsTest {
     @Test
     fun `battery advice says what to pick in the list`() {
         Localization.withLanguage(UILanguage.English) {
-            val text = NightAlerts.batteryText(exempt = false)
+            val text = NightAlerts.batteryText(exempt = false, sdk = 34)
             assertTrue(text.contains("All apps") && text.contains("Ozen") && text.contains("Don’t optimize"), text)
             assertTrue(text.startsWith("To save battery, Android may stop Ozen"), text)
+            val newer = NightAlerts.batteryText(exempt = false, sdk = 35)
+            assertTrue(newer.contains("tap Ozen") && newer.contains("Allow background usage") && newer.contains("Unrestricted") && !newer.contains("Don’t optimize"), newer)
+            assertTrue(newer.startsWith("To save battery, Android may stop Ozen"), newer)
             assertEquals("Android lets Ozen keep running while the phone sleeps.", NightAlerts.batteryText(exempt = true))
         }
-        val hebrew = Localization.withLanguage(UILanguage.Hebrew) { NightAlerts.batteryText(exempt = false) }
+        val hebrew = Localization.withLanguage(UILanguage.Hebrew) { NightAlerts.batteryText(exempt = false, sdk = 34) }
         assertTrue(hebrew.contains("מצאו את Ozen"), hebrew)
+        val hebrewNewer = Localization.withLanguage(UILanguage.Hebrew) { NightAlerts.batteryText(exempt = false, sdk = 35) }
+        assertTrue(hebrewNewer.contains("הקישו על Ozen"), hebrewNewer)
     }
 
     @Test
@@ -120,6 +125,53 @@ class NightAlertsTest {
             val override = NightAlerts.dndText(through = false, alarmsAllowed = true)
             assertTrue(!override.contains("turned off") && override.contains("override"), override)
             assertEquals("Urgent sounds, like a smoke alarm, come through Do Not Disturb.", NightAlerts.dndText(through = true, alarmsAllowed = true))
+        }
+    }
+
+    private class Labels(
+        val language: UILanguage,
+        val allApps: String,
+        val dontOptimize: String,
+        val allowBackground: String,
+        val unrestricted: String,
+        val overrideDnd: String,
+    )
+
+    // As Android's own Settings app names them in each language (res/values-*/strings.xml:
+    // filter_all_apps, ignore_optimizations_on, manager_battery_usage_allow_background_usage_title,
+    // manager_battery_usage_unrestricted_title, app_notification_override_dnd_title).
+    private val androidLabels = listOf(
+        Labels(UILanguage.Hebrew, "כל האפליקציות", "אין לבצע אופטימיזציה", "הרשאה לשימוש ברקע", "ללא הגבלות", "התעלמות ממצב 'נא לא להפריע'"),
+        Labels(UILanguage.English, "All apps", "Don’t optimize", "Allow background usage", "Unrestricted", "Override Do Not Disturb"),
+        Labels(UILanguage.Arabic, "جميع التطبيقات", "عدم تحسين", "السماح بالاستخدام في الخلفية", "الاستخدام غير المحدّد بقيود", "تجاوز وضع \"عدم الإزعاج\""),
+        Labels(UILanguage.Russian, "Все приложения", "Не экономить", "Разрешить использование в фоновом режиме", "Без ограничений", "Уведомления в режиме \"Не беспокоить\""),
+        Labels(UILanguage.Amharic, "ሁሉም መተግበሪያዎች", "አታትባ", "የዳራ አጠቃቀምን ይፍቀዱ", "ያልተገደበ", "«አትረብሽ»ን ሻር"),
+        Labels(UILanguage.French, "Toutes les applis", "Ne pas optimiser", "Autoriser l'utilisation en arrière-plan", "Sans restriction", "Ignorer Ne pas déranger"),
+        Labels(UILanguage.Spanish, "Todas las aplicaciones", "No optimizar", "Permitir uso en segundo plano", "Sin restricciones", "Ignorar modo No molestar"),
+        Labels(UILanguage.Ukrainian, "Усі додатки", "Не оптимізувати", "Дозволити використання у фоновому режимі", "Без обмежень", "Дозволити в режимі \"Не турбувати\""),
+        Labels(UILanguage.German, "Alle Apps", "Nicht optimieren", "Hintergrundnutzung zulassen", "Uneingeschränkt", "„Bitte nicht stören“ ignorieren"),
+        Labels(UILanguage.Portuguese, "Todas as apps", "Não otimizar", "Permitir utilização em segundo plano", "Sem restrições", "Ignorar o modo Não incomodar"),
+        Labels(UILanguage.ChineseSimplified, "所有应用", "不优化", "允许后台使用", "无限制", "覆盖“勿扰”设置"),
+        Labels(UILanguage.Hindi, "सभी ऐप्लिकेशन", "ऑप्‍टिमाइज़ ना करें", "बैकग्राउंड में ऐप्लिकेशन के चलने की सुविधा चालू करें", "बैटरी के इस्तेमाल पर कोई पाबंदी नहीं", "'परेशान न करें' मोड को बायपास करें"),
+    )
+
+    private fun words(text: String) = text.filterNot { it in "\"'“”„«»״‘’" }
+
+    @Test
+    fun `the battery and Do Not Disturb steps name the switches as Android does in each language and version`() {
+        for (labels in androidLabels) {
+            Localization.withLanguage(labels.language) {
+                val battery = words(NightAlerts.batteryText(exempt = false, sdk = 34))
+                assertTrue(battery.contains(words(labels.allApps)), "${labels.language}: $battery")
+                assertTrue(battery.contains(words(labels.dontOptimize)), "${labels.language}: $battery")
+                val newer = words(NightAlerts.batteryText(exempt = false, sdk = 35))
+                assertTrue(newer.contains(words(labels.allowBackground)), "${labels.language}, Android 15: $newer")
+                assertTrue(newer.contains(words(labels.unrestricted)), "${labels.language}, Android 15: $newer")
+                for (allowed in listOf(true, false)) {
+                    val dnd = words(NightAlerts.dndText(through = false, alarmsAllowed = allowed))
+                    assertTrue(dnd.contains(words(labels.overrideDnd)), "${labels.language}, alerts allowed $allowed: $dnd")
+                }
+            }
         }
     }
 

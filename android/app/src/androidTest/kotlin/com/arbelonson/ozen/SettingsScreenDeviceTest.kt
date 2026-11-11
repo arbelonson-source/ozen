@@ -2447,7 +2447,7 @@ class SettingsScreenDeviceTest {
         try {
             compose.onNodeWithText("Settings").performClick()
             compose.onNodeWithText("Alerts through the night").performScrollTo().performClick()
-            compose.onNodeWithText("Ozen’s Emergency alerts are turned off in the phone. Turn them on, then let them override Do Not Disturb.").performScrollTo().assertExists()
+            compose.onNodeWithText("Ozen’s Emergency alerts are turned off in the phone. Turn them on, then turn on Override Do Not Disturb on the same page.").performScrollTo().assertExists()
             val warning = compose.onNodeWithText("Ozen’s notifications are turned off in the phone’s settings", substring = true).performScrollTo().fetchSemanticsNode().positionInRoot.y
             val firstStep = compose.onNodeWithText("Leave Ozen listening when you go to sleep, so it hears sounds like a smoke alarm.").fetchSemanticsNode().positionInRoot.y
             assertTrue("warning $warning, first step $firstStep", warning < firstStep)
@@ -2456,12 +2456,19 @@ class SettingsScreenDeviceTest {
             AlertNotifier.alarmsAllowed = { true }
             compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
             compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
-            compose.waitUntil(5_000) { compose.onAllNodesWithText("In Do Not Disturb, a smoke alarm may not wake you. Let Ozen’s Emergency alerts override it.").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("In Do Not Disturb, a smoke alarm may not wake you. Let Ozen’s Emergency alerts override it: on the page that opens, turn on Override Do Not Disturb.").fetchSemanticsNodes().isNotEmpty() }
         } finally {
             AlertNotifier.allowed = allowedBefore
             AlertNotifier.alarmsAllowed = alarmsBefore
         }
     }
+
+    private val batteryAdvice =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            "To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it. In the list that opens, tap Ozen, then Allow background usage, and choose Unrestricted."
+        } else {
+            "To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it. In the list that opens, choose All apps at the top, find Ozen and choose Don’t optimize."
+        }
 
     @Test
     fun theAlertsThroughTheNightRowCountsWhatToCheckOpensItsPageAndSaysAllSetOnceBothAreDone() {
@@ -2478,9 +2485,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Settings").performClick()
         row("Alerts through the night", "2 to check")
         compose.onNodeWithText("Alerts through the night").performScrollTo().performClick()
-        compose.onNodeWithText(
-            "To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it. In the list that opens, choose All apps at the top, find Ozen and choose Don’t optimize.",
-        ).performScrollTo().assertExists()
+        compose.onNodeWithText(batteryAdvice).performScrollTo().assertExists()
         compose.onNodeWithText("Open the battery list").performScrollTo().performClick()
         compose.waitUntil(5_000) { opened.get() == 1 }
         compose.onNodeWithText("On silent, alerts don’t vibrate either", substring = true).performScrollTo().assertExists()
@@ -2510,7 +2515,7 @@ class SettingsScreenDeviceTest {
         compose.onNodeWithText("Settings").performClick()
         compose.onNodeWithText("Alerts through the night").performScrollTo().performClick()
         val battery = compose.onNode(
-            hasText("Battery") and hasText("To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it. In the list that opens, choose All apps at the top, find Ozen and choose Don’t optimize.") and hasStateDescription("Needs checking"),
+            hasText("Battery") and hasText(batteryAdvice) and hasStateDescription("Needs checking"),
         )
         battery.performScrollTo().assert(!hasClickAction())
         compose.onNode(hasText("Open the battery list") and hasClickAction()).performScrollTo().assertExists()
