@@ -15,17 +15,17 @@ enum class AudioPortType(val rawValue: String) {
     companion object {
         fun fromRawValue(rawValue: String): AudioPortType? = entries.firstOrNull { it.rawValue == rawValue }
 
-        fun named(name: String): AudioPortType? {
+        fun of(connection: AudioPortType, name: String): AudioPortType {
             val lowered = name.lowercase()
             return when {
                 rogerName.containsMatchIn(lowered) -> RemoteMic
-                hearingAidMaker.containsMatchIn(lowered) -> HearingAid
-                else -> null
+                connection == Bluetooth && hearingAidName.containsMatchIn(lowered) -> HearingAid
+                else -> connection
             }
         }
 
         private val rogerName = Regex("""^[\p{Z}\t]*(?:phonak[\p{Z}\t]+)?roger(?![\p{L}\p{M}'\u2019\u02BC])""")
-        private val hearingAidMaker = Regex("hearing|phonak|oticon|signia|resound|starkey|widex|unitron|bernafon")
+        private val hearingAidName = Regex("""(?<![\p{L}\p{M}])(?:hearing|phonak|oticon|signia|resound|starkey|widex|unitron|bernafon)(?![\p{L}\p{M}])""")
     }
 }
 

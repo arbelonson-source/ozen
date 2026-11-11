@@ -479,19 +479,20 @@ public final class AVAudioInputManager: AudioCapturing {
         })
     }
 
-    /// Maps a real `AVAudioSession.Port` to Ozen's own category: what its
-    /// name says first (`AudioPortType.named`, shared with Android), then
-    /// its connection. `AVAudioSession.Port` has no hearing-aid case; MFi
-    /// hearing aids surface as `.bluetoothLE`, like other BLE accessories.
+    /// Maps a real `AVAudioSession.Port` to Ozen's own category, from its
+    /// connection and its name (`AudioPortType.of`, shared with Android).
+    /// `AVAudioSession.Port` has no hearing-aid case; MFi hearing aids
+    /// surface as `.bluetoothLE`, like other BLE accessories.
     static func portType(for port: AVAudioSessionPortDescription) -> AudioPortType {
-        if let named = AudioPortType.named(port.portName) { return named }
+        let connection: AudioPortType
         switch port.portType {
-        case .builtInMic: return .builtInMic
-        case .bluetoothHFP, .bluetoothLE, .bluetoothA2DP: return .bluetooth
-        case .headsetMic, .lineIn: return .wired
-        case .usbAudio: return .usb
-        default: return .other
+        case .builtInMic: connection = .builtInMic
+        case .bluetoothHFP, .bluetoothLE, .bluetoothA2DP: connection = .bluetooth
+        case .headsetMic, .lineIn: connection = .wired
+        case .usbAudio: connection = .usb
+        default: connection = .other
         }
+        return AudioPortType.of(connection: connection, name: port.portName)
     }
 }
 

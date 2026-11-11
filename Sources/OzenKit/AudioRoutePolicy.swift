@@ -22,24 +22,27 @@ public enum AudioPortType: String, Sendable, Equatable, Codable {
         self == .bluetooth || self == .hearingAid
     }
 
-    /// What a microphone's own name says it is, when its connection alone
-    /// can't tell, on both phones. A Phonak Roger is a remote microphone
-    /// near the talker, and its name starts with "Roger" ("Roger On",
+    /// What a microphone is, from its connection and its own name, on both
+    /// phones. A Phonak Roger is a remote microphone near the talker over
+    /// any connection, and its name starts with "Roger" ("Roger On",
     /// "Phonak Roger Select"); "Roger's AirPods" or "Rogers AirPods" are
     /// someone's earbuds, which must not be kept as a microphone near the
-    /// talker. Hearing aids connect like any Bluetooth headset and go by
-    /// their makers' names. Not checked against real accessories: one the
-    /// names miss shows as Bluetooth and can still be picked by hand.
-    public static func named(_ name: String) -> AudioPortType? {
+    /// talker. A hearing aid connects like any Bluetooth headset and goes by
+    /// its maker's name as a whole word ("Insignia" is no Signia). A name
+    /// never makes a USB, wired or built-in microphone a hearing aid: Ozen
+    /// would stop picking it by itself. Not checked against real
+    /// accessories: one the names miss shows as Bluetooth and can still be
+    /// picked by hand.
+    public static func of(connection: AudioPortType, name: String) -> AudioPortType {
         let lowered = name.lowercased()
         let whole = NSRange(lowered.startIndex..., in: lowered)
         if rogerName?.firstMatch(in: lowered, range: whole) != nil { return .remoteMic }
-        if hearingAidMaker?.firstMatch(in: lowered, range: whole) != nil { return .hearingAid }
-        return nil
+        if connection == .bluetooth, hearingAidName?.firstMatch(in: lowered, range: whole) != nil { return .hearingAid }
+        return connection
     }
 
     private static let rogerName = try? NSRegularExpression(pattern: #"^[\p{Z}\t]*(?:phonak[\p{Z}\t]+)?roger(?![\p{L}\p{M}'\u2019\u02BC])"#)
-    private static let hearingAidMaker = try? NSRegularExpression(pattern: "hearing|phonak|oticon|signia|resound|starkey|widex|unitron|bernafon")
+    private static let hearingAidName = try? NSRegularExpression(pattern: #"(?<![\p{L}\p{M}])(?:hearing|phonak|oticon|signia|resound|starkey|widex|unitron|bernafon)(?![\p{L}\p{M}])"#)
 }
 
 /// A microphone Ozen could record from, described independently of
