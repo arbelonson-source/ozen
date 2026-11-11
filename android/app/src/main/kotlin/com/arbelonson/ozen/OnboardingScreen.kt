@@ -71,6 +71,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -256,7 +257,21 @@ private fun MicrophonePage(
     onApproveNotifications: () -> Unit,
     onOpenPhoneSettings: () -> Unit,
 ) {
-    Page(Icons.Rounded.Mic, pageTitle(4)) {
+    // Each answer is said as it arrives, the reason for the notification
+    // question with an approved microphone: with TalkBack they appeared in
+    // silence, as on the iPhone before 5d9855c9.
+    val context = LocalContext.current
+    var heard by remember { mutableStateOf(microphone to notifications) }
+    LaunchedEffect(microphone, notifications) {
+        val before = heard
+        heard = microphone to notifications
+        if (ScreenReader.isOn(context)) {
+            WalkthroughAnswers.said(before, microphone to notifications, canAskAgain).forEach { ScreenReader.announce(context, it) }
+        }
+    }
+    // And brought into view: at large text, or held sideways, the answer and
+    // the notification button landed below the screen's edge.
+    Page(Icons.Rounded.Mic, pageTitle(4), scrollsDownOn = microphone?.let { "$it-$notifications" }) {
         Body(tr("כדי להציג כתוביות לשיחה, אוזן צריכה להאזין דרך המיקרופון.", "To caption the conversation, Ozen needs to listen through the microphone."))
         if (!settings.audioLeavesPhone) {
             Body(tr("הקול לא יוצא מהטלפון, ולא נשמר אלא אם מסמנים בעיה.", "The sound doesn’t leave the phone, and it isn’t kept unless you mark a problem."))
@@ -268,21 +283,21 @@ private fun MicrophonePage(
         }
         when (ask) {
             MicrophoneAsk.Granted -> {
-                Status("✓ " + tr("המיקרופון מאושר", "Microphone approved"), good = true)
-                Body(tr("ועוד דבר אחד: כשהטלפון בכיס או נעול, אוזן יכולה להודיע לכם על צלצול בדלת, על אזעקה או על קריאה בשמכם.", "One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name."))
+                Status("✓ " + WalkthroughAnswers.microphoneApproved(), good = true)
+                Body(WalkthroughAnswers.whyNotifications())
                 when (notifications) {
-                    true -> Status("✓ " + tr("ההתראות מאושרות", "Notifications approved"), good = true)
-                    false -> Body(tr("ההתראות לא אושרו. אפשר לשנות את זה בהגדרות.", "No notifications. This can be changed in Settings."))
+                    true -> Status("✓ " + WalkthroughAnswers.notificationsApproved(), good = true)
+                    false -> Body(WalkthroughAnswers.noNotifications())
                     null -> TonalButton(tr("לאשר התראות", "Approve notifications"), onApproveNotifications, Modifier.fillMaxWidth(), icon = Icons.Rounded.NotificationsActive)
                 }
             }
             MicrophoneAsk.OpenSettings -> {
-                Status("✕ " + tr("המיקרופון חסום", "Microphone blocked"), good = false)
-                Body(tr("בלי מיקרופון אין כתוביות. אפשר לאשר גישה למיקרופון בהגדרות הטלפון.", "Without a microphone there are no captions. You can allow microphone access in the phone’s Settings."))
+                Status("✕ " + WalkthroughAnswers.microphoneBlocked(), good = false)
+                Body(WalkthroughAnswers.blockedDetail())
                 TonalButton(tr("פתיחת הגדרות הטלפון", "Open phone settings"), onOpenPhoneSettings, Modifier.fillMaxWidth(), icon = Icons.Rounded.Settings)
             }
             MicrophoneAsk.AskAgain -> {
-                if (microphone == false) Body(tr("בלי מיקרופון אין כתוביות.", "Without a microphone there are no captions."))
+                if (microphone == false) Body(WalkthroughAnswers.noMicrophone())
                 PrimaryButton(tr("לאשר את המיקרופון", "Approve the microphone"), onApproveMicrophone, Modifier.fillMaxWidth(), icon = Icons.Rounded.Mic)
             }
         }
@@ -494,12 +509,23 @@ private fun LanguagePage(chosen: UILanguage, onChoose: (UILanguage) -> Unit) {
 }
 
 @Composable
-private fun Page(icon: ImageVector, title: String, content: @Composable () -> Unit) = BoxWithConstraints {
+private fun Page(icon: ImageVector, title: String, scrollsDownOn: String? = null, content: @Composable () -> Unit) = BoxWithConstraints {
     // A picture, not words: it stays one size at the phone's largest text,
     // and a smaller one on a short screen, where the page's button was
     // pushed out of sight below its text.
     val roomy = maxHeight >= 520.dp * LocalDensity.current.fontScale
     val scroll = rememberScrollState()
+    // Only a change scrolls: a page shown again with its answers opens at
+    // its top.
+    var scrolledFor by remember { mutableStateOf(scrollsDownOn) }
+    val still = ReducedMotion.isOn()
+    LaunchedEffect(scrollsDownOn) {
+        val arrived = scrollsDownOn != null && scrollsDownOn != scrolledFor
+        scrolledFor = scrollsDownOn
+        if (!arrived) return@LaunchedEffect
+        withFrameNanos { }
+        if (still) scroll.scrollTo(scroll.maxValue) else scroll.animateScrollTo(scroll.maxValue)
+    }
     Column(
         modifier = Modifier.fillMaxSize().fadeWhenMoreBelow(scroll).verticalScroll(scroll).padding(horizontal = OzenSpacing.Page, vertical = if (roomy) 24.dp else 12.dp),
         verticalArrangement = Arrangement.spacedBy(if (roomy) 16.dp else 12.dp),

@@ -203,6 +203,50 @@ class OnboardingDeviceTest {
         assertFalse("Back left the walkthrough", compose.activity.isFinishing)
     }
 
+    // At the largest text the answers to the phone's questions landed below
+    // the screen's edge, and with TalkBack they came in silence: the reason
+    // for the notification question was never heard. As on the iPhone.
+    @Test
+    fun atTheLargestTextEachPermissionAnswerIsBroughtIntoViewAndSaid() {
+        val announced = CopyOnWriteArrayList<String>()
+        val readerBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
+        try {
+            shell("settings put system font_scale 2.0")
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f && shown("Next") }
+            repeat(4) {
+                compose.onNodeWithText("Next").performClick()
+                compose.waitForIdle()
+            }
+            compose.runOnUiThread {
+                compose.activity.microphoneAnswer.value = null
+                compose.activity.notificationsAnswer.value = null
+            }
+            compose.waitUntil(5_000) { shown("Approve the microphone") }
+            ScreenReader.isOn = { true }
+            ScreenReader.announce = { _, text -> announced += text }
+            compose.runOnUiThread { compose.activity.microphoneAnswer.value = true }
+            compose.waitUntil(5_000) { announced.isNotEmpty() }
+            compose.onNodeWithText("Approve notifications").assertIsDisplayed()
+            compose.runOnUiThread { compose.activity.notificationsAnswer.value = true }
+            compose.waitUntil(5_000) { announced.size >= 2 }
+            compose.onNodeWithText("✓ Notifications approved").assertIsDisplayed()
+            assertEquals(
+                listOf(
+                    "Microphone approved. One more thing: when the phone is in a pocket or locked, Ozen can notify you about a doorbell, an alarm, or your name.",
+                    "Notifications approved",
+                ),
+                announced.toList(),
+            )
+        } finally {
+            ScreenReader.isOn = readerBefore
+            ScreenReader.announce = announceBefore
+            shell("settings put system font_scale 1.0")
+        }
+    }
+
     @Test
     fun turningAWalkthroughPageTellsTheScreenReaderWhichPageItLandedOnAsOnTheIPhone() {
         val announced = CopyOnWriteArrayList<String>()

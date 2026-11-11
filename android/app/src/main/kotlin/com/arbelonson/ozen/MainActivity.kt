@@ -224,7 +224,7 @@ class MainActivity : ComponentActivity() {
     // Every answer counts, even a second "no" after the first: the walkthrough
     // then looks again at whether the system would still ask.
     internal val microphoneAnswer = mutableStateOf<Boolean?>(null, neverEqualPolicy())
-    private val notificationsAnswer = mutableStateOf<Boolean?>(null)
+    internal val notificationsAnswer = mutableStateOf<Boolean?>(null)
 
     /** Whether the system would still show its microphone question after a refusal; replaced by device tests. */
     internal var canAskMicrophoneAgain: () -> Boolean = { shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) }
