@@ -37,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -101,12 +102,19 @@ internal fun CaptionLines(
     // The buttons coming back, or a turn of the phone, change the room the
     // lines have; the list keeps its top, so the newest line was left under
     // the buttons until the next word, a long time in a quiet room. The
-    // iPhone follows again on both.
+    // iPhone follows again on both. The move waits for the next frame: the
+    // new size is reported while the screen is still being measured (a turn
+    // or a text size change rebuilds it), and a collector resumed at once,
+    // as the Compose test rule's does, scrolled in the middle of that
+    // measuring, which throws.
     LaunchedEffect(list, following) {
         if (!following) return@LaunchedEffect
         snapshotFlow { list.layoutInfo.viewportSize.height }
             .distinctUntilChanged()
-            .collect { if (list.layoutInfo.totalItemsCount > 0) list.follow(list.layoutInfo.totalItemsCount - 1, marks) }
+            .collect {
+                withFrameNanos { }
+                if (list.layoutInfo.totalItemsCount > 0) list.follow(list.layoutInfo.totalItemsCount - 1, marks)
+            }
     }
     LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(lines, key = { it.id }) { line ->
