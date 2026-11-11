@@ -3038,6 +3038,10 @@ class CaptionScreenDeviceTest {
         compose.onNodeWithTag(MISSED_SOUND).assertIsDisplayed()
         compose.onAllNodesWithText("Doorbell").assertCountEquals(1)
         compose.onNodeWithText("Heard just now").assertDoesNotExist()
+        compose.onNodeWithTag(MISSED_SOUND).performClick()
+        compose.waitForIdle()
+        compose.onAllNodesWithText("Doorbell").assertCountEquals(0)
+        compose.onNodeWithText("Heard just now").assertDoesNotExist()
     }
 
     /** Lines the captions really hold, as heard ones: only those take a fix (see `CaptionSession.fixLine`). */

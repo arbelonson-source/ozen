@@ -323,7 +323,15 @@ struct LiveCaptionView: View {
             }
             if let away = viewModel.awaySoundShown {
                 AwaySoundBanner(heard: away) {
-                    withAnimation { viewModel.closeAwaySound() }
+                    withAnimation {
+                        // Closing it closes that sound: its own banner, kept
+                        // behind it, came back without the time.
+                        if visibleSoundAlert?.id == away.alert.id {
+                            visibleSoundAlert = nil
+                            viewModel.dismissSoundAlert(id: away.alert.id)
+                        }
+                        viewModel.closeAwaySound()
+                    }
                 }
                 .transition(.banner(from: .top, reduceMotion: reduceMotion))
             }

@@ -1142,7 +1142,15 @@ private fun CaptionScreen(
                         }
                     }
                     ArrivingBanner(state.missedSound) { missed ->
-                        MissedSoundBanner(missed, onDismissMissedSound)
+                        MissedSoundBanner(missed) {
+                            // Closing it closes that sound: its plain banner,
+                            // kept behind it, came back without the time.
+                            if (shownSound?.id == missed.alert.id) {
+                                shownSound = null
+                                onDismissSound(missed.alert.id)
+                            }
+                            onDismissMissedSound()
+                        }
                     }
                     ArrivingBanner(shownWord) { word ->
                         val speaker = state.lines.firstOrNull { it.id == word.line }?.speaker?.takeIf { display.showSpeakerNames }
