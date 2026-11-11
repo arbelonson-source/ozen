@@ -18,6 +18,8 @@ class FakePhoneModels(private val settings: SettingsHolder) : PhoneModels {
     val missing = ConcurrentHashMap<String, Int>()
     val chosen = CopyOnWriteArrayList<Pair<String, Boolean>>()
     val noRoomFor = ConcurrentHashMap<String, Int>()
+    val checks = CopyOnWriteArrayList<Boolean>()
+    var checkRuns = false
 
     override fun refreshInstalled() {}
 
@@ -41,5 +43,8 @@ class FakePhoneModels(private val settings: SettingsHolder) : PhoneModels {
 
     override suspend fun delete(file: String): PhoneModelDeletion.Result = PhoneModelDeletion.Result.Refused
 
-    override fun runCheck(thenChooseBest: Boolean) {}
+    override fun runCheck(thenChooseBest: Boolean) {
+        checks += thenChooseBest
+        if (checkRuns) check.value = PhoneCheckState.Running(0f)
+    }
 }

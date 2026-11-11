@@ -37,6 +37,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.ByteSize
+import com.arbelonson.ozen.core.PhoneCheckState
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneSpeed
 import com.arbelonson.ozen.core.PipelinePhase
@@ -554,7 +555,7 @@ class OnboardingDeviceTest {
         compose.onNodeWithTag("phone-model-" + expected.file).performScrollTo().assertIsSelected()
     }
 
-    private fun showTheWalkthroughWith(models: FakePhoneModels) {
+    private fun showTheWalkthroughWith(models: FakePhoneModels, onFinish: () -> Unit = {}) {
         compose.runOnUiThread {
             compose.activity.setContent {
                 val settings by app.settings.current.collectAsState()
@@ -570,10 +571,52 @@ class OnboardingDeviceTest {
                     phoneModels = models,
                     onAddName = {},
                     onAddAlert = {},
-                    onFinish = {},
+                    onFinish = onFinish,
                 )
             }
         }
+    }
+
+    // Only the model page ran the phone check, so Skip before it left a
+    // phone too weak for the default model with that model, as the iPhone
+    // did before it checked on every way out of the walkthrough.
+    @Test
+    fun skippingTheWalkthroughChecksANeverCheckedPhoneBeforeFinishingAsOnTheIPhone() {
+        app.settings.change { it.phoneSpeed = null }
+        val models = FakePhoneModels(app.settings)
+        models.checkRuns = true
+        val finished = AtomicInteger()
+        showTheWalkthroughWith(models) { finished.incrementAndGet() }
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitForIdle()
+        if (models.checks.isEmpty()) compose.onNodeWithText("Skip").performClick()
+        compose.waitUntil(5_000) { models.checks.isNotEmpty() }
+        compose.waitForIdle()
+        assertEquals(listOf(true), models.checks.toList())
+        assertEquals("finished before the phone check", 0, finished.get())
+        compose.onNodeWithText("Testing this phone… 0%").assertExists()
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitForIdle()
+        assertEquals("a second tap asked again", listOf(true), models.checks.toList())
+
+        compose.runOnUiThread { models.check.value = PhoneCheckState.Idle }
+        compose.waitUntil(5_000) { finished.get() > 0 }
+        compose.waitForIdle()
+        assertEquals(1, finished.get())
+    }
+
+    @Test
+    fun skippingTheWalkthroughOnAPhoneAlreadyCheckedFinishesAtOnce() {
+        app.settings.change { it.phoneSpeed = PhoneSpeed(gflops = 50.0, threads = 4, measuredAt = 1_000.0) }
+        val models = FakePhoneModels(app.settings)
+        models.checkRuns = true
+        val finished = AtomicInteger()
+        showTheWalkthroughWith(models) { finished.incrementAndGet() }
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitForIdle()
+        if (finished.get() == 0) compose.onNodeWithText("Skip").performClick()
+        compose.waitUntil(5_000) { finished.get() > 0 }
+        assertTrue("checked a phone already checked", models.checks.isEmpty())
     }
 
     @Test
