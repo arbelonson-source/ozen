@@ -65,6 +65,30 @@ class BackgroundAlertPolicyTest {
     }
 
     @Test
+    fun `a siren that keeps sounding notifies on the same 20 s beat as on screen, as on the iPhone`() {
+        val policy = BackgroundAlertPolicy()
+        assertNotNull(policy.notification(sound("smoke_detector"), appIsActive = false, now = 0.0))
+        assertNotNull(policy.notification(sound("smoke_detector"), appIsActive = false, now = 20.0))
+        val jitter = BackgroundAlertPolicy()
+        assertNotNull(jitter.notification(sound("smoke_detector"), appIsActive = false, now = 0.0))
+        assertNotNull(jitter.notification(sound("smoke_detector"), appIsActive = false, now = 19.5))
+        val third = BackgroundAlertPolicy()
+        assertNotNull(third.notification(sound("smoke_detector"), appIsActive = false, now = 0.0))
+        assertNotNull(third.notification(sound("smoke_detector"), appIsActive = false, now = 20.0))
+        assertNull(third.notification(sound("smoke_detector"), appIsActive = false, now = 30.0))
+    }
+
+    @Test
+    fun `an ordinary sound and a word keep the full cooldown`() {
+        val policy = BackgroundAlertPolicy()
+        assertNotNull(policy.notification(sound("door_bell"), appIsActive = false, now = 0.0))
+        assertNull(policy.notification(sound("door_bell"), appIsActive = false, now = 20.0))
+        val alertID = UUID.randomUUID()
+        assertNotNull(policy.notification(hit("סבתא", alertID), "סבתא", appIsActive = false, now = 0.0))
+        assertNull(policy.notification(hit("סבתא", alertID), "סבתא", appIsActive = false, now = 20.0))
+    }
+
+    @Test
     fun `two sounds the catalog shows as the same sound share one cooldown, not two`() {
         val policy = BackgroundAlertPolicy(cooldownSeconds = 30.0)
         assertNotNull(policy.notification(sound("telephone_bell_ringing"), appIsActive = false, now = 0.0))
