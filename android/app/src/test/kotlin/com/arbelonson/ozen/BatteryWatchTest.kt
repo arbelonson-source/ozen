@@ -8,7 +8,8 @@ import kotlin.test.assertNull
 class BatteryWatchTest {
     private var shown: BatteryWarning? = null
     private val warned = mutableListOf<BatteryWarning>()
-    private val watch = BatteryWatch(show = { shown = it }, warned = { warned += it })
+    private var withdrawn = 0
+    private val watch = BatteryWatch(show = { shown = it }, warned = { warned += it }, withdraw = { withdrawn += 1 })
 
     @Test
     fun `nothing is said while nothing listens`() {
@@ -42,6 +43,31 @@ class BatteryWatchTest {
         assertNull(shown)
         watch.listeningChanged(false)
         assertEquals(2, warned.size)
+    }
+
+    @Test
+    fun `plugging in takes the warning off the lock screen too, once, whether or not anything listens, as on the iPhone`() {
+        watch.reading(0.09f, pluggedIn = false, listening = true)
+        assertEquals(0, withdrawn)
+        watch.reading(0.09f, pluggedIn = true, listening = true)
+        assertEquals(1, withdrawn)
+        watch.reading(0.10f, pluggedIn = true, listening = true)
+        assertEquals(1, withdrawn)
+        watch.reading(0.10f, pluggedIn = false, listening = true)
+        watch.reading(0.10f, pluggedIn = false, listening = false)
+        assertEquals(2, withdrawn)
+        watch.reading(0.10f, pluggedIn = true, listening = false)
+        assertEquals(3, withdrawn)
+    }
+
+    @Test
+    fun `captions stopping takes the warning off the lock screen too, as on the iPhone`() {
+        watch.reading(0.09f, pluggedIn = false, listening = true)
+        assertEquals(0, withdrawn)
+        watch.listeningChanged(false)
+        assertEquals(1, withdrawn)
+        watch.listeningChanged(false)
+        assertEquals(1, withdrawn)
     }
 
     @Test

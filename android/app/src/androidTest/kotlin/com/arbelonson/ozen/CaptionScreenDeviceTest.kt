@@ -2324,6 +2324,40 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun aBatteryNoticeLeftOnTheLockScreenGoesWhenTheAppComesBack() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        if (Build.VERSION.SDK_INT >= 33) instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.POST_NOTIFICATIONS)
+        val manager = app.getSystemService(NotificationManager::class.java)
+        val alerts = { manager.activeNotifications.filter { it.notification.channelId == AlertNotifier.CHANNEL_ID } }
+        val clearAlerts = { alerts().forEach { manager.cancel(it.tag, it.id) } }
+        val before = app.settings.current.value.notifyWhenInBackground
+        fun waitFor(condition: () -> Boolean): Boolean {
+            val until = System.currentTimeMillis() + 5_000
+            while (System.currentTimeMillis() < until) {
+                if (condition()) return true
+                Thread.sleep(100)
+            }
+            return condition()
+        }
+        clearAlerts()
+        assertTrue("an alert from before was never taken down", waitFor { alerts().isEmpty() })
+        try {
+            app.settings.change { it.notifyWhenInBackground = true }
+            compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+            instrumentation.runOnMainSync { app.captions.batteryWarningRaised(BatteryWarning.Critical(9)) }
+            assertTrue(waitFor { alerts().isNotEmpty() })
+
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            assertTrue("Battery at 9% stayed on the lock screen with the app back in front", waitFor { alerts().isEmpty() })
+        } finally {
+            compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+            app.settings.change { it.notifyWhenInBackground = before }
+            clearAlerts()
+        }
+    }
+
+    @Test
     fun theSaidPillNamesWhoSaidTheWordWhileSpeakerNamesAreShown() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
         val displayBefore = app.settings.current.value.display
