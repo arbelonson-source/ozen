@@ -184,6 +184,7 @@ import com.arbelonson.ozen.core.DisplayPreferences
 import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.FileTranscription
 import com.arbelonson.ozen.core.HebrewTime
+import com.arbelonson.ozen.core.KeywordPill
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.MicrophoneAsk
 import com.arbelonson.ozen.core.MicrophoneDropNotice
@@ -940,6 +941,9 @@ private fun CaptionScreen(
     var problemMarkedAt by rememberSaveable { mutableDoubleStateOf(0.0) }
     val context = LocalContext.current
     var shownWord by remember { mutableStateOf<HeardWord?>(null) }
+    // Closed by a tap: a text size change, which rebuilds the screen, or
+    // TalkBack going on, which start its timer again, must not bring it back.
+    var closedWord by rememberSaveable { mutableStateOf<UUID?>(null) }
     // Counted from when this screen appeared: talk that resumed while she
     // was in Settings or away is long over by the time she is back.
     val resumedBefore = remember { state.speechResumed }
@@ -954,17 +958,26 @@ private fun CaptionScreen(
     // The session buzzes and tells TalkBack, whichever screen is open; the
     // pill is for a word said just now, or one the session tells her of as
     // she comes back. Back from Settings, an old one does not show again.
-    LaunchedEffect(state.heard?.id, state.heard?.at, talkBack) {
+    // At the largest text sizes a long pill takes longer to read: it stays
+    // longer, up to 20 s, counted from when it first showed, as on the
+    // iPhone (KeywordPill), and a text size change only adds what is left,
+    // as does the speaker's name arriving after the pill showed.
+    val accessibilitySize = LocalDensity.current.fontScale > LARGEST_ORDINARY_FONT_SCALE
+    val pillSpeaker = { word: HeardWord -> state.lines.firstOrNull { it.id == word.line }?.speaker?.takeIf { display.showSpeakerNames } }
+    val pillSeconds = state.heard?.let { KeywordPill.visibleSeconds(KeywordPill.text(it.said, pillSpeaker(it)), accessibilitySize) }
+    LaunchedEffect(state.heard?.id, state.heard?.at, talkBack, pillSeconds) {
         val word = state.heard ?: return@LaunchedEffect
+        if (word.id == closedWord) return@LaunchedEffect
+        val total = pillSeconds ?: return@LaunchedEffect
         val kept = shownWord?.id == word.id
-        if (secondsNow() - word.at > HEARD_SHOWN_SECONDS) {
+        if (secondsNow() - word.at > total) {
             if (kept && !talkBack) shownWord = null
             if (!kept) return@LaunchedEffect
         } else {
             shownWord = word
         }
         if (talkBack) return@LaunchedEffect
-        delay((HEARD_SHOWN_SECONDS * 1_000).toLong())
+        delay((KeywordPill.secondsLeft(total, secondsNow() - word.at) * 1_000).toLong())
         if (shownWord?.id == word.id) shownWord = null
     }
     // The banner keeps what is left of its time: back from Settings within
@@ -1155,11 +1168,13 @@ private fun CaptionScreen(
                         }
                     }
                     ArrivingBanner(shownWord) { word ->
-                        val speaker = state.lines.firstOrNull { it.id == word.line }?.speaker?.takeIf { display.showSpeakerNames }
+                        // A tap closes it, as on the iPhone, not only with TalkBack on.
                         HeardPill(
-                            word.said,
-                            speaker,
-                            if (talkBack) Modifier.clickable(onClickLabel = tr("סגירה", "Close")) { shownWord = null } else Modifier,
+                            KeywordPill.text(word.said, pillSpeaker(word)),
+                            Modifier.clickable(onClickLabel = tr("סגירה", "Close")) {
+                                closedWord = word.id
+                                shownWord = null
+                            },
                         )
                     }
                     ArrivingBanner(state.away?.takeIf { it.offersJump && !awayMarkShowing && state.lines.isNotEmpty() }) { mark ->
@@ -1388,8 +1403,6 @@ private fun Modifier.pinchToResize(onScale: (Double) -> Unit, onEnd: () -> Unit)
 }
 
 private fun secondsNow() = System.currentTimeMillis() / 1_000.0
-
-private const val HEARD_SHOWN_SECONDS = 5.0
 
 private const val AWAY_MARK_SEEN_MILLIS = 1_000L
 
@@ -2200,12 +2213,12 @@ private fun RecentConversationCard(recent: TranscriptSessionSummary, look: Capti
 }
 
 /**
- * "Said: grandma" for five seconds at the top, as the iPhone's pill, with
- * who said it when the line's voice is known; the screen reader reads it
- * as it appears.
+ * "Said: grandma" at the top, as the iPhone's pill, with who said it when
+ * the line's voice is known: five seconds, longer at the largest text sizes
+ * (see `KeywordPill`). The screen reader reads it as it appears.
  */
 @Composable
-private fun HeardPill(said: String, speaker: String?, modifier: Modifier) {
+private fun HeardPill(text: String, modifier: Modifier) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh).padding(horizontal = OzenSpacing.Page, vertical = 12.dp),
@@ -2214,7 +2227,7 @@ private fun HeardPill(said: String, speaker: String?, modifier: Modifier) {
     ) {
         IconBadge(Icons.Rounded.Hearing)
         Text(
-            speaker?.let { tr("%1 — נאמר: %2", "%1 said: %2", listOf(it, said)) } ?: tr("נאמר: %1", "Said: %1", listOf(said)),
+            text,
             color = colors.onSurface,
             style = MaterialTheme.typography.titleMedium,
         )
