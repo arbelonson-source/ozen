@@ -364,7 +364,7 @@ class MainActivity : ComponentActivity() {
                 settingsAtBackup.value = true
                 showingSettings.value = true
             }
-            PhasePresentation.Action.ConfirmCellularDownload -> confirmingCellular.value = true
+            PhasePresentation.Action.ConfirmCellularDownload, PhasePresentation.Action.CaptionsWhileWaiting -> confirmingCellular.value = true
             PhasePresentation.Action.StopSpeaking -> (application as OzenApplication).captions.stopSpeaking()
             else -> Unit
         }
@@ -745,11 +745,17 @@ private fun OzenApp(
                     }
                 }
             }
-            val asksForCellular = state.status.action == PhasePresentation.Action.ConfirmCellularDownload
+            val asksForCellular = state.status.action == PhasePresentation.Action.ConfirmCellularDownload ||
+                state.status.action == PhasePresentation.Action.CaptionsWhileWaiting
             LaunchedEffect(asksForCellular) { if (!asksForCellular) confirmingCellular.value = false }
             if (confirmingCellular.value && asksForCellular) {
                 CellularDownloadDialog(
                     state.phase.failure?.engineUnavailability?.downloadMegabytes,
+                    builtInOffered = state.builtInOffered,
+                    onBuiltIn = {
+                        confirmingCellular.value = false
+                        app.captions.captionWithBuiltInWhileWaiting()
+                    },
                     onDownload = {
                         confirmingCellular.value = false
                         app.captions.approveCellularDownload()
@@ -778,8 +784,27 @@ private data class FrontScreen(val kind: Front, val reading: Pair<UUID, UUID?>? 
 internal object CellularDownloadTexts {
     val title: String get() = tr("להוריד את מודל הדיבור בחבילת הגלישה?", "Download the language model over mobile data?")
 
+    /** With the phone's built-in recognition on offer the question is no longer only about mobile data. */
+    val titleWithBuiltIn: String get() = tr("ממתינים ל־Wi‑Fi כדי להוריד את מודל הדיבור", "Waiting for Wi‑Fi to download the language model")
+
+    val builtInButton: String get() = tr("כתוביות עכשיו, בזיהוי הדיבור המובנה בטלפון", "Captions now, with the phone’s built-in recognition")
+
+    val downloadButtonWithBuiltIn: String get() = tr("להוריד עכשיו בחבילת הגלישה", "Download now over mobile data")
+
+    /**
+     * Without "Captions need the language model" first: with the built-in
+     * recognition on offer, captions come before the model.
+     */
+    fun bodyWithBuiltIn(megabytes: Int?): String = tr(
+        "צריך להוריד את מודל הדיבור פעם אחת בלבד, והגודל שלו בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi בלי הגבלת נפח (לא נקודה חמה של טלפון) ההורדה תתחיל מעצמה.",
+        "The language model downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.",
+        listOf(size(megabytes)),
+    ) + "\n\n" + tr("עד אז, זיהוי הדיבור המובנה בטלפון יכול לכתוב כתוביות. בדרך כלל הוא פחות מדויק, והכול נשאר בטלפון. כשהמודל יסיים לרדת, הכתוביות יעברו אליו מעצמן.", "Until then, the phone’s built-in recognition can write captions. It’s usually less accurate, and everything stays on the phone. Once the model has downloaded, captions switch to it on their own.")
+
+    private fun size(megabytes: Int?): String = megabytes?.takeIf { it > 0 }?.let { ByteSize.megabytes(it) } ?: tr("כמה מאות MB", "A few hundred MB")
+
     fun body(megabytes: Int?): String {
-        val size = megabytes?.takeIf { it > 0 }?.let { ByteSize.megabytes(it) } ?: tr("כמה מאות MB", "A few hundred MB")
+        val size = size(megabytes)
         return tr(
             "בלי מודל הדיבור אין כתוביות. צריך להוריד אותו פעם אחת בלבד, והגודל שלו בערך %1. הורדה בחבילת הגלישה עלולה לעלות כסף או לנצל את נפח הגלישה. ב־Wi‑Fi בלי הגבלת נפח (לא נקודה חמה של טלפון) ההורדה תתחיל מעצמה.",
             "Captions need the language model. It downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.",
@@ -788,15 +813,31 @@ internal object CellularDownloadTexts {
     }
 }
 
-/** As on the iPhone: "Tap to download now" on the waiting-for-Wi-Fi status asks first, saying what cellular data may cost. */
+/**
+ * As on the iPhone: "Tap to download now" on the waiting-for-Wi-Fi status
+ * asks first, saying what cellular data may cost. Where the phone's
+ * built-in recognition can caption meanwhile, it is offered first.
+ */
 @Composable
-private fun CellularDownloadDialog(megabytes: Int?, onDownload: () -> Unit, onWait: () -> Unit) {
+private fun CellularDownloadDialog(megabytes: Int?, builtInOffered: Boolean, onBuiltIn: () -> Unit, onDownload: () -> Unit, onWait: () -> Unit) {
     AlertDialog(
         onDismissRequest = onWait,
-        title = { Text(CellularDownloadTexts.title) },
-        text = { DialogText(CellularDownloadTexts.body(megabytes)) },
-        confirmButton = { TextButton(onClick = onDownload) { Text(tr("להוריד עכשיו", "Download now")) } },
-        dismissButton = { TextButton(onClick = onWait) { Text(tr("לחכות ל־Wi‑Fi", "Wait for Wi‑Fi")) } },
+        title = { Text(if (builtInOffered) CellularDownloadTexts.titleWithBuiltIn else CellularDownloadTexts.title) },
+        text = { DialogText(if (builtInOffered) CellularDownloadTexts.bodyWithBuiltIn(megabytes) else CellularDownloadTexts.body(megabytes)) },
+        // Three choices stand one above the other, the one that gives
+        // captions now first, as on the iPhone.
+        confirmButton = {
+            if (builtInOffered) {
+                Column(horizontalAlignment = Alignment.End) {
+                    TextButton(onClick = onBuiltIn) { Text(CellularDownloadTexts.builtInButton) }
+                    TextButton(onClick = onDownload) { Text(CellularDownloadTexts.downloadButtonWithBuiltIn) }
+                    TextButton(onClick = onWait) { Text(tr("לחכות ל־Wi‑Fi", "Wait for Wi‑Fi")) }
+                }
+            } else {
+                TextButton(onClick = onDownload) { Text(tr("להוריד עכשיו", "Download now")) }
+            }
+        },
+        dismissButton = if (builtInOffered) null else ({ TextButton(onClick = onWait) { Text(tr("לחכות ל־Wi‑Fi", "Wait for Wi‑Fi")) } }),
     )
 }
 

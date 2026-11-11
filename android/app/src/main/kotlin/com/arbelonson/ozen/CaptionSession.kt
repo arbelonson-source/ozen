@@ -23,6 +23,7 @@ import com.arbelonson.ozen.core.CaptionAnnouncer
 import com.arbelonson.ozen.core.CaptionConfidence
 import com.arbelonson.ozen.core.CaptionPipeline
 import com.arbelonson.ozen.core.DeviceHeat
+import com.arbelonson.ozen.core.BuiltInWhileWaiting
 import com.arbelonson.ozen.core.EngineUnavailability
 import com.arbelonson.ozen.core.HTTPFileFetcher
 import com.arbelonson.ozen.core.HistoryRetention
@@ -258,7 +259,7 @@ class CaptionSession(
             override fun pause() = pipeline.pause()
 
             override fun resume() {
-                scope.launch { pipeline.resume(settings.current.value) }
+                scope.launch { pipeline.resume(chosenSettings()) }
             }
         },
     )
@@ -489,7 +490,7 @@ class CaptionSession(
         lines = { pipeline.segments },
         isListening = { pipeline.phase.isListening },
         settings = { settings.current.value },
-        transcribing = { pipeline.activeSettings.takeIf { pipeline.isCoveringForCloud } ?: settings.current.value },
+        transcribing = { pipeline.activeSettings.takeIf { pipeline.isCoveringForCloud } ?: chosenSettings() },
         speakerName = pipeline::displayName,
         inputName = { audio.availableInputs.firstOrNull { it.uid == audio.selectedInputUID }?.portName },
         startNewConversation = pipeline::startNewConversation,
@@ -681,7 +682,7 @@ class CaptionSession(
     fun listenForSoundsOnly() {
         restartRefused = false
         replies.userTookControl()
-        scope.launch { pipeline.listenForSoundsOnly(settings.current.value) }
+        scope.launch { pipeline.listenForSoundsOnly(chosenSettings()) }
     }
 
     /** [afterRestart]: the phone started the service again after ending the app; a night of sounds only comes back as that. */
@@ -689,11 +690,11 @@ class CaptionSession(
         restartRefused = false
         replies.userTookControl()
         if (ServiceRestart.soundsOnlyAfterRestart(afterRestart, soundsOnlyChoice.chosen)) {
-            scope.launch { pipeline.listenForSoundsOnly(settings.current.value) }
+            scope.launch { pipeline.listenForSoundsOnly(chosenSettings()) }
             return
         }
         scope.launch {
-            val current = settings.current.value
+            val current = chosenSettings()
             when (pipeline.phase) {
                 PipelinePhase.Idle -> pipeline.start(current)
                 PipelinePhase.Paused -> pipeline.resume(current)
@@ -822,7 +823,7 @@ class CaptionSession(
             when (pipeline.phase) {
                 PipelinePhase.Idle -> Unit
                 PipelinePhase.Paused -> pipeline.settingsChangedWhilePaused()
-                else -> pipeline.restart(settings.current.value)
+                else -> pipeline.restart(chosenSettings())
             }
         }
     }
@@ -889,7 +890,19 @@ class CaptionSession(
         // Wi-Fi), ended by what the stopped-captions notice reports.
         listeningRecord.phaseChanged(pipeline.phase, stopped = stoppedCause(), soundsOnly = pipeline.soundsOnlyChosen)
         checkCaptionsStillRunning()
-        val transcribing = pipeline.activeSettings.takeIf { pipeline.isCoveringForCloud } ?: settings.current.value
+        val transcribing = pipeline.activeSettings.takeIf { pipeline.isCoveringForCloud } ?: chosenSettings()
+        askBuiltInLanguagesWhenWaiting()
+        val handOvers = pipeline.builtInHandOvers
+        if (handOvers > handOversSeen) {
+            handOversSeen = handOvers
+            modelReadyShownUntil = SystemClock.elapsedRealtime() + MODEL_READY_SHOWN_MILLIS
+            modelReadyLine?.cancel()
+            modelReadyLine = scope.launch {
+                delay(MODEL_READY_SHOWN_MILLIS)
+                publish()
+            }
+            if (appIsActive && ScreenReader.isOn(context)) announce(tr("המודל מוכן, הכתוביות ממשיכות איתו", "The model is ready, captions continue with it"))
+        }
         CaptionState.show(
             phase = pipeline.phase,
             engine = pipeline.activeEngineKind,
@@ -908,11 +921,14 @@ class CaptionSession(
             downloadSecondsRemaining = pipeline.downloadSecondsRemaining,
             pausedForSpeech = replies.holdsCaptions && pipeline.phase == PipelinePhase.Paused,
             coveringForCloud = pipeline.isCoveringForCloud,
-            coveredEngine = settings.current.value.engine,
+            coveredEngine = chosenSettings().engine,
             coverReason = pipeline.coverReason,
             offerBackup = offersBackup(),
             network = pipeline.networkConditions,
             soundsOnly = pipeline.soundsOnlyChosen,
+            builtInOffered = builtInWhileWaitingOffer == BuiltInWhileWaiting.Offer.BuiltInOrCellularDownload,
+            modelGettingReady = pipeline.waitingModelGettingReady,
+            modelJustReady = SystemClock.elapsedRealtime() < modelReadyShownUntil,
         )
         refreshSavingTrouble()
         announceNewLines(transcribing)
@@ -1034,6 +1050,67 @@ class CaptionSession(
     /** "Download now" while the model waits for Wi-Fi: this session's model may use cellular data. */
     fun approveCellularDownload() {
         scope.launch { pipeline.approveCellularDownload() }
+    }
+
+    /**
+     * What captions run with. A saved "appleSpeech" (an iPhone's settings)
+     * is the phone's model on Android, as Settings shows it: the phone's
+     * built-in recognizer only ever stands in while that model waits for
+     * Wi-Fi, never as the chosen engine.
+     */
+    private fun chosenSettings(): AppSettings = settings.current.value.let { saved ->
+        if (saved.engine == TranscriptionEngineKind.AppleSpeech) saved.copy().apply { engine = TranscriptionEngineKind.WhisperKit } else saved
+    }
+
+    /**
+     * The phone's own recognizer, on the phone alone (see `BuiltInSpeechEngine`):
+     * the languages it has installed, and the engine over it, null below
+     * Android 13.
+     */
+    private suspend fun builtInLanguages(): List<String>? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) BuiltInSpeechEngine.installedLanguages(context) else null
+
+    private fun builtInEngine(): TranscriptionEngine? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) BuiltInSpeechEngine(context, builtInRefusal) else null
+
+    private val builtInRefusal = BuiltInRefusal()
+    private var builtInInstalled: List<String>? = null
+    private var builtInAsking: Job? = null
+    private var builtInAskedForWait = false
+    private var handOversSeen = 0
+    private var modelReadyShownUntil = 0L
+    private var modelReadyLine: Job? = null
+
+    // Asked afresh at each wait for Wi-Fi: a language installed on the
+    // phone meanwhile is offered the next time.
+    private fun askBuiltInLanguagesWhenWaiting() {
+        val waiting = pipeline.phase.failure?.engineUnavailability?.kind == EngineUnavailability.Kind.WaitingForWiFi
+        if (!waiting) {
+            builtInAskedForWait = false
+            return
+        }
+        if (builtInAskedForWait || builtInAsking != null) return
+        builtInAskedForWait = true
+        builtInAsking = scope.launch {
+            val installed = runCatching { builtInLanguages() }.getOrNull()
+            builtInAsking = null
+            if (installed != builtInInstalled) {
+                builtInInstalled = installed
+                publish()
+            }
+        }
+    }
+
+    private fun builtInWorksOnDevice(languageCode: String): Boolean =
+        builtInRefusal.reason == null && builtInInstalled.orEmpty().any { BuiltInRecognition.matches(it, languageCode) }
+
+    /** What the wait for Wi-Fi offers besides a download over mobile data. */
+    val builtInWhileWaitingOffer: BuiltInWhileWaiting.Offer
+        get() = BuiltInWhileWaiting.offer(pipeline.phase, chosenSettings(), pipeline.networkConditions, ::builtInWorksOnDevice)
+
+    /** "Captions now, with the phone's built-in recognition" while the model waits for Wi-Fi; the chosen model stays chosen. */
+    fun captionWithBuiltInWhileWaiting() {
+        scope.launch { pipeline.captionWithBuiltInWhileWaiting(chosenSettings()) }
     }
 
     private fun publishInputs() = CaptionState.inputs(pipeline.availableInputs, pipeline.selectedInputUID, pipeline.microphoneDrop.lost, pipeline.inputInUse, pipeline.routedElsewhere)
@@ -1542,30 +1619,33 @@ class CaptionSession(
                 apiKey = { cloudKeys.read(provider) },
             )
         }
-        TranscriptionEngineKind.WhisperKit, TranscriptionEngineKind.AppleSpeech -> modelFile(settings).let { model ->
-            val ran = settings.phoneModel
-            OnDeviceWhisperEngine(
-                modelName = model.name,
-                loader = ModelFileLoader(
-                    model,
-                    context.applicationInfo.nativeLibraryDir,
-                    download = PhoneModelDownloader(model, settings.phoneModel.source, modelFetcher),
-                    network = { networkNow() },
-                    freeBytes = { freeSpace() },
-                    makeRoom = { makeRoom(it) },
-                    variant = settings.phoneModel.variant,
-                    marker = loadMarker,
-                    keepAwake = downloadAwake::keepAwake,
-                ),
-                voiceScorerFactory = ::voiceScore,
-                heat = { heatNow },
-                lowPowerMode = { savingPower },
-                onFitMeasurement = { passes, seconds, lowPower ->
-                    ModelFitWatch.measurement(ran, passes, seconds, now = System.currentTimeMillis() / 1000.0, device = Build.MODEL.orEmpty(), lowPower = lowPower)
-                        ?.let { measured -> this.settings.change { if (ModelFitWatch.keeps(it.phoneLiveMeasurement, measured)) it.phoneLiveMeasurement = measured } }
-                },
-            )
-        }
+        TranscriptionEngineKind.AppleSpeech -> builtInEngine() ?: phoneModelEngine(settings)
+        TranscriptionEngineKind.WhisperKit -> phoneModelEngine(settings)
+    }
+
+    private fun phoneModelEngine(settings: AppSettings): TranscriptionEngine = modelFile(settings).let { model ->
+        val ran = settings.phoneModel
+        OnDeviceWhisperEngine(
+            modelName = model.name,
+            loader = ModelFileLoader(
+                model,
+                context.applicationInfo.nativeLibraryDir,
+                download = PhoneModelDownloader(model, settings.phoneModel.source, modelFetcher),
+                network = { networkNow() },
+                freeBytes = { freeSpace() },
+                makeRoom = { makeRoom(it) },
+                variant = settings.phoneModel.variant,
+                marker = loadMarker,
+                keepAwake = downloadAwake::keepAwake,
+            ),
+            voiceScorerFactory = ::voiceScore,
+            heat = { heatNow },
+            lowPowerMode = { savingPower },
+            onFitMeasurement = { passes, seconds, lowPower ->
+                ModelFitWatch.measurement(ran, passes, seconds, now = System.currentTimeMillis() / 1000.0, device = Build.MODEL.orEmpty(), lowPower = lowPower)
+                    ?.let { measured -> this.settings.change { if (ModelFitWatch.keeps(it.phoneLiveMeasurement, measured)) it.phoneLiveMeasurement = measured } }
+            },
+        )
     }
 
     /** Where a missing model is fetched from; device tests put one in that never downloads. */
@@ -1702,6 +1782,7 @@ class CaptionSession(
         const val HISTORY_FOLDER = "ozen-history"
         const val JOURNAL_FILE = "ozen-journal.log"
         private const val CRITICAL_ANNOUNCEMENT_MILLIS = 4_000L
+        private const val MODEL_READY_SHOWN_MILLIS = 8_000L
         const val PROBLEM_AUDIO_FOLDER = "problem-audio"
         private const val LISTENING_CUT_IDENTIFIER = "listening-cut"
         private const val SAMPLE_RATE = 16_000

@@ -1143,9 +1143,28 @@ class CaptionPipeline(
         // say so) carries on, rather than trying it again with nothing
         // buffered and then reloading the model. The recheck brings it
         // back once it answers.
-        val effective = keepCovering((settings ?: settingsInUse)?.copy() ?: return)
+        val instead = insteadOfARefusingBuiltIn()
+        if (phase != PipelinePhase.Paused || isRecordingVoice) return
+        val effective = instead ?: keepCovering((settings ?: settingsInUse)?.copy() ?: return)
         phase = PipelinePhase.Idle
         start(effective)
+    }
+
+    /**
+     * Asked again before the built-in recognition starts anew (a resume,
+     * a retry): one that refuses now (the recognizer stopped taking Ozen's
+     * audio, or its language left the phone) gives way to the model it
+     * stood in for, which waits for Wi-Fi as before or downloads if it
+     * can, instead of a failure about an engine nobody chose. The settings
+     * to start with in its place, or null to carry on as before.
+     */
+    private suspend fun insteadOfARefusingBuiltIn(): AppSettings? {
+        if (!isCoveringForCloud || coverReason != EngineUnavailability.Kind.WaitingForWiFi || waitingModelReady) return null
+        val chosen = coveredSettings?.copy() ?: return null
+        val builtIn = BuiltInWhileWaiting.captionSettings(chosen)
+        val why = probeEngine(builtIn).checkAvailability(builtIn.languageCode).unavailability ?: return null
+        logEvent(PipelineEvent.Kind.Note("the built-in recognition can't caption any more (${why.kind.rawValue}), back to the model it stood in for"))
+        return chosen
     }
 
     /**
@@ -1226,6 +1245,9 @@ class CaptionPipeline(
     suspend fun retry(settings: AppSettings? = null) {
         if (phase !is PipelinePhase.Failed) return
         val effective = (settings ?: settingsInUse)?.copy() ?: return
+        val failedAs = phase
+        val instead = insteadOfARefusingBuiltIn()
+        if (phase != failedAs) return
         // A voice sample holds the microphone. Tearing the session down cut
         // it short, and `start` then refused to run, so captions stayed
         // stopped with no retry left to bring them back.
@@ -1242,7 +1264,7 @@ class CaptionPipeline(
         // Straight from the failure to starting, never through .idle, which
         // means stopped on purpose (the "captions came back" announcement
         // forgets the failure there).
-        start(keepCovering(effective))
+        start(instead ?: keepCovering(effective))
     }
 
     /**
@@ -2790,11 +2812,18 @@ class CaptionPipeline(
 
     /** While the phone's built-in recognition captions for a model that waits for Wi-Fi: that model is being downloaded or loaded behind it. */
     var waitingModelGettingReady = false
-        private set
+        private set(value) {
+            if (field == value) return
+            field = value
+            onCaptionsChanged?.invoke()
+        }
 
     /** How many times captions went over from the built-in recognition to the model once it was ready, for the screen to say so. */
     var builtInHandOvers = 0
-        private set
+        private set(value) {
+            field = value
+            onCaptionsChanged?.invoke()
+        }
 
     /** How often a ready model looks for its moment to take over. */
     var handOverCheckSeconds = 1.0

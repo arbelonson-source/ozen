@@ -1951,6 +1951,36 @@ class CaptionScreenDeviceTest {
     }
 
     @Test
+    fun withThePhonesBuiltInRecognitionOnOfferTheWaitForWiFiOffersCaptionsNowFirst() {
+        val waiting = PipelinePhase.Failed(
+            PipelineFailure(
+                PipelineFailure.Kind.EngineUnavailable,
+                "test",
+                EngineUnavailability(EngineUnavailability.Kind.WaitingForWiFi, "test", downloadMegabytes = 550),
+            ),
+        )
+        val inDialog = { text: String -> hasText(text, substring = true) and hasAnyAncestor(isDialog()) }
+        try {
+            compose.runOnUiThread { CaptionState.show(waiting, engine = null, interruptedBySystem = false, scheduledRetry = null, segments = emptyList(), builtInOffered = true) }
+            compose.onNodeWithText("Tap for captions right now", substring = true).assertExists()
+            val status = compose.onNodeWithTag(STATUS_BUTTON)
+            status.performClick()
+            compose.onNode(inDialog("Waiting for Wi")).assertExists()
+            compose.onNode(inDialog("is about 550")).assertExists()
+            compose.onNode(inDialog("the phone’s built-in recognition can write captions")).assertExists()
+            compose.onNode(inDialog("Download now over mobile data")).assertExists()
+            compose.onNode(inDialog("Wait for Wi")).performClick()
+            compose.onNode(inDialog("Waiting for Wi")).assertDoesNotExist()
+
+            status.performClick()
+            compose.onNode(inDialog("Captions now, with the phone’s built-in recognition")).performClick()
+            compose.onNode(inDialog("Waiting for Wi")).assertDoesNotExist()
+        } finally {
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
+    @Test
     fun aSafetySoundFlashesTheScreensEdgeRedOnlyWhenHeardWithTheCaptionsShowing() {
         val motion = ReducedMotion.isOn
         ReducedMotion.isOn = { false }

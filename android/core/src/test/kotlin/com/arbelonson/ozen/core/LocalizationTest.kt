@@ -18,7 +18,7 @@ class LocalizationTest {
     fun `an engine's name reads in the app's language, as Settings names it, wherever a saved conversation shows it`() {
         assertEquals("המחשב בבית", TranscriptionEngineKind.HomeServer.displayName(UILanguage.Hebrew))
         assertEquals("Whisper (on device)", TranscriptionEngineKind.WhisperKit.displayName(UILanguage.English))
-        assertEquals("Распознавание речи Apple", TranscriptionEngineKind.AppleSpeech.displayName(UILanguage.Russian))
+        assertEquals("Встроенное распознавание телефона", TranscriptionEngineKind.AppleSpeech.displayName(UILanguage.Russian))
         for (kind in TranscriptionEngineKind.entries) {
             assertNotEquals(kind.displayName(UILanguage.English), kind.displayName(UILanguage.Hebrew), "$kind")
         }

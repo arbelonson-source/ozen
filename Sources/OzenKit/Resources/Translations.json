@@ -1126,7 +1126,12 @@
   "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "ጥያቄዎቹ በእንግሊዝኛ ናቸው፤ ቤት ውስጥ ለሁሉም “አዎ” (Yes) ይመልሱ። ለመጨረሻው “አይ” (No) መመለስም ይቻላል፤ በኋላ ማዋቀሩን እንደገና በማስኬድ ማከል ይቻላል።",
   "Change “%1” to “%2” everywhere, also in saved conversations?": "“%1”ን በሁሉም ቦታ፣ በተቀመጡ ውይይቶችም ውስጥ ወደ “%2” ይቀየር?",
   "Change everywhere": "በሁሉም ቦታ ቀይር",
-  "Only this line": "ይህን መስመር ብቻ"
+  "Only this line": "ይህን መስመር ብቻ",
+  "The phone’s built-in recognition": "በስልኩ ውስጥ የተካተተው መለያ",
+  "Downloads on its own on Wi‑Fi without a data limit": "የዳታ ገደብ በሌለው Wi‑Fi ራሱን ችሎ ያወርዳል",
+  "Tap for captions right now": "አሁኑኑ ካፕሽን ለማግኘት ይንኩ",
+  "Download now over mobile data": "አሁን በሞባይል ዳታ አውርድ",
+  "The language model downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "የቋንቋ ሞዴሉ አንድ ጊዜ ብቻ ይወርዳል፣ መጠኑም ገደማ %1 ነው። በሞባይል ዳታ ይህ ገንዘብ ሊያስወጣ ወይም የዳታ ጥቅልዎን ሊጨርስ ይችላል። የዳታ ገደብ በሌለው Wi‑Fi (የስልክ ሆትስፖት ባልሆነ) ውርዱ ራሱን ችሎ ይጀምራል።"
  },
  "arabic": {
   "Flash the camera light": "وميض ضوء الكاميرا",
@@ -2255,7 +2260,12 @@
   "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "أسئلته بالإنجليزية: في البيت أجيبوا عنها كلها بـ‏“نعم”‏ (Yes). وعن السؤال الأخير تصلح الإجابة بـ‏“لا”‏ (No) أيضًا: يمكن إضافة ذلك لاحقًا بتشغيل الإعداد مرة أخرى.",
   "Change “%1” to “%2” everywhere, also in saved conversations?": "تغيير ‏“%1”‏ إلى ‏“%2”‏ في كل مكان، وفي المحادثات المحفوظة أيضًا؟",
   "Change everywhere": "التغيير في كل مكان",
-  "Only this line": "هذا السطر فقط"
+  "Only this line": "هذا السطر فقط",
+  "The phone’s built-in recognition": "التعرف المدمج في الهاتف",
+  "Downloads on its own on Wi‑Fi without a data limit": "يُنزَّل من تلقاء نفسه عبر Wi‑Fi بلا حد للبيانات",
+  "Tap for captions right now": "المسوا للحصول على ترجمة نصية الآن",
+  "Download now over mobile data": "تنزيل الآن عبر بيانات الجوال",
+  "The language model downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "يُنزَّل نموذج اللغة مرة واحدة فقط وحجمه نحو %1. عبر بيانات الجوال قد يكلف هذا مالًا أو يستهلك باقة البيانات. عبر Wi‑Fi بلا حد للبيانات (لا نقطة اتصال من هاتف) سيبدأ التنزيل من تلقاء نفسه."
  },
  "chineseSimplified": {
   "Flash the camera light": "让相机手电筒闪烁",
@@ -3384,7 +3394,12 @@
   "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "它的问题是英文的：在家时全部选“是”（Yes）。最后一个问题选“否”（No）也可以：以后再运行一次安装程序就能加上。",
   "Change “%1” to “%2” everywhere, also in saved conversations?": "要在所有地方（包括已保存的对话）把“%1”改成“%2”吗？",
   "Change everywhere": "全部更改",
-  "Only this line": "仅此行"
+  "Only this line": "仅此行",
+  "The phone’s built-in recognition": "手机内置的识别功能",
+  "Downloads on its own on Wi‑Fi without a data limit": "连接没有流量限制的 Wi‑Fi 时会自动下载",
+  "Tap for captions right now": "点一下立即显示字幕",
+  "Download now over mobile data": "立即使用移动数据下载",
+  "The language model downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "语言模型只需下载一次，大约 %1。使用移动数据下载可能会花钱或消耗流量套餐。连接没有流量限制的 Wi‑Fi（不是手机热点）时，下载会自动开始。"
  },
  "french": {
   "Flash the camera light": "Faire clignoter la lampe de l’appareil photo",
@@ -4513,7 +4528,12 @@
   "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Ses questions sont en anglais : à la maison, répondez « Oui » (Yes) à chacune. À la dernière, « Non » (No) convient aussi : relancer l’installation plus tard permet de l’ajouter.",
   "Change “%1” to “%2” everywhere, also in saved conversations?": "Remplacer « %1 » par « %2 » partout, y compris dans les conversations enregistrées ?",
   "Change everywhere": "Remplacer partout",
-  "Only this line": "Cette ligne seulement"
+  "Only this line": "Cette ligne seulement",
+  "The phone’s built-in recognition": "La reconnaissance intégrée au téléphone",
+  "Downloads on its own on Wi‑Fi without a data limit": "Se télécharge seul sur un Wi‑Fi sans limite de données",
+  "Tap for captions right now": "Touchez pour avoir les sous-titres tout de suite",
+  "Download now over mobile data": "Télécharger maintenant via les données mobiles",
+  "The language model downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Le modèle de langue se télécharge une seule fois et pèse environ %1. Via les données mobiles, cela peut coûter de l’argent ou utiliser votre forfait. Sur un Wi‑Fi sans limite de données (pas le partage de connexion d’un téléphone), le téléchargement démarrera tout seul."
  },
  "german": {
   "Flash the camera light": "Mit dem Kameralicht blinken",
@@ -5642,7 +5662,12 @@
   "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Seine Fragen sind auf Englisch: Zu Hause beantworten Sie alle mit „Ja“ (Yes). Bei der letzten geht auch „Nein“ (No): Wer die Einrichtung später noch einmal startet, kann es nachholen.",
   "Change “%1” to “%2” everywhere, also in saved conversations?": "„%1“ überall in „%2“ ändern, auch in gespeicherten Gesprächen?",
   "Change everywhere": "Überall ändern",
-  "Only this line": "Nur diese Zeile"
+  "Only this line": "Nur diese Zeile",
+  "The phone’s built-in recognition": "Die im Telefon eingebaute Erkennung",
+  "Downloads on its own on Wi‑Fi without a data limit": "Lädt über WLAN ohne Datenlimit von allein herunter",
+  "Tap for captions right now": "Für sofortige Untertitel tippen",
+  "Download now over mobile data": "Jetzt über mobile Daten herunterladen",
+  "The language model downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Das Sprachmodell wird einmal heruntergeladen und ist etwa %1 groß. Über mobile Daten kann das Geld kosten oder Ihr Datenvolumen aufbrauchen. Über WLAN ohne Datenlimit (kein Hotspot eines Handys) startet der Download von allein."
  },
  "hindi": {
   "Flash the camera light": "कैमरे की लाइट से फ़्लैश करें",
@@ -6771,7 +6796,12 @@
   "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "इसके सवाल अंग्रेज़ी में हैं: घर पर सभी का जवाब “हां” (Yes) दें। आख़िरी सवाल का जवाब “नहीं” (No) भी ठीक है: बाद में सेटअप दोबारा चलाकर इसे जोड़ा जा सकता है।",
   "Change “%1” to “%2” everywhere, also in saved conversations?": "“%1” को हर जगह, सहेजी गई बातचीत में भी, “%2” में बदलें?",
   "Change everywhere": "हर जगह बदलें",
-  "Only this line": "सिर्फ़ यह पंक्ति"
+  "Only this line": "सिर्फ़ यह पंक्ति",
+  "The phone’s built-in recognition": "फ़ोन में पहले से मौजूद पहचान",
+  "Downloads on its own on Wi‑Fi without a data limit": "बिना डेटा सीमा वाले Wi‑Fi पर खुद डाउनलोड होता है",
+  "Tap for captions right now": "अभी कैप्शन के लिए छुएं",
+  "Download now over mobile data": "अभी मोबाइल डेटा पर डाउनलोड करें",
+  "The language model downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "भाषा का मॉडल एक बार डाउनलोड होता है और लगभग %1 का है। मोबाइल डेटा पर इसमें पैसे लग सकते हैं या आपका डेटा प्लान ख़त्म हो सकता है। बिना डेटा सीमा वाले Wi‑Fi पर (फ़ोन का हॉटस्पॉट नहीं) डाउनलोड खुद शुरू हो जाएगा।"
  },
  "portuguese": {
   "Flash the camera light": "Fazer piscar a luz da câmara",
@@ -7900,7 +7930,12 @@
   "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "As perguntas estão em inglês: em casa, responda “Sim” (Yes) a todas. À última, “Não” (No) também serve: pode acrescentá-lo mais tarde executando a instalação de novo.",
   "Change “%1” to “%2” everywhere, also in saved conversations?": "Mudar “%1” para “%2” em todo o lado, também nas conversas guardadas?",
   "Change everywhere": "Mudar em todo o lado",
-  "Only this line": "Só esta linha"
+  "Only this line": "Só esta linha",
+  "The phone’s built-in recognition": "O reconhecimento incorporado no telemóvel",
+  "Downloads on its own on Wi‑Fi without a data limit": "É transferido sozinho numa rede Wi‑Fi sem limite de dados",
+  "Tap for captions right now": "Toque para ter legendas já",
+  "Download now over mobile data": "Transferir agora com dados móveis",
+  "The language model downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "O modelo de idioma é transferido uma só vez e tem cerca de %1. Com dados móveis isto pode custar dinheiro ou gastar o seu plano de dados. Numa rede Wi‑Fi sem limite de dados (que não seja o hotspot de um telemóvel) a transferência começa sozinha."
  },
  "russian": {
   "Flash the camera light": "Мигать фонариком камеры",
@@ -9029,7 +9064,12 @@
   "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Вопросы установщика на английском: дома на все отвечайте «Да» (Yes). На последний можно ответить и «Нет» (No): это можно добавить позже, запустив установку ещё раз.",
   "Change “%1” to “%2” everywhere, also in saved conversations?": "Заменить «%1» на «%2» везде, в том числе в сохранённых разговорах?",
   "Change everywhere": "Заменить везде",
-  "Only this line": "Только эта строка"
+  "Only this line": "Только эта строка",
+  "The phone’s built-in recognition": "Встроенное распознавание телефона",
+  "Downloads on its own on Wi‑Fi without a data limit": "Загрузится сама по Wi‑Fi без ограничения трафика",
+  "Tap for captions right now": "Нажмите, чтобы получить субтитры сразу",
+  "Download now over mobile data": "Загрузить сейчас по мобильной сети",
+  "The language model downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Языковая модель загружается один раз, её размер около %1. Через мобильный интернет это может стоить денег или израсходовать ваш пакет данных. По Wi‑Fi без ограничения трафика (не точка доступа с телефона) загрузка начнётся сама."
  },
  "spanish": {
   "Flash the camera light": "Hacer parpadear la linterna de la cámara",
@@ -10158,7 +10198,12 @@
   "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Sus preguntas están en inglés: en casa, responde “Sí” (Yes) a todas. A la última también vale “No”: se puede añadir más tarde ejecutando de nuevo la instalación.",
   "Change “%1” to “%2” everywhere, also in saved conversations?": "¿Cambiar “%1” por “%2” en todas partes, también en las conversaciones guardadas?",
   "Change everywhere": "Cambiar en todas partes",
-  "Only this line": "Solo esta línea"
+  "Only this line": "Solo esta línea",
+  "The phone’s built-in recognition": "El reconocimiento integrado en el teléfono",
+  "Downloads on its own on Wi‑Fi without a data limit": "Se descarga solo con un Wi‑Fi sin límite de datos",
+  "Tap for captions right now": "Toca para tener subtítulos ya",
+  "Download now over mobile data": "Descargar ahora con datos móviles",
+  "The language model downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "El modelo de idioma se descarga una sola vez y pesa unos %1. Con datos móviles esto puede costar dinero o agotar tu plan de datos. Con un Wi‑Fi sin límite de datos (no el punto de acceso de un móvil), la descarga empezará sola."
  },
  "ukrainian": {
   "Flash the camera light": "Блимати ліхтариком камери",
@@ -11287,6 +11332,11 @@
   "Its questions are in English: at home, answer “Yes” to each. To the last one, “No” is fine too: running the setup again later adds it.": "Запитання програми англійською: удома на всі відповідайте «Так» (Yes). На останнє можна відповісти й «Ні» (No): це можна додати пізніше, запустивши встановлення ще раз.",
   "Change “%1” to “%2” everywhere, also in saved conversations?": "Змінити «%1» на «%2» всюди, зокрема в збережених розмовах?",
   "Change everywhere": "Змінити всюди",
-  "Only this line": "Лише цей рядок"
+  "Only this line": "Лише цей рядок",
+  "The phone’s built-in recognition": "Вбудоване розпізнавання телефона",
+  "Downloads on its own on Wi‑Fi without a data limit": "Завантажиться сама через Wi‑Fi без обмеження трафіку",
+  "Tap for captions right now": "Натисніть, щоб отримати субтитри одразу",
+  "Download now over mobile data": "Завантажити зараз мобільною мережею",
+  "The language model downloads once and is about %1. Over mobile data this can cost money or use up your data plan. On Wi‑Fi without a data limit (not a phone hotspot) the download will start on its own.": "Мовна модель завантажується один раз і важить близько %1. Через мобільний інтернет це може коштувати грошей або витратити ваш пакет даних. Через Wi‑Fi без обмеження трафіку (не точка доступу з телефона) завантаження почнеться само."
  }
 }
