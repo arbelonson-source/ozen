@@ -1160,6 +1160,29 @@ struct TranscriptHistorySearchCacheTests {
         #expect(store.search("ים").isEmpty)
     }
 
+    @Test("search splits the as-said lines only for the conversations that match")
+    func searchSplitsOnlyMatches() throws {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TranscriptHistoryStore(directoryURL: dir)
+        var needles: Set<UUID> = []
+        for number in 0..<300 {
+            var lines: [(String, String?)] = (0..<50).map { ("ordinary words number \(number) line \($0)", nil) }
+            if number % 100 == 0 { lines[7] = ("the zebracrossing was busy", nil) }
+            let saved = record(startedAt: TimeInterval(number), lines: lines)
+            if number % 100 == 0 { needles.insert(saved.id) }
+            try store.save(saved)
+        }
+        #expect(store.search("ordinary").count == 300)
+
+        let splits = TranscriptHistoryStore.SplitCount()
+        let found = TranscriptHistoryStore.PreparedSearch.$splits.withValue(splits) { store.search("zebracrossing") }
+
+        #expect(Set(found.map(\.id)) == needles)
+        #expect(splits.value == 3)
+        #expect(found.allSatisfy { $0.preview.contains("zebracrossing") })
+    }
+
     @Test("a save that skips the search caches writes no search-text file, but the conversation is still found")
     func saveWithoutCachesIsStillSearched() throws {
         let dir = makeTempDirectory()
