@@ -31,6 +31,6 @@ object SystemLabels {
                 it == Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC
         } ?: return label
         val rightToLeftLabel = strong != Character.DIRECTIONALITY_LEFT_TO_RIGHT
-        return if (rightToLeftLabel == rightToLeftSentence) label else "⁨$label⁩"
+        return if (rightToLeftLabel == rightToLeftSentence) label else "\u2068$label\u2069"
     }
 }
