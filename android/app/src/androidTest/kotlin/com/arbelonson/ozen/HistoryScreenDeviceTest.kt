@@ -54,6 +54,8 @@ import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
+import com.arbelonson.ozen.core.isKeptByChoice
+import com.arbelonson.ozen.core.lastActiveAt
 import java.io.File
 import java.io.IOException
 import java.time.Instant
@@ -865,6 +867,12 @@ class HistoryScreenDeviceTest {
     @Test
     fun turningThePhoneKeepsTheShorterKeepingTimeQuestionTrueAboutWhatConfirmingDeletes() {
         app.settings.change { it.historyRetention = HistoryRetention.Forever }
+        // The warning counts every saved conversation older than a month, and
+        // confirming deletes them all. One left by an earlier test, or already
+        // on the phone, made it say 3 instead of these 2 in a run of every
+        // device test.
+        val monthAgo = HistoryRetention.Month.cutoff(System.currentTimeMillis() / 1_000.0)!!
+        store.listSummaries().filter { it.lastActiveAt < monthAgo && !it.isKeptByChoice }.forEach { store.delete(it.id) }
         val longAgo = System.currentTimeMillis() / 1_000.0 - 40 * 86_400
         val oldOne = seed("Rotating retention old one" to null, startedAt = longAgo)
         val oldTwo = seed("Rotating retention old two" to null, startedAt = longAgo - 60)
