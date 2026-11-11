@@ -109,6 +109,7 @@ import com.arbelonson.ozen.core.HistoryDays
 import com.arbelonson.ozen.core.HistoryRetention
 import com.arbelonson.ozen.core.OnThisDay
 import com.arbelonson.ozen.core.SavedSegment
+import com.arbelonson.ozen.core.SpeakerColorSlots
 import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
@@ -594,18 +595,27 @@ private class OpenConversation(
     val numbers: NumbersMentioned?,
     val starred: List<UUID>,
     val stats: ConversationStats?,
+    /** Who gets which colour, the same for the lines and the summary's bars. */
+    val slots: SpeakerColorSlots = SpeakerColorSlots(emptyList()),
 ) {
     /** The name, the summary and the numbers come first in the list, before the lines a jump is aimed at. */
     val headerItems: Int get() = (if (record?.title != null) 1 else 0) + (if (stats != null) 1 else 0) + (if (numbers?.listed?.isNotEmpty() == true) 1 else 0) + 1
 }
 
-private fun opened(record: TranscriptSessionRecord?, query: String, marksUncertain: Boolean, languageCode: String) = OpenConversation(
+private fun opened(
+    record: TranscriptSessionRecord?,
+    query: String,
+    marksUncertain: Boolean,
+    languageCode: String,
+    slots: SpeakerColorSlots = SavedLine.slotsOf(record?.segments.orEmpty()),
+) = OpenConversation(
     record = record,
-    lines = record?.let { SavedLine.of(it, markUncertain = marksUncertain, languageCode = languageCode) } ?: emptyList(),
+    lines = record?.let { SavedLine.of(it, markUncertain = marksUncertain, languageCode = languageCode, slots = slots) } ?: emptyList(),
     matches = if (record == null || query.isBlank()) emptyList() else TranscriptHistoryStore.matchingSegmentIDs(record, query),
     numbers = record?.takeIf { query.isBlank() }?.let { NumbersMentioned.of(it, usesDecimalComma(languageCode)) },
     starred = record?.takeIf { query.isBlank() }?.segments?.filter { it.isStarred }?.map { it.id } ?: emptyList(),
     stats = record?.let { ConversationStats.compute(it) }?.takeIf { it.totalWords > 0 },
+    slots = slots,
 )
 
 /**
@@ -809,7 +819,7 @@ internal fun ConversationScreen(
                                     Text(name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 16.dp).semantics { heading() })
                                 }
                             }
-                            shown.stats?.let { stats -> item(key = "summary") { SummarySection(stats) } }
+                            shown.stats?.let { stats -> item(key = "summary") { SummarySection(stats, shown.slots) } }
                             if (numbers != null) {
                                 item(key = "numbers") {
                                     NumbersSection(numbers, isUncertain = { marksUncertain && CaptionConfidence.isUncertain(it, shown.record.engine, shown.record.modelVariant) }) { said ->
@@ -968,7 +978,7 @@ private fun GroupCard(title: String, content: @Composable ColumnScope.() -> Unit
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SummarySection(stats: ConversationStats) {
+private fun SummarySection(stats: ConversationStats, slots: SpeakerColorSlots) {
     GroupCard(tr("סיכום", "Summary")) {
         Text(stats.hebrewSummary, style = MaterialTheme.typography.titleMedium)
         for (speaker in stats.speakers) {
@@ -985,7 +995,7 @@ private fun SummarySection(stats: ConversationStats) {
                 LinearProgressIndicator(
                     progress = { share.toFloat() },
                     modifier = Modifier.fillMaxWidth().testTag("$SPEAKER_SHARE${speaker.name}").clearAndSetSemantics {},
-                    color = SpeakerColour.of(speaker.clusterID, speaker.name, onLightScreen()),
+                    color = SpeakerColour.of(speaker.clusterID, speaker.name, onLightScreen(), slots.slot(speaker.clusterID, speaker.name)),
                 )
             }
         }
@@ -1101,7 +1111,7 @@ private fun SavedLineView(line: SavedLine, isMatch: Boolean, emphasizeNumbers: B
         LineDirection(line.rightToLeft) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = SpeakerColour.of(line.cluster, it, onLightScreen())) }
+                line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = SpeakerColour.of(line.cluster, it, onLightScreen(), line.slot)) }
                 Row {
                     if (line.starred) Text("★", color = starColour(), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 6.dp))
                     if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)

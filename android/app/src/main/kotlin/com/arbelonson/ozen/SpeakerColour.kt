@@ -1,7 +1,7 @@
 package com.arbelonson.ozen
 
 import androidx.compose.ui.graphics.Color
-import com.arbelonson.ozen.core.TranscriptSessionSummary
+import com.arbelonson.ozen.core.SpeakerColorSlots
 
 internal object SpeakerColour {
     private val palette = listOf(
@@ -20,18 +20,10 @@ internal object SpeakerColour {
         Color(0.42f, 0.25f, 0.70f),
     )
 
-    fun of(clusterID: Int?, speakerName: String?, light: Boolean): Color {
+    fun of(clusterID: Int?, speakerName: String?, light: Boolean, slot: Int? = null): Color {
         val colours = if (light) deepPalette else palette
-        if (speakerName != null && !TranscriptSessionSummary.isGenericLabel(speakerName)) return colours[stableIndex(speakerName, colours.size)]
-        if (clusterID == null) return if (light) Color(0.4f, 0.4f, 0.4f) else Color(0.56f, 0.56f, 0.56f)
-        return colours[clusterID % colours.size]
-    }
-
-    private fun stableIndex(name: String, count: Int): Int {
-        var hash = -3_750_763_034_362_895_579L
-        for (byte in name.toByteArray(Charsets.UTF_8)) {
-            hash = (hash xor (byte.toLong() and 0xFF)) * 1_099_511_628_211L
-        }
-        return java.lang.Long.remainderUnsigned(hash, count.toLong()).toInt()
+        val speaker = SpeakerColorSlots.speaker(clusterID, speakerName)
+            ?: return if (light) Color(0.4f, 0.4f, 0.4f) else Color(0.56f, 0.56f, 0.56f)
+        return colours[(slot ?: SpeakerColorSlots.aloneSlot(speaker)) % colours.size]
     }
 }

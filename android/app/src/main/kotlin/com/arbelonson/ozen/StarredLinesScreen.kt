@@ -142,12 +142,13 @@ internal fun StarredLinesScreen(conversations: SavedConversations, marksUncertai
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     for (group in StarredConversation.grouping(shown)) {
+                        val slots = SavedLine.slotsOf(group.lines.map { it.segment })
                         item(key = "conversation-${group.sessionID}") {
                             StarredHeading(group.title, conversationHeading(group.startedAt, now = now))
                         }
                         items(group.lines, key = { it.id.toString() }) { line ->
                             StarredLineView(
-                                SavedLine.of(line, markUncertain = marksUncertain, languageCode = languageCode),
+                                SavedLine.of(line, markUncertain = marksUncertain, languageCode = languageCode, slots = slots),
                                 emphasizeNumbers,
                                 onOpen = { opened = line.sessionID to line.id },
                                 onUnstar = {
@@ -219,7 +220,7 @@ private fun StarredLineView(line: SavedLine, emphasizeNumbers: Boolean, onOpen: 
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         line.time?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = SpeakerColour.of(line.cluster, it, onLightScreen())) }
+                        line.speaker?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = SpeakerColour.of(line.cluster, it, onLightScreen(), line.slot)) }
                     }
                     Row {
                         if (line.unsure) UnsureMark(MaterialTheme.typography.bodyLarge.fontSize.value.toDouble(), MaterialTheme.colorScheme.onSurfaceVariant)

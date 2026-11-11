@@ -10,6 +10,7 @@ import com.arbelonson.ozen.core.NumberEmphasis
 import com.arbelonson.ozen.core.PhoneNumbers
 import com.arbelonson.ozen.core.SavedLineSpeech
 import com.arbelonson.ozen.core.SavedSegment
+import com.arbelonson.ozen.core.SpeakerColorSlots
 import com.arbelonson.ozen.core.StarredLine
 import com.arbelonson.ozen.core.TimeArticle
 import com.arbelonson.ozen.core.TranscriptSessionRecord
@@ -65,10 +66,18 @@ data class SavedLine(
     val rightToLeft: Boolean = true,
     /** The voice it was heard in, which with the name picks the speaker's colour. */
     val cluster: Int? = null,
+    /** Its speaker's colour among the conversation's people (see `SpeakerColorSlots`); null keeps the name's own. */
+    val slot: Int? = null,
 ) {
     companion object {
         /** [markUncertain]: the caption screen's question mark, kept on saved lines as on the iPhone. */
-        fun of(record: TranscriptSessionRecord, zone: ZoneId = ZoneId.systemDefault(), markUncertain: Boolean = false, languageCode: String = "he"): List<SavedLine> {
+        fun of(
+            record: TranscriptSessionRecord,
+            zone: ZoneId = ZoneId.systemDefault(),
+            markUncertain: Boolean = false,
+            languageCode: String = "he",
+            slots: SpeakerColorSlots = slotsOf(record.segments),
+        ): List<SavedLine> {
             val timed = CaptionLayout.timeMarkedLineIDs(record.segments)
             return record.segments.mapIndexed { index, segment ->
                 val previous = record.segments.getOrNull(index - 1)
@@ -86,16 +95,26 @@ data class SavedLine(
                     phones = PhoneNumbers.matches(segment.text),
                     rightToLeft = CaptionLayout.readsRightToLeft(segment.text, languageCode),
                     cluster = segment.speakerClusterID,
+                    slot = slots.slot(segment.speakerClusterID, segment.speakerName),
                 )
             }
         }
+
+        /** The people of a conversation or a starred group, as the iPhone hands out their colours. */
+        fun slotsOf(segments: List<SavedSegment>): SpeakerColorSlots = SpeakerColorSlots.of(segments.map { it.speakerClusterID to it.speakerName })
 
         /**
          * A line on the starred list, as on the iPhone: always with its time,
          * a "Speaker 2" left out, and not read as starred, which the list
          * already says.
          */
-        fun of(line: StarredLine, zone: ZoneId = ZoneId.systemDefault(), markUncertain: Boolean = false, languageCode: String = "he"): SavedLine {
+        fun of(
+            line: StarredLine,
+            zone: ZoneId = ZoneId.systemDefault(),
+            markUncertain: Boolean = false,
+            languageCode: String = "he",
+            slots: SpeakerColorSlots? = null,
+        ): SavedLine {
             val segment = line.segment
             val time = clockTime(segment.startTimestamp, zone)
             val speaker = segment.speakerName?.takeUnless { it.isBlank() || TranscriptSessionSummary.isGenericLabel(it) }
@@ -111,6 +130,7 @@ data class SavedLine(
                 copied = CaptionLayout.copiedText(segment.text),
                 rightToLeft = CaptionLayout.readsRightToLeft(segment.text, languageCode),
                 cluster = segment.speakerClusterID,
+                slot = slots?.slot(segment.speakerClusterID, segment.speakerName),
             )
         }
     }
