@@ -19,7 +19,6 @@ import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelCatalog
 import com.arbelonson.ozen.core.PhoneModelDownloader
 import com.arbelonson.ozen.core.SpeechStretch
-import com.arbelonson.ozen.core.SpeechStretchPlanner
 import com.arbelonson.ozen.core.StorageSpaceGate
 import com.arbelonson.ozen.core.TranscribedLine
 import com.arbelonson.ozen.core.TranscriptionProgress
@@ -230,19 +229,12 @@ class FileTranscriber(
     private suspend fun transcribe(uri: Uri, model: PhoneModel, scorer: SileroVoiceScorer, linePass: FileLinePass): Transcript {
         var endMissing = false
         val clock = TimeSource.Monotonic.markNow()
-        val planner = SpeechStretchPlanner(maxStretchSeconds = linePass.longestStretchSeconds)
+        val cutter = FileSpeechCutter(linePass.longestStretchSeconds) { chunk -> scorer.frames(chunk) ?: throw Problem(FileTranscriptionProblem.ModelFailed) }
         val lines = ArrayList<TranscribedLine>()
-        val audio = RollingAudio()
-        var pending = FloatArray(0)
         var heard = 0L
-        fun score(chunk: FloatArray) = planner.add(scorer.frames(chunk) ?: throw Problem(FileTranscriptionProblem.ModelFailed))
-        suspend fun handle(stretches: List<SpeechStretch>) {
-            for (stretch in stretches) {
-                val window = audio.between(stretch.startSeconds - PAD_SECONDS, stretch.endSeconds + PAD_SECONDS) ?: continue
-                val text = linePass.text(window, voicedChunks = (stretch.voicedFrames + FRAMES_PER_CHUNK - 1) / FRAMES_PER_CHUNK)
-                if (text.isNotEmpty()) lines.add(TranscribedLine(stretch.startSeconds, stretch.endSeconds, text))
-            }
-            audio.keepFrom((planner.openStartSeconds ?: audio.endSeconds) - PAD_SECONDS)
+        val take: suspend (SpeechStretch, FloatArray) -> Unit = { stretch, window ->
+            val text = linePass.text(window, voicedChunks = (stretch.voicedFrames + FRAMES_PER_CHUNK - 1) / FRAMES_PER_CHUNK)
+            if (text.isNotEmpty()) lines.add(TranscribedLine(stretch.startSeconds, stretch.endSeconds, text))
         }
         fun report() {
             val done = heard.toDouble() / SAMPLE_RATE
@@ -264,13 +256,7 @@ class FileTranscriber(
             }
             try {
                 for (piece in pieces) {
-                    audio.append(piece)
-                    pending += piece
-                    val usable = pending.size / CHUNK_SAMPLES * CHUNK_SAMPLES
-                    if (usable > 0) {
-                        handle(score(pending.copyOf(usable)))
-                        pending = pending.copyOfRange(usable, pending.size)
-                    }
+                    cutter.add(piece, take)
                     heard += piece.size
                     report()
                 }
@@ -278,17 +264,14 @@ class FileTranscriber(
                 pieces.cancel()
             }
         }
-        if (pending.isNotEmpty()) handle(score(pending.copyOf(CHUNK_SAMPLES)))
-        handle(planner.finish())
+        cutter.finish(take)
         if (lines.isEmpty()) throw Problem(FileTranscriptionProblem.NoSpeech)
         return Transcript(lines, endMissing)
     }
 
     private companion object {
         const val SAMPLE_RATE = 16_000
-        const val CHUNK_SAMPLES = 4_096
-        const val FRAMES_PER_CHUNK = CHUNK_SAMPLES / 512
-        const val PAD_SECONDS = 0.2
+        const val FRAMES_PER_CHUNK = FileSpeechCutter.CHUNK_SAMPLES / 512
         const val PIECES_AHEAD = 4
     }
 }
