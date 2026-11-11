@@ -234,4 +234,45 @@ struct ConversationStatsTests {
         #expect(stats.speakers.map(\.name).contains("רותי"))
         #expect(stats.speakers.first { $0.name != "רותי" }?.words == 5)
     }
+
+    @Test("Chinese counts one word per character, as on Android")
+    func chineseCountsCharacters() {
+        #expect(ConversationStats.compute(segments: [line("我今天去了商店买了三个苹果", nil, at: 0)]).totalWords == 13)
+    }
+
+    @Test("a Chinese speaker's share and longest turn follow characters")
+    func chineseSharesFollowCharacters() {
+        let stats = ConversationStats.compute(segments: [
+            line(String(repeating: "我", count: 20), "A", at: 0),
+            line(String(repeating: "你", count: 5), "B", at: 5),
+        ])
+        let a = stats.speakers.first { $0.name == "A" }
+        let b = stats.speakers.first { $0.name == "B" }
+        #expect(a.map { abs(stats.wordFraction(of: $0) - 0.8) < 1e-9 } == true)
+        #expect(b.map { abs(stats.wordFraction(of: $0) - 0.2) < 1e-9 } == true)
+        #expect(stats.longestTurn?.words == 20)
+    }
+
+    @Test("Chinese beside a Latin word counts the characters plus the word")
+    func chineseWithLatinWord() {
+        #expect(ConversationStats.compute(segments: [line("我用 iPhone 打电话", nil, at: 0)]).totalWords == 6)
+    }
+
+    @Test("rare Chinese characters outside the basic plane count one each")
+    func rareChineseCharacters() {
+        let rare = "\u{20000}\u{20001}"
+        #expect(ConversationStats.compute(segments: [line(rare, nil, at: 0)]).totalWords == 2)
+        #expect(ConversationStats.compute(segments: [line("我" + rare + " ok 你", nil, at: 0)]).totalWords == 5)
+    }
+
+    @Test("Chinese punctuation is not counted")
+    func chinesePunctuationNotCounted() {
+        #expect(ConversationStats.compute(segments: [line("你好，世界。", nil, at: 0)]).totalWords == 4)
+    }
+
+    @Test("Hebrew and English still count by words")
+    func spacedLanguagesCountWords() {
+        #expect(ConversationStats.compute(segments: [line("שלום לכולם היום", nil, at: 0)]).totalWords == 3)
+        #expect(ConversationStats.compute(segments: [line("see you at noon", nil, at: 0)]).totalWords == 4)
+    }
 }
