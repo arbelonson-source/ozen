@@ -176,6 +176,31 @@ class NightAlertsTest {
     }
 
     @Test
+    fun `the switches are named as the phone's own Settings shows them, kept whole inside a sentence in the other direction`() {
+        val englishPhone = mapOf(
+            SystemLabels.ALLOW_BACKGROUND to "Allow background usage",
+            SystemLabels.UNRESTRICTED to "Unrestricted",
+            SystemLabels.OVERRIDE_DND to "Override Do Not Disturb",
+        )
+        Localization.withLanguage(UILanguage.Hebrew) {
+            val battery = NightAlerts.batteryText(exempt = false, sdk = 35, phoneLabel = { englishPhone[it] })
+            assertTrue(battery.contains("על ״\u2068Allow background usage\u2069״, ובחרו ״\u2068Unrestricted\u2069״."), battery)
+            val older = NightAlerts.batteryText(exempt = false, sdk = 34, phoneLabel = { englishPhone[it] })
+            assertTrue(older.contains("״כל האפליקציות״") && older.contains("״אין לבצע אופטימיזציה״"), older)
+            for (allowed in listOf(true, false)) {
+                val dnd = NightAlerts.dndText(through = false, alarmsAllowed = allowed, phoneLabel = { englishPhone[it] })
+                assertTrue(dnd.contains("״\u2068Override Do Not Disturb\u2069״"), dnd)
+            }
+        }
+        Localization.withLanguage(UILanguage.English) {
+            val same = NightAlerts.batteryText(exempt = false, sdk = 35, phoneLabel = { englishPhone[it] })
+            assertTrue(same.endsWith("tap Ozen, then Allow background usage, and choose Unrestricted."), same)
+            val hebrewPhone = NightAlerts.batteryText(exempt = false, sdk = 35, phoneLabel = { if (it == SystemLabels.ALLOW_BACKGROUND) "הרשאה לשימוש ברקע" else null })
+            assertTrue(hebrewPhone.endsWith("tap Ozen, then \u2068הרשאה לשימוש ברקע\u2069, and choose Unrestricted."), hebrewPhone)
+        }
+    }
+
+    @Test
     fun `the row says all set or how many to check`() {
         Localization.withLanguage(UILanguage.English) {
             assertEquals("All set", NightAlerts.summary(0))

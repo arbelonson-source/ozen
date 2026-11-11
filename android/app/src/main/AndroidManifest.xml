@@ -16,6 +16,7 @@
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
+        <package android:name="com.android.settings" />
     </queries>
 
     <application

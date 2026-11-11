@@ -30,6 +30,7 @@ env:
     com.arbelonson.ozen.HomeServerCodeStoreDeviceTest,
     com.arbelonson.ozen.PairingLinkDeviceTest,
     com.arbelonson.ozen.DeviceStorageDeviceTest,
+    com.arbelonson.ozen.SystemLabelsDeviceTest,
     com.arbelonson.ozen.CaptionsRetryWakeLockDeviceTest,
     com.arbelonson.ozen.ListeningNotificationDeviceTest,
     com.arbelonson.ozen.CaptionScreenDeviceTest#theStatusShowsWhenItIsBusyAndHowFarADownloadIsAndIsNoButtonWhenATapWouldDoNothing,
