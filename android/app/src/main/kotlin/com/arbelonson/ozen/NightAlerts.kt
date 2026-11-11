@@ -27,8 +27,8 @@ object NightAlerts {
         )
     }
 
-    fun openItems(batteryExempt: Boolean, dndThrough: Boolean, soundsOn: Boolean): Int =
-        listOf(batteryExempt, dndThrough, soundsOn).count { !it }
+    fun openItems(batteryExempt: Boolean, dndThrough: Boolean, soundsOn: Boolean, notificationsAllowed: Boolean = true): Int =
+        listOf(batteryExempt, dndThrough, soundsOn, notificationsAllowed).count { !it }
 
     fun soundsText(on: Boolean): String =
         if (on) {
