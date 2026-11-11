@@ -48,10 +48,13 @@ struct SpeakerColorSlotsTests {
         #expect(result.slot(for: .named("Mom")) != result.slot(for: .stranger(2)))
     }
 
-    @Test("generic labels count as strangers")
+    @Test("generic labels and blank names count as strangers")
     func genericIsStranger() {
         let generic = EmbeddingClusterer.genericName(number: 3)
         #expect(SpeakerColorSlots.speaker(clusterID: 3, name: generic) == .stranger(3))
+        #expect(SpeakerColorSlots.speaker(clusterID: 3, name: "") == .stranger(3))
+        #expect(SpeakerColorSlots.speaker(clusterID: 3, name: "  ") == .stranger(3))
+        #expect(SpeakerColorSlots.speaker(clusterID: nil, name: " ") == nil)
         #expect(SpeakerColorSlots.speaker(clusterID: nil, name: nil) == nil)
     }
 

@@ -44,7 +44,7 @@ class SpeakerColorSlots(speakers: List<Speaker>) {
             SpeakerColorSlots(people.mapNotNull { (clusterID, name) -> speaker(clusterID, name) })
 
         fun speaker(clusterID: Int?, name: String?): Speaker? {
-            if (name != null && !TranscriptSessionSummary.isGenericLabel(name)) return Speaker.Named(name)
+            if (name != null && name.isNotBlank() && !TranscriptSessionSummary.isGenericLabel(name)) return Speaker.Named(name)
             return clusterID?.let { Speaker.Stranger(it) }
         }
 

@@ -71,8 +71,11 @@ class SpeakerColorSlotsTest {
     }
 
     @Test
-    fun `generic labels count as strangers`() {
+    fun `generic labels and blank names count as strangers`() {
         assertEquals(SpeakerColorSlots.Speaker.Stranger(3), SpeakerColorSlots.speaker(3, EmbeddingClusterer.genericName(3)))
+        assertEquals(SpeakerColorSlots.Speaker.Stranger(3), SpeakerColorSlots.speaker(3, ""))
+        assertEquals(SpeakerColorSlots.Speaker.Stranger(3), SpeakerColorSlots.speaker(3, "  "))
+        assertNull(SpeakerColorSlots.speaker(null, " "))
         assertNull(SpeakerColorSlots.speaker(null, null))
     }
 
