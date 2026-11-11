@@ -235,13 +235,21 @@ public struct HomeServerPairing: Sendable, Equatable {
         return url.host?.lowercased() == "pair" || (url.host == nil && url.absoluteString.lowercased().hasPrefix("\(scheme):pair"))
     }
 
+    /// A link that lost its "//" on the way ("ozen:pair?address=…") still
+    /// pairs: everything it needs is there, and the computer still checks
+    /// the code.
     public init?(url: URL) {
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              parts.scheme?.lowercased() == Self.scheme, parts.host?.lowercased() == "pair",
+              parts.scheme?.lowercased() == Self.scheme,
+              parts.host?.lowercased() == "pair" || (parts.host == nil && ["pair", "pair/"].contains(parts.path.lowercased())),
               let address = parts.queryItems?.first(where: { $0.name == "address" })?.value,
               let code = parts.queryItems?.first(where: { $0.name == "code" })?.value
         else { return nil }
-        self.init(address: address, code: code, pin: parts.queryItems?.first(where: { $0.name == "pin" })?.value)
+        // A "pin" with nothing after it was cut short: pairing without it
+        // would drop the check the link asked for. As on Android.
+        let pin = parts.queryItems?.first(where: { $0.name == "pin" })
+        if let pin, pin.value == nil { return nil }
+        self.init(address: address, code: code, pin: pin?.value)
     }
 
     /// The computer's name as a person would recognise it: its host.

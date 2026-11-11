@@ -438,6 +438,46 @@ struct HomeServerEngineTests {
         #expect(!HomeServerPairing.isPairingLink(try #require(URL(string: "https://example.com/pair"))))
     }
 
+    @Test("a pairing link that lost its slashes on the way still pairs, checked like any other")
+    func slashlessPairingLink() throws {
+        func pairing(_ link: String) throws -> HomeServerPairing? {
+            HomeServerPairing(url: try #require(URL(string: link)))
+        }
+        let pin = "EqUZTsqNgJ8Ol0fkhpLbMwToY-7X9n7_oEzJ2hZACBk"
+        let whole = try #require(try pairing("ozen://pair?address=wss://192.168.1.20:8766&code=example-code-123&pin=\(pin)"))
+        for link in [
+            "ozen:pair?address=wss://192.168.1.20:8766&code=example-code-123&pin=\(pin)",
+            "OZEN:Pair/?address=wss%3A%2F%2F192.168.1.20%3A8766&code=example-code-123&pin=\(pin)",
+        ] {
+            #expect(try pairing(link) == whole, "\(link)")
+        }
+        #expect(try pairing("ozen:pair?address=192.168.1.20&code=example-code-123")?.address == "192.168.1.20")
+        for link in [
+            "ozen:pair?address=wss://192.168.1.20:8766&code=",
+            "ozen:pair?address=ws://8.8.8.8:8765&code=example-code-123",
+            "ozen:pair",
+            "ozen:pairing?address=wss://192.168.1.20:8766&code=example-code-123",
+            "ozen:settings?address=wss://192.168.1.20:8766&code=example-code-123",
+            "ozen:/pair?address=wss://192.168.1.20:8766&code=example-code-123",
+        ] {
+            #expect(try pairing(link) == nil, "\(link)")
+        }
+    }
+
+    @Test("a link cut off after its pin's name doesn't pair without the pin it asked for")
+    func pinCutOff() throws {
+        for link in [
+            "ozen://pair?address=wss://192.168.1.20:8766&code=example-code-123&pin",
+            "ozen:pair?address=wss://192.168.1.20:8766&code=example-code-123&pin",
+            "ozen://pair?address=wss://192.168.1.20:8766&pin&code=example-code-123",
+        ] {
+            let url = try #require(URL(string: link))
+            #expect(HomeServerPairing(url: url) == nil, "\(link)")
+            #expect(HomeServerPairing.isPairingLink(url), "\(link)")
+        }
+        #expect(HomeServerPairing(url: try #require(URL(string: "ozen://pair?address=wss://192.168.1.20:8766&code=example-code-123")))?.pin == nil)
+    }
+
     @Test("the address field keeps what was typed when its row comes back, and otherwise shows the saved address")
     func addressFieldOnReturn() {
         #expect(HomeServer.addressField(draft: "", loaded: "", saved: "10.0.0.5") == "10.0.0.5")
