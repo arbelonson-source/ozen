@@ -2140,6 +2140,47 @@ class CaptionScreenDeviceTest {
         }
     }
 
+    private fun inSight(text: String) =
+        compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() && compose.onNodeWithText(text).isDisplayed()
+
+    @Test
+    fun aSavedConversationCardArrivingAfterTheLinesStillLeavesTheNewestLineInSight() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
+        val store = TranscriptHistoryStore(File(app.filesDir, CaptionSession.HISTORY_FOLDER))
+        val endedAt = System.currentTimeMillis() / 1_000.0 - 150
+        val record = TranscriptSessionRecord(
+            startedAt = endedAt - 60,
+            endedAt = endedAt,
+            engine = TranscriptionEngineKind.HomeServer,
+            modelVariant = null,
+            inputName = null,
+            segments = listOf(SavedSegment(UUID.randomUUID(), "The pharmacy closes at nine tonight", null, null, endedAt - 60, true)),
+        )
+        store.save(record)
+        try {
+            val summary = store.listSummaries().single { it.id == record.id }
+            compose.runOnUiThread { CaptionState.clear() }
+            var fitting = emptyList<TranscriptSegment>()
+            for (count in 1..40) {
+                val more = fitting + said("Line number $count of the lesson", at = 10.0 + count)
+                showLines(more)
+                if (!inSight("Line number 1 of the lesson")) break
+                fitting = more
+            }
+            showLines(fitting)
+            assertTrue(inSight("Line number 1 of the lesson"))
+
+            compose.runOnUiThread { CaptionState.recentConversation(summary) }
+            compose.waitForIdle()
+
+            assertTrue(compose.onAllNodesWithText("Tap to read it").fetchSemanticsNodes().isNotEmpty())
+            assertTrue(inSight("Line number ${fitting.size} of the lesson"))
+        } finally {
+            store.delete(record.id)
+            compose.runOnUiThread { CaptionState.clear() }
+        }
+    }
+
     @Test
     fun aConversationCutOffMinutesAgoIsOfferedOnTheEmptyScreenOpensWithATapAndCanBeTakenAway() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication

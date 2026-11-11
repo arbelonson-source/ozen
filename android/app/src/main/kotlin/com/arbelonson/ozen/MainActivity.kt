@@ -1458,7 +1458,9 @@ private fun CaptionLines(
     leading: (@Composable () -> Unit)? = null,
 ) {
     val lastIndex = if (trailing != null) lines.size else lines.lastIndex
-    LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize, trailing != null) {
+    // The saved-conversation card can arrive after the lines (it is looked
+    // up while captions start), and above them it pushes the newest down.
+    LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize, trailing != null, leading != null) {
         if (following) list.follow(lastIndex, marks)
     }
     // The buttons coming back, or a turn of the phone, change the room the
