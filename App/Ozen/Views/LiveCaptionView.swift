@@ -463,14 +463,13 @@ struct LiveCaptionView: View {
                 withAnimation(reduceMotion ? nil : .default) { visibleKeywordHit = nil }
             }
         }
-        .onChange(of: viewModel.phase.step) { _, _ in
-            updateControlsVisibility()
-        }
-        // Steps from before the screen was there are not news to say now.
-        .onAppear { _ = viewModel.takeStepsReached() }
-        .onChange(of: viewModel.stepsReachedCount) { _, _ in
-            announceStepsReached()
-        }
+        .modifier(PhaseNews(
+            step: viewModel.phase.step,
+            stepsReached: viewModel.stepsReachedCount,
+            stepChanged: { updateControlsVisibility() },
+            discardSteps: { _ = viewModel.takeStepsReached() },
+            announceSteps: { announceStepsReached() }
+        ))
         .modifier(ModelReadyNotice(handOvers: viewModel.pipeline.builtInHandOvers, showing: $showingModelReady) {
             announceAlert(tr("המודל מוכן, הכתוביות ממשיכות איתו", "The model is ready, captions continue with it"))
         })
@@ -1900,6 +1899,25 @@ private struct ModelReadyNotice: ViewModifier {
                 try? await Task.sleep(for: .seconds(8))
                 if !Task.isCancelled { showing = false }
             }
+    }
+}
+
+/// The phase moving on and the steps captions reached, in a modifier of
+/// its own so the caption screen's long chain stays within what the
+/// compiler can type-check in time.
+private struct PhaseNews: ViewModifier {
+    let step: PipelinePhase
+    let stepsReached: Int
+    let stepChanged: () -> Void
+    let discardSteps: () -> Void
+    let announceSteps: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: step) { _, _ in stepChanged() }
+            // Steps from before the screen was there are not news to say now.
+            .onAppear { discardSteps() }
+            .onChange(of: stepsReached) { _, _ in announceSteps() }
     }
 }
 
