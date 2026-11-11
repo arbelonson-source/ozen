@@ -258,5 +258,3 @@ class ListeningService : Service() {
         }
     }
 }
-
-private fun secondsNow() = System.currentTimeMillis() / 1_000.0

@@ -2,8 +2,6 @@ package com.arbelonson.ozen
 
 import android.Manifest
 import android.app.Activity
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
@@ -21,35 +19,23 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterExitState
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateZoom
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,20 +47,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.BatteryAlert
-import androidx.compose.material.icons.rounded.BatteryChargingFull
-import androidx.compose.material.icons.rounded.ChatBubble
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Hearing
@@ -83,21 +61,10 @@ import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MicOff
-import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Stop
-import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -121,17 +88,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -141,29 +101,14 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.hideFromAccessibility
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDirection
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -176,14 +121,9 @@ import com.arbelonson.ozen.core.AlertVibration
 import com.arbelonson.ozen.core.AppLanguage
 import com.arbelonson.ozen.core.BackgroundAlertPolicy
 import com.arbelonson.ozen.core.BackupModelStatus
-import com.arbelonson.ozen.core.BatteryWarning
 import com.arbelonson.ozen.core.ByteSize
-import com.arbelonson.ozen.core.CaptionLayout
-import com.arbelonson.ozen.core.ConversationStats
 import com.arbelonson.ozen.core.DisplayPreferences
-import com.arbelonson.ozen.core.EnginePreparationProgress
 import com.arbelonson.ozen.core.FileTranscription
-import com.arbelonson.ozen.core.HebrewTime
 import com.arbelonson.ozen.core.KeywordPill
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.MicrophoneAsk
@@ -192,24 +132,17 @@ import com.arbelonson.ozen.core.PhoneModel
 import com.arbelonson.ozen.core.PhoneModelSwitch
 import com.arbelonson.ozen.core.PhoneSound
 import com.arbelonson.ozen.core.PipelinePhase
-import com.arbelonson.ozen.core.RecentConversation
-import com.arbelonson.ozen.core.SavingTroubleNotice
 import com.arbelonson.ozen.core.SharedRecordingLink
 import com.arbelonson.ozen.core.SoundAlert
-import com.arbelonson.ozen.core.TranscriptSessionSummary
-import com.arbelonson.ozen.core.UncertainWords
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.DialogText
 import com.arbelonson.ozen.ui.IconBadge
-import com.arbelonson.ozen.ui.OzenColors
 import com.arbelonson.ozen.ui.OzenSpacing
 import com.arbelonson.ozen.ui.OzenTheme
-import com.arbelonson.ozen.ui.PrimaryButton
 import com.arbelonson.ozen.ui.ToolbarButton
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -1443,7 +1376,7 @@ private fun Modifier.pinchToResize(onScale: (Double) -> Unit, onEnd: () -> Unit)
     }
 }
 
-private fun secondsNow() = System.currentTimeMillis() / 1_000.0
+internal fun secondsNow() = System.currentTimeMillis() / 1_000.0
 
 private const val AWAY_MARK_SEEN_MILLIS = 1_000L
 
@@ -1507,968 +1440,6 @@ private fun ShowButtonsButton(onTap: () -> Unit) {
     }
 }
 
-@Composable
-private fun CaptionLines(
-    lines: List<CaptionLine>,
-    away: AwayMark?,
-    earlier: EarlierLines?,
-    display: DisplayPreferences,
-    look: CaptionTheme,
-    list: LazyListState,
-    following: Boolean,
-    marks: FollowMarks,
-    modifier: Modifier,
-    trailing: (@Composable () -> Unit)?,
-    onStar: (UUID) -> Unit,
-    onOpen: (conversation: UUID, line: UUID) -> Unit,
-    onFix: (CaptionLine) -> Unit,
-    onName: (CaptionLine) -> Unit,
-    onAskToRepeat: (() -> Unit)?,
-    onMarkProblem: (line: UUID) -> Unit,
-    leading: (@Composable () -> Unit)? = null,
-) {
-    val lastIndex = if (trailing != null) lines.size else lines.lastIndex
-    // The saved-conversation card can arrive after the lines (it is looked
-    // up while captions start), and above them it pushes the newest down.
-    LaunchedEffect(lines.size, lines.lastOrNull()?.text, following, display.fontSize, trailing != null, leading != null) {
-        if (following) list.follow(lastIndex, marks)
-    }
-    // The buttons coming back, or a turn of the phone, change the room the
-    // lines have; the list keeps its top, so the newest line was left under
-    // the buttons until the next word, a long time in a quiet room. The
-    // iPhone follows again on both.
-    LaunchedEffect(list, following) {
-        if (!following) return@LaunchedEffect
-        snapshotFlow { list.layoutInfo.viewportSize.height }
-            .distinctUntilChanged()
-            .collect { if (list.layoutInfo.totalItemsCount > 0) list.follow(list.layoutInfo.totalItemsCount - 1, marks) }
-    }
-    LazyColumn(state = list, modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(lines, key = { it.id }) { line ->
-            val row = @Composable {
-                CaptionLineRow(
-                    line,
-                    display,
-                    look,
-                    onStar = { onStar(line.id) },
-                    onOpen = { conversation -> onOpen(conversation, line.id) },
-                    onFix = { onFix(line) },
-                    onName = { onName(line) },
-                    onAskToRepeat = onAskToRepeat,
-                    onMarkProblem = { onMarkProblem(line.id) },
-                )
-            }
-            val gap = line.afterQuiet
-            val first = line.id == lines.first().id
-            val card = leading?.takeIf { first }
-            val note = earlier?.takeIf { first }
-            val missed = away?.takeIf { line.id == it.line }
-            // A new line fades in where it lands; the lines already there
-            // stay still, as moving them would move what she is reading.
-            Box(Modifier.animateItem(fadeInSpec = tween(250), placementSpec = null, fadeOutSpec = null)) {
-                if (card != null || note != null || missed != null || gap != null) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        card?.invoke()
-                        if (note != null) EarlierLinesNote(note, display.fontSize, look) { conversation -> onOpen(conversation, note.line) }
-                        if (missed != null) AwayDivider(missed.count, display.fontSize, look) else if (gap != null) QuietGapDivider(gap, display.fontSize, look)
-                        row()
-                    }
-                } else {
-                    row()
-                }
-            }
-        }
-        if (trailing != null) item(key = "model-fit-offer") { trailing() }
-    }
-}
-
-/** A speech model on the phone downloading, checking, loading or warming up; the home computer and the cloud only check support. */
-private fun PipelinePhase.modelGettingReady(): Boolean {
-    val stage = (this as? PipelinePhase.PreparingEngine)?.progress?.stage ?: return false
-    return stage != EnginePreparationProgress.Stage.CheckingSupport && stage != EnginePreparationProgress.Stage.RequestingPermission
-}
-
-/** Where the screen's own following last left the list, and how many of its moves are under way. */
-private class FollowMarks {
-    var scrolling = 0
-    var at: Pair<Any?, Int>? = null
-}
-
-/** The first line in sight and how far it is scrolled: lines added below or dropped above leave it alone. */
-private fun LazyListState.place(): Pair<Any?, Int> = layoutInfo.visibleItemsInfo.firstOrNull()?.key to firstVisibleItemScrollOffset
-
-private suspend fun LazyListState.follow(lastIndex: Int, marks: FollowMarks) {
-    marks.scrolling++
-    try {
-        scrollToEnd(lastIndex)
-    } finally {
-        marks.at = place()
-        marks.scrolling--
-    }
-}
-
-/**
- * To the bottom of the newest line, not its top: a long line at a large
- * size can be taller than the screen, and its newest words come last.
- */
-private suspend fun LazyListState.scrollToEnd(lastIndex: Int) {
-    scrollToItem(lastIndex)
-    val last = layoutInfo.visibleItemsInfo.lastOrNull() ?: return
-    val hidden = last.offset + last.size - layoutInfo.viewportEndOffset
-    if (hidden > 0) scrollBy(hidden.toFloat())
-}
-
-@Composable
-private fun JumpToLatest(title: String, look: CaptionTheme, modifier: Modifier, onTap: () -> Unit) {
-    Row(
-        modifier = modifier
-            .padding(bottom = 8.dp)
-            .heightIn(min = 48.dp)
-            .background(look.background.copy(alpha = 0.9f), RoundedCornerShape(24.dp))
-            .border(width = 1.dp, color = look.chrome.copy(alpha = 0.5f), shape = RoundedCornerShape(24.dp))
-            .clickable(onClickLabel = tr("מעבר לשורה האחרונה", "Jump to the last line"), role = Role.Button, onClick = onTap)
-            .padding(horizontal = 18.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = "↓", color = look.chrome, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clearAndSetSemantics {})
-        Text(text = title, color = look.chrome, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 10.dp))
-    }
-}
-
-/**
- * Above the first line said while the screen was away, as on the iPhone:
- * how many lines she missed, so she knows where she stopped reading.
- */
-/**
- * Above the oldest line kept, as on the iPhone: the earlier ones are a
- * tap away while they are saved, opened at the newest of them.
- */
-@Composable
-private fun EarlierLinesNote(earlier: EarlierLines, captionSize: Double, look: CaptionTheme, onOpen: (UUID) -> Unit) {
-    val size = maxOf(15.0, captionSize * 0.5).sp
-    val saved = earlier.conversation
-    if (saved == null) {
-        Text(tr("שורות מוקדמות יותר כבר לא מוצגות", "Earlier lines are no longer shown"), color = look.pendingText, fontSize = size, modifier = Modifier.fillMaxWidth())
-        return
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { onOpen(saved) },
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("💬", fontSize = size, modifier = Modifier.clearAndSetSemantics {})
-        Text(tr("שורות מוקדמות יותר נשמרו. הקישו כדי לקרוא אותן", "Earlier lines were saved. Tap to read them"), color = look.chrome, fontSize = size, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-@Composable
-private fun AwayDivider(count: Int, captionSize: Double, look: CaptionTheme) {
-    val lines = ConversationStats.linesText(count)
-    val spoken = tr("מכאן, מה שנאמר כשהאפליקציה לא הייתה על המסך: %1", "From here, what was said while the app wasn’t on the screen: %1", listOf(lines))
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clearAndSetSemantics { contentDescription = spoken },
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = tr("נאמר כשהאפליקציה לא הייתה על המסך · %1", "Said while the app wasn’t on the screen · %1", listOf(lines)),
-            color = look.pendingText,
-            fontSize = maxOf(15.0, captionSize * 0.5).sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Box(modifier = Modifier.weight(1f).height(2.dp).background(look.pendingText))
-    }
-}
-
-/**
- * Between two lines with a quiet stretch of five minutes or more, as on the
- * iPhone: the clock time talk picked up again, so a sentence from half an
- * hour ago isn't read as the one before the words just said.
- */
-@Composable
-private fun QuietGapDivider(gap: QuietGap, captionSize: Double, look: CaptionTheme) {
-    val time = resumedTime(gap)
-    val spoken = tr("אחרי הפסקה, מהשעה %1", "After a break, from %1", listOf(time))
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clearAndSetSemantics { contentDescription = spoken },
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(modifier = Modifier.weight(1f).height(1.dp).background(look.pendingText.copy(alpha = 0.5f)))
-        Text(
-            text = time,
-            color = look.pendingText,
-            fontSize = maxOf(15.0, captionSize * 0.45).sp,
-            fontWeight = FontWeight.Medium,
-            style = LocalTextStyle.current.copy(fontFeatureSettings = "tnum"),
-        )
-        Box(modifier = Modifier.weight(1f).height(1.dp).background(look.pendingText.copy(alpha = 0.5f)))
-    }
-}
-
-/** Back at the newest line after a while away, a way up to where the lines she missed begin, until she goes there or sees the mark. */
-@Composable
-private fun AwayJump(count: Int, look: CaptionTheme, onTap: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .background(look.background.copy(alpha = 0.9f), RoundedCornerShape(24.dp))
-            .border(width = 1.dp, color = look.chrome.copy(alpha = 0.5f), shape = RoundedCornerShape(24.dp))
-            .clickable(role = Role.Button, onClick = onTap)
-            .padding(horizontal = 18.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = "↑", color = look.chrome, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clearAndSetSemantics {})
-        Text(
-            text = tr("מה שנאמר בינתיים · %1", "What was said meanwhile · %1", listOf(ConversationStats.linesText(count))),
-            color = look.chrome,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(start = 10.dp),
-        )
-    }
-}
-
-/**
- * One caption line, laid out in its own reading direction as on the iPhone,
- * so a Hebrew line starts at the right whatever language the buttons are
- * in. A line the engine wasn't sure of gets a question mark at its start
- * and dots under the words it doubted, without changing their colour: the
- * words stay as readable as any other line. Held, as on the iPhone, it can
- * be marked as important (a star), its speaker named ("Who is speaking?")
- * or copied, and, with a voice on the phone
- * for it, the phone asks them aloud to repeat it; "Captions not good?" keeps
- * what was running in the diagnostics journal. A screen reader has these too.
- */
-/** Told each time a caption line is composed; only device tests set it, to count the lines composed again per new word. */
-@Volatile
-internal var onCaptionRowComposed: ((UUID) -> Unit)? = null
-
-@Composable
-private fun CaptionLineRow(
-    line: CaptionLine,
-    display: DisplayPreferences,
-    look: CaptionTheme,
-    onStar: () -> Unit,
-    onOpen: (UUID) -> Unit,
-    onFix: () -> Unit,
-    onName: () -> Unit,
-    onAskToRepeat: (() -> Unit)?,
-    onMarkProblem: () -> Unit,
-) {
-    onCaptionRowComposed?.invoke(line.id)
-    val doubtful = if (display.markUncertainLines) line.doubtfulWords else emptyList()
-    val spoken = UncertainWords.spoken(line.text, doubtful)
-    val colour = if (line.isFinal) look.text else look.pendingText
-    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val star = if (line.starred) tr("ביטול הסימון", "Remove mark") else tr("סימון כחשובה", "Mark as important")
-    val copy = tr("העתקה", "Copy")
-    val fix = tr("תיקון מילה", "Fix a word")
-    val ask = tr("לבקש שיחזרו על זה", "Ask them to repeat that")
-    val who = tr("מי מדבר?", "Who is speaking?")
-    val open =tr("פתיחת השיחה כולה, לשיתוף או לחיפוש", "Open the whole conversation, to share or search")
-    val problem = tr("הכתוביות לא טובות? לסמן בעיה", "Captions not good? Mark a problem")
-    val context = LocalContext.current
-    val copyLine = { context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(copy, line.copied)) }
-    val uris = LocalUriHandler.current
-    var menu by remember { mutableStateOf(false) }
-    Box(modifier = Modifier.fillMaxWidth().onHold { menu = true }) {
-        CaptionLineContent(
-            line = line,
-            display = display,
-            look = look,
-            doubtful = doubtful,
-            spoken = spoken,
-            colour = colour,
-            onLayout = { layout = it },
-            layout = { layout },
-            actions = listOf(
-                CustomAccessibilityAction(star) { onStar(); true },
-            ) + listOfNotNull(onAskToRepeat).map { say ->
-                CustomAccessibilityAction(ask) { say(); true }
-            } + listOf(
-                CustomAccessibilityAction(who) { onName(); true },
-            ) + listOf(fix).filter { line.isFinal }.map {
-                CustomAccessibilityAction(it) { onFix(); true }
-            } + listOf(
-                CustomAccessibilityAction(copy) { copyLine(); true },
-            ) + listOfNotNull(line.conversation).map { conversation ->
-                CustomAccessibilityAction(open) { onOpen(conversation); true }
-            } + listOf(
-                CustomAccessibilityAction(problem) { onMarkProblem(); true },
-            ) + line.phones.map { phone ->
-                CustomAccessibilityAction(tr("להתקשר ל־%1", "Call %1", listOf(phone.dialable))) { uris.openUri(phone.url); true }
-            },
-        )
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(text = { Text(star) }, onClick = { menu = false; onStar() })
-            onAskToRepeat?.let { say -> DropdownMenuItem(text = { Text(ask) }, onClick = { menu = false; say() }) }
-            DropdownMenuItem(text = { Text(who) }, onClick = { menu = false; onName() })
-            if (line.isFinal) DropdownMenuItem(text = { Text(fix) }, onClick = { menu = false; onFix() })
-            DropdownMenuItem(text = { Text(copy) }, onClick = { menu = false; copyLine() })
-            line.conversation?.let { conversation ->
-                DropdownMenuItem(text = { Text(open) }, onClick = { menu = false; onOpen(conversation) })
-            }
-            DropdownMenuItem(text = { Text(problem) }, onClick = { menu = false; onMarkProblem() })
-        }
-    }
-}
-
-@Composable
-private fun CaptionLineContent(
-    line: CaptionLine,
-    display: DisplayPreferences,
-    look: CaptionTheme,
-    doubtful: List<String>,
-    spoken: List<String>,
-    colour: Color,
-    onLayout: (TextLayoutResult) -> Unit,
-    layout: () -> TextLayoutResult?,
-    actions: List<CustomAccessibilityAction>,
-) {
-    val speaker = line.speaker?.takeIf { display.showSpeakerNames }
-    CompositionLocalProvider(LocalLayoutDirection provides if (line.rightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr) {
-        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (speaker != null && line.showsSpeaker) SpeakerLabel(speaker, line.speakerCluster, line.speakerSlot, display.fontSize, look)
-            CaptionLineWords(line, display, look, doubtful, spoken, colour, onLayout, layout, actions, speaker)
-        }
-    }
-}
-
-/**
- * Like a chat, as on the iPhone: the name heads a run of lines by one
- * person, in their colour, with a dot. A screen reader hears the name on
- * every line instead, so the label itself is skipped.
- */
-@Composable
-private fun SpeakerLabel(name: String, cluster: Int?, slot: Int?, captionSize: Double, look: CaptionTheme) {
-    val colour = SpeakerColour.of(cluster, name, look.isLight, slot)
-    Row(
-        modifier = Modifier.semantics { hideFromAccessibility() },
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(modifier = Modifier.size(10.dp).background(colour, CircleShape))
-        Text(name, color = colour, fontSize = maxOf(15.0, captionSize * 0.5).sp, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-@Composable
-private fun CaptionLineWords(
-    line: CaptionLine,
-    display: DisplayPreferences,
-    look: CaptionTheme,
-    doubtful: List<String>,
-    spoken: List<String>,
-    colour: Color,
-    onLayout: (TextLayoutResult) -> Unit,
-    layout: () -> TextLayoutResult?,
-    actions: List<CustomAccessibilityAction>,
-    speaker: String?,
-) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        if (line.starred) StarMark(display.fontSize, starColour(look.isLight))
-        if (line.important) BellMark(display.fontSize, look.text)
-        if (display.markUncertainLines && line.unsure) UnsureMark(display.fontSize, look.pendingText)
-        Text(
-            text = captionText(
-                line.text,
-                display.emphasizeNumbers,
-                numberColor = if (line.isFinal) look.numberText else null,
-                doubtfulWords = doubtful,
-                linkingPhoneNumbers = line.phones.isNotEmpty(),
-                decimalComma = LocalDecimalComma.current,
-            ),
-            style = LocalTextStyle.current.copy(textDirection = TextDirection.Content),
-            color = colour,
-            fontSize = display.fontSize.sp,
-            lineHeight = (display.fontSize * 1.25).sp,
-            fontWeight = if (display.boldText) FontWeight.Bold else FontWeight.Medium,
-            onTextLayout = onLayout,
-            modifier = Modifier
-                .weight(1f, fill = false)
-                .then(if (line.important) Modifier.background(importantField(look.isLight), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp) else Modifier)
-                // Read only here, as it is drawn: read while composing, the
-                // layout each new word gives composed the line a second time.
-                .drawBehind { layout()?.let { drawDoubtDots(it, colour) } }
-                // One stop for a screen reader, as on the iPhone: the marks
-                // beside the words are heard here, not each on its own.
-                .semantics {
-                    val label = CaptionLineSpeech.label(line.spoken, speaker, line.starred, display.markUncertainLines && line.unsure)
-                    if (label != line.text) contentDescription = label
-                    CaptionLineSpeech.state(line.important, spoken)?.let { stateDescription = it }
-                    customActions = actions
-                },
-        )
-    }
-}
-
-// The iPhone's soft yellow field, so the line where a name was said is found again scrolling back.
-private fun importantField(light: Boolean) = Color.Yellow.copy(alpha = if (light) 0.35f else 0.22f)
-
-@Composable
-private fun BellMark(fontSize: Double, colour: Color) {
-    val side = maxOf(14.0, fontSize * 0.6)
-    val inset = with(LocalDensity.current) { ((fontSize * 1.25 - side) / 2).sp.toDp() }
-    val size = with(LocalDensity.current) { side.sp.toDp() }
-    Canvas(
-        modifier = Modifier
-            .padding(top = inset)
-            .padding(end = 8.dp)
-            .size(size)
-            .clearAndSetSemantics {
-                contentDescription = tr("מכילה מילה חשובה", "Contains an important word")
-                hideFromAccessibility()
-            },
-    ) {
-        val w = this.size.width
-        val h = this.size.height
-        val bell = Path().apply {
-            moveTo(w * 0.5f, h * 0.08f)
-            cubicTo(w * 0.22f, h * 0.08f, w * 0.2f, h * 0.35f, w * 0.2f, h * 0.55f)
-            lineTo(w * 0.1f, h * 0.75f)
-            lineTo(w * 0.9f, h * 0.75f)
-            lineTo(w * 0.8f, h * 0.55f)
-            cubicTo(w * 0.8f, h * 0.35f, w * 0.78f, h * 0.08f, w * 0.5f, h * 0.08f)
-            close()
-        }
-        drawPath(bell, colour)
-        drawCircle(colour, radius = w * 0.1f, center = Offset(w * 0.5f, h * 0.86f))
-    }
-}
-
-/**
- * "Saving on the phone failed" over the captions, as on the iPhone, until
- * she taps it away; it comes back only once saving has worked and then
- * failed again. The iPhone's way to free space is left out of the words.
- */
-/**
- * Where a problem marked from a caption line or from Diagnostics went.
- * Marked from a caption line, one large button sends the report to
- * whoever helps her through the phone's share sheet (built at the tap, its
- * journal read off the main thread); Diagnostics has its own Send report
- * first, so there the dialog only explains. A kept sound is sent from its
- * own row in Diagnostics.
- */
-@Composable
-internal fun ProblemMarkedDialog(keptSound: Boolean, keptCaptions: Boolean, report: (suspend () -> String)? = null, onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var building by remember { mutableStateOf(false) }
-    val send = {
-        if (report != null && !building) {
-            building = true
-            scope.launch {
-                try {
-                    context.startActivity(reportSheet(report()))
-                } finally {
-                    building = false
-                }
-            }
-        }
-    }
-    val hint = tr("פותח את אפשרויות השיתוף עם דוח האבחון", "Opens the share options with the diagnostics report")
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(tr("הבעיה סומנה", "Problem marked")) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                DialogText(ProblemNotes.marked(keptSound, keptCaptions), Modifier.weight(1f, fill = false))
-                if (report != null) {
-                    PrimaryButton(
-                        tr("שליחה למי שעוזר לכם", "Send to whoever helps you"),
-                        onClick = { send() },
-                        icon = Icons.Rounded.Share,
-                        enabled = !building,
-                        modifier = Modifier.fillMaxWidth().semantics { onClick(label = hint) { send(); true } },
-                    )
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("אישור", "OK")) } },
-    )
-}
-
-/**
- * "Saving failed", as the iPhone's. Only the close button puts it away: a tap
- * on the screen is how the hidden buttons come back, and when the whole card
- * closed it, the warning was gone before the helper it names had seen it.
- */
-@Composable
-private fun SavingTroubleBanner(onDismiss: () -> Unit) {
-    NoticeBanner(
-        Icons.Rounded.Warning,
-        NoticeTone.Warning,
-        SavingTroubleNotice.title,
-        SavingTroubleNotice.detail,
-        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-    ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
-}
-
-/** The system ended the sharing of the phone's sound; the microphone is back, and the close button puts this away. */
-@Composable
-private fun PhoneSoundStoppedBanner(onDismiss: () -> Unit) {
-    NoticeBanner(
-        Icons.Rounded.MicOff,
-        NoticeTone.Warning,
-        PhoneSound.stoppedNotice,
-        "",
-        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-    ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
-}
-
-/** "Battery at 19%", as the iPhone's: deeper red when the phone may shut down, the close button puts it away. */
-@Composable
-private fun BatteryBanner(warning: BatteryWarning, onDismiss: () -> Unit) {
-    val critical = warning is BatteryWarning.Critical
-    NoticeBanner(
-        if (critical) Icons.Rounded.BatteryAlert else Icons.Rounded.BatteryChargingFull,
-        if (critical) NoticeTone.Emergency else NoticeTone.Warning,
-        tr("הסוללה ב־%1%", "Battery at %1%", listOf("${warning.percent}")),
-        if (critical) {
-            tr("הטלפון עלול להיכבות באמצע השיחה. חברו אותו למטען.", "The phone might shut down mid-conversation. Plug in a charger.")
-        } else {
-            tr("כדאי לחבר את הטלפון למטען.", "Consider plugging in a charger.")
-        },
-        Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-    ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
-}
-
-/** As the iPhone's: a tap on the words opens the microphone picker, the close button only puts the notice away. */
-@Composable
-private fun MicrophoneDropBanner(title: String, detail: String, onChooseMicrophone: () -> Unit, onDismiss: () -> Unit) {
-    NoticeBanner(
-        Icons.Rounded.MicOff,
-        NoticeTone.Warning,
-        title,
-        detail,
-        Modifier
-            .clickable(onClickLabel = tr("בחירת מיקרופון", "Choose microphone"), role = Role.Button, onClick = onChooseMicrophone)
-            .semantics { liveRegion = LiveRegionMode.Polite },
-    ) { BannerClose(tr("סגירה", "Close"), LocalContentColor.current, onDismiss) }
-}
-
-/** As the iPhone's card, for a phone whose walkthrough was skipped: the buzz for her name only works once the name is in. */
-@Composable
-private fun NameAlertOffer(look: CaptionTheme, onOpen: () -> Unit, onDismiss: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Row(
-        verticalAlignment = Alignment.Top,
-        modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh),
-    ) {
-        Column(Modifier.weight(1f).clickable(role = Role.Button, onClick = onOpen).padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Unit)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
-                Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
-                Text(tr("שהטלפון ירטוט כשקוראים לכם?", "Have the phone buzz when someone calls your name?"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
-            }
-            Text(
-                tr("הקישו כדי לכתוב את השם שלכם", "Tap to write your name"),
-                color = colors.primary,
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.align(Alignment.End).heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
-            )
-        }
-        BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, onDismiss)
-    }
-}
-
-/** The running model kept falling behind the speech and a lighter one fits this phone; see `ModelFitWatch`. */
-@Composable
-private fun LighterModelOffer(model: PhoneModel, waiting: Boolean, inUseBytes: Long?, onSwitch: () -> Unit, onDismiss: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Row(
-        verticalAlignment = Alignment.Top,
-        modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh).testTag("model-fit-offer"),
-    ) {
-        Column(Modifier.weight(1f).padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Unit)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
-                Icon(Icons.Rounded.Speed, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(tr("הכתוביות התעכבו בטלפון הזה", "Captions ran late on this phone"), color = colors.onSurface, style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        tr("המודל ״\u2068%1\u2069״ (%2) קל יותר ועומד בקצב טוב יותר בטלפון הזה.", "%1 (%2) is lighter and keeps up better here.", listOf(model.displayName, ByteSize.text(model.bytes))),
-                        color = colors.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-            ReplacedModelLine(inUseBytes)
-            if (waiting) Text(
-                tr("ממתינים ל־Wi‑Fi כדי להוריד. בהגדרות אפשר לאשר הורדה גם בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings."),
-                color = colors.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 8.dp, bottom = OzenSpacing.Unit).testTag("model-fit-waiting"),
-            ) else Text(
-                tr("החלפה", "Switch"),
-                color = colors.primary,
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.align(Alignment.End).clickable(role = Role.Button, onClick = onSwitch).testTag("model-fit-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
-            )
-        }
-        BannerClose(tr("לא עכשיו", "Not now"), colors.onSurfaceVariant, onDismiss)
-    }
-}
-
-/** The app was ended while it set up the chosen model, most likely for lack of memory; the captions wait for her choice instead of starting on their own. */
-@Composable
-private fun ModelLoadCrashCard(model: PhoneModel, lighter: PhoneModel, inUseBytes: Long?, switching: PhoneModelSwitch?, onSwitch: () -> Unit, onRetry: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val title = tr("אוזן נסגרה בזמן שהכינה את מודל הדיבור", "Ozen closed while setting up the speech model")
-    val body = tr(
-        "ייתכן שאין בטלפון הזה מספיק זיכרון בשביל המודל ״\u2068%1\u2069״. המודל ״\u2068%2\u2069״ (%3) קל יותר.",
-        "This phone may not have enough memory for %1. %2 (%3) is lighter.",
-        listOf(model.displayName, lighter.displayName, ByteSize.text(lighter.bytes)),
-    )
-    // Shown in place of captions that would have started by themselves, below
-    // the empty screen's text: a screen reader hears why, as on the iPhone.
-    val context = LocalContext.current
-    LaunchedEffect(model.file) {
-        if (ScreenReader.isOn(context)) ScreenReader.announce(context, "$title. $body")
-    }
-    Column(
-        modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh)
-            .padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Page).testTag("model-load-crash"),
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
-            Icon(Icons.Rounded.Speed, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, color = colors.onSurface, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
-                Text(
-                    body,
-                    color = colors.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        }
-        ReplacedModelLine(inUseBytes)
-        switching?.let { LoadCrashSwitchStatus(it) }
-        Row(horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Page, Alignment.End), modifier = Modifier.fillMaxWidth()) {
-            Text(
-                tr("נסו שוב", "Try again"),
-                color = colors.onSurfaceVariant,
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clickable(role = Role.Button, onClick = onRetry).testTag("model-load-crash-retry").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
-            )
-            // While the lighter model downloads, or waits for a connection
-            // it resumes on by itself, a second tap would do nothing.
-            if (switching == null || switching is PhoneModelSwitch.Idle || switching is PhoneModelSwitch.Failed || switching is PhoneModelSwitch.NotEnoughRoom) Text(
-                tr("החלפה", "Switch"),
-                color = colors.primary,
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clickable(role = Role.Button, onClick = onSwitch).testTag("model-load-crash-switch").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
-            )
-        }
-    }
-}
-
-/**
- * Where the switch to the lighter model stands, on the card itself: the
- * card once vanished on Switch, leaving an empty screen and, when the
- * download could not start, no notification either.
- */
-@Composable
-private fun LoadCrashSwitchStatus(switching: PhoneModelSwitch) {
-    val text = when (switching) {
-        PhoneModelSwitch.Idle -> null
-        is PhoneModelSwitch.Downloading -> if (switching.checking) {
-            tr("בודקים את הקובץ…", "Checking the file…")
-        } else {
-            tr("מורידים… %1%", "Downloading… %1%", listOf("${(switching.fraction * 100).toInt()}"))
-        }
-        is PhoneModelSwitch.NotEnoughRoom -> tr("אין מקום להורדה. צריך לפנות עוד %1 MB.", "There is no room to download it. Free up %1 MB more.", listOf("${switching.megabytes}"))
-        is PhoneModelSwitch.WaitingForWiFi -> tr("ממתינים ל־Wi‑Fi כדי להוריד. בהגדרות אפשר לאשר הורדה גם בחבילת הגלישה.", "Waiting for Wi‑Fi to download it. Downloads on mobile data can be allowed in Settings.")
-        is PhoneModelSwitch.Offline -> tr("אין חיבור לאינטרנט, ולכן אי אפשר להוריד.", "There is no internet connection to download it.")
-        is PhoneModelSwitch.Retrying -> tr("ההורדה נעצרה. מנסים שוב אוטומטית.", "The download stopped. Trying again on its own.")
-        is PhoneModelSwitch.Failed -> tr("הורדת המודל נכשלה. כדאי לבדוק את החיבור ולנסות שוב.", "The model download failed. Check the connection and try again.")
-    } ?: return
-    val context = LocalContext.current
-    LaunchedEffect(switching::class) {
-        if (ScreenReader.isOn(context)) ScreenReader.announce(context, text)
-    }
-    Text(
-        text,
-        color = if (switching is PhoneModelSwitch.Downloading) MaterialTheme.colorScheme.onSurfaceVariant else cautionOrange(),
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.padding(top = 8.dp).testTag("model-load-crash-status"),
-    )
-}
-
-/** Listening was cut off while the app was closed; she is told when and for how long, and the card goes with a tap. */
-@Composable
-private fun ListeningCutCard(text: String, onDismiss: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val context = LocalContext.current
-    LaunchedEffect(text) {
-        if (ScreenReader.isOn(context)) ScreenReader.announce(context, text)
-    }
-    Column(
-        modifier = Modifier.padding(top = 24.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh)
-            .padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Unit, end = OzenSpacing.Page).testTag("listening-cut"),
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
-            Icon(Icons.Rounded.Speed, contentDescription = null, tint = colors.primary, modifier = Modifier.size(24.dp))
-            Text(text, color = colors.onSurface, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("listening-cut-text"))
-        }
-        Text(
-            tr("אישור", "OK"),
-            color = colors.primary,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.align(Alignment.End).clickable(role = Role.Button, onClick = onDismiss).testTag("listening-cut-dismiss").heightIn(min = OzenSpacing.MinTouch).wrapContentHeight(Alignment.CenterVertically),
-        )
-    }
-}
-
-/** Said before the tap of a card that switches models: the one in use now is deleted once the new one is ready. */
-@Composable
-private fun ReplacedModelLine(bytes: Long?) {
-    if (bytes == null) return
-    Text(
-        tr("אחרי ההחלפה, המודל שפועל עכשיו (%1) יימחק מהטלפון כדי לפנות מקום.", "The model in use now (%1) is then removed from the phone to free up space.", listOf(ByteSize.text(bytes))),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.padding(top = 8.dp).testTag("model-replaced-line"),
-    )
-}
-
-/** The conversation the app closed in the middle of, a tap away, as on the iPhone. */
-@Composable
-private fun RecentConversationCard(recent: TranscriptSessionSummary, look: CaptionTheme, onOpen: () -> Unit, onDismiss: () -> Unit) {
-    val minutes = RecentConversation.minutesAgo(recent, now = secondsNow())
-    Row(
-        verticalAlignment = Alignment.Top,
-        modifier = Modifier.padding(top = 8.dp).fillMaxWidth().clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHigh),
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.weight(1f).clickable(role = Role.Button, onClick = onOpen).padding(start = OzenSpacing.Page, top = OzenSpacing.Page, bottom = OzenSpacing.Page),
-        ) {
-            IconBadge(Icons.Rounded.ChatBubble)
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(tr("השיחה מ%1 נשמרה", "The conversation from %1 was saved", listOf(HebrewTime.minutesAgo(minutes))), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleSmall)
-                Text(CaptionLayout.directed(recent.title ?: recent.preview), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(tr("הקישו כדי לקרוא אותה", "Tap to read it"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
-            }
-        }
-        BannerClose(tr("סגירה", "Close"), MaterialTheme.colorScheme.onSurfaceVariant, onDismiss)
-    }
-}
-
-/**
- * "Said: grandma" at the top, as the iPhone's pill, with who said it when
- * the line's voice is known: five seconds, longer at the largest text sizes
- * (see `KeywordPill`). The screen reader reads it as it appears.
- */
-@Composable
-private fun HeardPill(text: String, modifier: Modifier) {
-    val colors = MaterialTheme.colorScheme
-    Row(
-        modifier = modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(colors.surfaceContainerHigh).padding(horizontal = OzenSpacing.Page, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        IconBadge(Icons.Rounded.Hearing)
-        Text(
-            text,
-            color = colors.onSurface,
-            style = MaterialTheme.typography.titleMedium,
-        )
-    }
-}
-
-/**
- * A banner above the captions slides down into place and folds away again
- * as it goes, the lines moving with it rather than jumping. While it folds
- * away it keeps showing what it said.
- */
-@Composable
-private fun <T : Any> ArrivingBanner(shown: T?, content: @Composable (T) -> Unit) {
-    val kept = remember { arrayOfNulls<Any>(1) }
-    if (shown != null) kept[0] = shown
-    AnimatedVisibility(
-        visible = shown != null,
-        enter = expandVertically(expandFrom = Alignment.Top) + slideInVertically { -it / 2 } + fadeIn(),
-        exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
-    ) {
-        @Suppress("UNCHECKED_CAST")
-        (kept[0] as T?)?.let { Box(Modifier.padding(bottom = 12.dp)) { content(it) } }
-    }
-}
-
-@Composable
-private fun StarMark(fontSize: Double, colour: Color) {
-    val side = maxOf(14.0, fontSize * 0.6)
-    val inset = with(LocalDensity.current) { ((fontSize * 1.25 - side) / 2).sp.toDp() }
-    Text(
-        "★",
-        color = colour,
-        fontSize = side.sp,
-        lineHeight = side.sp,
-        modifier = Modifier
-            .padding(top = inset)
-            .padding(end = 8.dp)
-            .clearAndSetSemantics {
-                contentDescription = tr("מסומנת כחשובה. ", "Marked as important. ").trim()
-                hideFromAccessibility()
-            },
-    )
-}
-
-@Composable
-internal fun UnsureMark(fontSize: Double, colour: Color) {
-    val label = tr("ייתכן שלא נשמעה נכון. ", "May not have been heard correctly. ").trim()
-    val side = maxOf(14.0, fontSize * 0.6)
-    val inset = with(LocalDensity.current) { ((fontSize * 1.25 - side) / 2).sp.toDp() }
-    val diameter = with(LocalDensity.current) { side.sp.toDp() }
-    Box(
-        modifier = Modifier
-            .padding(top = inset)
-            .padding(end = 8.dp)
-            .size(diameter)
-            .border(width = 2.dp, color = colour, shape = CircleShape)
-            .clearAndSetSemantics {
-                contentDescription = label
-                hideFromAccessibility()
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("?", color = colour, fontSize = (side * 0.7).sp, lineHeight = (side * 0.7).sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-/** A row of dots under each doubted word, line by line where a word wraps. */
-private fun DrawScope.drawDoubtDots(layout: TextLayoutResult, colour: Color) {
-    val text = layout.layoutInput.text
-    val radius = 1.5.dp.toPx()
-    for (word in text.getStringAnnotations(DOUBTFUL_WORD, 0, text.length)) {
-        (word.start until word.end)
-            .filterNot { text[it].isWhitespace() }
-            .groupBy { layout.getLineForOffset(it) }
-            .forEach { (row, offsets) ->
-                val boxes = offsets.map { layout.getBoundingBox(it) }
-                val left = boxes.minOf { it.left }
-                val right = boxes.maxOf { it.right }
-                val y = minOf(layout.getLineBaseline(row) + radius * 3, layout.getLineBottom(row) - radius)
-                var x = left + radius
-                while (x <= right - radius) {
-                    drawCircle(colour, radius, Offset(x, y))
-                    x += radius * 3.5f
-                }
-            }
-    }
-}
-
-@Composable
-private fun StatusLine(status: PhasePresentation, look: CaptionTheme, live: Boolean, onTap: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    // As on the iPhone: paused, off or stopped shows its own icon and colour.
-    // Only the small green dot went away before, and the old lines stayed,
-    // so a glance at the phone took the silence for nobody talking.
-    val quiet = !status.isBusy && !live
-    val tone = when (status.tint) {
-        PhaseTint.Problem -> colors.error
-        PhaseTint.Attention -> OzenColors.statusWarn(dark = !look.isLight)
-        PhaseTint.Inactive -> colors.onSurfaceVariant
-        else -> colors.onSurface
-    }
-    // The state on its own line, what a tap does on a real button beside it:
-    // a green "Listening" with "Tap to pause" in small print didn't look
-    // like a button, and the hint went away with large text.
-    val button = statusAction(status.action)
-    val detail = status.stateDetail
-    val state = @Composable { modifier: Modifier ->
-        Column(
-            // A download's bar is read with the state, in one stop: the bar
-            // alone is an item of its own to TalkBack.
-            modifier = modifier.testTag(STATUS_STATE).semantics(mergeDescendants = true) { status.progress?.let { progressBarRangeInfo = ProgressBarRangeInfo(it.toFloat(), 0f..1f) } },
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Unit)) {
-                // The title already says what it is busy with; only a download's bar is read out.
-                if (status.isBusy) {
-                    CircularProgressIndicator(color = colors.primary, strokeWidth = 2.dp, modifier = Modifier.size(16.dp).testTag(STATUS_BUSY).clearAndSetSemantics {})
-                } else if (live) {
-                    LiveDot(OzenColors.statusGood(dark = !look.isLight))
-                } else {
-                    Icon(status.icon, contentDescription = null, tint = tone, modifier = Modifier.size(18.dp).testTag(STATUS_ICON))
-                }
-                val inline = detail != null && !status.isBusy && status.progress == null
-                Text(
-                    text = status.title,
-                    color = if (quiet) tone else colors.onSurface,
-                    style = if (quiet) MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold) else MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                if (inline) {
-                    Text(text = "·", color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelLarge, modifier = Modifier.clearAndSetSemantics {})
-                    Text(text = detail.orEmpty(), color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f, fill = false))
-                }
-            }
-            if (detail != null && (status.isBusy || status.progress != null)) {
-                Text(text = detail, color = colors.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
-            }
-            status.progress?.let { progress ->
-                LinearProgressIndicator(progress = { progress.toFloat() }, color = colors.primary, trackColor = colors.outlineVariant, modifier = Modifier.padding(top = 8.dp).widthIn(max = 200.dp).clearAndSetSemantics {})
-            }
-        }
-    }
-    val action = @Composable { modifier: Modifier ->
-        button?.let { (label, icon) ->
-            Button(
-                onClick = onTap,
-                modifier = modifier.heightIn(min = STATUS_BUTTON_HEIGHT).testTag(STATUS_BUTTON).semantics { stateDescription = status.title },
-            ) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(OzenSpacing.Unit))
-                Text(label, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-            }
-        }
-    }
-    val padding = Modifier.fillMaxWidth().heightIn(min = OzenSpacing.MinTouch).padding(horizontal = OzenSpacing.Page, vertical = OzenSpacing.Unit)
-    // With large text the button gets a row of its own rather than squeezing
-    // its words; it is never only an icon.
-    if (button == null || LocalDensity.current.fontScale > 1.3f) {
-        Column(padding, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(OzenSpacing.Unit, Alignment.CenterVertically)) {
-            state(Modifier)
-            action(Modifier.fillMaxWidth())
-        }
-    } else {
-        Row(padding, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OzenSpacing.Page)) {
-            state(Modifier.weight(1f))
-            action(Modifier)
-        }
-    }
-}
-
-internal val STATUS_BUTTON_HEIGHT = 56.dp
-
-internal const val STATUS_BUTTON = "statusButton"
-
-internal const val STATUS_STATE = "statusState"
-
-internal const val STATUS_BUSY = "statusBusy"
-
-internal const val STATUS_ICON = "statusIcon"
-
-/**
- * A dot beside "Listening" that breathes while the microphone is on, as
- * a recording light does; still for a phone that asks for less motion.
- */
-@Composable
-private fun LiveDot(colour: Color) {
-    val breathing = !ReducedMotion.isOn()
-    val glow = if (breathing) {
-        rememberInfiniteTransition(label = "live").animateFloat(
-            initialValue = 1f,
-            targetValue = 0.35f,
-            animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-            label = "live dot",
-        ).value
-    } else {
-        1f
-    }
-    Box(Modifier.size(8.dp).graphicsLayer { alpha = glow }.background(colour, CircleShape).clearAndSetSemantics {})
-}
-
 /**
  * On a tablet, reading screens keep a phone's line length in the middle
  * instead of running each row from one edge of the glass to the other.
@@ -2483,6 +1454,3 @@ private fun OnTabletWidth(capped: Boolean, content: @Composable () -> Unit) {
         content()
     }
 }
-
-private val PhoneModelSwitch.downloadingFile: String?
-    get() = (this as? PhoneModelSwitch.Downloading)?.file
