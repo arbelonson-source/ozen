@@ -221,4 +221,21 @@ struct CaptionAnnouncerTests {
         let pieces = announcer.announcementPieces(for: [segment], speakerName: { _ in "דנה" })
         #expect(pieces == [.init(text: "דנה: ", isCaption: false), .init(text: "בערב", isCaption: true)])
     }
+
+    @Test("new words that are only a time keep the conversation's voice; a Latin brand name gets an English one, as a whole line of it does")
+    func grownLineTailLanguage() {
+        var announcer = CaptionAnnouncer()
+        var segment = line("הפגישה בשעה")
+        _ = announcer.announcement(for: [segment], speakerName: { _ in nil })
+        segment.text = "הפגישה בשעה 10:30"
+        let time = announcer.announcementPieces(for: [segment], speakerName: { _ in nil })
+        #expect(time == [.init(text: "10:30", isCaption: true)])
+        #expect(CaptionSpeechLanguage.bcp47(forLine: "10:30", languageCode: "he") == "he")
+        segment.text = "הפגישה בשעה 10:30 ב-Zoom"
+        let brand = announcer.announcementPieces(for: [segment], speakerName: { _ in nil })
+        #expect(brand == [.init(text: "ב-Zoom", isCaption: true)])
+        #expect(CaptionSpeechLanguage.bcp47(forLine: "ב-Zoom", languageCode: "he") == "he")
+        #expect(CaptionSpeechLanguage.bcp47(forLine: "Zoom", languageCode: "he") == CaptionSpeechLanguage.bcp47(forLine: "Zoom", languageCode: "he-IL"))
+        #expect(CaptionSpeechLanguage.bcp47(forLine: "Zoom", languageCode: "he") == "en")
+    }
 }
