@@ -344,6 +344,42 @@ class OnboardingDeviceTest {
         compose.onNodeWithText("Approve the microphone").assertDoesNotExist()
     }
 
+    // The same "no" again, but the page turns to blocked with a Settings
+    // button: at the largest text it is brought into view and said too.
+    @Test
+    fun atTheLargestTextASecondRefusalBringsBlockedIntoViewAndSaysIt() {
+        val announced = CopyOnWriteArrayList<String>()
+        val readerBefore = ScreenReader.isOn
+        val announceBefore = ScreenReader.announce
+        val shell = { command: String -> ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
+        try {
+            shell("settings put system font_scale 2.0")
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.activity.resources.configuration.fontScale == 2f && shown("Next") }
+            repeat(4) {
+                compose.onNodeWithText("Next").performClick()
+                compose.waitForIdle()
+            }
+            compose.activity.canAskMicrophoneAgain = { true }
+            compose.runOnUiThread { compose.activity.microphoneAnswer.value = false }
+            compose.waitUntil(5_000) { shown("Approve the microphone") }
+            ScreenReader.isOn = { true }
+            ScreenReader.announce = { _, text -> announced += text }
+            compose.activity.canAskMicrophoneAgain = { false }
+            compose.runOnUiThread { compose.activity.microphoneAnswer.value = false }
+            compose.waitUntil(5_000) { announced.isNotEmpty() }
+            compose.onNodeWithText("Open phone settings").assertIsDisplayed()
+            assertEquals(
+                listOf("Microphone blocked. Without a microphone there are no captions. You can allow microphone access in the phone’s Settings."),
+                announced.toList(),
+            )
+        } finally {
+            ScreenReader.isOn = readerBefore
+            ScreenReader.announce = announceBefore
+            shell("settings put system font_scale 1.0")
+        }
+    }
+
     @Test
     fun aRefusalTheSystemWillNotAskAboutAgainShowsBlockedAndOpenPhoneSettings() {
         microphonePageAfterARefusal(systemWouldAskAgain = false)

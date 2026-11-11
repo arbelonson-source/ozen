@@ -260,18 +260,21 @@ private fun MicrophonePage(
     // Each answer is said as it arrives, the reason for the notification
     // question with an approved microphone: with TalkBack they appeared in
     // silence, as on the iPhone before 5d9855c9.
+    // Keyed on what the page shows, not the bare answer: a second refusal
+    // is "no" again, but the page turns to blocked with a Settings button.
     val context = LocalContext.current
-    var heard by remember { mutableStateOf(microphone to notifications) }
-    LaunchedEffect(microphone, notifications) {
+    val shown = microphone?.let { MicrophoneAsk.next(granted = it, canAskAgain = canAskAgain) }
+    var heard by remember { mutableStateOf(shown to notifications) }
+    LaunchedEffect(shown, notifications) {
         val before = heard
-        heard = microphone to notifications
+        heard = shown to notifications
         if (ScreenReader.isOn(context)) {
-            WalkthroughAnswers.said(before, microphone to notifications, canAskAgain).forEach { ScreenReader.announce(context, it) }
+            WalkthroughAnswers.said(before, shown to notifications).forEach { ScreenReader.announce(context, it) }
         }
     }
     // And brought into view: at large text, or held sideways, the answer and
     // the notification button landed below the screen's edge.
-    Page(Icons.Rounded.Mic, pageTitle(4), scrollsDownOn = microphone?.let { "$it-$notifications" }) {
+    Page(Icons.Rounded.Mic, pageTitle(4), scrollsDownOn = shown?.let { "$it-$notifications" }) {
         Body(tr("כדי להציג כתוביות לשיחה, אוזן צריכה להאזין דרך המיקרופון.", "To caption the conversation, Ozen needs to listen through the microphone."))
         if (!settings.audioLeavesPhone) {
             Body(tr("הקול לא יוצא מהטלפון, ולא נשמר אלא אם מסמנים בעיה.", "The sound doesn’t leave the phone, and it isn’t kept unless you mark a problem."))

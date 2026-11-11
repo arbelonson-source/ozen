@@ -18,16 +18,16 @@ internal object WalkthroughAnswers {
 
     fun noNotifications() = tr("ההתראות לא אושרו. אפשר לשנות את זה בהגדרות.", "No notifications. This can be changed in Settings.")
 
-    fun said(before: Pair<Boolean?, Boolean?>, now: Pair<Boolean?, Boolean?>, canAskAgain: Boolean): List<String> {
+    fun said(before: Pair<MicrophoneAsk?, Boolean?>, now: Pair<MicrophoneAsk?, Boolean?>): List<String> {
         val (microphone, notifications) = now
         val microphoneSaid = microphone?.takeIf { it != before.first }?.let {
-            when (MicrophoneAsk.next(granted = it, canAskAgain = canAskAgain)) {
+            when (it) {
                 MicrophoneAsk.Granted -> microphoneApproved() + ". " + whyNotifications()
                 MicrophoneAsk.OpenSettings -> microphoneBlocked() + ". " + blockedDetail()
                 MicrophoneAsk.AskAgain -> noMicrophone()
             }
         }
-        val notificationsSaid = notifications?.takeIf { microphone == true && it != before.second }?.let {
+        val notificationsSaid = notifications?.takeIf { microphone == MicrophoneAsk.Granted && it != before.second }?.let {
             if (it) notificationsApproved() else noNotifications()
         }
         return listOfNotNull(microphoneSaid, notificationsSaid)
