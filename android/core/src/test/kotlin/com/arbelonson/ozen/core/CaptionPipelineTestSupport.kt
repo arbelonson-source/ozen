@@ -224,6 +224,18 @@ class FakeEngine(
     private var tokenChannel: Channel<TranscriptToken>? = null
     var chunksSeen = 0
         private set
+    private val heardChunks = ArrayList<FloatArray>()
+
+    /** Every sample the stream was fed, in order. */
+    val samplesSeen: FloatArray get() {
+        val all = FloatArray(heardChunks.sumOf { it.size })
+        var at = 0
+        for (chunk in heardChunks) {
+            chunk.copyInto(all, at)
+            at += chunk.size
+        }
+        return all
+    }
     private val vocabularyHistory = ArrayList<List<String>>()
 
     /** Every list handed to `setVocabulary`, in order. */
@@ -305,7 +317,12 @@ class FakeEngine(
         val created = Channel<TranscriptToken>(Channel.UNLIMITED)
         tokenChannel = created
         return channelFlow {
-            val feeder = launch { audio.collect { chunksSeen += 1 } }
+            val feeder = launch {
+                audio.collect {
+                    chunksSeen += 1
+                    heardChunks.add(it)
+                }
+            }
             for (token in created) send(token)
             feeder.cancel()
         }

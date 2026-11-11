@@ -22,7 +22,12 @@ class RecentAudio(seconds: Double, sampleRate: Double) {
 
     val count: Int get() = if (isFull) capacity else next
 
+    /** Every sample ever appended, cleared ones too: a position in the sound heard so far. A Long, as 16 kHz passes Int's range in about 37 hours. */
+    var totalAppended = 0L
+        private set
+
     fun append(samples: FloatArray) {
+        totalAppended += samples.size
         val tail = if (samples.size > capacity) samples.copyOfRange(samples.size - capacity, samples.size) else samples
         if (tail.isEmpty()) return
         val sanitized = FloatArray(tail.size) { if (tail[it].isFinite()) tail[it] else 0f }
@@ -45,6 +50,14 @@ class RecentAudio(seconds: Double, sampleRate: Double) {
     fun samples(): FloatArray {
         if (!isFull) return storage.copyOfRange(0, next)
         return storage.copyOfRange(next, capacity) + storage.copyOfRange(0, next)
+    }
+
+    /** What was heard from [since] on, at most the newest [maxSamples] of it, and only what is still kept. */
+    fun tail(since: Long, maxSamples: Int): FloatArray {
+        val wanted = minOf(maxOf(totalAppended - since, 0L), maxSamples.toLong(), count.toLong()).toInt()
+        if (wanted <= 0) return FloatArray(0)
+        val all = samples()
+        return all.copyOfRange(all.size - wanted, all.size)
     }
 
     fun clear() {

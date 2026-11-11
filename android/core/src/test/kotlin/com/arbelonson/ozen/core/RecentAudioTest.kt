@@ -26,6 +26,24 @@ class RecentAudioTest {
     private fun at(seconds: Double): Instant = Instant.ofEpochMilli((seconds * 1000).toLong())
 
     @Test
+    fun `the tail since a position counts every sample ever appended and is cut to what is still kept`() {
+        val recent = RecentAudio(seconds = 1.0, sampleRate = 4.0)
+        recent.append(floats(1f, 2f, 3f))
+        assertEquals(3L, recent.totalAppended)
+        assertContentEquals(floats(2f, 3f), recent.tail(since = 1, maxSamples = 10))
+        assertContentEquals(floats(3f), recent.tail(since = 1, maxSamples = 1))
+        recent.append(floats(4f, 5f, 6f))
+        assertEquals(6L, recent.totalAppended)
+        assertContentEquals(floats(3f, 4f, 5f, 6f), recent.tail(since = 0, maxSamples = 10))
+        assertContentEquals(floats(6f), recent.tail(since = 5, maxSamples = 10))
+        assertTrue(recent.tail(since = 6, maxSamples = 10).isEmpty())
+        assertTrue(recent.tail(since = 9, maxSamples = 10).isEmpty())
+        recent.clear()
+        assertEquals(6L, recent.totalAppended)
+        assertTrue(recent.tail(since = 0, maxSamples = 10).isEmpty())
+    }
+
+    @Test
     fun `keeps only the newest samples, oldest first, and a broken sample as silence`() {
         val recent = RecentAudio(seconds = 1.0, sampleRate = 4.0)
         recent.append(floats(1f, 2f))
