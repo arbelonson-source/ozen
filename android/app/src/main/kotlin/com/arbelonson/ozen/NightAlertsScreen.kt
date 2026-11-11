@@ -57,6 +57,7 @@ internal fun NightAlertsScreen(soundsOn: Boolean, onSounds: () -> Unit, onClose:
         onPauseOrDispose { }
     }
     val maker = NightAlerts.makerAdvice(Build.MANUFACTURER.orEmpty(), Build.BRAND.orEmpty())
+    val phoneLabel = remember(context) { { name: String -> SystemLabels.lookup(context, name) } }
     SettingsPageFrame(tr("התראות במהלך הלילה", "Alerts through the night"), onClose = onClose, closeLabel = tr("חזרה", "Back")) {
         SettingsGroup(dividerInset = 56.dp) {
             if (blocked) {
@@ -84,7 +85,7 @@ internal fun NightAlertsScreen(soundsOn: Boolean, onSounds: () -> Unit, onClose:
                 Step(
                     done = battery,
                     title = tr("סוללה", "Battery"),
-                    text = NightAlerts.batteryText(battery),
+                    text = NightAlerts.batteryText(battery, phoneLabel = phoneLabel),
                     button = if (battery) null else tr("פתחו את הגדרות הסוללה", "Open the battery list"),
                     onButton = { NightAlerts.openBatteryList(context) },
                 )
@@ -104,7 +105,7 @@ internal fun NightAlertsScreen(soundsOn: Boolean, onSounds: () -> Unit, onClose:
                 Step(
                     done = dnd,
                     title = tr("צלילים דחופים ב״נא לא להפריע״", "Urgent sounds in Do Not Disturb"),
-                    text = NightAlerts.dndText(dnd, alarmsAllowed),
+                    text = NightAlerts.dndText(dnd, alarmsAllowed, phoneLabel = phoneLabel),
                     button = if (dnd) null else tr("פתחו את הגדרות החירום", "Open the Emergency settings"),
                     onButton = { AlertNotifier.openAlarmSettings(context) },
                 )

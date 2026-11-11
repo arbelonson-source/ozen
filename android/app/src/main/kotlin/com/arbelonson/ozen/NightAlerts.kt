@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.tr
 
 object NightAlerts {
@@ -42,32 +43,51 @@ object NightAlerts {
      * Android 15 opens a different list for the same request: an app's own
      * battery page, where Ozen is let run under Allow background usage, not
      * the older list's Don't optimize.
+     *
+     * Each switch is named as the phone's Settings app writes it, in the
+     * phone's language ([phoneLabel], from [SystemLabels]); Ozen's language
+     * can be another, and then its own names would not be on the screen.
      */
-    fun batteryText(exempt: Boolean, sdk: Int = Build.VERSION.SDK_INT): String =
-        when {
-            exempt -> tr("Android מאפשר לאוזן להמשיך לפעול בזמן שהטלפון במצב שינה.", "Android lets Ozen keep running while the phone sleeps.")
-            sdk >= Build.VERSION_CODES.VANILLA_ICE_CREAM -> tr(
-                "כדי לחסוך בסוללה, אנדרואיד עלול לעצור את אוזן כשהטלפון במצב שינה, וההתראות ייעצרו איתה. ברשימה שתיפתח הקישו על Ozen, אחר כך על ״הרשאה לשימוש ברקע״, ובחרו ״ללא הגבלות״.",
-                "To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it. In the list that opens, tap Ozen, then Allow background usage, and choose Unrestricted.",
-            )
-            else -> tr(
-                "כדי לחסוך בסוללה, אנדרואיד עלול לעצור את אוזן כשהטלפון במצב שינה, וההתראות ייעצרו איתה. ברשימה שתיפתח בחרו למעלה ״כל האפליקציות״, מצאו את Ozen ובחרו ״אין לבצע אופטימיזציה״.",
-                "To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it. In the list that opens, choose All apps at the top, find Ozen and choose Don’t optimize.",
+    fun batteryText(exempt: Boolean, sdk: Int = Build.VERSION.SDK_INT, phoneLabel: (String) -> String? = { null }): String {
+        if (exempt) return tr("Android מאפשר לאוזן להמשיך לפעול בזמן שהטלפון במצב שינה.", "Android lets Ozen keep running while the phone sleeps.")
+        if (sdk >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            val allow = label(SystemLabels.ALLOW_BACKGROUND, tr("הרשאה לשימוש ברקע", "Allow background usage"), phoneLabel)
+            val unrestricted = label(SystemLabels.UNRESTRICTED, tr("ללא הגבלות", "Unrestricted"), phoneLabel)
+            return tr(
+                "כדי לחסוך בסוללה, אנדרואיד עלול לעצור את אוזן כשהטלפון במצב שינה, וההתראות ייעצרו איתה. ברשימה שתיפתח הקישו על Ozen, אחר כך על ״%1״, ובחרו ״%2״.",
+                "To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it. In the list that opens, tap Ozen, then %1, and choose %2.",
+                listOf(allow, unrestricted),
             )
         }
+        val allApps = label(SystemLabels.ALL_APPS, tr("כל האפליקציות", "All apps"), phoneLabel)
+        val dontOptimize = label(SystemLabels.DONT_OPTIMIZE, tr("אין לבצע אופטימיזציה", "Don’t optimize"), phoneLabel)
+        return tr(
+            "כדי לחסוך בסוללה, אנדרואיד עלול לעצור את אוזן כשהטלפון במצב שינה, וההתראות ייעצרו איתה. ברשימה שתיפתח בחרו למעלה ״%1״, מצאו את Ozen ובחרו ״%2״.",
+            "To save battery, Android may stop Ozen while the phone sleeps, and alerts stop with it. In the list that opens, choose %1 at the top, find Ozen and choose %2.",
+            listOf(allApps, dontOptimize),
+        )
+    }
 
-    fun dndText(through: Boolean, alarmsAllowed: Boolean): String =
-        when {
-            through -> tr("צלילים דחופים, כמו גלאי עשן, מגיעים גם ב״נא לא להפריע״.", "Urgent sounds, like a smoke alarm, come through Do Not Disturb.")
-            !alarmsAllowed -> tr(
-                "התראות ״חירום״ של אוזן כבויות בטלפון. הפעילו אותן, ובאותו דף הפעילו גם את ״התעלמות ממצב 'נא לא להפריע'״.",
-                "Ozen’s Emergency alerts are turned off in the phone. Turn them on, then turn on Override Do Not Disturb on the same page.",
+    fun dndText(through: Boolean, alarmsAllowed: Boolean, phoneLabel: (String) -> String? = { null }): String {
+        if (through) return tr("צלילים דחופים, כמו גלאי עשן, מגיעים גם ב״נא לא להפריע״.", "Urgent sounds, like a smoke alarm, come through Do Not Disturb.")
+        val override = label(SystemLabels.OVERRIDE_DND, tr("התעלמות ממצב 'נא לא להפריע'", "Override Do Not Disturb"), phoneLabel)
+        return if (!alarmsAllowed) {
+            tr(
+                "התראות ״חירום״ של אוזן כבויות בטלפון. הפעילו אותן, ובאותו דף הפעילו גם את ״%1״.",
+                "Ozen’s Emergency alerts are turned off in the phone. Turn them on, then turn on %1 on the same page.",
+                listOf(override),
             )
-            else -> tr(
-                "ב״נא לא להפריע״ ייתכן שגלאי עשן לא יעיר אתכם. אפשרו להתראות ״חירום״ של אוזן לעקוף את ״נא לא להפריע״: בדף שייפתח הפעילו את ״התעלמות ממצב 'נא לא להפריע'״.",
-                "In Do Not Disturb, a smoke alarm may not wake you. Let Ozen’s Emergency alerts override it: on the page that opens, turn on Override Do Not Disturb.",
+        } else {
+            tr(
+                "ב״נא לא להפריע״ ייתכן שגלאי עשן לא יעיר אתכם. אפשרו להתראות ״חירום״ של אוזן לעקוף את ״נא לא להפריע״: בדף שייפתח הפעילו את ״%1״.",
+                "In Do Not Disturb, a smoke alarm may not wake you. Let Ozen’s Emergency alerts override it: on the page that opens, turn on %1.",
+                listOf(override),
             )
         }
+    }
+
+    private fun label(name: String, own: String, phoneLabel: (String) -> String?): String =
+        phoneLabel(name)?.let { SystemLabels.inSentence(it, Localization.language.isRightToLeft) } ?: own
 
     fun summary(open: Int): String =
         if (open == 0) tr("הכול מוכן", "All set") else tr("%1 לבדיקה", "%1 to check", listOf("$open"))
