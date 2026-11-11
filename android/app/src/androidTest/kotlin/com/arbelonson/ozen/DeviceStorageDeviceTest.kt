@@ -16,8 +16,9 @@ class DeviceStorageDeviceTest {
 
     @Test
     fun theSpaceTheModelDownloadsSeeIsAtLeastWhatIsFreeNow() {
-        val usable = app.filesDir.usableSpace
+        val before = app.filesDir.usableSpace
         val seen = app.captions.freeSpace()
+        val usable = minOf(before, app.filesDir.usableSpace)
         assertTrue("$seen is less than $usable", seen >= usable - slack)
     }
 
