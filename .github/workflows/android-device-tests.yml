@@ -37,7 +37,10 @@ env:
     com.arbelonson.ozen.CaptionScreenDeviceTest#aWordTheCaptionsGotWrongGoesFirstInTheWordListFromTheLinesHoldMenuOrTheScreenReader,
     com.arbelonson.ozen.CaptionScreenDeviceTest#savingAFixedWordTellsTheScreenReaderTheLineWasFixedAndCancelSaysNothing,
     com.arbelonson.ozen.CaptionScreenDeviceTest#withThePhonesBuiltInRecognitionOnOfferTheWaitForWiFiOffersCaptionsNowFirst,
-    com.arbelonson.ozen.CaptionScreenDeviceTest#aSpeakersNameHeadsTheirRunOfLinesInTheirColourIsSaidOnEveryLineAndGoesWithNamesOff
+    com.arbelonson.ozen.CaptionScreenDeviceTest#aSpeakersNameHeadsTheirRunOfLinesInTheirColourIsSaidOnEveryLineAndGoesWithNamesOff,
+    com.arbelonson.ozen.BuiltInRecognitionDeviceTest,
+    com.arbelonson.ozen.BuiltInSpeechEngineDeviceTest,
+    com.arbelonson.ozen.BuiltInWhileWaitingDeviceTest
 
 jobs:
   smoke:
