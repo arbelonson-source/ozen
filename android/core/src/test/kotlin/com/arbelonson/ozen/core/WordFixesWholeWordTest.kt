@@ -21,6 +21,16 @@ class WordFixesWholeWordTest {
     }
 
     @Test
+    fun `heard words may be joined by one maqaf, a different fix from the same words with a space`() {
+        val maqaf = fix("תל\u05BEאביב", "Tel Aviv")
+        val space = fix("תל אביב", "TLV")
+        assertEquals(listOf(maqaf, space), WordFixes.normalized(listOf(maqaf, space)))
+        for (heard in listOf("תל \u05BEאביב", "תל\u05BE\u05BEאביב", "א\u05BEב\u05BEג\u05BEד\u05BEה")) {
+            assertEquals(WordFixes.Refusal.HeardWords, WordFixes.refusal(fix(heard, "x"), emptyList()), heard)
+        }
+    }
+
+    @Test
     fun `a heard word with a hyphen is one word, kept and applied`() {
         val mail = fix("e-mail", "email")
         assertEquals(listOf(mail), WordFixes.normalized(listOf(mail)))

@@ -14,7 +14,7 @@ object WordFixes {
 
     /** A run of text between spaces (or a maqaf): [start] to [end] is its part from the first letter or digit to the last. */
     private class Word(val tokenStart: Int, val tokenEnd: Int, val start: Int, val end: Int, val key: String, val bases: List<Pair<Int, Int>>)
-    private class Compiled(val words: List<String>, val written: String)
+    private class Compiled(val words: List<String>, val joints: List<Int>, val written: String)
 
     private fun isMark(c: Int) = c in 0x0591..0x05C7 && c != MAQAF && c != 0x05C0 && c != 0x05C3 && c != 0x05C6
 
@@ -77,9 +77,42 @@ object WordFixes {
         return out
     }
 
+    /** The one space or maqaf between [word] and [next], with no punctuation on either side of it, or null. */
+    private fun joint(text: String, word: Word, next: Word): Int? {
+        if (word.end != word.tokenEnd || next.start != next.tokenStart || next.tokenStart != word.tokenEnd + 1) return null
+        return text[word.tokenEnd].code.takeIf { it == ' '.code || it == MAQAF }
+    }
+
     /** Whether [next] follows [word] after one plain space, with no punctuation on either side of that space. */
-    private fun joined(text: String, word: Word, next: Word) =
-        word.end == word.tokenEnd && next.start == next.tokenStart && next.tokenStart == word.tokenEnd + 1 && text[word.tokenEnd] == ' '
+    private fun joined(text: String, word: Word, next: Word) = joint(text, word, next) == ' '.code
+
+    private fun isDash(c: Int) = c == '-'.code || c == MAQAF || c == 0x2010 || c == 0x2011
+
+    /**
+     * Whether [text] from [from] already reads [written], case, niqqud and a
+     * maqaf against a hyphen aside, up to the end of a word: a fix that only
+     * adds words ("dana" written "Dana Cohen") would otherwise write them
+     * twice on a line that has them.
+     */
+    private fun readsAlready(text: String, from: Int, written: String): Boolean {
+        var at = from
+        fun skipMarks() {
+            while (at < text.length && isMark(text.codePointAt(at))) at += Character.charCount(text.codePointAt(at))
+        }
+        var next = 0
+        while (next < written.length) {
+            val c = written.codePointAt(next)
+            next += Character.charCount(c)
+            if (isMark(c)) continue
+            skipMarks()
+            if (at >= text.length) return false
+            val shown = text.codePointAt(at)
+            if (!(isDash(c) && isDash(shown)) && folded(c) != folded(shown)) return false
+            at += Character.charCount(shown)
+        }
+        skipMarks()
+        return at >= text.length || !isCore(text.codePointAt(at))
+    }
 
     /**
      * Where the heard word starts inside [word], or null when it is not
@@ -176,7 +209,7 @@ object WordFixes {
             if (heard.isEmpty() || written.isEmpty() || keyOf(heard) == keyOf(written)) continue
             val parts = words(heard)
             if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) continue
-            if (parts.zipWithNext().any { (a, b) -> !joined(heard, a, b) }) continue
+            if (parts.zipWithNext().any { (a, b) -> joint(heard, a, b) == null }) continue
             if (!seen.add(keyOf(heard))) continue
             out.add(WordFix(heard, written))
             if (out.size == MAXIMUM_FIXES) break
@@ -283,8 +316,9 @@ object WordFixes {
     private fun rewrite(fixes: List<WordFix>, text: String): Rewrite {
         if (fixes.isEmpty() || text.isEmpty()) return Rewrite(text, words(text), emptyList())
         val compiled = normalized(fixes).mapNotNull { fix ->
-            val parts = words(fix.heard).map { it.key }
-            if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) null else Compiled(parts, fix.written)
+            val parts = words(fix.heard)
+            if (parts.isEmpty() || parts.size > MAXIMUM_WORDS) null
+            else Compiled(parts.map { it.key }, parts.zipWithNext { a, b -> joint(fix.heard, a, b) ?: ' '.code }, fix.written)
         }
         if (compiled.isEmpty()) return Rewrite(text, words(text), emptyList())
         val han = compiled.filter { it.words.size == 1 && isHan(it.words[0]) }.sortedByDescending { it.words[0].length }
@@ -302,7 +336,7 @@ object WordFixes {
                 val first = prefixEnd(all[index], c.words[0], lone = c.words.size == 1) ?: continue
                 var ok = true
                 for (k in 1 until c.words.size) {
-                    if (all[index + k].key != c.words[k] || !joined(text, all[index + k - 1], all[index + k])) { ok = false; break }
+                    if (all[index + k].key != c.words[k] || joint(text, all[index + k - 1], all[index + k]) != c.joints[k - 1]) { ok = false; break }
                 }
                 if (ok) { best = c; keep = first }
             }
@@ -314,6 +348,10 @@ object WordFixes {
                     spans.add(Span(index, index, inside))
                 }
                 index++
+                continue
+            }
+            if (readsAlready(text, keep, best.written)) {
+                index += best.words.size
                 continue
             }
             val last = all[index + best.words.size - 1]
