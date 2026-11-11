@@ -194,6 +194,32 @@ class CaptionPipelineTokenTest {
     }
 
     @Test
+    fun `sound heard while the voice reader works on a voice is kept at once, for a marked problem and the home computer's replay`() = runTest {
+        val audio = FakeAudioCapturer()
+        val embedder = GatedEmbedder()
+        val pipeline = captionPipeline(
+            audio = audio,
+            engineFactory = { FakeEngine() },
+            embedder = embedder,
+            recovery = AutoRecoveryPolicy.disabled(),
+            now = { 1_000.0 },
+            embedderContext = Dispatchers.Default,
+        )
+        pipeline.start(AppSettings.default)
+        assertTrue(eventually { pipeline.phase == PipelinePhase.Listening })
+        audio.push(FloatArray(24_000) { 0.5f })
+        assertTrue(eventuallyInRealTime { embedder.callsStarted == 1 })
+        try {
+            audio.push(floatArrayOf(0.25f, -0.5f, 0.75f))
+            assertTrue(eventually(2.seconds) { pipeline.recentAudioSamples.size == 24_003 })
+            assertEquals(listOf(0.25f, -0.5f, 0.75f), pipeline.recentAudioSamples.takeLast(3))
+        } finally {
+            embedder.release()
+            pipeline.stop()
+        }
+    }
+
+    @Test
     fun `only the last 30 seconds of sound are kept, as the troubleshooting guide tells her`() = runTest {
         val audio = FakeAudioCapturer()
         val (pipeline, _, _) = makePipeline(audio = audio, engines = mapOf(whisper to FakeEngine()))

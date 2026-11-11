@@ -35,6 +35,21 @@ struct RecentAudioTests {
         #expect(recent.samples() == (51...150).map(Float.init))
     }
 
+    @Test("shared between the microphone and captions: a chunk of an ended session arriving after the clear is not kept")
+    func sharedDropsAChunkFromBeforeTheClear() {
+        let recent = SharedRecentAudio(seconds: 1, sampleRate: 4)
+        let ended = recent.generation
+        recent.append([1, 2], generation: ended)
+        #expect(recent.samples() == [1, 2])
+        #expect(recent.totalAppended == 2)
+        recent.clear()
+        recent.append([3], generation: ended)
+        #expect(recent.samples().isEmpty)
+        recent.append([4, 5], generation: recent.generation)
+        #expect(recent.samples() == [4, 5])
+        #expect(recent.tail(since: 3, maxSamples: 10) == [5])
+    }
+
     @Test("a saved clip is a WAV file; only the newest few are kept; nothing is saved from silence never heard")
     func store() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-problem-audio-\(UUID())")

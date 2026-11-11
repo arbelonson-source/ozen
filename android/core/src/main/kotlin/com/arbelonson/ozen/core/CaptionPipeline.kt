@@ -1909,6 +1909,11 @@ class CaptionPipeline(
         onFailure = { error ->
             if (runID == run) fail(PipelineFailure.Kind.AudioSessionFailed, describe(error))
         },
+        // Kept as each chunk arrives, not as the voice reader takes it: what
+        // waited for the reader while it worked on a voice was missing from
+        // a marked problem's clip and from the home computer's replay, and
+        // was never kept at all when the session ended first.
+        onChunk = { chunk -> if (runID == run) recentAudio.append(chunk) },
     )
 
     private fun abandon(fan: FlowAudioFanOut?) {
@@ -2188,7 +2193,6 @@ class CaptionPipeline(
                 audioWatchdog.heard(chunk, systemInterrupted)
                 statsData.audioSecondsReceived += chunk.size.toDouble() / SAMPLE_RATE
                 statsData.lastAudioAt = now()
-                recentAudio.append(chunk)
 
                 buffer.append(chunk)
                 val isSpeech = embeddingVoiceDetector.isSpeech(chunk)

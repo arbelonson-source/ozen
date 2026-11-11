@@ -19,6 +19,7 @@ class FlowAudioFanOut(
     bufferLimit: Int = AudioFanOut.DEFAULT_BUFFER_LIMIT,
     onGlitch: () -> Unit = {},
     onFailure: (Throwable) -> Unit = {},
+    onChunk: (FloatArray) -> Unit = {},
 ) {
     val outputs: List<Flow<FloatArray>>
     private val pump: Job
@@ -36,6 +37,7 @@ class FlowAudioFanOut(
                     val glitched = !chunk.all { it.isFinite() }
                     val forwarded = if (glitched) AudioFanOut.withoutGlitches(chunk) else chunk
                     if (glitched) onGlitch()
+                    onChunk(forwarded)
                     for (channel in channels) channel.trySend(forwarded)
                 }
             } catch (error: CancellationException) {
