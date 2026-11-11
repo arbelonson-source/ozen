@@ -1731,6 +1731,6 @@ class TranscriptSourceLineTest {
         assertEquals("Cloud transcription · Google Gemini · Transcribe", record(cloud, GeminiSpeech.MODEL, null).sourceLine(english))
         assertEquals("Cloud transcription · Speechmatics · Enhanced", record(cloud, SpeechmaticsSpeech.model, null).sourceLine(english))
         assertEquals("Cloud transcription · AssemblyAI · Universal-3.6 Pro", record(cloud, AssemblyAISpeech.model, null).sourceLine(english))
-        assertEquals("Apple’s speech recognition", record(TranscriptionEngineKind.AppleSpeech, null, null).sourceLine(english))
+        assertEquals("The phone’s built-in recognition", record(TranscriptionEngineKind.AppleSpeech, null, null).sourceLine(english))
     }
 }

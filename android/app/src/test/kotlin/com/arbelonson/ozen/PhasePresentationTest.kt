@@ -41,9 +41,13 @@ class PhasePresentationTest {
         coverReason: EngineUnavailability.Kind? = null,
         offerBackup: Boolean = false,
         soundsOnly: Boolean = false,
+        builtInOffered: Boolean = false,
+        modelGettingReady: Boolean = false,
+        modelJustReady: Boolean = false,
     ) = PhasePresentation(
         phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining,
         pausedForSpeech, coveringForCloud, coveredEngine, coverReason, offerBackup, soundsOnly = soundsOnly,
+        builtInOffered = builtInOffered, modelGettingReady = modelGettingReady, modelJustReady = modelJustReady,
     )
 
     @Test
@@ -118,6 +122,73 @@ class PhasePresentationTest {
             assertTrue("hotspot" in body && "data limit" in body, body)
             assertTrue("language model" in CellularDownloadTexts.title && "mobile data" in CellularDownloadTexts.title, CellularDownloadTexts.title)
             assertTrue("A few hundred MB" in CellularDownloadTexts.body(null))
+        }
+    }
+
+    @Test
+    fun `with the built-in recognition on offer, waiting for Wi-Fi offers captions right now and still says which Wi-Fi downloads`() {
+        Localization.withLanguage(UILanguage.English) {
+            val presentation = present(
+                failure(unavailable(EngineUnavailability.Kind.WaitingForWiFi, downloadMegabytes = 626)),
+                TranscriptionEngineKind.WhisperKit,
+                builtInOffered = true,
+            )
+            assertEquals(Action.CaptionsWhileWaiting, presentation.action)
+            val detail = presentation.detail.orEmpty()
+            assertTrue("626\u00A0MB" in detail, detail)
+            assertTrue("data limit" in detail, detail)
+            assertTrue("Tap for captions right now" in detail, detail)
+            assertEquals("Start captions", statusAction(presentation.action)?.first)
+            assertEquals(
+                Action.ConfirmCellularDownload,
+                present(failure(unavailable(EngineUnavailability.Kind.WaitingForWiFi, downloadMegabytes = 626)), TranscriptionEngineKind.WhisperKit).action,
+            )
+        }
+    }
+
+    @Test
+    fun `the waiting question with the built-in on offer says what it is and that the model takes over by itself`() {
+        Localization.withLanguage(UILanguage.English) {
+            val body = CellularDownloadTexts.bodyWithBuiltIn(626)
+            assertTrue(body.startsWith(CellularDownloadTexts.body(626)), body)
+            assertTrue("built-in recognition can write captions" in body && "stays on the phone" in body && "switch to it on their own" in body, body)
+            assertTrue("Waiting for Wi" in CellularDownloadTexts.titleWithBuiltIn)
+            assertTrue("built-in recognition" in CellularDownloadTexts.builtInButton)
+            assertTrue("mobile data" in CellularDownloadTexts.downloadButtonWithBuiltIn)
+        }
+    }
+
+    @Test
+    fun `captions from the built-in recognition say so, and when the model takes over, the line says it is ready`() {
+        Localization.withLanguage(UILanguage.English) {
+            fun covering(gettingReady: Boolean) = present(
+                PipelinePhase.Listening,
+                TranscriptionEngineKind.AppleSpeech,
+                coveringForCloud = true,
+                coveredEngine = TranscriptionEngineKind.WhisperKit,
+                coverReason = EngineUnavailability.Kind.WaitingForWiFi,
+                modelGettingReady = gettingReady,
+            )
+            assertEquals("With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause", covering(false).detail)
+            assertEquals("With the phone’s built-in recognition while the model gets ready · Tap to pause", covering(true).detail)
+            assertEquals(Action.Pause, covering(false).action)
+
+            val ready = present(PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit, modelJustReady = true)
+            assertEquals("The model is ready, captions continue with it · Tap to pause", ready.detail)
+            assertEquals(Action.Pause, ready.action)
+            assertEquals("Tap to pause", present(PipelinePhase.Listening, TranscriptionEngineKind.WhisperKit).detail)
+        }
+    }
+
+    @Test
+    fun `on Android the built-in recognition is the phone's, never Apple's`() {
+        Localization.withLanguage(UILanguage.English) {
+            for (kind in EngineUnavailability.Kind.entries) {
+                val presentation = present(failure(unavailable(kind, downloadMegabytes = 626)), TranscriptionEngineKind.AppleSpeech)
+                val said = listOfNotNull(presentation.title, presentation.detail).joinToString(" ")
+                assertFalse("Apple" in said, "$kind: $said")
+            }
+            assertFalse("Apple" in TranscriptionEngineKind.AppleSpeech.displayName(UILanguage.English))
         }
     }
 

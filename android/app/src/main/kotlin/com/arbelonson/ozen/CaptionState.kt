@@ -134,11 +134,18 @@ data class CaptionScreenState(
     val network: NetworkConditions? = null,
     /** Captions are off and only sounds are listened for, to spare the phone's memory through the night. */
     val soundsOnly: Boolean = false,
+    /** The phone's built-in recognition can caption while the model waits for Wi-Fi (see `BuiltInWhileWaiting`). */
+    val builtInOffered: Boolean = false,
+    /** The model the built-in recognition stands in for is downloading or loading behind it. */
+    val modelGettingReady: Boolean = false,
+    /** For a few seconds after that model took over from the built-in recognition. */
+    val modelJustReady: Boolean = false,
 ) {
     val status: PhasePresentation
         get() = PhasePresentation(
             phase, engine, interruptedBySystem, scheduledRetry, downloadSecondsRemaining, pausedForSpeech,
             coveringForCloud, coveredEngine, coverReason, offerBackup, network, soundsOnly,
+            builtInOffered, modelGettingReady, modelJustReady,
         )
 
     /** Not merely listening: a call holding captions leaves them stopped, as `captionsAreRunning` on the iPhone. */
@@ -213,6 +220,9 @@ object CaptionState {
         offerBackup: Boolean = false,
         network: NetworkConditions? = null,
         soundsOnly: Boolean = false,
+        builtInOffered: Boolean = false,
+        modelGettingReady: Boolean = false,
+        modelJustReady: Boolean = false,
     ) {
         val resumed = speechResume.noteCaptions(segments, now)
         // Cleared captions come as an empty list, not through clear(): no
@@ -248,6 +258,9 @@ object CaptionState {
             offerBackup = offerBackup,
             network = network,
             soundsOnly = soundsOnly,
+            builtInOffered = builtInOffered,
+            modelGettingReady = modelGettingReady,
+            modelJustReady = modelJustReady,
             lineCount = segments.size,
             lines = shown.mapIndexed { at, it ->
                 val shape = shaped[at]

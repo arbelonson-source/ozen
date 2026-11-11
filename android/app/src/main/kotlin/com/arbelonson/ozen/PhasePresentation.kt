@@ -104,6 +104,9 @@ class PhasePresentation private constructor(
 
         /** Ask before downloading the model over cellular data. */
         ConfirmCellularDownload,
+
+        /** The same question, which now offers captions with the phone's built-in recognition first. */
+        CaptionsWhileWaiting,
     }
 
     /** The Material symbol for [systemImage], whose names come from the shared status vocabulary. */
@@ -183,6 +186,9 @@ class PhasePresentation private constructor(
             offerBackup: Boolean = false,
             network: NetworkConditions? = null,
             soundsOnly: Boolean = false,
+            builtInOffered: Boolean = false,
+            modelGettingReady: Boolean = false,
+            modelJustReady: Boolean = false,
         ): PhasePresentation {
             // Only captions the call interrupted come back when it ends: ones
             // paused or stopped by hand stay that way, and saying they would
@@ -252,7 +258,7 @@ class PhasePresentation private constructor(
                     isBusy = true,
                 )
 
-                PipelinePhase.Listening -> listening(engine, coveringForCloud, coveredEngine, coverReason, network)
+                PipelinePhase.Listening -> listening(engine, coveringForCloud, coveredEngine, coverReason, network, modelGettingReady, modelJustReady)
 
                 PipelinePhase.Paused ->
                     if (pausedForSpeech) {
@@ -275,7 +281,7 @@ class PhasePresentation private constructor(
                         )
                     }
 
-                is PipelinePhase.Failed -> failed(phase.reason, engine, scheduledRetry, offerBackup)
+                is PipelinePhase.Failed -> failed(phase.reason, engine, scheduledRetry, offerBackup, builtInOffered)
             }
         }
 
@@ -285,6 +291,8 @@ class PhasePresentation private constructor(
             coveredEngine: TranscriptionEngineKind?,
             coverReason: EngineUnavailability.Kind?,
             network: NetworkConditions?,
+            modelGettingReady: Boolean,
+            modelJustReady: Boolean,
         ): PhasePresentation {
             fun listening(detail: String, action: Action) = PhasePresentation(
                 title = tr("מאזינה", "Listening"),
@@ -335,6 +343,18 @@ class PhasePresentation private constructor(
                         Action.Pause,
                     )
 
+                // The phone's built-in recognition writes the captions until the
+                // chosen model, still to download, is ready (see `BuiltInWhileWaiting`).
+                coveringForCloud && coverReason == EngineUnavailability.Kind.WaitingForWiFi ->
+                    listening(
+                        if (modelGettingReady) {
+                            tr("בזיהוי הדיבור המובנה בטלפון, בזמן שהמודל בהכנה · הקישו כדי להשהות", "With the phone’s built-in recognition while the model gets ready · Tap to pause")
+                        } else {
+                            tr("בזיהוי הדיבור המובנה בטלפון, עד שהמודל יירד ב־Wi‑Fi · הקישו כדי להשהות", "With the phone’s built-in recognition until the model downloads over Wi‑Fi · Tap to pause")
+                        },
+                        Action.Pause,
+                    )
+
                 // Still captioning, so still active: the words keep coming, only
                 // from the phone's own model while the cloud can't be used.
                 coveringForCloud ->
@@ -342,6 +362,9 @@ class PhasePresentation private constructor(
                         tr("התמלול בענן לא זמין, ממשיכים בזיהוי שבטלפון · הקישו כדי להשהות", "Cloud captions aren’t available, so the phone carries on by itself · Tap to pause"),
                         Action.Pause,
                     )
+
+                modelJustReady ->
+                    listening(tr("המודל מוכן, הכתוביות ממשיכות איתו", "The model is ready, captions continue with it") + " · " + tr("הקישו כדי להשהות", "Tap to pause"), Action.Pause)
 
                 MobileDataNote.shows(engine, coveringForCloud, network) ->
                     listening(tr("דרך חבילת הגלישה · הקישו כדי להשהות", "Over mobile data · Tap to pause"), Action.Pause)
@@ -355,6 +378,7 @@ class PhasePresentation private constructor(
             engine: TranscriptionEngineKind?,
             scheduledRetry: ScheduledRetry?,
             offerBackup: Boolean,
+            builtInOffered: Boolean,
         ): PhasePresentation {
             var result = presentingFailure(failure, engine)
             if (scheduledRetry != null) {
@@ -367,6 +391,24 @@ class PhasePresentation private constructor(
                     tint = PhaseTint.Attention,
                     isBusy = true,
                     action = Action.Retry,
+                )
+            }
+            // The phone's built-in recognition can caption right away while
+            // the model waits: the tap still opens the mobile data question,
+            // which then offers it first.
+            val waiting = failure.engineUnavailability?.takeIf { it.kind == EngineUnavailability.Kind.WaitingForWiFi }
+            if (builtInOffered && waiting != null) {
+                val size = waiting.downloadMegabytes?.let { if (it > 0) ByteSize.megabytes(it) else null }
+                result = PhasePresentation(
+                    title = result.title,
+                    detail = listOfNotNull(
+                        size,
+                        tr("יורד לבד ב־Wi‑Fi בלי הגבלת נפח", "Downloads on its own on Wi‑Fi without a data limit"),
+                        tr("הקישו לכתוביות כבר עכשיו", "Tap for captions right now"),
+                    ).joinToString(" · "),
+                    systemImage = result.systemImage,
+                    tint = result.tint,
+                    action = Action.CaptionsWhileWaiting,
                 )
             }
             if (offerBackup && failure.engineUnavailability?.kind == EngineUnavailability.Kind.HomeServerUnreachable &&
@@ -518,7 +560,7 @@ class PhasePresentation private constructor(
 
         private fun engineFailure(engineFailure: EngineUnavailability?, engine: TranscriptionEngineKind?): PhasePresentation {
             val engineName = when (engine) {
-                TranscriptionEngineKind.AppleSpeech -> tr("זיהוי הדיבור של אפל", "Apple’s speech recognition")
+                TranscriptionEngineKind.AppleSpeech -> tr("זיהוי הדיבור המובנה בטלפון", "The phone’s built-in recognition")
                 TranscriptionEngineKind.Cloud -> tr("התמלול בענן", "Cloud transcription")
                 TranscriptionEngineKind.HomeServer -> tr("המחשב בבית", "The home computer")
                 TranscriptionEngineKind.WhisperKit, null -> tr("זיהוי הדיבור בטלפון", "The phone’s speech recognition")
@@ -757,6 +799,7 @@ internal fun statusAction(action: PhasePresentation.Action): Pair<String, ImageV
     PhasePresentation.Action.Start -> tr("התחלת כתוביות", "Start captions") to Icons.Rounded.PlayArrow
     PhasePresentation.Action.StopSpeaking -> tr("עצירת הדיבור", "Stop speaking") to Icons.Rounded.Stop
     PhasePresentation.Action.ConfirmCellularDownload -> tr("להוריד עכשיו", "Download now") to Icons.Rounded.Download
+    PhasePresentation.Action.CaptionsWhileWaiting -> tr("התחלת כתוביות", "Start captions") to Icons.Rounded.PlayArrow
     PhasePresentation.Action.Retry -> tr("נסו שוב", "Try again") to Icons.Rounded.Refresh
     PhasePresentation.Action.None -> null
     else -> phaseActionLabel(action)?.let { it to Icons.Rounded.Settings }

@@ -2812,11 +2812,18 @@ class CaptionPipeline(
 
     /** While the phone's built-in recognition captions for a model that waits for Wi-Fi: that model is being downloaded or loaded behind it. */
     var waitingModelGettingReady = false
-        private set
+        private set(value) {
+            if (field == value) return
+            field = value
+            onCaptionsChanged?.invoke()
+        }
 
     /** How many times captions went over from the built-in recognition to the model once it was ready, for the screen to say so. */
     var builtInHandOvers = 0
-        private set
+        private set(value) {
+            field = value
+            onCaptionsChanged?.invoke()
+        }
 
     /** How often a ready model looks for its moment to take over. */
     var handOverCheckSeconds = 1.0

@@ -47,7 +47,7 @@ import kotlinx.coroutines.withContext
  * segment one line, and a new session follows one that ends early.
  */
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-class BuiltInSpeechEngine(private val context: Context) : TranscriptionEngine {
+class BuiltInSpeechEngine(private val context: Context, private val refusal: BuiltInRefusal = BuiltInRefusal()) : TranscriptionEngine {
     override val kind: TranscriptionEngineKind = TranscriptionEngineKind.AppleSpeech
 
     /** The recognizer's own name for the spoken language, from those installed on the phone; set by [prepare]. */
@@ -55,7 +55,10 @@ class BuiltInSpeechEngine(private val context: Context) : TranscriptionEngine {
 
     override suspend fun prepare(languageCode: String, progress: (EnginePreparationProgress) -> Unit): EngineAvailability {
         progress(EnginePreparationProgress(EnginePreparationProgress.Stage.CheckingSupport))
-        val installed = installedLanguages()
+        refusal.reason?.let { why ->
+            return EngineAvailability.unavailable(EngineUnavailability.Kind.LanguageNotSupportedOnDevice, "the recognizer refused Ozen's audio before: $why")
+        }
+        val installed = installedLanguages(context)
             ?: return EngineAvailability.unavailable(EngineUnavailability.Kind.LanguageNotSupportedOnDevice, "no recognition on the phone alone")
         val tag = installed.firstOrNull { BuiltInRecognition.matches(it, languageCode) }
             ?: return EngineAvailability.unavailable(EngineUnavailability.Kind.LanguageNotSupportedOnDevice, "$languageCode is not installed for recognition on the phone")
@@ -75,6 +78,14 @@ class BuiltInSpeechEngine(private val context: Context) : TranscriptionEngine {
         var heardInSession = false
         var quickEnds = 0
         lateinit var recognizer: SpeechRecognizer
+
+        // Any other ending means this phone's recognizer doesn't take
+        // Ozen's audio as it should: it isn't asked again until the app
+        // starts afresh, and the wait for Wi-Fi comes back as before.
+        fun refused(why: String) {
+            refusal.reason = why
+            close(BuiltInRecognitionStopped(why))
+        }
 
         fun startSession() {
             val (readEnd, writeEnd) = ParcelFileDescriptor.createPipe()
@@ -105,7 +116,7 @@ class BuiltInSpeechEngine(private val context: Context) : TranscriptionEngine {
             val quick = !heardInSession && SystemClock.elapsedRealtime() - sessionStartedAt < QUICK_END_MILLIS
             quickEnds = if (quick) quickEnds + 1 else 0
             if (quickEnds >= MAX_QUICK_ENDS) {
-                close(BuiltInRecognitionStopped("the built-in recognition $why, $quickEnds times in a row at once"))
+                refused("the built-in recognition $why, $quickEnds times in a row at once")
                 return
             }
             startSession()
@@ -130,7 +141,7 @@ class BuiltInSpeechEngine(private val context: Context) : TranscriptionEngine {
             override fun onError(error: Int) {
                 when (error) {
                     SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> ended("heard nothing (error $error)")
-                    else -> close(BuiltInRecognitionStopped("the built-in recognition stopped with error $error"))
+                    else -> refused("the built-in recognition stopped with error $error")
                 }
             }
 
@@ -191,31 +202,35 @@ class BuiltInSpeechEngine(private val context: Context) : TranscriptionEngine {
         putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_AUDIO_SOURCE)
     }
 
-    private suspend fun installedLanguages(): List<String>? = withContext(Dispatchers.Main) {
-        if (!SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) return@withContext null
-        suspendCancellableCoroutine { waiting ->
-            val recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-            val callback = object : RecognitionSupportCallback {
-                override fun onSupportResult(recognitionSupport: RecognitionSupport) {
-                    recognizer.destroy()
-                    if (waiting.isActive) waiting.resume(recognitionSupport.installedOnDeviceLanguages)
-                }
-
-                override fun onError(error: Int) {
-                    recognizer.destroy()
-                    if (waiting.isActive) waiting.resume(null)
-                }
-            }
-            recognizer.checkRecognitionSupport(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), context.mainExecutor, callback)
-        }
-    }
-
     private class BuiltInRecognitionStopped(message: String) : Exception(message)
 
     companion object {
         const val SAMPLE_RATE = 16_000
         private const val QUICK_END_MILLIS = 1_000L
         private const val MAX_QUICK_ENDS = 5
+
+        /**
+         * The languages the phone's recognizer has installed for use offline,
+         * as it names them; null when it has no recognition on the phone alone.
+         */
+        suspend fun installedLanguages(context: Context): List<String>? = withContext(Dispatchers.Main) {
+            if (!SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) return@withContext null
+            suspendCancellableCoroutine { waiting ->
+                val recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+                val callback = object : RecognitionSupportCallback {
+                    override fun onSupportResult(recognitionSupport: RecognitionSupport) {
+                        recognizer.destroy()
+                        if (waiting.isActive) waiting.resume(recognitionSupport.installedOnDeviceLanguages)
+                    }
+
+                    override fun onError(error: Int) {
+                        recognizer.destroy()
+                        if (waiting.isActive) waiting.resume(null)
+                    }
+                }
+                recognizer.checkRecognitionSupport(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), context.mainExecutor, callback)
+            }
+        }
 
         /** Ozen's audio, -1...1, as the 16-bit little-endian samples the recognizer reads. */
         fun pcm16(samples: FloatArray): ByteArray {
@@ -242,4 +257,9 @@ class BuiltInSpeechEngine(private val context: Context) : TranscriptionEngine {
 
         private fun now(): Double = System.currentTimeMillis() / 1_000.0
     }
+}
+
+/** Why this phone's recognizer last refused Ozen's audio, kept while the app runs; shared by every engine built for it. */
+class BuiltInRefusal {
+    @Volatile var reason: String? = null
 }
