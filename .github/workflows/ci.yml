@@ -49,7 +49,9 @@ jobs:
       # Swift from swift.org, checked against swift.org's own signing keys.
       # Not setup-swift: it also refreshes those keys from
       # keyserver.ubuntu.com and gives up when that server is down, which
-      # on 2026-11-11 failed this job on every pull request.
+      # on 2026-11-11 failed this job on every pull request. The refresh,
+      # which finds a revoked key, is still tried here for a minute; a
+      # server that doesn't answer leaves a warning instead of a red job.
       - name: Install Swift 6.1.3
         run: |
           base=https://download.swift.org/swift-6.1.3-release/ubuntu2404/swift-6.1.3-RELEASE
@@ -57,6 +59,8 @@ jobs:
           curl -fsSL --retry 3 -o "$RUNNER_TEMP/$file" "$base/$file"
           curl -fsSL --retry 3 -o "$RUNNER_TEMP/$file.sig" "$base/$file.sig"
           curl -fsSL --retry 3 https://www.swift.org/keys/all-keys.asc | gpg --import -
+          timeout 60 gpg --keyserver hkp://keyserver.ubuntu.com --refresh-keys Swift \
+            || echo "::warning::keyserver.ubuntu.com didn't answer: Swift's signing keys were not checked for revocation"
           gpg --verify "$RUNNER_TEMP/$file.sig" "$RUNNER_TEMP/$file"
           mkdir -p "$RUNNER_TEMP/swift"
           tar -xzf "$RUNNER_TEMP/$file" -C "$RUNNER_TEMP/swift" --strip-components=1
