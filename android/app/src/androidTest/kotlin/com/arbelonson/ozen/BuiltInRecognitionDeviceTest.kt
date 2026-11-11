@@ -3,6 +3,8 @@ package com.arbelonson.ozen
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,5 +21,17 @@ class BuiltInRecognitionDeviceTest {
         Log.i("BuiltInRecognition", answer)
         assertTrue(answer, answer.startsWith("on device ") || answer == "none before Android 12")
         assertTrue(answer, !answer.endsWith("checking languages"))
+    }
+
+    @Test
+    fun askedOverAndOverAndroidGivesTheSameAnswerEveryTime() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val first = BuiltInRecognition.ask(context, listOf("he", "en"))
+        val answers = List(ASKED_TIMES) { BuiltInRecognition.ask(context, listOf("he", "en")) }
+        assertEquals(List(ASKED_TIMES) { first }, answers)
+    }
+
+    private companion object {
+        const val ASKED_TIMES = 80
     }
 }

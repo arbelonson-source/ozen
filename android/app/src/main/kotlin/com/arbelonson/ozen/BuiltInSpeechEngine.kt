@@ -254,25 +254,37 @@ class BuiltInSpeechEngine(private val context: Context, private val refusal: Bui
         /**
          * The languages the phone's recognizer has installed for use offline,
          * as it names them; null when it has no recognition on the phone alone.
+         */
+        suspend fun installedLanguages(context: Context): List<String>? = withContext(Dispatchers.Main) {
+            if (!SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) return@withContext null
+            recognitionSupport(context).support?.installedOnDeviceLanguages
+        }
+
+        /**
+         * What the phone's recognizer says about recognition on the phone
+         * alone, or the error it gave instead (no error: no answer at all).
          * Asked right after another question, the recognizer can still be
          * shutting down from it: Android then drops the question without an
          * answer ("Service is unbinding") or answers "server disconnected".
          * Either way it is asked again after a moment, a few times at most,
          * so "Captions now" isn't refused, or never offered, over a race.
          */
-        suspend fun installedLanguages(context: Context): List<String>? = withContext(Dispatchers.Main) {
-            if (!SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) return@withContext null
+        suspend fun recognitionSupport(context: Context): SupportAnswer = withContext(Dispatchers.Main) {
+            var answer = SupportAnswer(null)
             for (asked in 1..SUPPORT_ASKS) {
-                val answer = askInstalled(context)
-                if (!answer.lost) return@withContext answer.languages
+                answer = askSupport(context)
+                if (!answer.lost) break
                 if (asked < SUPPORT_ASKS) delay(SUPPORT_RETRY_MILLIS)
             }
-            null
+            answer
         }
 
-        private class SupportAnswer(val languages: List<String>?, val lost: Boolean = false)
+        class SupportAnswer(val support: RecognitionSupport?, val error: Int? = null) {
+            val lost: Boolean
+                get() = support == null && (error == null || BuiltInRecognition.sessionError(error) == BuiltInRecognition.SessionError.Race)
+        }
 
-        private suspend fun askInstalled(context: Context): SupportAnswer = withTimeoutOrNull(SUPPORT_ANSWER_MILLIS) {
+        private suspend fun askSupport(context: Context): SupportAnswer = withTimeoutOrNull(SUPPORT_ANSWER_MILLIS) {
             suspendCancellableCoroutine { waiting ->
                 val recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
                 val destroyed = AtomicBoolean(false)
@@ -285,17 +297,13 @@ class BuiltInSpeechEngine(private val context: Context, private val refusal: Bui
                 }
                 waiting.invokeOnCancellation { context.mainExecutor.execute(::destroy) }
                 val callback = object : RecognitionSupportCallback {
-                    override fun onSupportResult(recognitionSupport: RecognitionSupport) {
-                        answered(SupportAnswer(recognitionSupport.installedOnDeviceLanguages))
-                    }
+                    override fun onSupportResult(recognitionSupport: RecognitionSupport) = answered(SupportAnswer(recognitionSupport))
 
-                    override fun onError(error: Int) {
-                        answered(SupportAnswer(null, lost = BuiltInRecognition.sessionError(error) == BuiltInRecognition.SessionError.Race))
-                    }
+                    override fun onError(error: Int) = answered(SupportAnswer(null, error))
                 }
                 recognizer.checkRecognitionSupport(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), context.mainExecutor, callback)
             }
-        } ?: SupportAnswer(null, lost = true)
+        } ?: SupportAnswer(null)
 
         /** Ozen's audio, -1...1, as the 16-bit little-endian samples the recognizer reads. */
         fun pcm16(samples: FloatArray): ByteArray {
