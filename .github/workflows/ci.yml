@@ -28,8 +28,8 @@ jobs:
   ozenkit-linux:
     name: OzenKit (Linux, portable core)
     # Not ubuntu-latest: that label moves to Ubuntu 26 from 19 October 2026,
-    # and setup-swift installs Swift 6.1 from swift.org builds that stop at
-    # Ubuntu 24.04, so the move would turn this job red on its own.
+    # and Swift 6.1 comes from swift.org builds that stop at Ubuntu 24.04,
+    # so the move would turn this job red on its own.
     runs-on: ubuntu-24.04
     # A hung test would otherwise hold the runner for GitHub's six-hour
     # default; the whole job normally takes about a minute.
@@ -46,9 +46,22 @@ jobs:
         run: python3 -m unittest discover -s scripts/model-release -p "test_*.py"
       - name: Cloud trial script
         run: python3 -m unittest discover -s scripts/cloud-trial -p "test_*.py"
-      - uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: "6.1"
+      # Swift from swift.org, checked against swift.org's own signing keys.
+      # Not setup-swift: it also refreshes those keys from
+      # keyserver.ubuntu.com and gives up when that server is down, which
+      # on 2026-11-11 failed this job on every pull request.
+      - name: Install Swift 6.1.3
+        run: |
+          base=https://download.swift.org/swift-6.1.3-release/ubuntu2404/swift-6.1.3-RELEASE
+          file=swift-6.1.3-RELEASE-ubuntu24.04.tar.gz
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$file" "$base/$file"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$file.sig" "$base/$file.sig"
+          curl -fsSL --retry 3 https://www.swift.org/keys/all-keys.asc | gpg --import -
+          gpg --verify "$RUNNER_TEMP/$file.sig" "$RUNNER_TEMP/$file"
+          mkdir -p "$RUNNER_TEMP/swift"
+          tar -xzf "$RUNNER_TEMP/$file" -C "$RUNNER_TEMP/swift" --strip-components=1
+          echo "$RUNNER_TEMP/swift/usr/bin" >> "$GITHUB_PATH"
+      - run: swift --version
       - run: swift build
       - run: swift test
       # The home server's own checks: faster-whisper and the GPU are stood
