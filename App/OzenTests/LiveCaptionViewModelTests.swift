@@ -3089,6 +3089,33 @@ struct LiveCaptionViewModelSavingTroubleTests {
         #expect(viewModel.historyStore.listSummaries().count == 1)
     }
 
+    @Test("Delete keeps to what the clear question said when it opened, even after a save failed while it was up, as on Android")
+    func clearKeepsToItsQuestion() async throws {
+        let blocker = try blockedFolder()
+        let engine = FakeEngine()
+        let pipeline = CaptionPipeline(audio: FakeAudioCapturer(), engineFactory: { _ in engine }, embedder: FakeEmbedder())
+        let viewModel = LiveCaptionViewModel(
+            settingsStore: SettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("ozen-settings-\(UUID()).json")),
+            pipeline: pipeline,
+            historyStore: TranscriptHistoryStore(directoryURL: blocker.appendingPathComponent("history", isDirectory: true))
+        )
+        await viewModel.start()
+        engine.emit(TranscriptToken(utteranceID: UUID(), text: "בוקר טוב", isFinal: true, timestamp: 1))
+        await eventually { !viewModel.segments.isEmpty }
+
+        let asked = viewModel.clearQuestion
+        #expect(asked.keepsHistory)
+        viewModel.persistHistory(ended: false)
+        #expect(viewModel.historySaveFailure != nil)
+
+        #expect(!viewModel.clear(after: asked))
+        #expect(!viewModel.segments.isEmpty)
+        let askedAgain = viewModel.clearQuestion
+        #expect(!askedAgain.keepsHistory)
+        #expect(viewModel.clear(after: askedAgain))
+        #expect(viewModel.segments.isEmpty)
+    }
+
     @Test("a star History can't save says so and leaves the line as it was, still on screen or long gone")
     func starThatCannotBeSaved() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ozen-history-\(UUID())", isDirectory: true)

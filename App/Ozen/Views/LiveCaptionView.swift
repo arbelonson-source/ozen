@@ -14,7 +14,8 @@ struct LiveCaptionView: View {
     @State private var showingSettings = false
     @State private var settingsFocus: SettingsView.Focus?
     @State private var showingTypeToSpeak = false
-    @State private var confirmingClear = false
+    /// The clear question on screen, as it was asked (see `ClearQuestion`).
+    @State private var clearQuestion: ClearQuestion?
     /// The better model, tapped while captions listen: switching would stop
     /// them for its download, so it waits for a yes.
     @State private var pendingBetterModel: WhisperModelOption?
@@ -651,35 +652,26 @@ struct LiveCaptionView: View {
         .asksBeforeSwitchingModel($pendingBetterModel, viewModel: viewModel)
         .confirmationDialog(
             tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?"),
-            isPresented: $confirmingClear,
-            titleVisibility: .visible
-        ) {
-            Button(tr("מחיקה", "Delete"), role: .destructive, action: clearAfterAsking)
+            isPresented: Binding(get: { clearQuestion != nil }, set: { if !$0 { clearQuestion = nil } }),
+            titleVisibility: .visible,
+            presenting: clearQuestion
+        ) { question in
+            Button(tr("מחיקה", "Delete"), role: .destructive) { clearAfterAsking(question) }
             Button(tr("ביטול", "Cancel"), role: .cancel) {}
-        } message: {
-            Text(clearKeepsHistory
-                 ? tr("הן נשארות שמורות בהגדרות, תחת ״שיחות קודמות״.", "They stay saved in Settings, under “Previous conversations”.")
-                 : viewModel.settings.saveHistory
-                 ? tr("השמירה בהיסטוריה לא עובדת כרגע, ולכן הן לא יישמרו.", "Saving to History isn’t working right now, so they won’t be saved.")
-                 : tr("שמירת שיחות כבויה, ולכן הן לא יישמרו.", "History is off, so they won’t be saved."))
+        } message: { question in
+            Text(question.text)
         }
     }
 
-    private var clearKeepsHistory: Bool {
-        viewModel.settings.saveHistory && viewModel.historySaveFailure == nil
-    }
-
-    /// When the question said the lines stay saved, they are saved first
-    /// and cleared only if that worked; a save failing just now brings the
-    /// question back, now saying saving isn't working.
-    private func clearAfterAsking() {
-        if !clearKeepsHistory {
-            viewModel.clearTranscript()
-        } else if !viewModel.clearTranscriptKeepingHistory() {
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(400))
-                confirmingClear = true
-            }
+    /// Delete keeps to what the question said when it opened. When it said
+    /// the lines stay saved, they are saved first and cleared only if that
+    /// worked; a save failing brings the question back, now saying saving
+    /// isn't working.
+    private func clearAfterAsking(_ question: ClearQuestion) {
+        guard !viewModel.clear(after: question) else { return }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            clearQuestion = viewModel.clearQuestion
         }
     }
 
@@ -1418,7 +1410,7 @@ struct LiveCaptionView: View {
     private var isCoveredBySheet: Bool {
         openedConversation != nil || showingMicPicker || showingSettings || showingTypeToSpeak
             || showingBigText || namingSegment != nil || fixingWordFromSegment != nil
-            || showingNameAlertForm || confirmingClear || confirmingCellularDownload || showingProblemMarked
+            || showingNameAlertForm || clearQuestion != nil || confirmingCellularDownload || showingProblemMarked
     }
 
     private func scrollToLatestAfterLayout() {
@@ -1568,7 +1560,7 @@ struct LiveCaptionView: View {
     /// while there is nothing to clear, and always asks, as on Android.
     private var clearButton: some View {
         Button {
-            confirmingClear = true
+            clearQuestion = viewModel.clearQuestion
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: "trash")

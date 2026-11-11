@@ -17,7 +17,11 @@ struct SettingsView: View {
     @State private var showingRecordingImporter = false
     @State private var importingRecordings = false
     @State private var recordingImport: RecordingImport.Result?
-    @State private var confirmingClear = false
+    /// The clear question on screen, as it was asked: it says where the
+    /// lines go, as the caption screen's does and Android's Settings does,
+    /// and Delete keeps to it (see `ClearQuestion`). It used to say nothing
+    /// and clear even when the save made on clearing failed.
+    @State private var clearQuestion: ClearQuestion?
     @State private var renamingProfile: SpeakerProfile?
     @State private var renameText = ""
     /// A saved speaker swiped away, waiting for a yes: getting them back
@@ -228,9 +232,22 @@ struct SettingsView: View {
             } message: { _ in
                 Text(tr("כדי שיזוהו שוב בשמם, צריך להקליט את הקול שלהם מחדש.", "To be recognized by name again, their voice needs to be recorded again."))
             }
-            .confirmationDialog(tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?"), isPresented: $confirmingClear, titleVisibility: .visible) {
-                Button(tr("מחיקה", "Delete"), role: .destructive) { viewModel.clearTranscript() }
+            .confirmationDialog(
+                tr("למחוק את כל הכתוביות מהמסך?", "Delete all captions from the screen?"),
+                isPresented: Binding(get: { clearQuestion != nil }, set: { if !$0 { clearQuestion = nil } }),
+                titleVisibility: .visible,
+                presenting: clearQuestion
+            ) { question in
+                Button(tr("מחיקה", "Delete"), role: .destructive) {
+                    guard !viewModel.clear(after: question) else { return }
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(400))
+                        clearQuestion = viewModel.clearQuestion
+                    }
+                }
                 Button(tr("ביטול", "Cancel"), role: .cancel) {}
+            } message: { question in
+                Text(question.text)
             }
         }
     }
@@ -1411,7 +1428,7 @@ struct SettingsView: View {
                 Text(tr("הכתוביות ייעצרו עד סוף ההסבר.", "Captions stop until the walkthrough ends."))
             }
             Button(role: .destructive) {
-                confirmingClear = true
+                clearQuestion = viewModel.clearQuestion
             } label: {
                 Label(tr("ניקוי הכתוביות מהמסך", "Clear captions from the screen"), systemImage: "trash")
             }
