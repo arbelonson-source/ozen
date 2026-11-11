@@ -41,7 +41,13 @@ class BackgroundAlertPolicy(
         // ringtone and a phone ringing) must share it, or the classifier
         // flipping labels notifies twice. The names only match in Hebrew.
         val key = "sound-${alert.event.cooldownKey}"
-        if (!shouldNotify(key, appIsActive, now)) return null
+        // A siren that keeps sounding repeats on screen every
+        // DEFAULT_COOLDOWN_SECONDS; the full cooldown swallowed every other
+        // repeat, so a smoke alarm notified at 0 s and then at 40 s. One
+        // second less keeps the repeat from falling a hair short, as on the
+        // iPhone (5619b456).
+        val cooldown = if (critical) minOf(cooldownSeconds, SoundEventPolicy.DEFAULT_COOLDOWN_SECONDS - 1) else cooldownSeconds
+        if (!shouldNotify(key, appIsActive, now, cooldown)) return null
         return AlertNotificationContent(
             identifier = key,
             title = alert.event.name,
@@ -58,7 +64,7 @@ class BackgroundAlertPolicy(
     fun notification(hit: KeywordHit, lineText: String, appIsActive: Boolean, now: Double, utcOffsetSeconds: Int = 0): AlertNotificationContent? {
         if (quietHours.isQuiet(now, utcOffsetSeconds)) return null
         val key = "keyword-${hit.match.alertID.toString().uppercase()}"
-        if (!shouldNotify(key, appIsActive, now)) return null
+        if (!shouldNotify(key, appIsActive, now, cooldownSeconds)) return null
         return AlertNotificationContent(
             identifier = key,
             title = tr("נאמר: %1", "Said: %1", listOf(AlertSuggestions.shown(hit.match.phrase, Localization.language))),
@@ -71,7 +77,7 @@ class BackgroundAlertPolicy(
         )
     }
 
-    private fun shouldNotify(key: String, appIsActive: Boolean, now: Double): Boolean {
+    private fun shouldNotify(key: String, appIsActive: Boolean, now: Double, cooldown: Double): Boolean {
         if (!isEnabled || appIsActive) return false
         // `now` is wall-clock time, which can go backward (an NTP sync, a
         // manual clock change). Without the `now >= last` guard, a
@@ -79,7 +85,7 @@ class BackgroundAlertPolicy(
         // the cooldown, silently suppressing a genuinely new alert until
         // real time catches back up to where the clock used to read.
         val last = lastNotified[key]
-        if (last != null && now >= last && now - last < cooldownSeconds) return false
+        if (last != null && now >= last && now - last < cooldown) return false
         lastNotified[key] = now
         posted.add(key)
         return true
