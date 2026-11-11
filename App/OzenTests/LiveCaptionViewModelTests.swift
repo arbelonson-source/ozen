@@ -1194,6 +1194,29 @@ struct LiveCaptionViewModelSpeechTests {
         #expect(await eventually { viewModel.phase.isListening })
     }
 
+    @Test("captions that come on during a phrase are recorded as listening before the phrase pauses them, so the screen can say they are ready")
+    func stepsReachedBeforeTheHold() async {
+        let (viewModel, synthesizer) = makeViewModel()
+        var clock = 100.0
+        viewModel.stepClock = {
+            clock += 11
+            return clock
+        }
+        _ = viewModel.takeStepsReached()
+        let counted = viewModel.stepsReachedCount
+        let starting = Task { await viewModel.start() }
+        viewModel.speak("רגע")
+        synthesizer.startNext()
+        await starting.value
+        #expect(await eventually { viewModel.phase == .paused })
+        let steps = viewModel.takeStepsReached()
+        #expect(viewModel.stepsReachedCount == counted + steps.count)
+        #expect(steps.map(\.phase).suffix(2) == [.listening, .paused])
+        var announcer = CaptionsStopAnnouncer()
+        #expect(announcer.stepsReached(steps) == .ready)
+        #expect(viewModel.takeStepsReached().isEmpty)
+    }
+
     @Test("a call that cuts off the phone's voice doesn't leave captions paused for good; they return after it")
     func callDuringPhrase() async {
         let audio = FakeAudioCapturer()
