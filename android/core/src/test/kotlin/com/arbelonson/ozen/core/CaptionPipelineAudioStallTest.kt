@@ -168,7 +168,7 @@ class CaptionPipelineAudioStallTest {
     fun `captions brought back by a change of microphones get a fresh set of automatic retries`() = runTest {
         val clock = TestClock()
         val (pipeline, audio, _) = makePipeline(
-            recovery = AutoRecoveryPolicy(glitchDelays = listOf(0.01), downloadDelays = emptyList()),
+            recovery = AutoRecoveryPolicy(glitchDelays = listOf(0.01), downloadDelays = emptyList(), microphoneTailDelays = emptyList()),
             now = { clock.now },
         )
         pipeline.start(AppSettings.default)

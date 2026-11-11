@@ -13,7 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 
-private fun fast() = AutoRecoveryPolicy(glitchDelays = listOf(0.01, 0.01), downloadDelays = listOf(0.01))
+private fun fast() = AutoRecoveryPolicy(glitchDelays = listOf(0.01, 0.01), downloadDelays = listOf(0.01), microphoneTailDelays = emptyList())
 
 private fun TestScope.makeRecoveringPipeline(
     audio: FakeAudioCapturer = FakeAudioCapturer(),
