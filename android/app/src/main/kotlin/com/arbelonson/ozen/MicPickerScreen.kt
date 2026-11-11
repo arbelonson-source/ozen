@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.PhoneSound
+import com.arbelonson.ozen.core.RoutedElsewhere
 import com.arbelonson.ozen.core.tr
 import com.arbelonson.ozen.ui.EmptyState
 import com.arbelonson.ozen.ui.SettingsGroup
@@ -58,7 +59,9 @@ import kotlinx.coroutines.delay
  * The iPhone's microphone picker: the microphones the phone offers, the
  * one recording marked, and a meter to see that it hears. A choice is kept
  * for next time even when the phone refuses to switch, and the refusal is
- * said, since the marked microphone keeps recording. The phone's own
+ * said, since the marked microphone keeps recording, until the phone
+ * switches to it after all. A switch the phone made and then took back is
+ * said here too, as on the caption screen it covers. The phone's own
  * bottom and back microphones are one row, named for the phone rather than
  * its model code. The phone's sound ending is said here too: the picker
  * covers the captions screen, where its banner is. The tips are the
@@ -75,9 +78,11 @@ internal fun MicPickerScreen(
     onChoose: (AudioInputDescriptor) -> Boolean,
     onRefresh: () -> Unit,
     onClose: () -> Unit,
+    routedElsewhere: RoutedElsewhere? = null,
 ) {
     BackHandler(onBack = onClose)
     var refused by rememberSaveable { mutableStateOf<String?>(null) }
+    var refusedUid by rememberSaveable { mutableStateOf<String?>(null) }
     val phoneSound = PhoneSound.isPhoneSound(selected?.uid)
     LaunchedEffect(Unit) { onRefresh() }
     SettingsPageFrame(
@@ -105,11 +110,12 @@ internal fun MicPickerScreen(
                         val title = MicPickerText.title(input)
                         ChoiceRow(title, inputSummary(input), selected = input.uid == selected?.uid, icon = inputIcon(input)) {
                             refused = if (onChoose(input)) null else title
+                            refusedUid = input.uid
                         }
                     }
                 }
             }
-            for (notice in MicPickerText.notices(refused, phoneSoundStopped)) {
+            for (notice in MicPickerText.notices(MicPickerText.refusal(refused, refusedUid, selected), phoneSoundStopped, routedElsewhere)) {
                 Text(
                     notice,
                     color = MaterialTheme.colorScheme.error,

@@ -633,6 +633,7 @@ private fun OzenApp(
                             },
                             onRefresh = app.captions::refreshInputs,
                             onClose = { choosingMicrophone = false },
+                            routedElsewhere = state.routedElsewhere?.takeIf { state.captionsRunning },
                         )
                         Front.Say -> SayScreen(
                             draft = sayDraft,

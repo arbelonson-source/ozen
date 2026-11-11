@@ -4,6 +4,7 @@ import com.arbelonson.ozen.core.AudioInputDescriptor
 import com.arbelonson.ozen.core.AudioPortType
 import com.arbelonson.ozen.core.Localization
 import com.arbelonson.ozen.core.PhoneSound
+import com.arbelonson.ozen.core.RoutedElsewhere
 import com.arbelonson.ozen.core.UILanguage
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -64,6 +65,21 @@ class MicPickerTextTest {
             MicPickerText.notices(refused = "Lapel mic", phoneSoundStopped = false),
         )
         assertEquals(emptyList(), MicPickerText.notices(refused = null, phoneSoundStopped = false))
+    }
+
+    @Test
+    fun `a refusal goes once the phone records from the microphone she tapped after all, as on the iPhone`() {
+        assertEquals("Lapel mic", MicPickerText.refusal("Lapel mic", lapel.uid, marked = bottom))
+        assertEquals(null, MicPickerText.refusal("Lapel mic", lapel.uid, marked = lapel))
+        assertEquals(null, MicPickerText.refusal(null, null, marked = bottom))
+    }
+
+    @Test
+    fun `a switch the phone made and took back is said in the picker too, which covers the caption screen's banner`() = english {
+        assertEquals(
+            listOf("Lapel mic isn’t recording", "Captions come from SM-X instead."),
+            MicPickerText.notices(refused = null, phoneSoundStopped = false, routed = RoutedElsewhere(picked = lapel, inUse = bottom)),
+        )
     }
 
     @Test
