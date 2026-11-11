@@ -3013,6 +3013,37 @@ class CaptionScreenDeviceTest {
         assertNull(CaptionState.screen.value.missedSound)
     }
 
+    @Test
+    fun aSoundHeardWhileAwayShowsBesideAnOlderSoundBannerStillUp() {
+        val dog = SoundAlert(event = SoundEventCatalog.event("dog_bark")!!, confidence = 0.9, timestamp = System.currentTimeMillis() / 1_000.0)
+        val doorbell = SoundAlert(event = SoundEventCatalog.event("door_bell")!!, confidence = 0.9, timestamp = 1_000.0)
+        showLines(finishedLines)
+        compose.runOnUiThread {
+            CaptionState.soundHeard(dog, dog)
+            CaptionState.missedSound(MissedSound(doorbell, "14:05"))
+        }
+        compose.onNodeWithText("Dog barking").assertIsDisplayed()
+        compose.onNodeWithTag(MISSED_SOUND).assertIsDisplayed()
+        compose.onNodeWithText("Heard at 14:05, while the app wasn’t on the screen").assertIsDisplayed()
+    }
+
+    @Test
+    fun aSoundHeardWhileAwayWhoseOwnBannerIsStillUpShowsOnceWithItsTime() {
+        val doorbell = SoundAlert(event = SoundEventCatalog.event("door_bell")!!, confidence = 0.9, timestamp = System.currentTimeMillis() / 1_000.0)
+        showLines(finishedLines)
+        compose.runOnUiThread {
+            CaptionState.soundHeard(doorbell, doorbell)
+            CaptionState.missedSound(MissedSound(doorbell, "14:05"))
+        }
+        compose.onNodeWithTag(MISSED_SOUND).assertIsDisplayed()
+        compose.onAllNodesWithText("Doorbell").assertCountEquals(1)
+        compose.onNodeWithText("Heard just now").assertDoesNotExist()
+        compose.onNodeWithTag(MISSED_SOUND).performClick()
+        compose.waitForIdle()
+        compose.onAllNodesWithText("Doorbell").assertCountEquals(0)
+        compose.onNodeWithText("Heard just now").assertDoesNotExist()
+    }
+
     /** Lines the captions really hold, as heard ones: only those take a fix (see `CaptionSession.fixLine`). */
     private fun showHeardLines(lines: List<TranscriptSegment>) {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as OzenApplication
