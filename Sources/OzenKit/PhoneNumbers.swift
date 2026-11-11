@@ -10,13 +10,14 @@ public enum PhoneNumbers {
 
     public static func matches(in text: String) -> [Match] {
         guard let pattern, let servicePattern else { return [] }
-        let whole = NSRange(text.startIndex..., in: text)
-        let services: [Match] = servicePattern.matches(in: text, range: whole).compactMap { found in
+        let read = asciiDigits(text)
+        let whole = NSRange(read.startIndex..., in: read)
+        let services: [Match] = servicePattern.matches(in: read, range: whole).compactMap { found in
             guard let range = Range(found.range, in: text) else { return nil }
             let written = text[range]
             return Match(range: range, dialable: digitsOf(written))
         }
-        let phones: [Match] = pattern.matches(in: text, range: whole).compactMap { found in
+        let phones: [Match] = pattern.matches(in: read, range: whole).compactMap { found in
             guard let range = Range(found.range, in: text) else { return nil }
             let written = text[range]
             let digits = digitsOf(written)
@@ -28,6 +29,20 @@ public enum PhoneNumbers {
             return Match(range: range, dialable: String(digits))
         }
         return (services + phones).sorted { $0.range.lowerBound < $1.range.lowerBound }
+    }
+
+    /// `text` with every digit of another script (Arabic-Indic, Persian,
+    /// Devanagari, full-width) written as 0-9, so a number said in Arabic
+    /// and written in Arabic-Indic digits is found like "050-1234567", not
+    /// only when its first digits happen to be 0-9. Each such digit is one
+    /// UTF-16 unit either way, so a match's place is the same in `text`.
+    static func asciiDigits(_ text: String) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.map { scalar in
+            guard scalar.value < 0x10000, scalar.properties.numericType == .decimal, let value = scalar.properties.numericValue,
+                  let ascii = Unicode.Scalar(UInt32(48 + Int(value)))
+            else { return scalar }
+            return ascii
+        }))
     }
 
     private static let pattern = try? NSRegularExpression(
