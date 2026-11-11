@@ -54,8 +54,7 @@ import com.arbelonson.ozen.core.SessionJournal
 import com.arbelonson.ozen.core.TranscriptHistoryStore
 import com.arbelonson.ozen.core.TranscriptSessionRecord
 import com.arbelonson.ozen.core.TranscriptionEngineKind
-import com.arbelonson.ozen.core.isKeptByChoice
-import com.arbelonson.ozen.core.lastActiveAt
+import com.arbelonson.ozen.core.deleteConversations
 import java.io.File
 import java.io.IOException
 import java.time.Instant
@@ -871,8 +870,7 @@ class HistoryScreenDeviceTest {
         // confirming deletes them all. One left by an earlier test, or already
         // on the phone, made it say 3 instead of these 2 in a run of every
         // device test.
-        val monthAgo = HistoryRetention.Month.cutoff(System.currentTimeMillis() / 1_000.0)!!
-        store.listSummaries().filter { it.lastActiveAt < monthAgo && !it.isKeptByChoice }.forEach { store.delete(it.id) }
+        store.deleteConversations(inactiveBefore = HistoryRetention.Month.cutoff(System.currentTimeMillis() / 1_000.0)!!)
         val longAgo = System.currentTimeMillis() / 1_000.0 - 40 * 86_400
         val oldOne = seed("Rotating retention old one" to null, startedAt = longAgo)
         val oldTwo = seed("Rotating retention old two" to null, startedAt = longAgo - 60)
