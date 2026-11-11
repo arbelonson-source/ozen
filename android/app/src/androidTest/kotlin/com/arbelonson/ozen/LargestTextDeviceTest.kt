@@ -118,6 +118,7 @@ class LargestTextDeviceTest {
             onASmallPhoneAtTheLargestText {
                 HistoryScreen(app.captions.savedConversations, true, settings.historyRetention, false, false, onClose = {}, languageCode = "en")
             }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Search what was said").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Search what was said").performTextInput("dentist")
             compose.waitUntil(5_000) { compose.onAllNodesWithText("Remember the dentist, line 10", substring = true).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Remember the dentist, line 10", substring = true).performClick()

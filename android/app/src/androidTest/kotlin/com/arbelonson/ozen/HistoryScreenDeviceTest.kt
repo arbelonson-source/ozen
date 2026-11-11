@@ -200,6 +200,7 @@ class HistoryScreenDeviceTest {
         lines[50] = "Remind me about the dentist" to null
         seed(*lines.toTypedArray())
         compose.onNodeWithText("History").performClick()
+        waitFor("Search what was said")
         compose.onNodeWithText("Search what was said").performTextInput("dentist")
         waitFor("The dentist said Thursday")
         compose.onNodeWithText("The dentist said Thursday", substring = true).performClick()
