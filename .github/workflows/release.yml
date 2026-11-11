@@ -144,10 +144,10 @@ jobs:
           # The whole history and its tags, so the release notes can list
           # what changed since the previous build.
           fetch-depth: 0
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: ozen-ipa
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: ozen-apk
       - name: Publish as a GitHub Release
