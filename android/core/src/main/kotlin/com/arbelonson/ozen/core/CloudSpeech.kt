@@ -185,7 +185,9 @@ object CloudSpeech {
         val turns = ArrayList<String>()
         var lastLabel: String? = null
         for (rawLine in lineBreak.split(transcript).filter { it.isNotEmpty() }) {
-            var line = trimmingSpaces(rawLine)
+            // Notes go before the label is read: one can come first
+            // ("[laughter] A: hi"), and would hide the label.
+            var line = withoutAnnotations(rawLine)
             var label: String? = null
             val match = speakerLabel.matcher(line)
             if (match.find()) {
@@ -224,11 +226,13 @@ object CloudSpeech {
     )
 
     /**
-     * Square and angle brackets hold only notes. Parentheses can hold real
-     * words ("(HSBC)", "(a)"), so there only a known sound note goes, alone
-     * or with one more word, or a note that names the language spoken.
+     * Square and angle brackets hold only notes, in any script ("[music]",
+     * or the same word in Hebrew or Arabic), never digits, so a time like
+     * "[10:30]" stays. Parentheses can hold real words ("(HSBC)", "(a)"),
+     * so there only a known sound note goes, alone or with one more word,
+     * or a note that names the language spoken.
      */
-    private val bracketedNote = Pattern.compile("\\[[A-Za-z _-]*\\]|<[A-Za-z _-]*>")
+    private val bracketedNote = Pattern.compile("\\[[\\p{L}\\p{M} _-]*\\]|<[\\p{L}\\p{M} _-]*>")
     private val soundNoteInParentheses = Pattern.compile(
         "\\((?:(?:[a-z]+[ _-])?(?:music|inaudible|unintelligible|indistinct|laughter|laughs|laughing|applause|clapping|" +
             "noise|silence|crosstalk|cough(?:s|ing)?|sighs?|static|beep|chatter|foreign language|no speech)(?:[ _-][a-z]+)?|" +
@@ -313,9 +317,6 @@ private fun numberValue(element: JsonElement?): Double? {
         else -> primitive.content.toDoubleOrNull()
     }
 }
-
-private fun trimmingSpaces(text: String): String =
-    trimmingScalars(text) { Character.getType(it).toByte() == Character.SPACE_SEPARATOR || it == 0x09 }
 
 private fun trimmingWhitespaceAndNewlines(text: String): String =
     trimmingScalars(text) {
