@@ -233,9 +233,10 @@ the same.
   If that brings false alarms, the same button undoes it. Not listed at all means the sound classifier didn't recognize
   it as a doorbell (some electronic chimes don't sound like one to it).
 - **The doorbell notification comes, but goes unnoticed.** With the
-  phone face down or across the room, turn on iOS Settings → Accessibility →
-  Audio & Visual → LED Flash for Alerts: the camera light then blinks for
-  every notification, Ozen's included. With the app open, sirens and the
+  phone face down or across the room, go to iOS Settings → Accessibility →
+  Audio & Visual, turn on Flash for Alerts and choose LED Flash (on iOS 17
+  and 18 the switch there is LED Flash for Alerts): the camera light then
+  blinks for every notification, Ozen's included. With the app open, sirens and the
   doorbell already flash the edge of the screen.
 - **Alerts don't vibrate.** With the app open each kind vibrates its own
   way: long buzzes for an alarm or siren, a double knock for the door or a

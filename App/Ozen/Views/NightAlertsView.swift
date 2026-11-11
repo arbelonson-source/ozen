@@ -58,7 +58,7 @@ struct NightAlertsView: View {
                 )
                 item(
                     title: tr("אור", "Light"),
-                    text: tr("בהגדרות ← נגישות ← שמע וחזות, הפעילו את ״התראות בהבהוב״ ובחרו ״הבהוב LED״: פנס המצלמה יהבהב בכל התראה, גם כשהטלפון נעול.", "In Settings > Accessibility > Audio & Visual, turn on Flash for Alerts and choose LED Flash: the camera light flashes with every alert, even with the phone locked."),
+                    text: FlashAlertsHint.nightChecklist(),
                     image: "flashlight.on.fill"
                 )
                 item(
